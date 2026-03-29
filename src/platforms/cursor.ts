@@ -45,7 +45,10 @@ export class CursorSerializer extends BaseSerializer {
       const raw = this.readFile(join(rulesDir, file));
       if (!raw) continue;
 
-      const { data, content } = this.parseFrontmatter(raw);
+      const parsed = this.tryParseFrontmatter(raw);
+      if (!parsed) continue;
+
+      const { data, content } = parsed;
       const name = file.replace(/\.(mdc|md)$/, "");
       const alwaysApply = data["alwaysApply"] === true;
       const globs = data["globs"]

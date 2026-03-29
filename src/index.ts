@@ -561,4 +561,4 @@ templateCmd
 
 process.on("exit", () => closeDb());
 
-program.parse();
+await program.parseAsync();

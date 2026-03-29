@@ -65,6 +65,17 @@ export abstract class BaseSerializer implements PlatformSerializer {
     return { data: parsed.data as Record<string, unknown>, content: parsed.content };
   }
 
+  protected tryParseFrontmatter(content: string): {
+    data: Record<string, unknown>;
+    content: string;
+  } | undefined {
+    try {
+      return this.parseFrontmatter(content);
+    } catch {
+      return undefined;
+    }
+  }
+
   protected emitFrontmatter(
     data: Record<string, unknown>,
     content: string,
@@ -107,7 +118,10 @@ export abstract class BaseSerializer implements PlatformSerializer {
         const raw = this.readFile(skillMd);
         if (!raw) continue;
 
-        const { data, content } = this.parseFrontmatter(raw);
+        const parsed = this.tryParseFrontmatter(raw);
+        if (!parsed) continue;
+
+        const { data, content } = parsed;
         resources.push(
           this.makeResource(
             "skill",

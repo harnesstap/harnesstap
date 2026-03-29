@@ -18,7 +18,7 @@ function getTemplatesDir(): string {
     if (existsSync(candidate)) return candidate;
   }
 
-  return candidates[0];
+  return candidates[0]!;
 }
 
 export function seedBuiltInTemplates(): number {

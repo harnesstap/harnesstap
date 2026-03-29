@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": ["Read(*)"],
+    "deny": ["Write(secret)"]
+  },
+  "env": {
+    "API_KEY": "demo"
+  }
+}

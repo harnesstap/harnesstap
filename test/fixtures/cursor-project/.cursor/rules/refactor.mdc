@@ -1,0 +1,6 @@
+---
+description: Refactor guidance
+globs: src/**/*.ts
+alwaysApply: false
+---
+Refactor carefully

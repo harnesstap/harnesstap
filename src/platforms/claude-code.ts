@@ -44,7 +44,10 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       const raw = this.readFile(join(rulesDir, file));
       if (!raw) continue;
 
-      const { data, content } = this.parseFrontmatter(raw);
+      const parsed = this.tryParseFrontmatter(raw);
+      if (!parsed) continue;
+
+      const { data, content } = parsed;
       const name = file.replace(/\.md$/, "");
       const metadata: RuleMetadata = {
         globs: Array.isArray(data["paths"]) ? (data["paths"] as string[]) : [],
@@ -243,7 +246,9 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           if (meta.action === "allow") allow.push(meta.pattern);
           else if (meta.action === "deny") deny.push(meta.pattern);
         }
-        settings["permissions"] = { allow, deny };
+        if (allow.length > 0 || deny.length > 0) {
+          settings["permissions"] = { allow, deny };
+        }
       }
       if (envVars.length > 0) {
         const env: Record<string, string> = {};
@@ -253,10 +258,12 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         }
         settings["env"] = env;
       }
-      files.push({
-        path: ".claude/settings.json",
-        content: JSON.stringify(settings, null, 2),
-      });
+      if (Object.keys(settings).length > 0) {
+        files.push({
+          path: ".claude/settings.json",
+          content: JSON.stringify(settings, null, 2),
+        });
+      }
     }
 
     // Agents → .claude/agents/{name}.md
