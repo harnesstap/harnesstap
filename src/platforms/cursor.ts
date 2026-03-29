@@ -1,0 +1,145 @@
+import { join } from "node:path";
+import { BaseSerializer } from "./base-serializer.js";
+import { getPlatform } from "./registry.js";
+import type {
+  PlatformDefinition,
+  Resource,
+  SerializedFile,
+  RuleMetadata,
+} from "../types.js";
+
+export class CursorSerializer extends BaseSerializer {
+  readonly platformId = "cursor";
+  readonly platform: PlatformDefinition;
+
+  constructor() {
+    super();
+    const p = getPlatform("cursor");
+    if (!p) throw new Error("cursor platform not found in registry");
+    this.platform = p;
+  }
+
+  async scan(projectRoot: string): Promise<Resource[]> {
+    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+
+    // 1. Legacy .cursorrules
+    const legacyContent = this.readFile(join(projectRoot, ".cursorrules"));
+    if (legacyContent) {
+      resources.push(
+        this.makeResource("instruction", "cursorrules", legacyContent, ".cursorrules"),
+      );
+    }
+
+    // 2. AGENTS.md
+    const agentsMd = this.readFile(join(projectRoot, "AGENTS.md"));
+    if (agentsMd && !legacyContent) {
+      resources.push(
+        this.makeResource("instruction", "agents-instructions", agentsMd, "AGENTS.md"),
+      );
+    }
+
+    // 3. .cursor/rules/*.mdc and *.md
+    const rulesDir = join(projectRoot, ".cursor", "rules");
+    for (const file of this.listDir(rulesDir)) {
+      if (!file.endsWith(".mdc") && !file.endsWith(".md")) continue;
+      const raw = this.readFile(join(rulesDir, file));
+      if (!raw) continue;
+
+      const { data, content } = this.parseFrontmatter(raw);
+      const name = file.replace(/\.(mdc|md)$/, "");
+      const alwaysApply = data["alwaysApply"] === true;
+      const globs = data["globs"]
+        ? (typeof data["globs"] === "string"
+            ? (data["globs"] as string).split(",").map((s: string) => s.trim())
+            : (data["globs"] as string[]))
+        : [];
+
+      // Determine if this is an instruction or a rule
+      if (alwaysApply && globs.length === 0) {
+        resources.push(
+          this.makeResource(
+            "instruction",
+            name,
+            content.trim(),
+            `.cursor/rules/${file}`,
+            {},
+            (data["description"] as string) || "",
+          ),
+        );
+      } else {
+        const metadata: RuleMetadata = { globs, always_apply: alwaysApply };
+        resources.push(
+          this.makeResource(
+            "rule",
+            name,
+            content.trim(),
+            `.cursor/rules/${file}`,
+            metadata,
+            (data["description"] as string) || "",
+          ),
+        );
+      }
+    }
+
+    // 4. Skills
+    resources.push(...this.scanSkillsDir(projectRoot, ".agents/skills"));
+
+    return resources as Resource[];
+  }
+
+  async serialize(
+    resources: Resource[],
+    _projectRoot: string,
+  ): Promise<SerializedFile[]> {
+    const files: SerializedFile[] = [];
+
+    for (const r of resources) {
+      switch (r.type) {
+        case "instruction": {
+          // Emit as always-apply .mdc rule
+          const fm: Record<string, unknown> = {
+            description: r.description || r.name,
+            alwaysApply: true,
+          };
+          files.push({
+            path: `.cursor/rules/${r.name}.mdc`,
+            content: this.emitFrontmatter(fm, r.content),
+          });
+          break;
+        }
+        case "rule": {
+          const meta = r.metadata as RuleMetadata;
+          const fm: Record<string, unknown> = {
+            description: r.description || r.name,
+            alwaysApply: meta.always_apply,
+          };
+          if (meta.globs.length > 0) {
+            fm["globs"] = meta.globs.join(",");
+          }
+          files.push({
+            path: `.cursor/rules/${r.name}.mdc`,
+            content: this.emitFrontmatter(fm, r.content),
+          });
+          break;
+        }
+        case "skill": {
+          // Cursor doesn't have native skills — emit as agent-requested rule
+          const fm: Record<string, unknown> = {
+            description: r.description || `Skill: ${r.name}`,
+            alwaysApply: false,
+          };
+          files.push({
+            path: `.cursor/rules/${r.name}.mdc`,
+            content: this.emitFrontmatter(fm, r.content),
+          });
+          break;
+        }
+        // mcp_server, permission, hook, agent, command — not supported in Cursor
+        default:
+          break;
+      }
+    }
+
+    return files;
+  }
+}
