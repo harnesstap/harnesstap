@@ -10,6 +10,13 @@ function stringifyArgs(args: unknown[]): string {
   return args.map((value) => String(value)).join(" ");
 }
 
+let cliImportCounter = 0;
+
+async function importCliEntry(): Promise<void> {
+  const cacheBuster = `test=${Date.now()}-${cliImportCounter++}`;
+  await import(/* @vite-ignore */ `../../src/index.ts?${cacheBuster}`);
+}
+
 export async function runCli(args: string[]): Promise<CliResult> {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -20,9 +27,11 @@ export async function runCli(args: string[]): Promise<CliResult> {
   const logSpy = vi.spyOn(console, "log").mockImplementation((...values) => {
     stdout.push(stringifyArgs(values));
   });
-  const errorSpy = vi.spyOn(console, "error").mockImplementation((...values) => {
-    stderr.push(stringifyArgs(values));
-  });
+  const errorSpy = vi
+    .spyOn(console, "error")
+    .mockImplementation((...values) => {
+      stderr.push(stringifyArgs(values));
+    });
   const tableSpy = vi.spyOn(console, "table").mockImplementation((value) => {
     tables.push(value);
   });
@@ -30,8 +39,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
   try {
     process.argv = ["node", "skillset", ...args];
     process.exitCode = undefined;
-    vi.resetModules();
-    await import("../../src/index.ts");
+    await importCliEntry();
     return {
       stdout: stdout.join("\n"),
       stderr: stderr.join("\n"),

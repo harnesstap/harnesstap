@@ -1,8 +1,14 @@
 {
   "name": "skillset",
   "version": "0.1.0",
-  "description": "Unified AI coding assistant configuration manager — manage, align, and share presets across Claude Code, Codex, Cursor, and 40+ coding CLIs",
+  "description": "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   "type": "module",
+  "packageManager": "bun@1.3.9",
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
   "bin": {
     "skillset": "./dist/index.js"
   },
@@ -13,7 +19,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run build"
   },
   "keywords": [
     "ai",

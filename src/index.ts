@@ -2,11 +2,27 @@ import { Command } from "commander";
 import { getDb, closeDb, getDbPath } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { log } from "./utils/logger.js";
-import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "./services/git.js";
-import { scanAndPersist, scanProject, detectPlatforms } from "./services/scanner.js";
-import { applyToProject, generateFiles, writeFiles } from "./services/applier.js";
+import {
+  getGitOrigin,
+  normalizeGitUrl,
+  projectNameFromUrl,
+} from "./services/git.js";
+import {
+  scanAndPersist,
+  scanProject,
+  detectPlatforms,
+} from "./services/scanner.js";
+import {
+  applyToProject,
+  generateFiles,
+  writeFiles,
+} from "./services/applier.js";
 import { exportToFile, importFromFile } from "./services/exporter.js";
-import { listResources, getResource, deleteResource } from "./models/resource.js";
+import {
+  listResources,
+  getResource,
+  deleteResource,
+} from "./models/resource.js";
 import {
   createPreset,
   getPreset,
@@ -23,7 +39,11 @@ import {
   applyPresetToProject,
   getProjectPresets,
 } from "./models/project.js";
-import { createSnapshot, listSnapshots, getSnapshot } from "./models/snapshot.js";
+import {
+  createSnapshot,
+  listSnapshots,
+  getSnapshot,
+} from "./models/snapshot.js";
 import { getAllPlatforms } from "./platforms/registry.js";
 import { seedBuiltInTemplates } from "./services/templates.js";
 import { resolve } from "node:path";
@@ -35,7 +55,7 @@ const program = new Command();
 program
   .name("skillset")
   .description(
-    "Unified AI coding assistant configuration manager — manage, align, and share presets across 40+ coding CLIs",
+    "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
   .version("0.1.0");
 
@@ -59,52 +79,60 @@ program
   .argument("[path]", "Project directory to scan", ".")
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--dry-run", "Show what would be imported without writing to DB")
-  .description("Scan a project directory and import configurations into the database")
-  .action(async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const projectRoot = resolve(path);
+  .description(
+    "Scan a project directory and import configurations into the database",
+  )
+  .action(
+    async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
+      const db = getDb();
+      initializeSchema(db);
+      const projectRoot = resolve(path);
 
-    // Detect platforms
-    const detected = detectPlatforms(projectRoot);
-    if (detected.length === 0) {
-      log.warn("No coding CLI configurations detected in this directory.");
-      return;
-    }
-    log.info(`Detected platforms: ${detected.join(", ")}`);
-
-    if (opts.dryRun) {
-      log.dim("(dry run — not persisting to database)");
-      const results = await scanProject(projectRoot, opts.platform);
-      let count = 0;
-      for (const result of results) {
-        log.info(`Platform: ${result.platformId}`);
-        for (const r of result.resources) {
-          count++;
-          log.dim(`  ${r.type.padEnd(14)} ${r.name}`);
-        }
+      // Detect platforms
+      const detected = detectPlatforms(projectRoot);
+      if (detected.length === 0) {
+        log.warn("No coding CLI configurations detected in this directory.");
+        return;
       }
-      log.success(`Would import ${count} resources`);
-      return;
-    }
+      log.info(`Detected platforms: ${detected.join(", ")}`);
 
-    // Scan and persist
-    const resources = await scanAndPersist(projectRoot, opts.platform);
-    log.success(`Imported ${resources.length} resources`);
+      if (opts.dryRun) {
+        log.dim("(dry run — not persisting to database)");
+        const results = await scanProject(projectRoot, opts.platform);
+        let count = 0;
+        for (const result of results) {
+          log.info(`Platform: ${result.platformId}`);
+          for (const r of result.resources) {
+            count++;
+            log.dim(`  ${r.type.padEnd(14)} ${r.name}`);
+          }
+        }
+        log.success(`Would import ${count} resources`);
+        return;
+      }
 
-    for (const r of resources) {
-      log.dim(`  ${r.type.padEnd(14)} ${r.name}`);
-    }
+      // Scan and persist
+      const resources = await scanAndPersist(projectRoot, opts.platform);
+      log.success(`Imported ${resources.length} resources`);
 
-    // Register project
-    const gitOrigin = getGitOrigin(projectRoot);
-    if (gitOrigin) {
-      const normalized = normalizeGitUrl(gitOrigin);
-      const name = projectNameFromUrl(gitOrigin);
-      upsertProject({ git_origin: normalized, name, local_path: projectRoot });
-      log.info(`Project registered: ${name} (${normalized})`);
-    }
-  });
+      for (const r of resources) {
+        log.dim(`  ${r.type.padEnd(14)} ${r.name}`);
+      }
+
+      // Register project
+      const gitOrigin = getGitOrigin(projectRoot);
+      if (gitOrigin) {
+        const normalized = normalizeGitUrl(gitOrigin);
+        const name = projectNameFromUrl(gitOrigin);
+        upsertProject({
+          git_origin: normalized,
+          name,
+          local_path: projectRoot,
+        });
+        log.info(`Project registered: ${name} (${normalized})`);
+      }
+    },
+  );
 
 // ── preset ──────────────────────────────────────────────────────────────
 
@@ -238,9 +266,7 @@ resourceCmd
       return;
     }
     for (const r of resources) {
-      log.info(
-        `${r.id.slice(0, 8)}… ${r.type.padEnd(14)} ${r.name}`,
-      );
+      log.info(`${r.id.slice(0, 8)}… ${r.type.padEnd(14)} ${r.name}`);
     }
   });
 
@@ -405,7 +431,9 @@ program
     const db = getDb();
     initializeSchema(db);
     if (!snapshotId) {
-      log.error("Please provide a snapshot ID. Use `skillset history` to list them.");
+      log.error(
+        "Please provide a snapshot ID. Use `skillset history` to list them.",
+      );
       return;
     }
     const snapshot = getSnapshot(snapshotId);
@@ -420,10 +448,15 @@ program
     }
     const files = Object.entries(snapshot.state.platform_files).flatMap(
       ([, platformFiles]) =>
-        Object.entries(platformFiles).map(([path, content]) => ({ path, content })),
+        Object.entries(platformFiles).map(([path, content]) => ({
+          path,
+          content,
+        })),
     );
     writeFiles(files, project.local_path);
-    log.info(`Reverting to snapshot: ${snapshot.label} (${snapshot.created_at})`);
+    log.info(
+      `Reverting to snapshot: ${snapshot.label} (${snapshot.created_at})`,
+    );
     log.success(`Restored ${files.length} file(s) to ${project.local_path}`);
   });
 

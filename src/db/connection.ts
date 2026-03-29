@@ -1,29 +1,60 @@
-import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import type { SqliteDatabase, SqliteDatabaseConstructor } from "./types.js";
 
-const SKILLSET_DIR = join(homedir(), ".skillset");
-const DB_PATH = join(SKILLSET_DIR, "skillset.db");
+const require = createRequire(import.meta.url);
 
-let instance: Database.Database | null = null;
+let instance: SqliteDatabase | null = null;
+let instancePath: string | null = null;
+
+function resolveDatabaseConstructor(): SqliteDatabaseConstructor {
+  if ("Bun" in globalThis) {
+    return (require("bun:sqlite") as { Database: SqliteDatabaseConstructor })
+      .Database;
+  }
+
+  return require("better-sqlite3") as SqliteDatabaseConstructor;
+}
+
+function resolveSkillsetDir(): string {
+  const homePath = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
+  return join(homePath, ".skillset");
+}
+
+function resolveDbPath(): string {
+  return join(resolveSkillsetDir(), "skillset.db");
+}
 
 export function getDbPath(): string {
-  return DB_PATH;
+  return resolveDbPath();
 }
 
 export function getSkillsetDir(): string {
-  return SKILLSET_DIR;
+  return resolveSkillsetDir();
 }
 
-export function getDb(): Database.Database {
-  if (instance) return instance;
+export function getDb(): SqliteDatabase {
+  const dbPath = resolveDbPath();
 
-  mkdirSync(SKILLSET_DIR, { recursive: true });
+  if (instance && instancePath === dbPath) {
+    return instance;
+  }
 
-  instance = new Database(DB_PATH);
-  instance.pragma("journal_mode = WAL");
-  instance.pragma("foreign_keys = ON");
+  if (instance) {
+    instance.close();
+    instance = null;
+    instancePath = null;
+  }
+
+  mkdirSync(resolveSkillsetDir(), { recursive: true });
+
+  const Database = resolveDatabaseConstructor();
+  instance = new Database(dbPath);
+  instancePath = dbPath;
+  instance.exec("PRAGMA journal_mode = WAL");
+  instance.exec("PRAGMA foreign_keys = ON");
 
   return instance;
 }
@@ -32,5 +63,6 @@ export function closeDb(): void {
   if (instance) {
     instance.close();
     instance = null;
+    instancePath = null;
   }
 }

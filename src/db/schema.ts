@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type { SqliteDatabase } from "./types.js";
 
 const SCHEMA_VERSION = 1;
 
@@ -73,7 +73,7 @@ const MIGRATIONS: Record<number, string> = {
   `,
 };
 
-export function initializeSchema(db: Database.Database): void {
+export function initializeSchema(db: SqliteDatabase): void {
   const currentVersion = getSchemaVersion(db);
 
   if (currentVersion >= SCHEMA_VERSION) return;
@@ -92,7 +92,7 @@ export function initializeSchema(db: Database.Database): void {
   })();
 }
 
-function getSchemaVersion(db: Database.Database): number {
+function getSchemaVersion(db: SqliteDatabase): number {
   try {
     const row = db
       .prepare("SELECT version FROM schema_version LIMIT 1")

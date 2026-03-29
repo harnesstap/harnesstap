@@ -1,6 +1,5 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { vi } from "vitest";
 import { createTempDir } from "./fs.ts";
 
 const ORIGINAL_HOME = process.env.HOME;
@@ -30,8 +29,6 @@ export async function createTestContext(
   process.env.USERPROFILE = homeDir;
   process.chdir(projectDir);
 
-  vi.resetModules();
-
   const connection = await import("../../src/db/connection.ts");
   const schema = await import("../../src/db/schema.ts");
 
@@ -43,7 +40,6 @@ export async function createTestContext(
     schema,
     async cleanup() {
       connection.closeDb();
-      vi.resetModules();
       process.env.HOME = ORIGINAL_HOME;
       if (ORIGINAL_USERPROFILE === undefined) {
         delete process.env.USERPROFILE;

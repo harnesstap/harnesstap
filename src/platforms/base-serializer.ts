@@ -19,7 +19,10 @@ export abstract class BaseSerializer implements PlatformSerializer {
   abstract readonly platform: PlatformDefinition;
 
   abstract scan(projectRoot: string): Promise<Resource[]>;
-  abstract serialize(resources: Resource[], projectRoot: string): Promise<SerializedFile[]>;
+  abstract serialize(
+    resources: Resource[],
+    projectRoot: string,
+  ): Promise<SerializedFile[]>;
 
   // ── Filesystem helpers ──────────────────────────────────────────────
 
@@ -62,15 +65,29 @@ export abstract class BaseSerializer implements PlatformSerializer {
     content: string;
   } {
     const parsed = matter(content);
-    return { data: parsed.data as Record<string, unknown>, content: parsed.content };
+    return {
+      data: parsed.data as Record<string, unknown>,
+      content: parsed.content,
+    };
   }
 
-  protected tryParseFrontmatter(content: string): {
-    data: Record<string, unknown>;
-    content: string;
-  } | undefined {
+  protected tryParseFrontmatter(content: string):
+    | {
+        data: Record<string, unknown>;
+        content: string;
+      }
+    | undefined {
     try {
-      return this.parseFrontmatter(content);
+      const parsed = this.parseFrontmatter(content);
+
+      // gray-matter can return the original content unchanged when a file starts
+      // with malformed frontmatter. Treat that as an invalid parse so scanners
+      // skip the broken resource instead of importing raw frontmatter text.
+      if (content.startsWith("---") && parsed.content === content) {
+        return undefined;
+      }
+
+      return parsed;
     } catch {
       return undefined;
     }
