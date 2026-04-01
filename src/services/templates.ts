@@ -18,7 +18,12 @@ function getTemplatesDir(): string {
     if (existsSync(candidate)) return candidate;
   }
 
-  return candidates[0]!;
+  const [firstCandidate] = candidates;
+  if (!firstCandidate) {
+    throw new Error("No template directories configured");
+  }
+
+  return firstCandidate;
 }
 
 export function seedBuiltInTemplates(): number {

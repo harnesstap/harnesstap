@@ -37,7 +37,13 @@ describe("CLI preset", () => {
       expect(presetShow.stdout).toContain("shared-skill");
 
       await runCli(["preset", "remove", "team", resource.id]);
-      expect(presetModel.getPresetResources(presetModel.getPreset("team")!.id)).toHaveLength(0);
+      const teamPreset = presetModel.getPreset("team");
+      expect(teamPreset).toBeDefined();
+      if (!teamPreset) {
+        throw new Error("Expected the team preset to exist after creation");
+      }
+
+      expect(presetModel.getPresetResources(teamPreset.id)).toHaveLength(0);
 
       await runCli(["preset", "delete", "team"]);
       expect(presetModel.getPreset("team")).toBeUndefined();
