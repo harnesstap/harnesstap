@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import type {
   PlatformSerializer,
@@ -19,6 +19,10 @@ export abstract class BaseSerializer implements PlatformSerializer {
   abstract readonly platform: PlatformDefinition;
 
   abstract scan(projectRoot: string): Promise<Resource[]>;
+  async scanGlobal(homeRoot: string): Promise<Resource[]> {
+    return this.scan(homeRoot);
+  }
+
   abstract serialize(
     resources: Resource[],
     projectRoot: string,
@@ -56,6 +60,18 @@ export abstract class BaseSerializer implements PlatformSerializer {
 
   protected relativePath(projectRoot: string, filePath: string): string {
     return relative(projectRoot, filePath);
+  }
+
+  protected prefixedRelativePath(
+    rootPath: string,
+    filePath: string,
+    prefix: string,
+  ): string {
+    const relativePath = relative(rootPath, filePath).split(sep).join("/");
+    const normalizedPrefix = prefix.replace(/\/$/, "");
+
+    if (!relativePath) return normalizedPrefix;
+    return `${normalizedPrefix}/${relativePath}`;
   }
 
   // ── Frontmatter helpers ─────────────────────────────────────────────
@@ -123,6 +139,13 @@ export abstract class BaseSerializer implements PlatformSerializer {
     skillsDir: string,
   ): Omit<Resource, "id" | "created_at" | "updated_at">[] {
     const fullPath = join(projectRoot, skillsDir);
+    return this.scanSkillsDirAt(fullPath, skillsDir.replace(/\/$/, ""));
+  }
+
+  protected scanSkillsDirAt(
+    fullPath: string,
+    sourcePrefix: string,
+  ): Omit<Resource, "id" | "created_at" | "updated_at">[] {
     if (!this.isDirectory(fullPath)) return [];
 
     const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
@@ -144,7 +167,7 @@ export abstract class BaseSerializer implements PlatformSerializer {
             "skill",
             (data["name"] as string) || entry,
             content.trim(),
-            this.relativePath(projectRoot, skillMd),
+            this.prefixedRelativePath(fullPath, skillMd, sourcePrefix),
             {
               scripts: [],
               references: [],

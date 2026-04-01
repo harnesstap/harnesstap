@@ -11,10 +11,12 @@ grouping it into reusable presets, and applying those presets back to project
 directories for multiple target platforms. Today, the canonical unit is a
 `preset`, not a plugin package.
 
-The current product supports five main workflows:
+The current product supports six main workflows:
 
 - Scan an existing repository and import assistant configuration into a local
   database.
+- Import supported assistant defaults from the current home directory during
+  init.
 - Group imported resources into named presets.
 - Apply a preset to one or more target platforms.
 - Export or import a preset as a portable JSON bundle.
@@ -38,28 +40,28 @@ The CLI uses a small set of concepts consistently across commands.
 
 The table below describes the currently implemented CLI commands.
 
-| Command                              | Current behavior                                                                                                             |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `skillset init`                      | Creates `~/.skillset/skillset.db`, initializes the schema, and seeds built-in templates.                                     |
-| `skillset scan [path]`               | Detects configured platforms in a project, imports discovered resources, and registers the project when a git origin exists. |
-| `skillset preset create`             | Creates a preset with optional description, tags, and template flag.                                                         |
-| `skillset preset list`               | Lists presets, with optional template-only filtering.                                                                        |
-| `skillset preset show`               | Shows preset metadata and its ordered resources.                                                                             |
-| `skillset preset add`                | Adds a resource to a preset.                                                                                                 |
-| `skillset preset remove`             | Removes a resource from a preset.                                                                                            |
-| `skillset preset delete`             | Deletes a preset by name or ID.                                                                                              |
-| `skillset resource list`             | Lists resources, with optional type and search filters.                                                                      |
-| `skillset resource show`             | Prints the full stored resource, including metadata and content.                                                             |
-| `skillset resource delete`           | Deletes a resource by ID.                                                                                                    |
-| `skillset apply <preset>`            | Serializes a preset for target platforms and writes files into the project directory.                                        |
-| `skillset history`                   | Lists stored snapshots for the current tracked project.                                                                      |
-| `skillset revert <snapshot-id>`      | Restores files captured in a saved snapshot.                                                                                 |
-| `skillset export <preset>`           | Writes a portable JSON bundle for a preset.                                                                                  |
-| `skillset import <file>`             | Imports a preset bundle from disk.                                                                                           |
-| `skillset platforms`                 | Lists registered platforms and declared capability flags.                                                                    |
-| `skillset status [path]`             | Shows the detected platforms and tracked preset and snapshot counts for a project.                                           |
-| `skillset template list`             | Lists seeded built-in templates.                                                                                             |
-| `skillset template apply <template>` | Applies a built-in template to a project.                                                                                    |
+| Command                              | Current behavior                                                                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skillset init`                      | Creates `~/.skillset/skillset.db`, initializes the schema, seeds built-in templates, scans supported home-directory defaults, and prints discovered locations. |
+| `skillset scan [path]`               | Detects configured platforms in a project, imports discovered resources, and registers the project when a git origin exists.                                   |
+| `skillset preset create`             | Creates a preset with optional description, tags, and template flag.                                                                                           |
+| `skillset preset list`               | Lists presets, with optional template-only filtering.                                                                                                          |
+| `skillset preset show`               | Shows preset metadata and its ordered resources.                                                                                                               |
+| `skillset preset add`                | Adds a resource to a preset.                                                                                                                                   |
+| `skillset preset remove`             | Removes a resource from a preset.                                                                                                                              |
+| `skillset preset delete`             | Deletes a preset by name or ID.                                                                                                                                |
+| `skillset resource list`             | Lists resources, with optional type and search filters.                                                                                                        |
+| `skillset resource show`             | Prints the full stored resource, including metadata and content.                                                                                               |
+| `skillset resource delete`           | Deletes a resource by ID.                                                                                                                                      |
+| `skillset apply <preset>`            | Serializes a preset for target platforms and writes files into the project directory.                                                                          |
+| `skillset history`                   | Lists stored snapshots for the current tracked project.                                                                                                        |
+| `skillset revert <snapshot-id>`      | Restores files captured in a saved snapshot.                                                                                                                   |
+| `skillset export <preset>`           | Writes a portable JSON bundle for a preset.                                                                                                                    |
+| `skillset import <file>`             | Imports a preset bundle from disk.                                                                                                                             |
+| `skillset platforms`                 | Lists registered platforms and declared capability flags.                                                                                                      |
+| `skillset status [path]`             | Shows the detected platforms and tracked preset and snapshot counts for a project.                                                                             |
+| `skillset template list`             | Lists seeded built-in templates.                                                                                                                               |
+| `skillset template apply <template>` | Applies a built-in template to a project.                                                                                                                      |
 
 ## Storage and state
 
@@ -203,6 +205,11 @@ exists in the target directory. It then asks the relevant serializer to read
 resources. The persistence layer deduplicates resources by `type:name` within a
 single scan run before inserting them.
 
+`skillset init` also checks the registry's declared global paths in the current
+home directory. When supported files or folders exist, the CLI imports the
+resources they contain, prints the discovered paths, and skips re-importing the
+same home-source resource on later init runs.
+
 ### Apply
 
 `skillset apply` loads a preset's resources, chooses the requested platforms or
@@ -225,7 +232,8 @@ The repository currently ships two bundled templates:
 - `python-fastapi`
 
 `skillset init` seeds these templates into the database if they are not already
-present. Template application reuses the normal preset application flow.
+present. The same command also imports supported home-directory defaults.
+Template application reuses the normal preset application flow.
 
 ## Build, test, and release workflow
 

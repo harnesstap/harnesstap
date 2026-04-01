@@ -190,6 +190,12 @@ export interface PlatformSerializer {
   /** Scan a project directory and return discovered resources. */
   scan(projectRoot: string): Promise<Resource[]>;
 
+  /** Scan platform defaults from the user home directory when supported. */
+  scanGlobal?(homeRoot: string): Promise<Resource[]>;
+
   /** Serialize canonical resources into platform-specific files. */
-  serialize(resources: Resource[], projectRoot: string): Promise<SerializedFile[]>;
+  serialize(
+    resources: Resource[],
+    projectRoot: string,
+  ): Promise<SerializedFile[]>;
 }
