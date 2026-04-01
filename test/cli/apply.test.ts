@@ -55,7 +55,10 @@ describe("CLI apply", () => {
       expect(applyResult.stdout).toContain("claude-code: wrote 1 file(s)");
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
       expect(project).toBeDefined();
-      expect(snapshotModel.listSnapshots(project!.id)).toHaveLength(2);
+      if (!project) {
+        throw new Error("Expected applied project to be tracked");
+      }
+      expect(snapshotModel.listSnapshots(project.id)).toHaveLength(2);
     } finally {
       await context.cleanup();
     }

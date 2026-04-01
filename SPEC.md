@@ -239,8 +239,9 @@ Use these commands while working on the repository:
 
 ```bash
 bun install
-bun run test:run
 bun run lint
+bun run typecheck
+bun run test:run
 bun run build
 ```
 
