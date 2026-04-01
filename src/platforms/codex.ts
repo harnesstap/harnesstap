@@ -1,11 +1,7 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import type {
-  PlatformDefinition,
-  Resource,
-  SerializedFile,
-} from "../types.js";
+import type { PlatformDefinition, Resource, SerializedFile } from "../types.js";
 
 export class CodexSerializer extends BaseSerializer {
   readonly platformId = "codex";
@@ -25,7 +21,12 @@ export class CodexSerializer extends BaseSerializer {
     const agentsMd = this.readFile(join(projectRoot, "AGENTS.md"));
     if (agentsMd) {
       resources.push(
-        this.makeResource("instruction", "codex-instructions", agentsMd, "AGENTS.md"),
+        this.makeResource(
+          "instruction",
+          "codex-instructions",
+          agentsMd,
+          "AGENTS.md",
+        ),
       );
     }
 
@@ -45,6 +46,43 @@ export class CodexSerializer extends BaseSerializer {
     }
 
     // TODO: Parse .codex/config.toml for MCP servers, permissions, model config
+
+    return resources as Resource[];
+  }
+
+  async scanGlobal(homeRoot: string): Promise<Resource[]> {
+    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+
+    const instructionsPath = join(homeRoot, ".codex", "AGENTS.md");
+    const instructions = this.readFile(instructionsPath);
+    if (instructions) {
+      resources.push(
+        this.makeResource(
+          "instruction",
+          "codex-instructions",
+          instructions,
+          "~/.codex/AGENTS.md",
+        ),
+      );
+    }
+
+    resources.push(
+      ...this.scanSkillsDirAt(
+        join(homeRoot, ".agents", "skills"),
+        "~/.agents/skills",
+      ),
+    );
+
+    const agentsDir = join(homeRoot, ".codex", "agents");
+    for (const file of this.listDir(agentsDir)) {
+      if (!file.endsWith(".toml")) continue;
+      const content = this.readFile(join(agentsDir, file));
+      if (!content) continue;
+      const name = file.replace(/\.toml$/, "");
+      resources.push(
+        this.makeResource("agent", name, content, `~/.codex/agents/${file}`),
+      );
+    }
 
     return resources as Resource[];
   }

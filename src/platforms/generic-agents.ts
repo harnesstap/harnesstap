@@ -1,11 +1,13 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import type {
-  PlatformDefinition,
-  Resource,
-  SerializedFile,
-} from "../types.js";
+import type { PlatformDefinition, Resource, SerializedFile } from "../types.js";
+
+function resolveGlobalPath(homeRoot: string, configuredPath: string): string {
+  return configuredPath.startsWith("~/")
+    ? join(homeRoot, configuredPath.slice(2))
+    : configuredPath;
+}
 
 /**
  * Generic serializer for platforms that follow the .agents/skills/ convention
@@ -51,13 +53,47 @@ export class GenericAgentsSerializer extends BaseSerializer {
     return resources as Resource[];
   }
 
+  async scanGlobal(homeRoot: string): Promise<Resource[]> {
+    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+
+    const instructionPath = this.platform.globalPaths.instructions;
+    if (instructionPath) {
+      const content = this.readFile(
+        resolveGlobalPath(homeRoot, instructionPath),
+      );
+      if (content) {
+        resources.push(
+          this.makeResource(
+            "instruction",
+            `${this.platformId}-instructions`,
+            content,
+            instructionPath,
+          ),
+        );
+      }
+    }
+
+    const skillsPath = this.platform.globalPaths.skills;
+    if (skillsPath) {
+      resources.push(
+        ...this.scanSkillsDirAt(
+          resolveGlobalPath(homeRoot, skillsPath),
+          skillsPath.replace(/\/$/, ""),
+        ),
+      );
+    }
+
+    return resources as Resource[];
+  }
+
   async serialize(
     resources: Resource[],
     _projectRoot: string,
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
     const skillsPath = this.platform.projectPaths.skills ?? ".agents/skills/";
-    const instructionPath = this.platform.projectPaths.instructions ?? "AGENTS.md";
+    const instructionPath =
+      this.platform.projectPaths.instructions ?? "AGENTS.md";
 
     // Instructions
     const instructions = resources.filter((r) => r.type === "instruction");
