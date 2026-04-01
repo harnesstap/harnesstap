@@ -25,8 +25,11 @@ jobs:
       - name: Run tests
         run: bun run test:run
 
-      - name: Run type-check
+      - name: Run Biome lint
         run: bun run lint
+
+      - name: Run type-check
+        run: bun run typecheck
 
       - name: Build distribution
         run: bun run build

@@ -54,10 +54,18 @@ describe("CLI history and revert", () => {
       const project = projectModel.getProjectByOrigin(
         git.normalizeGitUrl("git@github.com:acme/skillset-history.git"),
       );
-      const snapshot = snapshotModel.listSnapshots(project!.id)[0];
-      expect(snapshot).toBeDefined();
+      expect(project).toBeDefined();
+      if (!project) {
+        throw new Error("Expected history project to be tracked");
+      }
 
-      await runCli(["revert", snapshot!.id]);
+      const snapshot = snapshotModel.listSnapshots(project.id)[0];
+      expect(snapshot).toBeDefined();
+      if (!snapshot) {
+        throw new Error("Expected a snapshot to be available for revert");
+      }
+
+      await runCli(["revert", snapshot.id]);
 
       expect(readFileSync(`${context.projectDir}/CLAUDE.md`, "utf-8")).toBe(
         "# Original instructions",
