@@ -26,7 +26,12 @@ export class CursorSerializer extends BaseSerializer {
     const legacyContent = this.readFile(join(projectRoot, ".cursorrules"));
     if (legacyContent) {
       resources.push(
-        this.makeResource("instruction", "cursorrules", legacyContent, ".cursorrules"),
+        this.makeResource(
+          "instruction",
+          "cursorrules",
+          legacyContent,
+          ".cursorrules",
+        ),
       );
     }
 
@@ -34,7 +39,12 @@ export class CursorSerializer extends BaseSerializer {
     const agentsMd = this.readFile(join(projectRoot, "AGENTS.md"));
     if (agentsMd && !legacyContent) {
       resources.push(
-        this.makeResource("instruction", "agents-instructions", agentsMd, "AGENTS.md"),
+        this.makeResource(
+          "instruction",
+          "agents-instructions",
+          agentsMd,
+          "AGENTS.md",
+        ),
       );
     }
 
@@ -52,9 +62,9 @@ export class CursorSerializer extends BaseSerializer {
       const name = file.replace(/\.(mdc|md)$/, "");
       const alwaysApply = data["alwaysApply"] === true;
       const globs = data["globs"]
-        ? (typeof data["globs"] === "string"
-            ? (data["globs"] as string).split(",").map((s: string) => s.trim())
-            : (data["globs"] as string[]))
+        ? typeof data["globs"] === "string"
+          ? (data["globs"] as string).split(",").map((s: string) => s.trim())
+          : (data["globs"] as string[])
         : [];
 
       // Determine if this is an instruction or a rule
@@ -86,6 +96,65 @@ export class CursorSerializer extends BaseSerializer {
 
     // 4. Skills
     resources.push(...this.scanSkillsDir(projectRoot, ".agents/skills"));
+
+    return resources as Resource[];
+  }
+
+  async scanGlobal(homeRoot: string): Promise<Resource[]> {
+    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+
+    const rulesDir = join(homeRoot, ".cursor", "rules");
+    for (const file of this.listDir(rulesDir)) {
+      if (!file.endsWith(".mdc") && !file.endsWith(".md")) continue;
+      const raw = this.readFile(join(rulesDir, file));
+      if (!raw) continue;
+
+      const parsed = this.tryParseFrontmatter(raw);
+      if (!parsed) continue;
+
+      const { data, content } = parsed;
+      const name = file.replace(/\.(mdc|md)$/, "");
+      const alwaysApply = data["alwaysApply"] === true;
+      const globs = data["globs"]
+        ? typeof data["globs"] === "string"
+          ? (data["globs"] as string)
+              .split(",")
+              .map((value: string) => value.trim())
+          : (data["globs"] as string[])
+        : [];
+
+      if (alwaysApply && globs.length === 0) {
+        resources.push(
+          this.makeResource(
+            "instruction",
+            name,
+            content.trim(),
+            `~/.cursor/rules/${file}`,
+            {},
+            (data["description"] as string) || "",
+          ),
+        );
+      } else {
+        const metadata: RuleMetadata = { globs, always_apply: alwaysApply };
+        resources.push(
+          this.makeResource(
+            "rule",
+            name,
+            content.trim(),
+            `~/.cursor/rules/${file}`,
+            metadata,
+            (data["description"] as string) || "",
+          ),
+        );
+      }
+    }
+
+    resources.push(
+      ...this.scanSkillsDirAt(
+        join(homeRoot, ".cursor", "skills"),
+        "~/.cursor/skills",
+      ),
+    );
 
     return resources as Resource[];
   }
