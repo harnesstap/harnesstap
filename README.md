@@ -2,8 +2,9 @@
 
 `skillset` is a preset-based CLI for managing AI coding assistant configuration
 across multiple tools. You can scan an existing repository, store the detected
-instructions and skills in a local database, group them into presets, and
-apply those presets back to one or more target platforms.
+instructions and skills in a local database, import supported defaults from
+your home directory, group them into presets, and apply those presets back to
+one or more target platforms.
 
 The project uses Bun for local development, CI, and builds. The published
 package is still intended for the npm registry.
@@ -29,15 +30,15 @@ you want to work on the repository itself.
 ## Install
 
 If you are using the published package from the npm registry, install it with
-`npm` or run it with `npx`.
+`bun` or run it with `bunx`.
 
 ```bash
-npm install -g skillset
+bun install -g skillset
 skillset init
 ```
 
 ```bash
-npx skillset@latest init
+bunx skillset@latest init
 ```
 
 If you are developing the project locally, use Bun.
@@ -51,10 +52,12 @@ bun run build
 
 ## Quick start
 
-The fastest way to try `skillset` is to initialize the local database, scan an
-existing repository, and then build a preset from the imported resources.
+The fastest way to try `skillset` is to initialize the local database, import
+supported defaults from your home directory, scan an existing repository, and
+then build a preset from the imported resources.
 
-1. Initialize the local database.
+1. Initialize the local database and import any supported home-directory
+   defaults.
 
    ```bash
    skillset init
@@ -103,7 +106,9 @@ it writes files. You can restore that snapshot later with `skillset revert`.
 ## Built-in templates
 
 `skillset` ships with starter templates that are seeded during `skillset init`.
-Use these commands to inspect and apply them.
+The same command also scans supported default folders in your home directory,
+imports any resources it finds, and prints the discovered locations. Use these
+commands to inspect and apply the built-in templates.
 
 ```bash
 skillset template list
@@ -140,6 +145,10 @@ skillset platforms
 `skillset` stores its operational state in `~/.skillset/skillset.db`. The
 database holds resources, presets, tracked projects, and snapshots. The current
 implementation does not yet have a separate user-editable config file.
+
+When you run `skillset init`, the CLI also checks registered platform default
+folders in your home directory, such as `~/.claude/` and `~/.codex/`, and
+imports any supported resources it finds.
 
 ## Develop and publish
 

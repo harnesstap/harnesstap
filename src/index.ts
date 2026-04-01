@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import chalk from "chalk";
 import { getDb, closeDb, getDbPath } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { log } from "./utils/logger.js";
@@ -11,6 +12,7 @@ import {
   scanAndPersist,
   scanProject,
   detectPlatforms,
+  scanAndPersistHomeDefaults,
 } from "./services/scanner.js";
 import {
   applyToProject,
@@ -47,10 +49,75 @@ import {
 import { getAllPlatforms } from "./platforms/registry.js";
 import { seedBuiltInTemplates } from "./services/templates.js";
 import { resolve } from "node:path";
-import type { ResourceType, SnapshotState } from "./types.js";
+import type { Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 
 const program = new Command();
+
+function printInitMeta(label: string, value: string): void {
+  console.log(
+    `  ${chalk.hex("#6b7280")(label.padEnd(10))} ${chalk.white(value)}`,
+  );
+}
+
+function printInitDetail(label: string, value: string): void {
+  console.log(
+    `    ${chalk.hex("#7c3aed")(label.padEnd(8))} ${chalk.white(value)}`,
+  );
+}
+
+function platformBadge(name: string): string {
+  return chalk.bgHex("#1d4ed8").white.bold(` ${name} `);
+}
+
+function folderAccent(folder: string): string {
+  return chalk.hex("#22c55e").bold(folder);
+}
+
+function statusAccent(message: string, importedCount: number): string {
+  return importedCount > 0
+    ? chalk.hex("#f59e0b").bold(message)
+    : chalk.hex("#10b981").bold(message);
+}
+
+function formatCount(count: number, noun: string, plural = `${noun}s`): string {
+  return `${count} ${count === 1 ? noun : plural}`;
+}
+
+function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
+  const counts = new Map<ResourceType, number>();
+
+  for (const resource of resources) {
+    counts.set(resource.type, (counts.get(resource.type) ?? 0) + 1);
+  }
+
+  const summary = RESOURCE_TYPES.filter(
+    (type) => (counts.get(type) ?? 0) > 0,
+  ).map((type) => formatCount(counts.get(type) ?? 0, type));
+
+  return summary.join(", ");
+}
+
+function homeFolderLabel(discoveredPaths: string[]): string {
+  const firstPath = discoveredPaths[0];
+  if (!firstPath) return "~";
+
+  const segments = firstPath.replace(/\/$/, "").split("/");
+  return segments.length >= 2 ? `${segments[0]}/${segments[1]}` : firstPath;
+}
+
+function relativeDiscoveredPaths(
+  discoveredPaths: string[],
+  folder: string,
+): string {
+  return discoveredPaths
+    .map((path) => {
+      if (!path.startsWith(`${folder}/`)) return path;
+      return path.slice(folder.length + 1);
+    })
+    .sort()
+    .join(", ");
+}
 
 program
   .name("skillset")
@@ -64,12 +131,57 @@ program
 program
   .command("init")
   .description("Initialize the skillset database and config directory")
-  .action(() => {
+  .action(async () => {
     const db = getDb();
     initializeSchema(db);
     const seeded = seedBuiltInTemplates();
-    log.success(`Database initialized at ${getDbPath()}`);
-    if (seeded > 0) log.info(`Seeded ${seeded} built-in template(s)`);
+    const homeDefaults = await scanAndPersistHomeDefaults();
+    const platformNames = new Map(
+      getAllPlatforms().map((platform) => [platform.id, platform.name]),
+    );
+
+    log.success(chalk.bold("Skillset initialized"));
+    printInitMeta("Database", getDbPath());
+    printInitMeta(
+      "Templates",
+      seeded > 0
+        ? `seeded ${formatCount(seeded, "built-in template")}`
+        : "already up to date",
+    );
+
+    if (homeDefaults.detected.length === 0) {
+      printInitMeta(
+        "Home",
+        chalk.hex("#9ca3af")("no default folders discovered"),
+      );
+      return;
+    }
+
+    log.info(chalk.bold("Home defaults overview"));
+    for (const result of homeDefaults.results) {
+      const folder = homeFolderLabel(result.discoveredPaths);
+      const foundSummary = summarizeResourceTypes(result.resources);
+      const importedCount = result.importedCount;
+      const importedSummary =
+        importedCount > 0
+          ? `${formatCount(importedCount, "new resource")} imported`
+          : "already tracked";
+
+      console.log(
+        `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
+      );
+      printInitDetail(
+        "Contains",
+        chalk.hex("#60a5fa")(
+          relativeDiscoveredPaths(result.discoveredPaths, folder),
+        ),
+      );
+      printInitDetail(
+        "Found",
+        `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
+      );
+      printInitDetail("Status", statusAccent(importedSummary, importedCount));
+    }
   });
 
 // ── scan ────────────────────────────────────────────────────────────────

@@ -31,7 +31,12 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       const content = this.readFile(join(projectRoot, path));
       if (content) {
         resources.push(
-          this.makeResource("instruction", "claude-instructions", content, path),
+          this.makeResource(
+            "instruction",
+            "claude-instructions",
+            content,
+            path,
+          ),
         );
         break; // only take the first found
       }
@@ -51,18 +56,23 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       const name = file.replace(/\.md$/, "");
       const metadata: RuleMetadata = {
         globs: Array.isArray(data["paths"]) ? (data["paths"] as string[]) : [],
-        always_apply: !data["paths"] || (data["paths"] as string[]).length === 0,
+        always_apply:
+          !data["paths"] || (data["paths"] as string[]).length === 0,
       };
 
       resources.push(
-        this.makeResource("rule", name, content.trim(), `.claude/rules/${file}`, metadata),
+        this.makeResource(
+          "rule",
+          name,
+          content.trim(),
+          `.claude/rules/${file}`,
+          metadata,
+        ),
       );
     }
 
     // 3. Skills: .claude/skills/*/SKILL.md
-    resources.push(
-      ...this.scanSkillsDir(projectRoot, ".claude/skills"),
-    );
+    resources.push(...this.scanSkillsDir(projectRoot, ".claude/skills"));
 
     // 4. MCP servers: .mcp.json
     const mcpContent = this.readFile(join(projectRoot, ".mcp.json"));
@@ -71,7 +81,9 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         const mcpConfig = JSON.parse(mcpContent) as {
           mcpServers?: Record<string, Record<string, unknown>>;
         };
-        for (const [name, config] of Object.entries(mcpConfig.mcpServers ?? {})) {
+        for (const [name, config] of Object.entries(
+          mcpConfig.mcpServers ?? {},
+        )) {
           const metadata: McpServerMetadata = {
             transport: config["url"] ? "http" : "stdio",
             command: config["command"] as string | undefined,
@@ -166,6 +178,133 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     return resources as Resource[];
   }
 
+  async scanGlobal(homeRoot: string): Promise<Resource[]> {
+    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+
+    const instructionsPath = join(homeRoot, ".claude", "CLAUDE.md");
+    const instructionsContent = this.readFile(instructionsPath);
+    if (instructionsContent) {
+      resources.push(
+        this.makeResource(
+          "instruction",
+          "claude-instructions",
+          instructionsContent,
+          "~/.claude/CLAUDE.md",
+        ),
+      );
+    }
+
+    const rulesDir = join(homeRoot, ".claude", "rules");
+    for (const file of this.listDir(rulesDir)) {
+      if (!file.endsWith(".md")) continue;
+      const raw = this.readFile(join(rulesDir, file));
+      if (!raw) continue;
+
+      const parsed = this.tryParseFrontmatter(raw);
+      if (!parsed) continue;
+
+      const { data, content } = parsed;
+      const name = file.replace(/\.md$/, "");
+      const metadata: RuleMetadata = {
+        globs: Array.isArray(data["paths"]) ? (data["paths"] as string[]) : [],
+        always_apply:
+          !data["paths"] || (data["paths"] as string[]).length === 0,
+      };
+
+      resources.push(
+        this.makeResource(
+          "rule",
+          name,
+          content.trim(),
+          `~/.claude/rules/${file}`,
+          metadata,
+        ),
+      );
+    }
+
+    resources.push(
+      ...this.scanSkillsDirAt(
+        join(homeRoot, ".claude", "skills"),
+        "~/.claude/skills",
+      ),
+    );
+
+    const settingsContent = this.readFile(
+      join(homeRoot, ".claude", "settings.json"),
+    );
+    if (settingsContent) {
+      try {
+        const settings = JSON.parse(settingsContent) as {
+          permissions?: { allow?: string[]; deny?: string[] };
+          env?: Record<string, string>;
+        };
+
+        for (const pattern of settings.permissions?.allow ?? []) {
+          resources.push(
+            this.makeResource(
+              "permission",
+              `allow-${pattern}`,
+              "",
+              "~/.claude/settings.json",
+              { action: "allow", pattern } satisfies PermissionMetadata,
+            ),
+          );
+        }
+        for (const pattern of settings.permissions?.deny ?? []) {
+          resources.push(
+            this.makeResource(
+              "permission",
+              `deny-${pattern}`,
+              "",
+              "~/.claude/settings.json",
+              { action: "deny", pattern } satisfies PermissionMetadata,
+            ),
+          );
+        }
+
+        for (const [key, value] of Object.entries(settings.env ?? {})) {
+          resources.push(
+            this.makeResource("env_var", key, "", "~/.claude/settings.json", {
+              key,
+              value,
+            }),
+          );
+        }
+      } catch {
+        // invalid JSON — skip
+      }
+    }
+
+    const agentsDir = join(homeRoot, ".claude", "agents");
+    for (const file of this.listDir(agentsDir)) {
+      if (!file.endsWith(".md")) continue;
+      const content = this.readFile(join(agentsDir, file));
+      if (!content) continue;
+      const name = file.replace(/\.md$/, "");
+      resources.push(
+        this.makeResource("agent", name, content, `~/.claude/agents/${file}`),
+      );
+    }
+
+    const commandsDir = join(homeRoot, ".claude", "commands");
+    for (const file of this.listDir(commandsDir)) {
+      if (!file.endsWith(".md")) continue;
+      const content = this.readFile(join(commandsDir, file));
+      if (!content) continue;
+      const name = file.replace(/\.md$/, "");
+      resources.push(
+        this.makeResource(
+          "command",
+          name,
+          content,
+          `~/.claude/commands/${file}`,
+        ),
+      );
+    }
+
+    return resources as Resource[];
+  }
+
   // ── Serialize ───────────────────────────────────────────────────────
 
   async serialize(
@@ -224,7 +363,8 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           if (meta.command) entry["command"] = meta.command;
           if (meta.args) entry["args"] = meta.args;
         }
-        if (meta.env && Object.keys(meta.env).length > 0) entry["env"] = meta.env;
+        if (meta.env && Object.keys(meta.env).length > 0)
+          entry["env"] = meta.env;
         mcpConfig[r.name] = entry;
       }
       files.push({

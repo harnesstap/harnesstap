@@ -48,7 +48,11 @@ describe("CLI history and revert", () => {
 
       writeFileSync(`${context.projectDir}/CLAUDE.md`, "# Modified", "utf-8");
 
-      const history = await runCli(["history", "--project", context.projectDir]);
+      const history = await runCli([
+        "history",
+        "--project",
+        context.projectDir,
+      ]);
       expect(history.stdout).toContain("Before applying: history-preset");
 
       const project = projectModel.getProjectByOrigin(
