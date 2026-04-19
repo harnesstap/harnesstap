@@ -6,9 +6,6 @@ instructions and skills in a local database, import supported defaults from
 your home directory, group them into presets, and apply those presets back to
 one or more target platforms.
 
-The project uses Bun for local development, CI, and builds. The published
-package is still intended for the npm registry.
-
 ## What you can do with it
 
 `skillset` helps you keep assistant configuration in one place while still
@@ -24,8 +21,7 @@ materializing platform-specific files.
 
 ## Requirements
 
-You need Node 20 or later to run the built CLI. You need Bun 1.3 or later if
-you want to work on the repository itself.
+You need Node 20 or later to run the built CLI.
 
 ## Install
 
@@ -39,15 +35,6 @@ skillset init
 
 ```bash
 bunx skillset@latest init
-```
-
-If you are developing the project locally, use Bun.
-
-```bash
-bun install
-bun run test:run
-bun run lint
-bun run build
 ```
 
 ## Quick start
@@ -150,18 +137,6 @@ When you run `skillset init`, the CLI also checks registered platform default
 folders in your home directory, such as `~/.claude/` and `~/.codex/`, and
 imports any supported resources it finds.
 
-## Develop and publish
+## Contributing
 
-If you are preparing a release, keep the development workflow on Bun and use
-the npm registry only for distribution.
-
-```bash
-bun install
-bun run test:run
-bun run lint
-bun run build
-npm publish
-```
-
-The package runs `bun run build` in `prepublishOnly`, so the distribution build
-is refreshed before publish.
+If you'd like to contribute, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for development and publishing instructions.
