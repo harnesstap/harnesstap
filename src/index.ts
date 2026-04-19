@@ -15,7 +15,6 @@ import {
   scanAndPersistHomeDefaults,
 } from "./services/scanner.js";
 import {
-  applyToProject,
   generateFiles,
   writeFiles,
 } from "./services/applier.js";
@@ -47,7 +46,7 @@ import {
   getSnapshot,
 } from "./models/snapshot.js";
 import { getAllPlatforms } from "./platforms/registry.js";
-import { seedBuiltInTemplates } from "./services/templates.js";
+import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { resolve } from "node:path";
 import type { Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
@@ -134,7 +133,7 @@ program
   .action(async () => {
     const db = getDb();
     initializeSchema(db);
-    const seeded = seedBuiltInTemplates();
+    const seeded = seedBuiltInPresets();
     const homeDefaults = await scanAndPersistHomeDefaults();
     const platformNames = new Map(
       getAllPlatforms().map((platform) => [platform.id, platform.name]),
@@ -143,9 +142,9 @@ program
     log.success(chalk.bold("Skilldeck initialized"));
     printInitMeta("Database", getDbPath());
     printInitMeta(
-      "Templates",
+      "Built-in Presets",
       seeded > 0
-        ? `seeded ${formatCount(seeded, "built-in template")}`
+        ? `seeded ${formatCount(seeded, "built-in preset")}`
         : "already up to date",
     );
 
@@ -254,12 +253,11 @@ presetCmd
   .command("create")
   .argument("<name>", "Preset name")
   .option("-d, --description <text>", "Preset description")
-  .option("-t, --template", "Mark as a reusable template")
   .option("--tags <tags>", "Comma-separated tags")
   .action(
     (
       name: string,
-      opts: { description?: string; template?: boolean; tags?: string },
+      opts: { description?: string; tags?: string },
     ) => {
       const db = getDb();
       initializeSchema(db);
@@ -268,7 +266,6 @@ presetCmd
         name,
         description: opts.description,
         tags,
-        is_template: opts.template,
       });
       log.success(`Preset created: ${preset.name} (${preset.id})`);
     },
@@ -277,18 +274,16 @@ presetCmd
 presetCmd
   .command("list")
   .alias("ls")
-  .option("--templates", "Show only templates")
-  .action((opts: { templates?: boolean }) => {
+  .action(() => {
     const db = getDb();
     initializeSchema(db);
-    const presets = listPresets({ templates_only: opts.templates });
+    const presets = listPresets();
     if (presets.length === 0) {
       log.dim("No presets found.");
       return;
     }
     for (const p of presets) {
-      const tmpl = p.is_template ? " [template]" : "";
-      log.info(`${p.name}${tmpl} — ${p.description || "(no description)"}`);
+      log.info(`${p.name} — ${p.description || "(no description)"}`);
     }
   });
 
@@ -641,66 +636,6 @@ program
     }
   });
 
-// ── template ────────────────────────────────────────────────────────────
-
-const templateCmd = program
-  .command("template")
-  .description("Manage preset templates");
-
-templateCmd
-  .command("list")
-  .alias("ls")
-  .action(() => {
-    const db = getDb();
-    initializeSchema(db);
-    seedBuiltInTemplates();
-    const templates = listPresets({ templates_only: true });
-    if (templates.length === 0) {
-      log.dim("No templates found. Import one with `skilldeck import`.");
-      return;
-    }
-    for (const t of templates) {
-      log.info(`${t.name} — ${t.description}`);
-    }
-  });
-
-templateCmd
-  .command("apply")
-  .argument("<template-name>", "Template name")
-  .option("--project <path>", "Project directory", ".")
-  .option("--platform <slugs>", "Comma-separated platform slugs")
-  .description("Apply a template to a project")
-  .action(
-    async (
-      templateName: string,
-      opts: { project: string; platform?: string },
-    ) => {
-      const db = getDb();
-      initializeSchema(db);
-      seedBuiltInTemplates();
-      const preset = getPreset(templateName);
-      if (!preset || !preset.is_template) {
-        log.error(`Template not found: ${templateName}`);
-        return;
-      }
-      const projectRoot = resolve(opts.project);
-      const platforms = opts.platform
-        ? opts.platform.split(",")
-        : detectPlatforms(projectRoot);
-      if (platforms.length === 0) {
-        log.warn("No platforms detected. Use --platform to specify.");
-        return;
-      }
-      const resources = getPresetResources(preset.id);
-      const results = await applyToProject(resources, platforms, projectRoot);
-      for (const r of results) {
-        log.success(`${r.platformId}: wrote ${r.files.length} file(s)`);
-        for (const f of r.files) {
-          log.dim(`  ${f.path}`);
-        }
-      }
-    },
-  );
 
 // ── cleanup ─────────────────────────────────────────────────────────────
 

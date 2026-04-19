@@ -16,18 +16,14 @@ describe("preset model", () => {
       });
       const template = presetModel.createPreset({
         name: "starter",
-        is_template: true,
       });
 
       expect(presetModel.getPreset(regular.id)?.name).toBe("default");
-      expect(presetModel.getPreset("starter")?.is_template).toBe(true);
+      expect(presetModel.getPreset("starter")?.name).toBe("starter");
       expect(presetModel.listPresets().map((preset) => preset.name)).toEqual([
         "default",
         "starter",
       ]);
-      expect(
-        presetModel.listPresets({ templates_only: true }).map((preset) => preset.name),
-      ).toEqual([template.name]);
     } finally {
       await context.cleanup();
     }

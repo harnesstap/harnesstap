@@ -5,17 +5,16 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
-describe("CLI platforms, status, and template", () => {
-  it("lists platforms and applies built-in templates", async () => {
-    const context = await createTestContext("cli-template");
+describe("CLI platforms, status, and built-in presets", () => {
+  it("lists platforms and applies built-in presets", async () => {
+    const context = await createTestContext("cli-builtins");
 
     try {
       await runCli(["init"]);
 
       const platforms = await runCli(["platforms"]);
-      const templates = await runCli(["template", "list"]);
+      const templates = await runCli(["preset", "list"]);
       const applied = await runCli([
-        "template",
         "apply",
         "nextjs-fullstack",
         "--project",

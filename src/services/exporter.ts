@@ -22,7 +22,6 @@ export function exportPreset(presetNameOrId: string): ExportBundle {
       name: preset.name,
       description: preset.description,
       tags: preset.tags,
-      is_template: preset.is_template,
     },
     resources: resources.map((r) => ({
       type: r.type,
@@ -58,7 +57,6 @@ export function importFromFile(filePath: string): { preset: Preset; resources: R
     name: bundle.preset.name,
     description: bundle.preset.description,
     tags: bundle.preset.tags,
-    is_template: bundle.preset.is_template,
   });
 
   // Create resources and add them to the preset

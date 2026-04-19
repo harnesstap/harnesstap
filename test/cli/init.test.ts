@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("CLI init", () => {
-  it("initializes the database and seeds built-in templates", async () => {
+  test("initializes the database and seeds built-in presets", async () => {
     const context = await createTestContext("cli-init");
 
     try {
@@ -45,7 +45,7 @@ describe("CLI init", () => {
           .filter((resource) => resource.source.startsWith("~/.claude"));
 
       expect(result.stdout).toContain("Skilldeck initialized");
-      expect(result.stdout).toContain("Templates");
+      expect(result.stdout).toContain("Built-in Presets");
       expect(result.stdout).toContain("Home defaults overview");
       expect(result.stdout).toContain("Claude Code");
       expect(result.stdout).toContain("~/.claude");
@@ -54,6 +54,8 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Found");
       expect(result.stdout).toContain("2 resources");
       expect(result.stdout).toContain("1 instruction, 1 skill");
+      expect(result.stdout).toContain("Built-in Presets");
+      expect(result.stdout).toContain("seeded");
       expect(result.stdout).toContain("Status");
       expect(result.stdout).toContain("2 new resources imported");
       expect(result.stdout).not.toContain("claude-instructions");
