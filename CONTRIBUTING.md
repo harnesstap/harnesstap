@@ -1,6 +1,6 @@
-# Contributing to skillset
+# Contributing to skilldeck
 
-Thank you for your interest in contributing to `skillset`! This document provides instructions for setting up your local development environment and the workflow for making changes.
+Thank you for your interest in contributing to `skilldeck`! This document provides instructions for setting up your local development environment and the workflow for making changes.
 
 ## Development Requirements
 

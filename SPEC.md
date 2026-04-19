@@ -1,12 +1,12 @@
-# Skillset CLI specification
+# Skilldeck CLI specification
 
-This document describes the current shipped behavior of `skillset` in this
+This document describes the current shipped behavior of `skilldeck` in this
 repository as of March 29, 2026. It is implementation-first. When the code and
 older design notes disagree, the code wins.
 
 ## Product summary
 
-`skillset` is a local CLI for collecting AI coding assistant configuration,
+`skilldeck` is a local CLI for collecting AI coding assistant configuration,
 grouping it into reusable presets, and applying those presets back to project
 directories for multiple target platforms. Today, the canonical unit is a
 `preset`, not a plugin package.
@@ -34,7 +34,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `template`: a preset flagged as reusable and seeded from the bundled JSON
   templates directory.
 - `project`: a git-backed repository tracked by normalized git origin.
-- `snapshot`: a saved copy of the files generated during `skillset apply`.
+- `snapshot`: a saved copy of the files generated during `skilldeck apply`.
 
 ## Command surface
 
@@ -42,35 +42,35 @@ The table below describes the currently implemented CLI commands.
 
 | Command                              | Current behavior                                                                                                                                               |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `skillset init`                      | Creates `~/.skillset/skillset.db`, initializes the schema, seeds built-in templates, scans supported home-directory defaults, and prints discovered locations. |
-| `skillset scan [path]`               | Detects configured platforms in a project, imports discovered resources, and registers the project when a git origin exists.                                   |
-| `skillset preset create`             | Creates a preset with optional description, tags, and template flag.                                                                                           |
-| `skillset preset list`               | Lists presets, with optional template-only filtering.                                                                                                          |
-| `skillset preset show`               | Shows preset metadata and its ordered resources.                                                                                                               |
-| `skillset preset add`                | Adds a resource to a preset.                                                                                                                                   |
-| `skillset preset remove`             | Removes a resource from a preset.                                                                                                                              |
-| `skillset preset delete`             | Deletes a preset by name or ID.                                                                                                                                |
-| `skillset resource list`             | Lists resources, with optional type and search filters.                                                                                                        |
-| `skillset resource show`             | Prints the full stored resource, including metadata and content.                                                                                               |
-| `skillset resource delete`           | Deletes a resource by ID.                                                                                                                                      |
-| `skillset apply <preset>`            | Serializes a preset for target platforms and writes files into the project directory.                                                                          |
-| `skillset history`                   | Lists stored snapshots for the current tracked project.                                                                                                        |
-| `skillset revert <snapshot-id>`      | Restores files captured in a saved snapshot.                                                                                                                   |
-| `skillset export <preset>`           | Writes a portable JSON bundle for a preset.                                                                                                                    |
-| `skillset import <file>`             | Imports a preset bundle from disk.                                                                                                                             |
-| `skillset platforms`                 | Lists registered platforms and declared capability flags.                                                                                                      |
-| `skillset status [path]`             | Shows the detected platforms and tracked preset and snapshot counts for a project.                                                                             |
-| `skillset template list`             | Lists seeded built-in templates.                                                                                                                               |
-| `skillset template apply <template>` | Applies a built-in template to a project.                                                                                                                      |
+| `skilldeck init`                      | Creates `~/.skilldeck/skilldeck.db`, initializes the schema, seeds built-in templates, scans supported home-directory defaults, and prints discovered locations. |
+| `skilldeck scan [path]`               | Detects configured platforms in a project, imports discovered resources, and registers the project when a git origin exists.                                   |
+| `skilldeck preset create`             | Creates a preset with optional description, tags, and template flag.                                                                                           |
+| `skilldeck preset list`               | Lists presets, with optional template-only filtering.                                                                                                          |
+| `skilldeck preset show`               | Shows preset metadata and its ordered resources.                                                                                                               |
+| `skilldeck preset add`                | Adds a resource to a preset.                                                                                                                                   |
+| `skilldeck preset remove`             | Removes a resource from a preset.                                                                                                                              |
+| `skilldeck preset delete`             | Deletes a preset by name or ID.                                                                                                                                |
+| `skilldeck resource list`             | Lists resources, with optional type and search filters.                                                                                                        |
+| `skilldeck resource show`             | Prints the full stored resource, including metadata and content.                                                                                               |
+| `skilldeck resource delete`           | Deletes a resource by ID.                                                                                                                                      |
+| `skilldeck apply <preset>`            | Serializes a preset for target platforms and writes files into the project directory.                                                                          |
+| `skilldeck history`                   | Lists stored snapshots for the current tracked project.                                                                                                        |
+| `skilldeck revert <snapshot-id>`      | Restores files captured in a saved snapshot.                                                                                                                   |
+| `skilldeck export <preset>`           | Writes a portable JSON bundle for a preset.                                                                                                                    |
+| `skilldeck import <file>`             | Imports a preset bundle from disk.                                                                                                                             |
+| `skilldeck platforms`                 | Lists registered platforms and declared capability flags.                                                                                                      |
+| `skilldeck status [path]`             | Shows the detected platforms and tracked preset and snapshot counts for a project.                                                                             |
+| `skilldeck template list`             | Lists seeded built-in templates.                                                                                                                               |
+| `skilldeck template apply <template>` | Applies a built-in template to a project.                                                                                                                      |
 
 ## Storage and state
 
-`skillset` currently stores all persistent operational state in SQLite. The
+`skilldeck` currently stores all persistent operational state in SQLite. The
 separate JSON config file proposed in earlier design notes does not exist yet.
 
 ### Database location
 
-The database lives at `~/.skillset/skillset.db`. The CLI creates the directory
+The database lives at `~/.skilldeck/skilldeck.db`. The CLI creates the directory
 on demand and opens the database through `better-sqlite3` with WAL mode and
 foreign keys enabled.
 
@@ -90,16 +90,16 @@ The current schema version is `1`. The schema includes these tables:
 
 ### Project tracking
 
-Project tracking is git-oriented. During `scan` and `apply`, `skillset` reads
+Project tracking is git-oriented. During `scan` and `apply`, `skilldeck` reads
 the repository's `origin` remote, normalizes it, and uses that value as the
 project identity. The last known local path is stored for convenience, but the
 git origin is the durable key.
 
 ### Snapshot behavior
 
-Snapshots are created during `skillset apply` when the target directory has a
+Snapshots are created during `skilldeck apply` when the target directory has a
 git origin. The snapshot stores the generated platform file map for the preset
-being applied. `skillset revert` restores those stored files directly to the
+being applied. `skilldeck revert` restores those stored files directly to the
 project path.
 
 ## Canonical model
@@ -109,7 +109,7 @@ intentionally small in the current implementation.
 
 ### Resource types
 
-`skillset` supports these resource types today:
+`skilldeck` supports these resource types today:
 
 - `instruction`
 - `skill`
@@ -140,7 +140,7 @@ implement scan and write behavior.
 
 ### Native serializers
 
-`skillset` has dedicated serializers for these platforms:
+`skilldeck` has dedicated serializers for these platforms:
 
 - `claude-code`
 - `codex`
@@ -191,7 +191,7 @@ The registry currently contains 30 platform IDs:
 - `cortex`
 - `neovate`
 
-`skillset platforms` is the executable source of truth for this list.
+`skilldeck platforms` is the executable source of truth for this list.
 
 ## Scan, apply, and export behavior
 
@@ -200,19 +200,19 @@ over merge-heavy workflows.
 
 ### Scan
 
-`skillset scan` detects platforms by checking whether any declared project path
+`skilldeck scan` detects platforms by checking whether any declared project path
 exists in the target directory. It then asks the relevant serializer to read
 resources. The persistence layer deduplicates resources by `type:name` within a
 single scan run before inserting them.
 
-`skillset init` also checks the registry's declared global paths in the current
+`skilldeck init` also checks the registry's declared global paths in the current
 home directory. When supported files or folders exist, the CLI imports the
 resources they contain, prints the discovered paths, and skips re-importing the
 same home-source resource on later init runs.
 
 ### Apply
 
-`skillset apply` loads a preset's resources, chooses the requested platforms or
+`skilldeck apply` loads a preset's resources, chooses the requested platforms or
 auto-detects them from the project, serializes resources for each platform, and
 writes the resulting files to disk. The write path creates directories as
 needed and overwrites generated files directly.
@@ -220,7 +220,7 @@ needed and overwrites generated files directly.
 ### Export and import
 
 Preset export and import use a JSON bundle format with schema
-`https://skillset.dev/bundle-v1.json` and bundle version `1`. Each bundle
+`https://skilldeck.dev/bundle-v1.json` and bundle version `1`. Each bundle
 contains exactly one preset definition and a flat list of resources. Internal
 database IDs, timestamps, and `source` fields are not exported.
 
@@ -231,7 +231,7 @@ The repository currently ships two bundled templates:
 - `nextjs-fullstack`
 - `python-fastapi`
 
-`skillset init` seeds these templates into the database if they are not already
+`skilldeck init` seeds these templates into the database if they are not already
 present. The same command also imports supported home-directory defaults.
 Template application reuses the normal preset application flow.
 
@@ -268,7 +268,7 @@ The package publishes to the npm registry. The current package metadata uses
 This section captures the biggest differences between the current codebase and
 the larger long-term design that earlier notes described.
 
-- There is no user-editable `~/.skillset/skillset-config.json` yet.
+- There is no user-editable `~/.skilldeck/skilldeck-config.json` yet.
 - The canonical unit is still a preset, not a multi-plugin package model.
 - Only Claude Code, Codex, and Cursor have dedicated serializers today.
 - Generic platform support is path-driven and intentionally shallow.

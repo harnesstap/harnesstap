@@ -120,7 +120,7 @@ function relativeDiscoveredPaths(
 }
 
 program
-  .name("skillset")
+  .name("skilldeck")
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
@@ -130,7 +130,7 @@ program
 
 program
   .command("init")
-  .description("Initialize the skillset database and config directory")
+  .description("Initialize the skilldeck database and config directory")
   .action(async () => {
     const db = getDb();
     initializeSchema(db);
@@ -140,7 +140,7 @@ program
       getAllPlatforms().map((platform) => [platform.id, platform.name]),
     );
 
-    log.success(chalk.bold("Skillset initialized"));
+    log.success(chalk.bold("Skilldeck initialized"));
     printInitMeta("Database", getDbPath());
     printInitMeta(
       "Templates",
@@ -522,7 +522,7 @@ program
     }
     const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
     if (!project) {
-      log.warn("No project record found. Run `skillset scan` first.");
+      log.warn("No project record found. Run `skilldeck scan` first.");
       return;
     }
     const snapshots = listSnapshots(project.id);
@@ -544,7 +544,7 @@ program
     initializeSchema(db);
     if (!snapshotId) {
       log.error(
-        "Please provide a snapshot ID. Use `skillset history` to list them.",
+        "Please provide a snapshot ID. Use `skilldeck history` to list them.",
       );
       return;
     }
@@ -582,7 +582,7 @@ program
   .action((presetName: string, opts: { file?: string }) => {
     const db = getDb();
     initializeSchema(db);
-    const filePath = opts.file ?? `${presetName}.skillset.json`;
+    const filePath = opts.file ?? `${presetName}.skilldeck.json`;
     exportToFile(presetName, filePath);
     log.success(`Exported to ${filePath}`);
   });
@@ -656,7 +656,7 @@ templateCmd
     seedBuiltInTemplates();
     const templates = listPresets({ templates_only: true });
     if (templates.length === 0) {
-      log.dim("No templates found. Import one with `skillset import`.");
+      log.dim("No templates found. Import one with `skilldeck import`.");
       return;
     }
     for (const t of templates) {

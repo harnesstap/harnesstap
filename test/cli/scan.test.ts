@@ -26,7 +26,7 @@ describe("CLI scan", () => {
       expect(result.stdout).toContain("Project registered");
       expect(resourceModel.listResources().length).toBeGreaterThan(0);
       expect(
-        projectModel.getProjectByOrigin("git@github.com:acme/skillset-fixture.git"),
+        projectModel.getProjectByOrigin("git@github.com:acme/skilldeck-fixture.git"),
       ).toBeDefined();
     } finally {
       await context.cleanup();

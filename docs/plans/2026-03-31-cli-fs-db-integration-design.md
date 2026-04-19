@@ -1,6 +1,6 @@
 # CLI, filesystem, and database integration test design
 
-This design defines the next test layer for `skillset`. The repository already
+This design defines the next test layer for `skilldeck`. The repository already
 has unit coverage, serializer coverage, and command-level smoke tests. The
 missing layer is a true integration matrix that drives real CLI commands,
 asserts generated project files, and verifies persisted SQLite state together.
@@ -59,7 +59,7 @@ Each test will use:
 - explicit file-content assertions for each target platform
 
 The suite will stay black-box at the command boundary, but white-box for the
-postconditions. That means the tests will drive `skillset` like a user while
+postconditions. That means the tests will drive `skilldeck` like a user while
 still reading the database and output files directly to verify the result.
 
 ## Scenario matrix

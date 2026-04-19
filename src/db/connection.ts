@@ -18,21 +18,21 @@ function resolveDatabaseConstructor(): SqliteDatabaseConstructor {
   return require("better-sqlite3") as SqliteDatabaseConstructor;
 }
 
-function resolveSkillsetDir(): string {
+function resolveSkilldeckDir(): string {
   const homePath = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-  return join(homePath, ".skillset");
+  return join(homePath, ".skilldeck");
 }
 
 function resolveDbPath(): string {
-  return join(resolveSkillsetDir(), "skillset.db");
+  return join(resolveSkilldeckDir(), "skilldeck.db");
 }
 
 export function getDbPath(): string {
   return resolveDbPath();
 }
 
-export function getSkillsetDir(): string {
-  return resolveSkillsetDir();
+export function getSkilldeckDir(): string {
+  return resolveSkilldeckDir();
 }
 
 export function getDb(): SqliteDatabase {
@@ -48,7 +48,7 @@ export function getDb(): SqliteDatabase {
     instancePath = null;
   }
 
-  mkdirSync(resolveSkillsetDir(), { recursive: true });
+  mkdirSync(resolveSkilldeckDir(), { recursive: true });
 
   const Database = resolveDatabaseConstructor();
   instance = new Database(dbPath);

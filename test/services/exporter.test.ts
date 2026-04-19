@@ -20,7 +20,7 @@ describe("exporter services", () => {
 
       const bundle = exporter.exportPreset(preset.id);
 
-      expect(bundle.$schema).toBe("https://skillset.dev/bundle-v1.json");
+      expect(bundle.$schema).toBe("https://skilldeck.dev/bundle-v1.json");
       expect(bundle.version).toBe(1);
       expect(bundle.preset.name).toBe("bundle");
       expect(bundle.resources[0]).toEqual(

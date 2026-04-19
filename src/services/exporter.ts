@@ -3,7 +3,7 @@ import { getPreset, getPresetResources, createPreset, addResourceToPreset } from
 import { createResource } from "../models/resource.js";
 import type { ExportBundle, Preset, Resource } from "../types.js";
 
-const BUNDLE_SCHEMA = "https://skillset.dev/bundle-v1.json";
+const BUNDLE_SCHEMA = "https://skilldeck.dev/bundle-v1.json";
 const BUNDLE_VERSION = 1;
 
 /**
