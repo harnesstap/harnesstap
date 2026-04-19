@@ -35,11 +35,32 @@ export async function runCli(args: string[]): Promise<CliResult> {
   const tableSpy = vi.spyOn(console, "table").mockImplementation((value) => {
     tables.push(value);
   });
+  const stdoutWriteSpy = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation((chunk: string | Uint8Array) => {
+      stdout.push(String(chunk));
+      return true;
+    });
+  const stderrWriteSpy = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation((chunk: string | Uint8Array) => {
+      stderr.push(String(chunk));
+      return true;
+    });
 
   try {
     process.argv = ["node", "skilldeck", ...args];
     process.exitCode = undefined;
-    await importCliEntry();
+    try {
+      await importCliEntry();
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        error.message !== 'process.exit unexpectedly called with "0"'
+      ) {
+        throw error;
+      }
+    }
     return {
       stdout: stdout.join("\n"),
       stderr: stderr.join("\n"),
@@ -53,5 +74,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
     logSpy.mockRestore();
     errorSpy.mockRestore();
     tableSpy.mockRestore();
+    stdoutWriteSpy.mockRestore();
+    stderrWriteSpy.mockRestore();
   }
 }

@@ -43,6 +43,10 @@ The fastest way to try `skilldeck` is to initialize the local database, import
 supported defaults from your home directory, scan an existing repository, and
 then build a preset from the imported resources.
 
+The visible CLI groups related actions under noun-based commands such as
+`project`, `preset`, and `platform`. Older top-level verbs still work for now,
+but they print deprecation warnings.
+
 1. Initialize the local database and import any supported home-directory
    defaults.
 
@@ -53,7 +57,7 @@ then build a preset from the imported resources.
 2. Scan the current repository.
 
    ```bash
-   skilldeck scan .
+   skilldeck project scan .
    ```
 
 3. List the imported resources.
@@ -77,29 +81,30 @@ then build a preset from the imported resources.
 6. Apply the preset to one or more target platforms.
 
    ```bash
-   skilldeck apply my-setup --project . --platform claude-code,codex,cursor
+   skilldeck project apply my-setup --project . --platform claude-code,codex,cursor
    ```
 
 7. Check the tracked project state.
 
    ```bash
-   skilldeck status .
-   skilldeck history --project .
+   skilldeck project status .
+   skilldeck project history --project .
    ```
 
-If the repository has a git `origin`, `skilldeck apply` stores a snapshot before
-it writes files. You can restore that snapshot later with `skilldeck revert`.
+If the repository has a git `origin`, `skilldeck project apply` stores a
+snapshot before it writes files. You can restore that snapshot later with
+`skilldeck project revert`.
 
-## Built-in templates
+## Built-in presets
 
-`skilldeck` ships with starter templates that are seeded during `skilldeck init`.
+`skilldeck` ships with starter presets that are seeded during `skilldeck init`.
 The same command also scans supported default folders in your home directory,
 imports any resources it finds, and prints the discovered locations. Use these
-commands to inspect and apply the built-in templates.
+commands to inspect and apply the built-in presets.
 
 ```bash
-skilldeck template list
-skilldeck template apply nextjs-fullstack --project . --platform codex
+skilldeck preset list
+skilldeck project apply nextjs-fullstack --project . --platform codex
 ```
 
 The repository currently includes `nextjs-fullstack` and `python-fastapi`.
@@ -110,8 +115,8 @@ Presets can move between machines as JSON bundle files. Export strips local-only
 database fields and keeps the portable preset definition plus its resources.
 
 ```bash
-skilldeck export my-setup --file ./my-setup.skilldeck.json
-skilldeck import ./my-setup.skilldeck.json
+skilldeck preset export my-setup --file ./my-setup.skilldeck.json
+skilldeck preset import ./my-setup.skilldeck.json
 ```
 
 ## Supported platforms
@@ -124,7 +129,7 @@ Gemini CLI, and others.
 Run this command to see the current registry in your installed version.
 
 ```bash
-skilldeck platforms
+skilldeck platform list
 ```
 
 ## Where data lives

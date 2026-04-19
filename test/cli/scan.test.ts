@@ -17,7 +17,7 @@ describe("CLI scan", () => {
       );
 
       await runCli(["init"]);
-      const result = await runCli(["scan", context.projectDir]);
+      const result = await runCli(["project", "scan", context.projectDir]);
 
       const resourceModel = await import("../../src/models/resource.ts");
       const projectModel = await import("../../src/models/project.ts");

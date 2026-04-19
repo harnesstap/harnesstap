@@ -28,6 +28,7 @@ describe("CLI apply", () => {
       presetModel.addResourceToPreset(preset.id, resource.id);
 
       const dryRun = await runCli([
+        "project",
         "apply",
         "applied",
         "--project",
@@ -40,6 +41,7 @@ describe("CLI apply", () => {
       expect(dryRun.stdout).toContain("CLAUDE.md");
 
       const applyResult = await runCli([
+        "project",
         "apply",
         "applied",
         "--project",
