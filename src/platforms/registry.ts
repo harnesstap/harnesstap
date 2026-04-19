@@ -90,18 +90,34 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: "~/.agents/skills/",
   }),
 
-  def("opencode", "OpenCode", ["instructions", "skills"], {
+  def("opencode", "OpenCode", ["instructions", "skills", "mcp", "agents", "commands"], {
     instructions: "AGENTS.md",
-    skills: ".agents/skills/",
+    skills: ".opencode/skills/",
+    agents: ".opencode/agents/",
+    commands: ".opencode/commands/",
+    mcp: "opencode.json",
   }, {
     skills: "~/.config/opencode/skills/",
+    agents: "~/.config/opencode/agents/",
+    commands: "~/.config/opencode/commands/",
+    settings: "~/.config/opencode/opencode.json",
   }),
 
-  def("github-copilot", "GitHub Copilot", ["instructions", "skills"], {
+  def("github-copilot", "GitHub Copilot", ["instructions", "skills", "mcp"], {
     instructions: ".github/copilot-instructions.md",
     skills: ".agents/skills/",
   }, {
     skills: "~/.copilot/skills/",
+    settings: "~/.copilot/mcp-config.json",
+  }),
+
+  def("copilot-cli", "Copilot CLI", ["instructions", "skills", "mcp"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+    mcp: ".copilot/mcp-config.json",
+  }, {
+    skills: "~/.copilot/skills/",
+    settings: "~/.copilot/mcp-config.json",
   }),
 
   def("windsurf", "Windsurf", ["instructions", "skills"], {

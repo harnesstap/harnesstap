@@ -3,6 +3,8 @@ import { dirname, join } from "node:path";
 import { ClaudeCodeSerializer } from "../platforms/claude-code.js";
 import { CursorSerializer } from "../platforms/cursor.js";
 import { CodexSerializer } from "../platforms/codex.js";
+import { OpenCodeSerializer } from "../platforms/opencode.js";
+import { CopilotSerializer } from "../platforms/copilot.js";
 import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import type { PlatformSerializer, Resource, SerializedFile } from "../types.js";
 
@@ -14,6 +16,11 @@ function getSerializer(platformId: string): PlatformSerializer {
       return new CursorSerializer();
     case "codex":
       return new CodexSerializer();
+    case "opencode":
+      return new OpenCodeSerializer();
+    case "github-copilot":
+    case "copilot-cli":
+      return new CopilotSerializer(platformId as any);
     default:
       return new GenericAgentsSerializer(platformId);
   }
