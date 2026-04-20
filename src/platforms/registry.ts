@@ -72,14 +72,20 @@ const PLATFORMS: PlatformDefinition[] = [
   }),
 
   def("cursor", "Cursor", [
-    "instructions", "skills", "rules", "mcp",
+    "instructions", "skills", "rules", "mcp", "agents", "hooks"
   ], {
     instructions: "AGENTS.md",
     rules: ".cursor/rules/",
     skills: ".agents/skills/",
+    mcp: ".cursor/mcp.json",
+    agents: ".cursor/agents/",
+    hooks: ".cursor/hooks.json",
   }, {
     rules: "~/.cursor/rules/",
     skills: "~/.cursor/skills/",
+    settings: "~/.cursor/mcp.json",
+    agents: "~/.cursor/agents/",
+    hooks: "~/.cursor/hooks.json",
   }),
 
   // ── Platforms using .agents/ convention ──────────────────────────────
@@ -103,45 +109,94 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.config/opencode/opencode.json",
   }),
 
-  def("github-copilot", "GitHub Copilot", ["instructions", "skills", "mcp"], {
+  def("github-copilot", "GitHub Copilot", ["instructions", "skills", "mcp", "agents"], {
     instructions: ".github/copilot-instructions.md",
     skills: ".agents/skills/",
+    agents: ".github/agents/",
   }, {
     skills: "~/.copilot/skills/",
     settings: "~/.copilot/mcp-config.json",
   }),
 
-  def("copilot-cli", "Copilot CLI", ["instructions", "skills", "mcp"], {
+  def("copilot-cli", "Copilot CLI", ["instructions", "skills", "mcp", "agents"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
     mcp: ".copilot/mcp-config.json",
+    agents: ".github/agents/",
   }, {
     skills: "~/.copilot/skills/",
     settings: "~/.copilot/mcp-config.json",
   }),
 
-  def("windsurf", "Windsurf", ["instructions", "skills"], {
+  def("windsurf", "Windsurf", ["instructions", "skills", "mcp"], {
     instructions: ".windsurfrules",
     skills: ".agents/skills/",
   }, {
     skills: "~/.codeium/windsurf/skills/",
+    settings: "~/.codeium/windsurf/mcp_config.json",
+  }),
+
+  def("cline", "Cline", ["instructions", "skills", "rules", "mcp"], {
+    instructions: "AGENTS.md",
+    rules: ".clinerules",
+    skills: ".agents/skills/",
+  }, {
+    skills: "~/.agents/skills/",
+    settings: "~/.cline/data/settings/cline_mcp_settings.json",
+  }),
+
+  def("roo", "Roo Code", ["instructions", "skills", "rules", "mcp"], {
+    instructions: "AGENTS.md",
+    rules: ".roomodes",
+    skills: ".roo/skills/",
+    mcp: ".roo/mcp.json",
+  }, {
+    skills: "~/.roo/skills/",
+    settings: "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json",
+  }),
+
+  def("continue", "Continue", ["instructions", "skills", "mcp"], {
+    instructions: "AGENTS.md",
+    skills: ".continue/skills/",
+    mcp: ".continue/mcp.json",
+  }, {
+    skills: "~/.continue/skills/",
+  }),
+
+  def("goose", "Goose", ["instructions", "skills", "mcp"], {
+    instructions: "AGENTS.md",
+    skills: ".goose/skills/",
+  }, {
+    skills: "~/.config/goose/skills/",
+    settings: "~/.config/goose/config.json",
+  }),
+
+  def("trae", "Trae", ["instructions", "skills", "rules", "mcp"], {
+    instructions: "AGENTS.md",
+    rules: ".traerules",
+    skills: ".trae/skills/",
+    mcp: ".trae/mcp.json",
+  }, {
+    skills: "~/.trae/skills/",
+  }),
+
+  def("openhands", "OpenHands", ["instructions", "skills", "mcp"], {
+    instructions: "AGENTS.md",
+    skills: ".openhands/skills/",
+  }, {
+    skills: "~/.openhands/skills/",
+    settings: "~/.openhands/mcp.json",
   }),
 
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],
-    ["cline", "Cline", ".agents/skills/", "~/.agents/skills/"],
-    ["continue", "Continue", ".continue/skills/", "~/.continue/skills/"],
-    ["goose", "Goose", ".goose/skills/", "~/.config/goose/skills/"],
-    ["roo", "Roo Code", ".roo/skills/", "~/.roo/skills/"],
     ["gemini-cli", "Gemini CLI", ".agents/skills/", "~/.gemini/skills/"],
     ["kilo", "Kilo Code", ".kilocode/skills/", "~/.kilocode/skills/"],
     ["augment", "Augment", ".augment/skills/", "~/.augment/skills/"],
     ["firebender", "Firebender", ".agents/skills/", "~/.firebender/skills/"],
-    ["trae", "Trae", ".trae/skills/", "~/.trae/skills/"],
     ["junie", "Junie", ".junie/skills/", "~/.junie/skills/"],
     ["zencoder", "Zencoder", ".zencoder/skills/", "~/.zencoder/skills/"],
-    ["openhands", "OpenHands", ".openhands/skills/", "~/.openhands/skills/"],
     ["deepagents", "Deep Agents", ".agents/skills/", "~/.deepagents/agent/skills/"],
     ["qwen-code", "Qwen Code", ".qwen/skills/", "~/.qwen/skills/"],
     ["crush", "Crush", ".crush/skills/", "~/.config/crush/skills/"],
