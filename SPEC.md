@@ -1,28 +1,30 @@
-# Skilldeck CLI specification
+# Harnessdeck CLI specification
 
-This document describes the current shipped behavior of `skilldeck` in this
-repository as of March 29, 2026. It is implementation-first. When the code and
-older design notes disagree, the code wins.
+This document describes the intended behavior of `harnessdeck`.
 
 ## Product summary
 
-`skilldeck` is a local CLI for collecting AI coding assistant configuration,
-grouping it into reusable presets, and applying those presets back to project
-directories for multiple target platforms. Today, the canonical unit is a
-`preset`, not a plugin package.
+`harnessdeck` is a local CLI for collecting AI agent configuration, grouping it
+into reusable presets, and syncing those presets into project directories across
+multiple supported agent harnesses.
 
-The current product supports six main workflows:
+An **agent harness** is the complete infrastructure that wraps around an LLM and
+makes it a functional agent. In practice, that includes things like skills, MCP
+servers, hooks, plugins, rules, agent manifests, commands, and harness-specific
+configuration files.
 
-- Scan an existing repository and import assistant configuration into a local
+The product supports six main workflows:
+
+- Scan an existing repository and import agent configuration into a local
   database.
-- Import supported assistant defaults from the current home directory during
-  init.
+- Initialize local state, choose supported agent harnesses, and choose a main
+  harness reference.
 - Group imported resources into named presets.
-- Apply a preset to one or more target platforms.
+- Apply a preset using the main harness as the canonical representation.
+- Sync a project across all configured agent harnesses.
 - Export or import a preset as a portable JSON bundle.
-- Snapshot and revert tracked git projects.
 
-## Current concepts
+## Core concepts
 
 The CLI uses a small set of concepts consistently across commands.
 
@@ -30,86 +32,118 @@ The CLI uses a small set of concepts consistently across commands.
   MCP server definition, permission rule, hook, agent, command, environment
   variable, or model configuration.
 - `preset`: an ordered collection of resources. Presets are the main reusable
-  unit in the current implementation.
-- `template`: a preset flagged as reusable and seeded from the bundled JSON
-  templates directory.
+  unit.
+- `agent harness`: a supported target environment such as Claude Code, Codex,
+  Cursor, or another tool-specific agent wrapper.
+- `main harness`: the project's canonical harness reference. Imports, preset
+  application, and sync planning normalize through this harness first.
+- `alias harness`: an additional supported harness that mirrors the main
+  harness. Alias harnesses should use symlinks when the file layout allows it,
+  and generated copies otherwise.
 - `project`: a git-backed repository tracked by normalized git origin.
-- `snapshot`: a saved copy of the files generated during `skilldeck apply`.
+- `snapshot`: a saved copy of files generated during preset application or
+  project sync.
 
 ## Command surface
 
-The table below describes the currently implemented CLI commands.
+The table below describes the intended CLI commands.
 
-| Command                              | Current behavior                                                                                                                                               |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `skilldeck init`                      | Creates `~/.skilldeck/skilldeck.db`, initializes the schema, seeds built-in templates, scans supported home-directory defaults, and prints discovered locations. |
-| `skilldeck scan [path]`               | Detects configured platforms in a project, imports discovered resources, and registers the project when a git origin exists.                                   |
-| `skilldeck preset create`             | Creates a preset with optional description, tags, and template flag.                                                                                           |
-| `skilldeck preset list`               | Lists presets, with optional template-only filtering.                                                                                                          |
-| `skilldeck preset show`               | Shows preset metadata and its ordered resources.                                                                                                               |
-| `skilldeck preset add`                | Adds a resource to a preset.                                                                                                                                   |
-| `skilldeck preset remove`             | Removes a resource from a preset.                                                                                                                              |
-| `skilldeck preset delete`             | Deletes a preset by name or ID.                                                                                                                                |
-| `skilldeck resource list`             | Lists resources, with optional type and search filters.                                                                                                        |
-| `skilldeck resource show`             | Prints the full stored resource, including metadata and content.                                                                                               |
-| `skilldeck resource delete`           | Deletes a resource by ID.                                                                                                                                      |
-| `skilldeck apply <preset>`            | Serializes a preset for target platforms and writes files into the project directory.                                                                          |
-| `skilldeck history`                   | Lists stored snapshots for the current tracked project.                                                                                                        |
-| `skilldeck revert <snapshot-id>`      | Restores files captured in a saved snapshot.                                                                                                                   |
-| `skilldeck export <preset>`           | Writes a portable JSON bundle for a preset.                                                                                                                    |
-| `skilldeck import <file>`             | Imports a preset bundle from disk.                                                                                                                             |
-| `skilldeck platforms`                 | Lists registered platforms and declared capability flags.                                                                                                      |
-| `skilldeck status [path]`             | Shows the detected platforms and tracked preset and snapshot counts for a project.                                                                             |
-| `skilldeck template list`             | Lists seeded built-in templates.                                                                                                                               |
-| `skilldeck template apply <template>` | Applies a built-in template to a project.                                                                                                                      |
+| Command                               | Intended behavior                                                                                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `harnessdeck init`                    | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, discovers supported home-directory defaults, prompts for the main harness, then prompts for additional supported harnesses to alias. |
+| `harnessdeck scan [path]`             | Detects configured agent harnesses in a project, imports discovered resources, infers the existing harness as the main harness when one already exists, and registers the project when a git origin exists. |
+| `harnessdeck preset create`           | Creates a preset with optional description and tags.                                                                                                                     |
+| `harnessdeck preset list`             | Lists presets.                                                                                                                                                            |
+| `harnessdeck preset show`             | Shows preset metadata and its ordered resources.                                                                                                                         |
+| `harnessdeck preset add`              | Adds a resource to a preset.                                                                                                                                             |
+| `harnessdeck preset remove`           | Removes a resource from a preset.                                                                                                                                        |
+| `harnessdeck preset delete`           | Deletes a preset by name or ID.                                                                                                                                          |
+| `harnessdeck resource list`           | Lists resources, with optional type and search filters.                                                                                                                  |
+| `harnessdeck resource show`           | Prints the full stored resource, including metadata and content.                                                                                                         |
+| `harnessdeck resource delete`         | Deletes a resource by ID.                                                                                                                                                |
+| `harnessdeck apply <preset>`          | Applies a preset to the current project using the project's main harness as the canonical reference, then updates project metadata so later sync runs can materialize every supported harness. |
+| `harnessdeck project sync [path]`     | Syncs the current project across all configured agent harnesses from the main harness reference, using symlinks for aliases when possible and generated files otherwise. |
+| `harnessdeck history`                 | Lists stored snapshots for the current tracked project.                                                                                                                  |
+| `harnessdeck revert <snapshot-id>`    | Restores files captured in a saved snapshot.                                                                                                                             |
+| `harnessdeck export <preset>`         | Writes a portable JSON bundle for a preset.                                                                                                                              |
+| `harnessdeck import <file>`           | Imports a preset bundle, normalizes it through the configured main harness, and records other selected harnesses as alias outputs for future sync.                     |
+| `harnessdeck harness ls`              | Lists registered agent harnesses, showing which one is the current main harness and which ones are selected as aliases.                                                 |
+| `harnessdeck harness configure`       | Re-runs the harness selection workflow so the user can update the main harness and alias harnesses using the same flow as `init`.                                       |
+| `harnessdeck status [path]`           | Shows detected harnesses, the configured main harness, alias harnesses, and tracked preset and snapshot counts for a project.                                           |
+
+## Initialization and harness selection
+
+`harnessdeck init` is the first-run configuration flow and establishes the
+default harness strategy for the local installation.
+
+The init flow works in this order:
+
+1. Initialize the local database.
+2. Discover supported harness configuration already present in the user's home
+   directory.
+3. Prompt the user to choose the **main harness**. This is the canonical
+   reference for future imports, preset application, and sync operations.
+4. Prompt the user to choose any additional supported harnesses.
+5. Mark those additional harnesses as **alias harnesses** and prefer symlinked
+   materialization whenever the file layout and filesystem support it.
+
+The CLI should allow the main harness to be selected even if that harness was
+not the one first discovered on disk. The important invariant is that every
+later sync operation has a single reference harness and a defined set of
+secondary outputs.
+
+`harnessdeck harness configure` reuses this same workflow after init so users
+can change the reference harness and alias harness set without reinitializing
+the rest of local state.
 
 ## Storage and state
 
-`skilldeck` currently stores all persistent operational state in SQLite. The
-separate JSON config file proposed in earlier design notes does not exist yet.
+`harnessdeck` stores persistent operational state in SQLite.
 
 ### Database location
 
-The database lives at `~/.skilldeck/skilldeck.db`. The CLI creates the directory
-on demand and opens the database through `better-sqlite3` with WAL mode and
-foreign keys enabled.
+The database lives at `~/.harnessdeck/harnessdeck.db`. The CLI creates the
+directory on demand and opens the database through `better-sqlite3` with WAL
+mode and foreign keys enabled.
 
 ### Schema
 
-The current schema version is `1`. The schema includes these tables:
+The schema should include these logical tables:
 
 - `resources`: canonical configuration items.
 - `presets`: named collections of resources.
 - `preset_resources`: ordered many-to-many link table between presets and
   resources.
 - `projects`: tracked repositories keyed by normalized git origin.
-- `project_presets`: which presets have been applied to which projects and for
-  which platform list.
-- `snapshots`: saved generated output captured before apply writes files.
+- `project_presets`: which presets have been applied to which projects.
+- `project_harnesses`: the main harness, alias harnesses, and materialization
+  strategy for each tracked project.
+- `snapshots`: saved generated output captured before sync writes files.
 - `schema_version`: migration tracking.
 
 ### Project tracking
 
-Project tracking is git-oriented. During `scan` and `apply`, `skilldeck` reads
-the repository's `origin` remote, normalizes it, and uses that value as the
-project identity. The last known local path is stored for convenience, but the
-git origin is the durable key.
+Project tracking is git-oriented. During `scan`, `apply`, and `project sync`,
+`harnessdeck` reads the repository's `origin` remote, normalizes it, and uses
+that value as the project identity. The last known local path is stored for
+convenience, but the git origin is the durable key.
 
 ### Snapshot behavior
 
-Snapshots are created during `skilldeck apply` when the target directory has a
-git origin. The snapshot stores the generated platform file map for the preset
-being applied. `skilldeck revert` restores those stored files directly to the
-project path.
+Snapshots are created during `harnessdeck apply` and `harnessdeck project sync`
+when the target directory has a git origin. A snapshot stores the generated file
+map for the main harness and every alias harness that was materialized for that
+sync. `harnessdeck revert` restores those stored files directly to the project
+path.
 
 ## Canonical model
 
-The canonical model is broader than any single platform format, but it is still
-intentionally small in the current implementation.
+The canonical model is broader than any single harness format, but it remains
+small and deterministic.
 
 ### Resource types
 
-`skilldeck` supports these resource types today:
+`harnessdeck` supports these resource types:
 
 - `instruction`
 - `skill`
@@ -122,43 +156,45 @@ intentionally small in the current implementation.
 - `env_var`
 - `model_config`
 
-Metadata is stored as JSON and varies by resource type. The TypeScript source
-declares structured metadata for rules, skills, MCP servers, permissions,
-hooks, agents, environment variables, and model configuration.
+Metadata is stored as JSON and varies by resource type.
 
 ### Preset model
 
-Presets are the current shareable unit. A preset has a unique name,
-description, tag list, and `is_template` flag. Resource order is stored in the
-join table and is preserved during serialization.
+Presets are the shareable unit. A preset has a unique name, description, and
+tag list. Resource order is stored in the join table and is preserved during
+serialization.
 
-## Platform model
+Preset import and preset application always normalize through the configured
+main harness. Alias harnesses are treated as derived outputs of the same
+canonical preset, not as independent preset variants.
 
-Platform support is split between a registry and serializers. The registry
+## Agent harness model
+
+Harness support is split between a registry and serializers. The registry
 declares capability flags and default project and global paths. Serializers
-implement scan and write behavior.
+implement scan, canonicalization, aliasing rules, and write behavior.
 
 ### Native serializers
 
-`skilldeck` has dedicated serializers for these platforms:
+`harnessdeck` has dedicated serializers for these harnesses:
 
 - `claude-code`
 - `codex`
 - `cursor`
 
-These serializers read and write platform-specific files such as `CLAUDE.md`,
+These serializers read and write harness-specific files such as `CLAUDE.md`,
 `.claude/skills/`, `.cursor/rules/`, `AGENTS.md`, `.codex/config.toml`, and
 related directories.
 
 ### Generic serializer
 
-All other registered platforms currently use the generic serializer. It relies
-on the registry's declared paths to scan and materialize instruction and skill
-layouts rather than implementing a fully native parser for each platform.
+All other registered harnesses may use the generic serializer. It relies on the
+registry's declared paths to scan and materialize instruction and skill layouts
+rather than implementing a fully native parser for each harness.
 
-### Registered platforms
+### Registered harnesses
 
-The registry currently contains 30 platform IDs:
+The registry currently contains 30 harness IDs:
 
 - `claude-code`
 - `codex`
@@ -191,55 +227,70 @@ The registry currently contains 30 platform IDs:
 - `cortex`
 - `neovate`
 
-`skilldeck platforms` is the executable source of truth for this list.
+`harnessdeck harness ls` is the executable source of truth for this list and
+for the user's current main and alias harness selection.
 
-## Scan, apply, and export behavior
+## Scan, apply, import, and sync behavior
 
-The CLI uses straightforward behavior today. It favors deterministic file I/O
-over merge-heavy workflows.
+The CLI favors deterministic file I/O over merge-heavy workflows.
 
 ### Scan
 
-`skilldeck scan` detects platforms by checking whether any declared project path
-exists in the target directory. It then asks the relevant serializer to read
-resources. The persistence layer deduplicates resources by `type:name` within a
-single scan run before inserting them.
+`harnessdeck scan` detects harnesses by checking whether any declared project
+path exists in the target directory. It then asks the relevant serializer to
+read resources. The persistence layer deduplicates resources by `type:name`
+within a single scan run before inserting them.
 
-`skilldeck init` also checks the registry's declared global paths in the current
-home directory. When supported files or folders exist, the CLI imports the
-resources they contain, prints the discovered paths, and skips re-importing the
-same home-source resource on later init runs.
+When one supported harness already exists in a project, that harness becomes the
+default main harness for the project. This preserves the existing project as the
+initial source of truth instead of forcing an immediate conversion.
 
 ### Apply
 
-`skilldeck apply` loads a preset's resources, chooses the requested platforms or
-auto-detects them from the project, serializes resources for each platform, and
-writes the resulting files to disk. The write path creates directories as
-needed and overwrites generated files directly.
+`harnessdeck apply` loads a preset's resources, resolves the project's main
+harness, serializes resources for that harness first, and updates project
+metadata so the same canonical representation can be reused during later sync
+runs.
 
-### Export and import
+If the project already contains a supported harness, that existing harness is
+used as the main harness unless the user explicitly forces a shift to a
+different configured main harness.
+
+### Project sync
+
+`harnessdeck project sync` materializes the main harness and every configured
+alias harness for the project.
+
+The sync rules are:
+
+1. Use the project's main harness as the single reference representation.
+2. Generate or refresh all configured alias harness outputs from that reference.
+3. Use symlinks for alias harnesses when the target file layout is compatible
+   and the filesystem supports symlinks.
+4. Fall back to generated copies when symlinks are not possible.
+5. Snapshot all generated files before overwriting them.
+
+`harnessdeck project sync` should also support an option to force shifting the
+project's reference harness from the currently detected existing harness to the
+main harness configured by the user. This is the escape hatch for teams that
+start from one harness but want the project to converge on another long-term
+reference.
+
+### Import and export
 
 Preset export and import use a JSON bundle format with schema
-`https://skilldeck.dev/bundle-v1.json` and bundle version `1`. Each bundle
+`https://harnessdeck.dev/bundle-v1.json` and bundle version `1`. Each bundle
 contains exactly one preset definition and a flat list of resources. Internal
 database IDs, timestamps, and `source` fields are not exported.
 
-## Built-in templates
-
-The repository currently ships two bundled templates:
-
-- `nextjs-fullstack`
-- `python-fastapi`
-
-`skilldeck init` seeds these templates into the database if they are not already
-present. The same command also imports supported home-directory defaults.
-Template application reuses the normal preset application flow.
+When importing a preset bundle, `harnessdeck` normalizes the imported resources
+through the configured main harness and records all additional configured
+harnesses as alias outputs for later project sync.
 
 ## Build, test, and release workflow
 
-The project now uses Bun for local dependency management, CI, and build
-execution. The package is still intended for distribution through the npm
-registry.
+The project uses Bun for local dependency management, CI, and build execution.
+The package is still intended for distribution through the npm registry.
 
 ### Development commands
 
@@ -260,26 +311,24 @@ with declaration files and a `#!/usr/bin/env node` banner.
 
 ### Publish flow
 
-The package publishes to the npm registry. The current package metadata uses
-`prepublishOnly` to run `bun run build` before `npm publish`.
+The package publishes to the npm registry. The package metadata should run
+`bun run build` before `npm publish`.
 
 ## Known gaps and non-goals
 
-This section captures the biggest differences between the current codebase and
-the larger long-term design that earlier notes described.
+This section captures the biggest constraints in the current direction.
 
-- There is no user-editable `~/.skilldeck/skilldeck-config.json` yet.
-- The canonical unit is still a preset, not a multi-plugin package model.
-- Only Claude Code, Codex, and Cursor have dedicated serializers today.
-- Generic platform support is path-driven and intentionally shallow.
-- Apply writes files directly and does not offer interactive conflict
+- Only a subset of registered harnesses will have fully native serializers at
+  first.
+- Generic harness support may remain path-driven and intentionally shallow.
+- Sync writes files directly and does not yet provide interactive conflict
   resolution.
 - Export and import operate on one preset bundle at a time.
 - There is no remote registry, install flow, or package marketplace yet.
 
 ## Near-term direction
 
-The current codebase is already useful for local import, reuse, and alignment,
-but it is still an early implementation. The next meaningful improvements are a
-more explicit user config layer, richer per-platform serializers, and a sharing
-model that grows beyond single-preset bundles.
+The next meaningful improvements are richer per-harness serializers, clearer
+user configuration around main and alias harness defaults, and stronger sync
+semantics for teams that want one canonical agent harness while still supporting
+many downstream harness targets.
