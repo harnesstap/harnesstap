@@ -25,8 +25,10 @@ You need Node 20 or later to run the built CLI.
 
 ## Install
 
-If you are using the published package from the npm registry, install it with
-`bun` or run it with `bunx`.
+You can install `skilldeck` globally with Bun either from the published npm
+package or from a local checkout of this repository.
+
+### Install from the npm registry
 
 ```bash
 bun install -g skilldeck
@@ -35,6 +37,25 @@ skilldeck init
 
 ```bash
 bunx skilldeck@latest init
+```
+
+### Install from a local git checkout
+
+```bash
+git clone https://github.com/bqbooster/skillset.git
+cd skillset
+bun install
+bun run build
+bun link
+skilldeck init
+```
+
+`bun link` registers the current checkout as the global `skilldeck` command.
+If your shell still cannot find it, make sure Bun's global bin directory is on
+your `PATH`:
+
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
 ```
 
 ## Quick start

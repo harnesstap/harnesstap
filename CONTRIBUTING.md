@@ -37,6 +37,23 @@ bun run start -- status
 bun src/index.ts apply <preset-name>
 ```
 
+### Installing the current checkout globally
+
+If you want to exercise the built CLI exactly as an installed global command,
+build the repository and install the current checkout globally with Bun.
+
+```bash
+bun install
+bun run build
+bun link
+skilldeck status
+```
+
+Re-run `bun run build && bun link` after changes when you want the global
+`skilldeck` command to pick up a fresh build from your checkout. Bun installs
+global executables in `~/.bun/bin`, so make sure that directory is on your
+`PATH` if the command is still not found.
+
 ### Watch Mode
 
 If you're making changes and want to continuously compile the TypeScript files for external CLI use or local package testing:
