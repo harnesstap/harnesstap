@@ -3,7 +3,7 @@ import { getPreset, getPresetResources, createPreset, addResourceToPreset } from
 import { createResource } from "../models/resource.js";
 import type { ExportBundle, Preset, Resource } from "../types.js";
 
-const BUNDLE_SCHEMA = "https://skillset.dev/bundle-v1.json";
+const BUNDLE_SCHEMA = "https://skilldeck.dev/bundle-v1.json";
 const BUNDLE_VERSION = 1;
 
 /**
@@ -22,7 +22,6 @@ export function exportPreset(presetNameOrId: string): ExportBundle {
       name: preset.name,
       description: preset.description,
       tags: preset.tags,
-      is_template: preset.is_template,
     },
     resources: resources.map((r) => ({
       type: r.type,
@@ -58,7 +57,6 @@ export function importFromFile(filePath: string): { preset: Preset; resources: R
     name: bundle.preset.name,
     description: bundle.preset.description,
     tags: bundle.preset.tags,
-    is_template: bundle.preset.is_template,
   });
 
   // Create resources and add them to the preset

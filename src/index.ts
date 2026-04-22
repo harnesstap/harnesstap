@@ -15,7 +15,6 @@ import {
   scanAndPersistHomeDefaults,
 } from "./services/scanner.js";
 import {
-  applyToProject,
   generateFiles,
   writeFiles,
 } from "./services/applier.js";
@@ -47,7 +46,7 @@ import {
   getSnapshot,
 } from "./models/snapshot.js";
 import { getAllPlatforms } from "./platforms/registry.js";
-import { seedBuiltInTemplates } from "./services/templates.js";
+import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { resolve } from "node:path";
 import type { Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
@@ -119,33 +118,282 @@ function relativeDiscoveredPaths(
     .join(", ");
 }
 
+function warnDeprecatedCommand(
+  legacyCommand: string,
+  replacementCommand: string,
+): void {
+  log.warn(
+    `\`${legacyCommand}\` is deprecated; use \`${replacementCommand}\` instead.`,
+  );
+}
+
 program
-  .name("skillset")
+  .name("skilldeck")
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
-  .version("0.1.0");
+  .version("0.1.0")
+  .helpCommand(false);
+
+async function handleScanCommand(
+  path: string,
+  opts: { platform?: string; dryRun?: boolean },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const projectRoot = resolve(path);
+
+  const detected = detectPlatforms(projectRoot);
+  if (detected.length === 0) {
+    log.warn("No coding CLI configurations detected in this directory.");
+    return;
+  }
+  log.info(`Detected platforms: ${detected.join(", ")}`);
+
+  if (opts.dryRun) {
+    log.dim("(dry run — not persisting to database)");
+    const results = await scanProject(projectRoot, opts.platform);
+    let count = 0;
+    for (const result of results) {
+      log.info(`Platform: ${result.platformId}`);
+      for (const resource of result.resources) {
+        count++;
+        log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
+      }
+    }
+    log.success(`Would import ${count} resources`);
+    return;
+  }
+
+  const resources = await scanAndPersist(projectRoot, opts.platform);
+  log.success(`Imported ${resources.length} resources`);
+
+  for (const resource of resources) {
+    log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
+  }
+
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (!gitOrigin) {
+    return;
+  }
+
+  const normalized = normalizeGitUrl(gitOrigin);
+  const name = projectNameFromUrl(gitOrigin);
+  upsertProject({
+    git_origin: normalized,
+    name,
+    local_path: projectRoot,
+  });
+  log.info(`Project registered: ${name} (${normalized})`);
+}
+
+async function handleApplyCommand(
+  presetName: string,
+  opts: { project: string; platform?: string; dryRun?: boolean },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+
+  const preset = getPreset(presetName);
+  if (!preset) {
+    log.error(`Preset not found: ${presetName}`);
+    return;
+  }
+
+  const projectRoot = resolve(opts.project);
+  const platforms = opts.platform
+    ? opts.platform.split(",")
+    : detectPlatforms(projectRoot);
+
+  if (platforms.length === 0) {
+    log.warn("No platforms detected. Use --platform to specify.");
+    return;
+  }
+
+  const resources = getPresetResources(preset.id);
+  const generated = await generateFiles(resources, platforms, projectRoot);
+
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (gitOrigin) {
+    const normalized = normalizeGitUrl(gitOrigin);
+    const project = upsertProject({
+      git_origin: normalized,
+      name: projectNameFromUrl(gitOrigin),
+      local_path: projectRoot,
+    });
+
+    const snapshotState: SnapshotState = {
+      presets: [preset],
+      resources,
+      platform_files: Object.fromEntries(
+        generated.map((result) => [
+          result.platformId,
+          Object.fromEntries(result.files.map((file) => [file.path, file.content])),
+        ]),
+      ),
+    };
+    createSnapshot({
+      project_id: project.id,
+      label: `Before applying: ${preset.name}`,
+      state: snapshotState,
+    });
+
+    applyPresetToProject({
+      project_id: project.id,
+      preset_id: preset.id,
+      platforms,
+    });
+  }
+
+  if (opts.dryRun) {
+    log.dim("(dry run — showing files that would be written)");
+    for (const result of generated) {
+      log.info(`Platform: ${result.platformId}`);
+      for (const file of result.files) {
+        log.dim(`  ${file.path}`);
+      }
+    }
+    return;
+  }
+
+  for (const result of generated) {
+    writeFiles(result.files, projectRoot);
+    log.success(`${result.platformId}: wrote ${result.files.length} file(s)`);
+    for (const file of result.files) {
+      log.dim(`  ${file.path}`);
+    }
+  }
+}
+
+function handleHistoryCommand(opts: { project: string }): void {
+  const db = getDb();
+  initializeSchema(db);
+  const projectRoot = resolve(opts.project);
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (!gitOrigin) {
+    log.error("Not a git repository.");
+    return;
+  }
+  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  if (!project) {
+    log.warn("No project record found. Run `skilldeck project scan` first.");
+    return;
+  }
+  const snapshots = listSnapshots(project.id);
+  if (snapshots.length === 0) {
+    log.dim("No snapshots found.");
+    return;
+  }
+  for (const snapshot of snapshots) {
+    log.info(`${snapshot.id.slice(0, 10)}… ${snapshot.created_at} — ${snapshot.label}`);
+  }
+}
+
+function handleRevertCommand(snapshotId?: string): void {
+  const db = getDb();
+  initializeSchema(db);
+  if (!snapshotId) {
+    log.error(
+      "Please provide a snapshot ID. Use `skilldeck project history` to list them.",
+    );
+    return;
+  }
+  const snapshot = getSnapshot(snapshotId);
+  if (!snapshot) {
+    log.error(`Snapshot not found: ${snapshotId}`);
+    return;
+  }
+  const project = getProject(snapshot.project_id);
+  if (!project) {
+    log.error("Snapshot project not found.");
+    return;
+  }
+  const files = Object.entries(snapshot.state.platform_files).flatMap(
+    ([, platformFiles]) =>
+      Object.entries(platformFiles).map(([path, content]) => ({
+        path,
+        content,
+      })),
+  );
+  writeFiles(files, project.local_path);
+  log.info(`Reverting to snapshot: ${snapshot.label} (${snapshot.created_at})`);
+  log.success(`Restored ${files.length} file(s) to ${project.local_path}`);
+}
+
+function handlePresetExportCommand(
+  presetName: string,
+  opts: { file?: string },
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const filePath = opts.file ?? `${presetName}.skilldeck.json`;
+  exportToFile(presetName, filePath);
+  log.success(`Exported to ${filePath}`);
+}
+
+function handlePresetImportCommand(file: string): void {
+  const db = getDb();
+  initializeSchema(db);
+  const { preset, resources } = importFromFile(file);
+  log.success(
+    `Imported preset "${preset.name}" with ${resources.length} resources`,
+  );
+}
+
+function handlePlatformListCommand(): void {
+  const platforms = getAllPlatforms();
+  for (const platform of platforms) {
+    const features = [...platform.supports].join(", ");
+    log.info(`${platform.id.padEnd(20)} ${platform.name.padEnd(20)} [${features}]`);
+  }
+}
+
+function handleProjectStatusCommand(path: string): void {
+  const db = getDb();
+  initializeSchema(db);
+  const projectRoot = resolve(path);
+  const gitOrigin = getGitOrigin(projectRoot);
+  const detected = detectPlatforms(projectRoot);
+
+  console.log(`Project root:  ${projectRoot}`);
+  console.log(`Git origin:    ${gitOrigin ?? "(none)"}`);
+  console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
+
+  if (!gitOrigin) {
+    return;
+  }
+
+  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  if (!project) {
+    return;
+  }
+
+  const presets = getProjectPresets(project.id);
+  const snapshots = listSnapshots(project.id);
+  console.log(`Applied presets: ${presets.length}`);
+  console.log(`Snapshots:       ${snapshots.length}`);
+}
 
 // ── init ────────────────────────────────────────────────────────────────
 
 program
   .command("init")
-  .description("Initialize the skillset database and config directory")
+  .description("Initialize the skilldeck database and config directory")
   .action(async () => {
     const db = getDb();
     initializeSchema(db);
-    const seeded = seedBuiltInTemplates();
+    const seeded = seedBuiltInPresets();
     const homeDefaults = await scanAndPersistHomeDefaults();
     const platformNames = new Map(
       getAllPlatforms().map((platform) => [platform.id, platform.name]),
     );
 
-    log.success(chalk.bold("Skillset initialized"));
+    log.success(chalk.bold("Skilldeck initialized"));
     printInitMeta("Database", getDbPath());
     printInitMeta(
-      "Templates",
+      "Built-in Presets",
       seeded > 0
-        ? `seeded ${formatCount(seeded, "built-in template")}`
+        ? `seeded ${formatCount(seeded, "built-in preset")}`
         : "already up to date",
     );
 
@@ -184,82 +432,23 @@ program
     }
   });
 
-// ── scan ────────────────────────────────────────────────────────────────
-
-program
-  .command("scan")
-  .argument("[path]", "Project directory to scan", ".")
-  .option("-p, --platform <slug>", "Scan only a specific platform")
-  .option("--dry-run", "Show what would be imported without writing to DB")
-  .description(
-    "Scan a project directory and import configurations into the database",
-  )
-  .action(
-    async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
-      const db = getDb();
-      initializeSchema(db);
-      const projectRoot = resolve(path);
-
-      // Detect platforms
-      const detected = detectPlatforms(projectRoot);
-      if (detected.length === 0) {
-        log.warn("No coding CLI configurations detected in this directory.");
-        return;
-      }
-      log.info(`Detected platforms: ${detected.join(", ")}`);
-
-      if (opts.dryRun) {
-        log.dim("(dry run — not persisting to database)");
-        const results = await scanProject(projectRoot, opts.platform);
-        let count = 0;
-        for (const result of results) {
-          log.info(`Platform: ${result.platformId}`);
-          for (const r of result.resources) {
-            count++;
-            log.dim(`  ${r.type.padEnd(14)} ${r.name}`);
-          }
-        }
-        log.success(`Would import ${count} resources`);
-        return;
-      }
-
-      // Scan and persist
-      const resources = await scanAndPersist(projectRoot, opts.platform);
-      log.success(`Imported ${resources.length} resources`);
-
-      for (const r of resources) {
-        log.dim(`  ${r.type.padEnd(14)} ${r.name}`);
-      }
-
-      // Register project
-      const gitOrigin = getGitOrigin(projectRoot);
-      if (gitOrigin) {
-        const normalized = normalizeGitUrl(gitOrigin);
-        const name = projectNameFromUrl(gitOrigin);
-        upsertProject({
-          git_origin: normalized,
-          name,
-          local_path: projectRoot,
-        });
-        log.info(`Project registered: ${name} (${normalized})`);
-      }
-    },
-  );
-
 // ── preset ──────────────────────────────────────────────────────────────
 
-const presetCmd = program.command("preset").description("Manage presets");
+const presetCmd = program
+  .command("preset")
+  .description("Manage presets (named bundles of resources that can be applied to a project)");
+presetCmd.helpCommand(false);
+presetCmd.helpCommand(false);
 
 presetCmd
   .command("create")
   .argument("<name>", "Preset name")
   .option("-d, --description <text>", "Preset description")
-  .option("-t, --template", "Mark as a reusable template")
   .option("--tags <tags>", "Comma-separated tags")
   .action(
     (
       name: string,
-      opts: { description?: string; template?: boolean; tags?: string },
+      opts: { description?: string; tags?: string },
     ) => {
       const db = getDb();
       initializeSchema(db);
@@ -268,7 +457,6 @@ presetCmd
         name,
         description: opts.description,
         tags,
-        is_template: opts.template,
       });
       log.success(`Preset created: ${preset.name} (${preset.id})`);
     },
@@ -277,18 +465,16 @@ presetCmd
 presetCmd
   .command("list")
   .alias("ls")
-  .option("--templates", "Show only templates")
-  .action((opts: { templates?: boolean }) => {
+  .action(() => {
     const db = getDb();
     initializeSchema(db);
-    const presets = listPresets({ templates_only: opts.templates });
+    const presets = listPresets();
     if (presets.length === 0) {
       log.dim("No presets found.");
       return;
     }
     for (const p of presets) {
-      const tmpl = p.is_template ? " [template]" : "";
-      log.info(`${p.name}${tmpl} — ${p.description || "(no description)"}`);
+      log.info(`${p.name} — ${p.description || "(no description)"}`);
     }
   });
 
@@ -355,9 +541,26 @@ presetCmd
     }
   });
 
+presetCmd
+  .command("export")
+  .argument("<preset>", "Preset name or ID")
+  .option("-f, --file <path>", "Output file path")
+  .description("Export a preset as a shareable JSON bundle")
+  .action(handlePresetExportCommand);
+
+presetCmd
+  .command("import")
+  .argument("<file>", "JSON bundle file to import")
+  .description("Import a preset from a JSON bundle file")
+  .action(handlePresetImportCommand);
+
 // ── resource ────────────────────────────────────────────────────────────
 
-const resourceCmd = program.command("resource").description("Manage resources");
+const resourceCmd = program
+  .command("resource")
+  .description("Manage resources (individual pieces of AI configuration like agents, skills, or instructions)");
+resourceCmd.helpCommand(false);
+resourceCmd.helpCommand(false);
 
 resourceCmd
   .command("list")
@@ -415,292 +618,143 @@ resourceCmd
     }
   });
 
-// ── apply ───────────────────────────────────────────────────────────────
+// ── project ─────────────────────────────────────────────────────────────
 
-program
+const projectCmd = program
+  .command("project")
+  .description("Manage project scanning, apply state, and snapshots");
+projectCmd.helpCommand(false);
+projectCmd.helpCommand(false);
+
+projectCmd
+  .command("scan")
+  .argument("[path]", "Project directory to scan", ".")
+  .option("-p, --platform <slug>", "Scan only a specific platform")
+  .option("--dry-run", "Show what would be imported without writing to DB")
+  .description(
+    "Scan a project directory and import configurations into the database",
+  )
+  .action(handleScanCommand);
+
+projectCmd
   .command("apply")
   .argument("<preset>", "Preset name or ID")
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
   .description("Apply a preset to a project, serializing for each platform")
+  .action(handleApplyCommand);
+
+projectCmd
+  .command("history")
+  .option("--project <path>", "Project directory", ".")
+  .description("List configuration snapshots for a project")
+  .action(handleHistoryCommand);
+
+projectCmd
+  .command("revert")
+  .argument("[snapshot-id]", "Snapshot ID to revert to")
+  .description("Revert a project to a previous configuration snapshot")
+  .action(handleRevertCommand);
+
+projectCmd
+  .command("status")
+  .argument("[path]", "Project directory", ".")
+  .description("Show current project status")
+  .action(handleProjectStatusCommand);
+
+// ── platform ────────────────────────────────────────────────────────────
+
+const platformCmd = program
+  .command("platform")
+  .description("Inspect supported platforms (target coding assistants or formats like Claude Code, Cursor, or Codex)");
+platformCmd.helpCommand(false);
+platformCmd.helpCommand(false);
+
+platformCmd
+  .command("list")
+  .alias("ls")
+  .description(
+    "List all supported platforms (e.g., Claude Code, Cursor, Codex)",
+  )
+  .action(handlePlatformListCommand);
+
+// ── hidden compatibility aliases ────────────────────────────────────────
+
+program
+  .command("scan", { hidden: true })
+  .argument("[path]", "Project directory to scan", ".")
+  .option("-p, --platform <slug>", "Scan only a specific platform")
+  .option("--dry-run", "Show what would be imported without writing to DB")
+  .action(async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
+    warnDeprecatedCommand("skilldeck scan", "skilldeck project scan");
+    await handleScanCommand(path, opts);
+  });
+
+program
+  .command("apply", { hidden: true })
+  .argument("<preset>", "Preset name or ID")
+  .option("--project <path>", "Project directory", ".")
+  .option("--platform <slugs>", "Comma-separated platform slugs")
+  .option("--dry-run", "Show what would be written")
   .action(
     async (
       presetName: string,
       opts: { project: string; platform?: string; dryRun?: boolean },
     ) => {
-      const db = getDb();
-      initializeSchema(db);
-
-      const preset = getPreset(presetName);
-      if (!preset) {
-        log.error(`Preset not found: ${presetName}`);
-        return;
-      }
-
-      const projectRoot = resolve(opts.project);
-      const platforms = opts.platform
-        ? opts.platform.split(",")
-        : detectPlatforms(projectRoot);
-
-      if (platforms.length === 0) {
-        log.warn("No platforms detected. Use --platform to specify.");
-        return;
-      }
-
-      const resources = getPresetResources(preset.id);
-      const generated = await generateFiles(resources, platforms, projectRoot);
-
-      // Create snapshot before applying
-      const gitOrigin = getGitOrigin(projectRoot);
-      if (gitOrigin) {
-        const normalized = normalizeGitUrl(gitOrigin);
-        const project = upsertProject({
-          git_origin: normalized,
-          name: projectNameFromUrl(gitOrigin),
-          local_path: projectRoot,
-        });
-
-        const snapshotState: SnapshotState = {
-          presets: [preset],
-          resources,
-          platform_files: Object.fromEntries(
-            generated.map((result) => [
-              result.platformId,
-              Object.fromEntries(result.files.map((f) => [f.path, f.content])),
-            ]),
-          ),
-        };
-        createSnapshot({
-          project_id: project.id,
-          label: `Before applying: ${preset.name}`,
-          state: snapshotState,
-        });
-
-        // Record the preset → project association
-        applyPresetToProject({
-          project_id: project.id,
-          preset_id: preset.id,
-          platforms,
-        });
-      }
-
-      if (opts.dryRun) {
-        log.dim("(dry run — showing files that would be written)");
-        for (const r of generated) {
-          log.info(`Platform: ${r.platformId}`);
-          for (const f of r.files) {
-            log.dim(`  ${f.path}`);
-          }
-        }
-        return;
-      }
-      for (const r of generated) {
-        writeFiles(r.files, projectRoot);
-        log.success(`${r.platformId}: wrote ${r.files.length} file(s)`);
-        for (const f of r.files) {
-          log.dim(`  ${f.path}`);
-        }
-      }
+      warnDeprecatedCommand("skilldeck apply", "skilldeck project apply");
+      await handleApplyCommand(presetName, opts);
     },
   );
 
-// ── history / revert ────────────────────────────────────────────────────
-
 program
-  .command("history")
+  .command("history", { hidden: true })
   .option("--project <path>", "Project directory", ".")
-  .description("List configuration snapshots for a project")
   .action((opts: { project: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const projectRoot = resolve(opts.project);
-    const gitOrigin = getGitOrigin(projectRoot);
-    if (!gitOrigin) {
-      log.error("Not a git repository.");
-      return;
-    }
-    const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
-    if (!project) {
-      log.warn("No project record found. Run `skillset scan` first.");
-      return;
-    }
-    const snapshots = listSnapshots(project.id);
-    if (snapshots.length === 0) {
-      log.dim("No snapshots found.");
-      return;
-    }
-    for (const s of snapshots) {
-      log.info(`${s.id.slice(0, 10)}… ${s.created_at} — ${s.label}`);
-    }
+    warnDeprecatedCommand("skilldeck history", "skilldeck project history");
+    handleHistoryCommand(opts);
   });
 
 program
-  .command("revert")
+  .command("revert", { hidden: true })
   .argument("[snapshot-id]", "Snapshot ID to revert to")
-  .description("Revert a project to a previous configuration snapshot")
   .action((snapshotId?: string) => {
-    const db = getDb();
-    initializeSchema(db);
-    if (!snapshotId) {
-      log.error(
-        "Please provide a snapshot ID. Use `skillset history` to list them.",
-      );
-      return;
-    }
-    const snapshot = getSnapshot(snapshotId);
-    if (!snapshot) {
-      log.error(`Snapshot not found: ${snapshotId}`);
-      return;
-    }
-    const project = getProject(snapshot.project_id);
-    if (!project) {
-      log.error("Snapshot project not found.");
-      return;
-    }
-    const files = Object.entries(snapshot.state.platform_files).flatMap(
-      ([, platformFiles]) =>
-        Object.entries(platformFiles).map(([path, content]) => ({
-          path,
-          content,
-        })),
-    );
-    writeFiles(files, project.local_path);
-    log.info(
-      `Reverting to snapshot: ${snapshot.label} (${snapshot.created_at})`,
-    );
-    log.success(`Restored ${files.length} file(s) to ${project.local_path}`);
+    warnDeprecatedCommand("skilldeck revert", "skilldeck project revert");
+    handleRevertCommand(snapshotId);
   });
 
-// ── export / import ─────────────────────────────────────────────────────
+program
+  .command("status", { hidden: true })
+  .argument("[path]", "Project directory", ".")
+  .action((path: string) => {
+    warnDeprecatedCommand("skilldeck status", "skilldeck project status");
+    handleProjectStatusCommand(path);
+  });
 
 program
-  .command("export")
+  .command("export", { hidden: true })
   .argument("<preset>", "Preset name or ID")
   .option("-f, --file <path>", "Output file path")
-  .description("Export a preset as a shareable JSON bundle")
   .action((presetName: string, opts: { file?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const filePath = opts.file ?? `${presetName}.skillset.json`;
-    exportToFile(presetName, filePath);
-    log.success(`Exported to ${filePath}`);
+    warnDeprecatedCommand("skilldeck export", "skilldeck preset export");
+    handlePresetExportCommand(presetName, opts);
   });
 
 program
-  .command("import")
+  .command("import", { hidden: true })
   .argument("<file>", "JSON bundle file to import")
-  .description("Import a preset from a JSON bundle file")
   .action((file: string) => {
-    const db = getDb();
-    initializeSchema(db);
-    const { preset, resources } = importFromFile(file);
-    log.success(
-      `Imported preset "${preset.name}" with ${resources.length} resources`,
-    );
+    warnDeprecatedCommand("skilldeck import", "skilldeck preset import");
+    handlePresetImportCommand(file);
   });
-
-// ── platforms ───────────────────────────────────────────────────────────
 
 program
-  .command("platforms")
-  .description("List all supported platforms and their capabilities")
+  .command("platforms", { hidden: true })
   .action(() => {
-    const platforms = getAllPlatforms();
-    for (const p of platforms) {
-      const features = [...p.supports].join(", ");
-      log.info(`${p.id.padEnd(20)} ${p.name.padEnd(20)} [${features}]`);
-    }
+    warnDeprecatedCommand("skilldeck platforms", "skilldeck platform list");
+    handlePlatformListCommand();
   });
 
-// ── status ──────────────────────────────────────────────────────────────
-
-program
-  .command("status")
-  .argument("[path]", "Project directory", ".")
-  .description("Show current project status")
-  .action((path: string) => {
-    const db = getDb();
-    initializeSchema(db);
-    const projectRoot = resolve(path);
-    const gitOrigin = getGitOrigin(projectRoot);
-    const detected = detectPlatforms(projectRoot);
-
-    console.log(`Project root:  ${projectRoot}`);
-    console.log(`Git origin:    ${gitOrigin ?? "(none)"}`);
-    console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
-
-    if (gitOrigin) {
-      const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
-      if (project) {
-        const presets = getProjectPresets(project.id);
-        const snapshots = listSnapshots(project.id);
-        console.log(`Applied presets: ${presets.length}`);
-        console.log(`Snapshots:       ${snapshots.length}`);
-      }
-    }
-  });
-
-// ── template ────────────────────────────────────────────────────────────
-
-const templateCmd = program
-  .command("template")
-  .description("Manage preset templates");
-
-templateCmd
-  .command("list")
-  .alias("ls")
-  .action(() => {
-    const db = getDb();
-    initializeSchema(db);
-    seedBuiltInTemplates();
-    const templates = listPresets({ templates_only: true });
-    if (templates.length === 0) {
-      log.dim("No templates found. Import one with `skillset import`.");
-      return;
-    }
-    for (const t of templates) {
-      log.info(`${t.name} — ${t.description}`);
-    }
-  });
-
-templateCmd
-  .command("apply")
-  .argument("<template-name>", "Template name")
-  .option("--project <path>", "Project directory", ".")
-  .option("--platform <slugs>", "Comma-separated platform slugs")
-  .description("Apply a template to a project")
-  .action(
-    async (
-      templateName: string,
-      opts: { project: string; platform?: string },
-    ) => {
-      const db = getDb();
-      initializeSchema(db);
-      seedBuiltInTemplates();
-      const preset = getPreset(templateName);
-      if (!preset || !preset.is_template) {
-        log.error(`Template not found: ${templateName}`);
-        return;
-      }
-      const projectRoot = resolve(opts.project);
-      const platforms = opts.platform
-        ? opts.platform.split(",")
-        : detectPlatforms(projectRoot);
-      if (platforms.length === 0) {
-        log.warn("No platforms detected. Use --platform to specify.");
-        return;
-      }
-      const resources = getPresetResources(preset.id);
-      const results = await applyToProject(resources, platforms, projectRoot);
-      for (const r of results) {
-        log.success(`${r.platformId}: wrote ${r.files.length} file(s)`);
-        for (const f of r.files) {
-          log.dim(`  ${f.path}`);
-        }
-      }
-    },
-  );
 
 // ── cleanup ─────────────────────────────────────────────────────────────
 

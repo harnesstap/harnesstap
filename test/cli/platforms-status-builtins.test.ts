@@ -5,17 +5,17 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
-describe("CLI platforms, status, and template", () => {
-  it("lists platforms and applies built-in templates", async () => {
-    const context = await createTestContext("cli-template");
+describe("CLI platforms, status, and built-in presets", () => {
+  it("lists platforms and applies built-in presets", async () => {
+    const context = await createTestContext("cli-builtins");
 
     try {
       await runCli(["init"]);
 
-      const platforms = await runCli(["platforms"]);
-      const templates = await runCli(["template", "list"]);
+      const platforms = await runCli(["platform", "list"]);
+      const templates = await runCli(["preset", "list"]);
       const applied = await runCli([
-        "template",
+        "project",
         "apply",
         "nextjs-fullstack",
         "--project",
@@ -38,7 +38,7 @@ describe("CLI platforms, status, and template", () => {
     const context = await createTestContext("cli-status");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/skillset-status.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/skilldeck-status.git");
       await runCli(["init"]);
 
       const presetModel = await import("../../src/models/preset.ts");
@@ -54,6 +54,7 @@ describe("CLI platforms, status, and template", () => {
       presetModel.addResourceToPreset(preset.id, resource.id);
 
       await runCli([
+        "project",
         "apply",
         "tracked",
         "--project",
@@ -62,7 +63,7 @@ describe("CLI platforms, status, and template", () => {
         "claude-code",
       ]);
 
-      const status = await runCli(["status", context.projectDir]);
+      const status = await runCli(["project", "status", context.projectDir]);
       expect(status.stdout).toContain("Platforms:");
       expect(status.stdout).toContain("Applied presets: 1");
       expect(status.stdout).toContain("Snapshots:       1");

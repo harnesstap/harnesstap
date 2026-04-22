@@ -1,6 +1,6 @@
-# Contributing to skillset
+# Contributing to skilldeck
 
-Thank you for your interest in contributing to `skillset`! This document provides instructions for setting up your local development environment and the workflow for making changes.
+Thank you for your interest in contributing to `skilldeck`! This document provides instructions for setting up your local development environment and the workflow for making changes.
 
 ## Development Requirements
 
@@ -23,6 +23,44 @@ bun run lint
 
 # Build the project
 bun run build
+```
+
+### Running the CLI Locally
+
+To run the CLI commands during development without having to build it first, you can execute the source file directly using `bun`. You have two options:
+
+```bash
+# Option 1: Using the start script defined in package.json
+bun run start -- status
+
+# Option 2: Execute the TypeScript file directly
+bun src/index.ts apply <preset-name>
+```
+
+### Installing the current checkout globally
+
+If you want to exercise the built CLI exactly as an installed global command,
+build the repository and install the current checkout globally with Bun.
+
+```bash
+bun install
+bun run build
+bun link
+skilldeck status
+```
+
+Re-run `bun run build && bun link` after changes when you want the global
+`skilldeck` command to pick up a fresh build from your checkout. Bun installs
+global executables in `~/.bun/bin`, so make sure that directory is on your
+`PATH` if the command is still not found.
+
+### Watch Mode
+
+If you're making changes and want to continuously compile the TypeScript files for external CLI use or local package testing:
+
+```bash
+# Compile and watch for changes
+bun run dev
 ```
 
 ## Workflow

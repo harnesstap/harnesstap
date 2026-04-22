@@ -3,7 +3,7 @@
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
 > implement this plan task-by-task.
 
-**Goal:** Add a dedicated integration suite that drives real `skillset` CLI
+**Goal:** Add a dedicated integration suite that drives real `skilldeck` CLI
 commands and verifies generated files plus persisted SQLite state for the main
 spec workflows.
 

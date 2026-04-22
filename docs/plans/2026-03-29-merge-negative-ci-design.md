@@ -1,6 +1,6 @@
 # Merge, negative serializer coverage, and CI design
 
-This design covers the next integration step for `skillset`. You want to land
+This design covers the next integration step for `skilldeck`. You want to land
 the already-tested worktree changes on `main`, add serializer tests for
 unsupported or invalid inputs, and introduce GitHub Actions CI so the new test
 suite runs automatically.

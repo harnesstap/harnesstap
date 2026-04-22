@@ -17,6 +17,7 @@ describe("test database helpers", () => {
       });
 
       expect(first.connection.getDbPath()).toContain(first.homeDir);
+      expect(first.connection.getDbPath()).toContain(".skilldeck/skilldeck.db");
       expect(resourceModel.listResources()).toHaveLength(1);
     } finally {
       await first.cleanup();
@@ -27,6 +28,7 @@ describe("test database helpers", () => {
     try {
       const resourceModel = await import("../../src/models/resource.ts");
       expect(second.connection.getDbPath()).toContain(second.homeDir);
+      expect(second.connection.getDbPath()).toContain(".skilldeck/skilldeck.db");
       expect(resourceModel.listResources()).toHaveLength(0);
     } finally {
       await second.cleanup();

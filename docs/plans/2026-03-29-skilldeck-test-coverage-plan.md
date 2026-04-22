@@ -1,8 +1,8 @@
-# Skillset Test Coverage Implementation Plan
+# Skilldeck Test Coverage Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add the first real automated test suite for `skillset`, covering the
+**Goal:** Add the first real automated test suite for `skilldeck`, covering the
 core data model, services, serializers, and primary CLI flows.
 
 **Architecture:** Build the suite from the inside out. Start with a reusable
@@ -54,7 +54,7 @@ Expected: PASS with one green test.
 
 ```bash
 git add test/helpers/db.ts test/helpers/fs.ts test/helpers/cli.ts test/helpers/resources.ts test/helpers/db.test.ts
-git commit -m "test: add shared skillset test harness"
+git commit -m "test: add shared skilldeck test harness"
 ```
 
 ### Task 2: Cover schema and model behavior
@@ -306,5 +306,5 @@ Expected: PASS for the full suite and TypeScript check.
 
 ```bash
 git add package.json src test
-git commit -m "test: finalize initial skillset coverage"
+git commit -m "test: finalize initial skilldeck coverage"
 ```

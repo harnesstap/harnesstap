@@ -29,7 +29,7 @@ describe("project model", () => {
     }
   });
 
-  it("records applied presets with JSON platforms", async () => {
+  it("records applied presets with JSON harnesses", async () => {
     const context = await createInitializedTestContext("project-presets");
 
     try {
@@ -46,16 +46,49 @@ describe("project model", () => {
       projectModel.applyPresetToProject({
         project_id: project.id,
         preset_id: preset.id,
-        platforms: ["claude-code", "cursor"],
+        harnesses: ["claude-code", "cursor"],
       });
 
       expect(projectModel.getProjectPresets(project.id)).toEqual([
         expect.objectContaining({
           project_id: project.id,
           preset_id: preset.id,
-          platforms: ["claude-code", "cursor"],
+          harnesses: ["claude-code", "cursor"],
         }),
       ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns undefined for non-existent project by origin", async () => {
+    const context = await createInitializedTestContext("project-not-found");
+
+    try {
+      const model = await import("../../src/models/project.ts");
+      expect(model.getProjectByOrigin("git@github.com:nonexistent/repo.git")).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns undefined for non-existent project by id", async () => {
+    const context = await createInitializedTestContext("project-by-id-not-found");
+
+    try {
+      const model = await import("../../src/models/project.ts");
+      expect(model.getProject("non-existent-id")).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns empty list when no projects exist", async () => {
+    const context = await createInitializedTestContext("project-empty");
+
+    try {
+      const model = await import("../../src/models/project.ts");
+      expect(model.listProjects()).toEqual([]);
     } finally {
       await context.cleanup();
     }

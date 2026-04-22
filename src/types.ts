@@ -91,7 +91,7 @@ export interface Preset {
   name: string;
   description: string;
   tags: string[];
-  is_template: boolean;
+
   created_at: string;
   updated_at: string;
 }

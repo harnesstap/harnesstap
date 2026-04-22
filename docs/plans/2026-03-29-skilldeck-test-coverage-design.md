@@ -1,8 +1,8 @@
-# Skillset test coverage design
+# Skilldeck test coverage design
 
 ## Goal
 
-Add the first meaningful automated test suite for `skillset` so the core data
+Add the first meaningful automated test suite for `skilldeck` so the core data
 model, platform orchestration, and primary CLI workflows are covered without
 making the tests brittle or expensive to maintain.
 
@@ -90,7 +90,7 @@ not exhaustive combinatorics.
 
 - use temp directories for projects, bundles, and output files
 - create disposable git repos only where `getGitOrigin()` behavior is required
-- isolate the `~/.skillset` database location per test run through environment
+- isolate the `~/.skilldeck` database location per test run through environment
   control or test-local path overrides
 - keep fixture content minimal and explicit so failures stay readable
 

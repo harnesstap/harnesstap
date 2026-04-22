@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "local-server": {
+      "command": "python3",
+      "args": ["server.py"],
+      "env": {"KEY": "val"}
+    },
+    "http-server": {
+      "type": "http",
+      "url": "https://mcp.example.com"
+    }
+  }
+}

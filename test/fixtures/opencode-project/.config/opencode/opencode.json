@@ -1,0 +1,8 @@
+{
+  "mcp": {
+    "global-mcp": {
+      "type": "remote",
+      "url": "https://global.example.com"
+    }
+  }
+}
