@@ -1,5 +1,5 @@
 {
-  "$schema": "https://skillset.dev/bundle-v1.json",
+  "$schema": "https://skilldeck.dev/bundle-v1.json",
   "version": 1,
   "preset": {
     "name": "python-fastapi",

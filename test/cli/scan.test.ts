@@ -17,7 +17,7 @@ describe("CLI scan", () => {
       );
 
       await runCli(["init"]);
-      const result = await runCli(["scan", context.projectDir]);
+      const result = await runCli(["project", "scan", context.projectDir]);
 
       const resourceModel = await import("../../src/models/resource.ts");
       const projectModel = await import("../../src/models/project.ts");
@@ -26,7 +26,7 @@ describe("CLI scan", () => {
       expect(result.stdout).toContain("Project registered");
       expect(resourceModel.listResources().length).toBeGreaterThan(0);
       expect(
-        projectModel.getProjectByOrigin("git@github.com:acme/skillset-fixture.git"),
+        projectModel.getProjectByOrigin("git@github.com:acme/skilldeck-fixture.git"),
       ).toBeDefined();
     } finally {
       await context.cleanup();

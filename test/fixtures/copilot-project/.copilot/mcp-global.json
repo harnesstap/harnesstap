@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "global-server": {
+      "command": "npx",
+      "args": ["server"],
+      "env": {"ENV": "prod"}
+    }
+  }
+}

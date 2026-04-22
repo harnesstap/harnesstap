@@ -21,7 +21,13 @@ describe("CLI export and import", () => {
       presetModel.addResourceToPreset(preset.id, resource.id);
 
       const bundlePath = `${exportContext.projectDir}/bundle.json`;
-      const exportResult = await runCli(["export", "bundle-preset", "--file", bundlePath]);
+      const exportResult = await runCli([
+        "preset",
+        "export",
+        "bundle-preset",
+        "--file",
+        bundlePath,
+      ]);
 
       expect(exportResult.stdout).toContain("Exported to");
       expect(existsSync(bundlePath)).toBe(true);
@@ -30,7 +36,7 @@ describe("CLI export and import", () => {
 
       try {
         await runCli(["init"]);
-        const importResult = await runCli(["import", bundlePath]);
+        const importResult = await runCli(["preset", "import", bundlePath]);
         const importedPresetModel = await import("../../src/models/preset.ts");
 
         expect(importResult.stdout).toContain('Imported preset "bundle-preset"');

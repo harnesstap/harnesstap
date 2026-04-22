@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-export function createTempDir(prefix = "skillset-test"): string {
+export function createTempDir(prefix = "skilldeck-test"): string {
   return mkdtempSync(join(tmpdir(), `${prefix}-`));
 }
 

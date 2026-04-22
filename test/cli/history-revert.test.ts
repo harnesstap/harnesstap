@@ -7,7 +7,7 @@ import { makeResourceInput } from "../helpers/resources.ts";
 
 function initGitRepo(projectDir: string): void {
   execSync("git init", { cwd: projectDir, stdio: "pipe" });
-  execSync("git remote add origin git@github.com:acme/skillset-history.git", {
+  execSync("git remote add origin git@github.com:acme/skilldeck-history.git", {
     cwd: projectDir,
     stdio: "pipe",
   });
@@ -38,6 +38,7 @@ describe("CLI history and revert", () => {
       presetModel.addResourceToPreset(preset.id, resource.id);
 
       await runCli([
+        "project",
         "apply",
         "history-preset",
         "--project",
@@ -49,6 +50,7 @@ describe("CLI history and revert", () => {
       writeFileSync(`${context.projectDir}/CLAUDE.md`, "# Modified", "utf-8");
 
       const history = await runCli([
+        "project",
         "history",
         "--project",
         context.projectDir,
@@ -56,7 +58,7 @@ describe("CLI history and revert", () => {
       expect(history.stdout).toContain("Before applying: history-preset");
 
       const project = projectModel.getProjectByOrigin(
-        git.normalizeGitUrl("git@github.com:acme/skillset-history.git"),
+        git.normalizeGitUrl("git@github.com:acme/skilldeck-history.git"),
       );
       expect(project).toBeDefined();
       if (!project) {
@@ -69,7 +71,7 @@ describe("CLI history and revert", () => {
         throw new Error("Expected a snapshot to be available for revert");
       }
 
-      await runCli(["revert", snapshot.id]);
+      await runCli(["project", "revert", snapshot.id]);
 
       expect(readFileSync(`${context.projectDir}/CLAUDE.md`, "utf-8")).toBe(
         "# Original instructions",

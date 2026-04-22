@@ -10,7 +10,7 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/skillset-apply.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/skilldeck-apply.git");
       await runCli(["init"]);
 
       const presetModel = await import("../../src/models/preset.ts");
@@ -28,6 +28,7 @@ describe("CLI apply", () => {
       presetModel.addResourceToPreset(preset.id, resource.id);
 
       const dryRun = await runCli([
+        "project",
         "apply",
         "applied",
         "--project",
@@ -40,6 +41,7 @@ describe("CLI apply", () => {
       expect(dryRun.stdout).toContain("CLAUDE.md");
 
       const applyResult = await runCli([
+        "project",
         "apply",
         "applied",
         "--project",
@@ -49,7 +51,7 @@ describe("CLI apply", () => {
       ]);
 
       const project = projectModel.getProjectByOrigin(
-        "git@github.com:acme/skillset-apply.git",
+        "git@github.com:acme/skilldeck-apply.git",
       );
 
       expect(applyResult.stdout).toContain("claude-code: wrote 1 file(s)");

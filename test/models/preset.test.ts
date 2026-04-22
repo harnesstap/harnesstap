@@ -3,7 +3,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("preset model", () => {
-  it("creates presets and filters template presets", async () => {
+  it("creates and lists presets", async () => {
     const context = await createInitializedTestContext("preset-list");
 
     try {
@@ -14,20 +14,17 @@ describe("preset model", () => {
         description: "Default preset",
         tags: ["core"],
       });
-      const template = presetModel.createPreset({
+      const starter = presetModel.createPreset({
         name: "starter",
-        is_template: true,
       });
 
       expect(presetModel.getPreset(regular.id)?.name).toBe("default");
-      expect(presetModel.getPreset("starter")?.is_template).toBe(true);
+      expect(starter.name).toBe("starter");
+      expect(presetModel.getPreset("starter")?.name).toBe("starter");
       expect(presetModel.listPresets().map((preset) => preset.name)).toEqual([
         "default",
         "starter",
       ]);
-      expect(
-        presetModel.listPresets({ templates_only: true }).map((preset) => preset.name),
-      ).toEqual([template.name]);
     } finally {
       await context.cleanup();
     }
@@ -63,6 +60,41 @@ describe("preset model", () => {
       ).toEqual([second.id]);
       expect(presetModel.deletePreset(preset.id)).toBe(true);
       expect(presetModel.deletePreset(preset.id)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns undefined for non-existent preset", async () => {
+    const context = await createInitializedTestContext("preset-not-found");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      expect(presetModel.getPreset("non-existent-id")).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns empty list when no presets exist", async () => {
+    const context = await createInitializedTestContext("preset-empty");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      expect(presetModel.listPresets()).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns empty resource list for preset with no resources", async () => {
+    const context = await createInitializedTestContext("preset-no-resources");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const preset = presetModel.createPreset({ name: "empty" });
+
+      expect(presetModel.getPresetResources(preset.id)).toEqual([]);
     } finally {
       await context.cleanup();
     }

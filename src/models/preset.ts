@@ -7,7 +7,6 @@ interface PresetRow {
   name: string;
   description: string;
   tags: string;
-  is_template: number;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +28,6 @@ function rowToPreset(row: PresetRow): Preset {
   return {
     ...row,
     tags: JSON.parse(row.tags) as string[],
-    is_template: Boolean(row.is_template),
   };
 }
 
@@ -37,21 +35,19 @@ export function createPreset(input: {
   name: string;
   description?: string;
   tags?: string[];
-  is_template?: boolean;
 }): Preset {
   const db = getDb();
   const now = new Date().toISOString();
   const id = ulid();
 
   db.prepare(
-    `INSERT INTO presets (id, name, description, tags, is_template, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO presets (id, name, description, tags, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
     input.description ?? "",
     JSON.stringify(input.tags ?? []),
-    input.is_template ? 1 : 0,
     now,
     now,
   );
@@ -61,7 +57,6 @@ export function createPreset(input: {
     name: input.name,
     description: input.description ?? "",
     tags: input.tags ?? [],
-    is_template: input.is_template ?? false,
     created_at: now,
     updated_at: now,
   };
@@ -75,11 +70,10 @@ export function getPreset(nameOrId: string): Preset | undefined {
   return row ? rowToPreset(row) : undefined;
 }
 
-export function listPresets(filters?: { templates_only?: boolean }): Preset[] {
+export function listPresets(): Preset[] {
   const db = getDb();
-  const where = filters?.templates_only ? "WHERE is_template = 1" : "";
   const rows = db
-    .prepare(`SELECT * FROM presets ${where} ORDER BY name`)
+    .prepare(`SELECT * FROM presets ORDER BY name`)
     .all() as PresetRow[];
   return rows.map(rowToPreset);
 }
