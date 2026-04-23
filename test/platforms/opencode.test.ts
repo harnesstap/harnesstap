@@ -120,7 +120,8 @@ describe("OpenCodeSerializer", () => {
 
     const config = files.find((f) => f.path === "opencode.json");
     expect(config).toBeDefined();
-    const parsed = JSON.parse(config!.content);
+    if (!config) throw new Error("Expected OpenCode config file");
+    const parsed = JSON.parse(config.content);
     expect(parsed).toEqual(
       expect.objectContaining({
         $schema: "https://opencode.ai/config.json",
