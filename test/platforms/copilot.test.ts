@@ -138,7 +138,7 @@ describe("CopilotSerializer", () => {
 
   it("serializes MCP servers with tools: [\"*\"] for copilot", async () => {
     const serializer = new CopilotSerializer("github-copilot");
-    const files = await serializer.serialize(
+    const githubFiles = await serializer.serialize(
       [
         makeResource({
           type: "mcp_server",
@@ -154,8 +154,10 @@ describe("CopilotSerializer", () => {
       ".",
     );
 
-    const config = files.find((f) => f.path === ".agents/skills/.mcp.json");
     // github-copilot doesn't have an mcp project path, so no config emitted
+    expect(
+      githubFiles.find((file) => file.path === ".copilot/mcp-config.json"),
+    ).toBeUndefined();
     // Let's test with copilot-cli which has one
     const serializer2 = new CopilotSerializer("copilot-cli");
     const files2 = await serializer2.serialize(
@@ -176,7 +178,8 @@ describe("CopilotSerializer", () => {
 
     const config2 = files2.find((f) => f.path === ".copilot/mcp-config.json");
     expect(config2).toBeDefined();
-    const parsed = JSON.parse(config2!.content);
+    if (!config2) throw new Error("Expected Copilot MCP config file");
+    const parsed = JSON.parse(config2.content);
     expect(parsed.mcpServers.local).toEqual(
       expect.objectContaining({
         type: "local",

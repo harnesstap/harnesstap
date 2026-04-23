@@ -8,6 +8,26 @@ import type {
   McpServerMetadata,
 } from "../types.js";
 
+interface OpenCodeMcpConfigEntry {
+  type?: string;
+  command?: string | string[];
+  url?: string;
+  environment?: Record<string, string>;
+  env?: Record<string, string>;
+}
+
+interface OpenCodeConfig {
+  mcp?: Record<string, OpenCodeMcpConfigEntry>;
+}
+
+interface OpenCodeSerializedMcpEntry {
+  type: "remote" | "local";
+  enabled: true;
+  url?: string;
+  command?: string | string[];
+  environment?: Record<string, string>;
+}
+
 export class OpenCodeSerializer extends BaseSerializer {
   readonly platformId = "opencode";
   readonly platform: PlatformDefinition;
@@ -72,16 +92,15 @@ export class OpenCodeSerializer extends BaseSerializer {
     const configContent = this.readFile(configPath);
     if (configContent) {
       try {
-        const config = JSON.parse(configContent);
+        const config = JSON.parse(configContent) as OpenCodeConfig;
         if (config.mcp) {
           for (const [name, mcp] of Object.entries(config.mcp)) {
-            const m = mcp as any;
             const metadata: McpServerMetadata = {
-              transport: m.type === "remote" ? "http" : "stdio",
-              command: Array.isArray(m.command) ? m.command[0] : m.command,
-              args: Array.isArray(m.command) ? m.command.slice(1) : undefined,
-              url: m.url,
-              env: m.environment || m.env,
+              transport: mcp.type === "remote" ? "http" : "stdio",
+              command: Array.isArray(mcp.command) ? mcp.command[0] : mcp.command,
+              args: Array.isArray(mcp.command) ? mcp.command.slice(1) : undefined,
+              url: mcp.url,
+              env: mcp.environment || mcp.env,
             };
             resources.push(
               this.makeResource(
@@ -152,16 +171,15 @@ export class OpenCodeSerializer extends BaseSerializer {
     const configContent = this.readFile(configPath);
     if (configContent) {
       try {
-        const config = JSON.parse(configContent);
+        const config = JSON.parse(configContent) as OpenCodeConfig;
         if (config.mcp) {
           for (const [name, mcp] of Object.entries(config.mcp)) {
-            const m = mcp as any;
             const metadata: McpServerMetadata = {
-              transport: m.type === "remote" ? "http" : "stdio",
-              command: Array.isArray(m.command) ? m.command[0] : m.command,
-              args: Array.isArray(m.command) ? m.command.slice(1) : undefined,
-              url: m.url,
-              env: m.environment || m.env,
+              transport: mcp.type === "remote" ? "http" : "stdio",
+              command: Array.isArray(mcp.command) ? mcp.command[0] : mcp.command,
+              args: Array.isArray(mcp.command) ? mcp.command.slice(1) : undefined,
+              url: mcp.url,
+              env: mcp.environment || mcp.env,
             };
             resources.push(
               this.makeResource(
@@ -233,7 +251,7 @@ export class OpenCodeSerializer extends BaseSerializer {
 
     // opencode.json
     if (mcps.length > 0) {
-      const mcpConfig: Record<string, any> = {};
+      const mcpConfig: Record<string, OpenCodeSerializedMcpEntry> = {};
       for (const r of mcps) {
         const meta = r.metadata as McpServerMetadata;
         if (meta.transport === "http" || meta.url) {
@@ -243,11 +261,11 @@ export class OpenCodeSerializer extends BaseSerializer {
             enabled: true,
           };
         } else {
-          const command = [meta.command];
+          const command = meta.command ? [meta.command] : [];
           if (meta.args) command.push(...meta.args);
           mcpConfig[r.name] = {
             type: "local",
-            command: command.length === 1 ? command[0] : command,
+            command: command.length <= 1 ? command[0] : command,
             environment: meta.env,
             enabled: true,
           };

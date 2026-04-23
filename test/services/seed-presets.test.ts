@@ -1,7 +1,5 @@
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 describe("seed presets service", () => {
   it("seeds built-in presets from the builtin-presets directory", async () => {

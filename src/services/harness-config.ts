@@ -29,7 +29,10 @@ function pickDefaultMain(
   detected: string[],
 ): string {
   if (current?.main_harness) return current.main_harness;
-  if (detected.length > 0) return detected[0]!;
+  if (detected.length > 0) {
+    const firstDetected = detected[0];
+    if (firstDetected) return firstDetected;
+  }
 
   const first = getPlatformIds()[0];
   if (!first) {
