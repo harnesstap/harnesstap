@@ -29,7 +29,7 @@ describe("project model", () => {
     }
   });
 
-  it("records applied presets with JSON harnesses", async () => {
+  it("records applied presets with platforms", async () => {
     const context = await createInitializedTestContext("project-presets");
 
     try {
@@ -46,14 +46,14 @@ describe("project model", () => {
       projectModel.applyPresetToProject({
         project_id: project.id,
         preset_id: preset.id,
-        harnesses: ["claude-code", "cursor"],
+        platforms: ["claude-code", "cursor"],
       });
 
       expect(projectModel.getProjectPresets(project.id)).toEqual([
         expect.objectContaining({
           project_id: project.id,
           preset_id: preset.id,
-          harnesses: ["claude-code", "cursor"],
+          platforms: ["claude-code", "cursor"],
         }),
       ]);
     } finally {

@@ -15,6 +15,8 @@ describe("initializeSchema", () => {
 
       expect(tables.map((table) => table.name)).toEqual(
         expect.arrayContaining([
+          "harness_preferences",
+          "project_harnesses",
           "project_presets",
           "preset_resources",
           "presets",
@@ -30,7 +32,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(1);
+      expect(versionRow.version).toBe(2);
     } finally {
       await context.cleanup();
     }
@@ -48,7 +50,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 1 }]);
+      expect(versionRows).toEqual([{ version: 2 }]);
     } finally {
       await context.cleanup();
     }

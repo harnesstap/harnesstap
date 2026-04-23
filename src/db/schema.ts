@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const MIGRATIONS: Record<number, string> = {
   1: `
@@ -70,6 +70,23 @@ const MIGRATIONS: Record<number, string> = {
     );
 
     INSERT INTO schema_version (version) VALUES (${SCHEMA_VERSION});
+  `,
+
+  2: `
+    CREATE TABLE IF NOT EXISTS harness_preferences (
+      scope            TEXT PRIMARY KEY DEFAULT 'default',
+      main_harness     TEXT NOT NULL,
+      alias_harnesses  TEXT NOT NULL DEFAULT '[]',
+      updated_at       TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS project_harnesses (
+      project_id              TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+      main_harness            TEXT NOT NULL,
+      alias_harnesses         TEXT NOT NULL DEFAULT '[]',
+      materialization_strategy TEXT NOT NULL DEFAULT 'symlink-preferred',
+      updated_at              TEXT NOT NULL
+    );
   `,
 };
 
