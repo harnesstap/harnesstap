@@ -62,6 +62,12 @@ export abstract class BaseSerializer implements PlatformSerializer {
     return relative(projectRoot, filePath);
   }
 
+  protected resolveHomePath(homeRoot: string, configuredPath: string): string {
+    return configuredPath.startsWith("~/")
+      ? join(homeRoot, configuredPath.slice(2))
+      : join(homeRoot, configuredPath);
+  }
+
   protected prefixedRelativePath(
     rootPath: string,
     filePath: string,
