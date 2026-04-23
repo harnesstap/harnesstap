@@ -21,7 +21,7 @@
 
 **Step 1: Write the failing test**
 
-Update the CLI init assertions to expect `Skilldeck initialized` and a database path under `~/.skilldeck/skilldeck.db`. Update the exporter schema assertion to expect `https://skilldeck.dev/bundle-v1.json`. Update the CLI helper argv name to `skilldeck`.
+Update the CLI init assertions to expect `Skilldeck initialized` and a database path under `~/.skilldeck/skilldeck.db`. Update the exporter schema assertion to expect the bundle schema identifier. Update the CLI helper argv name to `skilldeck`.
 
 **Step 2: Run test to verify it fails**
 

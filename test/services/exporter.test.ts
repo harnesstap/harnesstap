@@ -22,7 +22,7 @@ describe("exporter services", () => {
 
       const bundle = exporter.exportPreset(preset.id);
 
-      expect(bundle.$schema).toBe("https://skilldeck.dev/bundle-v1.json");
+      expect(bundle.$schema).toBe("urn:harnessdeck:bundle:v1");
       expect(bundle.version).toBe(1);
       expect(bundle.preset.name).toBe("bundle");
       expect(bundle.resources[0]).toEqual(
@@ -96,7 +96,7 @@ describe("exporter services", () => {
       try {
         const bundlePath = join(tempDir, "bundle.json");
         writeTextFile(bundlePath, JSON.stringify({
-          $schema: "https://harnessdeck.dev/bundle-v1.json",
+          $schema: "urn:harnessdeck:bundle:v1",
           version: 99,
           preset: { name: "bad-version", description: "", tags: [] },
           resources: [],

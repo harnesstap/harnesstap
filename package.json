@@ -1,5 +1,5 @@
 {
-  "name": "skilldeck",
+  "name": "harnessdeck",
   "version": "0.1.0",
   "description": "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   "type": "module",
@@ -10,7 +10,7 @@
     "README.md"
   ],
   "bin": {
-    "skilldeck": "./dist/index.js"
+    "harnessdeck": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup",

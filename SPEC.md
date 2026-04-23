@@ -278,8 +278,8 @@ reference.
 
 ### Import and export
 
-Preset export and import use a JSON bundle format with schema
-`https://harnessdeck.dev/bundle-v1.json` and bundle version `1`. Each bundle
+Preset export and import use a JSON bundle format with schema identifier
+`urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle
 contains exactly one preset definition and a flat list of resources. Internal
 database IDs, timestamps, and `source` fields are not exported.
 

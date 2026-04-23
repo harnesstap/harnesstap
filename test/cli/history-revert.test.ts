@@ -7,7 +7,7 @@ import { makeResourceInput } from "../helpers/resources.ts";
 
 function initGitRepo(projectDir: string): void {
   execSync("git init", { cwd: projectDir, stdio: "pipe" });
-  execSync("git remote add origin git@github.com:acme/skilldeck-history.git", {
+  execSync("git remote add origin git@github.com:acme/harnessdeck-history.git", {
     cwd: projectDir,
     stdio: "pipe",
   });
@@ -58,7 +58,7 @@ describe("CLI history and revert", () => {
       expect(history.stdout).toContain("Before applying: history-preset");
 
       const project = projectModel.getProjectByOrigin(
-        git.normalizeGitUrl("git@github.com:acme/skilldeck-history.git"),
+        git.normalizeGitUrl("git@github.com:acme/harnessdeck-history.git"),
       );
       expect(project).toBeDefined();
       if (!project) {

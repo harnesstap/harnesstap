@@ -12,10 +12,10 @@ describe("CLI init", () => {
       const result = await runCli(["init"]);
       const presetModel = await import("../../src/models/preset.ts");
 
-      expect(result.stdout).toContain("Skilldeck initialized");
+      expect(result.stdout).toContain("Harnessdeck initialized");
       expect(result.stdout).toContain("Database");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
-      expect(context.connection.getDbPath()).toContain(".skilldeck/skilldeck.db");
+      expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
       expect(
         presetModel.listPresets({ templates_only: true }).length,
       ).toBeGreaterThan(0);
@@ -44,7 +44,7 @@ describe("CLI init", () => {
           .listResources()
           .filter((resource) => resource.source.startsWith("~/.claude"));
 
-      expect(result.stdout).toContain("Skilldeck initialized");
+      expect(result.stdout).toContain("Harnessdeck initialized");
       expect(result.stdout).toContain("Built-in Presets");
       expect(result.stdout).toContain("Home defaults overview");
       expect(result.stdout).toContain("Claude Code");

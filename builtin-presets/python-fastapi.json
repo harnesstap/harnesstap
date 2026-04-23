@@ -1,5 +1,5 @@
 {
-  "$schema": "https://skilldeck.dev/bundle-v1.json",
+  "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
   "preset": {
     "name": "python-fastapi",

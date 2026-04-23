@@ -49,7 +49,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
     });
 
   try {
-    process.argv = ["node", "skilldeck", ...args];
+    process.argv = ["node", "harnessdeck", ...args];
     process.exitCode = undefined;
     try {
       await importCliEntry();

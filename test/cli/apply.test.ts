@@ -10,7 +10,7 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/skilldeck-apply.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-apply.git");
       await runCli(["init"]);
 
       const presetModel = await import("../../src/models/preset.ts");
@@ -51,7 +51,7 @@ describe("CLI apply", () => {
       ]);
 
       const project = projectModel.getProjectByOrigin(
-        "git@github.com:acme/skilldeck-apply.git",
+        "git@github.com:acme/harnessdeck-apply.git",
       );
 
       expect(applyResult.stdout).toContain("claude-code: wrote 1 file(s)");

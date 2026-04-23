@@ -1,6 +1,6 @@
-# Contributing to skilldeck
+# Contributing to harnessdeck
 
-Thank you for your interest in contributing to `skilldeck`! This document provides instructions for setting up your local development environment and the workflow for making changes.
+Thank you for your interest in contributing to `harnessdeck`! This document provides instructions for setting up your local development environment and the workflow for making changes.
 
 ## Development Requirements
 
@@ -46,11 +46,11 @@ build the repository and install the current checkout globally with Bun.
 bun install
 bun run build
 bun link
-skilldeck status
+harnessdeck status
 ```
 
 Re-run `bun run build && bun link` after changes when you want the global
-`skilldeck` command to pick up a fresh build from your checkout. Bun installs
+`harnessdeck` command to pick up a fresh build from your checkout. Bun installs
 global executables in `~/.bun/bin`, so make sure that directory is on your
 `PATH` if the command is still not found.
 
