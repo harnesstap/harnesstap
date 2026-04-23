@@ -117,6 +117,21 @@ export interface ProjectPreset {
   applied_at: string;
 }
 
+export interface HarnessSelection {
+  main_harness: string;
+  alias_harnesses: string[];
+}
+
+export interface HarnessPreference extends HarnessSelection {
+  updated_at: string;
+}
+
+export interface ProjectHarnessConfig extends HarnessSelection {
+  project_id: string;
+  materialization_strategy: "symlink-preferred" | "copy";
+  updated_at: string;
+}
+
 export interface SnapshotState {
   presets: Preset[];
   resources: Resource[];

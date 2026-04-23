@@ -19,8 +19,9 @@ function getSerializer(platformId: string): PlatformSerializer {
     case "opencode":
       return new OpenCodeSerializer();
     case "github-copilot":
+      return new CopilotSerializer("github-copilot");
     case "copilot-cli":
-      return new CopilotSerializer(platformId as any);
+      return new CopilotSerializer("copilot-cli");
     default:
       return new GenericAgentsSerializer(platformId);
   }

@@ -8,6 +8,28 @@ import type {
   McpServerMetadata,
 } from "../types.js";
 
+interface CopilotMcpConfigEntry {
+  type?: string;
+  command?: string;
+  args?: string[];
+  url?: string;
+  env?: Record<string, string>;
+}
+
+interface CopilotMcpConfig {
+  mcpServers?: Record<string, CopilotMcpConfigEntry>;
+  mcp?: Record<string, CopilotMcpConfigEntry>;
+}
+
+interface CopilotSerializedMcpEntry {
+  type: "http" | "local";
+  tools: string[];
+  url?: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
 export class CopilotSerializer extends BaseSerializer {
   constructor(readonly platformId: "github-copilot" | "copilot-cli") {
     super();
@@ -49,28 +71,28 @@ export class CopilotSerializer extends BaseSerializer {
 
     // 3. MCP servers
     if (this.platform.projectPaths.mcp) {
-      const configPath = join(projectRoot, this.platform.projectPaths.mcp);
+      const configPathValue = this.platform.projectPaths.mcp;
+      const configPath = join(projectRoot, configPathValue);
       const configContent = this.readFile(configPath);
       if (configContent) {
         try {
-          const config = JSON.parse(configContent);
+          const config = JSON.parse(configContent) as CopilotMcpConfig;
           const servers = config.mcpServers || config.mcp; // Support both
           if (servers) {
             for (const [name, mcp] of Object.entries(servers)) {
-              const m = mcp as any;
               const metadata: McpServerMetadata = {
-                transport: m.type === "http" ? "http" : "stdio",
-                command: m.command,
-                args: m.args,
-                url: m.url,
-                env: m.env,
+                transport: mcp.type === "http" ? "http" : "stdio",
+                command: mcp.command,
+                args: mcp.args,
+                url: mcp.url,
+                env: mcp.env,
               };
               resources.push(
                 this.makeResource(
                   "mcp_server",
                   name,
                   "",
-                  this.platform.projectPaths.mcp!,
+                  configPathValue,
                   metadata,
                 ),
               );
@@ -101,31 +123,28 @@ export class CopilotSerializer extends BaseSerializer {
 
     // Global config (MCP)
     if (this.platform.globalPaths.settings) {
-      const configPath = this.resolveHomePath(
-        homeRoot,
-        this.platform.globalPaths.settings,
-      );
+      const settingsPath = this.platform.globalPaths.settings;
+      const configPath = this.resolveHomePath(homeRoot, settingsPath);
       const configContent = this.readFile(configPath);
       if (configContent) {
         try {
-          const config = JSON.parse(configContent);
+          const config = JSON.parse(configContent) as CopilotMcpConfig;
           const servers = config.mcpServers || config.mcp;
           if (servers) {
             for (const [name, mcp] of Object.entries(servers)) {
-              const m = mcp as any;
               const metadata: McpServerMetadata = {
-                transport: m.type === "http" ? "http" : "stdio",
-                command: m.command,
-                args: m.args,
-                url: m.url,
-                env: m.env,
+                transport: mcp.type === "http" ? "http" : "stdio",
+                command: mcp.command,
+                args: mcp.args,
+                url: mcp.url,
+                env: mcp.env,
               };
               resources.push(
                 this.makeResource(
                   "mcp_server",
                   name,
                   "",
-                  this.platform.globalPaths.settings!,
+                  settingsPath,
                   metadata,
                 ),
               );
@@ -173,7 +192,7 @@ export class CopilotSerializer extends BaseSerializer {
     // MCP servers
     const mcps = resources.filter((r) => r.type === "mcp_server");
     if (mcps.length > 0 && this.platform.projectPaths.mcp) {
-      const mcpServers: Record<string, any> = {};
+      const mcpServers: Record<string, CopilotSerializedMcpEntry> = {};
       for (const r of mcps) {
         const meta = r.metadata as McpServerMetadata;
         if (meta.transport === "http" || meta.url) {

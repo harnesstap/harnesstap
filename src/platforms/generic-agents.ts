@@ -10,6 +10,38 @@ import type {
   HookMetadata,
 } from "../types.js";
 
+interface GenericHookCommand {
+  command?: string;
+}
+
+interface GenericHooksConfig {
+  hooks?: Record<string, GenericHookCommand[]>;
+}
+
+interface GenericMcpServerConfigEntry {
+  url?: string;
+  protocol?: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+interface GenericMcpConfig {
+  mcpServers?: Record<string, GenericMcpServerConfigEntry>;
+}
+
+interface GenericSerializedHookEntry {
+  command: string;
+}
+
+interface GenericSerializedMcpEntry {
+  url?: string;
+  protocol?: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
 function resolveGlobalPath(homeRoot: string, configuredPath: string): string {
   return configuredPath.startsWith("~/")
     ? join(homeRoot, configuredPath.slice(2))
@@ -102,7 +134,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
     const content = this.readFile(fullPath);
     if (content) {
       try {
-        const config = JSON.parse(content) as { hooks?: Record<string, any> };
+        const config = JSON.parse(content) as GenericHooksConfig;
         for (const [event, cmds] of Object.entries(config.hooks || {})) {
           if (Array.isArray(cmds)) {
             for (const cmd of cmds) {
@@ -132,9 +164,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
     const content = this.readFile(fullPath);
     if (content) {
       try {
-        const config = JSON.parse(content) as {
-          mcpServers?: Record<string, any>;
-        };
+        const config = JSON.parse(content) as GenericMcpConfig;
         for (const [name, srv] of Object.entries(config.mcpServers || {})) {
           const transport =
             srv.url && srv.protocol === "sse" ? "http" : "stdio";
@@ -355,12 +385,13 @@ export class GenericAgentsSerializer extends BaseSerializer {
     // Hooks
     const hooks = resources.filter((r) => r.type === "hook");
     if (hooksPath && hooks.length > 0) {
-      const hooksConfig: Record<string, any> = {};
+      const hooksConfig: Record<string, GenericSerializedHookEntry[]> = {};
       for (const r of hooks) {
         const meta = r.metadata as HookMetadata;
         if (!meta) continue;
-        if (!hooksConfig[meta.event]) hooksConfig[meta.event] = [];
-        hooksConfig[meta.event].push({ command: meta.script });
+        const eventHooks = hooksConfig[meta.event] ?? [];
+        eventHooks.push({ command: meta.script });
+        hooksConfig[meta.event] = eventHooks;
       }
       files.push({
         path: hooksPath,
@@ -383,7 +414,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
     // MCP
     const mcpServers = resources.filter((r) => r.type === "mcp_server");
     if (mcpPath && mcpServers.length > 0) {
-      const servers: Record<string, any> = {};
+      const servers: Record<string, GenericSerializedMcpEntry> = {};
       for (const r of mcpServers) {
         const meta = r.metadata as McpServerMetadata;
         if (!meta) continue;
@@ -406,4 +437,3 @@ export class GenericAgentsSerializer extends BaseSerializer {
     return files;
   }
 }
-
