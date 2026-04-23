@@ -16,7 +16,7 @@ export interface TestContext {
 }
 
 export async function createTestContext(
-  prefix = "skilldeck-test",
+  prefix = "harnessdeck-test",
 ): Promise<TestContext> {
   const rootDir = createTempDir(prefix);
   const homeDir = join(rootDir, "home");
@@ -53,7 +53,7 @@ export async function createTestContext(
 }
 
 export async function createInitializedTestContext(
-  prefix = "skilldeck-test",
+  prefix = "harnessdeck-test",
 ): Promise<TestContext> {
   const context = await createTestContext(prefix);
   context.schema.initializeSchema(context.connection.getDb());

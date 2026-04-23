@@ -38,7 +38,7 @@ describe("CLI platforms, status, and built-in presets", () => {
     const context = await createTestContext("cli-status");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/skilldeck-status.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-status.git");
       await runCli(["init"]);
 
       const presetModel = await import("../../src/models/preset.ts");

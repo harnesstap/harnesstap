@@ -128,7 +128,7 @@ function warnDeprecatedCommand(
 }
 
 program
-  .name("skilldeck")
+  .name("harnessdeck")
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
@@ -276,7 +276,7 @@ function handleHistoryCommand(opts: { project: string }): void {
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
   if (!project) {
-    log.warn("No project record found. Run `skilldeck project scan` first.");
+    log.warn("No project record found. Run `harnessdeck project scan` first.");
     return;
   }
   const snapshots = listSnapshots(project.id);
@@ -294,7 +294,7 @@ function handleRevertCommand(snapshotId?: string): void {
   initializeSchema(db);
   if (!snapshotId) {
     log.error(
-      "Please provide a snapshot ID. Use `skilldeck project history` to list them.",
+      "Please provide a snapshot ID. Use `harnessdeck project history` to list them.",
     );
     return;
   }
@@ -326,7 +326,7 @@ function handlePresetExportCommand(
 ): void {
   const db = getDb();
   initializeSchema(db);
-  const filePath = opts.file ?? `${presetName}.skilldeck.json`;
+  const filePath = opts.file ?? `${presetName}.harnessdeck.json`;
   exportToFile(presetName, filePath);
   log.success(`Exported to ${filePath}`);
 }
@@ -378,7 +378,7 @@ function handleProjectStatusCommand(path: string): void {
 
 program
   .command("init")
-  .description("Initialize the skilldeck database and config directory")
+  .description("Initialize the harnessdeck database and config directory")
   .action(async () => {
     const db = getDb();
     initializeSchema(db);
@@ -388,7 +388,7 @@ program
       getAllPlatforms().map((platform) => [platform.id, platform.name]),
     );
 
-    log.success(chalk.bold("Skilldeck initialized"));
+    log.success(chalk.bold("Harnessdeck initialized"));
     printInitMeta("Database", getDbPath());
     printInitMeta(
       "Built-in Presets",
@@ -687,7 +687,7 @@ program
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--dry-run", "Show what would be imported without writing to DB")
   .action(async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
-    warnDeprecatedCommand("skilldeck scan", "skilldeck project scan");
+    warnDeprecatedCommand("harnessdeck scan", "harnessdeck project scan");
     await handleScanCommand(path, opts);
   });
 
@@ -702,7 +702,7 @@ program
       presetName: string,
       opts: { project: string; platform?: string; dryRun?: boolean },
     ) => {
-      warnDeprecatedCommand("skilldeck apply", "skilldeck project apply");
+      warnDeprecatedCommand("harnessdeck apply", "harnessdeck project apply");
       await handleApplyCommand(presetName, opts);
     },
   );
@@ -711,7 +711,7 @@ program
   .command("history", { hidden: true })
   .option("--project <path>", "Project directory", ".")
   .action((opts: { project: string }) => {
-    warnDeprecatedCommand("skilldeck history", "skilldeck project history");
+    warnDeprecatedCommand("harnessdeck history", "harnessdeck project history");
     handleHistoryCommand(opts);
   });
 
@@ -719,7 +719,7 @@ program
   .command("revert", { hidden: true })
   .argument("[snapshot-id]", "Snapshot ID to revert to")
   .action((snapshotId?: string) => {
-    warnDeprecatedCommand("skilldeck revert", "skilldeck project revert");
+    warnDeprecatedCommand("harnessdeck revert", "harnessdeck project revert");
     handleRevertCommand(snapshotId);
   });
 
@@ -727,7 +727,7 @@ program
   .command("status", { hidden: true })
   .argument("[path]", "Project directory", ".")
   .action((path: string) => {
-    warnDeprecatedCommand("skilldeck status", "skilldeck project status");
+    warnDeprecatedCommand("harnessdeck status", "harnessdeck project status");
     handleProjectStatusCommand(path);
   });
 
@@ -736,7 +736,7 @@ program
   .argument("<preset>", "Preset name or ID")
   .option("-f, --file <path>", "Output file path")
   .action((presetName: string, opts: { file?: string }) => {
-    warnDeprecatedCommand("skilldeck export", "skilldeck preset export");
+    warnDeprecatedCommand("harnessdeck export", "harnessdeck preset export");
     handlePresetExportCommand(presetName, opts);
   });
 
@@ -744,14 +744,14 @@ program
   .command("import", { hidden: true })
   .argument("<file>", "JSON bundle file to import")
   .action((file: string) => {
-    warnDeprecatedCommand("skilldeck import", "skilldeck preset import");
+    warnDeprecatedCommand("harnessdeck import", "harnessdeck preset import");
     handlePresetImportCommand(file);
   });
 
 program
   .command("platforms", { hidden: true })
   .action(() => {
-    warnDeprecatedCommand("skilldeck platforms", "skilldeck platform list");
+    warnDeprecatedCommand("harnessdeck platforms", "harnessdeck platform list");
     handlePlatformListCommand();
   });
 
