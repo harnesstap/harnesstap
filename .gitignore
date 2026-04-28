@@ -48,3 +48,6 @@ temp/
 
 # scratchpad
 scratchpad.md
+
+#workspaces
+*.code-workspace
