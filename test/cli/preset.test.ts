@@ -35,6 +35,7 @@ describe("CLI preset", () => {
       const presetShow = await runCli(["preset", "show", "team"]);
       expect(presetShow.stdout).toContain("team");
       expect(presetShow.stdout).toContain("shared-skill");
+      expect(presetShow.stdout).toContain(resource.id);
 
       await runCli(["preset", "remove", "team", resource.id]);
       const teamPreset = presetModel.getPreset("team");
