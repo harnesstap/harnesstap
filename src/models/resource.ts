@@ -14,12 +14,50 @@ interface ResourceRow {
   updated_at: string;
 }
 
+export type ResourceLookupResult =
+  | { status: "found"; resource: Resource }
+  | { status: "not_found" }
+  | { status: "ambiguous"; matches: Resource[] };
+
 function rowToResource(row: ResourceRow): Resource {
   return {
     ...row,
     type: row.type as ResourceType,
     metadata: JSON.parse(row.metadata) as ResourceMetadata,
   };
+}
+
+export function resolveResource(nameOrId: string): ResourceLookupResult {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM resources WHERE id = ?").get(nameOrId) as
+    | ResourceRow
+    | undefined;
+
+  if (row) {
+    return { status: "found", resource: rowToResource(row) };
+  }
+
+  const nameRows = db
+    .prepare("SELECT * FROM resources WHERE name = ? ORDER BY created_at DESC")
+    .all(nameOrId) as ResourceRow[];
+
+  if (nameRows.length === 0) {
+    return { status: "not_found" };
+  }
+
+  if (nameRows.length > 1) {
+    return {
+      status: "ambiguous",
+      matches: nameRows.map(rowToResource),
+    };
+  }
+
+  const [nameRow] = nameRows;
+  if (!nameRow) {
+    return { status: "not_found" };
+  }
+
+  return { status: "found", resource: rowToResource(nameRow) };
 }
 
 export function createResource(
@@ -47,12 +85,9 @@ export function createResource(
   return { ...input, id, created_at: now, updated_at: now };
 }
 
-export function getResource(id: string): Resource | undefined {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM resources WHERE id = ?").get(id) as
-    | ResourceRow
-    | undefined;
-  return row ? rowToResource(row) : undefined;
+export function getResource(nameOrId: string): Resource | undefined {
+  const result = resolveResource(nameOrId);
+  return result.status === "found" ? result.resource : undefined;
 }
 
 export function listResources(filters?: {
@@ -81,10 +116,15 @@ export function listResources(filters?: {
 }
 
 export function updateResource(
-  id: string,
+  nameOrId: string,
   input: Partial<Pick<Resource, "name" | "description" | "content" | "metadata">>,
 ): Resource | undefined {
   const db = getDb();
+  const result = resolveResource(nameOrId);
+  if (result.status !== "found") {
+    return undefined;
+  }
+  const resource = result.resource;
   const sets: string[] = [];
   const params: unknown[] = [];
 
@@ -105,18 +145,22 @@ export function updateResource(
     params.push(JSON.stringify(input.metadata));
   }
 
-  if (sets.length === 0) return getResource(id);
+  if (sets.length === 0) return resource;
 
   sets.push("updated_at = ?");
   params.push(new Date().toISOString());
-  params.push(id);
+  params.push(resource.id);
 
   db.prepare(`UPDATE resources SET ${sets.join(", ")} WHERE id = ?`).run(...params);
-  return getResource(id);
+  return getResource(resource.id);
 }
 
-export function deleteResource(id: string): boolean {
+export function deleteResource(nameOrId: string): boolean {
   const db = getDb();
-  const result = db.prepare("DELETE FROM resources WHERE id = ?").run(id);
-  return result.changes > 0;
+  const result = resolveResource(nameOrId);
+  if (result.status !== "found") {
+    return false;
+  }
+  const deleteResult = db.prepare("DELETE FROM resources WHERE id = ?").run(result.resource.id);
+  return deleteResult.changes > 0;
 }

@@ -21,8 +21,8 @@ import {
 import { exportToFile, importFromFile } from "./services/exporter.js";
 import {
   listResources,
-  getResource,
   deleteResource,
+  resolveResource,
 } from "./models/resource.js";
 import {
   createPreset,
@@ -492,7 +492,7 @@ presetCmd
     log.info(`${preset.name} — ${preset.description}`);
     const resources = getPresetResources(preset.id);
     for (const r of resources) {
-      log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id.slice(0, 8)}…)`);
+      log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id})`);
     }
   });
 
@@ -581,21 +581,29 @@ resourceCmd
       return;
     }
     for (const r of resources) {
-      log.info(`${r.id.slice(0, 8)}… ${r.type.padEnd(14)} ${r.name}`);
+      log.info(`${r.id} ${r.type.padEnd(14)} ${r.name}`);
     }
   });
 
 resourceCmd
   .command("show")
-  .argument("<id>", "Resource ID")
-  .action((id: string) => {
+  .argument("<resource>", "Resource name or ID")
+  .action((resource: string) => {
     const db = getDb();
     initializeSchema(db);
-    const r = getResource(id);
-    if (!r) {
-      log.error(`Resource not found: ${id}`);
+    const result = resolveResource(resource);
+    if (result.status === "not_found") {
+      log.error(`Resource not found: ${resource}`);
       return;
     }
+    if (result.status === "ambiguous") {
+      log.error(`Ambiguous resource name: ${resource}`);
+      for (const match of result.matches) {
+        log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+      }
+      return;
+    }
+    const r = result.resource;
     console.log(`Type:        ${r.type}`);
     console.log(`Name:        ${r.name}`);
     console.log(`Description: ${r.description}`);
@@ -607,14 +615,26 @@ resourceCmd
 
 resourceCmd
   .command("delete")
-  .argument("<id>", "Resource ID")
-  .action((id: string) => {
+  .argument("<resource>", "Resource name or ID")
+  .action((resource: string) => {
     const db = getDb();
     initializeSchema(db);
-    if (deleteResource(id)) {
-      log.success(`Deleted resource: ${id}`);
+    const result = resolveResource(resource);
+    if (result.status === "not_found") {
+      log.error(`Resource not found: ${resource}`);
+      return;
+    }
+    if (result.status === "ambiguous") {
+      log.error(`Ambiguous resource name: ${resource}`);
+      for (const match of result.matches) {
+        log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+      }
+      return;
+    }
+    if (deleteResource(result.resource.id)) {
+      log.success(`Deleted resource: ${result.resource.name} (${result.resource.id})`);
     } else {
-      log.error(`Resource not found: ${id}`);
+      log.error(`Resource not found: ${resource}`);
     }
   });
 
