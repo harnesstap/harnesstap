@@ -11,6 +11,8 @@ import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import type { PlatformPaths, PlatformSerializer, Resource } from "../types.js";
 import { createResource } from "../models/resource.js";
 import { listResources } from "../models/resource.js";
+import { upsertProjectPluginState } from "../models/plugin.js";
+import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
 
 // ── Serializer factory ─────────────────────────────────────────────────
 
@@ -214,6 +216,33 @@ export async function scanAndPersist(
 ): Promise<Resource[]> {
   const results = await scanProject(projectRoot, platformFilter);
   return persistScanResults(results).resources;
+}
+
+/** Persist Claude Code plugin inventory for a registered project after a scan including that platform. */
+export async function persistClaudePluginInventoryForProject(opts: {
+  projectRoot: string;
+  projectId: string;
+  scannedPlatformIds: readonly string[];
+  homeRoot?: string;
+}): Promise<{
+  scanned_at: string;
+  committed_count: number;
+  effective_count: number;
+} | null> {
+  if (!opts.scannedPlatformIds.includes("claude-code")) {
+    return null;
+  }
+  const root = opts.homeRoot ?? resolveHomeRoot();
+  const inventory = await scanClaudePluginInventory({
+    projectRoot: opts.projectRoot,
+    homeRoot: root,
+  });
+  upsertProjectPluginState(opts.projectId, inventory);
+  return {
+    scanned_at: inventory.scanned_at,
+    committed_count: inventory.committed.length,
+    effective_count: inventory.effective.length,
+  };
 }
 
 export async function scanAndPersistHomeDefaults(

@@ -13,6 +13,7 @@ import {
   scanProject,
   detectPlatforms,
   scanAndPersistHomeDefaults,
+  persistClaudePluginInventoryForProject,
 } from "./services/scanner.js";
 import {
   generateFiles,
@@ -47,9 +48,19 @@ import {
 } from "./models/snapshot.js";
 import { getAllPlatforms } from "./platforms/registry.js";
 import { seedBuiltInPresets } from "./services/seed-presets.js";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
+import {
+  checkPlugins,
+  listPlugins,
+  refreshPluginSources,
+  updatePlugins,
+} from "./services/plugin-lifecycle.js";
+import { getProjectPluginState } from "./models/plugin.js";
+import type { PluginScope } from "./plugins/types.js";
+import { parseOutputFormat, printJson } from "./utils/output-format.js";
 
 const program = new Command();
 
@@ -149,6 +160,7 @@ async function handleScanCommand(
     return;
   }
   log.info(`Detected platforms: ${detected.join(", ")}`);
+  const scannedPlatformIds = opts.platform ? [opts.platform] : detected;
 
   if (opts.dryRun) {
     log.dim("(dry run — not persisting to database)");
@@ -168,6 +180,26 @@ async function handleScanCommand(
   const resources = await scanAndPersist(projectRoot, opts.platform);
   log.success(`Imported ${resources.length} resources`);
 
+  try {
+    const pluginSummary = await listPlugins({
+      projectRoot,
+      homeRoot: homedir(),
+      platformIds: parsePlatformFilter(opts.platform),
+    });
+    if (pluginSummary.installs.length > 0) {
+      const check = await checkPlugins({
+        projectRoot,
+        homeRoot: homedir(),
+        platformIds: parsePlatformFilter(opts.platform),
+      });
+      log.info(
+        `Plugins: ${formatCount(pluginSummary.installs.length, "installed")} (${formatCount(check.summary.outdated, "outdated")})`,
+      );
+    }
+  } catch {
+    // Plugin scan is best-effort during project scan
+  }
+
   for (const resource of resources) {
     log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
   }
@@ -179,12 +211,28 @@ async function handleScanCommand(
 
   const normalized = normalizeGitUrl(gitOrigin);
   const name = projectNameFromUrl(gitOrigin);
-  upsertProject({
+  const registered = upsertProject({
     git_origin: normalized,
     name,
     local_path: projectRoot,
   });
   log.info(`Project registered: ${name} (${normalized})`);
+
+  try {
+    const inventorySummary = await persistClaudePluginInventoryForProject({
+      projectRoot,
+      projectId: registered.id,
+      scannedPlatformIds,
+      homeRoot: homedir(),
+    });
+    if (inventorySummary) {
+      log.info(
+        `Plugins (claude-code): ${inventorySummary.committed_count} committed, ${inventorySummary.effective_count} effective`,
+      );
+    }
+  } catch {
+    // plugin inventory persistence is best-effort during project scan
+  }
 }
 
 async function handleApplyCommand(
@@ -353,30 +401,214 @@ function handlePlatformListCommand(): void {
   }
 }
 
-function handleProjectStatusCommand(path: string): void {
+function parsePlatformFilter(platform?: string): string[] | undefined {
+  return platform?.split(",").map((p) => p.trim()).filter(Boolean);
+}
+
+function parseScopeFilter(scope?: string): PluginScope[] | undefined {
+  if (!scope) return undefined;
+  return scope.split(",").map((s) => s.trim()) as PluginScope[];
+}
+
+function pluginLifecycleBase(path: string, opts: { platform?: string }) {
+  return {
+    projectRoot: resolve(path),
+    homeRoot: homedir(),
+    platformIds: parsePlatformFilter(opts.platform),
+  };
+}
+
+async function handlePluginListCommand(
+  path: string,
+  opts: { platform?: string; format?: string },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const result = await listPlugins(pluginLifecycleBase(path, opts));
+  if (format === "json") {
+    printJson(result);
+    return;
+  }
+  if (result.installs.length === 0) {
+    log.dim("No plugins found.");
+  }
+  for (const install of result.installs) {
+    log.info(
+      `${install.platformId.padEnd(12)} ${install.ref.padEnd(36)} ${install.version.padEnd(12)} ${install.scope}`,
+    );
+  }
+  if (result.unsupported_platforms.length > 0) {
+    log.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
+  }
+}
+
+async function handlePluginCheckCommand(
+  path: string,
+  opts: { platform?: string; scope?: string; refresh?: boolean; format?: string },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const report = await checkPlugins({
+    ...pluginLifecycleBase(path, opts),
+    scopes: parseScopeFilter(opts.scope),
+    forceRefresh: opts.refresh ?? false,
+  });
+  if (format === "json") {
+    printJson(report);
+    if (report.summary.outdated > 0) process.exitCode = 1;
+    return;
+  }
+  log.info(
+    `Plugins: ${report.summary.outdated} outdated, ${report.summary.current} current, ${report.summary.unknown} unknown`,
+  );
+  for (const row of report.results) {
+    const arrow =
+      row.status === "outdated" && row.latestVersion
+        ? ` → ${row.latestVersion}`
+        : "";
+    log.info(
+      `${row.platformId.padEnd(12)} ${row.ref.padEnd(36)} ${row.version}${arrow}  ${row.scope.padEnd(8)} ${row.status}`,
+    );
+  }
+  if (report.unsupported_platforms.length > 0) {
+    log.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
+  }
+  if (report.summary.outdated > 0) process.exitCode = 1;
+}
+
+async function handlePluginUpdateCommand(
+  ref: string | undefined,
+  opts: {
+    platform?: string;
+    scope?: string;
+    all?: boolean;
+    yes?: boolean;
+    format?: string;
+  },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const report = await updatePlugins({
+    ...pluginLifecycleBase(".", opts),
+    ref,
+    all: opts.all,
+    yes: opts.yes,
+    scopes: parseScopeFilter(opts.scope),
+  });
+  if (format === "json") {
+    printJson(report);
+    if (report.summary.failed > 0) process.exitCode = 1;
+    return;
+  }
+  for (const row of report.results) {
+    log.info(`${row.ref}: ${row.status} — ${row.message}`);
+  }
+  if (report.summary.failed > 0) process.exitCode = 1;
+}
+
+async function handlePluginRefreshCommand(
+  opts: { platform?: string; format?: string },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
+  if (format === "json") {
+    printJson(result);
+    return;
+  }
+  log.success(`Refreshed ${result.refreshed_sources.length} source(s)`);
+  for (const source of result.refreshed_sources) {
+    log.dim(`  ${source}`);
+  }
+}
+
+async function handleProjectStatusCommand(
+  path: string,
+  opts: { format?: string },
+): Promise<void> {
   const db = getDb();
   initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
   const gitOrigin = getGitOrigin(projectRoot);
   const detected = detectPlatforms(projectRoot);
 
-  console.log(`Project root:  ${projectRoot}`);
-  console.log(`Git origin:    ${gitOrigin ?? "(none)"}`);
-  console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
-
   if (!gitOrigin) {
+    if (format === "json") {
+      printJson({
+        project_root: projectRoot,
+        git_origin: null,
+        platforms: detected,
+      });
+      return;
+    }
+    console.log(`Project root:  ${projectRoot}`);
+    console.log(`Git origin:    (none)`);
+    console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
     return;
   }
 
-  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  const normalizedOrigin = normalizeGitUrl(gitOrigin);
+  const project = getProjectByOrigin(normalizedOrigin);
+  const presets = project ? getProjectPresets(project.id) : [];
+  const snapshots = project ? listSnapshots(project.id) : [];
+
+  if (format === "json") {
+    const inventory =
+      project && detected.includes("claude-code")
+        ? getProjectPluginState(project.id)
+        : null;
+    const payload: Record<string, unknown> = {
+      project_root: projectRoot,
+      git_origin: normalizedOrigin,
+      platforms: detected,
+    };
+    if (project) {
+      payload.applied_presets = presets.length;
+      payload.snapshots = snapshots.length;
+    }
+    if (detected.includes("claude-code")) {
+      payload.claude_code = {
+        plugins: inventory
+          ? {
+              scanned_at: inventory.scanned_at,
+              committed_count: inventory.committed.length,
+              effective_count: inventory.effective.length,
+            }
+          : null,
+      };
+    }
+    printJson(payload);
+    return;
+  }
+
+  console.log(`Project root:  ${projectRoot}`);
+  console.log(`Git origin:    ${gitOrigin}`);
+  console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
+
   if (!project) {
     return;
   }
 
-  const presets = getProjectPresets(project.id);
-  const snapshots = listSnapshots(project.id);
   console.log(`Applied presets: ${presets.length}`);
   console.log(`Snapshots:       ${snapshots.length}`);
+
+  if (detected.includes("claude-code")) {
+    const inventory = getProjectPluginState(project.id);
+    if (inventory) {
+      console.log(
+        `Plugins (claude-code): ${inventory.committed.length} committed, ${inventory.effective.length} effective`,
+      );
+    }
+  }
+
+  try {
+    const plugins = await listPlugins({ projectRoot, homeRoot: homedir() });
+    if (plugins.installs.length > 0) {
+      const check = await checkPlugins({ projectRoot, homeRoot: homedir() });
+      console.log(
+        `Plugins:         ${plugins.installs.length} installed (${check.summary.outdated} outdated)`,
+      );
+    }
+  } catch {
+    // best-effort
+  }
 }
 
 // ── init ────────────────────────────────────────────────────────────────
@@ -685,8 +917,11 @@ projectCmd
 projectCmd
   .command("status")
   .argument("[path]", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
   .description("Show current project status")
-  .action(handleProjectStatusCommand);
+  .action(async (path: string, opts: { format?: string }) => {
+    await handleProjectStatusCommand(path, opts);
+  });
 
 // ── platform ────────────────────────────────────────────────────────────
 
@@ -703,6 +938,50 @@ platformCmd
     "List all supported platforms (e.g., Claude Code, Cursor, Codex)",
   )
   .action(handlePlatformListCommand);
+
+// ── plugin ──────────────────────────────────────────────────────────────
+
+const pluginCmd = program
+  .command("plugin")
+  .description("List, check, and update harness plugins across platforms");
+pluginCmd.helpCommand(false);
+
+pluginCmd
+  .command("list")
+  .alias("ls")
+  .argument("[path]", "Project directory", ".")
+  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List installed plugins")
+  .action(handlePluginListCommand);
+
+pluginCmd
+  .command("check")
+  .argument("[path]", "Project directory", ".")
+  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
+  .option("--scope <scopes>", "Comma-separated scopes: user,project,local,managed")
+  .option("--refresh", "Force refresh marketplace/git metadata before check")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Check for outdated plugins")
+  .action(handlePluginCheckCommand);
+
+pluginCmd
+  .command("update")
+  .argument("[ref]", "Plugin ref (e.g. superpowers@claude-plugins-official)")
+  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
+  .option("--scope <scopes>", "Comma-separated scopes")
+  .option("--all", "Update all outdated plugins")
+  .option("--yes", "Confirm managed-scope updates")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Update one or more plugins")
+  .action(handlePluginUpdateCommand);
+
+pluginCmd
+  .command("refresh")
+  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Force refresh plugin source metadata")
+  .action(handlePluginRefreshCommand);
 
 // ── hidden compatibility aliases ────────────────────────────────────────
 
@@ -751,9 +1030,10 @@ program
 program
   .command("status", { hidden: true })
   .argument("[path]", "Project directory", ".")
-  .action((path: string) => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (path: string, opts: { format?: string }) => {
     warnDeprecatedCommand("harnessdeck status", "harnessdeck project status");
-    handleProjectStatusCommand(path);
+    await handleProjectStatusCommand(path, opts);
   });
 
 program
