@@ -165,6 +165,62 @@ harnessdeck preset export my-setup --file ./my-setup.harnessdeck.json
 harnessdeck preset import ./my-setup.harnessdeck.json
 ```
 
+## Plugin inventory
+
+For Claude Code, **committed** plugins are those declared in the project’s
+`.claude/settings.json` (what you commit). **Effective** plugins are the merged
+result of user, project, and local settings—the configuration Claude actually
+loads.
+
+```bash
+harnessdeck plugin list
+harnessdeck plugin show formatter@my-marketplace
+harnessdeck plugin installed
+harnessdeck preset add-plugin my-setup formatter@my-marketplace --version "2.1.0"
+harnessdeck preset remove-plugin my-setup formatter@my-marketplace
+harnessdeck preset export my-setup --file ./team.harnessdeck.json --embed-plugins
+harnessdeck project apply my-setup --project . --strict-plugin-versions
+```
+
+On `project apply`, harnessdeck compares preset plugin pins to installed
+versions: it **warns** on mismatch by default; pass **`--strict-plugin-versions`**
+to fail the command (exit code 2), or **`--ignore-plugin-versions`** to skip
+validation.
+
+Use **`harnessdeck -V`** or **`--harnessdeck-version`** for the harnessdeck CLI
+version. The **`--version`** on `preset add-plugin` is the **plugin semver pin
+or range**, not the global version flag.
+
+Portable bundles that record plugin pins or embedded trees (for example from `preset export --embed-plugins`) use schema **`urn:harnessdeck:bundle:v2`**; see [Bundle Format v2](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format-v2) in the design spec.
+
+## Plugin check and update
+
+Implementation notes and rollout for check/update live in
+[docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md).
+
+List, check, and update plugins for harnesses that expose a discoverable plugin
+layout (Claude Code and Cursor today; more harnesses over time).
+
+```bash
+harnessdeck plugin list
+harnessdeck plugin check --format json
+harnessdeck plugin update --all
+harnessdeck plugin refresh
+```
+
+Configure how often remote metadata is refreshed in `~/.harnessdeck/config.json`:
+
+```json
+{
+  "plugins": {
+    "refreshMaxAgeHours": 24
+  }
+}
+```
+
+Use `--refresh` on `plugin check` to force a marketplace/git refresh. Without it,
+harnessdeck uses cached metadata unless it is older than `refreshMaxAgeHours`.
+
 ## Supported platforms
 
 `harnessdeck` has dedicated serializers for Claude Code, Codex, and Cursor. It
@@ -181,8 +237,8 @@ harnessdeck platform list
 ## Where data lives
 
 `harnessdeck` stores its operational state in `~/.harnessdeck/harnessdeck.db`. The
-database holds resources, presets, tracked projects, and snapshots. The current
-implementation does not yet have a separate user-editable config file.
+database holds resources, presets, tracked projects, and snapshots. Optional
+settings (such as plugin refresh cache age) live in `~/.harnessdeck/config.json`.
 
 When you run `harnessdeck init`, the CLI also checks registered platform default
 folders in your home directory, such as `~/.claude/` and `~/.codex/`, and
