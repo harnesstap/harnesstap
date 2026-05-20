@@ -1,0 +1,5 @@
+{
+  "name": "user-only",
+  "version": "3.0.0",
+  "description": "User-scoped plugin"
+}
