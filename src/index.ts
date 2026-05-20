@@ -388,12 +388,12 @@ function handleRevertCommand(snapshotId?: string): void {
 
 function handlePresetExportCommand(
   presetName: string,
-  opts: { file?: string },
+  opts: { file?: string; embedPlugins?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
   const filePath = opts.file ?? `${presetName}.harnessdeck.json`;
-  exportToFile(presetName, filePath);
+  exportToFile(presetName, filePath, { embedPlugins: opts.embedPlugins });
   log.success(`Exported to ${filePath}`);
 }
 
@@ -1012,6 +1012,10 @@ presetCmd
   .command("export")
   .argument("<preset>", "Preset name or ID")
   .option("-f, --file <path>", "Output file path")
+  .option(
+    "--embed-plugins",
+    "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
+  )
   .description("Export a preset as a shareable JSON bundle")
   .action(handlePresetExportCommand);
 
@@ -1291,7 +1295,11 @@ program
   .command("export", { hidden: true })
   .argument("<preset>", "Preset name or ID")
   .option("-f, --file <path>", "Output file path")
-  .action((presetName: string, opts: { file?: string }) => {
+  .option(
+    "--embed-plugins",
+    "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
+  )
+  .action((presetName: string, opts: { file?: string; embedPlugins?: boolean }) => {
     warnDeprecatedCommand("harnessdeck export", "harnessdeck preset export");
     handlePresetExportCommand(presetName, opts);
   });

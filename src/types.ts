@@ -213,6 +213,11 @@ export interface PlatformDefinition {
 
 // ── Export/import bundle ────────────────────────────────────────────────
 
+export const BUNDLE_SCHEMA_V1 = "urn:harnessdeck:bundle:v1" as const;
+export const BUNDLE_VERSION_V1 = 1 as const;
+export const BUNDLE_SCHEMA_V2 = "urn:harnessdeck:bundle:v2" as const;
+export const BUNDLE_VERSION_V2 = 2 as const;
+
 export interface ExportBundle {
   $schema: string;
   version: number;
@@ -221,6 +226,33 @@ export interface ExportBundle {
   /** Claude Code marketplace and plugin configuration for this preset. */
   claude?: ClaudePresetConfig;
 }
+
+/** Plugin pin carried in v2 bundles (non-embedded). */
+export interface ExportBundlePresetPluginPin {
+  ref: string;
+  version_constraint: string;
+}
+
+/** Plugin tree inlined in v2 bundles. */
+export interface ExportBundleEmbeddedPlugin {
+  ref: string;
+  version_constraint: string;
+  /** Logical directory key for imports that are not `./...` project-relative refs. */
+  root: string;
+  /** Paths relative to the plugin root, POSIX-style separators. */
+  files: Record<string, string>;
+}
+
+export interface ExportBundleV2 extends Omit<ExportBundle, "$schema" | "version"> {
+  $schema: typeof BUNDLE_SCHEMA_V2;
+  version: typeof BUNDLE_VERSION_V2;
+  plugins: ExportBundlePresetPluginPin[];
+  embedded_plugins: ExportBundleEmbeddedPlugin[];
+}
+
+export type AnyExportBundle =
+  | (ExportBundle & { version: typeof BUNDLE_VERSION_V1 })
+  | ExportBundleV2;
 
 // ── Serializer interface ────────────────────────────────────────────────
 

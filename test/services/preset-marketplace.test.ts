@@ -27,6 +27,7 @@ describe("preset marketplace configuration", () => {
 
       const bundle = exporter.exportPreset(preset.id);
 
+      expect(bundle.version).toBe(2);
       expect(bundle.claude?.marketplaces?.["team-plugins"]).toEqual({
         source: { source: "github", repo: "org/plugins" },
       });
