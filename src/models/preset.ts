@@ -35,6 +35,47 @@ function serializeClaudeConfig(config: ClaudePresetConfig | undefined): string {
   return JSON.stringify(config);
 }
 
+function writePresetClaudeConfig(
+  presetId: string,
+  config: ClaudePresetConfig,
+): void {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE presets SET claude_config = ?, updated_at = ? WHERE id = ?`,
+  ).run(serializeClaudeConfig(config), now, presetId);
+}
+
+/**
+ * If the preset already carries Claude config, keep `claude.plugins` in sync with
+ * preset plugin pins (Claude uses `id` as the plugin ref).
+ */
+export function syncClaudePresetPluginsAfterAdd(
+  preset: Preset,
+  ref: string,
+  versionConstraint: string,
+): void {
+  if (!preset.claude) return;
+  const plugins = [...(preset.claude.plugins ?? [])];
+  const idx = plugins.findIndex((p) => p.id === ref);
+  const entry = { id: ref, version: versionConstraint };
+  if (idx >= 0) {
+    plugins[idx] = { ...plugins[idx], ...entry };
+  } else {
+    plugins.push(entry);
+  }
+  writePresetClaudeConfig(preset.id, { ...preset.claude, plugins });
+}
+
+export function syncClaudePresetPluginsAfterRemove(
+  preset: Preset,
+  ref: string,
+): void {
+  if (!preset.claude) return;
+  const plugins = (preset.claude.plugins ?? []).filter((p) => p.id !== ref);
+  writePresetClaudeConfig(preset.id, { ...preset.claude, plugins });
+}
+
 interface ResourceRow {
   id: string;
   type: string;

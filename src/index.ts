@@ -33,6 +33,8 @@ import {
   addResourceToPreset,
   removeResourceFromPreset,
   getPresetResources,
+  syncClaudePresetPluginsAfterAdd,
+  syncClaudePresetPluginsAfterRemove,
 } from "./models/preset.js";
 import {
   upsertProject,
@@ -62,9 +64,16 @@ import {
   refreshPluginSources,
   updatePlugins,
 } from "./services/plugin-lifecycle.js";
-import { getProjectPluginState, upsertProjectPluginState } from "./models/plugin.js";
+import {
+  addPluginToPreset,
+  getProjectPluginState,
+  listPresetPlugins,
+  removePluginFromPreset,
+  upsertProjectPluginState,
+} from "./models/plugin.js";
 import type { PluginScope } from "./plugins/types.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
+import { parseVersionConstraint } from "./services/plugin-constraints.js";
 
 const program = new Command();
 
@@ -147,7 +156,7 @@ program
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
-  .version("0.1.0")
+  .version("0.1.0", "-V, --harnessdeck-version")
   .helpCommand(false);
 
 async function handleScanCommand(
@@ -402,6 +411,48 @@ function handlePlatformListCommand(): void {
   for (const platform of platforms) {
     const features = [...platform.supports].join(", ");
     log.info(`${platform.id.padEnd(20)} ${platform.name.padEnd(20)} [${features}]`);
+  }
+}
+
+function handlePresetShowCommand(
+  name: string,
+  opts: { format?: string },
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const preset = getPreset(name);
+  if (!preset) {
+    log.error(`Preset not found: ${name}`);
+    return;
+  }
+  const resources = getPresetResources(preset.id);
+  const plugins = listPresetPlugins(preset.id);
+
+  if (format === "json") {
+    printJson({
+      id: preset.id,
+      name: preset.name,
+      description: preset.description,
+      tags: preset.tags,
+      ...(preset.claude ? { claude: preset.claude } : {}),
+      created_at: preset.created_at,
+      updated_at: preset.updated_at,
+      resources,
+      plugins,
+    });
+    return;
+  }
+
+  log.info(`${preset.name} — ${preset.description}`);
+  for (const r of resources) {
+    log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id})`);
+  }
+  if (plugins.length > 0) {
+    console.log(chalk.bold("Plugins"));
+    for (const p of plugins) {
+      log.dim(`  ${p.ref.padEnd(42)} ${p.version_constraint}`);
+    }
   }
 }
 
@@ -852,19 +903,10 @@ presetCmd
 presetCmd
   .command("show")
   .argument("<name>", "Preset name or ID")
-  .action((name: string) => {
-    const db = getDb();
-    initializeSchema(db);
-    const preset = getPreset(name);
-    if (!preset) {
-      log.error(`Preset not found: ${name}`);
-      return;
-    }
-    log.info(`${preset.name} — ${preset.description}`);
-    const resources = getPresetResources(preset.id);
-    for (const r of resources) {
-      log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id})`);
-    }
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show preset details, resources, and plugin pins")
+  .action((name: string, opts: { format?: string }) => {
+    handlePresetShowCommand(name, opts);
   });
 
 presetCmd
@@ -897,6 +939,60 @@ presetCmd
     }
     removeResourceFromPreset(preset.id, resourceId);
     log.success(`Removed resource ${resourceId} from preset ${preset.name}`);
+  });
+
+presetCmd
+  .command("add-plugin")
+  .argument("<preset>", "Preset name or ID")
+  .argument("<ref>", "Plugin ref (e.g. formatter@marketplace)")
+  .requiredOption(
+    "--version <constraint>",
+    "Version constraint (semver version or valid range)",
+  )
+  .description("Pin a plugin version constraint on a preset")
+  .action(
+    (
+      presetName: string,
+      ref: string,
+      opts: { version: string },
+    ) => {
+      const db = getDb();
+      initializeSchema(db);
+      const preset = getPreset(presetName);
+      if (!preset) {
+        log.error(`Preset not found: ${presetName}`);
+        return;
+      }
+      try {
+        parseVersionConstraint(opts.version);
+      } catch (err) {
+        log.error(err instanceof Error ? err.message : String(err));
+        return;
+      }
+      addPluginToPreset(preset.id, ref, opts.version);
+      syncClaudePresetPluginsAfterAdd(preset, ref, opts.version);
+      log.success(
+        `Added plugin pin ${ref} (${opts.version}) to preset ${preset.name}`,
+      );
+    },
+  );
+
+presetCmd
+  .command("remove-plugin")
+  .argument("<preset>", "Preset name or ID")
+  .argument("<ref>", "Plugin ref to unpin")
+  .description("Remove a plugin pin from a preset")
+  .action((presetName: string, ref: string) => {
+    const db = getDb();
+    initializeSchema(db);
+    const preset = getPreset(presetName);
+    if (!preset) {
+      log.error(`Preset not found: ${presetName}`);
+      return;
+    }
+    removePluginFromPreset(preset.id, ref);
+    syncClaudePresetPluginsAfterRemove(preset, ref);
+    log.success(`Removed plugin pin ${ref} from preset ${preset.name}`);
   });
 
 presetCmd
