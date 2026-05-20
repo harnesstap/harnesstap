@@ -126,6 +126,23 @@ function buildInstall(
   };
 }
 
+/** Scopes whose settings files explicitly list this plugin ref (may include multiple layers). */
+export function declaringScopesForClaudePlugin(
+  ref: string,
+  opts: ScanClaudePluginInventoryOptions,
+): PluginScope[] {
+  const { projectRoot, homeRoot } = opts;
+  const userMap = readSettingsEnabledMap(homeRoot, "settings.json");
+  const projectMap = readSettingsEnabledMap(projectRoot, "settings.json");
+  const localMap = readSettingsEnabledMap(projectRoot, "settings.local.json");
+
+  const scopes: PluginScope[] = [];
+  if (userMap.has(ref)) scopes.push("user");
+  if (projectMap.has(ref)) scopes.push("project");
+  if (localMap.has(ref)) scopes.push("local");
+  return scopes;
+}
+
 export async function scanClaudePluginInventory(
   opts: ScanClaudePluginInventoryOptions,
 ): Promise<ProjectPluginInventory> {

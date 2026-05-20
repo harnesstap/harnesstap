@@ -70,4 +70,75 @@ describe("CLI plugin inventory (scan + project status)", () => {
       await context.cleanup();
     }
   });
+
+  it("plugin list --format json returns committed and effective arrays", async () => {
+    const context = await createTestContext("cli-plugin-list-json");
+
+    try {
+      cpSync(fixtureProject, context.projectDir, { recursive: true });
+      initGitRepo(
+        context.projectDir,
+        "git@github.com:acme/harnessdeck-plugins-inventory.git",
+      );
+
+      process.env.HOME = fixtureHome;
+
+      await runCli(["init"]);
+      const out = await runCli([
+        "plugin",
+        "list",
+        context.projectDir,
+        "--format",
+        "json",
+      ]);
+      const parsed = JSON.parse(out.stdout) as {
+        scanned_at: string;
+        committed: { ref: string }[];
+        effective: { ref: string }[];
+      };
+      expect(typeof parsed.scanned_at).toBe("string");
+      expect(Array.isArray(parsed.committed)).toBe(true);
+      expect(Array.isArray(parsed.effective)).toBe(true);
+      expect(parsed.committed).toHaveLength(2);
+      expect(parsed.effective).toHaveLength(3);
+      const effectiveRefs = new Set(parsed.effective.map((e) => e.ref));
+      expect(effectiveRefs.has("formatter@acme-marketplace")).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("plugin show formatter@acme-marketplace --format json includes ref and entries", async () => {
+    const context = await createTestContext("cli-plugin-show-json");
+
+    try {
+      cpSync(fixtureProject, context.projectDir, { recursive: true });
+      initGitRepo(
+        context.projectDir,
+        "git@github.com:acme/harnessdeck-plugins-inventory.git",
+      );
+
+      process.env.HOME = fixtureHome;
+
+      await runCli(["init"]);
+      const out = await runCli([
+        "plugin",
+        "show",
+        "formatter@acme-marketplace",
+        context.projectDir,
+        "--format",
+        "json",
+      ]);
+      const parsed = JSON.parse(out.stdout) as {
+        ref: string;
+        entries: Array<{ declared_by_scopes: string[]; ref: string }>;
+      };
+      expect(parsed.ref).toBe("formatter@acme-marketplace");
+      expect(parsed.entries).toHaveLength(1);
+      expect(parsed.entries[0]?.ref).toBe("formatter@acme-marketplace");
+      expect(parsed.entries[0]?.declared_by_scopes).toContain("project");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

@@ -53,12 +53,16 @@ import { resolve } from "node:path";
 import type { Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import {
+  declaringScopesForClaudePlugin,
+  scanClaudePluginInventory,
+} from "./services/claude-plugin-inventory.js";
+import {
   checkPlugins,
   listPlugins,
   refreshPluginSources,
   updatePlugins,
 } from "./services/plugin-lifecycle.js";
-import { getProjectPluginState } from "./models/plugin.js";
+import { getProjectPluginState, upsertProjectPluginState } from "./models/plugin.js";
 import type { PluginScope } from "./plugins/types.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 
@@ -418,7 +422,137 @@ function pluginLifecycleBase(path: string, opts: { platform?: string }) {
   };
 }
 
-async function handlePluginListCommand(
+async function refreshClaudePluginInventoryForCli(
+  path: string,
+): Promise<ReturnType<typeof scanClaudePluginInventory>> {
+  const db = getDb();
+  initializeSchema(db);
+  const projectRoot = resolve(path);
+  const homeRoot = homedir();
+  const inventory = await scanClaudePluginInventory({ projectRoot, homeRoot });
+
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (gitOrigin) {
+    const normalized = normalizeGitUrl(gitOrigin);
+    const project = upsertProject({
+      git_origin: normalized,
+      name: projectNameFromUrl(gitOrigin),
+      local_path: projectRoot,
+    });
+    upsertProjectPluginState(project.id, inventory);
+  }
+
+  return inventory;
+}
+
+function sortByRef(installs: { ref: string }[]): void {
+  installs.sort((a, b) => a.ref.localeCompare(b.ref));
+}
+
+async function handlePluginInventoryListCommand(
+  path: string,
+  opts: { format?: string },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const inventory = await refreshClaudePluginInventoryForCli(path);
+
+  if (format === "json") {
+    printJson({
+      scanned_at: inventory.scanned_at,
+      committed: inventory.committed,
+      effective: inventory.effective,
+    });
+    return;
+  }
+
+  const committed = [...inventory.committed];
+  const effective = [...inventory.effective];
+  sortByRef(committed);
+  sortByRef(effective);
+
+  const formatEnabled = (v: boolean) =>
+    v ? chalk.green("yes") : chalk.hex("#6b7280")("no");
+
+  console.log(chalk.bold("Committed"));
+  if (committed.length === 0) {
+    console.log(chalk.hex("#6b7280")("  (none)"));
+  } else {
+    console.log(`  ${"ref".padEnd(42)} ${"version".padEnd(14)} enabled`);
+    for (const row of committed) {
+      console.log(
+        `  ${row.ref.padEnd(42)} ${row.version.padEnd(14)} ${formatEnabled(row.enabled)}`,
+      );
+    }
+  }
+
+  console.log();
+  console.log(chalk.bold("Effective"));
+  if (effective.length === 0) {
+    console.log(chalk.hex("#6b7280")("  (none)"));
+  } else {
+    console.log(`  ${"ref".padEnd(42)} ${"version".padEnd(14)} enabled    scope`);
+    for (const row of effective) {
+      console.log(
+        `  ${row.ref.padEnd(42)} ${row.version.padEnd(14)} ${formatEnabled(row.enabled)}    ${row.scope}`,
+      );
+    }
+  }
+}
+
+async function handlePluginInventoryShowCommand(
+  ref: string,
+  path: string,
+  opts: { format?: string },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const projectRoot = resolve(path);
+  const homeRoot = homedir();
+  const inventory = await refreshClaudePluginInventoryForCli(path);
+  const install = inventory.effective.find((row) => row.ref === ref) ?? null;
+  const declaredScopes = declaringScopesForClaudePlugin(ref, {
+    projectRoot,
+    homeRoot,
+  });
+
+  const entries =
+    install == null
+      ? []
+      : [{ ...install, declared_by_scopes: declaredScopes }];
+
+  if (format === "json") {
+    printJson({ ref, entries });
+    return;
+  }
+
+  console.log(`${chalk.bold("ref:")} ${ref}`);
+  if (declaredScopes.length > 0) {
+    console.log(
+      `${chalk.bold("Declared by scopes:")} ${declaredScopes.join(", ")}`,
+    );
+  } else {
+    console.log(
+      `${chalk.bold("Declared by scopes:")} ${chalk.hex("#6b7280")("(none)")}`,
+    );
+  }
+
+  if (install == null) {
+    console.log(
+      chalk.hex("#f59e0b")("No matching entry in merged effective inventory."),
+    );
+    return;
+  }
+
+  console.log(chalk.bold("Effective install:"));
+  console.log(`  platform: ${install.platformId}`);
+  console.log(`  version:  ${install.version}`);
+  console.log(`  enabled:  ${install.enabled ? chalk.green("yes") : chalk.hex("#6b7280")("no")}`);
+  console.log(`  scope:    ${install.scope}`);
+  if (install.installPath) {
+    console.log(`  path:     ${install.installPath}`);
+  }
+}
+
+async function handlePluginInstalledListCommand(
   path: string,
   opts: { platform?: string; format?: string },
 ): Promise<void> {
@@ -943,17 +1077,38 @@ platformCmd
 
 const pluginCmd = program
   .command("plugin")
-  .description("List, check, and update harness plugins across platforms");
+  .description("Plugin inventory and lifecycle");
 pluginCmd.helpCommand(false);
 
 pluginCmd
   .command("list")
   .alias("ls")
   .argument("[path]", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description(
+    "List Claude Code plugin inventory (project-committed vs merged effective)",
+  )
+  .action(handlePluginInventoryListCommand);
+
+pluginCmd
+  .command("show")
+  .argument("<ref>", "Plugin ref (e.g. formatter@acme-marketplace)")
+  .argument("[path]", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description(
+    "Show merged effective install and settings scopes that declare this ref",
+  )
+  .action(handlePluginInventoryShowCommand);
+
+pluginCmd
+  .command("installed")
+  .argument("[path]", "Project directory", ".")
   .option("-p, --platform <slugs>", "Comma-separated platform slugs")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("List installed plugins")
-  .action(handlePluginListCommand);
+  .description(
+    "List plugins as reported by providers (lifecycle / check-update tooling)",
+  )
+  .action(handlePluginInstalledListCommand);
 
 pluginCmd
   .command("check")
