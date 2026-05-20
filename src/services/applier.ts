@@ -6,7 +6,13 @@ import { CodexSerializer } from "../platforms/codex.js";
 import { OpenCodeSerializer } from "../platforms/opencode.js";
 import { CopilotSerializer } from "../platforms/copilot.js";
 import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
-import type { PlatformSerializer, Resource, SerializedFile } from "../types.js";
+import { applyClaudePresetExtensions } from "../platforms/claude-preset-extensions.js";
+import type {
+  ClaudePresetConfig,
+  PlatformSerializer,
+  Resource,
+  SerializedFile,
+} from "../types.js";
 
 function getSerializer(platformId: string): PlatformSerializer {
   switch (platformId) {
@@ -40,12 +46,16 @@ export async function generateFiles(
   resources: Resource[],
   platforms: string[],
   projectRoot: string,
+  claudeConfig?: ClaudePresetConfig,
 ): Promise<ApplyResult[]> {
   const results: ApplyResult[] = [];
 
   for (const pid of platforms) {
     const serializer = getSerializer(pid);
-    const files = await serializer.serialize(resources, projectRoot);
+    let files = await serializer.serialize(resources, projectRoot);
+    if (pid === "claude-code" && claudeConfig) {
+      files = applyClaudePresetExtensions(files, claudeConfig, projectRoot);
+    }
     results.push({ platformId: pid, files });
   }
 
@@ -73,8 +83,9 @@ export async function applyToProject(
   resources: Resource[],
   platforms: string[],
   projectRoot: string,
+  claudeConfig?: ClaudePresetConfig,
 ): Promise<ApplyResult[]> {
-  const results = await generateFiles(resources, platforms, projectRoot);
+  const results = await generateFiles(resources, platforms, projectRoot, claudeConfig);
 
   for (const result of results) {
     writeFiles(result.files, projectRoot);

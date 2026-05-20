@@ -135,6 +135,31 @@ The repository currently includes `nextjs-fullstack` and `python-fastapi`.
 Presets can move between machines as JSON bundle files. Export strips local-only
 database fields and keeps the portable preset definition plus its resources.
 
+Preset bundles may also include Claude Code marketplace configuration under a
+top-level `claude` key. When you apply such a preset to a project with
+`claude-code`, harnessdeck merges `extraKnownMarketplaces` and `enabledPlugins`
+into `.claude/settings.json`:
+
+```json
+{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "preset": { "name": "team-stack", "description": "...", "tags": [] },
+  "claude": {
+    "marketplaces": {
+      "team-plugins": {
+        "source": { "source": "github", "repo": "org/claude-plugins" },
+        "autoUpdate": true
+      }
+    },
+    "plugins": [
+      { "id": "formatter@team-plugins", "enabled": true, "version": "1.2.0" }
+    ]
+  },
+  "resources": []
+}
+```
+
 ```bash
 harnessdeck preset export my-setup --file ./my-setup.harnessdeck.json
 harnessdeck preset import ./my-setup.harnessdeck.json

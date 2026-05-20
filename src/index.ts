@@ -211,7 +211,12 @@ async function handleApplyCommand(
   }
 
   const resources = getPresetResources(preset.id);
-  const generated = await generateFiles(resources, platforms, projectRoot);
+  const generated = await generateFiles(
+    resources,
+    platforms,
+    projectRoot,
+    preset.claude,
+  );
 
   const gitOrigin = getGitOrigin(projectRoot);
   if (gitOrigin) {

@@ -86,11 +86,39 @@ export interface Resource {
   updated_at: string;
 }
 
+/** Claude Code marketplace source (extraKnownMarketplaces entry). */
+export interface ClaudeMarketplaceSource {
+  source: string;
+  repo?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
+export interface ClaudeMarketplaceEntry {
+  source: ClaudeMarketplaceSource;
+  autoUpdate?: boolean;
+}
+
+/** Plugin reference in a preset (plugin-name@marketplace-name). */
+export interface ClaudePluginEntry {
+  id: string;
+  enabled?: boolean;
+  /** Optional version pin for documentation and future install automation. */
+  version?: string;
+}
+
+/** Claude Code plugin marketplace configuration carried by a preset. */
+export interface ClaudePresetConfig {
+  marketplaces?: Record<string, ClaudeMarketplaceEntry>;
+  plugins?: ClaudePluginEntry[];
+}
+
 export interface Preset {
   id: string;
   name: string;
   description: string;
   tags: string[];
+  claude?: ClaudePresetConfig;
 
   created_at: string;
   updated_at: string;
@@ -190,6 +218,8 @@ export interface ExportBundle {
   version: number;
   preset: Omit<Preset, "id" | "created_at" | "updated_at">;
   resources: Omit<Resource, "id" | "created_at" | "updated_at" | "source">[];
+  /** Claude Code marketplace and plugin configuration for this preset. */
+  claude?: ClaudePresetConfig;
 }
 
 // ── Serializer interface ────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const MIGRATIONS: Record<number, string> = {
   1: `
@@ -69,7 +69,7 @@ const MIGRATIONS: Record<number, string> = {
       version INTEGER NOT NULL
     );
 
-    INSERT INTO schema_version (version) VALUES (${SCHEMA_VERSION});
+    INSERT INTO schema_version (version) VALUES (1);
   `,
 
   2: `
@@ -88,6 +88,10 @@ const MIGRATIONS: Record<number, string> = {
       updated_at              TEXT NOT NULL
     );
   `,
+
+  3: `
+    ALTER TABLE presets ADD COLUMN claude_config TEXT NOT NULL DEFAULT '{}';
+  `,
 };
 
 export function initializeSchema(db: SqliteDatabase): void {
@@ -103,8 +107,16 @@ export function initializeSchema(db: SqliteDatabase): void {
       }
     }
 
-    if (currentVersion > 0) {
+    const hasVersionRow = db
+      .prepare("SELECT version FROM schema_version LIMIT 1")
+      .get() as { version: number } | undefined;
+
+    if (hasVersionRow) {
       db.prepare("UPDATE schema_version SET version = ?").run(SCHEMA_VERSION);
+    } else {
+      db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(
+        SCHEMA_VERSION,
+      );
     }
   })();
 }

@@ -1,14 +1,38 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
-import type { Preset, Resource, ResourceType, ResourceMetadata } from "../types.js";
+import type {
+  Preset,
+  Resource,
+  ResourceType,
+  ResourceMetadata,
+  ClaudePresetConfig,
+} from "../types.js";
 
 interface PresetRow {
   id: string;
   name: string;
   description: string;
   tags: string;
+  claude_config: string;
   created_at: string;
   updated_at: string;
+}
+
+function parseClaudeConfig(raw: string | undefined): ClaudePresetConfig | undefined {
+  if (!raw || raw === "{}") return undefined;
+  const parsed = JSON.parse(raw) as ClaudePresetConfig;
+  if (
+    (!parsed.marketplaces || Object.keys(parsed.marketplaces).length === 0) &&
+    (!parsed.plugins || parsed.plugins.length === 0)
+  ) {
+    return undefined;
+  }
+  return parsed;
+}
+
+function serializeClaudeConfig(config: ClaudePresetConfig | undefined): string {
+  if (!config) return "{}";
+  return JSON.stringify(config);
 }
 
 interface ResourceRow {
@@ -25,9 +49,15 @@ interface ResourceRow {
 }
 
 function rowToPreset(row: PresetRow): Preset {
+  const claude = parseClaudeConfig(row.claude_config);
   return {
-    ...row,
+    id: row.id,
+    name: row.name,
+    description: row.description,
     tags: JSON.parse(row.tags) as string[],
+    ...(claude ? { claude } : {}),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
@@ -35,19 +65,21 @@ export function createPreset(input: {
   name: string;
   description?: string;
   tags?: string[];
+  claude?: ClaudePresetConfig;
 }): Preset {
   const db = getDb();
   const now = new Date().toISOString();
   const id = ulid();
 
   db.prepare(
-    `INSERT INTO presets (id, name, description, tags, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO presets (id, name, description, tags, claude_config, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
     input.description ?? "",
     JSON.stringify(input.tags ?? []),
+    serializeClaudeConfig(input.claude),
     now,
     now,
   );
@@ -57,6 +89,7 @@ export function createPreset(input: {
     name: input.name,
     description: input.description ?? "",
     tags: input.tags ?? [],
+    ...(input.claude ? { claude: input.claude } : {}),
     created_at: now,
     updated_at: now,
   };

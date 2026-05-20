@@ -280,8 +280,11 @@ reference.
 
 Preset export and import use a JSON bundle format with schema identifier
 `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle
-contains exactly one preset definition and a flat list of resources. Internal
-database IDs, timestamps, and `source` fields are not exported.
+contains exactly one preset definition and a flat list of resources. Bundles may
+also include an optional top-level `claude` object with Claude Code marketplace
+and plugin configuration (`extraKnownMarketplaces` and `enabledPlugins`
+semantics). Internal database IDs, timestamps, and `source` fields are not
+exported.
 
 When importing a preset bundle, `harnessdeck` normalizes the imported resources
 through the configured main harness and records all additional configured

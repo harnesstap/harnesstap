@@ -32,7 +32,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(2);
+      expect(versionRow.version).toBe(3);
     } finally {
       await context.cleanup();
     }
@@ -50,7 +50,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 2 }]);
+      expect(versionRows).toEqual([{ version: 3 }]);
     } finally {
       await context.cleanup();
     }

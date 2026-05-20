@@ -22,7 +22,9 @@ export function exportPreset(presetNameOrId: string): ExportBundle {
       name: preset.name,
       description: preset.description,
       tags: preset.tags,
+      ...(preset.claude ? { claude: preset.claude } : {}),
     },
+    ...(preset.claude ? { claude: preset.claude } : {}),
     resources: resources.map((r) => ({
       type: r.type,
       name: r.name,
@@ -53,10 +55,13 @@ export function importFromFile(filePath: string): { preset: Preset; resources: R
   }
 
   // Create the preset
+  const claude = bundle.claude ?? bundle.preset.claude;
+
   const preset = createPreset({
     name: bundle.preset.name,
     description: bundle.preset.description,
     tags: bundle.preset.tags,
+    ...(claude ? { claude } : {}),
   });
 
   // Create resources and add them to the preset
