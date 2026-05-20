@@ -19,6 +19,9 @@ coverage/
 .env.*
 *.local
 
+# Test fixtures (override global Claude ignores for settings.local.json)
+!test/fixtures/**/.claude/settings.local.json
+
 # Logs
 logs/
 *.log
