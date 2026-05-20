@@ -74,6 +74,7 @@ import {
 import type { PluginScope } from "./plugins/types.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
+import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
 
 const program = new Command();
 
@@ -250,7 +251,13 @@ async function handleScanCommand(
 
 async function handleApplyCommand(
   presetName: string,
-  opts: { project: string; platform?: string; dryRun?: boolean },
+  opts: {
+    project: string;
+    platform?: string;
+    dryRun?: boolean;
+    ignorePluginVersions?: boolean;
+    strictPluginVersions?: boolean;
+  },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
@@ -327,6 +334,17 @@ async function handleApplyCommand(
     log.success(`${result.platformId}: wrote ${result.files.length} file(s)`);
     for (const file of result.files) {
       log.dim(`  ${file.path}`);
+    }
+  }
+
+  if (!opts.ignorePluginVersions && listPresetPlugins(preset.id).length > 0) {
+    const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
+    const issues = validatePresetPluginConstraints(preset.id, inventory);
+    for (const issue of issues) {
+      console.warn(chalk.yellow(issue.message));
+    }
+    if (opts.strictPluginVersions && issues.length > 0) {
+      process.exitCode = 2;
     }
   }
 }
@@ -1133,6 +1151,14 @@ projectCmd
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
+  .option(
+    "--ignore-plugin-versions",
+    "Skip validating preset Claude plugin pins against installed versions",
+  )
+  .option(
+    "--strict-plugin-versions",
+    "Fail apply (exit 2) if any pinned plugin violates its version constraint",
+  )
   .description("Apply a preset to a project, serializing for each platform")
   .action(handleApplyCommand);
 
@@ -1256,10 +1282,24 @@ program
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
+  .option(
+    "--ignore-plugin-versions",
+    "Skip validating preset Claude plugin pins against installed versions",
+  )
+  .option(
+    "--strict-plugin-versions",
+    "Fail apply (exit 2) if any pinned plugin violates its version constraint",
+  )
   .action(
     async (
       presetName: string,
-      opts: { project: string; platform?: string; dryRun?: boolean },
+      opts: {
+        project: string;
+        platform?: string;
+        dryRun?: boolean;
+        ignorePluginVersions?: boolean;
+        strictPluginVersions?: boolean;
+      },
     ) => {
       warnDeprecatedCommand("harnessdeck apply", "harnessdeck project apply");
       await handleApplyCommand(presetName, opts);
