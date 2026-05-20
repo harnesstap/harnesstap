@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const MIGRATIONS: Record<number, string> = {
   1: `
@@ -91,6 +91,26 @@ const MIGRATIONS: Record<number, string> = {
 
   3: `
     ALTER TABLE presets ADD COLUMN claude_config TEXT NOT NULL DEFAULT '{}';
+  `,
+
+  4: `
+    CREATE TABLE IF NOT EXISTS project_plugin_state (
+      project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      harness      TEXT NOT NULL DEFAULT 'claude-code',
+      scanned_at   TEXT NOT NULL,
+      committed    TEXT NOT NULL DEFAULT '[]',
+      effective    TEXT NOT NULL DEFAULT '[]',
+      PRIMARY KEY (project_id, harness)
+    );
+
+    CREATE TABLE IF NOT EXISTS preset_plugins (
+      preset_id            TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+      ref                  TEXT NOT NULL,
+      version_constraint   TEXT NOT NULL,
+      "order"              INTEGER NOT NULL DEFAULT 0,
+      embed_on_export      INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (preset_id, ref)
+    );
   `,
 };
 
