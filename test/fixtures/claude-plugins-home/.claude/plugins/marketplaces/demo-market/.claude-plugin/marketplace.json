@@ -1,0 +1,12 @@
+{
+  "name": "demo-market",
+  "plugins": [
+    {
+      "name": "demo",
+      "version": "2.0.0",
+      "source": {
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  ]
+}

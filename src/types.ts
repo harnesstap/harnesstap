@@ -86,11 +86,39 @@ export interface Resource {
   updated_at: string;
 }
 
+/** Claude Code marketplace source (extraKnownMarketplaces entry). */
+export interface ClaudeMarketplaceSource {
+  source: string;
+  repo?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
+export interface ClaudeMarketplaceEntry {
+  source: ClaudeMarketplaceSource;
+  autoUpdate?: boolean;
+}
+
+/** Plugin reference in a preset (plugin-name@marketplace-name). */
+export interface ClaudePluginEntry {
+  id: string;
+  enabled?: boolean;
+  /** Optional version pin for documentation and future install automation. */
+  version?: string;
+}
+
+/** Claude Code plugin marketplace configuration carried by a preset. */
+export interface ClaudePresetConfig {
+  marketplaces?: Record<string, ClaudeMarketplaceEntry>;
+  plugins?: ClaudePluginEntry[];
+}
+
 export interface Preset {
   id: string;
   name: string;
   description: string;
   tags: string[];
+  claude?: ClaudePresetConfig;
 
   created_at: string;
   updated_at: string;
@@ -185,11 +213,36 @@ export interface PlatformDefinition {
 
 // ── Export/import bundle ────────────────────────────────────────────────
 
+export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
+export const BUNDLE_VERSION = 1 as const;
+
 export interface ExportBundle {
-  $schema: string;
-  version: number;
+  $schema: typeof BUNDLE_SCHEMA;
+  version: typeof BUNDLE_VERSION;
   preset: Omit<Preset, "id" | "created_at" | "updated_at">;
   resources: Omit<Resource, "id" | "created_at" | "updated_at" | "source">[];
+  /** Claude Code marketplace and plugin configuration for this preset. */
+  claude?: ClaudePresetConfig;
+  /** Preset plugin pins (marketplace refs, not inlined in the bundle file). */
+  plugins: ExportBundlePresetPluginPin[];
+  /** Plugin trees inlined in the bundle file. */
+  embedded_plugins: ExportBundleEmbeddedPlugin[];
+}
+
+/** Plugin pin carried in bundles (non-embedded). */
+export interface ExportBundlePresetPluginPin {
+  ref: string;
+  version_constraint: string;
+}
+
+/** Plugin tree inlined in bundles. */
+export interface ExportBundleEmbeddedPlugin {
+  ref: string;
+  version_constraint: string;
+  /** Logical directory key for imports that are not `./...` project-relative refs. */
+  root: string;
+  /** Paths relative to the plugin root, POSIX-style separators. */
+  files: Record<string, string>;
 }
 
 // ── Serializer interface ────────────────────────────────────────────────

@@ -44,10 +44,13 @@ export function seedBuiltInPresets(): number {
 
     if (getPreset(bundle.preset.name)) continue;
 
+    const claude = bundle.claude ?? bundle.preset.claude;
+
     const preset = createPreset({
       name: bundle.preset.name,
       description: bundle.preset.description,
       tags: bundle.preset.tags,
+      ...(claude ? { claude } : {}),
     });
 
     for (const resource of bundle.resources) {

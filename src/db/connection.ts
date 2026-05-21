@@ -19,6 +19,9 @@ function resolveDatabaseConstructor(): SqliteDatabaseConstructor {
 }
 
 function resolveHarnessdeckDir(): string {
+  if (process.env.HARNESSDECK_HOME) {
+    return process.env.HARNESSDECK_HOME;
+  }
   const homePath = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
   return join(homePath, ".harnessdeck");
 }

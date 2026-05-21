@@ -57,19 +57,31 @@ The table below describes the intended CLI commands.
 | `harnessdeck preset show`             | Shows preset metadata and its ordered resources.                                                                                                                         |
 | `harnessdeck preset add`              | Adds a resource to a preset.                                                                                                                                             |
 | `harnessdeck preset remove`           | Removes a resource from a preset.                                                                                                                                        |
+| `harnessdeck preset add-plugin`       | Adds a Claude plugin ref pin to a preset with a required `--version` constraint (exact semver or range).                                                                 |
+| `harnessdeck preset remove-plugin`    | Removes a plugin pin from a preset.                                                                                                                                      |
 | `harnessdeck preset delete`           | Deletes a preset by name or ID.                                                                                                                                          |
 | `harnessdeck resource list`           | Lists resources, with optional type and search filters.                                                                                                                  |
 | `harnessdeck resource show`           | Prints the full stored resource, including metadata and content.                                                                                                         |
 | `harnessdeck resource delete`         | Deletes a resource by ID.                                                                                                                                                |
-| `harnessdeck apply <preset>`          | Applies a preset to the current project using the project's main harness as the canonical reference, then updates project metadata so later sync runs can materialize every supported harness. |
+| `harnessdeck project apply <preset>`   | Applies a preset to the current project using the project's main harness as the canonical reference, then updates project metadata so later sync runs can materialize every supported harness. Validates preset Claude plugin pins against installed versions: warns on mismatch by default; `--strict-plugin-versions` fails apply with exit code 2; `--ignore-plugin-versions` skips validation. |
 | `harnessdeck project sync [path]`     | Syncs the current project across all configured agent harnesses from the main harness reference, using symlinks for aliases when possible and generated files otherwise. |
 | `harnessdeck history`                 | Lists stored snapshots for the current tracked project.                                                                                                                  |
 | `harnessdeck revert <snapshot-id>`    | Restores files captured in a saved snapshot.                                                                                                                             |
-| `harnessdeck export <preset>`         | Writes a portable JSON bundle for a preset.                                                                                                                              |
+| `harnessdeck preset export <preset>`  | Writes a portable JSON bundle for a preset (`urn:harnessdeck:bundle:v1`). Includes preset plugin pins and optional embedded plugin trees. Use `--embed-plugins` to inline Claude marketplace-installed plugin trees when install paths resolve from the user home directory. |
 | `harnessdeck import <file>`           | Imports a preset bundle, normalizes it through the configured main harness, and records other selected harnesses as alias outputs for future sync.                     |
 | `harnessdeck harness ls`              | Lists registered agent harnesses, showing which one is the current main harness and which ones are selected as aliases.                                                 |
 | `harnessdeck harness configure`       | Re-runs the harness selection workflow so the user can update the main harness and alias harnesses using the same flow as `init`.                                       |
 | `harnessdeck status [path]`           | Shows detected harnesses, the configured main harness, alias harnesses, and tracked preset and snapshot counts for a project.                                           |
+| `harnessdeck plugin list [path]`      | Lists Claude Code plugin **inventory**: **committed** plugins (declared in project `.claude/settings.json`) separately from **effective** plugins (user + project + local scopes merged). Optional `--format` is `human` or `json`. |
+| `harnessdeck plugin show <ref> [path]` | Shows one plugin ref: effective install, scopes, and settings that declare it. Optional `--format` is `human` or `json`. |
+| `harnessdeck plugin installed [path]` | Lists plugins as reported by **lifecycle** providers (same surface as check/update). Supports `--platform`; optional `--format` is `human` or `json`. |
+| `harnessdeck plugin check [path]`     | Reports outdated plugins; refreshes remote metadata when cache is stale or `--refresh` is set. Exit non-zero if any are outdated. Implementation plan: [plugin check and update](docs/superpowers/plans/2026-05-19-plugin-check-update.md). |
+| `harnessdeck plugin update [ref]`     | Updates plugins (native CLI or git best-effort). Use `--all` for all outdated. Supports `--platform`, `--scope`, `--yes`. Same plan as `plugin check`. |
+| `harnessdeck plugin refresh`          | Forces refresh of plugin marketplace/git metadata.                                                                                                                      |
+
+Deprecated top-level aliases (`harnessdeck apply`, `harnessdeck export`, …) remain but should migrate to `project apply` and `preset export`.
+
+**Plugin check/update** behavior and rollout are documented in [docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md). Inventory and bundle format are specified in [docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md).
 
 ## Initialization and harness selection
 
@@ -105,6 +117,21 @@ the rest of local state.
 The database lives at `~/.harnessdeck/harnessdeck.db`. The CLI creates the
 directory on demand and opens the database through `better-sqlite3` with WAL
 mode and foreign keys enabled.
+
+Optional user settings live at `~/.harnessdeck/config.json`:
+
+```json
+{
+  "plugins": {
+    "refreshMaxAgeHours": 24
+  }
+}
+```
+
+Plugin metadata refresh timestamps are stored in
+`~/.harnessdeck/plugin-refresh-cache.json`. By default, `plugin check` compares
+local state only; sources older than `refreshMaxAgeHours` are refreshed
+automatically, and `--refresh` forces a refresh.
 
 ### Schema
 
@@ -279,9 +306,15 @@ reference.
 ### Import and export
 
 Preset export and import use a JSON bundle format with schema identifier
-`urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle
-contains exactly one preset definition and a flat list of resources. Internal
-database IDs, timestamps, and `source` fields are not exported.
+`urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains exactly
+one preset definition, a flat list of resources, preset plugin pins (`plugins[]`),
+and optional inlined plugin trees (`embedded_plugins[]`, for example when
+exporting with `--embed-plugins`). Bundles may also include an optional top-level
+`claude` object with Claude Code marketplace and plugin configuration
+(`extraKnownMarketplaces` and `enabledPlugins` semantics). Older hand-written
+bundles without `plugins` / `embedded_plugins` import as empty arrays.
+
+Internal database IDs, timestamps, and `source` fields are not exported.
 
 When importing a preset bundle, `harnessdeck` normalizes the imported resources
 through the configured main harness and records all additional configured
@@ -324,7 +357,8 @@ This section captures the biggest constraints in the current direction.
 - Sync writes files directly and does not yet provide interactive conflict
   resolution.
 - Export and import operate on one preset bundle at a time.
-- There is no remote registry, install flow, or package marketplace yet.
+- Plugin lifecycle (`plugin check|update|refresh`) delegates to harness-native
+  tooling; harnessdeck does not host its own plugin registry or install flow.
 
 ## Near-term direction
 

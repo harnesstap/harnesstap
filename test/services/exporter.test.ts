@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createTempDir, writeTextFile } from "../helpers/fs.ts";
@@ -24,6 +24,8 @@ describe("exporter services", () => {
 
       expect(bundle.$schema).toBe("urn:harnessdeck:bundle:v1");
       expect(bundle.version).toBe(1);
+      expect(bundle.plugins).toEqual([]);
+      expect(bundle.embedded_plugins).toEqual([]);
       expect(bundle.preset.name).toBe("bundle");
       expect(bundle.resources[0]).toEqual(
         expect.not.objectContaining({ id: expect.anything(), source: expect.anything() }),
@@ -128,6 +130,157 @@ describe("exporter services", () => {
       } finally {
         require("node:fs").rmSync(tempDir, { recursive: true, force: true });
       }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("bundle lists marketplace refs in plugins[], not embedded", async () => {
+    const context = await createInitializedTestContext("export-bundle-plugins");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const preset = presetModel.createPreset({ name: "plugs" });
+      pluginModel.addPluginToPreset(preset.id, "fmt@acme-marketplace", ">=2");
+
+      const bundle = exporter.exportPreset(preset.id);
+      expect(bundle.version).toBe(1);
+      expect(bundle.plugins).toEqual([
+        { ref: "fmt@acme-marketplace", version_constraint: ">=2" },
+      ]);
+      expect(bundle.embedded_plugins).toHaveLength(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("bundle embeds in-repo ./ plugin paths", async () => {
+    const context = await createInitializedTestContext("export-bundle-inrepo");
+
+    try {
+      const demoRoot = join(context.projectDir, "plugins/demo");
+      mkdirSync(dirname(join(demoRoot, ".claude-plugin/plugin.json")), {
+        recursive: true,
+      });
+      writeTextFile(
+        join(demoRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({
+          version: "1.0.0",
+          name: "demo",
+        }),
+      );
+      writeTextFile(join(demoRoot, "README.md"), "hello");
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const preset = presetModel.createPreset({ name: "local-plug" });
+      pluginModel.addPluginToPreset(preset.id, "./plugins/demo", "1.x");
+
+      const bundle = exporter.exportPreset(preset.id, {
+        projectRoot: context.projectDir,
+      });
+      expect(bundle.plugins).toHaveLength(0);
+      expect(bundle.embedded_plugins).toHaveLength(1);
+      expect(bundle.embedded_plugins[0]?.ref).toBe("./plugins/demo");
+      expect(bundle.embedded_plugins[0]?.files["README.md"]).toBe("hello");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("embedPlugins option inlines marketplace installs then round-trips pins", async () => {
+    const context = await createInitializedTestContext("export-bundle-embed-market");
+
+    try {
+      const claudePlug = join(context.homeDir, ".claude", "plugins");
+      mkdirSync(claudePlug, { recursive: true });
+      const installRel = "cache/acme-marketplace/fmt";
+      const plugRoot = join(claudePlug, installRel);
+      mkdirSync(join(plugRoot, ".claude-plugin"), { recursive: true });
+      writeTextFile(
+        join(plugRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ version: "2.1.0" }),
+      );
+      writeTextFile(
+        join(claudePlug, "installed_plugins.json"),
+        JSON.stringify({
+          plugins: {
+            "fmt@acme-marketplace": [
+              {
+                scope: "user",
+                installPath: installRel,
+                version: "2.1.0",
+              },
+            ],
+          },
+        }),
+      );
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const preset = presetModel.createPreset({ name: "mkt-plug" });
+      pluginModel.addPluginToPreset(preset.id, "fmt@acme-marketplace", "2.x");
+
+      const bundle = exporter.exportPreset(preset.id, {
+        embedPlugins: true,
+        homeRoot: context.homeDir,
+        projectRoot: context.projectDir,
+      });
+      expect(bundle.plugins).toHaveLength(0);
+      expect(bundle.embedded_plugins).toHaveLength(1);
+      expect(bundle.embedded_plugins[0]?.ref).toBe("fmt@acme-marketplace");
+
+      const bundlePath = join(context.projectDir, "embedded.json");
+      exporter.exportToFile(preset.id, bundlePath, {
+        embedPlugins: true,
+        homeRoot: context.homeDir,
+        projectRoot: context.projectDir,
+      });
+
+      presetModel.deletePreset(preset.name);
+      const unpack = join(context.projectDir, "unpacked-plugins");
+      mkdirSync(unpack, { recursive: true });
+
+      const imported = exporter.importFromFile(bundlePath, {
+        embeddedTargetDir: unpack,
+      });
+      const pluginModelFresh = await import("../../src/models/plugin.ts");
+      const presetModelFresh = await import("../../src/models/preset.ts");
+
+      const restored = presetModelFresh.getPreset(imported.preset.name);
+      if (!restored) throw new Error("expected imported preset");
+
+      const rows = pluginModelFresh.listPresetPlugins(restored.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        ref: "fmt@acme-marketplace",
+        version_constraint: "2.x",
+        embed_on_export: false,
+      });
+      const embeddedRoot = bundle.embedded_plugins[0]?.root;
+      if (embeddedRoot === undefined) throw new Error("expected embedded_plugins[0]");
+
+      expect(
+        existsSync(
+          join(unpack, "plugins", embeddedRoot, ".claude-plugin", "plugin.json"),
+        ),
+      ).toBe(true);
+
+      const bundleAgain = exporter.exportPreset(restored.id, {
+        homeRoot: "",
+        projectRoot: context.projectDir,
+      });
+      expect(bundleAgain.plugins).toEqual([
+        { ref: "fmt@acme-marketplace", version_constraint: "2.x" },
+      ]);
+      expect(bundleAgain.embedded_plugins).toHaveLength(0);
     } finally {
       await context.cleanup();
     }

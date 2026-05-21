@@ -4,6 +4,7 @@ export interface CliResult {
   stdout: string;
   stderr: string;
   tables: unknown[];
+  exitCode?: number;
 }
 
 function stringifyArgs(args: unknown[]): string {
@@ -32,6 +33,9 @@ export async function runCli(args: string[]): Promise<CliResult> {
     .mockImplementation((...values) => {
       stderr.push(stringifyArgs(values));
     });
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation((...values) => {
+    stderr.push(stringifyArgs(values));
+  });
   const tableSpy = vi.spyOn(console, "table").mockImplementation((value) => {
     tables.push(value);
   });
@@ -65,6 +69,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
       stdout: stdout.join("\n"),
       stderr: stderr.join("\n"),
       tables,
+      exitCode: process.exitCode,
     };
   } finally {
     const connection = await import("../../src/db/connection.ts");
@@ -73,6 +78,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
     process.exitCode = originalExitCode;
     logSpy.mockRestore();
     errorSpy.mockRestore();
+    warnSpy.mockRestore();
     tableSpy.mockRestore();
     stdoutWriteSpy.mockRestore();
     stderrWriteSpy.mockRestore();
