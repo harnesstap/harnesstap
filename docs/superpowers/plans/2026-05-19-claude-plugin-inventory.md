@@ -4,13 +4,13 @@
 
 **Goal:** Implement committed vs effective Claude plugin inventory on scan/status, preset plugin pins with exact/semver constraints, hybrid bundle export, and apply-time validation (warn by default, `--strict-plugin-versions` to fail).
 
-**Architecture:** Build on branch `cursor/preset-marketplace-config` — reuse `src/plugins/types.ts`, `ClaudeCodePluginProvider`, and `ClaudePresetConfig`. Add `claude-plugin-inventory.ts` for settings merge + `project_plugin_state` persistence. Extend preset model with `preset_plugins` table and bundle v2. Wire CLI `plugin list|show` for project inventory; keep lifecycle `check|update|refresh` from [plugin-check-update plan](./2026-05-19-plugin-check-update.md) when that work lands.
+**Architecture:** Reuse `src/plugins/types.ts`, `ClaudeCodePluginProvider`, and `ClaudePresetConfig`. Add `claude-plugin-inventory.ts` for settings merge + `project_plugin_state` persistence. Extend preset model with `preset_plugins` table and bundle v2. Wire CLI `plugin list|show` for project inventory.
 
 **Tech Stack:** TypeScript, Commander, better-sqlite3, `semver` package, Vitest, Bun
 
 **Spec:** [docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md](../specs/2026-05-19-claude-plugin-inventory-design.md) (approved)
 
-**Depends on:** Partial plugin provider stack in `src/plugins/` (already on branch). Lifecycle CLI (`plugin check|update`) is parallel; do not block inventory on it.
+**Shipped with:** [plugin check and update plan](./2026-05-19-plugin-check-update.md) and Claude marketplace preset config in [PR #6](https://github.com/bqbooster/harnessdeck/pull/6). Lifecycle commands (`plugin installed|check|update|refresh`) live in the sibling plan but landed in the same PR.
 
 ---
 
@@ -511,4 +511,4 @@ No TBD placeholders in task steps.
 3. Tasks 6–8 (C — presets + validation)
 4. Task 9 (docs)
 
-Parallel with [plugin-check-update](./2026-05-19-plugin-check-update.md) Tasks 7–8 if another agent owns lifecycle CLI; share `src/plugins/claude-installed.ts` extraction to avoid merge conflicts.
+Lifecycle CLI was implemented alongside this plan; see [plugin-check-update](./2026-05-19-plugin-check-update.md).

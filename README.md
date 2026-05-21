@@ -198,11 +198,13 @@ Portable bundles that record plugin pins or embedded trees (for example from `pr
 Implementation notes and rollout for check/update live in
 [docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md).
 
-List, check, and update plugins for harnesses that expose a discoverable plugin
-layout (Claude Code and Cursor today; more harnesses over time).
+Check and update plugins for harnesses that expose a discoverable plugin layout
+(Claude Code and Cursor today; more harnesses over time). Use `plugin installed`
+for the provider scan; use `plugin list` / `plugin show` for Claude **inventory**
+(committed vs effective) as described above.
 
 ```bash
-harnessdeck plugin list
+harnessdeck plugin installed
 harnessdeck plugin check --format json
 harnessdeck plugin update --all
 harnessdeck plugin refresh

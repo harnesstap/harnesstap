@@ -4,11 +4,13 @@
 
 **Goal:** Add cross-platform `harnessdeck plugin list|check|update|refresh` with configurable refresh cache policy, Claude native updates, and Cursor git best-effort updates.
 
-**Architecture:** Plugin provider registry per harness; shared config (`~/.harnessdeck/config.json`) and refresh cache; orchestration in `plugin-lifecycle` service; CLI command group in `index.ts`. Build on branch `cursor/preset-marketplace-config` Claude preset work; inventory DB (phase 3) follows lifecycle spec.
+**Architecture:** Plugin provider registry per harness; shared config (`~/.harnessdeck/config.json`) and refresh cache; orchestration in `plugin-lifecycle` service; CLI under `plugin` in `index.ts` (`installed`, `check`, `update`, `refresh`). Inventory commands (`plugin list|show`) and DB tables are defined in the [inventory plan](./2026-05-19-claude-plugin-inventory.md).
 
 **Tech Stack:** TypeScript, Commander, better-sqlite3, Vitest, Bun, child_process for `claude plugin`, simple-git or `git` CLI for cache refresh
 
 **Spec:** [docs/superpowers/specs/2026-05-19-plugin-lifecycle-design.md](../specs/2026-05-19-plugin-lifecycle-design.md)
+
+**Shipped with:** [Claude plugin inventory plan](./2026-05-19-claude-plugin-inventory.md) and marketplace preset config in [PR #6](https://github.com/bqbooster/harnessdeck/pull/6).
 
 ---
 
@@ -303,7 +305,7 @@ export function getHarnessdeckDir(): string {
 - Modify: `SPEC.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add command table rows** for `plugin list|show|check|update|refresh`
+- [ ] **Step 1: Add command table rows** for `plugin installed|check|update|refresh` (inventory uses `plugin list|show` — see inventory plan)
 
 - [ ] **Step 2: Document `~/.harnessdeck/config.json` and refresh behavior**
 
@@ -313,9 +315,9 @@ Run: `bun run preflight`
 
 ---
 
-## Phase 3 (separate follow-up plan)
+## Related work (same PR)
 
-Inventory DB (`project_plugin_state`, `preset_plugins`), bundle v2, and preset apply validation remain as defined in [2026-05-19-claude-plugin-inventory-design.md](../specs/2026-05-19-claude-plugin-inventory-design.md). Do not block plugin check/update on phase 3.
+Inventory DB (`project_plugin_state`, `preset_plugins`), bundle v2, preset apply validation, and `plugin list|show` are implemented per [claude-plugin-inventory plan](./2026-05-19-claude-plugin-inventory.md) and [inventory design spec](../specs/2026-05-19-claude-plugin-inventory-design.md).
 
 ---
 
@@ -331,7 +333,7 @@ Inventory DB (`project_plugin_state`, `preset_plugins`), bundle v2, and preset a
 | All scopes | Task 4 (Claude); Cursor user/project as discoverable |
 | `--format json` | Task 3, 7 |
 | Unsupported platforms skipped | Task 2, 6 |
-| `plugin list\|check\|update\|refresh` | Task 7 |
+| `plugin installed\|check\|update\|refresh` | Task 7 |
 | Managed update-only | Task 4 — reject install in update if scope managed + not installed |
 
 No placeholders remain in task steps above; engineers fill exact assertion strings when implementing git mock fixtures.

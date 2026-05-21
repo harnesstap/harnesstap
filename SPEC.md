@@ -359,7 +359,8 @@ This section captures the biggest constraints in the current direction.
 - Sync writes files directly and does not yet provide interactive conflict
   resolution.
 - Export and import operate on one preset bundle at a time.
-- There is no remote registry, install flow, or package marketplace yet.
+- Plugin lifecycle (`plugin check|update|refresh`) delegates to harness-native
+  tooling; harnessdeck does not host its own plugin registry or install flow.
 
 ## Near-term direction
 
