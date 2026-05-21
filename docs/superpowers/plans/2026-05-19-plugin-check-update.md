@@ -317,7 +317,7 @@ Run: `bun run preflight`
 
 ## Related work (same PR)
 
-Inventory DB (`project_plugin_state`, `preset_plugins`), bundle v2, preset apply validation, and `plugin list|show` are implemented per [claude-plugin-inventory plan](./2026-05-19-claude-plugin-inventory.md) and [inventory design spec](../specs/2026-05-19-claude-plugin-inventory-design.md).
+Inventory DB (`project_plugin_state`, `preset_plugins`), bundle plugin fields, preset apply validation, and `plugin list|show` are implemented per [claude-plugin-inventory plan](./2026-05-19-claude-plugin-inventory.md) and [inventory design spec](../specs/2026-05-19-claude-plugin-inventory-design.md).
 
 ---
 

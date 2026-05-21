@@ -191,7 +191,7 @@ Use **`harnessdeck -V`** or **`--harnessdeck-version`** for the harnessdeck CLI
 version. The **`--version`** on `preset add-plugin` is the **plugin semver pin
 or range**, not the global version flag.
 
-Portable bundles that record plugin pins or embedded trees (for example from `preset export --embed-plugins`) use schema **`urn:harnessdeck:bundle:v2`**; see [Bundle Format v2](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format-v2) in the design spec.
+Preset export bundles use schema **`urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
 
 ## Plugin check and update
 

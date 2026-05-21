@@ -67,7 +67,7 @@ The table below describes the intended CLI commands.
 | `harnessdeck project sync [path]`     | Syncs the current project across all configured agent harnesses from the main harness reference, using symlinks for aliases when possible and generated files otherwise. |
 | `harnessdeck history`                 | Lists stored snapshots for the current tracked project.                                                                                                                  |
 | `harnessdeck revert <snapshot-id>`    | Restores files captured in a saved snapshot.                                                                                                                             |
-| `harnessdeck preset export <preset>`  | Writes a portable JSON bundle for a preset. Uses bundle schema `urn:harnessdeck:bundle:v2` when plugin pins or embedded plugin trees are present; v1 bundles remain importable. Optional `--embed-plugins` inlines Claude marketplace-installed plugin trees when install paths resolve from the user home directory. |
+| `harnessdeck preset export <preset>`  | Writes a portable JSON bundle for a preset (`urn:harnessdeck:bundle:v1`). Includes preset plugin pins and optional embedded plugin trees. Use `--embed-plugins` to inline Claude marketplace-installed plugin trees when install paths resolve from the user home directory. |
 | `harnessdeck import <file>`           | Imports a preset bundle, normalizes it through the configured main harness, and records other selected harnesses as alias outputs for future sync.                     |
 | `harnessdeck harness ls`              | Lists registered agent harnesses, showing which one is the current main harness and which ones are selected as aliases.                                                 |
 | `harnessdeck harness configure`       | Re-runs the harness selection workflow so the user can update the main harness and alias harnesses using the same flow as `init`.                                       |
@@ -81,7 +81,7 @@ The table below describes the intended CLI commands.
 
 Deprecated top-level aliases (`harnessdeck apply`, `harnessdeck export`, …) remain but should migrate to `project apply` and `preset export`.
 
-**Plugin check/update** behavior and rollout are documented in [docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md). Inventory and bundle v2 are specified in [docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md).
+**Plugin check/update** behavior and rollout are documented in [docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md). Inventory and bundle format are specified in [docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md).
 
 ## Initialization and harness selection
 
@@ -305,16 +305,14 @@ reference.
 
 ### Import and export
 
-Preset export and import use a JSON bundle format. **v1** uses schema identifier
+Preset export and import use a JSON bundle format with schema identifier
 `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains exactly
-one preset definition and a flat list of resources. Bundles may also include an
-optional top-level `claude` object with Claude Code marketplace and plugin
-configuration (`extraKnownMarketplaces` and `enabledPlugins` semantics).
-
-**v2** (`urn:harnessdeck:bundle:v2`) extends v1 for Claude plugin pins and
-optional embedded plugin trees (for example when exporting with
-`--embed-plugins`). Importers accept both v1 and v2; v1 bundles omit the newer
-plugin payload.
+one preset definition, a flat list of resources, preset plugin pins (`plugins[]`),
+and optional inlined plugin trees (`embedded_plugins[]`, for example when
+exporting with `--embed-plugins`). Bundles may also include an optional top-level
+`claude` object with Claude Code marketplace and plugin configuration
+(`extraKnownMarketplaces` and `enabledPlugins` semantics). Older hand-written
+bundles without `plugins` / `embedded_plugins` import as empty arrays.
 
 Internal database IDs, timestamps, and `source` fields are not exported.
 

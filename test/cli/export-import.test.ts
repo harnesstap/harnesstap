@@ -35,7 +35,8 @@ describe("CLI export and import", () => {
       expect(existsSync(bundlePath)).toBe(true);
 
       const raw = JSON.parse(readFileSync(bundlePath, "utf-8"));
-      expect(raw.version).toBe(2);
+      expect(raw.version).toBe(1);
+      expect(raw.$schema).toBe("urn:harnessdeck:bundle:v1");
       expect(raw.plugins ?? []).toEqual([]);
       expect(raw.embedded_plugins ?? []).toEqual([]);
 
@@ -104,7 +105,8 @@ describe("CLI export and import", () => {
 
       expect(exportResult.stderr).not.toContain("ENOENT");
       expect(JSON.parse(readFileSync(bundlePath, "utf-8"))).toMatchObject({
-        version: 2,
+        version: 1,
+        $schema: "urn:harnessdeck:bundle:v1",
         embedded_plugins: expect.arrayContaining([
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
         ]),

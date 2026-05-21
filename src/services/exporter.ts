@@ -17,17 +17,12 @@ import type { PresetPluginRow } from "../models/plugin.js";
 import { createResource } from "../models/resource.js";
 import { loadInstalled } from "../plugins/claude-installed.js";
 import type {
-  AnyExportBundle,
+  ExportBundle,
   ExportBundlePresetPluginPin,
-  ExportBundleV2,
   Preset,
   Resource,
 } from "../types.js";
-import {
-  BUNDLE_SCHEMA_V2,
-  BUNDLE_VERSION_V1,
-  BUNDLE_VERSION_V2,
-} from "../types.js";
+import { BUNDLE_SCHEMA, BUNDLE_VERSION } from "../types.js";
 import { collectEmbeddedPluginFiles, writeEmbeddedPluginsOnImport } from "./plugin-bundle.js";
 
 export interface ExportPresetOptions {
@@ -109,13 +104,13 @@ function classifyPresetPluginsForExport(
   opts?: ExportPresetOptions,
 ): {
   pins: ExportBundlePresetPluginPin[];
-  embeddedRoots: ExportBundleV2["embedded_plugins"];
+  embeddedRoots: ExportBundle["embedded_plugins"];
 } {
   const projectRoot = resolveProjectRoot(opts);
   const homeRoot = resolveHomeRoot(opts);
   const optEmbedMarketplace = opts?.embedPlugins ?? false;
   const pins: ExportBundlePresetPluginPin[] = [];
-  const embeddedRoots: ExportBundleV2["embedded_plugins"] = [];
+  const embeddedRoots: ExportBundle["embedded_plugins"] = [];
 
   for (const row of rows) {
     const marketplaceAbs = marketplaceInstallRoot(row.ref, homeRoot);
@@ -151,12 +146,12 @@ function classifyPresetPluginsForExport(
 }
 
 /**
- * Export a preset and its resources as a portable JSON bundle (v2: plugin pins + optional embedded trees).
+ * Export a preset and its resources as a portable JSON bundle.
  */
 export function exportPreset(
   presetNameOrId: string,
   exportOpts?: ExportPresetOptions,
-): ExportBundleV2 {
+): ExportBundle {
   const preset = getPreset(presetNameOrId);
   if (!preset) throw new Error(`Preset not found: ${presetNameOrId}`);
 
@@ -174,9 +169,9 @@ export function exportPreset(
     ...(preset.claude ? { claude: preset.claude } : {}),
   };
 
-  const bundle: ExportBundleV2 = {
-    $schema: BUNDLE_SCHEMA_V2,
-    version: BUNDLE_VERSION_V2,
+  const bundle: ExportBundle = {
+    $schema: BUNDLE_SCHEMA,
+    version: BUNDLE_VERSION,
     preset: presetSubset,
     ...(preset.claude ? { claude: preset.claude } : {}),
     resources: resources.map((r) => ({
@@ -206,7 +201,7 @@ export function exportToFile(
 }
 
 function importPresetFromBundleParsed(
-  bundle: AnyExportBundle,
+  bundle: ExportBundle,
   filePath: string,
   opts?: ImportPresetOptions,
 ): { preset: Preset; resources: Resource[] } {
@@ -233,34 +228,34 @@ function importPresetFromBundleParsed(
     resources.push(resource);
   }
 
-  if (bundle.version === BUNDLE_VERSION_V2) {
-    const presetId = preset.id;
+  const presetId = preset.id;
+  const pluginPins = bundle.plugins ?? [];
+  const embeddedPlugins = bundle.embedded_plugins ?? [];
 
-    function syncPinsAfterMutation(ref: string, versionConstraint: string): void {
-      const refreshed = getPreset(presetId);
-      if (!refreshed) {
-        throw new Error(`Preset ${presetId} not found during bundle import`);
-      }
-      syncClaudePresetPluginsAfterAdd(refreshed, ref, versionConstraint);
+  function syncPinsAfterMutation(ref: string, versionConstraint: string): void {
+    const refreshed = getPreset(presetId);
+    if (!refreshed) {
+      throw new Error(`Preset ${presetId} not found during bundle import`);
     }
+    syncClaudePresetPluginsAfterAdd(refreshed, ref, versionConstraint);
+  }
 
-    for (const p of bundle.plugins ?? []) {
-      addPluginToPreset(presetId, p.ref, p.version_constraint, {
+  for (const p of pluginPins) {
+    addPluginToPreset(presetId, p.ref, p.version_constraint, {
+      embedOnExport: false,
+    });
+    syncPinsAfterMutation(p.ref, p.version_constraint);
+  }
+
+  const embeddedDir = opts?.embeddedTargetDir ?? resolve(process.cwd());
+  if (embeddedPlugins.length > 0) {
+    writeEmbeddedPluginsOnImport(embeddedDir, embeddedPlugins);
+    for (const e of embeddedPlugins) {
+      addPluginToPreset(presetId, e.ref, e.version_constraint, {
+        /** Pin only; inlined trees live in `embedded_plugins` on the bundle, not persisted as “always embed”. */
         embedOnExport: false,
       });
-      syncPinsAfterMutation(p.ref, p.version_constraint);
-    }
-
-    const embeddedDir = opts?.embeddedTargetDir ?? resolve(process.cwd());
-    if (bundle.embedded_plugins?.length) {
-      writeEmbeddedPluginsOnImport(embeddedDir, bundle.embedded_plugins);
-      for (const e of bundle.embedded_plugins) {
-        addPluginToPreset(presetId, e.ref, e.version_constraint, {
-          /** Pin only; inlined trees live in `embedded_plugins` on the bundle, not persisted as “always embed”. */
-          embedOnExport: false,
-        });
-        syncPinsAfterMutation(e.ref, e.version_constraint);
-      }
+      syncPinsAfterMutation(e.ref, e.version_constraint);
     }
   }
 
@@ -279,14 +274,10 @@ export function importFromFile(
   opts?: ImportPresetOptions,
 ): { preset: Preset; resources: Resource[] } {
   const raw = readFileSync(filePath, "utf-8");
-  const parsed = JSON.parse(raw) as { version?: number } & AnyExportBundle;
-  const bundleVersion = parsed.version;
+  const parsed = JSON.parse(raw) as ExportBundle;
 
-  if (
-    bundleVersion !== BUNDLE_VERSION_V1 &&
-    bundleVersion !== BUNDLE_VERSION_V2
-  ) {
-    throw new Error(`Unsupported bundle version: ${bundleVersion}`);
+  if (parsed.version !== BUNDLE_VERSION) {
+    throw new Error(`Unsupported bundle version: ${parsed.version}`);
   }
 
   return importPresetFromBundleParsed(parsed, filePath, opts);

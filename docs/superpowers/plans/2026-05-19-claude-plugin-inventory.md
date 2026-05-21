@@ -4,7 +4,7 @@
 
 **Goal:** Implement committed vs effective Claude plugin inventory on scan/status, preset plugin pins with exact/semver constraints, hybrid bundle export, and apply-time validation (warn by default, `--strict-plugin-versions` to fail).
 
-**Architecture:** Reuse `src/plugins/types.ts`, `ClaudeCodePluginProvider`, and `ClaudePresetConfig`. Add `claude-plugin-inventory.ts` for settings merge + `project_plugin_state` persistence. Extend preset model with `preset_plugins` table and bundle v2. Wire CLI `plugin list|show` for project inventory.
+**Architecture:** Reuse `src/plugins/types.ts`, `ClaudeCodePluginProvider`, and `ClaudePresetConfig`. Add `claude-plugin-inventory.ts` for settings merge + `project_plugin_state` persistence. Extend preset model with `preset_plugins` table and bundle plugin fields. Wire CLI `plugin list|show` for project inventory.
 
 **Tech Stack:** TypeScript, Commander, better-sqlite3, `semver` package, Vitest, Bun
 
@@ -22,10 +22,10 @@
 | `src/services/claude-plugin-inventory.ts` | Parse settings scopes, merge effective, resolve versions |
 | `src/models/plugin.ts` | `project_plugin_state`, `preset_plugins` CRUD |
 | `src/services/plugin-constraints.ts` | Parse exact vs range; `satisfies(constraint, version)` |
-| `src/services/plugin-bundle.ts` | Embed trees; bundle v2 import/export |
+| `src/services/plugin-bundle.ts` | Embed trees; bundle import/export |
 | `src/db/schema.ts` | Migration 4: `project_plugin_state`, `preset_plugins` |
-| `src/types.ts` | `ExportBundleV2`, extend `ClaudePluginEntry` |
-| `src/services/exporter.ts` | v2 export/import, `--embed-plugins` |
+| `src/types.ts` | Extend `ExportBundle` with plugin pins + embedded trees |
+| `src/services/exporter.ts` | Bundle export/import, `--embed-plugins` |
 | `src/services/applier.ts` | Post-apply constraint validation |
 | `src/index.ts` | `plugin list|show`, preset plugin commands, apply flags |
 | `test/fixtures/claude-plugins-project/` | Settings + cache + in-repo plugin |
@@ -33,7 +33,7 @@
 | `test/models/plugin.test.ts` | DB round-trip |
 | `test/services/plugin-constraints.test.ts` | Semver tests |
 | `test/cli/plugin-inventory.test.ts` | CLI committed/effective |
-| `test/cli/preset-plugin.test.ts` | add-plugin, export v2, apply warn/strict |
+| `test/cli/preset-plugin.test.ts` | add-plugin, export/import, apply warn/strict |
 
 ---
 
@@ -382,7 +382,7 @@ Validate constraint via `parseVersionConstraint`. Insert `preset_plugins` row. O
 
 ---
 
-## Task 7: Bundle v2 and hybrid export (phase C2)
+## Task 7: Bundle plugin pins and hybrid export (phase C2)
 
 **Files:**
 - Modify: `src/types.ts`
@@ -390,11 +390,12 @@ Validate constraint via `parseVersionConstraint`. Insert `preset_plugins` row. O
 - Create: `src/services/plugin-bundle.ts`
 - Modify: `test/cli/export-import.test.ts`
 
-- [ ] **Step 1: Define bundle constants**
+- [ ] **Step 1: Extend bundle type**
 
 ```ts
-export const BUNDLE_SCHEMA_V2 = "urn:harnessdeck:bundle:v2";
-export const BUNDLE_VERSION_V2 = 2;
+export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1";
+export const BUNDLE_VERSION = 1;
+// ExportBundle.plugins + ExportBundle.embedded_plugins
 ```
 
 - [ ] **Step 2: Write failing export test**
@@ -407,9 +408,8 @@ Walk plugin root; build `files: Record<relativePath, string>`.
 
 - [ ] **Step 4: Extend `exportPreset` / `importFromFile`**
 
-- v2: include `plugins[]` and optional `embedded_plugins[]`
-- v1 import unchanged
-- v2 import: insert `preset_plugins`; write embedded files to `plugins/<root>/`
+- Export always includes `plugins[]` and `embedded_plugins[]`
+- Import: insert `preset_plugins`; write embedded files to `plugins/<root>/`
 
 - [ ] **Step 5: Run tests — expect PASS**
 
@@ -466,7 +466,7 @@ Call after files written. Log warnings to stderr; strict mode sets `process.exit
 - Modify: `SPEC.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Document `plugin list|show`, preset plugin commands, apply flags, bundle v2**
+- [ ] **Step 1: Document `plugin list|show`, preset plugin commands, apply flags, bundle plugin fields**
 
 - [ ] **Step 2: Cross-link lifecycle plan for `plugin check|update`**
 
@@ -489,7 +489,7 @@ Run: `bun run preflight`
 | scan/status integration | Task 4 |
 | Exact + semver constraints | Task 1 |
 | `preset_plugins` + CLI | Task 6 |
-| Hybrid export + bundle v2 | Task 7 |
+| Hybrid export + bundle plugin fields | Task 7 |
 | Apply warn default | Task 8 |
 | `--strict-plugin-versions` | Task 8 |
 | `--ignore-plugin-versions` | Task 8 |

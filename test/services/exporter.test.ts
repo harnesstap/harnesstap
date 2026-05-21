@@ -22,8 +22,8 @@ describe("exporter services", () => {
 
       const bundle = exporter.exportPreset(preset.id);
 
-      expect(bundle.$schema).toBe("urn:harnessdeck:bundle:v2");
-      expect(bundle.version).toBe(2);
+      expect(bundle.$schema).toBe("urn:harnessdeck:bundle:v1");
+      expect(bundle.version).toBe(1);
       expect(bundle.plugins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
       expect(bundle.preset.name).toBe("bundle");
@@ -54,7 +54,7 @@ describe("exporter services", () => {
 
       expect(existsSync(bundlePath)).toBe(true);
       expect(JSON.parse(readFileSync(bundlePath, "utf-8"))).toEqual(
-        expect.objectContaining({ version: 2 }),
+        expect.objectContaining({ version: 1 }),
       );
 
       const importContext = await createInitializedTestContext("export-import-import");
@@ -135,8 +135,8 @@ describe("exporter services", () => {
     }
   });
 
-  it("v2 bundle lists marketplace refs in plugins[], not embedded", async () => {
-    const context = await createInitializedTestContext("export-v2-plugins");
+  it("bundle lists marketplace refs in plugins[], not embedded", async () => {
+    const context = await createInitializedTestContext("export-bundle-plugins");
 
     try {
       const presetModel = await import("../../src/models/preset.ts");
@@ -147,7 +147,7 @@ describe("exporter services", () => {
       pluginModel.addPluginToPreset(preset.id, "fmt@acme-marketplace", ">=2");
 
       const bundle = exporter.exportPreset(preset.id);
-      expect(bundle.version).toBe(2);
+      expect(bundle.version).toBe(1);
       expect(bundle.plugins).toEqual([
         { ref: "fmt@acme-marketplace", version_constraint: ">=2" },
       ]);
@@ -157,8 +157,8 @@ describe("exporter services", () => {
     }
   });
 
-  it("v2 bundle embeds in-repo ./ plugin paths", async () => {
-    const context = await createInitializedTestContext("export-v2-inrepo");
+  it("bundle embeds in-repo ./ plugin paths", async () => {
+    const context = await createInitializedTestContext("export-bundle-inrepo");
 
     try {
       const demoRoot = join(context.projectDir, "plugins/demo");
@@ -194,7 +194,7 @@ describe("exporter services", () => {
   });
 
   it("embedPlugins option inlines marketplace installs then round-trips pins", async () => {
-    const context = await createInitializedTestContext("export-v2-embed-market");
+    const context = await createInitializedTestContext("export-bundle-embed-market");
 
     try {
       const claudePlug = join(context.homeDir, ".claude", "plugins");

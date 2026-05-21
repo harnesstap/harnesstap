@@ -27,7 +27,7 @@ Claude Code's plugin system defines manifest metadata (`.claude-plugin/plugin.js
 - Allow presets to reference plugins with **exact pin** (`2.1.0`) or **semver range** (`>=2.1.0 <3.0.0`).
 - **Hybrid export**: marketplace plugins as references by default; embed in-repo plugin trees or all plugins with `--embed-plugins`.
 - Validate plugin versions on `project apply` against preset constraints.
-- Extend bundle format to v2 while keeping v1 import working.
+- Extend the v1 bundle format with `plugins[]` and `embedded_plugins[]` (missing keys import as empty arrays).
 
 ## Non-Goals (v1)
 
@@ -172,12 +172,12 @@ Effective (user + project + local)
   my-tool@acme-marketplace                abc123f  enabled    user
 ```
 
-## Bundle Format v2
+## Bundle format
 
 ```json
 {
-  "$schema": "urn:harnessdeck:bundle:v2",
-  "version": 2,
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
   "preset": {
     "name": "team-setup",
     "description": "",
@@ -211,7 +211,7 @@ Effective (user + project + local)
 | Marketplace-installed | `plugins[]` reference only | Optional full embed if flag set |
 | In-repo `./plugins/...` | Auto `embedded_plugins[]` | Same |
 
-Importer accepts v1 bundles (no `plugins` key). v2 without `embedded_plugins` is reference-only.
+Importer treats missing `plugins` / `embedded_plugins` as empty arrays. Bundles without `embedded_plugins` entries are reference-only for marketplace refs.
 
 ## Implementation Flow
 
@@ -240,7 +240,7 @@ Extend `ClaudeCodeSerializer` only if needed for in-repo path discovery; invento
 | B1 | Schema, inventory service, scan/status integration |
 | B2 | `plugin list|show`, JSON format, fixture tests |
 | C1 | `preset_plugins`, add/remove/show, export references |
-| C2 | Hybrid embed, import, apply validation, bundle v2 |
+| C2 | Hybrid embed, import, apply validation, bundle plugin fields |
 
 ## Testing
 

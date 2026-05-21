@@ -88,10 +88,10 @@ BUNDLE="$WORKDIR/team.harnessdeck.json"
 "${CLI[@]}" preset export team-setup --file "$BUNDLE" >/dev/null
 bun -e "
 const raw = await Bun.file(process.argv[1]).json();
-if (raw.version !== 2) throw new Error('expected bundle v2');
+if (raw.version !== 1 || raw.$schema !== 'urn:harnessdeck:bundle:v1') throw new Error('expected bundle v1');
 const pin = (raw.plugins ?? []).find((p) => p.ref === 'formatter@acme-marketplace');
 if (!pin || pin.version_constraint !== '>=2.0.0 <3.0.0') throw new Error('pin missing');
-console.log('ok bundle v2 pin');
+console.log('ok bundle pin');
 " "$BUNDLE" || fail "export bundle"
 
 HD_HOME2="$(mktemp -d "${TMPDIR:-/tmp}/hd-test-plan-import-XXXX")"

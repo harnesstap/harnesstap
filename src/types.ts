@@ -213,27 +213,29 @@ export interface PlatformDefinition {
 
 // ── Export/import bundle ────────────────────────────────────────────────
 
-export const BUNDLE_SCHEMA_V1 = "urn:harnessdeck:bundle:v1" as const;
-export const BUNDLE_VERSION_V1 = 1 as const;
-export const BUNDLE_SCHEMA_V2 = "urn:harnessdeck:bundle:v2" as const;
-export const BUNDLE_VERSION_V2 = 2 as const;
+export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
+export const BUNDLE_VERSION = 1 as const;
 
 export interface ExportBundle {
-  $schema: string;
-  version: number;
+  $schema: typeof BUNDLE_SCHEMA;
+  version: typeof BUNDLE_VERSION;
   preset: Omit<Preset, "id" | "created_at" | "updated_at">;
   resources: Omit<Resource, "id" | "created_at" | "updated_at" | "source">[];
   /** Claude Code marketplace and plugin configuration for this preset. */
   claude?: ClaudePresetConfig;
+  /** Preset plugin pins (marketplace refs, not inlined in the bundle file). */
+  plugins: ExportBundlePresetPluginPin[];
+  /** Plugin trees inlined in the bundle file. */
+  embedded_plugins: ExportBundleEmbeddedPlugin[];
 }
 
-/** Plugin pin carried in v2 bundles (non-embedded). */
+/** Plugin pin carried in bundles (non-embedded). */
 export interface ExportBundlePresetPluginPin {
   ref: string;
   version_constraint: string;
 }
 
-/** Plugin tree inlined in v2 bundles. */
+/** Plugin tree inlined in bundles. */
 export interface ExportBundleEmbeddedPlugin {
   ref: string;
   version_constraint: string;
@@ -242,17 +244,6 @@ export interface ExportBundleEmbeddedPlugin {
   /** Paths relative to the plugin root, POSIX-style separators. */
   files: Record<string, string>;
 }
-
-export interface ExportBundleV2 extends Omit<ExportBundle, "$schema" | "version"> {
-  $schema: typeof BUNDLE_SCHEMA_V2;
-  version: typeof BUNDLE_VERSION_V2;
-  plugins: ExportBundlePresetPluginPin[];
-  embedded_plugins: ExportBundleEmbeddedPlugin[];
-}
-
-export type AnyExportBundle =
-  | (ExportBundle & { version: typeof BUNDLE_VERSION_V1 })
-  | ExportBundleV2;
 
 // ── Serializer interface ────────────────────────────────────────────────
 

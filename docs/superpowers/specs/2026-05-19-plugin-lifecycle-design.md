@@ -163,7 +163,7 @@ Defaults apply when file is missing. Validate `refreshMaxAgeHours` is a positive
 Persist per tracked project for Claude (extend later for Cursor):
 
 - `project_plugin_state`: `committed` vs `effective` plugin lists, refreshed on `project scan`.
-- Preset plugin pins: `preset_plugins` table, bundle v2, apply validation.
+- Preset plugin pins: `preset_plugins` table, bundle plugin fields, apply validation.
 
 Inventory service remains separate from update execution but shares `PluginInstall` parsing helpers.
 
@@ -261,4 +261,4 @@ Tests:
 - [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference)
 - [Cursor plugins reference](https://cursor.com/docs/reference/plugins)
 - [CLI UX design](./2026-04-28-cli-ux-design.md)
-- [Claude plugin inventory design](./2026-05-19-claude-plugin-inventory-design.md) (preset pins, bundle v2)
+- [Claude plugin inventory design](./2026-05-19-claude-plugin-inventory-design.md) (preset pins, bundle export)
