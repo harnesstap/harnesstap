@@ -1,14 +1,79 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
-import type { Preset, Resource, ResourceType, ResourceMetadata } from "../types.js";
+import type {
+  Preset,
+  Resource,
+  ResourceType,
+  ResourceMetadata,
+  ClaudePresetConfig,
+} from "../types.js";
 
 interface PresetRow {
   id: string;
   name: string;
   description: string;
   tags: string;
+  claude_config: string;
   created_at: string;
   updated_at: string;
+}
+
+function parseClaudeConfig(raw: string | undefined): ClaudePresetConfig | undefined {
+  if (!raw || raw === "{}") return undefined;
+  const parsed = JSON.parse(raw) as ClaudePresetConfig;
+  if (
+    (!parsed.marketplaces || Object.keys(parsed.marketplaces).length === 0) &&
+    (!parsed.plugins || parsed.plugins.length === 0)
+  ) {
+    return undefined;
+  }
+  return parsed;
+}
+
+function serializeClaudeConfig(config: ClaudePresetConfig | undefined): string {
+  if (!config) return "{}";
+  return JSON.stringify(config);
+}
+
+function writePresetClaudeConfig(
+  presetId: string,
+  config: ClaudePresetConfig,
+): void {
+  const db = getDb();
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE presets SET claude_config = ?, updated_at = ? WHERE id = ?`,
+  ).run(serializeClaudeConfig(config), now, presetId);
+}
+
+/**
+ * If the preset already carries Claude config, keep `claude.plugins` in sync with
+ * preset plugin pins (Claude uses `id` as the plugin ref).
+ */
+export function syncClaudePresetPluginsAfterAdd(
+  preset: Preset,
+  ref: string,
+  versionConstraint: string,
+): void {
+  if (!preset.claude) return;
+  const plugins = [...(preset.claude.plugins ?? [])];
+  const idx = plugins.findIndex((p) => p.id === ref);
+  const entry = { id: ref, version: versionConstraint };
+  if (idx >= 0) {
+    plugins[idx] = { ...plugins[idx], ...entry };
+  } else {
+    plugins.push(entry);
+  }
+  writePresetClaudeConfig(preset.id, { ...preset.claude, plugins });
+}
+
+export function syncClaudePresetPluginsAfterRemove(
+  preset: Preset,
+  ref: string,
+): void {
+  if (!preset.claude) return;
+  const plugins = (preset.claude.plugins ?? []).filter((p) => p.id !== ref);
+  writePresetClaudeConfig(preset.id, { ...preset.claude, plugins });
 }
 
 interface ResourceRow {
@@ -25,9 +90,15 @@ interface ResourceRow {
 }
 
 function rowToPreset(row: PresetRow): Preset {
+  const claude = parseClaudeConfig(row.claude_config);
   return {
-    ...row,
+    id: row.id,
+    name: row.name,
+    description: row.description,
     tags: JSON.parse(row.tags) as string[],
+    ...(claude ? { claude } : {}),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
@@ -35,19 +106,21 @@ export function createPreset(input: {
   name: string;
   description?: string;
   tags?: string[];
+  claude?: ClaudePresetConfig;
 }): Preset {
   const db = getDb();
   const now = new Date().toISOString();
   const id = ulid();
 
   db.prepare(
-    `INSERT INTO presets (id, name, description, tags, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO presets (id, name, description, tags, claude_config, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
     input.description ?? "",
     JSON.stringify(input.tags ?? []),
+    serializeClaudeConfig(input.claude),
     now,
     now,
   );
@@ -57,6 +130,7 @@ export function createPreset(input: {
     name: input.name,
     description: input.description ?? "",
     tags: input.tags ?? [],
+    ...(input.claude ? { claude: input.claude } : {}),
     created_at: now,
     updated_at: now,
   };

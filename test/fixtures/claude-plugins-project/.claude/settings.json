@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "formatter@acme-marketplace": true,
+    "security@claude-code-marketplace": true
+  }
+}
