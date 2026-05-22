@@ -72,6 +72,13 @@ import {
   upsertProjectPluginState,
 } from "./models/plugin.js";
 import type { PluginScope } from "./plugins/types.js";
+import {
+  getHarnessPreference,
+  setHarnessPreference,
+  getProjectHarnessConfig,
+  setProjectHarnessConfig,
+} from "./models/harness.js";
+import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
 import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
@@ -255,6 +262,7 @@ async function handleApplyCommand(
     project: string;
     platform?: string;
     dryRun?: boolean;
+    format?: string;
     ignorePluginVersions?: boolean;
     strictPluginVersions?: boolean;
   },
@@ -319,6 +327,18 @@ async function handleApplyCommand(
   }
 
   if (opts.dryRun) {
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson({
+        preset: preset.name,
+        project_root: projectRoot,
+        platforms: generated.map((result) => ({
+          platform: result.platformId,
+          files: result.files.map((file) => ({ path: file.path })),
+        })),
+      });
+      return;
+    }
     log.dim("(dry run — showing files that would be written)");
     for (const result of generated) {
       log.info(`Platform: ${result.platformId}`);
@@ -349,9 +369,10 @@ async function handleApplyCommand(
   }
 }
 
-function handleHistoryCommand(opts: { project: string }): void {
+function handleHistoryCommand(opts: { project: string; format?: string }): void {
   const db = getDb();
   initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
@@ -360,16 +381,34 @@ function handleHistoryCommand(opts: { project: string }): void {
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
   if (!project) {
+    if (format === "json") {
+      printJson({ snapshots: [] });
+      return;
+    }
     log.warn("No project record found. Run `harnessdeck project scan` first.");
     return;
   }
   const snapshots = listSnapshots(project.id);
   if (snapshots.length === 0) {
+    if (format === "json") {
+      printJson({ snapshots: [] });
+      return;
+    }
     log.dim("No snapshots found.");
     return;
   }
+  if (format === "json") {
+    printJson(
+      snapshots.map((snapshot) => ({
+        id: snapshot.id,
+        created_at: snapshot.created_at,
+        label: snapshot.label,
+      })),
+    );
+    return;
+  }
   for (const snapshot of snapshots) {
-    log.info(`${snapshot.id.slice(0, 10)}… ${snapshot.created_at} — ${snapshot.label}`);
+    log.info(`${snapshot.id} ${snapshot.created_at} — ${snapshot.label}`);
   }
 }
 
@@ -424,8 +463,13 @@ function handlePresetImportCommand(file: string): void {
   );
 }
 
-function handlePlatformListCommand(): void {
+function handlePlatformListCommand(opts: { format?: string } = {}): void {
+  const format = parseOutputFormat(opts.format);
   const platforms = getAllPlatforms();
+  if (format === "json") {
+    printJson(platforms);
+    return;
+  }
   for (const platform of platforms) {
     const features = [...platform.supports].join(", ");
     log.info(`${platform.id.padEnd(20)} ${platform.name.padEnd(20)} [${features}]`);
@@ -814,62 +858,214 @@ async function handleProjectStatusCommand(
   }
 }
 
+async function handleInitCommand(opts: { format?: string } = {}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const seeded = seedBuiltInPresets();
+  const homeDefaults = await scanAndPersistHomeDefaults();
+
+  if (format === "json") {
+    printJson({
+      built_in_presets: {
+        seeded,
+        status: seeded > 0 ? "seeded" : "already_up_to_date",
+      },
+      home_defaults: homeDefaults.results,
+      database_path: getDbPath(),
+    });
+    return;
+  }
+
+  const platformNames = new Map(
+    getAllPlatforms().map((platform) => [platform.id, platform.name]),
+  );
+
+  log.success(chalk.bold("Harnessdeck initialized"));
+  printInitMeta("Database", getDbPath());
+  printInitMeta(
+    "Built-in Presets",
+    seeded > 0
+      ? `seeded ${formatCount(seeded, "built-in preset")}`
+      : "already up to date",
+  );
+
+  if (homeDefaults.detected.length === 0) {
+    printInitMeta(
+      "Home",
+      chalk.hex("#9ca3af")("no default folders discovered"),
+    );
+    return;
+  }
+
+  log.info(chalk.bold("Home defaults overview"));
+  for (const result of homeDefaults.results) {
+    const folder = homeFolderLabel(result.discoveredPaths);
+    const foundSummary = summarizeResourceTypes(result.resources);
+    const importedCount = result.importedCount;
+    const importedSummary =
+      importedCount > 0
+        ? `${formatCount(importedCount, "new resource")} imported`
+        : "already tracked";
+
+    console.log(
+      `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
+    );
+    printInitDetail(
+      "Contains",
+      chalk.hex("#60a5fa")(
+        relativeDiscoveredPaths(result.discoveredPaths, folder),
+      ),
+    );
+    printInitDetail(
+      "Found",
+      `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
+    );
+    printInitDetail("Status", statusAccent(importedSummary, importedCount));
+  }
+}
+
+async function handleHarnessSetCommand(opts: {
+  main?: string;
+  aliases?: string;
+  interactive?: boolean;
+}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const selection = await resolveHarnessSelection({
+    main: opts.main,
+    aliases: opts.aliases
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    nonInteractive: !opts.interactive,
+    current: getHarnessPreference(),
+  });
+  const saved = setHarnessPreference(selection);
+  log.success(`Saved harness preference: ${saved.main_harness}`);
+}
+
+function handleHarnessStatusCommand(opts: { format?: string }): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const preference = getHarnessPreference();
+  if (format === "json") {
+    printJson(
+      preference ?? {
+        main_harness: null,
+        alias_harnesses: [],
+      },
+    );
+    return;
+  }
+  if (!preference) {
+    log.dim("No harness preference configured.");
+    return;
+  }
+  console.log(`Main harness:   ${preference.main_harness}`);
+  console.log(
+    `Alias harnesses: ${preference.alias_harnesses.join(", ") || "(none)"}`,
+  );
+}
+
+async function handleHarnessProjectSetCommand(opts: {
+  project: string;
+  main?: string;
+  aliases?: string;
+  materializationStrategy?: string;
+  interactive?: boolean;
+}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const projectRoot = resolve(opts.project);
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (!gitOrigin) {
+    log.error("Not a git repository.");
+    return;
+  }
+
+  const project = upsertProject({
+    git_origin: normalizeGitUrl(gitOrigin),
+    name: projectNameFromUrl(gitOrigin),
+    local_path: projectRoot,
+  });
+
+  const selection = await resolveHarnessSelection({
+    main: opts.main,
+    aliases: opts.aliases
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    nonInteractive: !opts.interactive,
+    current: getProjectHarnessConfig(project.id),
+    detected: detectPlatforms(projectRoot),
+  });
+
+  const saved = setProjectHarnessConfig({
+    project_id: project.id,
+    main_harness: selection.main_harness,
+    alias_harnesses: selection.alias_harnesses,
+    ...(opts.materializationStrategy
+      ? {
+          materialization_strategy:
+            opts.materializationStrategy === "copy" ? "copy" : "symlink-preferred",
+        }
+      : {}),
+  });
+  log.success(`Saved project harness preference: ${saved.main_harness}`);
+}
+
+function handleHarnessProjectStatusCommand(opts: {
+  project: string;
+  format?: string;
+}): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const projectRoot = resolve(opts.project);
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (!gitOrigin) {
+    log.error("Not a git repository.");
+    return;
+  }
+
+  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  const config = project ? getProjectHarnessConfig(project.id) : undefined;
+
+  if (format === "json") {
+    printJson(
+      config ?? {
+        main_harness: null,
+        alias_harnesses: [],
+        materialization_strategy: "symlink-preferred",
+      },
+    );
+    return;
+  }
+
+  if (!config) {
+    log.dim("No project harness preference configured.");
+    return;
+  }
+
+  console.log(`Main harness:   ${config.main_harness}`);
+  console.log(
+    `Alias harnesses: ${config.alias_harnesses.join(", ") || "(none)"}`,
+  );
+  console.log(
+    `Materialization: ${config.materialization_strategy}`,
+  );
+}
+
 // ── init ────────────────────────────────────────────────────────────────
 
 program
   .command("init")
   .description("Initialize the harnessdeck database and config directory")
-  .action(async () => {
-    const db = getDb();
-    initializeSchema(db);
-    const seeded = seedBuiltInPresets();
-    const homeDefaults = await scanAndPersistHomeDefaults();
-    const platformNames = new Map(
-      getAllPlatforms().map((platform) => [platform.id, platform.name]),
-    );
-
-    log.success(chalk.bold("Harnessdeck initialized"));
-    printInitMeta("Database", getDbPath());
-    printInitMeta(
-      "Built-in Presets",
-      seeded > 0
-        ? `seeded ${formatCount(seeded, "built-in preset")}`
-        : "already up to date",
-    );
-
-    if (homeDefaults.detected.length === 0) {
-      printInitMeta(
-        "Home",
-        chalk.hex("#9ca3af")("no default folders discovered"),
-      );
-      return;
-    }
-
-    log.info(chalk.bold("Home defaults overview"));
-    for (const result of homeDefaults.results) {
-      const folder = homeFolderLabel(result.discoveredPaths);
-      const foundSummary = summarizeResourceTypes(result.resources);
-      const importedCount = result.importedCount;
-      const importedSummary =
-        importedCount > 0
-          ? `${formatCount(importedCount, "new resource")} imported`
-          : "already tracked";
-
-      console.log(
-        `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
-      );
-      printInitDetail(
-        "Contains",
-        chalk.hex("#60a5fa")(
-          relativeDiscoveredPaths(result.discoveredPaths, folder),
-        ),
-      );
-      printInitDetail(
-        "Found",
-        `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
-      );
-      printInitDetail("Status", statusAccent(importedSummary, importedCount));
-    }
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (opts: { format?: string }) => {
+    await handleInitCommand(opts);
   });
 
 // ── preset ──────────────────────────────────────────────────────────────
@@ -905,10 +1101,16 @@ presetCmd
 presetCmd
   .command("list")
   .alias("ls")
-  .action(() => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { format?: string }) => {
     const db = getDb();
     initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
     const presets = listPresets();
+    if (format === "json") {
+      printJson(presets);
+      return;
+    }
     if (presets.length === 0) {
       log.dim("No presets found.");
       return;
@@ -930,8 +1132,8 @@ presetCmd
 presetCmd
   .command("add")
   .argument("<preset>", "Preset name or ID")
-  .argument("<resource-id>", "Resource ID to add")
-  .action((presetName: string, resourceId: string) => {
+  .argument("<resource>", "Resource name or ID")
+  .action((presetName: string, resourceSelector: string) => {
     const db = getDb();
     initializeSchema(db);
     const preset = getPreset(presetName);
@@ -939,15 +1141,31 @@ presetCmd
       log.error(`Preset not found: ${presetName}`);
       return;
     }
-    addResourceToPreset(preset.id, resourceId);
-    log.success(`Added resource ${resourceId} to preset ${preset.name}`);
+    const resourceResult = resolveResource(resourceSelector);
+    if (resourceResult.status !== "found") {
+      log.error(
+        resourceResult.status === "ambiguous"
+          ? `Ambiguous resource name: ${resourceSelector}`
+          : `Resource not found: ${resourceSelector}`,
+      );
+      if (resourceResult.status === "ambiguous") {
+        for (const match of resourceResult.matches) {
+          log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+        }
+      }
+      return;
+    }
+    addResourceToPreset(preset.id, resourceResult.resource.id);
+    log.success(
+      `Added resource ${resourceResult.resource.name} to preset ${preset.name}`,
+    );
   });
 
 presetCmd
   .command("remove")
   .argument("<preset>", "Preset name or ID")
-  .argument("<resource-id>", "Resource ID to remove")
-  .action((presetName: string, resourceId: string) => {
+  .argument("<resource>", "Resource name or ID")
+  .action((presetName: string, resourceSelector: string) => {
     const db = getDb();
     initializeSchema(db);
     const preset = getPreset(presetName);
@@ -955,8 +1173,24 @@ presetCmd
       log.error(`Preset not found: ${presetName}`);
       return;
     }
-    removeResourceFromPreset(preset.id, resourceId);
-    log.success(`Removed resource ${resourceId} from preset ${preset.name}`);
+    const resourceResult = resolveResource(resourceSelector);
+    if (resourceResult.status !== "found") {
+      log.error(
+        resourceResult.status === "ambiguous"
+          ? `Ambiguous resource name: ${resourceSelector}`
+          : `Resource not found: ${resourceSelector}`,
+      );
+      if (resourceResult.status === "ambiguous") {
+        for (const match of resourceResult.matches) {
+          log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+        }
+      }
+      return;
+    }
+    removeResourceFromPreset(preset.id, resourceResult.resource.id);
+    log.success(
+      `Removed resource ${resourceResult.resource.name} from preset ${preset.name}`,
+    );
   });
 
 presetCmd
@@ -1056,15 +1290,21 @@ resourceCmd
   .alias("ls")
   .option("-t, --type <type>", "Filter by resource type")
   .option("-s, --search <query>", "Search by name or description")
-  .action((opts: { type?: string; search?: string }) => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { type?: string; search?: string; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
     const type = opts.type as ResourceType | undefined;
     if (type && !RESOURCE_TYPES.includes(type)) {
       log.error(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
       return;
     }
     const resources = listResources({ type, search: opts.search });
+    if (format === "json") {
+      printJson(resources);
+      return;
+    }
     if (resources.length === 0) {
       log.dim("No resources found.");
       return;
@@ -1077,10 +1317,24 @@ resourceCmd
 resourceCmd
   .command("show")
   .argument("<resource>", "Resource name or ID")
-  .action((resource: string) => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((resource: string, opts: { format?: string }) => {
     const db = getDb();
     initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
     const result = resolveResource(resource);
+    if (result.status === "ambiguous" && format === "json") {
+      printJson({
+        error: "ambiguous_resource_name",
+        input: resource,
+        matches: result.matches,
+      });
+      return;
+    }
+    if (result.status === "found" && format === "json") {
+      printJson(result.resource);
+      return;
+    }
     if (result.status === "not_found") {
       log.error(`Resource not found: ${resource}`);
       return;
@@ -1151,6 +1405,7 @@ projectCmd
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
+  .option("--format <mode>", "Output format: human or json", "human")
   .option(
     "--ignore-plugin-versions",
     "Skip validating preset Claude plugin pins against installed versions",
@@ -1165,6 +1420,7 @@ projectCmd
 projectCmd
   .command("history")
   .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
   .description("List configuration snapshots for a project")
   .action(handleHistoryCommand);
 
@@ -1194,10 +1450,57 @@ platformCmd.helpCommand(false);
 platformCmd
   .command("list")
   .alias("ls")
+  .option("--format <mode>", "Output format: human or json", "human")
   .description(
     "List all supported platforms (e.g., Claude Code, Cursor, Codex)",
   )
   .action(handlePlatformListCommand);
+
+// ── harness ─────────────────────────────────────────────────────────────
+
+const harnessCmd = program
+  .command("harness")
+  .description("Manage harness preferences for main and alias platforms");
+harnessCmd.helpCommand(false);
+
+harnessCmd
+  .command("set")
+  .option("--main <slug>", "Main harness slug")
+  .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Set global harness preferences")
+  .action(handleHarnessSetCommand);
+
+harnessCmd
+  .command("status")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show global harness preferences")
+  .action(handleHarnessStatusCommand);
+
+const harnessProjectCmd = harnessCmd
+  .command("project")
+  .description("Manage harness preferences for a git-backed project");
+harnessProjectCmd.helpCommand(false);
+
+harnessProjectCmd
+  .command("set")
+  .option("--project <path>", "Project directory", ".")
+  .option("--main <slug>", "Main harness slug")
+  .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+  .option(
+    "--materialization-strategy <strategy>",
+    "Materialization strategy: symlink-preferred or copy",
+  )
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Set project-scoped harness preferences")
+  .action(handleHarnessProjectSetCommand);
+
+harnessProjectCmd
+  .command("status")
+  .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show project-scoped harness preferences")
+  .action(handleHarnessProjectStatusCommand);
 
 // ── plugin ──────────────────────────────────────────────────────────────
 
@@ -1282,6 +1585,7 @@ program
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
+  .option("--format <mode>", "Output format: human or json", "human")
   .option(
     "--ignore-plugin-versions",
     "Skip validating preset Claude plugin pins against installed versions",
@@ -1297,6 +1601,7 @@ program
         project: string;
         platform?: string;
         dryRun?: boolean;
+        format?: string;
         ignorePluginVersions?: boolean;
         strictPluginVersions?: boolean;
       },
@@ -1309,7 +1614,8 @@ program
 program
   .command("history", { hidden: true })
   .option("--project <path>", "Project directory", ".")
-  .action((opts: { project: string }) => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { project: string; format?: string }) => {
     warnDeprecatedCommand("harnessdeck history", "harnessdeck project history");
     handleHistoryCommand(opts);
   });
@@ -1354,9 +1660,10 @@ program
 
 program
   .command("platforms", { hidden: true })
-  .action(() => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { format?: string }) => {
     warnDeprecatedCommand("harnessdeck platforms", "harnessdeck platform list");
-    handlePlatformListCommand();
+    handlePlatformListCommand(opts);
   });
 
 
