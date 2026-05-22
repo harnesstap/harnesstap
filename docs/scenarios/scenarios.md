@@ -1,18 +1,16 @@
 # HarnessDeck user scenarios
 
-This document reflects the **current shipped CLI**, with a separate
-[Planned](#planned) section at the bottom for scenarios that map to logical
-extensions discussed in `SPEC.md` but are not yet shipped.
+This document reflects the **current shipped CLI**.
 
 Two corrections matter up front:
 
 - `harnessdeck init` initializes `~/.harnessdeck`, seeds built-in presets, and
   imports supported home-directory defaults. It does **not** currently choose a
   main harness during init — use Scenario 2 immediately after.
-- The current CLI does **not** expose a standalone `harnessdeck project sync`
-  command. The practical cross-harness workflow today is to re-apply a preset
-  to the target platforms you care about (see Scenarios 7 and 15). A real
-  `project sync` is tracked in Scenario P7.
+- For cross-harness updates without re-specifying a preset name, use
+  `harnessdeck project sync` (Scenario P7). Re-applying a preset to selected
+  platforms (Scenarios 7 and 15) remains the right path when you want to push a
+  known preset baseline onto disk.
 
 ## Usage frequency
 
@@ -47,22 +45,94 @@ after HarnessDeck is set up — not how important it is the first time.
 | 14 | Curate and clean up the local resource DB           | Rare       | Shipped |
 | 17 | Migrate HarnessDeck state to a new machine          | Rare       | Shipped (manual) |
 | 18 | Debug a Claude plugin merge conflict                | Rare       | Shipped |
-| P1 | Detect drift between project and last applied preset | —         | Planned |
-| P2 | Diff two presets                                    | —          | Planned |
-| P3 | Validate a preset without writing                   | —          | Planned |
-| P4 | Apply a preset directly from a URL                  | —          | Planned |
-| P5 | Stack multiple presets                              | —          | Planned |
-| P6 | Turn a project's current state into a preset        | —          | Planned |
-| P7 | True cross-harness `project sync`                   | —          | Planned |
-| P8 | One-command machine migration                       | —          | Planned |
+| P1 | Detect drift between project and last applied preset | Occasional | Shipped |
+| P2 | Diff two presets                                    | Occasional | Shipped |
+| P3 | Validate a preset without writing                   | Occasional | Shipped |
+| P4 | Apply a preset directly from a URL                  | Occasional | Shipped |
+| P5 | Stack multiple presets                              | Common     | Shipped |
+| P6 | Turn a project's current state into a preset        | Common     | Shipped |
+| P7 | True cross-harness `project sync`                   | Common     | Shipped |
+| P8 | One-command machine migration                       | Rare       | Shipped |
 
 **Status legend**
 
 - **Shipped** — the commands shown in the scenario exist in the current CLI.
 - **Shipped (manual)** — achievable today with current commands but as a
-  multi-step workflow; a single-command version is tracked under Planned.
-- **Planned** — the commands shown do not exist yet; included so the intended
-  UX can be discussed before implementation.
+  multi-step workflow (see Scenario 17 vs P8).
+
+---
+
+## Extended workflows (P1–P8)
+
+### Scenario P1: Detect drift between project files and the last applied preset
+
+**Frequency: Occasional** · **Status: Shipped**
+
+```bash
+harnessdeck project drift --project .
+harnessdeck project drift --project . --format json   # exit 1 when drift exists
+```
+
+### Scenario P2: Diff two presets
+
+**Frequency: Occasional** · **Status: Shipped**
+
+```bash
+harnessdeck preset diff team-baseline my-fork
+harnessdeck preset diff team-baseline ./incoming-bundle.harnessdeck.json
+```
+
+### Scenario P3: Validate a preset without writing
+
+**Frequency: Occasional** · **Status: Shipped**
+
+```bash
+harnessdeck preset validate my-setup
+harnessdeck preset validate my-setup --format json
+```
+
+### Scenario P4: Apply a preset directly from a URL
+
+**Frequency: Occasional** · **Status: Shipped**
+
+```bash
+harnessdeck project apply https://team.example.com/baselines/web.json --project .
+```
+
+### Scenario P5: Stack multiple presets
+
+**Frequency: Common** · **Status: Shipped**
+
+```bash
+harnessdeck project apply team-baseline my-overrides --project .
+```
+
+### Scenario P6: Turn a project's current state into a preset
+
+**Frequency: Common** · **Status: Shipped**
+
+```bash
+harnessdeck preset from-project my-setup --project . --description "Inferred from web repo"
+```
+
+### Scenario P7: True cross-harness `project sync`
+
+**Frequency: Common** · **Status: Shipped**
+
+```bash
+harnessdeck project sync .
+harnessdeck project sync . --force-shift-reference codex
+harnessdeck project sync . --dry-run
+```
+
+### Scenario P8: One-command machine migration
+
+**Frequency: Rare** · **Status: Shipped**
+
+```bash
+harnessdeck migrate export ./harnessdeck-state.tar.gz --include-plugins
+harnessdeck migrate import ./harnessdeck-state.tar.gz
+```
 
 ---
 
@@ -496,11 +566,10 @@ Valid `--type` values: `instruction`, `skill`, `rule`, `mcp_server`,
 
 ### Scenario 17: Migrate HarnessDeck state to a new machine
 
-**Frequency: Rare** · **Status: Shipped (manual workflow only — see Scenario P8 for the planned single-command version)**
+**Frequency: Rare** · **Status: Shipped (manual workflow — see Scenario P8 for one-command migration)**
 
-Use this when moving setups across laptops or onto a dev box. Today this is
-a manual export/import loop; see Scenario P8 for the single-command version
-we want to add.
+Use this when moving setups across laptops or onto a dev box. For a single
+archive that includes harness preferences and config, prefer Scenario P8.
 
 Manual workflow with current commands:
 
@@ -522,7 +591,7 @@ harnessdeck harness set --main claude-code --aliases cursor,codex   # restore se
 `--embed-plugins` is recommended for portability so the new machine does not
 need to re-fetch marketplace plugin trees. This workflow does not currently
 carry over harness preferences or `~/.harnessdeck/config.json`; copy those by
-hand or use Scenario P8 when it lands.
+hand or use Scenario P8.
 
 ### Scenario 18: Debug a Claude plugin merge conflict (committed vs effective)
 
@@ -546,142 +615,3 @@ project scope.
 
 ---
 
-## Planned
-
-These scenarios map to logical extensions of HarnessDeck that are **not yet
-implemented**. They are documented here so the intended user experience can be
-discussed before the commands ship. The SPEC's "Near-term direction" section
-covers some of them.
-
-> ⚠️ The commands shown in this section do **not** exist yet. Running them
-> today will fail.
-
-### Scenario P1: Detect drift between project files and the last applied preset
-
-**Status: Planned** (no implementation today)
-
-Today, a user who hand-edits `CLAUDE.md` after a `project apply` has no way
-to ask *"did anything change since the last apply?"*. A drift command would
-compare project files against the latest snapshot.
-
-Intended commands:
-
-```bash
-harnessdeck project drift --project .
-harnessdeck project drift --project . --format json   # CI-friendly diff
-```
-
-### Scenario P2: Diff two presets
-
-**Status: Planned** (no implementation today)
-
-When forking a team preset into a personal variant, users want to see what
-they changed. A `preset diff` would compare resource sets, ordering, plugin
-pins, and Claude marketplace config.
-
-Intended commands:
-
-```bash
-harnessdeck preset diff team-baseline my-fork
-harnessdeck preset diff team-baseline ./incoming-bundle.harnessdeck.json
-```
-
-### Scenario P3: Validate a preset without writing
-
-**Status: Planned** (no implementation today)
-
-Today, problems in a preset (missing resources, invalid plugin refs, unknown
-marketplaces) only surface at apply time. A validate command would check the
-preset standalone, with no project required.
-
-Intended commands:
-
-```bash
-harnessdeck preset validate my-setup
-harnessdeck preset validate my-setup --format json
-```
-
-### Scenario P4: Apply a preset directly from a URL
-
-**Status: Planned** (no implementation today)
-
-Today, a remote preset must be downloaded as a bundle first, then imported,
-then applied. A URL-direct apply would shorten this to one step for team
-baselines hosted on a known endpoint.
-
-Intended commands:
-
-```bash
-harnessdeck project apply https://team.example.com/baselines/web.json --project .
-```
-
-### Scenario P5: Stack multiple presets
-
-**Status: Planned** (no implementation today)
-
-A common pattern is *"team baseline plus personal additions"*. Today this is
-done by adding all personal resources back into a fork of the team preset; a
-stacking apply would let users layer two presets in order.
-
-Intended commands:
-
-```bash
-harnessdeck project apply team-baseline my-overrides --project .
-```
-
-### Scenario P6: Turn a project's current state into a preset
-
-**Status: Planned** (no implementation today)
-
-Scenario 5 today is a multi-step dance (scan, create preset, add each
-resource by hand). A one-shot command would collect everything that was
-scanned from a project into a new named preset.
-
-Intended commands:
-
-```bash
-harnessdeck preset from-project my-setup --project . --description "Inferred from web repo"
-```
-
-### Scenario P7: True cross-harness `project sync`
-
-**Status: Planned** (referenced in `SPEC.md` lines 67 and 289, but the
-command is not exposed by the current CLI)
-
-`SPEC.md` still references `harnessdeck project sync [path]`. The current
-implementation does not expose it; users re-apply a preset across target
-platforms instead (Scenario 7 / Scenario 15). A real `project sync` would
-resolve the main harness as canonical and refresh all alias outputs (using
-symlinks where possible) without needing a preset name on every call.
-
-Intended commands:
-
-```bash
-harnessdeck project sync .
-harnessdeck project sync . --force-shift-reference codex   # change canonical
-```
-
-### Scenario P8: One-command machine migration
-
-**Status: Planned** (no implementation today; Scenario 17 covers the manual
-workflow with shipped commands)
-
-Scenario 17 today is a `jq` and shell-loop dance, and it does not carry over
-harness preferences or local config. A single export-everything and a single
-import-everything command would make machine moves trivial.
-
-Intended commands:
-
-```bash
-# On the old machine
-harnessdeck migrate export ./harnessdeck-state.tar.gz --include-plugins
-
-# On the new machine
-harnessdeck migrate import ./harnessdeck-state.tar.gz
-```
-
-The migration archive would carry every preset, the resource catalog, global
-harness preferences, optional inlined plugin trees, and
-`~/.harnessdeck/config.json` so the new machine needs nothing beyond the
-file. Compare with `preset export` (Scenario 10), which is intentionally
-single-preset.

@@ -82,6 +82,17 @@ import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
 import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
+import { detectProjectDriftFromLatest } from "./services/project-drift.js";
+import { diffPresets } from "./services/preset-diff.js";
+import { validatePreset } from "./services/preset-validate.js";
+import { mergePresets } from "./services/preset-merge.js";
+import { createPresetFromProject } from "./services/preset-from-project.js";
+import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath } from "./services/preset-source.js";
+import { syncProject } from "./services/project-sync.js";
+import {
+  exportMigrationState,
+  importMigrationState,
+} from "./services/migrate.js";
 
 const program = new Command();
 
@@ -256,8 +267,64 @@ async function handleScanCommand(
   }
 }
 
+async function resolveApplyPresets(
+  presetNames: [string, ...string[]],
+  projectRoot: string,
+): Promise<{
+  presets: ReturnType<typeof getPreset>[];
+  resources: Resource[];
+  claude?: import("./types.js").ClaudePresetConfig;
+  primaryPresetId: string;
+}> {
+  if (presetNames.length === 1 && isPresetUrl(presetNames[0])) {
+    const tempFile = await fetchPresetBundleToTempFile(presetNames[0]);
+    const { preset, resources } = importFromFile(tempFile, {
+      embeddedTargetDir: projectRoot,
+    });
+    return {
+      presets: [preset],
+      resources,
+      claude: preset.claude,
+      primaryPresetId: preset.id,
+    };
+  }
+
+  if (presetNames.length === 1 && isBundleFilePath(presetNames[0])) {
+    const { preset, resources } = importFromFile(presetNames[0], {
+      embeddedTargetDir: projectRoot,
+    });
+    return {
+      presets: [preset],
+      resources,
+      claude: preset.claude,
+      primaryPresetId: preset.id,
+    };
+  }
+
+  if (presetNames.length > 1) {
+    const merged = mergePresets(presetNames);
+    return {
+      presets: merged.presets,
+      resources: merged.resources,
+      claude: merged.claude,
+      primaryPresetId: merged.presets[merged.presets.length - 1]?.id ?? "",
+    };
+  }
+
+  const preset = getPreset(presetNames[0]);
+  if (!preset) {
+    throw new Error(`Preset not found: ${presetNames[0]}`);
+  }
+  return {
+    presets: [preset],
+    resources: getPresetResources(preset.id),
+    claude: preset.claude,
+    primaryPresetId: preset.id,
+  };
+}
+
 async function handleApplyCommand(
-  presetName: string,
+  presetNames: [string, ...string[]] | [],
   opts: {
     project: string;
     platform?: string;
@@ -270,13 +337,29 @@ async function handleApplyCommand(
   const db = getDb();
   initializeSchema(db);
 
-  const preset = getPreset(presetName);
-  if (!preset) {
-    log.error(`Preset not found: ${presetName}`);
+  if (presetNames.length === 0) {
+    log.error("Provide at least one preset name, bundle path, or URL.");
     return;
   }
 
   const projectRoot = resolve(opts.project);
+  let applyBundle: Awaited<ReturnType<typeof resolveApplyPresets>>;
+  try {
+    applyBundle = await resolveApplyPresets(
+      presetNames as [string, ...string[]],
+      projectRoot,
+    );
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+    return;
+  }
+
+  const primaryPreset = applyBundle.presets[applyBundle.presets.length - 1];
+  if (!primaryPreset) {
+    log.error("No preset resolved for apply");
+    return;
+  }
+
   const platforms = opts.platform
     ? opts.platform.split(",")
     : detectPlatforms(projectRoot);
@@ -286,12 +369,12 @@ async function handleApplyCommand(
     return;
   }
 
-  const resources = getPresetResources(preset.id);
+  const { resources, claude } = applyBundle;
   const generated = await generateFiles(
     resources,
     platforms,
     projectRoot,
-    preset.claude,
+    claude,
   );
 
   const gitOrigin = getGitOrigin(projectRoot);
@@ -304,7 +387,7 @@ async function handleApplyCommand(
     });
 
     const snapshotState: SnapshotState = {
-      presets: [preset],
+      presets: applyBundle.presets.filter((p): p is NonNullable<typeof p> => p != null),
       resources,
       platform_files: Object.fromEntries(
         generated.map((result) => [
@@ -315,13 +398,16 @@ async function handleApplyCommand(
     };
     createSnapshot({
       project_id: project.id,
-      label: `Before applying: ${preset.name}`,
+      label:
+        presetNames.length > 1
+          ? `Before applying: ${presetNames.join(" + ")}`
+          : `Before applying: ${primaryPreset.name}`,
       state: snapshotState,
     });
 
     applyPresetToProject({
       project_id: project.id,
-      preset_id: preset.id,
+      preset_id: applyBundle.primaryPresetId,
       platforms,
     });
   }
@@ -330,7 +416,8 @@ async function handleApplyCommand(
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
       printJson({
-        preset: preset.name,
+        preset: primaryPreset.name,
+        presets: presetNames,
         project_root: projectRoot,
         platforms: generated.map((result) => ({
           platform: result.platformId,
@@ -357,9 +444,15 @@ async function handleApplyCommand(
     }
   }
 
-  if (!opts.ignorePluginVersions && listPresetPlugins(preset.id).length > 0) {
+  if (
+    !opts.ignorePluginVersions &&
+    listPresetPlugins(applyBundle.primaryPresetId).length > 0
+  ) {
     const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
-    const issues = validatePresetPluginConstraints(preset.id, inventory);
+    const issues = validatePresetPluginConstraints(
+      applyBundle.primaryPresetId,
+      inventory,
+    );
     for (const issue of issues) {
       console.warn(chalk.yellow(issue.message));
     }
@@ -1016,6 +1109,216 @@ async function handleHarnessProjectSetCommand(opts: {
   log.success(`Saved project harness preference: ${saved.main_harness}`);
 }
 
+function handleProjectDriftCommand(opts: {
+  project: string;
+  format?: string;
+}): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const projectRoot = resolve(opts.project);
+  const gitOrigin = getGitOrigin(projectRoot);
+  if (!gitOrigin) {
+    log.error("Not a git repository.");
+    return;
+  }
+  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  if (!project) {
+    if (format === "json") {
+      printJson({
+        project_root: projectRoot,
+        snapshot_id: null,
+        has_drift: false,
+        changes: [],
+        message: "No project record. Run project apply first.",
+      });
+      return;
+    }
+    log.warn("No project record found. Run `harnessdeck project apply` first.");
+    return;
+  }
+
+  const report = detectProjectDriftFromLatest(projectRoot, project.id);
+  if (!report) {
+    return;
+  }
+  if (format === "json") {
+    printJson(report);
+    if (report.has_drift) process.exitCode = 1;
+    return;
+  }
+  if (!report.snapshot_id) {
+    log.dim("No snapshots found. Drift detection requires a prior apply or sync.");
+    return;
+  }
+  if (!report.has_drift) {
+    log.success("No drift detected since last snapshot.");
+    return;
+  }
+  log.warn(
+    `Drift detected (${report.changes.length} change(s)) since snapshot ${report.snapshot_id}`,
+  );
+  for (const change of report.changes) {
+    log.info(`  ${change.type.padEnd(8)} ${change.path}`);
+  }
+  process.exitCode = 1;
+}
+
+function handlePresetDiffCommand(
+  left: string,
+  right: string,
+  opts: { format?: string },
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  try {
+    const report = diffPresets(left, right);
+    if (format === "json") {
+      printJson(report);
+      return;
+    }
+    log.info(`Diff: ${report.left} ↔ ${report.right}`);
+    if (report.changes.length === 0) {
+      log.success("No differences.");
+      return;
+    }
+    for (const change of report.changes) {
+      log.info(`  [${change.kind}] ${change.key}: ${change.change}`);
+    }
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handlePresetValidateCommand(
+  name: string,
+  opts: { format?: string },
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const report = validatePreset(name);
+  if (format === "json") {
+    printJson(report);
+    if (!report.valid) process.exitCode = 1;
+    return;
+  }
+  if (report.valid && report.issues.length === 0) {
+    log.success(`Preset "${report.preset}" is valid.`);
+    return;
+  }
+  for (const issue of report.issues) {
+    const label = issue.severity === "error" ? chalk.red("error") : chalk.yellow("warn");
+    log.info(`  ${label} ${issue.code}: ${issue.message}`);
+  }
+  if (!report.valid) {
+    process.exitCode = 1;
+  }
+}
+
+async function handlePresetFromProjectCommand(
+  name: string,
+  opts: { project: string; description?: string; platform?: string },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  try {
+    const result = await createPresetFromProject({
+      name,
+      description: opts.description,
+      projectRoot: resolve(opts.project),
+      platform: opts.platform,
+    });
+    log.success(
+      `Created preset "${result.preset.name}" with ${result.imported_count} resource(s)`,
+    );
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleProjectSyncCommand(
+  path: string,
+  opts: {
+    dryRun?: boolean;
+    format?: string;
+    forceShiftReference?: string;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const projectRoot = resolve(path);
+  try {
+    const result = await syncProject({
+      projectRoot,
+      dryRun: opts.dryRun,
+      forceShiftReference: opts.forceShiftReference,
+    });
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    if (opts.dryRun) {
+      log.dim("(dry run — no files written)");
+    }
+    log.success(
+      `Synced ${result.platforms_synced.join(", ") || "(none)"} from main harness ${result.main_harness}`,
+    );
+    log.info(`Files written: ${result.files_written}`);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleMigrateExportCommand(
+  file: string,
+  opts: {
+    includePlugins?: boolean;
+    format?: string;
+  },
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  try {
+    const manifest = exportMigrationState({
+      outputPath: file,
+      includePlugins: opts.includePlugins,
+    });
+    if (format === "json") {
+      printJson({ ...manifest, output: file });
+      return;
+    }
+    log.success(`Exported migration archive to ${file}`);
+    log.info(`Presets: ${manifest.preset_count}`);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+function handleMigrateImportCommand(
+  file: string,
+  opts: { format?: string } = {},
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  try {
+    const result = importMigrationState({ archivePath: file });
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    log.success(
+      `Imported ${result.presets_imported} preset(s) from migration archive`,
+    );
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
 function handleHarnessProjectStatusCommand(opts: {
   project: string;
   format?: string;
@@ -1277,6 +1580,52 @@ presetCmd
   .description("Import a preset from a JSON bundle file")
   .action(handlePresetImportCommand);
 
+presetCmd
+  .command("diff")
+  .argument("<left>", "Preset name or bundle file")
+  .argument("<right>", "Preset name or bundle file")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Diff two presets or a preset and a bundle file")
+  .action(handlePresetDiffCommand);
+
+presetCmd
+  .command("validate")
+  .argument("<name>", "Preset name or ID")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Validate a preset without applying it to a project")
+  .action(handlePresetValidateCommand);
+
+presetCmd
+  .command("from-project")
+  .argument("<name>", "New preset name")
+  .option("--project <path>", "Project directory", ".")
+  .option("-d, --description <text>", "Preset description")
+  .option("-p, --platform <slug>", "Scan only a specific platform")
+  .description("Scan a project and create a preset from imported resources")
+  .action(handlePresetFromProjectCommand);
+
+// ── migrate ─────────────────────────────────────────────────────────────
+
+const migrateCmd = program
+  .command("migrate")
+  .description("Export or import full HarnessDeck state for machine migration");
+migrateCmd.helpCommand(false);
+
+migrateCmd
+  .command("export")
+  .argument("<file>", "Output archive path (.tar.gz or .json)")
+  .option("--include-plugins", "Embed plugin trees in preset bundles")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Export all presets, harness preferences, and config")
+  .action(handleMigrateExportCommand);
+
+migrateCmd
+  .command("import")
+  .argument("<file>", "Migration archive from migrate export")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Import a migration archive on this machine")
+  .action(handleMigrateImportCommand);
+
 // ── resource ────────────────────────────────────────────────────────────
 
 const resourceCmd = program
@@ -1401,7 +1750,10 @@ projectCmd
 
 projectCmd
   .command("apply")
-  .argument("<preset>", "Preset name or ID")
+  .argument(
+    "<presets...>",
+    "Preset name(s), bundle path, or URL (multiple presets are merged in order)",
+  )
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
@@ -1414,8 +1766,33 @@ projectCmd
     "--strict-plugin-versions",
     "Fail apply (exit 2) if any pinned plugin violates its version constraint",
   )
-  .description("Apply a preset to a project, serializing for each platform")
+  .description(
+    "Apply one or more presets (or a bundle URL) to a project, serializing for each platform",
+  )
   .action(handleApplyCommand);
+
+projectCmd
+  .command("drift")
+  .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description(
+    "Detect drift between project files and the latest apply/sync snapshot",
+  )
+  .action(handleProjectDriftCommand);
+
+projectCmd
+  .command("sync")
+  .argument("[path]", "Project directory", ".")
+  .option("--dry-run", "Show what would be written without writing files")
+  .option(
+    "--force-shift-reference <slug>",
+    "Set the project main harness before syncing",
+  )
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description(
+    "Sync alias harness outputs from the main harness on-disk configuration",
+  )
+  .action(handleProjectSyncCommand);
 
 projectCmd
   .command("history")
@@ -1607,7 +1984,7 @@ program
       },
     ) => {
       warnDeprecatedCommand("harnessdeck apply", "harnessdeck project apply");
-      await handleApplyCommand(presetName, opts);
+      await handleApplyCommand([presetName], opts);
     },
   );
 
