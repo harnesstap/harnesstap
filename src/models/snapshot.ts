@@ -49,3 +49,8 @@ export function listSnapshots(projectId: string): Snapshot[] {
     .all(projectId) as SnapshotRow[];
   return rows.map(rowToSnapshot);
 }
+
+export function getLatestSnapshot(projectId: string): Snapshot | undefined {
+  const snapshots = listSnapshots(projectId);
+  return snapshots[0];
+}
