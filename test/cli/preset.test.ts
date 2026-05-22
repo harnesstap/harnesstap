@@ -52,4 +52,27 @@ describe("CLI preset", () => {
       await context.cleanup();
     }
   });
+
+  it("accepts resource names when adding and removing preset resources", async () => {
+    const context = await createTestContext("cli-preset-resource-selector");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const preset = presetModel.createPreset({ name: "team" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
+      );
+
+      await runCli(["preset", "add", "team", "shared-skill"]);
+      expect(presetModel.getPresetResources(preset.id)).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: resource.id })]),
+      );
+
+      await runCli(["preset", "remove", "team", "shared-skill"]);
+      expect(presetModel.getPresetResources(preset.id)).toHaveLength(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
