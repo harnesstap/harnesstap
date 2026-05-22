@@ -22,6 +22,12 @@ coverage/
 # Test fixtures (override global Claude ignores for settings.local.json)
 !test/fixtures/**/.claude/settings.local.json
 
+# Runtime artifacts when fixture dirs are used as HOME during local runs
+test/fixtures/**/.claude.json
+test/fixtures/**/.claude/backups/
+test/fixtures/**/.harnessdeck/
+test/fixtures/**/Library/
+
 # Logs
 logs/
 *.log
