@@ -82,4 +82,29 @@ describe("CLI init", () => {
       await context.cleanup();
     }
   });
+
+  it("accepts harness selection flags during init and persists the preference", async () => {
+    const context = await createTestContext("cli-init-harness-selection");
+
+    try {
+      const result = await runCli([
+        "init",
+        "--main",
+        "claude-code",
+        "--aliases",
+        "cursor,codex",
+      ]);
+      const show = await runCli(["harness", "status", "--format", "json"]);
+
+      expect(result.stdout).toContain("Harnessdeck initialized");
+      expect(JSON.parse(show.stdout)).toEqual(
+        expect.objectContaining({
+          main_harness: "claude-code",
+          alias_harnesses: ["cursor", "codex"],
+        }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

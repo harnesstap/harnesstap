@@ -620,6 +620,13 @@ function parseScopeFilter(scope?: string): PluginScope[] | undefined {
   return scope.split(",").map((s) => s.trim()) as PluginScope[];
 }
 
+function parseHarnessAliases(aliases?: string): string[] | undefined {
+  return aliases
+    ?.split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function pluginLifecycleBase(path: string, opts: { platform?: string }) {
   return {
     projectRoot: resolve(path),
@@ -951,12 +958,45 @@ async function handleProjectStatusCommand(
   }
 }
 
-async function handleInitCommand(opts: { format?: string } = {}): Promise<void> {
+async function handleInitCommand(opts: {
+  format?: string;
+  main?: string;
+  aliases?: string;
+  interactive?: boolean;
+} = {}): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const seeded = seedBuiltInPresets();
   const homeDefaults = await scanAndPersistHomeDefaults();
+  const interactiveSelection =
+    format === "human" && opts.interactive && process.stdin.isTTY;
+  const autoPromptSelection =
+    format === "human" &&
+    !opts.main &&
+    !opts.aliases &&
+    process.stdin.isTTY;
+  const shouldSelectHarness =
+    interactiveSelection ||
+    autoPromptSelection ||
+    Boolean(opts.main) ||
+    Boolean(opts.aliases);
+  let savedHarnessPreference:
+    | ReturnType<typeof setHarnessPreference>
+    | undefined;
+
+  if (shouldSelectHarness) {
+    const selection = await resolveHarnessSelection({
+      main: opts.main,
+      aliases: parseHarnessAliases(opts.aliases),
+      nonInteractive: !(interactiveSelection || autoPromptSelection),
+      current: getHarnessPreference(),
+      detected: homeDefaults.detected.map((result) => result.platformId),
+      mainMessage: "Select the default main harness",
+      aliasMessage: "Select default alias harnesses to keep in sync",
+    });
+    savedHarnessPreference = setHarnessPreference(selection);
+  }
 
   if (format === "json") {
     printJson({
@@ -966,6 +1006,9 @@ async function handleInitCommand(opts: { format?: string } = {}): Promise<void> 
       },
       home_defaults: homeDefaults.results,
       database_path: getDbPath(),
+      ...(savedHarnessPreference
+        ? { harness_preference: savedHarnessPreference }
+        : {}),
     });
     return;
   }
@@ -988,33 +1031,40 @@ async function handleInitCommand(opts: { format?: string } = {}): Promise<void> 
       "Home",
       chalk.hex("#9ca3af")("no default folders discovered"),
     );
-    return;
+  } else {
+    log.info(chalk.bold("Home defaults overview"));
+    for (const result of homeDefaults.results) {
+      const folder = homeFolderLabel(result.discoveredPaths);
+      const foundSummary = summarizeResourceTypes(result.resources);
+      const importedCount = result.importedCount;
+      const importedSummary =
+        importedCount > 0
+          ? `${formatCount(importedCount, "new resource")} imported`
+          : "already tracked";
+
+      console.log(
+        `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
+      );
+      printInitDetail(
+        "Contains",
+        chalk.hex("#60a5fa")(
+          relativeDiscoveredPaths(result.discoveredPaths, folder),
+        ),
+      );
+      printInitDetail(
+        "Found",
+        `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
+      );
+      printInitDetail("Status", statusAccent(importedSummary, importedCount));
+    }
   }
 
-  log.info(chalk.bold("Home defaults overview"));
-  for (const result of homeDefaults.results) {
-    const folder = homeFolderLabel(result.discoveredPaths);
-    const foundSummary = summarizeResourceTypes(result.resources);
-    const importedCount = result.importedCount;
-    const importedSummary =
-      importedCount > 0
-        ? `${formatCount(importedCount, "new resource")} imported`
-        : "already tracked";
-
-    console.log(
-      `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
+  if (savedHarnessPreference) {
+    printInitMeta("Main Harness", savedHarnessPreference.main_harness);
+    printInitMeta(
+      "Aliases",
+      savedHarnessPreference.alias_harnesses.join(", ") || "(none)",
     );
-    printInitDetail(
-      "Contains",
-      chalk.hex("#60a5fa")(
-        relativeDiscoveredPaths(result.discoveredPaths, folder),
-      ),
-    );
-    printInitDetail(
-      "Found",
-      `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
-    );
-    printInitDetail("Status", statusAccent(importedSummary, importedCount));
   }
 }
 
@@ -1027,10 +1077,7 @@ async function handleHarnessSetCommand(opts: {
   initializeSchema(db);
   const selection = await resolveHarnessSelection({
     main: opts.main,
-    aliases: opts.aliases
-      ?.split(",")
-      .map((value) => value.trim())
-      .filter(Boolean),
+    aliases: parseHarnessAliases(opts.aliases),
     nonInteractive: !opts.interactive,
     current: getHarnessPreference(),
   });
@@ -1086,10 +1133,7 @@ async function handleHarnessProjectSetCommand(opts: {
 
   const selection = await resolveHarnessSelection({
     main: opts.main,
-    aliases: opts.aliases
-      ?.split(",")
-      .map((value) => value.trim())
-      .filter(Boolean),
+    aliases: parseHarnessAliases(opts.aliases),
     nonInteractive: !opts.interactive,
     current: getProjectHarnessConfig(project.id),
     detected: detectPlatforms(projectRoot),
@@ -1367,7 +1411,18 @@ program
   .command("init")
   .description("Initialize the harnessdeck database and config directory")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (opts: { format?: string }) => {
+  .option("--main <slug>", "Default main harness slug")
+  .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+  .option(
+    "--interactive",
+    "Prompt for harness selection instead of relying on explicit flags",
+  )
+  .action(async (opts: {
+    format?: string;
+    main?: string;
+    aliases?: string;
+    interactive?: boolean;
+  }) => {
     await handleInitCommand(opts);
   });
 
