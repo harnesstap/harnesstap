@@ -105,6 +105,72 @@ describe("CLI resource", () => {
     }
   });
 
+  it("emits JSON for resource list and show", async () => {
+    const context = await createTestContext("cli-resource-json");
+    try {
+      await runCli(["init"]);
+      const resourceModel = await import("../../src/models/resource.ts");
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "json-resource",
+          description: "JSON resource",
+          content: "# JSON Resource",
+        }),
+      );
+
+      const list = await runCli(["resource", "list", "--format", "json"]);
+      const show = await runCli(["resource", "show", resource.id, "--format", "json"]);
+
+      expect(JSON.parse(list.stdout)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: resource.id,
+            name: "json-resource",
+            type: "skill",
+          }),
+        ]),
+      );
+      expect(JSON.parse(show.stdout)).toEqual(
+        expect.objectContaining({
+          id: resource.id,
+          name: "json-resource",
+          content: "# JSON Resource",
+        }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("emits JSON ambiguity payloads for resource selectors", async () => {
+    const context = await createTestContext("cli-resource-json-ambiguous");
+    try {
+      await runCli(["init"]);
+      const resourceModel = await import("../../src/models/resource.ts");
+      resourceModel.createResource(
+        makeResourceInput({ type: "skill", name: "dup-name" }),
+      );
+      resourceModel.createResource(
+        makeResourceInput({ type: "rule", name: "dup-name" }),
+      );
+
+      const result = await runCli(["resource", "show", "dup-name", "--format", "json"]);
+
+      expect(JSON.parse(result.stdout)).toEqual(
+        expect.objectContaining({
+          error: "ambiguous_resource_name",
+          input: "dup-name",
+          matches: expect.arrayContaining([
+            expect.objectContaining({ name: "dup-name" }),
+          ]),
+        }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("reports an ambiguous resource name", async () => {
     const context = await createTestContext("cli-resource-ambiguous-name");
 

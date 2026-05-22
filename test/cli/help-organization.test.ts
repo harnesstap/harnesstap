@@ -12,10 +12,16 @@ describe("CLI help and command organization", () => {
     const projectHelp = await runCli(["project", "-h"]);
     const presetHelp = await runCli(["preset", "-h"]);
 
+    const harnessHelp = await runCli(["harness", "-h"]);
+
     expect(help.stdout).toContain("project");
     expect(help.stdout).toContain("preset");
     expect(help.stdout).toContain("resource");
     expect(help.stdout).toContain("platform");
+    expect(help.stdout).toContain("harness");
+    expect(harnessHelp.stdout).toContain("status");
+    expect(harnessHelp.stdout).toContain("set");
+    expect(harnessHelp.stdout).toContain("project");
     expect(help.stdout).not.toContain("help [command]");
     expect(help.stdout).not.toContain("apply [options] <preset>");
     expect(help.stdout).not.toContain("history [options]");

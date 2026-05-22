@@ -85,6 +85,7 @@ but they print deprecation warnings.
 
    ```bash
    harnessdeck resource list
+   harnessdeck resource list --format json
    ```
 
 4. Create a preset.
@@ -96,7 +97,7 @@ but they print deprecation warnings.
 5. Add imported resources to that preset.
 
    ```bash
-   harnessdeck preset add my-setup <resource-id>
+   harnessdeck preset add my-setup openapi-mcp-baseline
    ```
 
 6. Apply the preset to one or more target platforms.
@@ -110,6 +111,13 @@ but they print deprecation warnings.
    ```bash
    harnessdeck project status .
    harnessdeck project history --project .
+   ```
+
+8. Inspect or set harness preferences without prompts.
+
+   ```bash
+   harnessdeck harness status --format json
+   harnessdeck harness set --main claude-code --aliases cursor,codex
    ```
 
 If the repository has a git `origin`, `harnessdeck project apply` stores a
