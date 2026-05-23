@@ -53,6 +53,19 @@ describe("CLI preset", () => {
     }
   });
 
+  it("renders preset list as a shared table with a summary footer", async () => {
+    const context = await createTestContext("cli-preset-list-table");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["preset", "list"]);
+      expect(result.stdout).toContain("NAME");
+      expect(result.stdout).toContain("DESCRIPTION");
+      expect(result.stdout).toContain("run `harnessdeck preset show <name>` for details");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("accepts resource names when adding and removing preset resources", async () => {
     const context = await createTestContext("cli-preset-resource-selector");
     try {

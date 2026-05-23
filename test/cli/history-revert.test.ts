@@ -115,7 +115,8 @@ describe("CLI history and revert", () => {
       const snapshot = project ? snapshotModel.listSnapshots(project.id)[0] : undefined;
 
       expect(snapshot).toBeDefined();
-      expect(history.stdout).toContain(snapshot?.id ?? "");
+      // IDs are shortened in human-mode table output (first 6 chars always visible)
+      expect(history.stdout).toContain((snapshot?.id ?? "").slice(0, 6));
     } finally {
       await context.cleanup();
     }

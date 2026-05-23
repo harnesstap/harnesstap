@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { getDb, closeDb, getDbPath } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { log } from "./utils/logger.js";
+import { ui } from "./ui/index.js";
 import {
   getGitOrigin,
   normalizeGitUrl,
@@ -500,9 +501,20 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
     );
     return;
   }
-  for (const snapshot of snapshots) {
-    log.info(`${snapshot.id} ${snapshot.created_at} — ${snapshot.label}`);
-  }
+  const rows = snapshots.map((s) => ({
+    id: s.id,
+    label: s.label ?? "",
+    created_at: s.created_at,
+  }));
+  ui.table.print({
+    columns: [
+      { key: "id", header: "ID", width: 14, transform: (value) => ui.format.shortenId(String(value)) },
+      { key: "label", header: "LABEL", width: 36 },
+      { key: "created_at", header: "CREATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
+    ],
+    rows,
+    summary: `${rows.length} snapshots`,
+  });
 }
 
 function handleRevertCommand(snapshotId?: string): void {
@@ -563,10 +575,21 @@ function handlePlatformListCommand(opts: { format?: string } = {}): void {
     printJson(platforms);
     return;
   }
-  for (const platform of platforms) {
-    const features = [...platform.supports].join(", ");
-    log.info(`${platform.id.padEnd(20)} ${platform.name.padEnd(20)} [${features}]`);
-  }
+  const rows = platforms.map((p) => ({
+    id: p.id,
+    name: p.name,
+    supports: [...p.supports].join(", "),
+  }));
+  ui.table.print({
+    columns: [
+      { key: "id", header: "ID", width: 20 },
+      { key: "name", header: "NAME", width: 20 },
+      { key: "supports", header: "SUPPORTS", width: 40 },
+    ],
+    rows,
+    summary: `${platforms.length} platforms`,
+    empty: "No platforms found.",
+  });
 }
 
 function handlePresetShowCommand(
@@ -775,14 +798,23 @@ async function handlePluginInstalledListCommand(
     printJson(result);
     return;
   }
-  if (result.installs.length === 0) {
-    log.dim("No plugins found.");
-  }
-  for (const install of result.installs) {
-    log.info(
-      `${install.platformId.padEnd(12)} ${install.ref.padEnd(36)} ${install.version.padEnd(12)} ${install.scope}`,
-    );
-  }
+  const rows = result.installs.map((install) => ({
+    platform: install.platformId,
+    ref: install.ref,
+    version: install.version,
+    scope: install.scope,
+  }));
+  ui.table.print({
+    columns: [
+      { key: "platform", header: "PLATFORM", width: 14 },
+      { key: "ref", header: "REF", width: 36 },
+      { key: "version", header: "VERSION", width: 14 },
+      { key: "scope", header: "SCOPE", width: 10 },
+    ],
+    rows,
+    summary: rows.length === 0 ? undefined : `${rows.length} plugins`,
+    empty: "No plugins found.",
+  });
   if (result.unsupported_platforms.length > 0) {
     log.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
   }
@@ -803,18 +835,33 @@ async function handlePluginCheckCommand(
     if (report.summary.outdated > 0) process.exitCode = 1;
     return;
   }
-  log.info(
-    `Plugins: ${report.summary.outdated} outdated, ${report.summary.current} current, ${report.summary.unknown} unknown`,
-  );
-  for (const row of report.results) {
-    const arrow =
-      row.status === "outdated" && row.latestVersion
-        ? ` → ${row.latestVersion}`
-        : "";
-    log.info(
-      `${row.platformId.padEnd(12)} ${row.ref.padEnd(36)} ${row.version}${arrow}  ${row.scope.padEnd(8)} ${row.status}`,
-    );
-  }
+  const rows = report.results.map((row) => ({
+    status: row.status,
+    platform: row.platformId,
+    ref: row.ref,
+    latest: row.status === "outdated" && row.latestVersion ? row.latestVersion : row.version,
+  }));
+  ui.table.print({
+    columns: [
+      {
+        key: "status",
+        header: "STATUS",
+        width: 10,
+        style: (value) =>
+          value === "outdated"
+            ? ui.theme.warn(value)
+            : value === "current"
+              ? ui.theme.success(value)
+              : ui.theme.muted(value),
+      },
+      { key: "platform", header: "PLATFORM", width: 14, style: (value) => ui.theme.muted(value) },
+      { key: "ref", header: "REF", width: 28 },
+      { key: "latest", header: "LATEST", width: 12 },
+    ],
+    rows,
+    summary: `${rows.length} plugins ${ui.icons.bullet} ${report.summary.current} current ${ui.icons.bullet} ${report.summary.outdated} outdated ${ui.icons.bullet} ${report.summary.unknown} unknown`,
+    empty: "No plugins found.",
+  });
   if (report.unsupported_platforms.length > 0) {
     log.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
   }
@@ -1469,13 +1516,15 @@ presetCmd
       printJson(presets);
       return;
     }
-    if (presets.length === 0) {
-      log.dim("No presets found.");
-      return;
-    }
-    for (const p of presets) {
-      log.info(`${p.name} — ${p.description || "(no description)"}`);
-    }
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 18 },
+        { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
+      ],
+      rows: presets,
+      summary: `${presets.length} presets ${ui.icons.bullet} run \`harnessdeck preset show <name>\` for details`,
+      empty: "No presets found.",
+    });
   });
 
 presetCmd
@@ -1709,13 +1758,17 @@ resourceCmd
       printJson(resources);
       return;
     }
-    if (resources.length === 0) {
-      log.dim("No resources found.");
-      return;
-    }
-    for (const r of resources) {
-      log.info(`${r.id} ${r.type.padEnd(14)} ${r.name}`);
-    }
+    ui.table.print({
+      columns: [
+        { key: "type", header: "TYPE", width: 14 },
+        { key: "name", header: "NAME", width: 28 },
+        { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
+        { key: "updated_at", header: "UPDATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
+      ],
+      rows: resources,
+      summary: resources.length === 0 ? undefined : `${resources.length} resources`,
+      empty: "No resources found.\n  → Run `harnessdeck project scan` to import some.",
+    });
   });
 
 resourceCmd

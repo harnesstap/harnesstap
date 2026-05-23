@@ -75,7 +75,20 @@ describe("CLI resource", () => {
 
       const resourceList = await runCli(["resource", "list"]);
 
-      expect(resourceList.stdout).toContain(resource.id);
+      // IDs are shortened in human-mode table output (first 6 chars always visible)
+      expect(resourceList.stdout).toContain(resource.id.slice(0, 6));
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("renders resource list as a shared table with updated timestamps", async () => {
+    const context = await createTestContext("cli-resource-list-table");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["resource", "list"]);
+      expect(result.stdout).toContain("TYPE");
+      expect(result.stdout).toContain("UPDATED");
     } finally {
       await context.cleanup();
     }
