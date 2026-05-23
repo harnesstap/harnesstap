@@ -4,9 +4,10 @@ This document reflects the **current shipped CLI**.
 
 Two corrections matter up front:
 
-- `harnessdeck init` initializes `~/.harnessdeck`, seeds built-in presets, and
-  imports supported home-directory defaults. It does **not** currently choose a
-  main harness during init — use [Scenario 2](./details/02-default-harness-aliases.md) immediately after.
+- `harnessdeck init` initializes `~/.harnessdeck`, seeds built-in presets,
+  imports supported home-directory defaults, and can choose the default main
+  harness (plus alias harnesses) during init. [Scenario 2](./details/02-default-harness-aliases.md) is for changing that
+  preference later.
 - The current CLI **does** expose a standalone `harnessdeck project sync`
   command ([Scenario 27](./details/27-project-sync.md)). Use it when you want
   to sync alias harness outputs from the on-disk main harness. Re-applying a

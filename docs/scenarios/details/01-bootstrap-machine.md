@@ -11,6 +11,7 @@ Typical commands:
 
 ```bash
 harnessdeck init
+harnessdeck init --main claude-code --aliases cursor,codex
 harnessdeck platform list
 harnessdeck preset list
 ```
@@ -25,5 +26,5 @@ What this gives you:
   present (`~/.claude/`, `~/.codex/`, …)
 - a quick view of which harnesses the current release knows how to handle
 
-Follow with Scenario 2 to choose a main harness and alias set — init does not
-prompt for that today.
+If you skip harness selection during init or want to change it later, use
+[Scenario 2](./02-default-harness-aliases.md) to update the default main harness and alias set.

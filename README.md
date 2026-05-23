@@ -68,11 +68,12 @@ The visible CLI groups related actions under noun-based commands such as
 `project`, `preset`, and `platform`. Older top-level verbs still work for now,
 but they print deprecation warnings.
 
-1. Initialize the local database and import any supported home-directory
-   defaults.
+1. Initialize the local database, import any supported home-directory
+   defaults, and optionally choose a default main harness plus aliases.
 
    ```bash
    harnessdeck init
+   harnessdeck init --main claude-code --aliases cursor,codex
    ```
 
 2. Scan the current repository.
@@ -113,7 +114,7 @@ but they print deprecation warnings.
    harnessdeck project history --project .
    ```
 
-8. Inspect or set harness preferences without prompts.
+8. Inspect or change harness preferences after init.
 
    ```bash
    harnessdeck harness status --format json
