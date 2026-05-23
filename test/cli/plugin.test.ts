@@ -69,7 +69,10 @@ describe("plugin CLI", () => {
       "claude-code",
     ]);
     expect(result.stdout).toContain("STATUS");
+    expect(result.stdout).toContain("PLATFORM");
+    expect(result.stdout).toContain("REF");
     expect(result.stdout).toContain("VERSION");
+    expect(result.stdout).toContain("LATEST");
     expect(result.stdout).toContain("SCOPE");
     expect(result.stdout).toContain("current");
     expect(result.stdout).toContain("outdated");
