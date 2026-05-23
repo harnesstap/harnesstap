@@ -15,6 +15,8 @@ Two corrections matter up front:
   remains the right path when you want to push a known preset baseline onto
   disk.
 
+See the [VHS demo pack](./vhs/README.md) for rendered walkthroughs of the covered workflows.
+
 ## Usage frequency
 
 Frequency describes how often a **typical active user** reaches for a scenario
