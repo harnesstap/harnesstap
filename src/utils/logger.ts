@@ -1,10 +1,10 @@
-import chalk from "chalk";
+import { status } from "../ui/status.js";
 
 export const log = {
-  info: (msg: string) => console.log(chalk.blue("ℹ"), msg),
-  success: (msg: string) => console.log(chalk.green("✓"), msg),
-  warn: (msg: string) => console.log(chalk.yellow("⚠"), msg),
-  error: (msg: string) => console.error(chalk.red("✗"), msg),
-  dim: (msg: string) => console.log(chalk.dim(msg)),
+  info: (message: string) => status.info(message),
+  success: (message: string) => status.success(message),
+  warn: (message: string) => status.warn(message),
+  error: (message: string) => status.danger(message),
+  dim: (message: string) => status.dim(message),
   table: (data: Record<string, string>[]) => console.table(data),
 };
