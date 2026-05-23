@@ -116,6 +116,16 @@ describe("CLI planned scenarios", () => {
       expect(drift.stdout).toMatch(/"has_drift":\s*true/);
       expect(drift.exitCode).toBe(1);
 
+      const driftHuman = await runCli([
+        "project",
+        "drift",
+        "--project",
+        context.projectDir,
+      ]);
+      expect(driftHuman.stdout).toContain("DRIFT");
+      expect(driftHuman.stdout).toContain("CLAUDE.md");
+      expect(driftHuman.exitCode).toBe(1);
+
       const syncDry = await runCli([
         "project",
         "sync",
