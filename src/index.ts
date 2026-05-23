@@ -784,7 +784,7 @@ async function handlePluginInventoryShowCommand(
       rows: [
         ["Ref", ref],
         ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
-        ["Effective install", "(not found in merged inventory)"],
+        ["Effective install", ui.theme.warn("(not found in merged inventory)")],
       ],
     });
     return;

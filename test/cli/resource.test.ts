@@ -24,6 +24,8 @@ describe("CLI resource", () => {
       const resourceShow = await runCli(["resource", "show", resource.id]);
 
       expect(resourceList.stdout).toContain("shared-skill");
+      expect(resourceShow.stdout).toContain("RESOURCE");
+      expect(resourceShow.stdout).toContain("CONTENT");
       expect(resourceShow.stdout).toContain("# Shared");
 
       await runCli(["resource", "delete", resource.id]);
