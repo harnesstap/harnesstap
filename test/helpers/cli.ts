@@ -84,3 +84,21 @@ export async function runCli(args: string[]): Promise<CliResult> {
     stderrWriteSpy.mockRestore();
   }
 }
+
+/**
+ * Validates that the runCli harness captures UI renderer output produced via
+ * console.log and console.error. Use in integration tests to assert end-to-end
+ * capture is working, e.g.:
+ *
+ *   const result = await runCli(["-h"]);
+ *   expect(result.stdout.length).toBeGreaterThan(0);
+ */
+export async function assertCliOutputCaptured(args: string[] = ["-h"]): Promise<CliResult> {
+  const result = await runCli(args);
+  if (result.stdout.length === 0 && result.stderr.length === 0) {
+    throw new Error(
+      "runCli harness captured no output; console.log/error from UI renderers may not be reaching the spies.",
+    );
+  }
+  return result;
+}

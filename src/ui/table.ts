@@ -1,4 +1,5 @@
-import { theme } from "./theme.js";
+import Table from "cli-table3";
+import { getTableChars, theme } from "./theme.js";
 
 export interface Column {
   key: string;
@@ -13,20 +14,27 @@ export interface TableOptions {
 }
 
 export function renderTable({ columns, rows, summary }: TableOptions): string {
-  const lines: string[] = [];
+  const colWidths = columns.map((col) => {
+    const maxContent = Math.max(
+      col.width,
+      col.header.length,
+      ...rows.map((row) => (row[col.key] ?? "").length),
+    );
+    return maxContent + 2;
+  });
 
-  const headerLine = columns.map((col) => col.header.padEnd(col.width)).join("  ");
-  lines.push(theme.primary(headerLine));
+  const t = new Table({
+    head: columns.map((col) => col.header),
+    colWidths,
+    chars: getTableChars(),
+    style: { head: [], border: [] },
+  });
 
   for (const row of rows) {
-    const rowLine = columns
-      .map((col) => {
-        const value = row[col.key] ?? "";
-        return value.padEnd(col.width);
-      })
-      .join("  ");
-    lines.push(rowLine);
+    t.push(columns.map((col) => row[col.key] ?? ""));
   }
+
+  const lines = [t.toString()];
 
   if (summary) {
     lines.push("");
