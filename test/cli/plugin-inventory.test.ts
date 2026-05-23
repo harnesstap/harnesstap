@@ -141,4 +141,54 @@ describe("CLI plugin inventory (scan + project status)", () => {
       await context.cleanup();
     }
   });
+
+  it("plugin list renders COMMITTED and EFFECTIVE section headers with plugin refs", async () => {
+    const context = await createTestContext("cli-plugin-list-human");
+
+    try {
+      cpSync(fixtureProject, context.projectDir, { recursive: true });
+      initGitRepo(
+        context.projectDir,
+        "git@github.com:acme/harnessdeck-plugins-inventory.git",
+      );
+
+      process.env.HOME = fixtureHome;
+
+      await runCli(["init"]);
+      const out = await runCli(["plugin", "list", context.projectDir]);
+      expect(out.stdout).toContain("COMMITTED");
+      expect(out.stdout).toContain("EFFECTIVE");
+      expect(out.stdout).toContain("formatter@acme-marketplace");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("plugin show renders PLUGIN panel with version and scope rows", async () => {
+    const context = await createTestContext("cli-plugin-show-human");
+
+    try {
+      cpSync(fixtureProject, context.projectDir, { recursive: true });
+      initGitRepo(
+        context.projectDir,
+        "git@github.com:acme/harnessdeck-plugins-inventory.git",
+      );
+
+      process.env.HOME = fixtureHome;
+
+      await runCli(["init"]);
+      const out = await runCli([
+        "plugin",
+        "show",
+        "formatter@acme-marketplace",
+        context.projectDir,
+      ]);
+      expect(out.stdout).toContain("PLUGIN");
+      expect(out.stdout).toContain("formatter@acme-marketplace");
+      expect(out.stdout).toContain("Version");
+      expect(out.stdout).toContain("Scope");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
