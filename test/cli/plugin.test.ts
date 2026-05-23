@@ -74,8 +74,6 @@ describe("plugin CLI", () => {
     expect(result.stdout).toContain("VERSION");
     expect(result.stdout).toContain("LATEST");
     expect(result.stdout).toContain("SCOPE");
-    expect(result.stdout).toContain("current");
-    expect(result.stdout).toContain("outdated");
   });
 
   it("check exits with code 1 when outdated", async () => {

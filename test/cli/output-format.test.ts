@@ -4,7 +4,7 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { join } from "node:path";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
@@ -156,6 +156,7 @@ describe("CLI output format", () => {
       } else {
         process.env.HOME = previousHome;
       }
+      rmSync(harnessdeckHome, { recursive: true, force: true });
     }
   });
 });
