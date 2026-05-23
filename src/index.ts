@@ -502,15 +502,15 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
     return;
   }
   const rows = snapshots.map((s) => ({
+    when: s.created_at,
     id: s.id,
     label: s.label ?? "",
-    created_at: s.created_at,
   }));
   ui.table.print({
     columns: [
+      { key: "when", header: "WHEN", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
       { key: "id", header: "ID", width: 14, transform: (value) => ui.format.shortenId(String(value)) },
       { key: "label", header: "LABEL", width: 36 },
-      { key: "created_at", header: "CREATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
     ],
     rows,
     summary: `${rows.length} snapshots`,
@@ -839,7 +839,9 @@ async function handlePluginCheckCommand(
     status: row.status,
     platform: row.platformId,
     ref: row.ref,
+    version: row.version,
     latest: row.status === "outdated" && row.latestVersion ? row.latestVersion : row.version,
+    scope: row.scope,
   }));
   ui.table.print({
     columns: [
@@ -856,7 +858,9 @@ async function handlePluginCheckCommand(
       },
       { key: "platform", header: "PLATFORM", width: 14, style: (value) => ui.theme.muted(value) },
       { key: "ref", header: "REF", width: 28 },
+      { key: "version", header: "VERSION", width: 12 },
       { key: "latest", header: "LATEST", width: 12 },
+      { key: "scope", header: "SCOPE", width: 10 },
     ],
     rows,
     summary: `${rows.length} plugins ${ui.icons.bullet} ${report.summary.current} current ${ui.icons.bullet} ${report.summary.outdated} outdated ${ui.icons.bullet} ${report.summary.unknown} unknown`,

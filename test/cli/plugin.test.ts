@@ -48,6 +48,33 @@ describe("plugin CLI", () => {
     expect(parsed.installs.some((i) => i.ref === "demo@demo-market")).toBe(true);
   });
 
+  it("renders plugin installed list as a shared table", async () => {
+    const result = await runCli([
+      "plugin",
+      "installed",
+      "--platform",
+      "claude-code",
+    ]);
+    expect(result.stdout).toContain("PLATFORM");
+    expect(result.stdout).toContain("REF");
+    expect(result.stdout).toContain("VERSION");
+    expect(result.stdout).toContain("SCOPE");
+  });
+
+  it("renders plugin check as a shared table with STATUS, VERSION and SCOPE columns", async () => {
+    const result = await runCli([
+      "plugin",
+      "check",
+      "--platform",
+      "claude-code",
+    ]);
+    expect(result.stdout).toContain("STATUS");
+    expect(result.stdout).toContain("VERSION");
+    expect(result.stdout).toContain("SCOPE");
+    expect(result.stdout).toContain("current");
+    expect(result.stdout).toContain("outdated");
+  });
+
   it("check exits with code 1 when outdated", async () => {
     const result = await runCli([
       "plugin",

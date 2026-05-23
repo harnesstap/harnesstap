@@ -3,6 +3,11 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { join } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+
+const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
 describe("CLI output format", () => {
   it("emits JSON for preset, status, history, platform, init, and apply dry-run commands", async () => {
@@ -101,6 +106,56 @@ describe("CLI output format", () => {
       );
     } finally {
       await context.cleanup();
+    }
+  });
+
+  it("plugin installed and plugin check preserve JSON output after table migration", async () => {
+    const harnessdeckHome = mkdtempSync(join(tmpdir(), "hd-of-plugin-"));
+    const previousHarnessdeckHome = process.env.HARNESSDECK_HOME;
+    const previousHome = process.env.HOME;
+    process.env.HARNESSDECK_HOME = harnessdeckHome;
+    process.env.HOME = fixtureHome;
+    try {
+      const installed = await runCli([
+        "plugin",
+        "installed",
+        "--platform",
+        "claude-code",
+        "--format",
+        "json",
+      ]);
+      const parsedInstalled = JSON.parse(installed.stdout) as {
+        installs: { ref: string; platformId: string }[];
+      };
+      expect(Array.isArray(parsedInstalled.installs)).toBe(true);
+      expect(parsedInstalled.installs.some((i) => i.ref === "demo@demo-market")).toBe(true);
+
+      const check = await runCli([
+        "plugin",
+        "check",
+        "--platform",
+        "claude-code",
+        "--format",
+        "json",
+      ]);
+      const parsedCheck = JSON.parse(check.stdout) as {
+        summary: { outdated: number; current: number; unknown: number };
+        results: { ref: string; status: string }[];
+      };
+      expect(typeof parsedCheck.summary.outdated).toBe("number");
+      expect(typeof parsedCheck.summary.current).toBe("number");
+      expect(Array.isArray(parsedCheck.results)).toBe(true);
+    } finally {
+      if (previousHarnessdeckHome === undefined) {
+        delete process.env.HARNESSDECK_HOME;
+      } else {
+        process.env.HARNESSDECK_HOME = previousHarnessdeckHome;
+      }
+      if (previousHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previousHome;
+      }
     }
   });
 });
