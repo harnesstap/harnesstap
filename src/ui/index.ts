@@ -1,4 +1,5 @@
 import * as format from "./format.js";
+import { renderKv } from "./kv.js";
 import { renderTable, table } from "./table.js";
 import { renderPanel, panel, kvBlock } from "./panel.js";
 import { renderDiffTable, diffTable } from "./diff.js";
@@ -22,6 +23,7 @@ export const ui = {
   panel,
   renderPanel,
   kvBlock,
+  renderKv,
   diffTable,
   renderDiffTable,
   spinner: progress,

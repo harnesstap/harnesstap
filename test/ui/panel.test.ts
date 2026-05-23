@@ -11,4 +11,10 @@ describe("ui panel", () => {
     expect(output).toContain("Name");
     expect(output).toContain("my-preset");
   });
+
+  it("aligns key column to 20 characters (delegates to renderKv)", () => {
+    const output = renderPanel("Details", [{ key: "Name", value: "my-preset" }]);
+    // "Name" (4 chars) padded to 20 = 4 + 16 trailing spaces
+    expect(output).toContain(`Name${" ".repeat(16)}`);
+  });
 });

@@ -10,8 +10,8 @@ describe("ui section", () => {
     expect(renderSubheader("Overview")).toContain("Overview");
   });
 
-  it("renderRule returns a non-empty separator string", () => {
+  it("renderRule returns a separator containing the box-drawing character", () => {
     const rule = renderRule();
-    expect(rule.length).toBeGreaterThan(0);
+    expect(rule).toContain("─");
   });
 });
