@@ -90,6 +90,14 @@ but they print deprecation warnings.
    harnessdeck project scan .
    ```
 
+   ```
+   ✓ claude-code · 3 resources
+     · instruction project-context
+     · agent research
+     · skill analyze
+   ✓ Project registered: my-project (git@github.com:org/my-project.git)
+   ```
+
 3. List the imported resources.
 
    ```bash
@@ -113,6 +121,14 @@ but they print deprecation warnings.
 
    ```bash
    harnessdeck project apply my-setup --project . --platform claude-code,codex,cursor
+   ```
+
+   ```
+   ✓ claude-code · wrote 2 files
+     · CLAUDE.md
+     · .claude/settings.json
+   ✓ codex · wrote 1 file
+     · AGENTS.md
    ```
 
 7. Check the tracked project state.

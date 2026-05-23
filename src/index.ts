@@ -10,7 +10,6 @@ import {
   projectNameFromUrl,
 } from "./services/git.js";
 import {
-  scanAndPersist,
   scanProject,
   persistScanResults,
   detectPlatforms,
@@ -933,6 +932,20 @@ async function handlePluginUpdateCommand(
   },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
+  if (format === "json") {
+    const report = await updatePlugins({
+      ...pluginLifecycleBase(".", opts),
+      ref,
+      all: opts.all,
+      yes: opts.yes,
+      scopes: parseScopeFilter(opts.scope),
+    });
+    printJson(report);
+    if (report.summary.failed > 0) process.exitCode = 1;
+    return;
+  }
+
+  const spin = createProgress("Updating plugins…");
   const report = await updatePlugins({
     ...pluginLifecycleBase(".", opts),
     ref,
@@ -940,12 +953,9 @@ async function handlePluginUpdateCommand(
     yes: opts.yes,
     scopes: parseScopeFilter(opts.scope),
   });
-  if (format === "json") {
-    printJson(report);
-    if (report.summary.failed > 0) process.exitCode = 1;
-    return;
-  }
+
   if (report.results.length === 0) {
+    spin.stop();
     ui.info("No plugins to update.");
   } else {
     const updatedCount = report.summary.updated;
@@ -955,9 +965,9 @@ async function handlePluginUpdateCommand(
         ? `${formatCount(updatedCount, "plugin")} updated, ${formatCount(failedCount, "failed")}`
         : `${formatCount(updatedCount, "plugin")} updated`;
     if (failedCount > 0) {
-      ui.warn(verdictMsg);
+      spin.fail(verdictMsg);
     } else {
-      ui.success(verdictMsg);
+      spin.succeed(verdictMsg);
     }
     for (const row of report.results) {
       console.log(ui.theme.muted(`  ${ui.icons.bullet} ${row.ref}: ${row.status} — ${row.message}`));
