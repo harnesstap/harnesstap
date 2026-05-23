@@ -519,7 +519,7 @@ function handleRevertCommand(snapshotId?: string): void {
   );
   writeFiles(files, project.local_path);
   ui.success(
-    `Restored ${files.length} files from snapshot ${ui.theme.muted(ui.format.shortenId(snapshot.id))} (${ui.format.formatRelativeTime(snapshot.created_at)})`,
+    `Restored ${formatCount(files.length, "file")} from snapshot ${ui.theme.muted(ui.format.shortenId(snapshot.id))} (${ui.format.formatRelativeTime(snapshot.created_at)})`,
   );
 }
 
@@ -539,7 +539,7 @@ function handlePresetImportCommand(file: string): void {
   initializeSchema(db);
   const { preset, resources } = importFromFile(file);
   ui.success(
-    `Imported preset ${ui.theme.accent(preset.name)} ${ui.icons.bullet} ${resources.length} resources`,
+    `Imported preset ${ui.theme.accent(preset.name)} ${ui.icons.bullet} ${formatCount(resources.length, "resource")}`,
   );
 }
 
@@ -1367,7 +1367,7 @@ async function handlePresetFromProjectCommand(
       platform: opts.platform,
     });
     ui.success(
-      `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${result.imported_count} resources`,
+      `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
     );
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
@@ -1447,7 +1447,7 @@ function handleMigrateImportCommand(
       return;
     }
     ui.success(
-      `Imported migration archive ${ui.icons.bullet} ${result.presets_imported} presets`,
+      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.presets_imported, "preset")}`,
     );
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));

@@ -68,7 +68,10 @@ describe("CLI history and revert", () => {
 
       const revertResult = await runCli(["project", "revert", snapshot.id]);
       expect(revertResult.stdout).toContain("✓ Restored");
-      expect(revertResult.stdout).toContain("files from snapshot");
+      expect(revertResult.stdout).toContain("from snapshot");
+      // Verify proper pluralization (1 file, not 1 files)
+      expect(revertResult.stdout).toMatch(/\d+ files?/);
+      expect(revertResult.stdout).not.toContain("1 files");
 
       expect(readFileSync(`${context.projectDir}/CLAUDE.md`, "utf-8")).toBe(
         "# Original instructions",
