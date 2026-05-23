@@ -48,6 +48,9 @@ describe("CLI history and revert", () => {
         context.projectDir,
       ]);
       expect(history.stdout).toContain("Before applying: history-preset");
+      expect(history.stdout).toContain("WHEN");
+      expect(history.stdout).toContain("ID");
+      expect(history.stdout).toContain("LABEL");
 
       const project = projectModel.getProjectByOrigin(
         git.normalizeGitUrl("git@github.com:acme/harnessdeck-history.git"),
