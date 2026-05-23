@@ -58,6 +58,14 @@ your `PATH`:
 export PATH="$HOME/.bun/bin:$PATH"
 ```
 
+## Demo
+
+[![HarnessDeck walkthrough](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
+
+Initialise HarnessDeck, scan an existing repository, browse built-in presets,
+apply one, and confirm the final state — all in about a minute.  
+Full step-by-step walkthrough: [docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
+
 ## Quick start
 
 The fastest way to try `harnessdeck` is to initialize the local database, import
