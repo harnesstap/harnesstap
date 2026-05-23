@@ -97,7 +97,9 @@ describe("CLI apply", () => {
         "git@github.com:acme/harnessdeck-apply.git",
       );
 
-      expect(applyResult.stdout).toContain("claude-code: wrote 1 file(s)");
+      expect(applyResult.stdout).toContain("claude-code");
+      expect(applyResult.stdout).toContain("wrote 1 file");
+      expect(applyResult.stdout).toContain("CLAUDE.md");
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
       expect(project).toBeDefined();
       if (!project) {
@@ -187,6 +189,8 @@ describe("CLI apply", () => {
 
       expect(applyResult.exitCode).toBe(2);
       expect(applyResult.stderr).toContain("Plugin version mismatch:");
+      // Files must NOT have been written — strict mode aborts before any write.
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
     } finally {
       await context.cleanup();
     }

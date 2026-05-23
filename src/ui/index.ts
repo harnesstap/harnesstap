@@ -3,7 +3,7 @@ import { renderKv } from "./kv.js";
 import { renderTable, table } from "./table.js";
 import { renderPanel, panel, kvBlock } from "./panel.js";
 import { renderDiffTable, diffTable, renderChangeList } from "./diff.js";
-import { progress } from "./progress.js";
+import { progress, createProgress } from "./progress.js";
 import { status } from "./status.js";
 import { icons, theme } from "./theme.js";
 import { header, renderHeader, subheader, renderSubheader, rule, renderRule } from "./section.js";
@@ -28,5 +28,6 @@ export const ui = {
   renderDiffTable,
   renderChangeList,
   spinner: progress,
+  createProgress,
   ...status,
 };

@@ -170,7 +170,7 @@ function resourceDedupKey(resource: Pick<Resource, "type" | "name">): string {
   return `${resource.type}:${resource.name}`;
 }
 
-function persistScanResults(
+export function persistScanResults(
   results: ScanResult[],
   options?: { skipExistingDuplicates?: boolean },
 ): PersistedScanResults {

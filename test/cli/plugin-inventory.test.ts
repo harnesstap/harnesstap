@@ -47,7 +47,7 @@ describe("CLI plugin inventory (scan + project status)", () => {
 
       await runCli(["init"]);
       const scanOut = await runCli(["scan", context.projectDir]);
-      expect(scanOut.stdout).toMatch(/plugins \(claude-code\): .*committed.*effective/i);
+      expect(scanOut.stdout).toMatch(/claude-code plugins: .*committed.*effective/i);
 
       const statusOut = await runCli([
         "project",

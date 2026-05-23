@@ -12,6 +12,7 @@ import {
 import {
   scanAndPersist,
   scanProject,
+  persistScanResults,
   detectPlatforms,
   scanAndPersistHomeDefaults,
   persistClaudePluginInventoryForProject,
@@ -94,6 +95,7 @@ import {
   exportMigrationState,
   importMigrationState,
 } from "./services/migrate.js";
+import { createProgress } from "./ui/progress.js";
 
 const program = new Command();
 
@@ -166,26 +168,36 @@ async function handleScanCommand(
     log.warn("No coding CLI configurations detected in this directory.");
     return;
   }
-  log.info(`Detected platforms: ${detected.join(", ")}`);
   const scannedPlatformIds = opts.platform ? [opts.platform] : detected;
 
   if (opts.dryRun) {
-    log.dim("(dry run — not persisting to database)");
     const results = await scanProject(projectRoot, opts.platform);
-    let count = 0;
     for (const result of results) {
-      log.info(`Platform: ${result.platformId}`);
+      const count = result.resources.length;
+      const dryTag = ui.theme.muted("[dry run] ");
+      const verdict = ui.theme.success(
+        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
+      );
+      console.log(dryTag + verdict);
       for (const resource of result.resources) {
-        count++;
-        log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
       }
     }
-    log.success(`Would import ${count} resources`);
     return;
   }
 
-  const resources = await scanAndPersist(projectRoot, opts.platform);
-  log.success(`Imported ${resources.length} resources`);
+  const spin = createProgress("Scanning…");
+  const results = await scanProject(projectRoot, opts.platform);
+  const persisted = persistScanResults(results);
+  spin.stop();
+
+  for (const result of results) {
+    const importedCount = persisted.importedCounts.get(result.platformId) ?? 0;
+    ui.success(`${result.platformId} ${ui.icons.bullet} ${formatCount(importedCount, "resource")}`);
+    for (const resource of result.resources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+    }
+  }
 
   try {
     const pluginSummary = await listPlugins({
@@ -199,16 +211,12 @@ async function handleScanCommand(
         homeRoot: homedir(),
         platformIds: parsePlatformFilter(opts.platform),
       });
-      log.info(
-        `Plugins: ${formatCount(pluginSummary.installs.length, "installed")} (${formatCount(check.summary.outdated, "outdated")})`,
+      ui.hint(
+        `${formatCount(pluginSummary.installs.length, "plugin")} installed (${formatCount(check.summary.outdated, "outdated")})`,
       );
     }
   } catch {
     // Plugin scan is best-effort during project scan
-  }
-
-  for (const resource of resources) {
-    log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
   }
 
   const gitOrigin = getGitOrigin(projectRoot);
@@ -223,7 +231,7 @@ async function handleScanCommand(
     name,
     local_path: projectRoot,
   });
-  log.info(`Project registered: ${name} (${normalized})`);
+  ui.success(`Project registered: ${name} (${normalized})`);
 
   try {
     const inventorySummary = await persistClaudePluginInventoryForProject({
@@ -233,8 +241,8 @@ async function handleScanCommand(
       homeRoot: homedir(),
     });
     if (inventorySummary) {
-      log.info(
-        `Plugins (claude-code): ${inventorySummary.committed_count} committed, ${inventorySummary.effective_count} effective`,
+      ui.hint(
+        `claude-code plugins: ${inventorySummary.committed_count} committed, ${inventorySummary.effective_count} effective`,
       );
     }
   } catch {
@@ -352,6 +360,28 @@ async function handleApplyCommand(
     claude,
   );
 
+  // Strict plugin validation must happen BEFORE any files are written.
+  if (
+    !opts.dryRun &&
+    opts.strictPluginVersions &&
+    !opts.ignorePluginVersions &&
+    listPresetPlugins(applyBundle.primaryPresetId).length > 0
+  ) {
+    const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
+    const issues = validatePresetPluginConstraints(
+      applyBundle.primaryPresetId,
+      inventory,
+    );
+    if (issues.length > 0) {
+      for (const issue of issues) {
+        console.warn(chalk.yellow(issue.message));
+      }
+      ui.danger("Plugin pin violations — apply aborted");
+      process.exitCode = 2;
+      return;
+    }
+  }
+
   const gitOrigin = getGitOrigin(projectRoot);
   if (gitOrigin) {
     const normalized = normalizeGitUrl(gitOrigin);
@@ -401,26 +431,35 @@ async function handleApplyCommand(
       });
       return;
     }
-    log.dim("(dry run — showing files that would be written)");
     for (const result of generated) {
-      log.info(`Platform: ${result.platformId}`);
+      const dryTag = ui.theme.muted("[dry run] ");
+      const verdict = ui.theme.success(
+        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(result.files.length, "file")}`,
+      );
+      console.log(dryTag + verdict);
       for (const file of result.files) {
-        log.dim(`  ${file.path}`);
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
       }
     }
     return;
   }
 
+  // Write files with per-platform progress handles.
   for (const result of generated) {
+    const spin = createProgress(`Applying ${result.platformId}…`);
     writeFiles(result.files, projectRoot);
-    log.success(`${result.platformId}: wrote ${result.files.length} file(s)`);
+    spin.succeed(
+      `${result.platformId} ${ui.icons.bullet} wrote ${formatCount(result.files.length, "file")}`,
+    );
     for (const file of result.files) {
-      log.dim(`  ${file.path}`);
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
     }
   }
 
+  // Non-strict plugin warnings (shown after successful file writes).
   if (
     !opts.ignorePluginVersions &&
+    !opts.strictPluginVersions &&
     listPresetPlugins(applyBundle.primaryPresetId).length > 0
   ) {
     const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
@@ -430,9 +469,6 @@ async function handleApplyCommand(
     );
     for (const issue of issues) {
       console.warn(chalk.yellow(issue.message));
-    }
-    if (opts.strictPluginVersions && issues.length > 0) {
-      process.exitCode = 2;
     }
   }
 }
@@ -816,6 +852,29 @@ async function handlePluginCheckCommand(
   opts: { platform?: string; scope?: string; refresh?: boolean; format?: string },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
+
+  // When --refresh is requested in human mode, use spinner + verdict instead of table.
+  if (opts.refresh && format === "human") {
+    const spin = createProgress("Checking plugins…");
+    const report = await checkPlugins({
+      ...pluginLifecycleBase(path, opts),
+      scopes: parseScopeFilter(opts.scope),
+      forceRefresh: true,
+    });
+    const outdated = report.summary.outdated;
+    const verdictMsg = `Refreshed ${formatCount(report.refreshed_sources.length, "source")} ${ui.icons.bullet} ${report.summary.current} current, ${outdated} outdated`;
+    if (outdated > 0) {
+      spin.fail(verdictMsg);
+    } else {
+      spin.succeed(verdictMsg);
+    }
+    for (const source of report.refreshed_sources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${source}`));
+    }
+    if (outdated > 0) process.exitCode = 1;
+    return;
+  }
+
   const report = await checkPlugins({
     ...pluginLifecycleBase(path, opts),
     scopes: parseScopeFilter(opts.scope),
@@ -886,8 +945,23 @@ async function handlePluginUpdateCommand(
     if (report.summary.failed > 0) process.exitCode = 1;
     return;
   }
-  for (const row of report.results) {
-    log.info(`${row.ref}: ${row.status} — ${row.message}`);
+  if (report.results.length === 0) {
+    ui.info("No plugins to update.");
+  } else {
+    const updatedCount = report.summary.updated;
+    const failedCount = report.summary.failed;
+    const verdictMsg =
+      failedCount > 0
+        ? `${formatCount(updatedCount, "plugin")} updated, ${formatCount(failedCount, "failed")}`
+        : `${formatCount(updatedCount, "plugin")} updated`;
+    if (failedCount > 0) {
+      ui.warn(verdictMsg);
+    } else {
+      ui.success(verdictMsg);
+    }
+    for (const row of report.results) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${row.ref}: ${row.status} — ${row.message}`));
+    }
   }
   if (report.summary.failed > 0) process.exitCode = 1;
 }
@@ -896,15 +970,19 @@ async function handlePluginRefreshCommand(
   opts: { platform?: string; format?: string },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
-  if (format === "json") {
-    printJson(result);
+  if (format === "human") {
+    const spin = createProgress("Refreshing plugin sources…");
+    const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
+    spin.succeed(
+      `Refreshed ${formatCount(result.refreshed_sources.length, "source")}`,
+    );
+    for (const source of result.refreshed_sources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${source}`));
+    }
     return;
   }
-  log.success(`Refreshed ${result.refreshed_sources.length} source(s)`);
-  for (const source of result.refreshed_sources) {
-    log.dim(`  ${source}`);
-  }
+  const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
+  printJson(result);
 }
 
 async function handleProjectStatusCommand(
@@ -1387,22 +1465,36 @@ async function handleProjectSyncCommand(
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
   try {
-    const result = await syncProject({
-      projectRoot,
-      dryRun: opts.dryRun,
-      forceShiftReference: opts.forceShiftReference,
-    });
+    const result = await (async () => {
+      if (format === "human" && !opts.dryRun) {
+        const spin = createProgress("Syncing…");
+        const r = await syncProject({
+          projectRoot,
+          dryRun: false,
+          forceShiftReference: opts.forceShiftReference,
+        });
+        spin.succeed(
+          `Synced ${r.platforms_synced.join(", ") || "(none)"} from ${r.main_harness} ${ui.icons.bullet} ${formatCount(r.files_written, "file")}`,
+        );
+        return r;
+      }
+      return syncProject({
+        projectRoot,
+        dryRun: opts.dryRun,
+        forceShiftReference: opts.forceShiftReference,
+      });
+    })();
     if (format === "json") {
       printJson(result);
       return;
     }
     if (opts.dryRun) {
-      log.dim("(dry run — no files written)");
+      const dryTag = ui.theme.muted("[dry run] ");
+      const verdict = ui.theme.success(
+        `${ui.icons.success} Synced ${result.platforms_synced.join(", ") || "(none)"} from ${result.main_harness} ${ui.icons.bullet} ${formatCount(result.files_written, "file")}`,
+      );
+      console.log(dryTag + verdict);
     }
-    log.success(
-      `Synced ${result.platforms_synced.join(", ") || "(none)"} from main harness ${result.main_harness}`,
-    );
-    log.info(`Files written: ${result.files_written}`);
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
   }

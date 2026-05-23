@@ -51,7 +51,8 @@ describe("CLI help and command organization", () => {
       const scanResult = await runCli(["scan", context.projectDir]);
       expect(scanResult.stdout).toContain("deprecated");
       expect(scanResult.stdout).toContain("project scan");
-      expect(scanResult.stdout).toContain("Imported");
+      // New per-platform verdict format
+      expect(scanResult.stdout).toMatch(/resource/);
 
       const presetModel = await import("../../src/models/preset.ts");
       const resourceModel = await import("../../src/models/resource.ts");

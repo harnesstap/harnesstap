@@ -159,6 +159,15 @@ describe("CLI planned scenarios", () => {
         "json",
       ]);
       expect(syncDry.stdout).toContain("main_harness");
+
+      // Human-mode sync: spinner resolves to a Synced verdict
+      const syncHuman = await runCli([
+        "project",
+        "sync",
+        context.projectDir,
+      ]);
+      expect(syncHuman.stdout).toContain("Synced");
+      expect(syncHuman.exitCode ?? 0).toBe(0);
     } finally {
       await context.cleanup();
     }

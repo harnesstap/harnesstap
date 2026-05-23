@@ -91,4 +91,37 @@ describe("plugin CLI", () => {
     expect(parsed.summary.outdated).toBeGreaterThan(0);
     expect(result.exitCode).toBe(1);
   });
+
+  it("renders plugin check --refresh as verdict output instead of table", async () => {
+    const result = await runCli([
+      "plugin",
+      "check",
+      "--platform",
+      "claude-code",
+      "--refresh",
+    ]);
+    // Progress/verdict mode: table headers must not appear
+    expect(result.stdout).not.toContain("STATUS");
+    expect(result.stdout).not.toContain("PLATFORM");
+    // Should still detect the outdated plugin and exit 1
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("check --refresh --format json returns full report (no table mode change)", async () => {
+    const result = await runCli([
+      "plugin",
+      "check",
+      "--platform",
+      "claude-code",
+      "--refresh",
+      "--format",
+      "json",
+    ]);
+    const parsed = JSON.parse(result.stdout) as {
+      summary: { outdated: number };
+      refreshed_sources: string[];
+    };
+    expect(typeof parsed.summary.outdated).toBe("number");
+    expect(Array.isArray(parsed.refreshed_sources)).toBe(true);
+  });
 });

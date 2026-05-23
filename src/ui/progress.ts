@@ -1,34 +1,55 @@
 import ora, { type Ora } from "ora";
 import { icons, isTty, theme } from "./theme.js";
 
-let _spinner: Ora | null = null;
+export interface ProgressHandle {
+  succeed: (message: string) => void;
+  fail: (message: string) => void;
+  stop: () => void;
+}
 
+/**
+ * Create a per-instance progress handle. When stdout is a TTY, shows a spinner
+ * while the operation is running. In non-TTY/test environments the spinner is
+ * suppressed entirely — only the resolved verdict line is emitted.
+ */
+export function createProgress(message: string): ProgressHandle {
+  let spinner: Ora | null = null;
+  if (isTty()) {
+    spinner = ora(message).start();
+  }
+
+  return {
+    succeed(verdict: string) {
+      if (spinner) {
+        spinner.succeed(verdict);
+        spinner = null;
+      } else {
+        console.log(theme.success(`${icons.success} ${verdict}`));
+      }
+    },
+    fail(verdict: string) {
+      if (spinner) {
+        spinner.fail(verdict);
+        spinner = null;
+      } else {
+        console.error(theme.danger(`${icons.danger} ${verdict}`));
+      }
+    },
+    stop() {
+      spinner?.stop();
+      spinner = null;
+    },
+  };
+}
+
+// Backward-compatible singleton kept for any external usages via ui.spinner.
 export const progress = {
-  start: (message: string) => {
-    if (isTty()) {
-      _spinner = ora(message).start();
-    } else {
-      console.log(theme.muted(`⟳ ${message}`));
-    }
+  start: (message: string): ProgressHandle => createProgress(message),
+  stop: (): void => {},
+  succeed: (message: string): void => {
+    console.log(theme.success(`${icons.success} ${message}`));
   },
-  stop: () => {
-    _spinner?.stop();
-    _spinner = null;
-  },
-  succeed: (message: string) => {
-    if (_spinner) {
-      _spinner.succeed(message);
-      _spinner = null;
-    } else {
-      console.log(theme.success(`${icons.success} ${message}`));
-    }
-  },
-  fail: (message: string) => {
-    if (_spinner) {
-      _spinner.fail(message);
-      _spinner = null;
-    } else {
-      console.error(theme.danger(`${icons.danger} ${message}`));
-    }
+  fail: (message: string): void => {
+    console.error(theme.danger(`${icons.danger} ${message}`));
   },
 };
