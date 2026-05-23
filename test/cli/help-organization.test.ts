@@ -70,7 +70,7 @@ describe("CLI help and command organization", () => {
       ]);
       expect(exportResult.stdout).toContain("deprecated");
       expect(exportResult.stdout).toContain("preset export");
-      expect(exportResult.stdout).toContain("Exported to");
+      expect(exportResult.stdout).toContain("Exported preset");
       expect(existsSync(bundlePath)).toBe(true);
 
       const applyResult = await runCli([

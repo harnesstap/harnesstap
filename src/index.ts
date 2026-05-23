@@ -544,8 +544,9 @@ function handleRevertCommand(snapshotId?: string): void {
       })),
   );
   writeFiles(files, project.local_path);
-  log.info(`Reverting to snapshot: ${snapshot.label} (${snapshot.created_at})`);
-  log.success(`Restored ${files.length} file(s) to ${project.local_path}`);
+  ui.success(
+    `Restored ${files.length} files from snapshot ${ui.theme.muted(ui.format.shortenId(snapshot.id))} (${ui.format.formatRelativeTime(snapshot.created_at)})`,
+  );
 }
 
 function handlePresetExportCommand(
@@ -556,15 +557,15 @@ function handlePresetExportCommand(
   initializeSchema(db);
   const filePath = opts.file ?? `${presetName}.harnessdeck.json`;
   exportToFile(presetName, filePath, { embedPlugins: opts.embedPlugins });
-  log.success(`Exported to ${filePath}`);
+  ui.success(`Exported preset ${ui.theme.accent(presetName)} ${ui.icons.hint} ${filePath}`);
 }
 
 function handlePresetImportCommand(file: string): void {
   const db = getDb();
   initializeSchema(db);
   const { preset, resources } = importFromFile(file);
-  log.success(
-    `Imported preset "${preset.name}" with ${resources.length} resources`,
+  ui.success(
+    `Imported preset ${ui.theme.accent(preset.name)} ${ui.icons.bullet} ${resources.length} resources`,
   );
 }
 
@@ -1089,22 +1090,26 @@ async function handleInitCommand(opts: {
     getAllPlatforms().map((platform) => [platform.id, platform.name]),
   );
 
-  log.success(chalk.bold("Harnessdeck initialized"));
-  printInitMeta("Database", getDbPath());
-  printInitMeta(
-    "Built-in Presets",
-    seeded > 0
-      ? `seeded ${formatCount(seeded, "built-in preset")}`
-      : "already up to date",
-  );
+  ui.success("Harnessdeck initialized");
+  console.log("");
+  ui.kvBlock([
+    { key: "Database", value: getDbPath() },
+    {
+      key: "Built-in Presets",
+      value:
+        seeded > 0
+          ? `seeded ${formatCount(seeded, "built-in preset")}`
+          : "already up to date",
+    },
+  ]);
 
   if (homeDefaults.detected.length === 0) {
-    printInitMeta(
-      "Home",
-      chalk.hex("#9ca3af")("no default folders discovered"),
-    );
+    console.log("");
+    ui.dim("no default folders discovered");
   } else {
-    log.info(chalk.bold("Home defaults overview"));
+    console.log("");
+    ui.subheader("HOME DEFAULTS");
+    console.log("");
     for (const result of homeDefaults.results) {
       const folder = homeFolderLabel(result.discoveredPaths);
       const foundSummary = summarizeResourceTypes(result.resources);
@@ -1114,29 +1119,36 @@ async function handleInitCommand(opts: {
           ? `${formatCount(importedCount, "new resource")} imported`
           : "already tracked";
 
+      const platformName = platformNames.get(result.platformId) ?? result.platformId;
       console.log(
-        `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
+        `  ${ui.theme.badge(platformName)} ${ui.theme.accent(folder)}`,
       );
-      printInitDetail(
-        "Contains",
-        chalk.hex("#60a5fa")(
-          relativeDiscoveredPaths(result.discoveredPaths, folder),
-        ),
-      );
-      printInitDetail(
-        "Found",
-        `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
-      );
-      printInitDetail("Status", statusAccent(importedSummary, importedCount));
+      ui.kvBlock([
+        {
+          key: "Contains",
+          value: relativeDiscoveredPaths(result.discoveredPaths, folder),
+        },
+        {
+          key: "Found",
+          value: `${formatCount(result.resources.length, "resource")}${foundSummary ? ` (${foundSummary})` : ""}`,
+        },
+        {
+          key: "Status",
+          value: importedCount > 0 ? ui.theme.warn(importedSummary) : ui.theme.success(importedSummary),
+        },
+      ], { indent: 4, keyWidth: 10 });
     }
   }
 
   if (savedHarnessPreference) {
-    printInitMeta("Main Harness", savedHarnessPreference.main_harness);
-    printInitMeta(
-      "Aliases",
-      savedHarnessPreference.alias_harnesses.join(", ") || "(none)",
-    );
+    console.log("");
+    ui.kvBlock([
+      { key: "MAIN HARNESS", value: savedHarnessPreference.main_harness },
+      {
+        key: "ALIASES",
+        value: savedHarnessPreference.alias_harnesses.join(", ") || "(none)",
+      },
+    ], { keyWidth: 14 });
   }
 }
 
@@ -1154,7 +1166,7 @@ async function handleHarnessSetCommand(opts: {
     current: getHarnessPreference(),
   });
   const saved = setHarnessPreference(selection);
-  log.success(`Saved harness preference: ${saved.main_harness}`);
+  ui.success(`Set harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
 }
 
 function handleHarnessStatusCommand(opts: { format?: string }): void {
@@ -1225,7 +1237,7 @@ async function handleHarnessProjectSetCommand(opts: {
         }
       : {}),
   });
-  log.success(`Saved project harness preference: ${saved.main_harness}`);
+  ui.success(`Set project harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
 }
 
 function handleProjectDriftCommand(opts: {
@@ -1277,7 +1289,11 @@ function handleProjectDriftCommand(opts: {
   console.log(`DRIFT  ${projectRoot}`);
   console.log("");
   const changeEntries = report.changes.map((c) => ({
-    kind: "modified" as const,
+    // Drift reports "deleted", but the shared renderer vocabulary uses "removed".
+    kind:
+      c.type === "deleted"
+        ? ("removed" as const)
+        : c.type,
     scope: c.type,
     key: c.path,
     detail: c.type,
@@ -1376,8 +1392,8 @@ async function handlePresetFromProjectCommand(
       projectRoot: resolve(opts.project),
       platform: opts.platform,
     });
-    log.success(
-      `Created preset "${result.preset.name}" with ${result.imported_count} resource(s)`,
+    ui.success(
+      `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${result.imported_count} resources`,
     );
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
@@ -1437,8 +1453,7 @@ function handleMigrateExportCommand(
       printJson({ ...manifest, output: file });
       return;
     }
-    log.success(`Exported migration archive to ${file}`);
-    log.info(`Presets: ${manifest.preset_count}`);
+    ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.preset_count} presets`);
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
   }
@@ -1457,8 +1472,8 @@ function handleMigrateImportCommand(
       printJson(result);
       return;
     }
-    log.success(
-      `Imported ${result.presets_imported} preset(s) from migration archive`,
+    ui.success(
+      `Imported migration archive ${ui.icons.bullet} ${result.presets_imported} presets`,
     );
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
@@ -1555,7 +1570,7 @@ presetCmd
         description: opts.description,
         tags,
       });
-      log.success(`Preset created: ${preset.name} (${preset.id})`);
+      ui.success(`Created preset ${ui.theme.accent(preset.name)}`);
     },
   );
 
@@ -1619,8 +1634,8 @@ presetCmd
       return;
     }
     addResourceToPreset(preset.id, resourceResult.resource.id);
-    log.success(
-      `Added resource ${resourceResult.resource.name} to preset ${preset.name}`,
+    ui.success(
+      `Added ${resourceResult.resource.type} ${ui.theme.accent(`"${resourceResult.resource.name}"`)} to preset ${ui.theme.accent(preset.name)}`,
     );
   });
 
@@ -1651,8 +1666,8 @@ presetCmd
       return;
     }
     removeResourceFromPreset(preset.id, resourceResult.resource.id);
-    log.success(
-      `Removed resource ${resourceResult.resource.name} from preset ${preset.name}`,
+    ui.success(
+      `Removed ${resourceResult.resource.type} ${ui.theme.accent(`"${resourceResult.resource.name}"`)} from preset ${ui.theme.accent(preset.name)}`,
     );
   });
 
@@ -1686,8 +1701,8 @@ presetCmd
       }
       addPluginToPreset(preset.id, ref, opts.version);
       syncClaudePresetPluginsAfterAdd(preset, ref, opts.version);
-      log.success(
-        `Added plugin pin ${ref} (${opts.version}) to preset ${preset.name}`,
+      ui.success(
+        `Pinned ${ui.theme.accent(ref)} (${opts.version}) on preset ${ui.theme.accent(preset.name)}`,
       );
     },
   );
@@ -1707,7 +1722,7 @@ presetCmd
     }
     removePluginFromPreset(preset.id, ref);
     syncClaudePresetPluginsAfterRemove(preset, ref);
-    log.success(`Removed plugin pin ${ref} from preset ${preset.name}`);
+    ui.success(`Removed plugin pin ${ui.theme.accent(ref)} from preset ${ui.theme.accent(preset.name)}`);
   });
 
 presetCmd
@@ -1717,7 +1732,7 @@ presetCmd
     const db = getDb();
     initializeSchema(db);
     if (deletePreset(name)) {
-      log.success(`Preset deleted: ${name}`);
+      ui.success(`Deleted preset ${ui.theme.accent(name)}`);
     } else {
       log.error(`Preset not found: ${name}`);
     }
@@ -1901,7 +1916,7 @@ resourceCmd
       return;
     }
     if (deleteResource(result.resource.id)) {
-      log.success(`Deleted resource: ${result.resource.name} (${result.resource.id})`);
+      ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
     } else {
       log.error(`Resource not found: ${resource}`);
     }

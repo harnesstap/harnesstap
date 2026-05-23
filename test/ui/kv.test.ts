@@ -18,4 +18,11 @@ describe("ui kv", () => {
     const output = renderKv("Status", "active");
     expect(output).toContain("active");
   });
+
+  it("supports custom indent", () => {
+    const output = renderKv("Contains", "CLAUDE.md", 10, 4);
+    // 4 spaces indent instead of default 2
+    expect(output.startsWith("    ")).toBe(true);
+    expect(output).toContain("Contains");
+  });
 });

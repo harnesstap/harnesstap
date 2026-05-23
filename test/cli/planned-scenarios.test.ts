@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
@@ -116,14 +116,34 @@ describe("CLI planned scenarios", () => {
       expect(drift.stdout).toMatch(/"has_drift":\s*true/);
       expect(drift.exitCode).toBe(1);
 
+      const driftService = await import("../../src/services/project-drift.ts");
+      const driftSpy = vi
+        .spyOn(driftService, "detectProjectDriftFromLatest")
+        .mockReturnValue({
+          project_root: context.projectDir,
+          snapshot_id: "snap-drift-icons",
+          snapshot_label: "before",
+          has_drift: true,
+          changes: [
+            { path: "NEW.md", type: "added", platform: "claude-code" },
+            { path: "CLAUDE.md", type: "modified", platform: "claude-code" },
+            { path: "OLD.md", type: "deleted", platform: "claude-code" },
+          ],
+        });
+
       const driftHuman = await runCli([
         "project",
         "drift",
         "--project",
         context.projectDir,
       ]);
+      driftSpy.mockRestore();
       expect(driftHuman.stdout).toContain("DRIFT");
-      expect(driftHuman.stdout).toContain("CLAUDE.md");
+      expect(driftHuman.stdout).toMatch(/^\s+\+\s+added\s+NEW\.md\s+added$/m);
+      expect(driftHuman.stdout).toMatch(
+        /^\s+~\s+modified\s+CLAUDE\.md\s+modified$/m,
+      );
+      expect(driftHuman.stdout).toMatch(/^\s+−\s+deleted\s+OLD\.md\s+deleted$/m);
       expect(driftHuman.exitCode).toBe(1);
 
       const syncDry = await runCli([

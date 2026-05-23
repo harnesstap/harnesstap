@@ -31,8 +31,8 @@ export function panel(opts: PanelOptions): void {
   console.log(renderPanel(opts));
 }
 
-export function kvBlock(rows: KvRow[]): void {
+export function kvBlock(rows: KvRow[], opts?: { indent?: number; keyWidth?: number }): void {
   for (const row of rows) {
-    console.log(renderKv(row.key, row.value));
+    console.log(renderKv(row.key, row.value, opts?.keyWidth, opts?.indent));
   }
 }
