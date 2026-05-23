@@ -12,12 +12,15 @@ export interface PanelOptions {
   rows: [string, string][];
 }
 
+function renderPanelTitle(parts: string[]): string {
+  const [head, ...rest] = parts;
+  return rest.length === 0
+    ? theme.primary(head ?? "")
+    : `${theme.primary(head ?? "")}  ${rest.map((p) => theme.muted(p)).join("  ")}`;
+}
+
 export function renderPanel(opts: PanelOptions): string {
-  const titleStr =
-    opts.title.length === 1
-      ? theme.primary(opts.title[0] ?? "")
-      : `${theme.primary(opts.title[0] ?? "")}  ${opts.title.slice(1).map((part) => theme.muted(part)).join("  ")}`;
-  const lines: string[] = [titleStr];
+  const lines: string[] = [renderPanelTitle(opts.title)];
   for (const [key, value] of opts.rows) {
     lines.push(renderKv(key, value));
   }
