@@ -5,15 +5,18 @@ import { renderDiffTable, diffTable } from "./diff.js";
 import { progress } from "./progress.js";
 import { status } from "./status.js";
 import { icons, theme } from "./theme.js";
-import { header, subheader, rule } from "./section.js";
+import { header, renderHeader, subheader, renderSubheader, rule, renderRule } from "./section.js";
 
 export const ui = {
   format,
   icons,
   theme,
   header,
+  renderHeader,
   subheader,
+  renderSubheader,
   rule,
+  renderRule,
   table,
   renderTable,
   panel,

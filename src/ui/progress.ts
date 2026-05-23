@@ -1,6 +1,5 @@
 import ora, { type Ora } from "ora";
-import { icons, theme } from "./theme.js";
-import { isTty } from "./theme.js";
+import { icons, isTty, theme } from "./theme.js";
 
 let _spinner: Ora | null = null;
 
