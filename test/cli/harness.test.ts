@@ -37,6 +37,11 @@ describe("CLI harness", () => {
           alias_harnesses: ["cursor", "codex"],
         }),
       );
+
+      const human = await runCli(["harness", "status"]);
+      expect(human.stdout).toContain("HARNESS");
+      expect(human.stdout).toContain("Main harness");
+      expect(human.stdout).toContain("Alias harnesses");
     } finally {
       await context.cleanup();
     }
@@ -79,6 +84,17 @@ describe("CLI harness", () => {
           materialization_strategy: "copy",
         }),
       );
+
+      const human = await runCli([
+        "harness",
+        "project",
+        "status",
+        "--project",
+        context.projectDir,
+      ]);
+      expect(human.stdout).toContain("HARNESS");
+      expect(human.stdout).toContain("Main harness");
+      expect(human.stdout).toContain("Materialization");
     } finally {
       await context.cleanup();
     }

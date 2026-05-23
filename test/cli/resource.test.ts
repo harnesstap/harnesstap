@@ -213,6 +213,10 @@ describe("CLI resource", () => {
       expect(resourceShow.stderr).toContain("Ambiguous resource selector: duplicate-name");
       expect(resourceShow.stdout).not.toContain("# First");
       expect(resourceShow.stdout).not.toContain("# Second");
+      // match table headers must appear in stdout
+      expect(resourceShow.stdout).toContain("TYPE");
+      expect(resourceShow.stdout).toContain("NAME");
+      expect(resourceShow.stdout).toContain("ID");
     } finally {
       await context.cleanup();
     }
