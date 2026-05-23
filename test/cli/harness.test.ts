@@ -21,7 +21,7 @@ describe("CLI harness", () => {
     const context = await createTestContext("cli-harness-global");
     try {
       await runCli(["init"]);
-      await runCli([
+      const setResult = await runCli([
         "harness",
         "set",
         "--main",
@@ -29,6 +29,9 @@ describe("CLI harness", () => {
         "--aliases",
         "cursor,codex",
       ]);
+      expect(setResult.stdout).toContain("✓ Set harness preference");
+      expect(setResult.stdout).toContain("main:");
+      expect(setResult.stdout).toContain("claude-code");
 
       const show = await runCli(["harness", "status", "--format", "json"]);
       expect(JSON.parse(show.stdout)).toEqual(
@@ -53,7 +56,7 @@ describe("CLI harness", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-harness.git");
       await runCli(["init"]);
 
-      await runCli([
+      const setResult = await runCli([
         "harness",
         "project",
         "set",
@@ -66,6 +69,9 @@ describe("CLI harness", () => {
         "--materialization-strategy",
         "copy",
       ]);
+      expect(setResult.stdout).toContain("✓ Set project harness preference");
+      expect(setResult.stdout).toContain("main:");
+      expect(setResult.stdout).toContain("cursor");
 
       const show = await runCli([
         "harness",

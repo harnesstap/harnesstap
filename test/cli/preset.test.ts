@@ -21,7 +21,7 @@ describe("CLI preset", () => {
         }),
       );
 
-      await runCli([
+      const createResult = await runCli([
         "preset",
         "create",
         "team",
@@ -30,7 +30,17 @@ describe("CLI preset", () => {
         "--tags",
         "core,shared",
       ]);
-      await runCli(["preset", "add", "team", resource.id]);
+      expect(createResult.stdout).toContain("✓ Created preset");
+      expect(createResult.stdout).toContain("team");
+
+      const createList = await runCli(["preset", "list"]);
+      expect(createList.stdout).toContain("team");
+
+      const addResult = await runCli(["preset", "add", "team", resource.id]);
+      expect(addResult.stdout).toContain("✓ Added");
+      expect(addResult.stdout).toContain("skill");
+      expect(addResult.stdout).toContain('"shared-skill"');
+      expect(addResult.stdout).toContain("team");
 
       const presetShow = await runCli(["preset", "show", "team"]);
       expect(presetShow.stdout).toContain("team");
@@ -38,7 +48,12 @@ describe("CLI preset", () => {
       // IDs are shortened in human-mode panel output (first 6 chars always visible)
       expect(presetShow.stdout).toContain(resource.id.slice(0, 6));
 
-      await runCli(["preset", "remove", "team", resource.id]);
+      const removeResult = await runCli(["preset", "remove", "team", resource.id]);
+      expect(removeResult.stdout).toContain("✓ Removed");
+      expect(removeResult.stdout).toContain("skill");
+      expect(removeResult.stdout).toContain('"shared-skill"');
+      expect(removeResult.stdout).toContain("team");
+
       const teamPreset = presetModel.getPreset("team");
       expect(teamPreset).toBeDefined();
       if (!teamPreset) {
@@ -47,7 +62,10 @@ describe("CLI preset", () => {
 
       expect(presetModel.getPresetResources(teamPreset.id)).toHaveLength(0);
 
-      await runCli(["preset", "delete", "team"]);
+      const deleteResult = await runCli(["preset", "delete", "team"]);
+      expect(deleteResult.stdout).toContain("✓ Deleted preset");
+      expect(deleteResult.stdout).toContain("team");
+
       expect(presetModel.getPreset("team")).toBeUndefined();
     } finally {
       await context.cleanup();
@@ -124,6 +142,39 @@ describe("CLI preset", () => {
 
       await runCli(["preset", "remove", "team", "shared-skill"]);
       expect(presetModel.getPresetResources(preset.id)).toHaveLength(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("adds and removes plugin pins with verdicts", async () => {
+    const context = await createTestContext("cli-preset-plugin-verdicts");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "plugin-test"]);
+
+      const addResult = await runCli([
+        "preset",
+        "add-plugin",
+        "plugin-test",
+        "formatter@marketplace",
+        "--version",
+        "^2.1.0",
+      ]);
+      expect(addResult.stdout).toContain("✓ Pinned");
+      expect(addResult.stdout).toContain("formatter@marketplace");
+      expect(addResult.stdout).toContain("^2.1.0");
+      expect(addResult.stdout).toContain("plugin-test");
+
+      const removeResult = await runCli([
+        "preset",
+        "remove-plugin",
+        "plugin-test",
+        "formatter@marketplace",
+      ]);
+      expect(removeResult.stdout).toContain("✓ Removed plugin pin");
+      expect(removeResult.stdout).toContain("formatter@marketplace");
+      expect(removeResult.stdout).toContain("plugin-test");
     } finally {
       await context.cleanup();
     }

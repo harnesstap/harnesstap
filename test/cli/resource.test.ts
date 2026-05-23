@@ -28,7 +28,10 @@ describe("CLI resource", () => {
       expect(resourceShow.stdout).toContain("CONTENT");
       expect(resourceShow.stdout).toContain("# Shared");
 
-      await runCli(["resource", "delete", resource.id]);
+      const deleteResult = await runCli(["resource", "delete", resource.id]);
+      expect(deleteResult.stdout).toContain("✓ Deleted");
+      expect(deleteResult.stdout).toContain("skill");
+      expect(deleteResult.stdout).toContain('"shared-skill"');
       expect(resourceModel.getResource(resource.id)).toBeUndefined();
     } finally {
       await context.cleanup();
@@ -112,7 +115,10 @@ describe("CLI resource", () => {
         }),
       );
 
-      await runCli(["resource", "delete", "delete-me"]);
+      const deleteResult = await runCli(["resource", "delete", "delete-me"]);
+      expect(deleteResult.stdout).toContain("✓ Deleted");
+      expect(deleteResult.stdout).toContain("skill");
+      expect(deleteResult.stdout).toContain('"delete-me"');
 
       expect(resourceModel.getResource(resource.id)).toBeUndefined();
     } finally {

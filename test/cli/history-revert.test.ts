@@ -66,7 +66,9 @@ describe("CLI history and revert", () => {
         throw new Error("Expected a snapshot to be available for revert");
       }
 
-      await runCli(["project", "revert", snapshot.id]);
+      const revertResult = await runCli(["project", "revert", snapshot.id]);
+      expect(revertResult.stdout).toContain("✓ Restored");
+      expect(revertResult.stdout).toContain("files from snapshot");
 
       expect(readFileSync(`${context.projectDir}/CLAUDE.md`, "utf-8")).toBe(
         "# Original instructions",

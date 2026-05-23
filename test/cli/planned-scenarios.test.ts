@@ -24,7 +24,9 @@ describe("CLI planned scenarios", () => {
         "--project",
         context.projectDir,
       ]);
+      expect(fromProject.stdout).toContain("✓ Created preset");
       expect(fromProject.stdout).toContain("cli-inferred");
+      expect(fromProject.stdout).toContain("resources");
 
       const validate = await runCli([
         "preset",

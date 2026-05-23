@@ -97,32 +97,6 @@ import {
 
 const program = new Command();
 
-function printInitMeta(label: string, value: string): void {
-  console.log(
-    `  ${chalk.hex("#6b7280")(label.padEnd(10))} ${chalk.white(value)}`,
-  );
-}
-
-function printInitDetail(label: string, value: string): void {
-  console.log(
-    `    ${chalk.hex("#7c3aed")(label.padEnd(8))} ${chalk.white(value)}`,
-  );
-}
-
-function platformBadge(name: string): string {
-  return chalk.bgHex("#1d4ed8").white.bold(` ${name} `);
-}
-
-function folderAccent(folder: string): string {
-  return chalk.hex("#22c55e").bold(folder);
-}
-
-function statusAccent(message: string, importedCount: number): string {
-  return importedCount > 0
-    ? chalk.hex("#f59e0b").bold(message)
-    : chalk.hex("#10b981").bold(message);
-}
-
 function formatCount(count: number, noun: string, plural = `${noun}s`): string {
   return `${count} ${count === 1 ? noun : plural}`;
 }
