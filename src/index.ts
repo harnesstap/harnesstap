@@ -1271,15 +1271,22 @@ function handleProjectDriftCommand(opts: {
     return;
   }
   if (!report.has_drift) {
-    log.success("No drift detected since last snapshot.");
+    ui.success("No drift detected since last snapshot.");
     return;
   }
-  log.warn(
-    `Drift detected (${report.changes.length} change(s)) since snapshot ${report.snapshot_id}`,
+  console.log(`DRIFT  ${projectRoot}`);
+  console.log("");
+  const changeEntries = report.changes.map((c) => ({
+    kind: "modified" as const,
+    scope: c.type,
+    key: c.path,
+    detail: c.type,
+  }));
+  console.log(ui.renderChangeList(changeEntries));
+  console.log("");
+  console.log(
+    `${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
   );
-  for (const change of report.changes) {
-    log.info(`  ${change.type.padEnd(8)} ${change.path}`);
-  }
   process.exitCode = 1;
 }
 
@@ -1297,14 +1304,29 @@ function handlePresetDiffCommand(
       printJson(report);
       return;
     }
-    log.info(`Diff: ${report.left} ↔ ${report.right}`);
     if (report.changes.length === 0) {
-      log.success("No differences.");
+      ui.success("No differences.");
       return;
     }
-    for (const change of report.changes) {
-      log.info(`  [${change.kind}] ${change.key}: ${change.change}`);
-    }
+
+    const changeEntries = report.changes.map((c) => ({
+      kind: (c.change === "reordered" ? "modified" : c.change) as "added" | "removed" | "modified",
+      scope: c.kind,
+      key: c.key,
+      detail: c.change,
+    }));
+
+    const added = changeEntries.filter((c) => c.kind === "added").length;
+    const removed = changeEntries.filter((c) => c.kind === "removed").length;
+    const modified = changeEntries.filter((c) => c.kind === "modified").length;
+
+    console.log(`DIFF  ${report.left} ↔ ${report.right}`);
+    console.log("");
+    console.log(ui.renderChangeList(changeEntries));
+    console.log("");
+    console.log(
+      `${report.changes.length} changes ${ui.icons.bullet} ${added} added ${ui.icons.bullet} ${removed} removed ${ui.icons.bullet} ${modified} modified`,
+    );
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
   }
@@ -1324,13 +1346,18 @@ function handlePresetValidateCommand(
     return;
   }
   if (report.valid && report.issues.length === 0) {
-    log.success(`Preset "${report.preset}" is valid.`);
+    ui.success(`Preset "${report.preset}" is valid.`);
     return;
   }
-  for (const issue of report.issues) {
-    const label = issue.severity === "error" ? chalk.red("error") : chalk.yellow("warn");
-    log.info(`  ${label} ${issue.code}: ${issue.message}`);
-  }
+  ui.table.print({
+    columns: [
+      { key: "severity", header: "SEVERITY", width: 10 },
+      { key: "code", header: "CODE", width: 28 },
+      { key: "message", header: "MESSAGE", width: 40 },
+    ],
+    rows: report.issues,
+    summary: report.valid ? `${report.preset}: valid (warnings only)` : `${report.preset}: invalid`,
+  });
   if (!report.valid) {
     process.exitCode = 1;
   }

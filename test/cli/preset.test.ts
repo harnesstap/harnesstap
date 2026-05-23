@@ -80,6 +80,32 @@ describe("CLI preset", () => {
     }
   });
 
+  it("renders preset diff as a compact diff table with a summary footer", async () => {
+    const context = await createTestContext("cli-preset-diff-ui");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["preset", "diff", "nextjs-fullstack", "python-fastapi"]);
+      expect(result.stdout).toContain("DIFF");
+      expect(result.stdout).toContain("~");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("renders preset validate warnings as a severity table", async () => {
+    const context = await createTestContext("cli-preset-validate-ui");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+      presetModel.createPreset({ name: "empty-preset" });
+      const result = await runCli(["preset", "validate", "empty-preset"]);
+      expect(result.stdout).toContain("SEVERITY");
+      expect(result.stdout).toContain("empty_preset");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("accepts resource names when adding and removing preset resources", async () => {
     const context = await createTestContext("cli-preset-resource-selector");
     try {

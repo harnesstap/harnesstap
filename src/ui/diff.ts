@@ -28,3 +28,30 @@ export const diffTable = {
   render: renderDiffTable,
   print: (opts: DiffTableOptions) => console.log(renderDiffTable(opts)),
 };
+
+export interface ChangeEntry {
+  kind: "added" | "removed" | "modified";
+  scope: string;
+  key: string;
+  detail: string;
+}
+
+export function renderChangeList(changes: ChangeEntry[]): string {
+  return changes
+    .map((change) => {
+      const glyph =
+        change.kind === "added"
+          ? icons.added
+          : change.kind === "removed"
+            ? icons.removed
+            : icons.modified;
+      const style =
+        change.kind === "added"
+          ? theme.success
+          : change.kind === "removed"
+            ? theme.danger
+            : theme.warn;
+      return `  ${style(glyph)} ${change.scope.padEnd(10)} ${change.key.padEnd(28)} ${change.detail}`;
+    })
+    .join("\n");
+}

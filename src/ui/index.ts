@@ -2,7 +2,7 @@ import * as format from "./format.js";
 import { renderKv } from "./kv.js";
 import { renderTable, table } from "./table.js";
 import { renderPanel, panel, kvBlock } from "./panel.js";
-import { renderDiffTable, diffTable } from "./diff.js";
+import { renderDiffTable, diffTable, renderChangeList } from "./diff.js";
 import { progress } from "./progress.js";
 import { status } from "./status.js";
 import { icons, theme } from "./theme.js";
@@ -26,6 +26,7 @@ export const ui = {
   renderKv,
   diffTable,
   renderDiffTable,
+  renderChangeList,
   spinner: progress,
   ...status,
 };
