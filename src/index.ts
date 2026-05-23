@@ -622,15 +622,38 @@ function handlePresetShowCommand(
     return;
   }
 
-  log.info(`${preset.name} — ${preset.description}`);
-  for (const r of resources) {
-    log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id})`);
-  }
+  ui.panel({
+    title: ["PRESET", preset.name],
+    rows: [
+      ["Description", preset.description || "—"],
+      ["Tags", preset.tags.length > 0 ? preset.tags.join(", ") : "—"],
+      ["ID", ui.format.shortenId(preset.id)],
+      ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
+      ["Plugins", plugins.length === 0 ? "(none pinned)" : `${plugins.length}`],
+      ["Updated", ui.format.formatRelativeTime(preset.updated_at)],
+    ],
+  });
+
+  ui.subheader("RESOURCES");
+  ui.table.print({
+    columns: [
+      { key: "type", header: "TYPE", width: 14 },
+      { key: "name", header: "NAME", width: 26 },
+      { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
+    ],
+    rows: resources,
+    empty: "No resources in this preset.",
+  });
+
   if (plugins.length > 0) {
-    console.log(chalk.bold("Plugins"));
-    for (const p of plugins) {
-      log.dim(`  ${p.ref.padEnd(42)} ${p.version_constraint}`);
-    }
+    ui.subheader("PLUGINS");
+    ui.table.print({
+      columns: [
+        { key: "ref", header: "REF", width: 36 },
+        { key: "version_constraint", header: "CONSTRAINT", width: 20 },
+      ],
+      rows: plugins,
+    });
   }
 }
 
@@ -706,33 +729,28 @@ async function handlePluginInventoryListCommand(
   sortByRef(committed);
   sortByRef(effective);
 
-  const formatEnabled = (v: boolean) =>
-    v ? chalk.green("yes") : chalk.hex("#6b7280")("no");
+  ui.subheader("COMMITTED");
+  ui.table.print({
+    columns: [
+      { key: "ref", header: "REF", width: 42 },
+      { key: "version", header: "VERSION", width: 14 },
+      { key: "enabled", header: "ENABLED", width: 8, transform: (v) => (v === "true" ? "yes" : "no") },
+    ],
+    rows: committed,
+    empty: "(none)",
+  });
 
-  console.log(chalk.bold("Committed"));
-  if (committed.length === 0) {
-    console.log(chalk.hex("#6b7280")("  (none)"));
-  } else {
-    console.log(`  ${"ref".padEnd(42)} ${"version".padEnd(14)} enabled`);
-    for (const row of committed) {
-      console.log(
-        `  ${row.ref.padEnd(42)} ${row.version.padEnd(14)} ${formatEnabled(row.enabled)}`,
-      );
-    }
-  }
-
-  console.log();
-  console.log(chalk.bold("Effective"));
-  if (effective.length === 0) {
-    console.log(chalk.hex("#6b7280")("  (none)"));
-  } else {
-    console.log(`  ${"ref".padEnd(42)} ${"version".padEnd(14)} enabled    scope`);
-    for (const row of effective) {
-      console.log(
-        `  ${row.ref.padEnd(42)} ${row.version.padEnd(14)} ${formatEnabled(row.enabled)}    ${row.scope}`,
-      );
-    }
-  }
+  ui.subheader("EFFECTIVE");
+  ui.table.print({
+    columns: [
+      { key: "ref", header: "REF", width: 42 },
+      { key: "version", header: "VERSION", width: 14 },
+      { key: "enabled", header: "ENABLED", width: 8, transform: (v) => (v === "true" ? "yes" : "no") },
+      { key: "scope", header: "SCOPE", width: 12 },
+    ],
+    rows: effective,
+    empty: "(none)",
+  });
 }
 
 async function handlePluginInventoryShowCommand(
@@ -760,32 +778,30 @@ async function handlePluginInventoryShowCommand(
     return;
   }
 
-  console.log(`${chalk.bold("ref:")} ${ref}`);
-  if (declaredScopes.length > 0) {
-    console.log(
-      `${chalk.bold("Declared by scopes:")} ${declaredScopes.join(", ")}`,
-    );
-  } else {
-    console.log(
-      `${chalk.bold("Declared by scopes:")} ${chalk.hex("#6b7280")("(none)")}`,
-    );
-  }
-
   if (install == null) {
-    console.log(
-      chalk.hex("#f59e0b")("No matching entry in merged effective inventory."),
-    );
+    ui.panel({
+      title: ["PLUGIN", ref],
+      rows: [
+        ["Ref", ref],
+        ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
+        ["Effective install", "(not found in merged inventory)"],
+      ],
+    });
     return;
   }
 
-  console.log(chalk.bold("Effective install:"));
-  console.log(`  platform: ${install.platformId}`);
-  console.log(`  version:  ${install.version}`);
-  console.log(`  enabled:  ${install.enabled ? chalk.green("yes") : chalk.hex("#6b7280")("no")}`);
-  console.log(`  scope:    ${install.scope}`);
-  if (install.installPath) {
-    console.log(`  path:     ${install.installPath}`);
-  }
+  ui.panel({
+    title: ["PLUGIN", ref],
+    rows: [
+      ["Ref", ref],
+      ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
+      ["Platform", install.platformId],
+      ["Version", install.version],
+      ["Enabled", install.enabled ? "yes" : "no"],
+      ["Scope", install.scope],
+      ...(install.installPath ? [["Path", install.installPath] as [string, string]] : []),
+    ],
+  });
 }
 
 async function handlePluginInstalledListCommand(
@@ -936,9 +952,15 @@ async function handleProjectStatusCommand(
       });
       return;
     }
-    console.log(`Project root:  ${projectRoot}`);
-    console.log(`Git origin:    (none)`);
-    console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
+    ui.panel({
+      title: ["PROJECT"],
+      rows: [
+        ["Root", projectRoot],
+        ["Git origin", "(none)"],
+        ["Platforms", detected.join(", ") || "(none detected)"],
+        ["Plugins", "(not tracked — no git origin)"],
+      ],
+    });
     return;
   }
 
@@ -976,37 +998,36 @@ async function handleProjectStatusCommand(
     return;
   }
 
-  console.log(`Project root:  ${projectRoot}`);
-  console.log(`Git origin:    ${gitOrigin}`);
-  console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
-
-  if (!project) {
-    return;
-  }
-
-  console.log(`Applied presets: ${presets.length}`);
-  console.log(`Snapshots:       ${snapshots.length}`);
-
-  if (detected.includes("claude-code")) {
-    const inventory = getProjectPluginState(project.id);
-    if (inventory) {
-      console.log(
-        `Plugins (claude-code): ${inventory.committed.length} committed, ${inventory.effective.length} effective`,
-      );
-    }
-  }
-
+  let pluginsLine = "(none detected)";
   try {
     const plugins = await listPlugins({ projectRoot, homeRoot: homedir() });
     if (plugins.installs.length > 0) {
       const check = await checkPlugins({ projectRoot, homeRoot: homedir() });
-      console.log(
-        `Plugins:         ${plugins.installs.length} installed (${check.summary.outdated} outdated)`,
-      );
+      pluginsLine = `${plugins.installs.length} installed (${check.summary.outdated} outdated)`;
     }
   } catch {
     // best-effort
   }
+
+  if (detected.includes("claude-code") && project) {
+    const inventory = getProjectPluginState(project.id);
+    if (inventory) {
+      pluginsLine = `${inventory.committed.length} committed, ${inventory.effective.length} effective`;
+    }
+  }
+
+  const rows: [string, string][] = [
+    ["Root", projectRoot],
+    ["Git origin", gitOrigin],
+    ["Platforms", detected.join(", ") || "(none detected)"],
+  ];
+  if (project) {
+    rows.push(["Applied presets", `${presets.length}`]);
+    rows.push(["Snapshots", `${snapshots.length}`]);
+  }
+  rows.push(["Plugins", pluginsLine]);
+
+  ui.panel({ title: ["PROJECT"], rows });
 }
 
 async function handleInitCommand(opts: {
@@ -1154,10 +1175,13 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
     log.dim("No harness preference configured.");
     return;
   }
-  console.log(`Main harness:   ${preference.main_harness}`);
-  console.log(
-    `Alias harnesses: ${preference.alias_harnesses.join(", ") || "(none)"}`,
-  );
+  ui.panel({
+    title: ["HARNESS"],
+    rows: [
+      ["Main harness", preference.main_harness],
+      ["Alias harnesses", preference.alias_harnesses.join(", ") || "(none)"],
+    ],
+  });
 }
 
 async function handleHarnessProjectSetCommand(opts: {
@@ -1447,13 +1471,14 @@ function handleHarnessProjectStatusCommand(opts: {
     return;
   }
 
-  console.log(`Main harness:   ${config.main_harness}`);
-  console.log(
-    `Alias harnesses: ${config.alias_harnesses.join(", ") || "(none)"}`,
-  );
-  console.log(
-    `Materialization: ${config.materialization_strategy}`,
-  );
+  ui.panel({
+    title: ["HARNESS", "project"],
+    rows: [
+      ["Main harness", config.main_harness],
+      ["Alias harnesses", config.alias_harnesses.join(", ") || "(none)"],
+      ["Materialization", config.materialization_strategy],
+    ],
+  });
 }
 
 // ── init ────────────────────────────────────────────────────────────────
@@ -1801,20 +1826,33 @@ resourceCmd
       return;
     }
     if (result.status === "ambiguous") {
-      log.error(`Ambiguous resource name: ${resource}`);
-      for (const match of result.matches) {
-        log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
-      }
+      ui.danger(`Ambiguous resource selector: ${resource}`);
+      ui.table.print({
+        columns: [
+          { key: "type", header: "TYPE", width: 14 },
+          { key: "name", header: "NAME", width: 26 },
+          { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
+        ],
+        rows: result.matches,
+      });
+      process.exitCode = 1;
       return;
     }
     const r = result.resource;
-    console.log(`Type:        ${r.type}`);
-    console.log(`Name:        ${r.name}`);
-    console.log(`Description: ${r.description}`);
-    console.log(`Source:      ${r.source}`);
-    console.log(`Created:     ${r.created_at}`);
-    console.log(`Metadata:    ${JSON.stringify(r.metadata, null, 2)}`);
-    console.log(`\n--- Content ---\n${r.content}`);
+    ui.panel({
+      title: ["RESOURCE", r.name],
+      rows: [
+        ["Type", r.type],
+        ["Name", r.name],
+        ["Description", r.description || "—"],
+        ["Source", r.source],
+        ["ID", r.id],
+        ["Created", r.created_at],
+        ["Metadata", JSON.stringify(r.metadata)],
+      ],
+    });
+    ui.subheader("CONTENT");
+    console.log(r.content);
   });
 
 resourceCmd

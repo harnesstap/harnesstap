@@ -35,7 +35,8 @@ describe("CLI preset", () => {
       const presetShow = await runCli(["preset", "show", "team"]);
       expect(presetShow.stdout).toContain("team");
       expect(presetShow.stdout).toContain("shared-skill");
-      expect(presetShow.stdout).toContain(resource.id);
+      // IDs are shortened in human-mode panel output (first 6 chars always visible)
+      expect(presetShow.stdout).toContain(resource.id.slice(0, 6));
 
       await runCli(["preset", "remove", "team", resource.id]);
       const teamPreset = presetModel.getPreset("team");
@@ -61,6 +62,19 @@ describe("CLI preset", () => {
       expect(result.stdout).toContain("NAME");
       expect(result.stdout).toContain("DESCRIPTION");
       expect(result.stdout).toContain("run `harnessdeck preset show <name>` for details");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("renders preset show as a detail panel with a resource sub-table", async () => {
+    const context = await createTestContext("cli-preset-show-panel");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["preset", "show", "nextjs-fullstack"]);
+      expect(result.stdout).toContain("PRESET");
+      expect(result.stdout).toContain("Description");
+      expect(result.stdout).toContain("RESOURCES");
     } finally {
       await context.cleanup();
     }

@@ -4,6 +4,19 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI harness", () => {
+  it("renders project status as a detail panel with plugin state", async () => {
+    const context = await createTestContext("cli-project-status-panel");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["project", "status", context.projectDir]);
+      expect(result.stdout).toContain("PROJECT");
+      expect(result.stdout).toContain("Platforms");
+      expect(result.stdout).toContain("Plugins");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("sets and shows global harness preferences non-interactively", async () => {
     const context = await createTestContext("cli-harness-global");
     try {

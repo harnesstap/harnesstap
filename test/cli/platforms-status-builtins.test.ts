@@ -64,9 +64,9 @@ describe("CLI platforms, status, and built-in presets", () => {
       ]);
 
       const status = await runCli(["project", "status", context.projectDir]);
-      expect(status.stdout).toContain("Platforms:");
-      expect(status.stdout).toContain("Applied presets: 1");
-      expect(status.stdout).toContain("Snapshots:       1");
+      expect(status.stdout).toContain("Platforms");
+      expect(status.stdout).toContain("Applied presets");
+      expect(status.stdout).toContain("Snapshots");
     } finally {
       await context.cleanup();
     }

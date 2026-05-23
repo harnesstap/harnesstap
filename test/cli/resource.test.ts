@@ -210,7 +210,7 @@ describe("CLI resource", () => {
 
       const resourceShow = await runCli(["resource", "show", "duplicate-name"]);
 
-      expect(resourceShow.stderr).toContain("Ambiguous resource name: duplicate-name");
+      expect(resourceShow.stderr).toContain("Ambiguous resource selector: duplicate-name");
       expect(resourceShow.stdout).not.toContain("# First");
       expect(resourceShow.stdout).not.toContain("# Second");
     } finally {
