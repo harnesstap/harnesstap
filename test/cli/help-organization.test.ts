@@ -52,6 +52,26 @@ describe("CLI help and command organization", () => {
     expect(pluginHelp.stdout).toContain("Update all outdated plugins");
   });
 
+  it("disables color for non-help commands when --no-color is used", async () => {
+    // Force colors to be enabled so we can test --no-color actually disables them
+    const originalForceColor = process.env.FORCE_COLOR;
+    process.env.FORCE_COLOR = "1";
+    
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["--no-color", "platform", "list"]);
+      // ANSI escape codes start with ESC [ (character code 27 followed by [)
+      const ansiEscapeRegex = /\x1b\[/;
+      expect(result.stdout).not.toMatch(ansiEscapeRegex);
+    } finally {
+      if (originalForceColor === undefined) {
+        delete process.env.FORCE_COLOR;
+      } else {
+        process.env.FORCE_COLOR = originalForceColor;
+      }
+    }
+  });
+
   it("shows grouped commands in help and hides legacy top-level verbs", async () => {
     const help = await runCli(["-h"]);
     const projectHelp = await runCli(["project", "-h"]);

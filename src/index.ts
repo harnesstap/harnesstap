@@ -212,8 +212,8 @@ program
   .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
   .helpCommand(false)
   .hook("preAction", (command) => {
-    const opts = command.optsWithGlobals<{ noColor?: boolean }>();
-    if (opts.noColor) {
+    const opts = command.optsWithGlobals<{ color?: boolean }>();
+    if (opts.color === false) {
       process.env.NO_COLOR = "1";
       chalk.level = 0;
     }
