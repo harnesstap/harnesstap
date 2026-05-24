@@ -149,7 +149,7 @@ function renderGroupedCommandHelp(
   showHidden: boolean,
 ): string {
   const commands = cmd.commands.filter((c) => {
-    const hidden = (c as any)._hidden;
+    const hidden = (c as { _hidden?: boolean })._hidden;
     return showHidden || !hidden;
   });
   

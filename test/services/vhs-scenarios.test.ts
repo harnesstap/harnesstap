@@ -136,7 +136,7 @@ describe("VHS scenario manifest", () => {
     const demo = definitions.find((d) => d.slug === "existing-repo-adoption");
     expect(demo).toBeDefined();
 
-    const tape = readFileSync(resolve(repoRoot, demo!.tapePath), "utf-8");
+    const tape = readFileSync(resolve(repoRoot, demo?.tapePath ?? ""), "utf-8");
     const firstTypedCommand = tape
       .split("\n")
       .find((line) => line.startsWith('Type "'));

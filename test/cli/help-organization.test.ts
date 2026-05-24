@@ -23,7 +23,7 @@ describe("CLI help and command organization", () => {
     try {
       const result = await runCli(["--no-color", "--help"]);
       // ANSI escape codes start with ESC [ (character code 27 followed by [)
-      const ansiEscapeRegex = /\x1b\[/;
+      const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
       expect(result.stdout).not.toMatch(ansiEscapeRegex);
       expect(result.stdout).toContain("USAGE");
       expect(result.stdout).toContain("COMMANDS");
@@ -61,7 +61,7 @@ describe("CLI help and command organization", () => {
       await runCli(["init"]);
       const result = await runCli(["--no-color", "platform", "list"]);
       // ANSI escape codes start with ESC [ (character code 27 followed by [)
-      const ansiEscapeRegex = /\x1b\[/;
+      const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
       expect(result.stdout).not.toMatch(ansiEscapeRegex);
     } finally {
       if (originalForceColor === undefined) {
