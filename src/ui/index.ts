@@ -5,7 +5,7 @@ import { renderPanel, panel, kvBlock } from "./panel.js";
 import { renderDiffTable, diffTable, renderChangeList } from "./diff.js";
 import { progress, createProgress } from "./progress.js";
 import { status } from "./status.js";
-import { icons, theme } from "./theme.js";
+import { icons, theme, disableColor } from "./theme.js";
 import { header, renderHeader, subheader, renderSubheader, rule, renderRule } from "./section.js";
 
 export const ui = {
@@ -30,4 +30,5 @@ export const ui = {
   spinner: progress,
   createProgress,
   ...status,
+  disableColor,
 };

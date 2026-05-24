@@ -1,8 +1,6 @@
 import { Command } from "commander";
-import chalk from "chalk";
 import { getDb, closeDb, getDbPath } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
-import { log } from "./utils/logger.js";
 import { ui } from "./ui/index.js";
 import {
   getGitOrigin,
@@ -141,7 +139,7 @@ function warnDeprecatedCommand(
   legacyCommand: string,
   replacementCommand: string,
 ): void {
-  log.warn(
+  ui.warn(
     `\`${legacyCommand}\` is deprecated; use \`${replacementCommand}\` instead.`,
   );
 }
@@ -214,16 +212,14 @@ program
   .hook("preAction", (command) => {
     const opts = command.optsWithGlobals<{ color?: boolean }>();
     if (opts.color === false) {
-      process.env.NO_COLOR = "1";
-      chalk.level = 0;
+      ui.disableColor();
     }
   })
   .configureHelp({
     formatHelp: (cmd) => {
       // Check for --no-color early before rendering help
       if (process.argv.includes("--no-color")) {
-        process.env.NO_COLOR = "1";
-        chalk.level = 0;
+        ui.disableColor();
       }
       
       const showHidden = process.argv.includes("--show-hidden");
@@ -295,7 +291,7 @@ async function handleScanCommand(
 
   const detected = detectPlatforms(projectRoot);
   if (detected.length === 0) {
-    log.warn("No coding CLI configurations detected in this directory.");
+    ui.warn("No coding CLI configurations detected in this directory.");
     return;
   }
   const scannedPlatformIds = opts.platform ? [opts.platform] : detected;
@@ -451,7 +447,7 @@ async function handleApplyCommand(
   initializeSchema(db);
 
   if (presetNames.length === 0) {
-    log.error("Provide at least one preset name, bundle path, or URL.");
+    ui.danger("Provide at least one preset name, bundle path, or URL.");
     return;
   }
 
@@ -463,13 +459,13 @@ async function handleApplyCommand(
       projectRoot,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
 
   const primaryPreset = applyBundle.presets[applyBundle.presets.length - 1];
   if (!primaryPreset) {
-    log.error("No preset resolved for apply");
+    ui.danger("No preset resolved for apply");
     return;
   }
 
@@ -478,7 +474,7 @@ async function handleApplyCommand(
     : detectPlatforms(projectRoot);
 
   if (platforms.length === 0) {
-    log.warn("No platforms detected. Use --platform to specify.");
+    ui.warn("No platforms detected. Use --platform to specify.");
     return;
   }
 
@@ -504,7 +500,7 @@ async function handleApplyCommand(
     );
     if (issues.length > 0) {
       for (const issue of issues) {
-        console.warn(chalk.yellow(issue.message));
+        console.warn(ui.theme.warn(issue.message));
       }
       ui.danger("Plugin pin violations — apply aborted");
       process.exitCode = 2;
@@ -598,7 +594,7 @@ async function handleApplyCommand(
       inventory,
     );
     for (const issue of issues) {
-      console.warn(chalk.yellow(issue.message));
+      console.warn(ui.theme.warn(issue.message));
     }
   }
 }
@@ -610,7 +606,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -619,7 +615,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
       printJson({ snapshots: [] });
       return;
     }
-    log.warn("No project record found. Run `harnessdeck project scan` first.");
+    ui.warn("No project record found. Run `harnessdeck project scan` first.");
     return;
   }
   const snapshots = listSnapshots(project.id);
@@ -628,7 +624,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
       printJson({ snapshots: [] });
       return;
     }
-    log.dim("No snapshots found.");
+    ui.dim("No snapshots found.");
     return;
   }
   if (format === "json") {
@@ -661,19 +657,19 @@ function handleRevertCommand(snapshotId?: string): void {
   const db = getDb();
   initializeSchema(db);
   if (!snapshotId) {
-    log.error(
+    ui.danger(
       "Please provide a snapshot ID. Use `harnessdeck project history` to list them.",
     );
     return;
   }
   const snapshot = getSnapshot(snapshotId);
   if (!snapshot) {
-    log.error(`Snapshot not found: ${snapshotId}`);
+    ui.danger(`Snapshot not found: ${snapshotId}`);
     return;
   }
   const project = getProject(snapshot.project_id);
   if (!project) {
-    log.error("Snapshot project not found.");
+    ui.danger("Snapshot project not found.");
     return;
   }
   const files = Object.entries(snapshot.state.platform_files).flatMap(
@@ -742,7 +738,7 @@ function handlePresetShowCommand(
   const format = parseOutputFormat(opts.format);
   const preset = getPreset(name);
   if (!preset) {
-    log.error(`Preset not found: ${name}`);
+    ui.danger(`Preset not found: ${name}`);
     return;
   }
   const resources = getPresetResources(preset.id);
@@ -973,7 +969,7 @@ async function handlePluginInstalledListCommand(
     empty: "No plugins found.",
   });
   if (result.unsupported_platforms.length > 0) {
-    log.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
+    ui.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
   }
 }
 
@@ -1047,7 +1043,7 @@ async function handlePluginCheckCommand(
     empty: "No plugins found.",
   });
   if (report.unsupported_platforms.length > 0) {
-    log.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
+    ui.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
   }
   if (report.summary.outdated > 0) process.exitCode = 1;
 }
@@ -1377,7 +1373,7 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
     return;
   }
   if (!preference) {
-    log.dim("No harness preference configured.");
+    ui.dim("No harness preference configured.");
     return;
   }
   ui.panel({
@@ -1401,7 +1397,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
 
@@ -1443,7 +1439,7 @@ function handleProjectDriftCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -1458,7 +1454,7 @@ function handleProjectDriftCommand(opts: {
       });
       return;
     }
-    log.warn("No project record found. Run `harnessdeck project apply` first.");
+    ui.warn("No project record found. Run `harnessdeck project apply` first.");
     return;
   }
 
@@ -1472,7 +1468,7 @@ function handleProjectDriftCommand(opts: {
     return;
   }
   if (!report.snapshot_id) {
-    log.dim("No snapshots found. Drift detection requires a prior apply or sync.");
+    ui.dim("No snapshots found. Drift detection requires a prior apply or sync.");
     return;
   }
   if (!report.has_drift) {
@@ -1537,7 +1533,7 @@ function handlePresetDiffCommand(
       `${report.changes.length} changes ${ui.icons.bullet} ${added} added ${ui.icons.bullet} ${removed} removed ${ui.icons.bullet} ${modified} modified`,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1589,7 +1585,7 @@ async function handlePresetFromProjectCommand(
       `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1637,7 +1633,7 @@ async function handleProjectSyncCommand(
       console.log(dryTag + verdict);
     }
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1662,7 +1658,7 @@ function handleMigrateExportCommand(
     }
     ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.preset_count} presets`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1683,7 +1679,7 @@ function handleMigrateImportCommand(
       `Imported migration archive ${ui.icons.bullet} ${formatCount(result.presets_imported, "preset")}`,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1697,7 +1693,7 @@ function handleHarnessProjectStatusCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
 
@@ -1716,7 +1712,7 @@ function handleHarnessProjectStatusCommand(opts: {
   }
 
   if (!config) {
-    log.dim("No project harness preference configured.");
+    ui.dim("No project harness preference configured.");
     return;
   }
 
@@ -1823,19 +1819,19 @@ presetCmd
     initializeSchema(db);
     const preset = getPreset(presetName);
     if (!preset) {
-      log.error(`Preset not found: ${presetName}`);
+      ui.danger(`Preset not found: ${presetName}`);
       return;
     }
     const resourceResult = resolveResource(resourceSelector);
     if (resourceResult.status !== "found") {
-      log.error(
+      ui.danger(
         resourceResult.status === "ambiguous"
           ? `Ambiguous resource name: ${resourceSelector}`
           : `Resource not found: ${resourceSelector}`,
       );
       if (resourceResult.status === "ambiguous") {
         for (const match of resourceResult.matches) {
-          log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
         }
       }
       return;
@@ -1855,19 +1851,19 @@ presetCmd
     initializeSchema(db);
     const preset = getPreset(presetName);
     if (!preset) {
-      log.error(`Preset not found: ${presetName}`);
+      ui.danger(`Preset not found: ${presetName}`);
       return;
     }
     const resourceResult = resolveResource(resourceSelector);
     if (resourceResult.status !== "found") {
-      log.error(
+      ui.danger(
         resourceResult.status === "ambiguous"
           ? `Ambiguous resource name: ${resourceSelector}`
           : `Resource not found: ${resourceSelector}`,
       );
       if (resourceResult.status === "ambiguous") {
         for (const match of resourceResult.matches) {
-          log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
         }
       }
       return;
@@ -1897,13 +1893,13 @@ presetCmd
       initializeSchema(db);
       const preset = getPreset(presetName);
       if (!preset) {
-        log.error(`Preset not found: ${presetName}`);
+        ui.danger(`Preset not found: ${presetName}`);
         return;
       }
       try {
         parseVersionConstraint(opts.version);
       } catch (err) {
-        log.error(err instanceof Error ? err.message : String(err));
+        ui.danger(err instanceof Error ? err.message : String(err));
         return;
       }
       addPluginToPreset(preset.id, ref, opts.version);
@@ -1924,7 +1920,7 @@ presetCmd
     initializeSchema(db);
     const preset = getPreset(presetName);
     if (!preset) {
-      log.error(`Preset not found: ${presetName}`);
+      ui.danger(`Preset not found: ${presetName}`);
       return;
     }
     removePluginFromPreset(preset.id, ref);
@@ -1941,7 +1937,7 @@ presetCmd
     if (deletePreset(name)) {
       ui.success(`Deleted preset ${ui.theme.accent(name)}`);
     } else {
-      log.error(`Preset not found: ${name}`);
+      ui.danger(`Preset not found: ${name}`);
     }
   });
 
@@ -2028,7 +2024,7 @@ resourceCmd
     const format = parseOutputFormat(opts.format);
     const type = opts.type as ResourceType | undefined;
     if (type && !RESOURCE_TYPES.includes(type)) {
-      log.error(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+      ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
       return;
     }
     const resources = listResources({ type, search: opts.search });
@@ -2071,7 +2067,7 @@ resourceCmd
       return;
     }
     if (result.status === "not_found") {
-      log.error(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resource}`);
       return;
     }
     if (result.status === "ambiguous") {
@@ -2112,20 +2108,20 @@ resourceCmd
     initializeSchema(db);
     const result = resolveResource(resource);
     if (result.status === "not_found") {
-      log.error(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resource}`);
       return;
     }
     if (result.status === "ambiguous") {
-      log.error(`Ambiguous resource name: ${resource}`);
+      ui.danger(`Ambiguous resource name: ${resource}`);
       for (const match of result.matches) {
-        log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+        ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
       }
       return;
     }
     if (deleteResource(result.resource.id)) {
       ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
     } else {
-      log.error(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resource}`);
     }
   });
 

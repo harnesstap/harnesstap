@@ -31,6 +31,11 @@ export const theme = {
   badge: maybe((value) => chalk.bgHex("#1d4ed8").white.bold(` ${value} `)),
 };
 
+export function disableColor(): void {
+  process.env.NO_COLOR = "1";
+  chalk.level = 0;
+}
+
 export function isTty(): boolean {
   return process.stdout.isTTY === true;
 }
