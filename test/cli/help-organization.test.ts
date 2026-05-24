@@ -7,6 +7,21 @@ import { writeTextFile } from "../helpers/fs.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI help and command organization", () => {
+  it("renders grouped themed help and exposes --no-color", async () => {
+    const result = await runCli(["--help"]);
+    expect(result.stdout).toContain("USAGE");
+    expect(result.stdout).toContain("COMMANDS");
+    expect(result.stdout).toContain("--no-color");
+    expect(result.stdout).not.toContain("help [command]");
+  });
+
+  it("shows hidden aliases only when --help --all is used", async () => {
+    const defaultHelp = await runCli(["--help"]);
+    const allHelp = await runCli(["--help", "--all"]);
+    expect(defaultHelp.stdout).not.toContain("apply [options]");
+    expect(allHelp.stdout).toContain("apply [options]");
+  });
+
   it("shows grouped commands in help and hides legacy top-level verbs", async () => {
     const help = await runCli(["-h"]);
     const projectHelp = await runCli(["project", "-h"]);

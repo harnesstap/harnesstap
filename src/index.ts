@@ -146,13 +146,138 @@ function warnDeprecatedCommand(
   );
 }
 
+function renderGroupedCommandHelp(
+  cmd: Command,
+  showHidden: boolean,
+): string {
+  const commands = cmd.commands.filter((c) => {
+    const hidden = (c as any)._hidden;
+    return showHidden || !hidden;
+  });
+  
+  if (commands.length === 0) {
+    return "";
+  }
+
+  const lines: string[] = [];
+  
+  // Calculate max length for alignment
+  const commandStrs = commands.map((c) => {
+    const name = c.name();
+    const aliases = c.aliases();
+    const args = c.registeredArguments?.map((arg) => {
+      if (arg.required) {
+        return `<${arg.name()}>`;
+      }
+      return `[${arg.name()}]`;
+    }).join(" ") || "";
+    
+    const hasOptions = c.options.filter((opt) => !opt.hidden).length > 0;
+    
+    let fullStr = name;
+    if (aliases.length) {
+      fullStr += ` (${aliases.join(", ")})`;
+    }
+    if (hasOptions || args) {
+      fullStr += " ";
+      if (hasOptions) fullStr += "[options]";
+      if (hasOptions && args) fullStr += " ";
+      if (args) fullStr += args;
+    }
+    
+    return fullStr;
+  });
+  
+  const maxNameLength = commandStrs.length > 0 ? Math.max(...commandStrs.map((s) => s.length)) : 0;
+
+  for (let i = 0; i < commands.length; i++) {
+    const command = commands[i];
+    const nameStr = commandStrs[i];
+    if (!command || !nameStr) continue;
+    const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
+    const desc = command.description() || "";
+    lines.push(`  ${ui.theme.accent(nameStr)}${padding}${desc}`);
+  }
+
+  return lines.join("\n");
+}
+
 program
   .name("harnessdeck")
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
   .version("0.1.0", "-V, --harnessdeck-version")
-  .helpCommand(false);
+  .option("--no-color", "Disable color output")
+  .option("--all", "Show all commands including hidden ones (use with --help)")
+  .helpCommand(false)
+  .hook("preAction", (command) => {
+    const opts = command.optsWithGlobals<{ noColor?: boolean }>();
+    if (opts.noColor) {
+      process.env.NO_COLOR = "1";
+      chalk.level = 0;
+    }
+  })
+  .configureHelp({
+    formatHelp: (cmd) => {
+      const showHidden = process.argv.includes("--all");
+      const isTopLevel = cmd.name() === "harnessdeck";
+      
+      if (!isTopLevel) {
+        const lines = [
+          "",
+          ui.theme.muted("USAGE"),
+          `  ${cmd.name()} ${cmd.usage()}`,
+          "",
+        ];
+        
+        if (cmd.description()) {
+          lines.push(cmd.description(), "");
+        }
+        
+        const opts = cmd.options.filter((opt) => !opt.hidden);
+        if (opts.length > 0) {
+          lines.push(ui.theme.muted("OPTIONS"));
+          for (const opt of opts) {
+            const flags = opt.flags;
+            const desc = opt.description || "";
+            lines.push(`  ${ui.theme.accent(flags)}  ${desc}`);
+          }
+          lines.push("");
+        }
+        
+        const subcommands = renderGroupedCommandHelp(cmd, showHidden);
+        if (subcommands) {
+          lines.push(ui.theme.muted("COMMANDS"));
+          lines.push(subcommands);
+          lines.push("");
+        }
+        
+        return lines.join("\n");
+      }
+      
+      const lines = [
+        "",
+        ui.theme.primary("harnessdeck"),
+        "Preset-based AI coding assistant configuration manager",
+        "",
+        ui.theme.muted("USAGE"),
+        `  harnessdeck [options] [command]`,
+        "",
+        ui.theme.muted("OPTIONS"),
+        `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
+        `  ${ui.theme.accent("--no-color")}               disable color output`,
+        `  ${ui.theme.accent("--all")}                    show all commands including hidden ones`,
+        `  ${ui.theme.accent("-h, --help")}               display help for command`,
+        "",
+        ui.theme.muted("COMMANDS"),
+        renderGroupedCommandHelp(cmd, showHidden),
+        "",
+      ];
+      
+      return lines.join("\n");
+    },
+  });
 
 async function handleScanCommand(
   path: string,
