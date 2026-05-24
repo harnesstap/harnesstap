@@ -1485,7 +1485,7 @@ function handleProjectDriftCommand(opts: {
         : c.type,
     scope: c.type,
     key: c.path,
-    detail: c.type,
+    detail: c.platform ?? "",
   }));
   console.log(ui.renderChangeList(changeEntries));
   console.log("");

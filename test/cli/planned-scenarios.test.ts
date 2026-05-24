@@ -143,11 +143,11 @@ describe("CLI planned scenarios", () => {
       ]);
       driftSpy.mockRestore();
       expect(driftHuman.stdout).toContain("DRIFT");
-      expect(driftHuman.stdout).toMatch(/^\s+\+\s+added\s+NEW\.md\s+added$/m);
+      expect(driftHuman.stdout).toMatch(/^\s+\+\s+added\s+NEW\.md\s+claude-code$/m);
       expect(driftHuman.stdout).toMatch(
-        /^\s+~\s+modified\s+CLAUDE\.md\s+modified$/m,
+        /^\s+~\s+modified\s+CLAUDE\.md\s+claude-code$/m,
       );
-      expect(driftHuman.stdout).toMatch(/^\s+−\s+deleted\s+OLD\.md\s+deleted$/m);
+      expect(driftHuman.stdout).toMatch(/^\s+−\s+deleted\s+OLD\.md\s+claude-code$/m);
       expect(driftHuman.exitCode).toBe(1);
 
       const syncDry = await runCli([
