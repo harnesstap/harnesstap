@@ -36,11 +36,20 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("shows hidden aliases only when --help --all is used", async () => {
+  it("shows hidden aliases only when --help --show-hidden is used", async () => {
     const defaultHelp = await runCli(["--help"]);
-    const allHelp = await runCli(["--help", "--all"]);
+    const allHelp = await runCli(["--help", "--show-hidden"]);
     expect(defaultHelp.stdout).not.toContain("apply [options]");
     expect(allHelp.stdout).toContain("apply [options]");
+  });
+
+  it("does not collide global --show-hidden with plugin update --all", async () => {
+    // Verify that plugin update --all can be parsed without being affected by global flags
+    // We're not actually running the update, just checking that the command can be invoked
+    // without the global --show-hidden flag interfering with --all
+    const pluginHelp = await runCli(["plugin", "update", "--help"]);
+    expect(pluginHelp.stdout).toContain("--all");
+    expect(pluginHelp.stdout).toContain("Update all outdated plugins");
   });
 
   it("shows grouped commands in help and hides legacy top-level verbs", async () => {

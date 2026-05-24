@@ -209,7 +209,7 @@ program
   )
   .version("0.1.0", "-V, --harnessdeck-version")
   .option("--no-color", "Disable color output")
-  .option("--all", "Show all commands including hidden ones (use with --help)")
+  .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
   .helpCommand(false)
   .hook("preAction", (command) => {
     const opts = command.optsWithGlobals<{ noColor?: boolean }>();
@@ -226,7 +226,7 @@ program
         chalk.level = 0;
       }
       
-      const showHidden = process.argv.includes("--all");
+      const showHidden = process.argv.includes("--show-hidden");
       const isTopLevel = cmd.name() === "harnessdeck";
       
       if (!isTopLevel) {
@@ -273,7 +273,7 @@ program
         ui.theme.muted("OPTIONS"),
         `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
         `  ${ui.theme.accent("--no-color")}               disable color output`,
-        `  ${ui.theme.accent("--all")}                    show all commands including hidden ones`,
+        `  ${ui.theme.accent("--show-hidden")}            show all commands including hidden ones`,
         `  ${ui.theme.accent("-h, --help")}               display help for command`,
         "",
         ui.theme.muted("COMMANDS"),
