@@ -24,6 +24,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
   const tables: unknown[] = [];
   const originalArgv = [...process.argv];
   const originalExitCode = process.exitCode;
+  const originalForceColor = process.env.FORCE_COLOR;
 
   const logSpy = vi.spyOn(console, "log").mockImplementation((...values) => {
     stdout.push(stringifyArgs(values));
@@ -76,6 +77,11 @@ export async function runCli(args: string[]): Promise<CliResult> {
     connection.closeDb();
     process.argv = originalArgv;
     process.exitCode = originalExitCode;
+    if (originalForceColor === undefined) {
+      delete process.env.FORCE_COLOR;
+    } else {
+      process.env.FORCE_COLOR = originalForceColor;
+    }
     logSpy.mockRestore();
     errorSpy.mockRestore();
     warnSpy.mockRestore();

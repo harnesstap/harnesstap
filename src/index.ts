@@ -220,6 +220,12 @@ program
   })
   .configureHelp({
     formatHelp: (cmd) => {
+      // Check for --no-color early before rendering help
+      if (process.argv.includes("--no-color")) {
+        process.env.NO_COLOR = "1";
+        chalk.level = 0;
+      }
+      
       const showHidden = process.argv.includes("--all");
       const isTopLevel = cmd.name() === "harnessdeck";
       

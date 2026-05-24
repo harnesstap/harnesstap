@@ -15,6 +15,27 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).not.toContain("help [command]");
   });
 
+  it("disables color in help output when --no-color is used", async () => {
+    // Force colors to be enabled so we can test --no-color actually disables them
+    const originalForceColor = process.env.FORCE_COLOR;
+    process.env.FORCE_COLOR = "1";
+    
+    try {
+      const result = await runCli(["--no-color", "--help"]);
+      // ANSI escape codes start with ESC [ (character code 27 followed by [)
+      const ansiEscapeRegex = /\x1b\[/;
+      expect(result.stdout).not.toMatch(ansiEscapeRegex);
+      expect(result.stdout).toContain("USAGE");
+      expect(result.stdout).toContain("COMMANDS");
+    } finally {
+      if (originalForceColor === undefined) {
+        delete process.env.FORCE_COLOR;
+      } else {
+        process.env.FORCE_COLOR = originalForceColor;
+      }
+    }
+  });
+
   it("shows hidden aliases only when --help --all is used", async () => {
     const defaultHelp = await runCli(["--help"]);
     const allHelp = await runCli(["--help", "--all"]);
