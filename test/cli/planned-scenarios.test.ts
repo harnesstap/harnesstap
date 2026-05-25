@@ -173,6 +173,30 @@ describe("CLI planned scenarios", () => {
     }
   });
 
+  it("uses the invoked alias in drift json guidance when no project record exists", async () => {
+    const context = await createTestContext("cli-drift-hd-guidance");
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/drift-hd-guidance.git");
+      await runCli(["init"], { commandName: "hd" });
+
+      const result = await runCli(
+        [
+          "project",
+          "drift",
+          "--project",
+          context.projectDir,
+          "--format",
+          "json",
+        ],
+        { commandName: "hd" },
+      );
+
+      expect(result.stdout).toContain('"message": "No project record. Run hd project apply first."');
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("runs migrate export as json", async () => {
     const context = await createTestContext("cli-migrate");
     try {

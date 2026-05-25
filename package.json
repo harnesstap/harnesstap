@@ -10,7 +10,8 @@
     "README.md"
   ],
   "bin": {
-    "harnessdeck": "./dist/index.js"
+    "harnessdeck": "./dist/index.js",
+    "hd": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup",

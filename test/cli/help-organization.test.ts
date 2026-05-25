@@ -15,6 +15,12 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).not.toContain("help [command]");
   });
 
+  it("renders top-level help with hd when invoked as hd", async () => {
+    const result = await runCli(["--help"], { commandName: "hd" });
+    expect(result.stdout).toContain("hd");
+    expect(result.stdout).toContain("hd [options] [command]");
+  });
+
   it("disables color in help output when --no-color is used", async () => {
     // Force colors to be enabled so we can test --no-color actually disables them
     const originalForceColor = process.env.FORCE_COLOR;
@@ -157,6 +163,26 @@ describe("CLI help and command organization", () => {
       expect(applyResult.stdout).toContain("deprecated");
       expect(applyResult.stdout).toContain("project apply");
       expect(applyResult.stdout).toContain("SKILL.md");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("uses the invoked alias in deprecated command guidance", async () => {
+    const context = await createTestContext("cli-hd-aliases");
+
+    try {
+      initGitRepo(context.projectDir);
+      writeTextFile(`${context.projectDir}/CLAUDE.md`, "# Claude instructions");
+
+      await runCli(["init"], { commandName: "hd" });
+
+      const scanResult = await runCli(["scan", context.projectDir], {
+        commandName: "hd",
+      });
+
+      expect(scanResult.stdout).toContain("`hd scan` is deprecated");
+      expect(scanResult.stdout).toContain("`hd project scan`");
     } finally {
       await context.cleanup();
     }
