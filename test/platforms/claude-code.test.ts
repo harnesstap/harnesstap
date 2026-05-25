@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { ClaudeCodeSerializer } from "../../src/platforms/claude-code.ts";
 import { makeResource } from "../helpers/resources.ts";
 

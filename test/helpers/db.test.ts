@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "./db.ts";
 
 describe("test database helpers", () => {

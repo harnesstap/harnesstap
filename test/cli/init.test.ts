@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { describe, expect, it, test } from "vitest";
+import { describe, expect, it, test } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";

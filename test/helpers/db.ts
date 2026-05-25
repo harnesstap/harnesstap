@@ -30,6 +30,7 @@ export async function createTestContext(
   process.chdir(projectDir);
 
   const connection = await import("../../src/db/connection.ts");
+  connection.closeDb();
   const schema = await import("../../src/db/schema.ts");
 
   return {

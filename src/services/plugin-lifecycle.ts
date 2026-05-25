@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { resolve } from "node:path";
 import { loadSettings } from "../config/settings.js";
 import { getHarnessdeckDir } from "../db/connection.js";
@@ -45,7 +45,7 @@ export interface PluginUpdateReport {
 function buildContext(opts: PluginLifecycleOptions): PluginContext {
   return {
     projectRoot: resolve(opts.projectRoot ?? "."),
-    homeRoot: opts.homeRoot ?? homedir(),
+    homeRoot: opts.homeRoot ?? resolveHomeRoot(),
     harnessdeckDir: getHarnessdeckDir(),
   };
 }

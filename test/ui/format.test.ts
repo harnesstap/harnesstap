@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { truncate, shortenId, formatCount } from "../../src/ui/format.ts";
 
 describe("ui format", () => {

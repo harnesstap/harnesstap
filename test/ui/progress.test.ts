@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("ui progress", () => {
   it("createProgress factory returns a handle with succeed, fail, stop", async () => {
