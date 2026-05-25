@@ -1,15 +1,16 @@
-import inquirer from "inquirer";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-vi.mock("inquirer", () => ({
+const promptMock = mock(() => Promise.resolve({}));
+
+mock.module("inquirer", () => ({
   default: {
-    prompt: vi.fn(),
+    prompt: promptMock,
   },
 }));
 
 describe("harness config service", () => {
   beforeEach(() => {
-    vi.mocked(inquirer.prompt).mockReset();
+    promptMock.mockReset();
   });
 
   it("excludes the chosen main harness from alias choices", async () => {
@@ -19,7 +20,7 @@ describe("harness config service", () => {
       configurable: true,
     });
 
-    vi.mocked(inquirer.prompt)
+    promptMock
       .mockResolvedValueOnce({ main_harness: "cursor" })
       .mockResolvedValueOnce({ alias_harnesses: ["codex"] });
 
@@ -38,9 +39,9 @@ describe("harness config service", () => {
         alias_harnesses: ["codex"],
       });
 
-      expect(inquirer.prompt).toHaveBeenCalledTimes(2);
+      expect(promptMock).toHaveBeenCalledTimes(2);
 
-      const aliasQuestion = vi.mocked(inquirer.prompt).mock.calls[1]?.[0]?.[0];
+      const aliasQuestion = promptMock.mock.calls[1]?.[0]?.[0];
       expect(aliasQuestion?.default).toEqual(["codex"]);
       expect(
         (aliasQuestion?.choices as Array<{ value: string }>).map(
@@ -135,7 +136,7 @@ describe("harness config service", () => {
       configurable: true,
     });
 
-    vi.mocked(inquirer.prompt)
+    promptMock
       .mockResolvedValueOnce({ main_harness: "cursor" })
       .mockResolvedValueOnce({ alias_harnesses: [] });
 
@@ -146,7 +147,7 @@ describe("harness config service", () => {
         nonInteractive: false,
       });
 
-      const mainQuestion = vi.mocked(inquirer.prompt).mock.calls[0]?.[0]?.[0];
+      const mainQuestion = promptMock.mock.calls[0]?.[0]?.[0];
       expect(mainQuestion?.message).toBe("Pick your main");
     } finally {
       Object.defineProperty(process.stdin, "isTTY", {

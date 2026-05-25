@@ -18,6 +18,30 @@ function resolveDatabaseConstructor(): SqliteDatabaseConstructor {
   return require("better-sqlite3") as SqliteDatabaseConstructor;
 }
 
+function usesBunSqlite(): boolean {
+  return "Bun" in globalThis;
+}
+
+function wrapDatabase(db: SqliteDatabase): SqliteDatabase {
+  return {
+    prepare<Row = unknown>(sql: string) {
+      const statement = db.prepare<Row>(sql);
+      return {
+        run: (...params: unknown[]) => statement.run(...params),
+        get: (...params: unknown[]) => {
+          const row = statement.get(...params);
+          return row ?? undefined;
+        },
+        all: (...params: unknown[]) => statement.all(...params),
+      };
+    },
+    exec: (sql: string) => db.exec(sql),
+    transaction: <T extends (...args: never[]) => unknown>(fn: T) =>
+      db.transaction(fn),
+    close: () => db.close(),
+  };
+}
+
 function resolveHarnessdeckDir(): string {
   if (process.env.HARNESSDECK_HOME) {
     return process.env.HARNESSDECK_HOME;
@@ -54,7 +78,8 @@ export function getDb(): SqliteDatabase {
   mkdirSync(resolveHarnessdeckDir(), { recursive: true });
 
   const Database = resolveDatabaseConstructor();
-  instance = new Database(dbPath);
+  const rawDb = new Database(dbPath);
+  instance = usesBunSqlite() ? wrapDatabase(rawDb) : rawDb;
   instancePath = dbPath;
   instance.exec("PRAGMA journal_mode = WAL");
   instance.exec("PRAGMA foreign_keys = ON");

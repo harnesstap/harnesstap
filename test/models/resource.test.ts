@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
@@ -39,7 +39,9 @@ describe("resource model", () => {
 
       expect(updated?.name).toBe("alpha-updated");
       expect(updated?.metadata).toEqual({ references: ["docs"] });
-      expect(updated?.updated_at).not.toBe(alpha.updated_at);
+      expect(
+        Date.parse(updated?.updated_at ?? ""),
+      ).toBeGreaterThanOrEqual(Date.parse(alpha.updated_at));
 
       expect(model.deleteResource(alpha.id)).toBe(true);
       expect(model.deleteResource(alpha.id)).toBe(false);

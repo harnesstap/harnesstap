@@ -18,8 +18,8 @@
     "dev": "tsup --watch",
     "start": "bun src/index.ts",
     "start:dist": "node dist/index.js",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "test": "bun test",
+    "test:run": "bun test --dots",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "typecheck": "tsc --noEmit",
@@ -63,7 +63,6 @@
     "@types/node": "^22.10.0",
     "@types/semver": "^7.7.1",
     "tsup": "^8.3.5",
-    "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "typescript": "^5.7.0"
   }
 }

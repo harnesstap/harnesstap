@@ -1,15 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Tests for cloud client primitives
 
 describe("cloud client primitives", () => {
+  let originalFetch: typeof globalThis.fetch;
+
   beforeEach(() => {
-    vi.restoreAllMocks();
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("polls device auth until a token is issued", async () => {
     // Prepare fetch mock sequence: device code -> pending -> pending -> token
-    const fetchMock = vi.fn()
+    const fetchMock = mock()
       // requestDeviceCode
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ device_code: "dc-123", user_code: "UC-ABC", verification_uri: "https://example.com/verify", expires_in: 600, interval: 1 }) })
       // poll 1: authorization_pending
@@ -19,7 +25,7 @@ describe("cloud client primitives", () => {
       // poll 3: success
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access_token: "AT-XYZ", refresh_token: "RT-XYZ", expires_in: 3600, token_type: "Bearer" }) });
 
-    vi.stubGlobal("fetch", fetchMock);
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const mod = await import("../../src/services/cloud-client");
 
@@ -32,13 +38,13 @@ describe("cloud client primitives", () => {
   });
 
   it("refreshes an expired profile before searching libraries", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = mock()
       // refresh token call
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access_token: "NEW-AT", refresh_token: "NEW-RT", expires_in: 3600, token_type: "Bearer" }) })
       // search libraries call
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ results: [{ id: "lib1", name: "Library One" }] }) });
 
-    vi.stubGlobal("fetch", fetchMock);
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const { createCloudClient } = await import("../../src/services/cloud-client");
 
@@ -54,11 +60,11 @@ describe("cloud client primitives", () => {
   });
 
   it("skips refresh when token has no expires_at", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = mock()
       // whoami call
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: "user-1" }) });
 
-    vi.stubGlobal("fetch", fetchMock);
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const { createCloudClient } = await import("../../src/services/cloud-client");
 

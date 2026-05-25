@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createTempDir } from "../helpers/fs.ts";
 import { applyClaudePresetExtensions } from "../../src/platforms/claude-preset-extensions.ts";
 
