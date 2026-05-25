@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { getPreset, getPresetResources } from "../models/preset.js";
+import { getPreset, getPresetResources, listPresetDependencies } from "../models/preset.js";
 import { listPresetPlugins } from "../models/plugin.js";
 import type { ExportBundle, Resource } from "../types.js";
 import { BUNDLE_SCHEMA, BUNDLE_VERSION } from "../types.js";
@@ -25,6 +25,9 @@ interface PresetView {
   description: string;
   tags: string[];
   claudeJson: string;
+  version: string;
+  /** Serialised dependency list (name + constraint only; numeric order omitted to avoid false positives). */
+  dependenciesJson: string;
 }
 
 function resourceKey(resource: Pick<Resource, "type" | "name">): string {
@@ -63,6 +66,13 @@ function loadPresetView(nameOrPath: string): PresetView {
       description: bundle.preset.description,
       tags: bundle.preset.tags,
       claudeJson: JSON.stringify(bundle.claude ?? bundle.preset.claude ?? null),
+      version: bundle.preset.version ?? "",
+      dependenciesJson: JSON.stringify(
+        (bundle.dependencies ?? []).map((d) => ({
+          dependency_name: d.dependency_name,
+          version_constraint: d.version_constraint,
+        })),
+      ),
     };
   }
 
@@ -79,6 +89,7 @@ function loadPresetView(nameOrPath: string): PresetView {
     ref: p.ref,
     version_constraint: p.version_constraint,
   }));
+  const deps = listPresetDependencies(preset.id);
   return {
     label: preset.name,
     resources,
@@ -86,6 +97,13 @@ function loadPresetView(nameOrPath: string): PresetView {
     description: preset.description,
     tags: preset.tags,
     claudeJson: JSON.stringify(preset.claude ?? null),
+    version: preset.version,
+    dependenciesJson: JSON.stringify(
+      deps.map((d) => ({
+        dependency_name: d.dependency_name,
+        version_constraint: d.version_constraint,
+      })),
+    ),
   };
 }
 
@@ -113,6 +131,24 @@ function diffMetadata(left: PresetView, right: PresetView): PresetDiffEntry[] {
     changes.push({
       kind: "metadata",
       key: "claude",
+      change: "modified",
+    });
+  }
+  if (left.version !== right.version) {
+    changes.push({
+      kind: "metadata",
+      key: "version",
+      left: left.version,
+      right: right.version,
+      change: "modified",
+    });
+  }
+  if (left.dependenciesJson !== right.dependenciesJson) {
+    changes.push({
+      kind: "metadata",
+      key: "dependencies",
+      left: left.dependenciesJson,
+      right: right.dependenciesJson,
       change: "modified",
     });
   }
