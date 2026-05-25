@@ -32,7 +32,7 @@ package or from a local checkout of this repository.
 
 ```bash
 bun install -g harnessdeck
-harnessdeck init
+hd init
 ```
 
 ```bash
@@ -47,12 +47,13 @@ cd harnessdeck
 bun install
 bun run build
 bun link
-harnessdeck init
+hd init
 ```
 
-`bun link` registers the current checkout as the global `harnessdeck` command.
-If your shell still cannot find it, make sure Bun's global bin directory is on
-your `PATH`:
+`bun link` registers the current checkout as the global `harnessdeck` and `hd`
+commands. After installation, you can invoke the CLI with either name. If your
+shell still cannot find them, make sure Bun's global bin directory is on your
+`PATH`:
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
@@ -72,6 +73,9 @@ The fastest way to try `harnessdeck` is to initialize the local database, import
 supported defaults from your home directory, scan an existing repository, and
 then build a preset from the imported resources.
 
+Once installed, `hd` is a shorthand alias for the same CLI. Use whichever form
+you prefer in the examples below.
+
 The visible CLI groups related actions under noun-based commands such as
 `project`, `preset`, and `platform`. Older top-level verbs still work for now,
 but they print deprecation warnings.
@@ -80,14 +84,14 @@ but they print deprecation warnings.
    defaults, and optionally choose a default main harness plus aliases.
 
    ```bash
-   harnessdeck init
-   harnessdeck init --main claude-code --aliases cursor,codex
+   hd init
+   hd init --main claude-code --aliases cursor,codex
    ```
 
 2. Scan the current repository.
 
    ```bash
-   harnessdeck project scan .
+   hd project scan .
    ```
 
    ```
@@ -101,26 +105,26 @@ but they print deprecation warnings.
 3. List the imported resources.
 
    ```bash
-   harnessdeck resource list
-   harnessdeck resource list --format json
+   hd resource list
+   hd resource list --format json
    ```
 
 4. Create a preset.
 
    ```bash
-   harnessdeck preset create my-setup --description "Shared project assistant setup"
+   hd preset create my-setup --description "Shared project assistant setup"
    ```
 
 5. Add imported resources to that preset.
 
    ```bash
-   harnessdeck preset add my-setup openapi-mcp-baseline
+   hd preset add my-setup openapi-mcp-baseline
    ```
 
 6. Apply the preset to one or more target platforms.
 
    ```bash
-   harnessdeck project apply my-setup --project . --platform claude-code,codex,cursor
+   hd project apply my-setup --project . --platform claude-code,codex,cursor
    ```
 
    ```
@@ -134,31 +138,31 @@ but they print deprecation warnings.
 7. Check the tracked project state.
 
    ```bash
-   harnessdeck project status .
-   harnessdeck project history --project .
+   hd project status .
+   hd project history --project .
    ```
 
 8. Inspect or change harness preferences after init.
 
    ```bash
-   harnessdeck harness status --format json
-   harnessdeck harness set --main claude-code --aliases cursor,codex
+   hd harness status --format json
+   hd harness set --main claude-code --aliases cursor,codex
    ```
 
-If the repository has a git `origin`, `harnessdeck project apply` stores a
-snapshot before it writes files. You can restore that snapshot later with
-`harnessdeck project revert`.
+If the repository has a git `origin`, `hd project apply` stores a snapshot
+before it writes files. You can restore that snapshot later with
+`hd project revert`.
 
 ## Built-in presets
 
-`harnessdeck` ships with starter presets that are seeded during `harnessdeck init`.
+`harnessdeck` ships with starter presets that are seeded during `hd init`.
 The same command also scans supported default folders in your home directory,
 imports any resources it finds, and prints the discovered locations. Use these
 commands to inspect and apply the built-in presets.
 
 ```bash
-harnessdeck preset list
-harnessdeck project apply nextjs-fullstack --project . --platform codex
+hd preset list
+hd project apply nextjs-fullstack --project . --platform codex
 ```
 
 The repository currently includes `nextjs-fullstack` and `python-fastapi`.
@@ -194,8 +198,8 @@ into `.claude/settings.json`:
 ```
 
 ```bash
-harnessdeck preset export my-setup --file ./my-setup.harnessdeck.json
-harnessdeck preset import ./my-setup.harnessdeck.json
+hd preset export my-setup --file ./my-setup.harnessdeck.json
+hd preset import ./my-setup.harnessdeck.json
 ```
 
 ## Plugin inventory
@@ -206,13 +210,13 @@ result of user, project, and local settings—the configuration Claude actually
 loads.
 
 ```bash
-harnessdeck plugin list
-harnessdeck plugin show formatter@my-marketplace
-harnessdeck plugin installed
-harnessdeck preset add-plugin my-setup formatter@my-marketplace --version "2.1.0"
-harnessdeck preset remove-plugin my-setup formatter@my-marketplace
-harnessdeck preset export my-setup --file ./team.harnessdeck.json --embed-plugins
-harnessdeck project apply my-setup --project . --strict-plugin-versions
+hd plugin list
+hd plugin show formatter@my-marketplace
+hd plugin installed
+hd preset add-plugin my-setup formatter@my-marketplace --version "2.1.0"
+hd preset remove-plugin my-setup formatter@my-marketplace
+hd preset export my-setup --file ./team.harnessdeck.json --embed-plugins
+hd project apply my-setup --project . --strict-plugin-versions
 ```
 
 On `project apply`, harnessdeck compares preset plugin pins to installed
@@ -220,8 +224,8 @@ versions: it **warns** on mismatch by default; pass **`--strict-plugin-versions`
 to fail the command (exit code 2), or **`--ignore-plugin-versions`** to skip
 validation.
 
-Use **`harnessdeck -V`** or **`--harnessdeck-version`** for the harnessdeck CLI
-version. The **`--version`** on `preset add-plugin` is the **plugin semver pin
+Use **`hd -V`**, **`harnessdeck -V`**, or **`--harnessdeck-version`** for the
+harnessdeck CLI version. The **`--version`** on `preset add-plugin` is the **plugin semver pin
 or range**, not the global version flag.
 
 Preset export bundles use schema **`urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
@@ -237,10 +241,10 @@ for the provider scan; use `plugin list` / `plugin show` for Claude **inventory*
 (committed vs effective) as described above.
 
 ```bash
-harnessdeck plugin installed
-harnessdeck plugin check --format json
-harnessdeck plugin update --all
-harnessdeck plugin refresh
+hd plugin installed
+hd plugin check --format json
+hd plugin update --all
+hd plugin refresh
 ```
 
 Configure how often remote metadata is refreshed in `~/.harnessdeck/config.json`:
@@ -266,7 +270,7 @@ Gemini CLI, and others.
 Run this command to see the current registry in your installed version.
 
 ```bash
-harnessdeck platform list
+hd platform list
 ```
 
 ## Where data lives
@@ -275,7 +279,7 @@ harnessdeck platform list
 database holds resources, presets, tracked projects, and snapshots. Optional
 settings (such as plugin refresh cache age) live in `~/.harnessdeck/config.json`.
 
-When you run `harnessdeck init`, the CLI also checks registered platform default
+When you run `hd init`, the CLI also checks registered platform default
 folders in your home directory, such as `~/.claude/` and `~/.codex/`, and
 imports any supported resources it finds.
 

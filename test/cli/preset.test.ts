@@ -76,10 +76,10 @@ describe("CLI preset", () => {
     const context = await createTestContext("cli-preset-list-table");
     try {
       await runCli(["init"]);
-      const result = await runCli(["preset", "list"]);
+      const result = await runCli(["preset", "list"], { commandName: "hd" });
       expect(result.stdout).toContain("NAME");
       expect(result.stdout).toContain("DESCRIPTION");
-      expect(result.stdout).toContain("run `harnessdeck preset show <name>` for details");
+      expect(result.stdout).toContain("run `hd preset show <name>` for details");
     } finally {
       await context.cleanup();
     }

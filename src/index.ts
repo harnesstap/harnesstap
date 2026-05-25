@@ -50,7 +50,7 @@ import {
 import { getAllPlatforms } from "./platforms/registry.js";
 import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import type { Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import {
@@ -95,6 +95,16 @@ import {
 import { createProgress } from "./ui/progress.js";
 
 const program = new Command();
+
+function resolveInvocationName(): "harnessdeck" | "hd" {
+  return basename(process.argv[1] ?? "") === "hd" ? "hd" : "harnessdeck";
+}
+
+const invocationName = resolveInvocationName();
+
+function formatCommand(path: string): string {
+  return `${invocationName} ${path}`.trim();
+}
 
 function formatCount(count: number, noun: string, plural = `${noun}s`): string {
   return `${count} ${count === 1 ? noun : plural}`;
@@ -201,7 +211,7 @@ function renderGroupedCommandHelp(
 }
 
 program
-  .name("harnessdeck")
+  .name(invocationName)
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
@@ -223,7 +233,7 @@ program
       }
       
       const showHidden = process.argv.includes("--show-hidden");
-      const isTopLevel = cmd.name() === "harnessdeck";
+      const isTopLevel = cmd.name() === invocationName;
       
       if (!isTopLevel) {
         const lines = [
@@ -260,11 +270,11 @@ program
       
       const lines = [
         "",
-        ui.theme.primary("harnessdeck"),
+        ui.theme.primary(invocationName),
         "Preset-based AI coding assistant configuration manager",
         "",
         ui.theme.muted("USAGE"),
-        `  harnessdeck [options] [command]`,
+        `  ${invocationName} [options] [command]`,
         "",
         ui.theme.muted("OPTIONS"),
         `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
@@ -615,7 +625,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
       printJson({ snapshots: [] });
       return;
     }
-    ui.warn("No project record found. Run `harnessdeck project scan` first.");
+    ui.warn(`No project record found. Run \`${formatCommand("project scan")}\` first.`);
     return;
   }
   const snapshots = listSnapshots(project.id);
@@ -658,7 +668,7 @@ function handleRevertCommand(snapshotId?: string): void {
   initializeSchema(db);
   if (!snapshotId) {
     ui.danger(
-      "Please provide a snapshot ID. Use `harnessdeck project history` to list them.",
+      `Please provide a snapshot ID. Use \`${formatCommand("project history")}\` to list them.`,
     );
     return;
   }
@@ -1454,7 +1464,7 @@ function handleProjectDriftCommand(opts: {
       });
       return;
     }
-    ui.warn("No project record found. Run `harnessdeck project apply` first.");
+    ui.warn(`No project record found. Run \`${formatCommand("project apply")}\` first.`);
     return;
   }
 
@@ -1796,7 +1806,7 @@ presetCmd
         { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
       ],
       rows: presets,
-      summary: `${presets.length} presets ${ui.icons.bullet} run \`harnessdeck preset show <name>\` for details`,
+      summary: `${presets.length} presets ${ui.icons.bullet} run \`${formatCommand("preset show <name>")}\` for details`,
       empty: "No presets found.",
     });
   });
@@ -2041,7 +2051,7 @@ resourceCmd
       ],
       rows: resources,
       summary: resources.length === 0 ? undefined : `${resources.length} resources`,
-      empty: "No resources found.\n  → Run `harnessdeck project scan` to import some.",
+      empty: `No resources found.\n  → Run \`${formatCommand("project scan")}\` to import some.`,
     });
   });
 
@@ -2347,7 +2357,7 @@ program
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--dry-run", "Show what would be imported without writing to DB")
   .action(async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
-    warnDeprecatedCommand("harnessdeck scan", "harnessdeck project scan");
+    warnDeprecatedCommand(formatCommand("scan"), formatCommand("project scan"));
     await handleScanCommand(path, opts);
   });
 
@@ -2378,7 +2388,7 @@ program
         strictPluginVersions?: boolean;
       },
     ) => {
-      warnDeprecatedCommand("harnessdeck apply", "harnessdeck project apply");
+      warnDeprecatedCommand(formatCommand("apply"), formatCommand("project apply"));
       await handleApplyCommand([presetName], opts);
     },
   );
@@ -2388,7 +2398,7 @@ program
   .option("--project <path>", "Project directory", ".")
   .option("--format <mode>", "Output format: human or json", "human")
   .action((opts: { project: string; format?: string }) => {
-    warnDeprecatedCommand("harnessdeck history", "harnessdeck project history");
+    warnDeprecatedCommand(formatCommand("history"), formatCommand("project history"));
     handleHistoryCommand(opts);
   });
 
@@ -2396,7 +2406,7 @@ program
   .command("revert", { hidden: true })
   .argument("[snapshot-id]", "Snapshot ID to revert to")
   .action((snapshotId?: string) => {
-    warnDeprecatedCommand("harnessdeck revert", "harnessdeck project revert");
+    warnDeprecatedCommand(formatCommand("revert"), formatCommand("project revert"));
     handleRevertCommand(snapshotId);
   });
 
@@ -2405,7 +2415,7 @@ program
   .argument("[path]", "Project directory", ".")
   .option("--format <mode>", "Output format: human or json", "human")
   .action(async (path: string, opts: { format?: string }) => {
-    warnDeprecatedCommand("harnessdeck status", "harnessdeck project status");
+    warnDeprecatedCommand(formatCommand("status"), formatCommand("project status"));
     await handleProjectStatusCommand(path, opts);
   });
 
@@ -2418,7 +2428,7 @@ program
     "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
   )
   .action((presetName: string, opts: { file?: string; embedPlugins?: boolean }) => {
-    warnDeprecatedCommand("harnessdeck export", "harnessdeck preset export");
+    warnDeprecatedCommand(formatCommand("export"), formatCommand("preset export"));
     handlePresetExportCommand(presetName, opts);
   });
 
@@ -2426,7 +2436,7 @@ program
   .command("import", { hidden: true })
   .argument("<file>", "JSON bundle file to import")
   .action((file: string) => {
-    warnDeprecatedCommand("harnessdeck import", "harnessdeck preset import");
+    warnDeprecatedCommand(formatCommand("import"), formatCommand("preset import"));
     handlePresetImportCommand(file);
   });
 
@@ -2434,7 +2444,7 @@ program
   .command("platforms", { hidden: true })
   .option("--format <mode>", "Output format: human or json", "human")
   .action((opts: { format?: string }) => {
-    warnDeprecatedCommand("harnessdeck platforms", "harnessdeck platform list");
+    warnDeprecatedCommand(formatCommand("platforms"), formatCommand("platform list"));
     handlePlatformListCommand(opts);
   });
 
