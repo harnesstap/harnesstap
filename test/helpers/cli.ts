@@ -7,6 +7,10 @@ export interface CliResult {
   exitCode?: number;
 }
 
+export interface RunCliOptions {
+  commandName?: string;
+}
+
 function stringifyArgs(args: unknown[]): string {
   return args.map((value) => String(value)).join(" ");
 }
@@ -18,7 +22,10 @@ async function importCliEntry(): Promise<void> {
   await import(/* @vite-ignore */ `../../src/index.ts?${cacheBuster}`);
 }
 
-export async function runCli(args: string[]): Promise<CliResult> {
+export async function runCli(
+  args: string[],
+  options: RunCliOptions = {},
+): Promise<CliResult> {
   const stdout: string[] = [];
   const stderr: string[] = [];
   const tables: unknown[] = [];
@@ -59,7 +66,7 @@ export async function runCli(args: string[]): Promise<CliResult> {
     });
 
   try {
-    process.argv = ["node", "harnessdeck", ...args];
+    process.argv = ["node", options.commandName ?? "harnessdeck", ...args];
     process.exitCode = undefined;
     try {
       await importCliEntry();
