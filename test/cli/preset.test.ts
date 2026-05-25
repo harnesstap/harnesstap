@@ -4,6 +4,271 @@ import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI preset", () => {
+  it("creates a preset with an explicit version via --version", async () => {
+    const context = await createTestContext("cli-preset-version");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "versioned-preset", "--version", "2.3.0"]);
+
+      const preset = presetModel.getPreset("versioned-preset");
+      expect(preset).toBeDefined();
+      expect(preset?.version).toBe("2.3.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset list shows name@version and distinguishes multiple versions", async () => {
+    const context = await createTestContext("cli-preset-list-versions");
+    try {
+      await runCli(["init"]);
+
+      await runCli(["preset", "create", "team-stack", "--version", "1.0.0"]);
+      await runCli(["preset", "create", "team-stack", "--version", "2.0.0"]);
+
+      const listResult = await runCli(["preset", "list"]);
+      expect(listResult.stdout).toContain("team-stack@1.0.0");
+      expect(listResult.stdout).toContain("team-stack@2.0.0");
+      // Both versions must appear as separate lines, not collapsed into one
+      const teamStackLines = listResult.stdout
+        .split("\n")
+        .filter((line) => line.includes("team-stack@"));
+      expect(teamStackLines).toHaveLength(2);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset show displays name@version and dependencies", async () => {
+    const context = await createTestContext("cli-preset-show-version");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+      const preset = presetModel.getPreset("team-stack");
+      if (!preset) throw new Error("Expected preset to exist");
+
+      presetModel.addDependencyToPreset(preset.id, "baseline", "^1.0.0");
+      presetModel.addDependencyToPreset(preset.id, "extras", ">=2.0.0");
+
+      const showResult = await runCli(["preset", "show", "team-stack@1.2.0"]);
+      expect(showResult.stdout).toContain("team-stack@1.2.0");
+      expect(showResult.stdout).toContain("baseline");
+      expect(showResult.stdout).toContain("^1.0.0");
+      expect(showResult.stdout).toContain("extras");
+      expect(showResult.stdout).toContain(">=2.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset add-dependency and remove-dependency manage dependencies via CLI", async () => {
+    const context = await createTestContext("cli-preset-dependency");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+
+      await runCli([
+        "preset", "add-dependency",
+        "team-stack@1.2.0",
+        "baseline",
+        "--version", "^1.0.0",
+      ]);
+
+      const preset = presetModel.getPreset("team-stack@1.2.0");
+      if (!preset) throw new Error("Expected preset to exist");
+
+      const deps = presetModel.listPresetDependencies(preset.id);
+      expect(deps).toHaveLength(1);
+      expect(deps[0].dependency_name).toBe("baseline");
+      expect(deps[0].version_constraint).toBe("^1.0.0");
+
+      await runCli(["preset", "remove-dependency", "team-stack@1.2.0", "baseline"]);
+
+      const afterRemove = presetModel.listPresetDependencies(preset.id);
+      expect(afterRemove).toHaveLength(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("add-dependency reports error for invalid preset selector instead of crashing", async () => {
+    const context = await createTestContext("cli-preset-dep-invalid-selector");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli([
+        "preset", "add-dependency",
+        "team-stack@not-semver",
+        "baseline",
+        "--version", "^1.0.0",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/invalid version constraint/i);
+      expect(result.stderr).not.toMatch(/preset not found/i);
+      expect(result.stdout).not.toContain("Added dependency");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("add-dependency sets a failing exit code when the preset is missing", async () => {
+    const context = await createTestContext("cli-preset-dep-missing-preset");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli([
+        "preset",
+        "add-dependency",
+        "missing-preset",
+        "baseline",
+        "--version",
+        "^1.0.0",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/preset not found: missing-preset/i);
+      expect(result.stdout).not.toContain("Added dependency");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("add-dependency sets a failing exit code for an invalid version constraint", async () => {
+    const context = await createTestContext("cli-preset-dep-invalid-version");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+
+      const result = await runCli([
+        "preset",
+        "add-dependency",
+        "team-stack@1.2.0",
+        "baseline",
+        "--version",
+        "not-semver",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/invalid version constraint/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("remove-dependency sets a failing exit code when the preset is missing", async () => {
+    const context = await createTestContext("cli-preset-remove-dep-missing-preset");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli([
+        "preset",
+        "remove-dependency",
+        "missing-preset",
+        "baseline",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/preset not found: missing-preset/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("remove-dependency sets a failing exit code when the dependency is missing", async () => {
+    const context = await createTestContext("cli-preset-remove-dep-missing-dependency");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+
+      const result = await runCli([
+        "preset",
+        "remove-dependency",
+        "team-stack@1.2.0",
+        "baseline",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/dependency "baseline" not found/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete reports invalid selectors and exits with failure", async () => {
+    const context = await createTestContext("cli-preset-delete-invalid-selector");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["preset", "delete", "tool@not-semver"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/invalid version constraint/i);
+      expect(result.stderr).not.toMatch(/preset not found/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete sets a failing exit code when the preset is missing", async () => {
+    const context = await createTestContext("cli-preset-delete-missing");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["preset", "delete", "missing-preset"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/preset not found: missing-preset/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete accepts a versioned selector and deletes only that version", async () => {
+    const context = await createTestContext("cli-preset-delete-version-selector");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "tool", "--version", "1.0.0"]);
+      await runCli(["preset", "create", "tool", "--version", "2.0.0"]);
+
+      const result = await runCli(["preset", "delete", "tool@1.0.0"]);
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(presetModel.getPreset("tool@1.0.0")).toBeUndefined();
+      expect(presetModel.getPreset("tool@2.0.0")?.version).toBe("2.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete by plain name reports the deleted latest version", async () => {
+    const context = await createTestContext("cli-preset-delete-latest-version");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "tool", "--version", "1.0.0"]);
+      await runCli(["preset", "create", "tool", "--version", "2.0.0"]);
+
+      const result = await runCli(["preset", "delete", "tool"]);
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stdout).toContain("tool@2.0.0");
+      expect(presetModel.getPreset("tool@2.0.0")).toBeUndefined();
+      expect(presetModel.getPreset("tool@1.0.0")?.version).toBe("1.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("creates, shows, associates, removes, and deletes presets", async () => {
     const context = await createTestContext("cli-preset");
 
