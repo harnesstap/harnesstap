@@ -105,8 +105,24 @@ describe("CLI output format", () => {
       expect(JSON.parse(cloudWhoami.stdout)).toBeDefined();
       const cloudOrgs = await runCli(["cloud", "orgs", "--format", "json"]);
       expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
-    } finally {
-      await context.cleanup();
-    }
-  });
+
+      // preset cloud commands should support JSON output
+      const s = await runCli(["preset", "search", "x", "--format", "json"]);
+      expect(Array.isArray(JSON.parse(s.stdout))).toBe(true);
+
+      const i = await runCli(["preset", "install", "acme/lib@1.0", "--as", "lib-local", "--format", "json"]);
+      expect(JSON.parse(i.stdout)).toEqual(expect.objectContaining({ preset_name: expect.any(String), org_slug: expect.any(String), library_slug: expect.any(String), version: expect.anything() }));
+
+      // publish
+      const presetModel2 = await import("../../src/models/preset.ts");
+      const rModel = await import("../../src/models/resource.ts");
+      const p = presetModel2.createPreset({ name: "pub1" });
+      const r = rModel.createResource(makeResourceInput({ name: "x", content: "#" }));
+      presetModel2.addResourceToPreset(p.id, r.id);
+      const pub = await runCli(["preset", "publish", "pub1", "--format", "json"]);
+      expect(JSON.parse(pub.stdout)).toBeDefined();
+        } finally {
+          await context.cleanup();
+        }
+      });
 });

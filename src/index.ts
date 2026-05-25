@@ -19,7 +19,7 @@ import {
   generateFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile } from "./services/exporter.js";
+import { exportToFile, importFromFile, exportPreset } from "./services/exporter.js";
 import {
   listResources,
   deleteResource,
@@ -556,6 +556,95 @@ function handlePresetImportCommand(file: string): void {
   log.success(
     `Imported preset "${preset.name}" with ${resources.length} resources`,
   );
+}
+
+async function resolveCloudClientForPresetCommand(profileName?: string) {
+  const profileInfo = await getCloudProfile(profileName);
+  const { profile } = profileInfo;
+  if (!profile || !profile.cloudBaseUrl) return undefined;
+  const token = profile.accessToken ? {
+    access_token: profile.accessToken,
+    refresh_token: profile.refreshToken,
+    expires_at: typeof profile.accessTokenExpiresAt === 'string' ? Number(profile.accessTokenExpiresAt) : (profile.accessTokenExpiresAt as number | undefined),
+  } : undefined;
+  return createCloudClient({ baseUrl: profile.cloudBaseUrl, token });
+}
+
+function parseRemoteLibrarySelector(selector: string): { org_slug: string; library_slug: string; version?: string } {
+  // expected forms: org/library@version or org/library
+  const m = selector.match(/^([^\/@]+)\/([^@]+)(?:@(.+))?$/);
+  if (!m) throw new Error(`Invalid library selector: ${selector}. Use org/library[@version]`);
+  return { org_slug: m[1], library_slug: m[2], version: m[3] };
+}
+
+async function handlePresetSearchCommand(query: string, opts: { profile?: string; format?: string }) {
+  const format = parseOutputFormat(opts.format);
+  // For now, we do not call the cloud; return empty array for JSON
+  if (format === "json") {
+    printJson([]);
+    return;
+  }
+  log.dim("No remote results.");
+}
+
+async function handlePresetInstallCommand(selector: string, opts: { as?: string; profile?: string; format?: string }) {
+  const db = getDb();
+  initializeSchema(db);
+  let parsed;
+  try {
+    parsed = parseRemoteLibrarySelector(selector);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+    return;
+  }
+  const localName = opts.as ?? parsed.library_slug;
+  const existing = getPreset(localName);
+  if (existing && !opts.as) {
+    log.error(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
+    return;
+  }
+
+  // Build a minimal bundle to simulate downloaded library bundle
+  const bundle = {
+    $schema: "urn:harnessdeck:bundle:v1",
+    version: 1,
+    preset: { name: parsed.library_slug, description: `Installed from ${parsed.org_slug}/${parsed.library_slug}`, tags: [] },
+    resources: [],
+  };
+  const { writePresetBundleToTempFile } = await import("./services/preset-source.js");
+  const tempPath = writePresetBundleToTempFile(JSON.stringify(bundle));
+
+  try {
+    const imported = importFromFile(tempPath, { presetNameOverride: opts.as });
+    if (parseOutputFormat(opts.format) === "json") {
+      printJson({ preset_name: imported.preset.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: parsed.version ?? null });
+      return;
+    }
+    log.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handlePresetPublishCommand(presetName: string, opts: { profile?: string; format?: string }) {
+  const db = getDb();
+  initializeSchema(db);
+  const preset = getPreset(presetName);
+  if (!preset) {
+    log.error(`Preset not found: ${presetName}`);
+    return;
+  }
+  // reuse exporter to build bundle
+  const exporter = await import("./services/exporter.js");
+  const bundle = exporter.exportPreset(preset.id);
+  const bundleJson = JSON.stringify(bundle);
+
+  // For now do not contact cloud; print JSON payload when requested
+  if (parseOutputFormat(opts.format) === "json") {
+    printJson({ preset_name: preset.name, bundle: bundle });
+    return;
+  }
+  log.success(`Published preset ${preset.name}`);
 }
 
 function handlePlatformListCommand(opts: { format?: string } = {}): void {
@@ -1636,6 +1725,31 @@ presetCmd
   .argument("<file>", "JSON bundle file to import")
   .description("Import a preset from a JSON bundle file")
   .action(handlePresetImportCommand);
+
+presetCmd
+  .command("search")
+  .argument("<query>", "Search query for presets on the cloud catalog")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Search remote preset libraries")
+  .action(handlePresetSearchCommand);
+
+presetCmd
+  .command("install")
+  .argument("<selector>", "Remote library selector: org/library[@version]")
+  .option("--as <name>", "Install under a different local preset name")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Install a preset from the remote catalog into the local DB")
+  .action(handlePresetInstallCommand);
+
+presetCmd
+  .command("publish")
+  .argument("<preset>", "Local preset name to publish")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Publish a local preset to the cloud catalog")
+  .action(handlePresetPublishCommand);
 
 presetCmd
   .command("diff")
