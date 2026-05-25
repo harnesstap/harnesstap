@@ -321,4 +321,28 @@ describe("exporter services", () => {
       await exportContext.cleanup();
     }
   });
+
+  it("imports a bundle with an override name", async () => {
+    const exportContext = await createInitializedTestContext("export-override");
+
+    try {
+      const exporter = await import("../../src/services/exporter.ts");
+      const bundlePath = require("node:path").join(exportContext.projectDir, "override.json");
+      const { writeTextFile } = await import("../helpers/fs.ts");
+      writeTextFile(
+        bundlePath,
+        JSON.stringify({
+          $schema: "urn:harnessdeck:bundle:v1",
+          version: 1,
+          preset: { name: "orig-name", description: "", tags: [] },
+          resources: [],
+        }),
+      );
+
+      const imported = exporter.importFromFile(bundlePath, { presetNameOverride: "override-name" });
+      expect(imported.preset.name).toBe("override-name");
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
 });

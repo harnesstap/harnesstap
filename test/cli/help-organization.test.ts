@@ -98,6 +98,12 @@ describe("CLI help and command organization", () => {
     expect(help.stdout).not.toContain("scan [options] [path]");
     expect(projectHelp.stdout).not.toContain("help [command]");
     expect(presetHelp.stdout).not.toContain("help [command]");
+    // cloud command group should exist in top-level help
+    expect(help.stdout).toContain("cloud");
+    const cloudHelp = await runCli(["cloud", "-h"]);
+    expect(cloudHelp.stdout).toContain("login");
+    expect(cloudHelp.stdout).toContain("whoami");
+    expect(cloudHelp.stdout).toContain("orgs");
   });
 
   it("keeps deprecated aliases working while steering users to grouped commands", async () => {

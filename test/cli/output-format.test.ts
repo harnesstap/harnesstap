@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { createTestContext } from "../helpers/db.ts";
-import { initGitRepo } from "../helpers/git.ts";
-import { runCli } from "../helpers/cli.ts";
-import { makeResourceInput } from "../helpers/resources.ts";
-import { join } from "node:path";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { runCli } from "../helpers/cli.ts";
+import { createTestContext } from "../helpers/db.ts";
+import { initGitRepo } from "../helpers/git.ts";
+import { makeResourceInput } from "../helpers/resources.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
@@ -104,6 +104,120 @@ describe("CLI output format", () => {
           label: expect.any(String),
         }),
       );
+
+      const cloudWhoami = await runCli(["cloud", "whoami", "--format", "json"]);
+      expect(JSON.parse(cloudWhoami.stdout)).toBeDefined();
+
+      const cloudOrgs = await runCli(["cloud", "orgs", "--format", "json"]);
+      expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
+
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+
+      const originalFetch = (globalThis as { fetch?: typeof fetch }).fetch;
+      (globalThis as { fetch?: typeof fetch }).fetch = async (
+        input: RequestInfo | URL,
+      ) => {
+        const url = String(input);
+        if (url.startsWith("https://mock/libraries/search")) {
+          return {
+            ok: true,
+            json: async () => [],
+          } as Response;
+        }
+        if (/\/libraries\/.+\/meta$/.test(url)) {
+          return {
+            ok: true,
+            json: async () => ({ latest_version: "1.0" }),
+          } as Response;
+        }
+        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
+          return {
+            ok: true,
+            text: async () =>
+              JSON.stringify({
+                $schema: "urn:harnessdeck:bundle:v1",
+                version: 1,
+                preset: { name: "remote-lib" },
+                resources: [],
+              }),
+          } as Response;
+        }
+        if (url.endsWith("/presets/publish")) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: "pub-1",
+              version: "1.0.0",
+              url: "https://mock/presets/pub-1",
+            }),
+          } as Response;
+        }
+        return {
+          ok: false,
+          status: 404,
+          text: async () => "not found",
+        } as Response;
+      };
+
+      try {
+        const search = await runCli([
+          "preset",
+          "search",
+          "x",
+          "--profile",
+          "test",
+          "--format",
+          "json",
+        ]);
+        expect(Array.isArray(JSON.parse(search.stdout))).toBe(true);
+
+        const install = await runCli([
+          "preset",
+          "install",
+          "acme/lib@1.0",
+          "--as",
+          "lib-local",
+          "--profile",
+          "test",
+          "--format",
+          "json",
+        ]);
+        expect(JSON.parse(install.stdout)).toEqual(
+          expect.objectContaining({
+            preset_name: expect.any(String),
+            org_slug: expect.any(String),
+            library_slug: expect.any(String),
+            version: expect.anything(),
+          }),
+        );
+
+        const publishPreset = presetModel.createPreset({ name: "pub1" });
+        const publishResource = resourceModel.createResource(
+          makeResourceInput({ name: "x", content: "#" }),
+        );
+        presetModel.addResourceToPreset(publishPreset.id, publishResource.id);
+
+        const publish = await runCli([
+          "preset",
+          "publish",
+          "pub1",
+          "--profile",
+          "test",
+          "--format",
+          "json",
+        ]);
+        expect(JSON.parse(publish.stdout)).toBeDefined();
+      } finally {
+        (globalThis as { fetch?: typeof fetch }).fetch = originalFetch;
+      }
     } finally {
       await context.cleanup();
     }
@@ -128,7 +242,9 @@ describe("CLI output format", () => {
         installs: { ref: string; platformId: string }[];
       };
       expect(Array.isArray(parsedInstalled.installs)).toBe(true);
-      expect(parsedInstalled.installs.some((i) => i.ref === "demo@demo-market")).toBe(true);
+      expect(
+        parsedInstalled.installs.some((install) => install.ref === "demo@demo-market"),
+      ).toBe(true);
 
       const check = await runCli([
         "plugin",

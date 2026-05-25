@@ -18,7 +18,7 @@ import {
   generateFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile } from "./services/exporter.js";
+import { exportToFile, importFromFile, exportPreset } from "./services/exporter.js";
 import {
   listResources,
   deleteResource,
@@ -79,6 +79,8 @@ import {
 } from "./models/harness.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
+import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
+import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
 import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
@@ -86,7 +88,7 @@ import { diffPresets } from "./services/preset-diff.js";
 import { validatePreset } from "./services/preset-validate.js";
 import { mergePresets } from "./services/preset-merge.js";
 import { createPresetFromProject } from "./services/preset-from-project.js";
-import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath } from "./services/preset-source.js";
+import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath, writePresetBundleToTempFile } from "./services/preset-source.js";
 import { syncProject } from "./services/project-sync.js";
 import {
   exportMigrationState,
@@ -703,6 +705,123 @@ function handlePresetImportCommand(file: string): void {
   ui.success(
     `Imported preset ${ui.theme.accent(preset.name)} ${ui.icons.bullet} ${formatCount(resources.length, "resource")}`,
   );
+}
+
+async function resolveCloudClientForPresetCommand(profileName?: string) {
+  const profileInfo = await getCloudProfile(profileName);
+  const { profile } = profileInfo;
+  if (!profile || !profile.cloudBaseUrl) return undefined;
+  const token = profile.accessToken ? {
+    access_token: profile.accessToken,
+    refresh_token: profile.refreshToken,
+    expires_at: typeof profile.accessTokenExpiresAt === 'string' ? Number(profile.accessTokenExpiresAt) : (profile.accessTokenExpiresAt as number | undefined),
+  } : undefined;
+  return createCloudClient({ baseUrl: profile.cloudBaseUrl, token });
+}
+
+function parseRemoteLibrarySelector(selector: string): { org_slug: string; library_slug: string; version?: string } {
+  // expected forms: org/library@version or org/library
+  const m = selector.match(/^([^/@]+)\/([^@]+)(?:@(.+))?$/);
+  if (!m) throw new Error(`Invalid library selector: ${selector}. Use org/library[@version]`);
+  const org = String(m[1]);
+  const library = String(m[2]);
+  const version = m[3] !== undefined ? String(m[3]) : undefined;
+  return { org_slug: org, library_slug: library, version };
+}
+
+async function handlePresetSearchCommand(query: string, opts: { profile?: string; format?: string }) {
+  const format = parseOutputFormat(opts.format);
+  try {
+    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    if (!client) {
+      if (format === "json") printJson([]);
+      else ui.dim("No cloud profile configured.");
+      return;
+    }
+
+    const results = await client.searchLibraries(query);
+    if (format === "json") {
+      printJson(results);
+      return;
+    }
+
+    if (!results || results.length === 0) {
+      ui.dim("No remote results.");
+      return;
+    }
+    for (const r of results) {
+      ui.info(`${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`);
+    }
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handlePresetInstallCommand(selector: string, opts: { as?: string; profile?: string; format?: string }) {
+  const db = getDb();
+  initializeSchema(db);
+  let parsed: { org_slug: string; library_slug: string; version?: string };
+  try {
+    parsed = parseRemoteLibrarySelector(selector);
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+    return;
+  }
+  const localName = opts.as ?? parsed.library_slug;
+  const existing = getPreset(localName);
+  if (existing && !opts.as) {
+    ui.danger(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
+    return;
+  }
+
+  // Download the bundle via cloud client
+  try {
+    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    if (!client) {
+      ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      return;
+    }
+    const id = `${parsed.org_slug}/${parsed.library_slug}`;
+    const downloaded = await client.downloadLibraryBundle(id, parsed.version);
+    const tempPath = writePresetBundleToTempFile(downloaded.body);
+    const imported = importFromFile(tempPath, { presetNameOverride: opts.as });
+    if (parseOutputFormat(opts.format) === "json") {
+      printJson({ preset_name: imported.preset.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: downloaded.version });
+      return;
+    }
+    ui.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handlePresetPublishCommand(presetName: string, opts: { profile?: string; format?: string }) {
+  const db = getDb();
+  initializeSchema(db);
+  const preset = getPreset(presetName);
+  if (!preset) {
+    ui.danger(`Preset not found: ${presetName}`);
+    return;
+  }
+  // build bundle using exporter
+  const bundle = exportPreset(preset.id);
+  const bundleJson = JSON.stringify(bundle);
+
+  try {
+    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    if (!client) {
+      ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      return;
+    }
+    const resp = await client.publishPresetBundle({ preset_name: preset.name }, bundleJson);
+    if (parseOutputFormat(opts.format) === "json") {
+      printJson(resp);
+      return;
+    }
+    ui.success(`Published preset ${preset.name}`);
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
 }
 
 function handlePlatformListCommand(opts: { format?: string } = {}): void {
@@ -1959,6 +2078,31 @@ presetCmd
   .action(handlePresetImportCommand);
 
 presetCmd
+  .command("search")
+  .argument("<query>", "Search query for presets on the cloud catalog")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Search remote preset libraries")
+  .action(handlePresetSearchCommand);
+
+presetCmd
+  .command("install")
+  .argument("<selector>", "Remote library selector: org/library[@version]")
+  .option("--as <name>", "Install under a different local preset name")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Install a preset from the remote catalog into the local DB")
+  .action(handlePresetInstallCommand);
+
+presetCmd
+  .command("publish")
+  .argument("<preset>", "Local preset name to publish")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Publish a local preset to the cloud catalog")
+  .action(handlePresetPublishCommand);
+
+presetCmd
   .command("diff")
   .argument("<left>", "Preset name or bundle file")
   .argument("<right>", "Preset name or bundle file")
@@ -2442,5 +2586,188 @@ program
 // ── cleanup ─────────────────────────────────────────────────────────────
 
 process.on("exit", () => closeDb());
+
+// ── cloud ───────────────────────────────────────────────────────────────
+
+async function handleCloudLoginCommand(profileName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
+  const name = profileName ?? "default";
+  const baseUrl = opts.baseUrl ?? "https://app.harness.io";
+  try {
+    const device = await requestDeviceCode(baseUrl);
+    console.log(`Visit: ${device.verification_uri}`);
+    console.log(`Code:  ${device.user_code}`);
+    const token = await pollDeviceToken(baseUrl, device.device_code, { interval: 0.1, maxPolls: 300 });
+    const now = Math.floor(Date.now() / 1000);
+    const profile = {
+      cloudBaseUrl: baseUrl,
+      accessToken: token.access_token,
+      refreshToken: token.refresh_token,
+      accessTokenExpiresAt: token.expires_in ? now + token.expires_in : undefined,
+      refreshTokenExpiresAt: undefined,
+      scopes: [],
+    };
+    await saveCloudProfile(name, profile);
+    await setDefaultCloudProfile(name);
+    ui.success(`Saved cloud profile: ${name}`);
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCloudWhoamiCommand(opts: { profile?: string; format?: string } = {}): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const { profile } = await getCloudProfile(opts.profile);
+  if (!profile || !profile.accessToken) {
+    if (format === "json") {
+      printJson({});
+      return;
+    }
+    ui.warn("Not authenticated to cloud.");
+    return;
+  }
+  try {
+    const client = createCloudClient({
+      baseUrl: profile.cloudBaseUrl,
+      token: {
+        access_token: profile.accessToken as string,
+        refresh_token: profile.refreshToken as string | undefined,
+        expires_at: typeof profile.accessTokenExpiresAt === "number"
+          ? (profile.accessTokenExpiresAt as number)
+          : undefined,
+      },
+    });
+    const info = await client.whoami();
+    if (format === "json") {
+      printJson(info);
+      return;
+    }
+    ui.info(JSON.stringify(info));
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string; format?: string } = {}): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const { profileName, profile } = await getCloudProfile(opts.profile);
+  if (!profile || !profile.accessToken) {
+    if (format === "json") {
+      printJson([]);
+      return;
+    }
+    ui.warn("Not authenticated to cloud.");
+    return;
+  }
+  try {
+    const client = createCloudClient({
+      baseUrl: profile.cloudBaseUrl,
+      token: {
+        access_token: profile.accessToken as string,
+        refresh_token: profile.refreshToken as string | undefined,
+        expires_at: typeof profile.accessTokenExpiresAt === "number"
+          ? (profile.accessTokenExpiresAt as number)
+          : undefined,
+      },
+    });
+    const orgs = await client.listOrgs();
+    if (opts.switch) {
+      const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)['slug']) === opts.switch || String((o as Record<string, unknown>)['id']) === opts.switch);
+      if (!target) {
+        ui.danger(`Organization not found: ${opts.switch}`);
+        return;
+      }
+      if (profileName) {
+      await updateCloudProfile(profileName, { orgId: String((target as Record<string, unknown>)['id']), orgSlug: String((target as Record<string, unknown>)['slug']) });
+      }
+      ui.success(`Switched to org: ${String((target as Record<string, unknown>)["slug"])}`);
+      if (format === "json") {
+        printJson(target);
+      }
+      return;
+    }
+    if (format === "json") {
+      printJson(orgs);
+      return;
+    }
+    for (const o of orgs as Record<string, unknown>[]) {
+      ui.info(`${String(o["slug"])} ${String(o["name"])}`);
+    }
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promise<void> {
+  const { profileName, profile } = await getCloudProfile(opts.profile);
+  if (!profileName) {
+    ui.warn("No cloud profile configured.");
+    return;
+  }
+  try {
+    if (profile?.refreshToken) {
+      try {
+        const client = createCloudClient({
+          baseUrl: profile.cloudBaseUrl,
+          token: {
+            access_token: profile.accessToken as string || "",
+            refresh_token: profile.refreshToken as string,
+            expires_at: typeof profile.accessTokenExpiresAt === "number"
+              ? (profile.accessTokenExpiresAt as number)
+              : undefined,
+          },
+        });
+        await client.revokeRefreshToken();
+      } catch (_) {
+        // ignore revoke errors
+      }
+    }
+    await removeCloudProfile(profileName);
+    ui.success(`Logged out: ${profileName}`);
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// ── cloud ───────────────────────────────────────────────────────────────
+
+const cloudCmd = program
+  .command("cloud")
+  .description("Authenticate with Harness cloud and manage cloud profiles");
+cloudCmd.helpCommand(false);
+
+cloudCmd
+  .command("login [profile]")
+  .option("--base-url <url>", "Cloud base URL")
+  .description("Log into Harness cloud via device authentication")
+  .action(async (profile: string | undefined, opts: { baseUrl?: string }) => {
+    await handleCloudLoginCommand(profile, opts);
+  });
+
+cloudCmd
+  .command("whoami")
+  .option("--profile <name>", "Profile name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show information about the authenticated user")
+  .action(async (opts: { profile?: string; format?: string }) => {
+    await handleCloudWhoamiCommand(opts);
+  });
+
+cloudCmd
+  .command("orgs")
+  .option("--profile <name>", "Profile name")
+  .option("--switch <org_slug>", "Switch to the given organization slug")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List organizations and optionally switch")
+  .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
+    await handleCloudOrgsCommand(opts);
+  });
+
+cloudCmd
+  .command("logout")
+  .option("--profile <name>", "Profile name")
+  .description("Log out and remove local cloud profile")
+  .action(async (opts: { profile?: string }) => {
+    await handleCloudLogoutCommand(opts);
+  });
 
 await program.parseAsync();
