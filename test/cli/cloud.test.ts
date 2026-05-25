@@ -34,13 +34,13 @@ describe("cloud CLI auth flow", () => {
 
     // switch org
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ([{ id: "org1", slug: "org-slug", name: "Org" }]) }));
-    const switched = await runCli(["cloud", "orgs", "--profile", "testprofile", "--switch", "org-slug"]);
+    const _switched = await runCli(["cloud", "orgs", "--profile", "testprofile", "--switch", "org-slug"]);
     const afterSwitch = await cloudProfiles.getCloudProfile("testprofile");
     expect(afterSwitch.profile?.orgSlug).toBe("org-slug");
 
     // logout (revoke)
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) }));
-    const out = await runCli(["cloud", "logout", "--profile", "testprofile"]);
+    const _out = await runCli(["cloud", "logout", "--profile", "testprofile"]);
     const afterLogout = await cloudProfiles.getCloudProfile("testprofile");
     expect(afterLogout.profile).toBeUndefined();
   });

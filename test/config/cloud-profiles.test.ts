@@ -1,6 +1,6 @@
 import { expect, test, beforeEach, afterEach } from "vitest";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 // Tests reference the module which does not exist yet (TDD failing test)
 import * as cp from "../../src/config/cloud-profiles";
@@ -22,7 +22,7 @@ test("round-trips a saved profile under HARNESSDECK_HOME", async () => {
   const profile = {
     cloudBaseUrl: "https://app.harness.io",
     scopes: ["core"],
-  } as any;
+  };
 
   await cp.saveCloudProfile("my-profile", profile);
   const got = await cp.getCloudProfile("my-profile");
@@ -36,8 +36,8 @@ test("round-trips a saved profile under HARNESSDECK_HOME", async () => {
 });
 
 test("updates default profile and clears token material on logout", async () => {
-  const p1 = { cloudBaseUrl: "https://one", scopes: ["core"] } as any;
-  const p2 = { cloudBaseUrl: "https://two", scopes: ["core"] } as any;
+  const p1 = { cloudBaseUrl: "https://one", scopes: ["core"] };
+  const p2 = { cloudBaseUrl: "https://two", scopes: ["core"] };
 
   await cp.saveCloudProfile("one", p1);
   await cp.saveCloudProfile("two", p2);

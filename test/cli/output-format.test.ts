@@ -120,8 +120,8 @@ describe("CLI output format", () => {
         scopes: [],
       });
       await cloudProfiles.setDefaultCloudProfile("test");
-      const originalFetch = (globalThis as any).fetch;
-      (globalThis as any).fetch = async (input: any, init?: any) => {
+      const originalFetch = (globalThis as unknown as { fetch?: unknown }).fetch;
+      (globalThis as unknown as { fetch?: unknown }).fetch = async (input: unknown, _init?: unknown) => {
         const url = String(input);
         if (url.startsWith("https://mock/libraries/search")) return { ok: true, json: async () => [] };
         if (/\/libraries\/.+\/meta$/.test(url)) return { ok: true, json: async () => ({ latest_version: "1.0" }) };
@@ -142,7 +142,7 @@ describe("CLI output format", () => {
       const pub = await runCli(["preset", "publish", "pub1", "--profile", "test", "--format", "json"]);
       expect(JSON.parse(pub.stdout)).toBeDefined();
       // restore fetch
-      (globalThis as any).fetch = originalFetch;
+      (globalThis as unknown as { fetch?: unknown }).fetch = originalFetch;
         } finally {
           await context.cleanup();
         }

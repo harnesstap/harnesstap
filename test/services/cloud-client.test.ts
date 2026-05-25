@@ -49,8 +49,8 @@ describe("cloud client primitives", () => {
 
     // First call should be token refresh, second call should be the search
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const firstCallUrl = (fetchMock.mock.calls[0] as any[])[0];
-    expect((firstCallUrl as string).endsWith("/oauth/token")).toBeTruthy();
+    const firstCallUrl = (fetchMock.mock.calls[0] as unknown[])[0];
+    expect(String(firstCallUrl).endsWith("/oauth/token")).toBeTruthy();
   });
 
   it("skips refresh when token has no expires_at", async () => {
@@ -65,12 +65,12 @@ describe("cloud client primitives", () => {
     const client = createCloudClient({ baseUrl: "https://api.example", token: { access_token: "AT-NOEXP" } });
 
     const res = await client.whoami();
-    expect((res as any).id).toBe("user-1");
+    expect((res as Record<string, unknown>)['id']).toBe("user-1");
 
     // Ensure no refresh attempted: only the /me call
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const firstCallUrl = (fetchMock.mock.calls[0] as any[])[0];
-    expect((firstCallUrl as string).endsWith("/me")).toBeTruthy();
+    const firstCallUrl = (fetchMock.mock.calls[0] as unknown[])[0];
+    expect(String(firstCallUrl).endsWith("/me")).toBeTruthy();
   });
 
 });

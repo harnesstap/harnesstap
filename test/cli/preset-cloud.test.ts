@@ -21,8 +21,8 @@ describe("CLI cloud preset workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = (globalThis as any).fetch;
-      vi.stubGlobal("fetch", async (input: any, init?: any) => {
+      const originalFetch = (globalThis as unknown as { fetch?: unknown }).fetch;
+      vi.stubGlobal("fetch", async (input: unknown, init?: unknown) => {
         const url = String(input);
         // token refresh (safety)
         if (url.endsWith("/oauth/token") && init?.method === "POST") {
@@ -114,12 +114,12 @@ describe("CLI cloud preset workflows", () => {
       );
 
       // install conflict when local preset name exists and --as missing
-      const conflictPreset = presetModel.createPreset({ name: "conflict" });
+      const _conflictPreset = presetModel.createPreset({ name: "conflict" });
       const conflict = await runCli(["preset", "install", "org/conflict@1.0"]);
       expect(conflict.stderr).toContain("Preset name already exists");
 
       // restore fetch
-      (globalThis as any).fetch = originalFetch;
+      (globalThis as unknown as { fetch?: unknown }).fetch = originalFetch;
       vi.restoreAllMocks();
     } finally {
       await context.cleanup();

@@ -35,7 +35,7 @@ export async function loadCloudProfiles(): Promise<CloudProfileStoreFile> {
     const parsed = JSON.parse(raw) as CloudProfileStoreFile;
     if (!parsed.profiles) parsed.profiles = {};
     return parsed;
-  } catch (e) {
+  } catch (_e) {
     return { default_profile: undefined, profiles: {} };
   }
 }
@@ -47,7 +47,7 @@ async function writeStore(file: CloudProfileStoreFile): Promise<void> {
   fs.writeFileSync(p, JSON.stringify(file, null, 2), { encoding: "utf8" });
   try {
     fs.chmodSync(p, 0o600);
-  } catch (e) {
+  } catch (_e) {
     // ignore on filesystems that don't support chmod
   }
 }

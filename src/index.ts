@@ -572,7 +572,7 @@ async function resolveCloudClientForPresetCommand(profileName?: string) {
 
 function parseRemoteLibrarySelector(selector: string): { org_slug: string; library_slug: string; version?: string } {
   // expected forms: org/library@version or org/library
-  const m = selector.match(/^([^\/@]+)\/([^@]+)(?:@(.+))?$/);
+  const m = selector.match(/^([^/@]+)\/([^@]+)(?:@(.+))?$/);
   if (!m) throw new Error(`Invalid library selector: ${selector}. Use org/library[@version]`);
   const org = String(m[1]);
   const library = String(m[2]);
@@ -611,7 +611,7 @@ async function handlePresetSearchCommand(query: string, opts: { profile?: string
 async function handlePresetInstallCommand(selector: string, opts: { as?: string; profile?: string; format?: string }) {
   const db = getDb();
   initializeSchema(db);
-  let parsed;
+  let parsed: { org_slug: string; library_slug: string; version?: string };
   try {
     parsed = parseRemoteLibrarySelector(selector);
   } catch (err) {
@@ -2265,7 +2265,7 @@ async function handleCloudLoginCommand(profileName: string | undefined, opts: { 
       accessTokenExpiresAt: token.expires_in ? now + token.expires_in : undefined,
       refreshTokenExpiresAt: undefined,
       scopes: [],
-    } as any;
+    };
     await saveCloudProfile(name, profile);
     await setDefaultCloudProfile(name);
     log.success(`Saved cloud profile: ${name}`);
@@ -2331,15 +2331,15 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
     });
     const orgs = await client.listOrgs();
     if (opts.switch) {
-      const target = (orgs as any[]).find((o) => o.slug === opts.switch || o.id === opts.switch);
+      const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)['slug']) === opts.switch || String((o as Record<string, unknown>)['id']) === opts.switch);
       if (!target) {
         log.error(`Organization not found: ${opts.switch}`);
         return;
       }
       if (profileName) {
-        await updateCloudProfile(profileName, { orgId: target.id, orgSlug: target.slug });
+      await updateCloudProfile(profileName, { orgId: String((target as Record<string, unknown>)['id']), orgSlug: String((target as Record<string, unknown>)['slug']) });
       }
-      log.success(`Switched to org: ${target.slug}`);
+      log.success(`Switched to org: ${String((target as Record<string, unknown>)['slug'])}`);
       if (format === "json") {
         printJson(target);
       }
@@ -2349,8 +2349,8 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
       printJson(orgs);
       return;
     }
-    for (const o of orgs as any[]) {
-      log.info(`${o.slug} ${o.name}`);
+    for (const o of orgs as Record<string, unknown>[]) {
+      log.info(`${String(o['slug'])} ${String(o['name'])}`);
     }
   } catch (err) {
     log.error(err instanceof Error ? err.message : String(err));
@@ -2419,7 +2419,7 @@ cloudCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("List organizations and optionally switch")
   .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
-    await handleCloudOrgsCommand(opts as any);
+    await handleCloudOrgsCommand(opts);
   });
 
 cloudCmd

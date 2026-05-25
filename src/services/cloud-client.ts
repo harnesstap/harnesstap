@@ -53,7 +53,7 @@ export async function pollDeviceToken(baseUrl: string, deviceCode: string, opts?
 
     // non-ok: read error and decide
     const errBody = await resp.json().catch(() => ({}));
-    const err = (errBody && (errBody as any).error) || null;
+    const err = (errBody && (errBody as Record<string, unknown>)["error"]) || null;
     if (err === "authorization_pending") {
       await new Promise((r) => setTimeout(r, interval));
       continue;
@@ -69,7 +69,7 @@ export interface CloudClient {
   searchLibraries(query: string): Promise<Record<string, unknown>[]>;
   downloadLibraryBundle(id: string, version?: string): Promise<{ version: string; body: string }>;
   publishPresetBundle(metadata: Record<string, unknown>, bundleJson: string): Promise<Record<string, unknown>>;
-  revokeRefreshToken(): Promise<boolean | void>;
+  revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 }
 
@@ -105,8 +105,19 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
 
   async function authFetch(input: string, init?: RequestInit): Promise<Response> {
     await ensureTokenValid();
-    const headers = new Headers(init?.headers as any);
-    headers.set("Authorization", `Bearer ${state.token!.access_token}`);
+    const headers = new Headers();
+    if (init?.headers) {
+      try {
+        const hdrs = init.headers as Record<string, unknown>;
+        for (const [k, v] of Object.entries(hdrs)) {
+          headers.set(k, String(v));
+        }
+      } catch {
+        // ignore if headers can't be iterated
+      }
+    }
+    if (!state.token) throw new Error('Missing auth token');
+    headers.set("Authorization", `Bearer ${state.token.access_token}`);
     const res = await fetch(input, { ...init, headers });
     return res;
   }
@@ -155,7 +166,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       const bundleBlob = typeof Blob !== 'undefined' ? new Blob([bundleJson], { type: 'application/json' }) : undefined;
       if (bundleBlob) form.set("bundle", bundleBlob, "bundle.json");
       else form.set("bundle", bundleJson);
-      const res = await authFetch(`${state.baseUrl}/presets/publish`, { method: "POST", body: form as any });
+      const res = await authFetch(`${state.baseUrl}/presets/publish`, { method: "POST", body: form });
       if (!res.ok) throw new Error(`publish failed: ${res.status}`);
       const data = await res.json() as Record<string, unknown>;
       return data;
