@@ -1,16 +1,20 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
+import semver from "semver";
 import type {
   Preset,
+  PresetDependency,
   Resource,
   ResourceType,
   ResourceMetadata,
   ClaudePresetConfig,
 } from "../types.js";
+import { satisfiesConstraint, parseVersionConstraint } from "../services/plugin-constraints.js";
 
 interface PresetRow {
   id: string;
   name: string;
+  version: string;
   description: string;
   tags: string;
   claude_config: string;
@@ -94,6 +98,7 @@ function rowToPreset(row: PresetRow): Preset {
   return {
     id: row.id,
     name: row.name,
+    version: row.version,
     description: row.description,
     tags: JSON.parse(row.tags) as string[],
     ...(claude ? { claude } : {}),
@@ -104,6 +109,7 @@ function rowToPreset(row: PresetRow): Preset {
 
 export function createPreset(input: {
   name: string;
+  version?: string;
   description?: string;
   tags?: string[];
   claude?: ClaudePresetConfig;
@@ -111,13 +117,15 @@ export function createPreset(input: {
   const db = getDb();
   const now = new Date().toISOString();
   const id = ulid();
+  const version = input.version ?? "1.0.0";
 
   db.prepare(
-    `INSERT INTO presets (id, name, description, tags, claude_config, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO presets (id, name, version, description, tags, claude_config, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
+    version,
     input.description ?? "",
     JSON.stringify(input.tags ?? []),
     serializeClaudeConfig(input.claude),
@@ -128,6 +136,7 @@ export function createPreset(input: {
   return {
     id,
     name: input.name,
+    version,
     description: input.description ?? "",
     tags: input.tags ?? [],
     ...(input.claude ? { claude: input.claude } : {}),
@@ -136,12 +145,84 @@ export function createPreset(input: {
   };
 }
 
-export function getPreset(nameOrId: string): Preset | undefined {
+// ── Selector parsing ─────────────────────────────────────────────────────
+
+export type PresetSelector =
+  | { kind: "id"; id: string }
+  | { kind: "name"; name: string }
+  | { kind: "name-version"; name: string; constraint: string };
+
+/** Parse a preset selector string into its components.
+ *
+ * - `name@constraint` → name + semver constraint
+ * - 26-char ULID-like string → id
+ * - anything else → name (latest version)
+ */
+export function parsePresetSelector(selector: string): PresetSelector {
+  const atIdx = selector.lastIndexOf("@");
+  if (atIdx > 0) {
+    return {
+      kind: "name-version",
+      name: selector.slice(0, atIdx),
+      constraint: selector.slice(atIdx + 1),
+    };
+  }
+  // ULID: 26 chars, uppercase letters and digits
+  if (/^[0-9A-Z]{26}$/.test(selector)) {
+    return { kind: "id", id: selector };
+  }
+  return { kind: "name", name: selector };
+}
+
+function getPresetById(id: string): Preset | undefined {
   const db = getDb();
-  const row = db
-    .prepare("SELECT * FROM presets WHERE id = ? OR name = ?")
-    .get(nameOrId, nameOrId) as PresetRow | undefined;
+  const row = db.prepare("SELECT * FROM presets WHERE id = ?").get(id) as PresetRow | undefined;
   return row ? rowToPreset(row) : undefined;
+}
+
+function getPresetLatestByName(name: string): Preset | undefined {
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM presets WHERE name = ?").all(name) as PresetRow[];
+  if (rows.length === 0) return undefined;
+  if (rows.length === 1) return rowToPreset(rows[0]);
+  const sorted = [...rows].sort((a, b) => {
+    try {
+      return semver.rcompare(a.version, b.version);
+    } catch {
+      return 0;
+    }
+  });
+  return rowToPreset(sorted[0]);
+}
+
+function getPresetByNameAndConstraint(name: string, constraint: string): Preset | undefined {
+  // Validate constraint upfront — throws Error for invalid semver range/version
+  parseVersionConstraint(constraint);
+
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM presets WHERE name = ?").all(name) as PresetRow[];
+  const matching = rows.filter((row) => satisfiesConstraint(constraint, row.version));
+  if (matching.length === 0) return undefined;
+  const sorted = [...matching].sort((a, b) => {
+    try {
+      return semver.rcompare(a.version, b.version);
+    } catch {
+      return 0;
+    }
+  });
+  return rowToPreset(sorted[0]);
+}
+
+export function getPreset(selector: string): Preset | undefined {
+  const parsed = parsePresetSelector(selector);
+  if (parsed.kind === "id") {
+    return getPresetById(parsed.id);
+  }
+  if (parsed.kind === "name-version") {
+    return getPresetByNameAndConstraint(parsed.name, parsed.constraint);
+  }
+  // name: return latest version, fallback to id lookup for backward compat
+  return getPresetLatestByName(parsed.name) ?? getPresetById(selector);
 }
 
 export function listPresets(): Preset[] {
@@ -202,4 +283,60 @@ export function getPresetResources(presetId: string): Resource[] {
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));
+}
+
+// ── Dependency CRUD ──────────────────────────────────────────────────────
+
+interface PresetDependencyRow {
+  preset_id: string;
+  dependency_name: string;
+  version_constraint: string;
+  order: number;
+}
+
+export function addDependencyToPreset(
+  presetId: string,
+  dependencyName: string,
+  versionConstraint: string,
+): void {
+  const db = getDb();
+  const maxOrder = db
+    .prepare(
+      'SELECT COALESCE(MAX("order"), -1) as max_order FROM preset_dependencies WHERE preset_id = ?',
+    )
+    .get(presetId) as { max_order: number };
+
+  // ON CONFLICT: update only the constraint; preserve the existing order
+  db.prepare(
+    `INSERT INTO preset_dependencies (preset_id, dependency_name, version_constraint, "order")
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(preset_id, dependency_name) DO UPDATE SET version_constraint = excluded.version_constraint`,
+  ).run(presetId, dependencyName, versionConstraint, maxOrder.max_order + 1);
+}
+
+export function listPresetDependencies(presetId: string): PresetDependency[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM preset_dependencies WHERE preset_id = ? ORDER BY "order"`,
+    )
+    .all(presetId) as PresetDependencyRow[];
+
+  return rows.map((row) => ({
+    preset_id: row.preset_id,
+    dependency_name: row.dependency_name,
+    version_constraint: row.version_constraint,
+    order: row.order,
+  }));
+}
+
+export function removeDependencyFromPreset(
+  presetId: string,
+  dependencyName: string,
+): boolean {
+  const db = getDb();
+  const result = db.prepare(
+    "DELETE FROM preset_dependencies WHERE preset_id = ? AND dependency_name = ?",
+  ).run(presetId, dependencyName);
+  return result.changes > 0;
 }

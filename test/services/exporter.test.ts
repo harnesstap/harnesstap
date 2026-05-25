@@ -286,6 +286,72 @@ describe("exporter services", () => {
     }
   });
 
+  it("bundle preset.version round-trips through export/import", async () => {
+    const exportContext = await createInitializedTestContext("export-version-rt");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const preset = presetModel.createPreset({ name: "versioned", version: "2.3.1" });
+
+      const bundle = exporter.exportPreset(preset.id);
+      expect(bundle.preset.version).toBe("2.3.1");
+
+      const bundlePath = `${exportContext.projectDir}/versioned.json`;
+      exporter.exportToFile(preset.id, bundlePath);
+
+      const importContext = await createInitializedTestContext("import-version-rt");
+      try {
+        const importedExporter = await import("../../src/services/exporter.ts");
+        const imported = importedExporter.importFromFile(bundlePath);
+        expect(imported.preset.version).toBe("2.3.1");
+      } finally {
+        await importContext.cleanup();
+      }
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
+
+  it("bundle preset.dependencies round-trips through export/import", async () => {
+    const exportContext = await createInitializedTestContext("export-deps-rt");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const preset = presetModel.createPreset({ name: "with-deps" });
+      presetModel.addDependencyToPreset(preset.id, "base-preset", "^1.0.0");
+      presetModel.addDependencyToPreset(preset.id, "extra-preset", ">=2.0.0");
+
+      const bundle = exporter.exportPreset(preset.id);
+      expect(bundle.dependencies).toEqual([
+        { dependency_name: "base-preset", version_constraint: "^1.0.0", order: 0 },
+        { dependency_name: "extra-preset", version_constraint: ">=2.0.0", order: 1 },
+      ]);
+
+      const bundlePath = `${exportContext.projectDir}/with-deps.json`;
+      exporter.exportToFile(preset.id, bundlePath);
+
+      const importContext = await createInitializedTestContext("import-deps-rt");
+      try {
+        const importedExporter = await import("../../src/services/exporter.ts");
+        const { default: fs } = await import("node:fs");
+        const imported = importedExporter.importFromFile(bundlePath);
+        const importedDeps = presetModel.listPresetDependencies(imported.preset.id);
+        expect(importedDeps.map((d) => ({ name: d.dependency_name, vc: d.version_constraint }))).toEqual([
+          { name: "base-preset", vc: "^1.0.0" },
+          { name: "extra-preset", vc: ">=2.0.0" },
+        ]);
+      } finally {
+        await importContext.cleanup();
+      }
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
+
   it("imports a bundle with multiple resources", async () => {
     const exportContext = await createInitializedTestContext("export-multi");
 

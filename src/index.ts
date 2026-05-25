@@ -35,6 +35,9 @@ import {
   getPresetResources,
   syncClaudePresetPluginsAfterAdd,
   syncClaudePresetPluginsAfterRemove,
+  addDependencyToPreset,
+  listPresetDependencies,
+  removeDependencyFromPreset,
 } from "./models/preset.js";
 import {
   upsertProject,
@@ -583,11 +586,13 @@ function handlePresetShowCommand(
   }
   const resources = getPresetResources(preset.id);
   const plugins = listPresetPlugins(preset.id);
+  const dependencies = listPresetDependencies(preset.id);
 
   if (format === "json") {
     printJson({
       id: preset.id,
       name: preset.name,
+      version: preset.version,
       description: preset.description,
       tags: preset.tags,
       ...(preset.claude ? { claude: preset.claude } : {}),
@@ -595,13 +600,20 @@ function handlePresetShowCommand(
       updated_at: preset.updated_at,
       resources,
       plugins,
+      dependencies,
     });
     return;
   }
 
-  log.info(`${preset.name} — ${preset.description}`);
+  log.info(`${preset.name}@${preset.version} — ${preset.description}`);
   for (const r of resources) {
     log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id})`);
+  }
+  if (dependencies.length > 0) {
+    console.log(chalk.bold("Dependencies"));
+    for (const d of dependencies) {
+      log.dim(`  ${d.dependency_name.padEnd(42)} ${d.version_constraint}`);
+    }
   }
   if (plugins.length > 0) {
     console.log(chalk.bold("Plugins"));
@@ -1439,20 +1451,22 @@ presetCmd
   .argument("<name>", "Preset name")
   .option("-d, --description <text>", "Preset description")
   .option("--tags <tags>", "Comma-separated tags")
+  .option("--version <semver>", "Preset version (semver)", "1.0.0")
   .action(
     (
       name: string,
-      opts: { description?: string; tags?: string },
+      opts: { description?: string; tags?: string; version?: string },
     ) => {
       const db = getDb();
       initializeSchema(db);
       const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
       const preset = createPreset({
         name,
+        version: opts.version,
         description: opts.description,
         tags,
       });
-      log.success(`Preset created: ${preset.name} (${preset.id})`);
+      log.success(`Preset created: ${preset.name}@${preset.version} (${preset.id})`);
     },
   );
 
@@ -1474,7 +1488,7 @@ presetCmd
       return;
     }
     for (const p of presets) {
-      log.info(`${p.name} — ${p.description || "(no description)"}`);
+      log.info(`${p.name}@${p.version} — ${p.description || "(no description)"}`);
     }
   });
 
@@ -1603,6 +1617,68 @@ presetCmd
     removePluginFromPreset(preset.id, ref);
     syncClaudePresetPluginsAfterRemove(preset, ref);
     log.success(`Removed plugin pin ${ref} from preset ${preset.name}`);
+  });
+
+presetCmd
+  .command("add-dependency")
+  .argument("<preset>", "Preset name, name@version selector, or ID")
+  .argument("<dependency>", "Dependency preset name")
+  .requiredOption("--version <constraint>", "Version constraint (semver version or valid range)")
+  .description("Add a preset dependency with a version constraint")
+  .action((presetSelector: string, dependencyName: string, opts: { version: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    let preset;
+    try {
+      preset = getPreset(presetSelector);
+    } catch (err) {
+      log.error(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    if (!preset) {
+      log.error(`Preset not found: ${presetSelector}`);
+      return;
+    }
+    try {
+      parseVersionConstraint(opts.version);
+    } catch (err) {
+      log.error(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    addDependencyToPreset(preset.id, dependencyName, opts.version);
+    log.success(
+      `Added dependency ${dependencyName} (${opts.version}) to preset ${preset.name}@${preset.version}`,
+    );
+  });
+
+presetCmd
+  .command("remove-dependency")
+  .argument("<preset>", "Preset name, name@version selector, or ID")
+  .argument("<dependency>", "Dependency preset name to remove")
+  .description("Remove a preset dependency")
+  .action((presetSelector: string, dependencyName: string) => {
+    const db = getDb();
+    initializeSchema(db);
+    let preset;
+    try {
+      preset = getPreset(presetSelector);
+    } catch (err) {
+      log.error(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    if (!preset) {
+      log.error(`Preset not found: ${presetSelector}`);
+      return;
+    }
+    if (removeDependencyFromPreset(preset.id, dependencyName)) {
+      log.success(
+        `Removed dependency ${dependencyName} from preset ${preset.name}@${preset.version}`,
+      );
+    } else {
+      log.error(
+        `Dependency "${dependencyName}" not found on preset ${preset.name}@${preset.version}`,
+      );
+    }
   });
 
 presetCmd

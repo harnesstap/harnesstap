@@ -11,6 +11,8 @@ import {
   createPreset,
   addResourceToPreset,
   syncClaudePresetPluginsAfterAdd,
+  listPresetDependencies,
+  addDependencyToPreset,
 } from "../models/preset.js";
 import { listPresetPlugins, addPluginToPreset } from "../models/plugin.js";
 import type { PresetPluginRow } from "../models/plugin.js";
@@ -157,6 +159,7 @@ export function exportPreset(
 
   const resources = getPresetResources(preset.id);
   const presetRows = listPresetPlugins(preset.id);
+  const deps = listPresetDependencies(preset.id);
   const { pins, embeddedRoots } = classifyPresetPluginsForExport(
     presetRows,
     exportOpts,
@@ -164,6 +167,7 @@ export function exportPreset(
 
   const presetSubset = {
     name: preset.name,
+    version: preset.version,
     description: preset.description,
     tags: preset.tags,
     ...(preset.claude ? { claude: preset.claude } : {}),
@@ -183,6 +187,15 @@ export function exportPreset(
     })),
     plugins: pins,
     embedded_plugins: embeddedRoots,
+    ...(deps.length > 0
+      ? {
+          dependencies: deps.map((d) => ({
+            dependency_name: d.dependency_name,
+            version_constraint: d.version_constraint,
+            order: d.order,
+          })),
+        }
+      : {}),
   };
 
   return bundle;
@@ -209,6 +222,7 @@ function importPresetFromBundleParsed(
 
   const preset = createPreset({
     name: bundle.preset.name,
+    version: bundle.preset.version,
     description: bundle.preset.description,
     tags: bundle.preset.tags,
     ...(claude ? { claude } : {}),
@@ -257,6 +271,10 @@ function importPresetFromBundleParsed(
       });
       syncPinsAfterMutation(e.ref, e.version_constraint);
     }
+  }
+
+  for (const dep of bundle.dependencies ?? []) {
+    addDependencyToPreset(preset.id, dep.dependency_name, dep.version_constraint);
   }
 
   const finalized = getPreset(preset.id);

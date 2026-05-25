@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const MIGRATIONS: Record<number, string> = {
   1: `
@@ -112,6 +112,35 @@ const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (preset_id, ref)
     );
   `,
+
+  5: `
+    CREATE TABLE presets_new (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      version     TEXT NOT NULL DEFAULT '1.0.0',
+      description TEXT NOT NULL DEFAULT '',
+      tags        TEXT NOT NULL DEFAULT '[]',
+      claude_config TEXT NOT NULL DEFAULT '{}',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL,
+      UNIQUE(name, version)
+    );
+
+    INSERT INTO presets_new (id, name, version, description, tags, claude_config, created_at, updated_at)
+      SELECT id, name, '1.0.0', description, tags, claude_config, created_at, updated_at FROM presets;
+
+    DROP TABLE presets;
+
+    ALTER TABLE presets_new RENAME TO presets;
+
+    CREATE TABLE IF NOT EXISTS preset_dependencies (
+      preset_id           TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+      dependency_name     TEXT NOT NULL,
+      version_constraint  TEXT NOT NULL,
+      "order"             INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (preset_id, dependency_name)
+    );
+  `,
 };
 
 export function initializeSchema(db: SqliteDatabase): void {
@@ -119,26 +148,43 @@ export function initializeSchema(db: SqliteDatabase): void {
 
   if (currentVersion >= SCHEMA_VERSION) return;
 
-  db.transaction(() => {
-    for (let v = currentVersion + 1; v <= SCHEMA_VERSION; v++) {
-      const migration = MIGRATIONS[v];
-      if (migration) {
-        db.exec(migration);
+  // Migration 5 rebuilds the presets table using the rename trick (CREATE new,
+  // copy, DROP old, RENAME). SQLite fires ON DELETE CASCADE on child tables even
+  // for DROP TABLE when foreign_keys=ON, which would destroy preset_resources /
+  // preset_plugins rows. PRAGMA foreign_keys cannot be toggled inside a
+  // transaction, so we toggle it here, outside the transaction, and restore it
+  // in a finally block.
+  const needsFkToggle = currentVersion < 5;
+  if (needsFkToggle) {
+    db.exec("PRAGMA foreign_keys = OFF");
+  }
+
+  try {
+    db.transaction(() => {
+      for (let v = currentVersion + 1; v <= SCHEMA_VERSION; v++) {
+        const migration = MIGRATIONS[v];
+        if (migration) {
+          db.exec(migration);
+        }
       }
-    }
 
-    const hasVersionRow = db
-      .prepare("SELECT version FROM schema_version LIMIT 1")
-      .get() as { version: number } | undefined;
+      const hasVersionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number } | undefined;
 
-    if (hasVersionRow) {
-      db.prepare("UPDATE schema_version SET version = ?").run(SCHEMA_VERSION);
-    } else {
-      db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(
-        SCHEMA_VERSION,
-      );
+      if (hasVersionRow) {
+        db.prepare("UPDATE schema_version SET version = ?").run(SCHEMA_VERSION);
+      } else {
+        db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(
+          SCHEMA_VERSION,
+        );
+      }
+    })();
+  } finally {
+    if (needsFkToggle) {
+      db.exec("PRAGMA foreign_keys = ON");
     }
-  })();
+  }
 }
 
 function getSchemaVersion(db: SqliteDatabase): number {
