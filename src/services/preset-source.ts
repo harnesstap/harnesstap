@@ -12,6 +12,13 @@ export function isBundleFilePath(source: string): boolean {
   return source.endsWith(".json") || source.endsWith(".harnessdeck.json");
 }
 
+export function writePresetBundleToTempFile(body: string): string {
+  const dir = mkdtempSync(join(tmpdir(), "harnessdeck-bundle-"));
+  const filePath = join(dir, "remote.harnessdeck.json");
+  writeFileSync(filePath, body, "utf-8");
+  return filePath;
+}
+
 /**
  * Fetch a remote preset bundle and return a local temp file path.
  */
@@ -21,8 +28,5 @@ export async function fetchPresetBundleToTempFile(url: string): Promise<string> 
     throw new Error(`Failed to fetch preset bundle (${response.status}): ${url}`);
   }
   const body = await response.text();
-  const dir = mkdtempSync(join(tmpdir(), "harnessdeck-bundle-"));
-  const filePath = join(dir, "remote.harnessdeck.json");
-  writeFileSync(filePath, body, "utf-8");
-  return filePath;
+  return writePresetBundleToTempFile(body);
 }
