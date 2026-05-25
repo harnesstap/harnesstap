@@ -942,15 +942,6 @@ function parseScopeFilter(scope?: string): PluginScope[] | undefined {
   return scope.split(",").map((s) => s.trim()) as PluginScope[];
 }
 
-function resolvePresetSelector(selector: string): Preset | undefined {
-  try {
-    return getPreset(selector);
-  } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-    return undefined;
-  }
-}
-
 function parseHarnessAliases(aliases?: string): string[] | undefined {
   return aliases
     ?.split(",")
@@ -2091,21 +2082,22 @@ presetCmd
   .action((presetSelector: string, dependencyName: string, opts: { version: string }) => {
     const db = getDb();
     initializeSchema(db);
-    const preset = resolvePresetSelector(presetSelector);
-    if (!preset) {
-      ui.danger(`Preset not found: ${presetSelector}`);
-      return;
-    }
     try {
+      const preset = getPreset(presetSelector);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetSelector}`);
+        return;
+      }
       parseVersionConstraint(opts.version);
+      addDependencyToPreset(preset.id, dependencyName, opts.version);
+      ui.success(
+        `Added dependency ${ui.theme.accent(dependencyName)} (${opts.version}) to preset ${ui.theme.accent(formatPresetLabel(preset))}`,
+      );
     } catch (err) {
+      process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
-      return;
     }
-    addDependencyToPreset(preset.id, dependencyName, opts.version);
-    ui.success(
-      `Added dependency ${ui.theme.accent(dependencyName)} (${opts.version}) to preset ${ui.theme.accent(formatPresetLabel(preset))}`,
-    );
   });
 
 presetCmd
@@ -2116,19 +2108,26 @@ presetCmd
   .action((presetSelector: string, dependencyName: string) => {
     const db = getDb();
     initializeSchema(db);
-    const preset = resolvePresetSelector(presetSelector);
-    if (!preset) {
-      ui.danger(`Preset not found: ${presetSelector}`);
-      return;
-    }
-    if (removeDependencyFromPreset(preset.id, dependencyName)) {
-      ui.success(
-        `Removed dependency ${ui.theme.accent(dependencyName)} from preset ${ui.theme.accent(formatPresetLabel(preset))}`,
-      );
-    } else {
-      ui.danger(
-        `Dependency "${dependencyName}" not found on preset ${formatPresetLabel(preset)}`,
-      );
+    try {
+      const preset = getPreset(presetSelector);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetSelector}`);
+        return;
+      }
+      if (removeDependencyFromPreset(preset.id, dependencyName)) {
+        ui.success(
+          `Removed dependency ${ui.theme.accent(dependencyName)} from preset ${ui.theme.accent(formatPresetLabel(preset))}`,
+        );
+      } else {
+        process.exitCode = 1;
+        ui.danger(
+          `Dependency "${dependencyName}" not found on preset ${formatPresetLabel(preset)}`,
+        );
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
 

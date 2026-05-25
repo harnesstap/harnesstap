@@ -109,8 +109,93 @@ describe("CLI preset", () => {
         "--version", "^1.0.0",
       ]);
 
+      expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/invalid version constraint/i);
+      expect(result.stderr).not.toMatch(/preset not found/i);
       expect(result.stdout).not.toContain("Added dependency");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("add-dependency sets a failing exit code when the preset is missing", async () => {
+    const context = await createTestContext("cli-preset-dep-missing-preset");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli([
+        "preset",
+        "add-dependency",
+        "missing-preset",
+        "baseline",
+        "--version",
+        "^1.0.0",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/preset not found: missing-preset/i);
+      expect(result.stdout).not.toContain("Added dependency");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("add-dependency sets a failing exit code for an invalid version constraint", async () => {
+    const context = await createTestContext("cli-preset-dep-invalid-version");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+
+      const result = await runCli([
+        "preset",
+        "add-dependency",
+        "team-stack@1.2.0",
+        "baseline",
+        "--version",
+        "not-semver",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/invalid version constraint/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("remove-dependency sets a failing exit code when the preset is missing", async () => {
+    const context = await createTestContext("cli-preset-remove-dep-missing-preset");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli([
+        "preset",
+        "remove-dependency",
+        "missing-preset",
+        "baseline",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/preset not found: missing-preset/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("remove-dependency sets a failing exit code when the dependency is missing", async () => {
+    const context = await createTestContext("cli-preset-remove-dep-missing-dependency");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+
+      const result = await runCli([
+        "preset",
+        "remove-dependency",
+        "team-stack@1.2.0",
+        "baseline",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/dependency "baseline" not found/i);
     } finally {
       await context.cleanup();
     }
