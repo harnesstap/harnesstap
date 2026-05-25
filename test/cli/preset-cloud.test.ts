@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { initGitRepo } from "../helpers/git.ts";
@@ -10,9 +10,56 @@ describe("CLI cloud preset workflows", () => {
     try {
       await runCli(["init"]);
 
-      // preset search should emit JSON when requested
-      const search = await runCli(["preset", "search", "team", "--format", "json"]);
-      expect(Array.isArray(JSON.parse(search.stdout))).toBe(true);
+      // configure cloud profile and stub fetch
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+
+      const originalFetch = (globalThis as any).fetch;
+      vi.stubGlobal("fetch", async (input: any, init?: any) => {
+        const url = String(input);
+        // token refresh (safety)
+        if (url.endsWith("/oauth/token") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
+          };
+        }
+        if (url.startsWith("https://mock/libraries/search")) {
+          return {
+            ok: true,
+            json: async () => ([{ id: "acme/team", org_slug: "acme", library_slug: "team", name: "team" }]),
+          };
+        }
+        if (/\/libraries\/.+\/meta$/.test(url)) {
+          return { ok: true, json: async () => ({ latest_version: "1.0" }) };
+        }
+        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
+          const bundle = JSON.stringify({
+            $schema: "urn:harnessdeck:bundle:v1",
+            version: 1,
+            preset: { name: "remote-team", description: "from cloud", tags: [] },
+            resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
+          });
+          return { ok: true, text: async () => bundle };
+        }
+        if (url.endsWith("/presets/publish")) {
+          return { ok: true, json: async () => ({ id: "pub-1", version: "1.2.3", url: "https://mock/presets/pub-1" }) };
+        }
+        return { ok: false, status: 404, text: async () => "not found" };
+      });
+
+      // preset search should emit JSON when requested and return remote results
+      const search = await runCli(["preset", "search", "team", "--profile", "test", "--format", "json"]);
+      const searchJson = JSON.parse(search.stdout);
+      expect(Array.isArray(searchJson)).toBe(true);
+      expect(searchJson[0]).toEqual(expect.objectContaining({ org_slug: "acme", library_slug: "team" }));
 
       // install from a remote selector; use --as to pick local name
       const install = await runCli([
@@ -21,6 +68,8 @@ describe("CLI cloud preset workflows", () => {
         "acme/team@1.0",
         "--as",
         "team-cloud",
+        "--profile",
+        "test",
         "--format",
         "json",
       ]);
@@ -43,8 +92,8 @@ describe("CLI cloud preset workflows", () => {
       );
       presetModel.addResourceToPreset(preset.id, resource.id);
 
-      const publish = await runCli(["preset", "publish", "pubtest", "--format", "json"]);
-      expect(JSON.parse(publish.stdout)).toBeDefined();
+      const publish = await runCli(["preset", "publish", "pubtest", "--profile", "test", "--format", "json"]);
+      expect(JSON.parse(publish.stdout)).toEqual(expect.objectContaining({ id: "pub-1", version: "1.2.3", url: expect.any(String) }));
 
       // applying a cloud-installed preset through project apply
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
@@ -68,6 +117,10 @@ describe("CLI cloud preset workflows", () => {
       const conflictPreset = presetModel.createPreset({ name: "conflict" });
       const conflict = await runCli(["preset", "install", "org/conflict@1.0"]);
       expect(conflict.stderr).toContain("Preset name already exists");
+
+      // restore fetch
+      (globalThis as any).fetch = originalFetch;
+      vi.restoreAllMocks();
     } finally {
       await context.cleanup();
     }

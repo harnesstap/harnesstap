@@ -82,7 +82,8 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
   async function ensureTokenValid(): Promise<void> {
     if (!state.token) throw new Error("Not authenticated");
     const now = Math.floor(Date.now() / 1000);
-    if (state.token.expires_at && state.token.expires_at > now + 5) return;
+    // If expires_at is absent, treat the token as non-expiring/valid and skip refresh.
+    if (state.token.expires_at == null || state.token.expires_at > now + 5) return;
 
     // refresh
     if (!state.token.refresh_token) throw new Error("No refresh token available");

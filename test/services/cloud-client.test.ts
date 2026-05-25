@@ -52,4 +52,25 @@ describe("cloud client primitives", () => {
     const firstCallUrl = (fetchMock.mock.calls[0] as any[])[0];
     expect((firstCallUrl as string).endsWith("/oauth/token")).toBeTruthy();
   });
+
+  it("skips refresh when token has no expires_at", async () => {
+    const fetchMock = vi.fn()
+      // whoami call
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: "user-1" }) });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { createCloudClient } = await import("../../src/services/cloud-client");
+
+    const client = createCloudClient({ baseUrl: "https://api.example", token: { access_token: "AT-NOEXP" } });
+
+    const res = await client.whoami();
+    expect((res as any).id).toBe("user-1");
+
+    // Ensure no refresh attempted: only the /me call
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const firstCallUrl = (fetchMock.mock.calls[0] as any[])[0];
+    expect((firstCallUrl as string).endsWith("/me")).toBeTruthy();
+  });
+
 });

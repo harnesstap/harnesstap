@@ -107,10 +107,30 @@ describe("CLI output format", () => {
       expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
 
       // preset cloud commands should support JSON output
-      const s = await runCli(["preset", "search", "x", "--format", "json"]);
+      const s = await runCli(["preset", "search", "x", "--profile", "test", "--format", "json"]);
       expect(Array.isArray(JSON.parse(s.stdout))).toBe(true);
 
-      const i = await runCli(["preset", "install", "acme/lib@1.0", "--as", "lib-local", "--format", "json"]);
+      // configure cloud profile and stub fetch for install/publish
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+      const originalFetch = (globalThis as any).fetch;
+      (globalThis as any).fetch = async (input: any, init?: any) => {
+        const url = String(input);
+        if (url.startsWith("https://mock/libraries/search")) return { ok: true, json: async () => [] };
+        if (/\/libraries\/.+\/meta$/.test(url)) return { ok: true, json: async () => ({ latest_version: "1.0" }) };
+        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) return { ok: true, text: async () => JSON.stringify({ $schema: "urn:harnessdeck:bundle:v1", version: 1, preset: { name: "remote-lib" }, resources: [] }) };
+        if (url.endsWith("/presets/publish")) return { ok: true, json: async () => ({ id: "pub-1", version: "1.0.0", url: "https://mock/presets/pub-1" }) };
+        return { ok: false, status: 404, text: async () => "not found" };
+      };
+
+      const i = await runCli(["preset", "install", "acme/lib@1.0", "--as", "lib-local", "--profile", "test", "--format", "json"]);
       expect(JSON.parse(i.stdout)).toEqual(expect.objectContaining({ preset_name: expect.any(String), org_slug: expect.any(String), library_slug: expect.any(String), version: expect.anything() }));
 
       // publish
@@ -119,8 +139,10 @@ describe("CLI output format", () => {
       const p = presetModel2.createPreset({ name: "pub1" });
       const r = rModel.createResource(makeResourceInput({ name: "x", content: "#" }));
       presetModel2.addResourceToPreset(p.id, r.id);
-      const pub = await runCli(["preset", "publish", "pub1", "--format", "json"]);
+      const pub = await runCli(["preset", "publish", "pub1", "--profile", "test", "--format", "json"]);
       expect(JSON.parse(pub.stdout)).toBeDefined();
+      // restore fetch
+      (globalThis as any).fetch = originalFetch;
         } finally {
           await context.cleanup();
         }
