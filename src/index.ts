@@ -79,7 +79,6 @@ import {
 } from "./models/harness.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
-import { log } from "./utils/logger.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
@@ -736,7 +735,7 @@ async function handlePresetSearchCommand(query: string, opts: { profile?: string
     const client = await resolveCloudClientForPresetCommand(opts.profile);
     if (!client) {
       if (format === "json") printJson([]);
-      else log.dim("No cloud profile configured.");
+      else ui.dim("No cloud profile configured.");
       return;
     }
 
@@ -747,14 +746,14 @@ async function handlePresetSearchCommand(query: string, opts: { profile?: string
     }
 
     if (!results || results.length === 0) {
-      log.dim("No remote results.");
+      ui.dim("No remote results.");
       return;
     }
     for (const r of results) {
-      log.info(`${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`);
+      ui.info(`${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`);
     }
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -765,13 +764,13 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
   try {
     parsed = parseRemoteLibrarySelector(selector);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
   const localName = opts.as ?? parsed.library_slug;
   const existing = getPreset(localName);
   if (existing && !opts.as) {
-    log.error(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
+    ui.danger(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
     return;
   }
 
@@ -779,7 +778,7 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
   try {
     const client = await resolveCloudClientForPresetCommand(opts.profile);
     if (!client) {
-      log.error("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
       return;
     }
     const id = `${parsed.org_slug}/${parsed.library_slug}`;
@@ -790,9 +789,9 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
       printJson({ preset_name: imported.preset.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: downloaded.version });
       return;
     }
-    log.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
+    ui.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -801,7 +800,7 @@ async function handlePresetPublishCommand(presetName: string, opts: { profile?: 
   initializeSchema(db);
   const preset = getPreset(presetName);
   if (!preset) {
-    log.error(`Preset not found: ${presetName}`);
+    ui.danger(`Preset not found: ${presetName}`);
     return;
   }
   // build bundle using exporter
@@ -811,7 +810,7 @@ async function handlePresetPublishCommand(presetName: string, opts: { profile?: 
   try {
     const client = await resolveCloudClientForPresetCommand(opts.profile);
     if (!client) {
-      log.error("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
       return;
     }
     const resp = await client.publishPresetBundle({ preset_name: preset.name }, bundleJson);
@@ -819,9 +818,9 @@ async function handlePresetPublishCommand(presetName: string, opts: { profile?: 
       printJson(resp);
       return;
     }
-    log.success(`Published preset ${preset.name}`);
+    ui.success(`Published preset ${preset.name}`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -2609,9 +2608,9 @@ async function handleCloudLoginCommand(profileName: string | undefined, opts: { 
     };
     await saveCloudProfile(name, profile);
     await setDefaultCloudProfile(name);
-    log.success(`Saved cloud profile: ${name}`);
+    ui.success(`Saved cloud profile: ${name}`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -2623,7 +2622,7 @@ async function handleCloudWhoamiCommand(opts: { profile?: string; format?: strin
       printJson({});
       return;
     }
-    log.warn("Not authenticated to cloud.");
+    ui.warn("Not authenticated to cloud.");
     return;
   }
   try {
@@ -2642,9 +2641,9 @@ async function handleCloudWhoamiCommand(opts: { profile?: string; format?: strin
       printJson(info);
       return;
     }
-    log.info(JSON.stringify(info));
+    ui.info(JSON.stringify(info));
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -2656,7 +2655,7 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
       printJson([]);
       return;
     }
-    log.warn("Not authenticated to cloud.");
+    ui.warn("Not authenticated to cloud.");
     return;
   }
   try {
@@ -2674,13 +2673,13 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
     if (opts.switch) {
       const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)['slug']) === opts.switch || String((o as Record<string, unknown>)['id']) === opts.switch);
       if (!target) {
-        log.error(`Organization not found: ${opts.switch}`);
+        ui.danger(`Organization not found: ${opts.switch}`);
         return;
       }
       if (profileName) {
       await updateCloudProfile(profileName, { orgId: String((target as Record<string, unknown>)['id']), orgSlug: String((target as Record<string, unknown>)['slug']) });
       }
-      log.success(`Switched to org: ${String((target as Record<string, unknown>)['slug'])}`);
+      ui.success(`Switched to org: ${String((target as Record<string, unknown>)["slug"])}`);
       if (format === "json") {
         printJson(target);
       }
@@ -2691,17 +2690,17 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
       return;
     }
     for (const o of orgs as Record<string, unknown>[]) {
-      log.info(`${String(o['slug'])} ${String(o['name'])}`);
+      ui.info(`${String(o["slug"])} ${String(o["name"])}`);
     }
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
 async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promise<void> {
   const { profileName, profile } = await getCloudProfile(opts.profile);
   if (!profileName) {
-    log.warn("No cloud profile configured.");
+    ui.warn("No cloud profile configured.");
     return;
   }
   try {
@@ -2723,9 +2722,9 @@ async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promis
       }
     }
     await removeCloudProfile(profileName);
-    log.success(`Logged out: ${profileName}`);
+    ui.success(`Logged out: ${profileName}`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
