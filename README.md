@@ -263,6 +263,68 @@ When you run `harnessdeck init`, the CLI also checks registered platform default
 folders in your home directory, such as `~/.claude/` and `~/.codex/`, and
 imports any supported resources it finds.
 
+## HarnessDeck Cloud
+
+HarnessDeck can interact with the Harness cloud for publishing, searching,
+and installing shared presets. Local cloud profiles are stored in
+`~/.harnessdeck/cloud-profiles.json` by default. You can override the base
+HarnessDeck directory by setting the `HARNESSDECK_HOME` environment variable;
+profiles will live under `<HARNESSDECK_HOME>/cloud-profiles.json` when set.
+
+Common workflows
+
+- Authenticate and create a profile
+
+  harnessdeck cloud login [profile]
+
+  Options:
+    --base-url <url>    Cloud base URL (defaults to https://app.harness.io)
+
+  This performs device-code authentication in the browser/terminal and saves a
+  named profile. If no name is provided the profile is saved as `default` and
+  becomes the default profile.
+
+- Inspect authenticated user
+
+  harnessdeck cloud whoami [--profile <name>] [--format json|human]
+
+- List or switch organizations
+
+  harnessdeck cloud orgs [--profile <name>] [--switch <org_slug>]
+
+- Log out and remove a profile
+
+  harnessdeck cloud logout [--profile <name>]
+
+- Search the remote preset catalog
+
+  harnessdeck preset search <query> [--profile <name>] [--format json|human]
+
+- Install a preset from the cloud
+
+  harnessdeck preset install org/library[@version] [--as <local-name>] [--profile <name>]
+
+  Downloads a preset bundle from the cloud and imports it into the local
+  preset database. Use `--as` to avoid name conflicts with existing presets.
+
+- Publish a local preset to the cloud
+
+  harnessdeck preset publish <preset-name> [--profile <name>]
+
+- Apply an installed preset to a project
+
+  harnessdeck project apply <preset-name> --project <path> [--platform <list>]
+
+Notes
+
+- The documentation above reflects the commands implemented in this branch.
+  Run `harnessdeck <command> --help` for full details on flags and output
+  formats.
+- Cloud profiles are JSON files stored under the HarnessDeck directory (default
+  `~/.harnessdeck/cloud-profiles.json`). Setting `HARNESSDECK_HOME` changes the
+  directory where these files are written.
+
+
 ## Contributing
 
 If you'd like to contribute, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for development and publishing instructions.
