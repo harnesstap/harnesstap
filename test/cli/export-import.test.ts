@@ -31,7 +31,8 @@ describe("CLI export and import", () => {
         bundlePath,
       ]);
 
-      expect(exportResult.stdout).toContain("Exported to");
+      expect(exportResult.stdout).toContain("Exported preset");
+      expect(exportResult.stdout).toContain(bundlePath);
       expect(existsSync(bundlePath)).toBe(true);
 
       const raw = JSON.parse(readFileSync(bundlePath, "utf-8"));
@@ -47,7 +48,7 @@ describe("CLI export and import", () => {
         const importResult = await runCli(["preset", "import", bundlePath]);
         const importedPresetModel = await import("../../src/models/preset.ts");
 
-        expect(importResult.stdout).toContain('Imported preset "bundle-preset"');
+        expect(importResult.stdout).toContain("Imported preset");
         expect(importedPresetModel.getPreset("bundle-preset")).toBeDefined();
       } finally {
         await importContext.cleanup();

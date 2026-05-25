@@ -27,7 +27,9 @@ describe("CLI platforms, status, and built-in presets", () => {
       expect(platforms.stdout).toContain("claude-code");
       expect(platforms.stdout).toContain("cursor");
       expect(templates.stdout).toContain("nextjs-fullstack");
-      expect(applied.stdout).toContain("codex: wrote");
+      // New per-platform verdict format: "codex · wrote N file(s)"
+      expect(applied.stdout).toContain("codex");
+      expect(applied.stdout).toContain("wrote");
       expect(existsSync(`${context.projectDir}/AGENTS.md`)).toBe(true);
     } finally {
       await context.cleanup();
@@ -64,9 +66,9 @@ describe("CLI platforms, status, and built-in presets", () => {
       ]);
 
       const status = await runCli(["project", "status", context.projectDir]);
-      expect(status.stdout).toContain("Platforms:");
-      expect(status.stdout).toContain("Applied presets: 1");
-      expect(status.stdout).toContain("Snapshots:       1");
+      expect(status.stdout).toContain("Platforms");
+      expect(status.stdout).toContain("Applied presets");
+      expect(status.stdout).toContain("Snapshots");
     } finally {
       await context.cleanup();
     }

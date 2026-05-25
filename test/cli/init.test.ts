@@ -46,7 +46,7 @@ describe("CLI init", () => {
 
       expect(result.stdout).toContain("Harnessdeck initialized");
       expect(result.stdout).toContain("Built-in Presets");
-      expect(result.stdout).toContain("Home defaults overview");
+      expect(result.stdout).toContain("HOME DEFAULTS");
       expect(result.stdout).toContain("Claude Code");
       expect(result.stdout).toContain("~/.claude");
       expect(result.stdout).toContain("Contains");
