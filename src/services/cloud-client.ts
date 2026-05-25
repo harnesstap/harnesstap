@@ -62,13 +62,23 @@ export async function pollDeviceToken(baseUrl: string, deviceCode: string, opts?
   throw new Error("Timed out polling device token");
 }
 
-export function createCloudClient(opts: CloudClientOptions) {
+export interface CloudClient {
+  whoami(): Promise<Record<string, unknown>>;
+  listOrgs(): Promise<Record<string, unknown>[]>;
+  searchLibraries(query: string): Promise<Record<string, unknown>[]>;
+  downloadLibraryBundle(id: string, version?: string): Promise<{ version: string; body: string }>;
+  publishPresetBundle(metadata: Record<string, unknown>, bundleJson: string): Promise<Record<string, unknown>>;
+  revokeRefreshToken(): Promise<boolean | void>;
+  _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
+}
+
+export function createCloudClient(opts: CloudClientOptions): CloudClient {
   const state = {
     baseUrl: opts.baseUrl.replace(/\/+$/, ""),
     token: opts.token ? { ...opts.token } : undefined,
   } as { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 
-  async function ensureTokenValid() {
+  async function ensureTokenValid(): Promise<void> {
     if (!state.token) throw new Error("Not authenticated");
     const now = Math.floor(Date.now() / 1000);
     if (state.token.expires_at && state.token.expires_at > now + 5) return;
@@ -91,7 +101,7 @@ export function createCloudClient(opts: CloudClientOptions) {
     };
   }
 
-  async function authFetch(input: string, init?: RequestInit) {
+  async function authFetch(input: string, init?: RequestInit): Promise<Response> {
     await ensureTokenValid();
     const headers = new Headers(init?.headers as any);
     headers.set("Authorization", `Bearer ${state.token!.access_token}`);
@@ -123,23 +133,26 @@ export function createCloudClient(opts: CloudClientOptions) {
         const metaRes = await fetch(`${state.baseUrl}/libraries/${id}/meta`);
         if (!metaRes.ok) throw new Error(`Failed to get library meta: ${metaRes.status}`);
         const meta = await metaRes.json();
-        version = meta.latest_version;
+        version = meta.latest_version as string;
       }
       const res = await fetch(`${state.baseUrl}/libraries/${id}/bundle/${version}`);
       if (!res.ok) throw new Error(`Failed to download bundle: ${res.status}`);
       const body = await res.text();
-      return { version, body };
+      return { version: version as string, body };
     },
     async publishPresetBundle(metadata: Record<string, unknown>, bundleJson: string) {
       const form = new FormData();
       form.set("metadata", JSON.stringify(metadata));
-      form.set("bundle", bundleJson, "bundle.json");
+      // Some FormData implementations (Node test env) require the value to be a Blob when a filename is provided.
+      const bundleBlob = typeof Blob !== 'undefined' ? new Blob([bundleJson], { type: 'application/json' }) : undefined;
+      if (bundleBlob) form.set("bundle", bundleBlob, "bundle.json");
+      else form.set("bundle", bundleJson);
       const res = await authFetch(`${state.baseUrl}/presets/publish`, { method: "POST", body: form as any });
       if (!res.ok) throw new Error(`publish failed: ${res.status}`);
       return res.json();
     },
     async revokeRefreshToken() {
-      if (!state.token || !state.token.refresh_token) return;
+      if (!state.token || !state.token.refresh_token) return undefined;
       const res = await authFetch(`${state.baseUrl}/oauth/revoke`, { method: "POST", body: new URLSearchParams({ token: state.token.refresh_token }) });
       if (!res.ok) throw new Error(`revoke failed: ${res.status}`);
       state.token = undefined;

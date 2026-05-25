@@ -80,7 +80,7 @@ import {
 } from "./models/harness.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
-import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile, clearCloudTokens } from "./config/cloud-profiles.js";
+import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
 import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
@@ -89,7 +89,7 @@ import { diffPresets } from "./services/preset-diff.js";
 import { validatePreset } from "./services/preset-validate.js";
 import { mergePresets } from "./services/preset-merge.js";
 import { createPresetFromProject } from "./services/preset-from-project.js";
-import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath } from "./services/preset-source.js";
+import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath, writePresetBundleToTempFile } from "./services/preset-source.js";
 import { syncProject } from "./services/project-sync.js";
 import {
   exportMigrationState,
@@ -574,17 +574,38 @@ function parseRemoteLibrarySelector(selector: string): { org_slug: string; libra
   // expected forms: org/library@version or org/library
   const m = selector.match(/^([^\/@]+)\/([^@]+)(?:@(.+))?$/);
   if (!m) throw new Error(`Invalid library selector: ${selector}. Use org/library[@version]`);
-  return { org_slug: m[1], library_slug: m[2], version: m[3] };
+  const org = String(m[1]);
+  const library = String(m[2]);
+  const version = m[3] !== undefined ? String(m[3]) : undefined;
+  return { org_slug: org, library_slug: library, version };
 }
 
 async function handlePresetSearchCommand(query: string, opts: { profile?: string; format?: string }) {
   const format = parseOutputFormat(opts.format);
-  // For now, we do not call the cloud; return empty array for JSON
-  if (format === "json") {
-    printJson([]);
-    return;
+  try {
+    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    if (!client) {
+      if (format === "json") printJson([]);
+      else log.dim("No cloud profile configured.");
+      return;
+    }
+
+    const results = await client.searchLibraries(query);
+    if (format === "json") {
+      printJson(results);
+      return;
+    }
+
+    if (!results || results.length === 0) {
+      log.dim("No remote results.");
+      return;
+    }
+    for (const r of results) {
+      log.info(`${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`);
+    }
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
   }
-  log.dim("No remote results.");
 }
 
 async function handlePresetInstallCommand(selector: string, opts: { as?: string; profile?: string; format?: string }) {
@@ -604,20 +625,19 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
     return;
   }
 
-  // Build a minimal bundle to simulate downloaded library bundle
-  const bundle = {
-    $schema: "urn:harnessdeck:bundle:v1",
-    version: 1,
-    preset: { name: parsed.library_slug, description: `Installed from ${parsed.org_slug}/${parsed.library_slug}`, tags: [] },
-    resources: [],
-  };
-  const { writePresetBundleToTempFile } = await import("./services/preset-source.js");
-  const tempPath = writePresetBundleToTempFile(JSON.stringify(bundle));
-
+  // Download the bundle via cloud client
   try {
+    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    if (!client) {
+      log.error("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      return;
+    }
+    const id = `${parsed.org_slug}/${parsed.library_slug}`;
+    const downloaded = await client.downloadLibraryBundle(id, parsed.version);
+    const tempPath = writePresetBundleToTempFile(downloaded.body);
     const imported = importFromFile(tempPath, { presetNameOverride: opts.as });
     if (parseOutputFormat(opts.format) === "json") {
-      printJson({ preset_name: imported.preset.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: parsed.version ?? null });
+      printJson({ preset_name: imported.preset.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: downloaded.version });
       return;
     }
     log.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
@@ -634,17 +654,25 @@ async function handlePresetPublishCommand(presetName: string, opts: { profile?: 
     log.error(`Preset not found: ${presetName}`);
     return;
   }
-  // reuse exporter to build bundle
-  const exporter = await import("./services/exporter.js");
-  const bundle = exporter.exportPreset(preset.id);
+  // build bundle using exporter
+  const bundle = exportPreset(preset.id);
   const bundleJson = JSON.stringify(bundle);
 
-  // For now do not contact cloud; print JSON payload when requested
-  if (parseOutputFormat(opts.format) === "json") {
-    printJson({ preset_name: preset.name, bundle: bundle });
-    return;
+  try {
+    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    if (!client) {
+      log.error("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      return;
+    }
+    const resp = await client.publishPresetBundle({ preset_name: preset.name }, bundleJson);
+    if (parseOutputFormat(opts.format) === "json") {
+      printJson(resp);
+      return;
+    }
+    log.success(`Published preset ${preset.name}`);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
   }
-  log.success(`Published preset ${preset.name}`);
 }
 
 function handlePlatformListCommand(opts: { format?: string } = {}): void {
