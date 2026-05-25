@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
@@ -24,7 +24,11 @@ describe("CLI planned scenarios", () => {
         "--project",
         context.projectDir,
       ]);
+      expect(fromProject.stdout).toContain("✓ Created preset");
       expect(fromProject.stdout).toContain("cli-inferred");
+      // Verify proper pluralization (1 resource, not 1 resources)
+      expect(fromProject.stdout).toMatch(/\d+ resources?/);
+      expect(fromProject.stdout).not.toContain("1 resources");
 
       const validate = await runCli([
         "preset",
@@ -116,6 +120,36 @@ describe("CLI planned scenarios", () => {
       expect(drift.stdout).toMatch(/"has_drift":\s*true/);
       expect(drift.exitCode).toBe(1);
 
+      const driftService = await import("../../src/services/project-drift.ts");
+      const driftSpy = vi
+        .spyOn(driftService, "detectProjectDriftFromLatest")
+        .mockReturnValue({
+          project_root: context.projectDir,
+          snapshot_id: "snap-drift-icons",
+          snapshot_label: "before",
+          has_drift: true,
+          changes: [
+            { path: "NEW.md", type: "added", platform: "claude-code" },
+            { path: "CLAUDE.md", type: "modified", platform: "claude-code" },
+            { path: "OLD.md", type: "deleted", platform: "claude-code" },
+          ],
+        });
+
+      const driftHuman = await runCli([
+        "project",
+        "drift",
+        "--project",
+        context.projectDir,
+      ]);
+      driftSpy.mockRestore();
+      expect(driftHuman.stdout).toContain("DRIFT");
+      expect(driftHuman.stdout).toMatch(/^\s+\+\s+added\s+NEW\.md\s+claude-code$/m);
+      expect(driftHuman.stdout).toMatch(
+        /^\s+~\s+modified\s+CLAUDE\.md\s+claude-code$/m,
+      );
+      expect(driftHuman.stdout).toMatch(/^\s+−\s+deleted\s+OLD\.md\s+claude-code$/m);
+      expect(driftHuman.exitCode).toBe(1);
+
       const syncDry = await runCli([
         "project",
         "sync",
@@ -125,6 +159,15 @@ describe("CLI planned scenarios", () => {
         "json",
       ]);
       expect(syncDry.stdout).toContain("main_harness");
+
+      // Human-mode sync: spinner resolves to a Synced verdict
+      const syncHuman = await runCli([
+        "project",
+        "sync",
+        context.projectDir,
+      ]);
+      expect(syncHuman.stdout).toContain("Synced");
+      expect(syncHuman.exitCode ?? 0).toBe(0);
     } finally {
       await context.cleanup();
     }

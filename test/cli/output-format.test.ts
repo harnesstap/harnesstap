@@ -1,8 +1,13 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
-import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+
+const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
 describe("CLI output format", () => {
   it("emits JSON for preset, status, history, platform, init, and apply dry-run commands", async () => {
@@ -100,17 +105,12 @@ describe("CLI output format", () => {
         }),
       );
 
-      // cloud whoami/orgs should also support JSON output (may be empty when not configured)
       const cloudWhoami = await runCli(["cloud", "whoami", "--format", "json"]);
       expect(JSON.parse(cloudWhoami.stdout)).toBeDefined();
+
       const cloudOrgs = await runCli(["cloud", "orgs", "--format", "json"]);
       expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
 
-      // preset cloud commands should support JSON output
-      const s = await runCli(["preset", "search", "x", "--profile", "test", "--format", "json"]);
-      expect(Array.isArray(JSON.parse(s.stdout))).toBe(true);
-
-      // configure cloud profile and stub fetch for install/publish
       const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
       await cloudProfiles.saveCloudProfile("test", {
         cloudBaseUrl: "https://mock",
@@ -120,31 +120,159 @@ describe("CLI output format", () => {
         scopes: [],
       });
       await cloudProfiles.setDefaultCloudProfile("test");
-      const originalFetch = (globalThis as unknown as { fetch?: unknown }).fetch;
-      (globalThis as unknown as { fetch?: unknown }).fetch = async (input: unknown, _init?: unknown) => {
+
+      const originalFetch = (globalThis as { fetch?: typeof fetch }).fetch;
+      (globalThis as { fetch?: typeof fetch }).fetch = async (
+        input: RequestInfo | URL,
+      ) => {
         const url = String(input);
-        if (url.startsWith("https://mock/libraries/search")) return { ok: true, json: async () => [] };
-        if (/\/libraries\/.+\/meta$/.test(url)) return { ok: true, json: async () => ({ latest_version: "1.0" }) };
-        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) return { ok: true, text: async () => JSON.stringify({ $schema: "urn:harnessdeck:bundle:v1", version: 1, preset: { name: "remote-lib" }, resources: [] }) };
-        if (url.endsWith("/presets/publish")) return { ok: true, json: async () => ({ id: "pub-1", version: "1.0.0", url: "https://mock/presets/pub-1" }) };
-        return { ok: false, status: 404, text: async () => "not found" };
+        if (url.startsWith("https://mock/libraries/search")) {
+          return {
+            ok: true,
+            json: async () => [],
+          } as Response;
+        }
+        if (/\/libraries\/.+\/meta$/.test(url)) {
+          return {
+            ok: true,
+            json: async () => ({ latest_version: "1.0" }),
+          } as Response;
+        }
+        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
+          return {
+            ok: true,
+            text: async () =>
+              JSON.stringify({
+                $schema: "urn:harnessdeck:bundle:v1",
+                version: 1,
+                preset: { name: "remote-lib" },
+                resources: [],
+              }),
+          } as Response;
+        }
+        if (url.endsWith("/presets/publish")) {
+          return {
+            ok: true,
+            json: async () => ({
+              id: "pub-1",
+              version: "1.0.0",
+              url: "https://mock/presets/pub-1",
+            }),
+          } as Response;
+        }
+        return {
+          ok: false,
+          status: 404,
+          text: async () => "not found",
+        } as Response;
       };
 
-      const i = await runCli(["preset", "install", "acme/lib@1.0", "--as", "lib-local", "--profile", "test", "--format", "json"]);
-      expect(JSON.parse(i.stdout)).toEqual(expect.objectContaining({ preset_name: expect.any(String), org_slug: expect.any(String), library_slug: expect.any(String), version: expect.anything() }));
+      try {
+        const search = await runCli([
+          "preset",
+          "search",
+          "x",
+          "--profile",
+          "test",
+          "--format",
+          "json",
+        ]);
+        expect(Array.isArray(JSON.parse(search.stdout))).toBe(true);
 
-      // publish
-      const presetModel2 = await import("../../src/models/preset.ts");
-      const rModel = await import("../../src/models/resource.ts");
-      const p = presetModel2.createPreset({ name: "pub1" });
-      const r = rModel.createResource(makeResourceInput({ name: "x", content: "#" }));
-      presetModel2.addResourceToPreset(p.id, r.id);
-      const pub = await runCli(["preset", "publish", "pub1", "--profile", "test", "--format", "json"]);
-      expect(JSON.parse(pub.stdout)).toBeDefined();
-      // restore fetch
-      (globalThis as unknown as { fetch?: unknown }).fetch = originalFetch;
-        } finally {
-          await context.cleanup();
-        }
-      });
+        const install = await runCli([
+          "preset",
+          "install",
+          "acme/lib@1.0",
+          "--as",
+          "lib-local",
+          "--profile",
+          "test",
+          "--format",
+          "json",
+        ]);
+        expect(JSON.parse(install.stdout)).toEqual(
+          expect.objectContaining({
+            preset_name: expect.any(String),
+            org_slug: expect.any(String),
+            library_slug: expect.any(String),
+            version: expect.anything(),
+          }),
+        );
+
+        const publishPreset = presetModel.createPreset({ name: "pub1" });
+        const publishResource = resourceModel.createResource(
+          makeResourceInput({ name: "x", content: "#" }),
+        );
+        presetModel.addResourceToPreset(publishPreset.id, publishResource.id);
+
+        const publish = await runCli([
+          "preset",
+          "publish",
+          "pub1",
+          "--profile",
+          "test",
+          "--format",
+          "json",
+        ]);
+        expect(JSON.parse(publish.stdout)).toBeDefined();
+      } finally {
+        (globalThis as { fetch?: typeof fetch }).fetch = originalFetch;
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("plugin installed and plugin check preserve JSON output after table migration", async () => {
+    const harnessdeckHome = mkdtempSync(join(tmpdir(), "hd-of-plugin-"));
+    const previousHarnessdeckHome = process.env.HARNESSDECK_HOME;
+    const previousHome = process.env.HOME;
+    process.env.HARNESSDECK_HOME = harnessdeckHome;
+    process.env.HOME = fixtureHome;
+    try {
+      const installed = await runCli([
+        "plugin",
+        "installed",
+        "--platform",
+        "claude-code",
+        "--format",
+        "json",
+      ]);
+      const parsedInstalled = JSON.parse(installed.stdout) as {
+        installs: { ref: string; platformId: string }[];
+      };
+      expect(Array.isArray(parsedInstalled.installs)).toBe(true);
+      expect(
+        parsedInstalled.installs.some((install) => install.ref === "demo@demo-market"),
+      ).toBe(true);
+
+      const check = await runCli([
+        "plugin",
+        "check",
+        "--platform",
+        "claude-code",
+        "--format",
+        "json",
+      ]);
+      const parsedCheck = JSON.parse(check.stdout) as {
+        summary: { outdated: number; current: number; unknown: number };
+        results: { ref: string; status: string }[];
+      };
+      expect(typeof parsedCheck.summary.outdated).toBe("number");
+      expect(typeof parsedCheck.summary.current).toBe("number");
+      expect(Array.isArray(parsedCheck.results)).toBe(true);
+    } finally {
+      if (previousHarnessdeckHome === undefined) {
+        delete process.env.HARNESSDECK_HOME;
+      } else {
+        process.env.HARNESSDECK_HOME = previousHarnessdeckHome;
+      }
+      if (previousHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previousHome;
+      }
+      rmSync(harnessdeckHome, { recursive: true, force: true });
+    }
+  });
 });

@@ -48,6 +48,9 @@ describe("CLI history and revert", () => {
         context.projectDir,
       ]);
       expect(history.stdout).toContain("Before applying: history-preset");
+      expect(history.stdout).toContain("WHEN");
+      expect(history.stdout).toContain("ID");
+      expect(history.stdout).toContain("LABEL");
 
       const project = projectModel.getProjectByOrigin(
         git.normalizeGitUrl("git@github.com:acme/harnessdeck-history.git"),
@@ -63,7 +66,12 @@ describe("CLI history and revert", () => {
         throw new Error("Expected a snapshot to be available for revert");
       }
 
-      await runCli(["project", "revert", snapshot.id]);
+      const revertResult = await runCli(["project", "revert", snapshot.id]);
+      expect(revertResult.stdout).toContain("✓ Restored");
+      expect(revertResult.stdout).toContain("from snapshot");
+      // Verify proper pluralization (1 file, not 1 files)
+      expect(revertResult.stdout).toMatch(/\d+ files?/);
+      expect(revertResult.stdout).not.toContain("1 files");
 
       expect(readFileSync(`${context.projectDir}/CLAUDE.md`, "utf-8")).toBe(
         "# Original instructions",
@@ -115,7 +123,8 @@ describe("CLI history and revert", () => {
       const snapshot = project ? snapshotModel.listSnapshots(project.id)[0] : undefined;
 
       expect(snapshot).toBeDefined();
-      expect(history.stdout).toContain(snapshot?.id ?? "");
+      // IDs are shortened in human-mode table output (first 6 chars always visible)
+      expect(history.stdout).toContain((snapshot?.id ?? "").slice(0, 6));
     } finally {
       await context.cleanup();
     }

@@ -1,10 +1,10 @@
 import chalk from "chalk";
 
 export const log = {
-  info: (msg: string) => console.log(chalk.blue("ℹ"), msg),
-  success: (msg: string) => console.log(chalk.green("✓"), msg),
-  warn: (msg: string) => console.log(chalk.yellow("⚠"), msg),
-  error: (msg: string) => console.error(chalk.red("✗"), msg),
-  dim: (msg: string) => console.log(chalk.dim(msg)),
+  info: (message: string) => console.log(chalk.blue("ℹ"), message),
+  success: (message: string) => console.log(chalk.green("✓"), message),
+  warn: (message: string) => console.log(chalk.yellow("⚠"), message),
+  error: (message: string) => console.error(chalk.red("✗"), message),
+  dim: (message: string) => console.log(chalk.dim(message)),
   table: (data: Record<string, string>[]) => console.table(data),
 };
