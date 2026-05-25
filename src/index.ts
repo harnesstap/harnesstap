@@ -80,6 +80,8 @@ import {
 } from "./models/harness.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
+import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile, clearCloudTokens } from "./config/cloud-profiles.js";
+import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
 import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
@@ -2102,5 +2104,188 @@ program
 // ── cleanup ─────────────────────────────────────────────────────────────
 
 process.on("exit", () => closeDb());
+
+// ── cloud ───────────────────────────────────────────────────────────────
+
+async function handleCloudLoginCommand(profileName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
+  const name = profileName ?? "default";
+  const baseUrl = opts.baseUrl ?? "https://app.harness.io";
+  try {
+    const device = await requestDeviceCode(baseUrl);
+    console.log(`Visit: ${device.verification_uri}`);
+    console.log(`Code:  ${device.user_code}`);
+    const token = await pollDeviceToken(baseUrl, device.device_code, { interval: 0.1, maxPolls: 300 });
+    const now = Math.floor(Date.now() / 1000);
+    const profile = {
+      cloudBaseUrl: baseUrl,
+      accessToken: token.access_token,
+      refreshToken: token.refresh_token,
+      accessTokenExpiresAt: token.expires_in ? now + token.expires_in : undefined,
+      refreshTokenExpiresAt: undefined,
+      scopes: [],
+    } as any;
+    await saveCloudProfile(name, profile);
+    await setDefaultCloudProfile(name);
+    log.success(`Saved cloud profile: ${name}`);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCloudWhoamiCommand(opts: { profile?: string; format?: string } = {}): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const { profileName, profile } = await getCloudProfile(opts.profile);
+  if (!profile || !profile.accessToken) {
+    if (format === "json") {
+      printJson({});
+      return;
+    }
+    log.warn("Not authenticated to cloud.");
+    return;
+  }
+  try {
+    const client = createCloudClient({
+      baseUrl: profile.cloudBaseUrl,
+      token: {
+        access_token: profile.accessToken as string,
+        refresh_token: profile.refreshToken as string | undefined,
+        expires_at: typeof profile.accessTokenExpiresAt === "number"
+          ? (profile.accessTokenExpiresAt as number)
+          : undefined,
+      },
+    });
+    const info = await client.whoami();
+    if (format === "json") {
+      printJson(info);
+      return;
+    }
+    log.info(JSON.stringify(info));
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string; format?: string } = {}): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const { profileName, profile } = await getCloudProfile(opts.profile);
+  if (!profile || !profile.accessToken) {
+    if (format === "json") {
+      printJson([]);
+      return;
+    }
+    log.warn("Not authenticated to cloud.");
+    return;
+  }
+  try {
+    const client = createCloudClient({
+      baseUrl: profile.cloudBaseUrl,
+      token: {
+        access_token: profile.accessToken as string,
+        refresh_token: profile.refreshToken as string | undefined,
+        expires_at: typeof profile.accessTokenExpiresAt === "number"
+          ? (profile.accessTokenExpiresAt as number)
+          : undefined,
+      },
+    });
+    const orgs = await client.listOrgs();
+    if (opts.switch) {
+      const target = (orgs as any[]).find((o) => o.slug === opts.switch || o.id === opts.switch);
+      if (!target) {
+        log.error(`Organization not found: ${opts.switch}`);
+        return;
+      }
+      if (profileName) {
+        await updateCloudProfile(profileName, { orgId: target.id, orgSlug: target.slug });
+      }
+      log.success(`Switched to org: ${target.slug}`);
+      if (format === "json") {
+        printJson(target);
+      }
+      return;
+    }
+    if (format === "json") {
+      printJson(orgs);
+      return;
+    }
+    for (const o of orgs as any[]) {
+      log.info(`${o.slug} ${o.name}`);
+    }
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promise<void> {
+  const { profileName, profile } = await getCloudProfile(opts.profile);
+  if (!profileName) {
+    log.warn("No cloud profile configured.");
+    return;
+  }
+  try {
+    if (profile?.refreshToken) {
+      try {
+        const client = createCloudClient({
+          baseUrl: profile.cloudBaseUrl,
+          token: {
+            access_token: profile.accessToken as string || "",
+            refresh_token: profile.refreshToken as string,
+            expires_at: typeof profile.accessTokenExpiresAt === "number"
+              ? (profile.accessTokenExpiresAt as number)
+              : undefined,
+          },
+        });
+        await client.revokeRefreshToken();
+      } catch (_) {
+        // ignore revoke errors
+      }
+    }
+    await removeCloudProfile(profileName);
+    log.success(`Logged out: ${profileName}`);
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// ── cloud ───────────────────────────────────────────────────────────────
+
+const cloudCmd = program
+  .command("cloud")
+  .description("Authenticate with Harness cloud and manage cloud profiles");
+cloudCmd.helpCommand(false);
+
+cloudCmd
+  .command("login [profile]")
+  .option("--base-url <url>", "Cloud base URL")
+  .description("Log into Harness cloud via device authentication")
+  .action(async (profile: string | undefined, opts: { baseUrl?: string }) => {
+    await handleCloudLoginCommand(profile, opts);
+  });
+
+cloudCmd
+  .command("whoami")
+  .option("--profile <name>", "Profile name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show information about the authenticated user")
+  .action(async (opts: { profile?: string; format?: string }) => {
+    await handleCloudWhoamiCommand(opts);
+  });
+
+cloudCmd
+  .command("orgs")
+  .option("--profile <name>", "Profile name")
+  .option("--switch <org_slug>", "Switch to the given organization slug")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List organizations and optionally switch")
+  .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
+    await handleCloudOrgsCommand(opts as any);
+  });
+
+cloudCmd
+  .command("logout")
+  .option("--profile <name>", "Profile name")
+  .description("Log out and remove local cloud profile")
+  .action(async (opts: { profile?: string }) => {
+    await handleCloudLogoutCommand(opts);
+  });
 
 await program.parseAsync();

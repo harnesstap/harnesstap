@@ -99,6 +99,12 @@ describe("CLI output format", () => {
           label: expect.any(String),
         }),
       );
+
+      // cloud whoami/orgs should also support JSON output (may be empty when not configured)
+      const cloudWhoami = await runCli(["cloud", "whoami", "--format", "json"]);
+      expect(JSON.parse(cloudWhoami.stdout)).toBeDefined();
+      const cloudOrgs = await runCli(["cloud", "orgs", "--format", "json"]);
+      expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
     } finally {
       await context.cleanup();
     }
