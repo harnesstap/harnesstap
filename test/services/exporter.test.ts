@@ -244,7 +244,7 @@ describe("exporter services", () => {
         projectRoot: context.projectDir,
       });
 
-      presetModel.deletePreset(preset.name);
+      presetModel.deletePreset(preset.id);
       const unpack = join(context.projectDir, "unpacked-plugins");
       mkdirSync(unpack, { recursive: true });
 

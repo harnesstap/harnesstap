@@ -2134,14 +2134,24 @@ presetCmd
 
 presetCmd
   .command("delete")
-  .argument("<name>", "Preset name or ID")
+  .argument("<name>", "Preset name, name@version selector, or ID")
   .action((name: string) => {
     const db = getDb();
     initializeSchema(db);
-    if (deletePreset(name)) {
-      ui.success(`Deleted preset ${ui.theme.accent(name)}`);
-    } else {
-      ui.danger(`Preset not found: ${name}`);
+    try {
+      const preset = getPreset(name);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${name}`);
+        return;
+      }
+      if (!deletePreset(preset.id)) {
+        throw new Error(`Failed to delete preset ${formatPresetLabel(preset)}`);
+      }
+      ui.success(`Deleted preset ${ui.theme.accent(formatPresetLabel(preset))}`);
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
 

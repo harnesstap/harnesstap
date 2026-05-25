@@ -116,6 +116,74 @@ describe("CLI preset", () => {
     }
   });
 
+  it("preset delete reports invalid selectors and exits with failure", async () => {
+    const context = await createTestContext("cli-preset-delete-invalid-selector");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["preset", "delete", "tool@not-semver"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/invalid version constraint/i);
+      expect(result.stderr).not.toMatch(/preset not found/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete sets a failing exit code when the preset is missing", async () => {
+    const context = await createTestContext("cli-preset-delete-missing");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["preset", "delete", "missing-preset"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toMatch(/preset not found: missing-preset/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete accepts a versioned selector and deletes only that version", async () => {
+    const context = await createTestContext("cli-preset-delete-version-selector");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "tool", "--version", "1.0.0"]);
+      await runCli(["preset", "create", "tool", "--version", "2.0.0"]);
+
+      const result = await runCli(["preset", "delete", "tool@1.0.0"]);
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(presetModel.getPreset("tool@1.0.0")).toBeUndefined();
+      expect(presetModel.getPreset("tool@2.0.0")?.version).toBe("2.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset delete by plain name reports the deleted latest version", async () => {
+    const context = await createTestContext("cli-preset-delete-latest-version");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "tool", "--version", "1.0.0"]);
+      await runCli(["preset", "create", "tool", "--version", "2.0.0"]);
+
+      const result = await runCli(["preset", "delete", "tool"]);
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stdout).toContain("tool@2.0.0");
+      expect(presetModel.getPreset("tool@2.0.0")).toBeUndefined();
+      expect(presetModel.getPreset("tool@1.0.0")?.version).toBe("1.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("creates, shows, associates, removes, and deletes presets", async () => {
     const context = await createTestContext("cli-preset");
 

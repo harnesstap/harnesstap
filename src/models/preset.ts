@@ -183,8 +183,9 @@ function getPresetById(id: string): Preset | undefined {
 function getPresetLatestByName(name: string): Preset | undefined {
   const db = getDb();
   const rows = db.prepare("SELECT * FROM presets WHERE name = ?").all(name) as PresetRow[];
-  if (rows.length === 0) return undefined;
-  if (rows.length === 1) return rowToPreset(rows[0]);
+  const first = rows[0];
+  if (!first) return undefined;
+  if (rows.length === 1) return rowToPreset(first);
   const sorted = [...rows].sort((a, b) => {
     try {
       return semver.rcompare(a.version, b.version);
@@ -192,7 +193,7 @@ function getPresetLatestByName(name: string): Preset | undefined {
       return 0;
     }
   });
-  return rowToPreset(sorted[0]);
+  return sorted[0] ? rowToPreset(sorted[0]) : undefined;
 }
 
 function getPresetByNameAndConstraint(name: string, constraint: string): Preset | undefined {
@@ -210,7 +211,7 @@ function getPresetByNameAndConstraint(name: string, constraint: string): Preset 
       return 0;
     }
   });
-  return rowToPreset(sorted[0]);
+  return sorted[0] ? rowToPreset(sorted[0]) : undefined;
 }
 
 export function getPreset(selector: string): Preset | undefined {
@@ -233,11 +234,11 @@ export function listPresets(): Preset[] {
   return rows.map(rowToPreset);
 }
 
-export function deletePreset(nameOrId: string): boolean {
+export function deletePreset(presetId: string): boolean {
   const db = getDb();
   const result = db
-    .prepare("DELETE FROM presets WHERE id = ? OR name = ?")
-    .run(nameOrId, nameOrId);
+    .prepare("DELETE FROM presets WHERE id = ?")
+    .run(presetId);
   return result.changes > 0;
 }
 
