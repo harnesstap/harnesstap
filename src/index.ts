@@ -1599,7 +1599,7 @@ function handleProjectDriftCommand(opts: {
         snapshot_id: null,
         has_drift: false,
         changes: [],
-        message: "No project record. Run project apply first.",
+        message: `No project record. Run ${formatCommand("project apply")} first.`,
       });
       return;
     }
