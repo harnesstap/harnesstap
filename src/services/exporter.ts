@@ -36,6 +36,8 @@ export interface ExportPresetOptions {
 export interface ImportPresetOptions {
   /** When importing a bundle with `embedded_plugins`, write those trees under this directory. */
   embeddedTargetDir?: string;
+  /** Override the imported preset name (useful when installing a remote library under a different local name). */
+  presetNameOverride?: string;
 }
 
 function resolveHomeRoot(opts?: ExportPresetOptions): string {
@@ -208,7 +210,7 @@ function importPresetFromBundleParsed(
   const claude = bundle.claude ?? bundle.preset.claude;
 
   const preset = createPreset({
-    name: bundle.preset.name,
+    name: opts?.presetNameOverride ?? bundle.preset.name,
     description: bundle.preset.description,
     tags: bundle.preset.tags,
     ...(claude ? { claude } : {}),
