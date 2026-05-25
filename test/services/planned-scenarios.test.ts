@@ -96,6 +96,10 @@ describe("planned scenarios services", () => {
 
       const report = diffPresets("base", "fork");
       expect(report.changes.some((c) => c.key === "instruction:ctx")).toBe(true);
+      // renderer fields: change.kind, change.change used by renderChangeList
+      const modifiedCtx = report.changes.find((c) => c.key === "instruction:ctx");
+      expect(modifiedCtx?.kind).toBe("resource");
+      expect(modifiedCtx?.change).toBe("modified");
     } finally {
       await context.cleanup();
     }
@@ -113,6 +117,10 @@ describe("planned scenarios services", () => {
       const report = validatePreset("empty-one");
       expect(report.issues.some((i) => i.code === "empty_preset")).toBe(true);
       expect(report.valid).toBe(true);
+      // renderer fields: severity, code, message used by ui.table in handlePresetValidateCommand
+      const emptyIssue = report.issues.find((i) => i.code === "empty_preset");
+      expect(emptyIssue?.severity).toBe("warning");
+      expect(emptyIssue?.message).toBeTruthy();
     } finally {
       await context.cleanup();
     }

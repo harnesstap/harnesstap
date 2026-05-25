@@ -1,16 +1,15 @@
 import { Command } from "commander";
-import chalk from "chalk";
 import { getDb, closeDb, getDbPath } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
-import { log } from "./utils/logger.js";
+import { ui } from "./ui/index.js";
 import {
   getGitOrigin,
   normalizeGitUrl,
   projectNameFromUrl,
 } from "./services/git.js";
 import {
-  scanAndPersist,
   scanProject,
+  persistScanResults,
   detectPlatforms,
   scanAndPersistHomeDefaults,
   persistClaudePluginInventoryForProject,
@@ -93,34 +92,9 @@ import {
   exportMigrationState,
   importMigrationState,
 } from "./services/migrate.js";
+import { createProgress } from "./ui/progress.js";
 
 const program = new Command();
-
-function printInitMeta(label: string, value: string): void {
-  console.log(
-    `  ${chalk.hex("#6b7280")(label.padEnd(10))} ${chalk.white(value)}`,
-  );
-}
-
-function printInitDetail(label: string, value: string): void {
-  console.log(
-    `    ${chalk.hex("#7c3aed")(label.padEnd(8))} ${chalk.white(value)}`,
-  );
-}
-
-function platformBadge(name: string): string {
-  return chalk.bgHex("#1d4ed8").white.bold(` ${name} `);
-}
-
-function folderAccent(folder: string): string {
-  return chalk.hex("#22c55e").bold(folder);
-}
-
-function statusAccent(message: string, importedCount: number): string {
-  return importedCount > 0
-    ? chalk.hex("#f59e0b").bold(message)
-    : chalk.hex("#10b981").bold(message);
-}
 
 function formatCount(count: number, noun: string, plural = `${noun}s`): string {
   return `${count} ${count === 1 ? noun : plural}`;
@@ -165,9 +139,65 @@ function warnDeprecatedCommand(
   legacyCommand: string,
   replacementCommand: string,
 ): void {
-  log.warn(
+  ui.warn(
     `\`${legacyCommand}\` is deprecated; use \`${replacementCommand}\` instead.`,
   );
+}
+
+function renderGroupedCommandHelp(
+  cmd: Command,
+  showHidden: boolean,
+): string {
+  const commands = cmd.commands.filter((c) => {
+    const hidden = (c as { _hidden?: boolean })._hidden;
+    return showHidden || !hidden;
+  });
+  
+  if (commands.length === 0) {
+    return "";
+  }
+
+  const lines: string[] = [];
+  
+  // Calculate max length for alignment
+  const commandStrs = commands.map((c) => {
+    const name = c.name();
+    const aliases = c.aliases();
+    const args = c.registeredArguments?.map((arg) => {
+      if (arg.required) {
+        return `<${arg.name()}>`;
+      }
+      return `[${arg.name()}]`;
+    }).join(" ") || "";
+    
+    const hasOptions = c.options.filter((opt) => !opt.hidden).length > 0;
+    
+    let fullStr = name;
+    if (aliases.length) {
+      fullStr += ` (${aliases.join(", ")})`;
+    }
+    if (hasOptions || args) {
+      fullStr += " ";
+      if (hasOptions) fullStr += "[options]";
+      if (hasOptions && args) fullStr += " ";
+      if (args) fullStr += args;
+    }
+    
+    return fullStr;
+  });
+  
+  const maxNameLength = commandStrs.length > 0 ? Math.max(...commandStrs.map((s) => s.length)) : 0;
+
+  for (let i = 0; i < commands.length; i++) {
+    const command = commands[i];
+    const nameStr = commandStrs[i];
+    if (!command || !nameStr) continue;
+    const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
+    const desc = command.description() || "";
+    lines.push(`  ${ui.theme.accent(nameStr)}${padding}${desc}`);
+  }
+
+  return lines.join("\n");
 }
 
 program
@@ -176,7 +206,80 @@ program
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
   .version("0.1.0", "-V, --harnessdeck-version")
-  .helpCommand(false);
+  .option("--no-color", "Disable color output")
+  .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
+  .helpCommand(false)
+  .hook("preAction", (command) => {
+    const opts = command.optsWithGlobals<{ color?: boolean }>();
+    if (opts.color === false) {
+      ui.disableColor();
+    }
+  })
+  .configureHelp({
+    formatHelp: (cmd) => {
+      // Check for --no-color early before rendering help
+      if (process.argv.includes("--no-color")) {
+        ui.disableColor();
+      }
+      
+      const showHidden = process.argv.includes("--show-hidden");
+      const isTopLevel = cmd.name() === "harnessdeck";
+      
+      if (!isTopLevel) {
+        const lines = [
+          "",
+          ui.theme.muted("USAGE"),
+          `  ${cmd.name()} ${cmd.usage()}`,
+          "",
+        ];
+        
+        if (cmd.description()) {
+          lines.push(cmd.description(), "");
+        }
+        
+        const opts = cmd.options.filter((opt) => !opt.hidden);
+        if (opts.length > 0) {
+          lines.push(ui.theme.muted("OPTIONS"));
+          for (const opt of opts) {
+            const flags = opt.flags;
+            const desc = opt.description || "";
+            lines.push(`  ${ui.theme.accent(flags)}  ${desc}`);
+          }
+          lines.push("");
+        }
+        
+        const subcommands = renderGroupedCommandHelp(cmd, showHidden);
+        if (subcommands) {
+          lines.push(ui.theme.muted("COMMANDS"));
+          lines.push(subcommands);
+          lines.push("");
+        }
+        
+        return lines.join("\n");
+      }
+      
+      const lines = [
+        "",
+        ui.theme.primary("harnessdeck"),
+        "Preset-based AI coding assistant configuration manager",
+        "",
+        ui.theme.muted("USAGE"),
+        `  harnessdeck [options] [command]`,
+        "",
+        ui.theme.muted("OPTIONS"),
+        `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
+        `  ${ui.theme.accent("--no-color")}               disable color output`,
+        `  ${ui.theme.accent("--show-hidden")}            show all commands including hidden ones`,
+        `  ${ui.theme.accent("-h, --help")}               display help for command`,
+        "",
+        ui.theme.muted("COMMANDS"),
+        renderGroupedCommandHelp(cmd, showHidden),
+        "",
+      ];
+      
+      return lines.join("\n");
+    },
+  });
 
 async function handleScanCommand(
   path: string,
@@ -188,29 +291,39 @@ async function handleScanCommand(
 
   const detected = detectPlatforms(projectRoot);
   if (detected.length === 0) {
-    log.warn("No coding CLI configurations detected in this directory.");
+    ui.warn("No coding CLI configurations detected in this directory.");
     return;
   }
-  log.info(`Detected platforms: ${detected.join(", ")}`);
   const scannedPlatformIds = opts.platform ? [opts.platform] : detected;
 
   if (opts.dryRun) {
-    log.dim("(dry run — not persisting to database)");
     const results = await scanProject(projectRoot, opts.platform);
-    let count = 0;
     for (const result of results) {
-      log.info(`Platform: ${result.platformId}`);
+      const count = result.resources.length;
+      const dryTag = ui.theme.muted("[dry run] ");
+      const verdict = ui.theme.success(
+        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
+      );
+      console.log(dryTag + verdict);
       for (const resource of result.resources) {
-        count++;
-        log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
       }
     }
-    log.success(`Would import ${count} resources`);
     return;
   }
 
-  const resources = await scanAndPersist(projectRoot, opts.platform);
-  log.success(`Imported ${resources.length} resources`);
+  const spin = createProgress("Scanning…");
+  const results = await scanProject(projectRoot, opts.platform);
+  const persisted = persistScanResults(results);
+  spin.stop();
+
+  for (const result of results) {
+    const importedCount = persisted.importedCounts.get(result.platformId) ?? 0;
+    ui.success(`${result.platformId} ${ui.icons.bullet} ${formatCount(importedCount, "resource")}`);
+    for (const resource of result.resources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+    }
+  }
 
   try {
     const pluginSummary = await listPlugins({
@@ -224,16 +337,12 @@ async function handleScanCommand(
         homeRoot: homedir(),
         platformIds: parsePlatformFilter(opts.platform),
       });
-      log.info(
-        `Plugins: ${formatCount(pluginSummary.installs.length, "installed")} (${formatCount(check.summary.outdated, "outdated")})`,
+      ui.hint(
+        `${formatCount(pluginSummary.installs.length, "plugin")} installed (${formatCount(check.summary.outdated, "outdated")})`,
       );
     }
   } catch {
     // Plugin scan is best-effort during project scan
-  }
-
-  for (const resource of resources) {
-    log.dim(`  ${resource.type.padEnd(14)} ${resource.name}`);
   }
 
   const gitOrigin = getGitOrigin(projectRoot);
@@ -248,7 +357,7 @@ async function handleScanCommand(
     name,
     local_path: projectRoot,
   });
-  log.info(`Project registered: ${name} (${normalized})`);
+  ui.success(`Project registered: ${name} (${normalized})`);
 
   try {
     const inventorySummary = await persistClaudePluginInventoryForProject({
@@ -258,8 +367,8 @@ async function handleScanCommand(
       homeRoot: homedir(),
     });
     if (inventorySummary) {
-      log.info(
-        `Plugins (claude-code): ${inventorySummary.committed_count} committed, ${inventorySummary.effective_count} effective`,
+      ui.hint(
+        `claude-code plugins: ${inventorySummary.committed_count} committed, ${inventorySummary.effective_count} effective`,
       );
     }
   } catch {
@@ -338,7 +447,7 @@ async function handleApplyCommand(
   initializeSchema(db);
 
   if (presetNames.length === 0) {
-    log.error("Provide at least one preset name, bundle path, or URL.");
+    ui.danger("Provide at least one preset name, bundle path, or URL.");
     return;
   }
 
@@ -350,13 +459,13 @@ async function handleApplyCommand(
       projectRoot,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
 
   const primaryPreset = applyBundle.presets[applyBundle.presets.length - 1];
   if (!primaryPreset) {
-    log.error("No preset resolved for apply");
+    ui.danger("No preset resolved for apply");
     return;
   }
 
@@ -365,7 +474,7 @@ async function handleApplyCommand(
     : detectPlatforms(projectRoot);
 
   if (platforms.length === 0) {
-    log.warn("No platforms detected. Use --platform to specify.");
+    ui.warn("No platforms detected. Use --platform to specify.");
     return;
   }
 
@@ -376,6 +485,28 @@ async function handleApplyCommand(
     projectRoot,
     claude,
   );
+
+  // Strict plugin validation must happen BEFORE any files are written.
+  if (
+    !opts.dryRun &&
+    opts.strictPluginVersions &&
+    !opts.ignorePluginVersions &&
+    listPresetPlugins(applyBundle.primaryPresetId).length > 0
+  ) {
+    const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
+    const issues = validatePresetPluginConstraints(
+      applyBundle.primaryPresetId,
+      inventory,
+    );
+    if (issues.length > 0) {
+      for (const issue of issues) {
+        console.warn(ui.theme.warn(issue.message));
+      }
+      ui.danger("Plugin pin violations — apply aborted");
+      process.exitCode = 2;
+      return;
+    }
+  }
 
   const gitOrigin = getGitOrigin(projectRoot);
   if (gitOrigin) {
@@ -426,26 +557,35 @@ async function handleApplyCommand(
       });
       return;
     }
-    log.dim("(dry run — showing files that would be written)");
     for (const result of generated) {
-      log.info(`Platform: ${result.platformId}`);
+      const dryTag = ui.theme.muted("[dry run] ");
+      const verdict = ui.theme.success(
+        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(result.files.length, "file")}`,
+      );
+      console.log(dryTag + verdict);
       for (const file of result.files) {
-        log.dim(`  ${file.path}`);
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
       }
     }
     return;
   }
 
+  // Write files with per-platform progress handles.
   for (const result of generated) {
+    const spin = createProgress(`Applying ${result.platformId}…`);
     writeFiles(result.files, projectRoot);
-    log.success(`${result.platformId}: wrote ${result.files.length} file(s)`);
+    spin.succeed(
+      `${result.platformId} ${ui.icons.bullet} wrote ${formatCount(result.files.length, "file")}`,
+    );
     for (const file of result.files) {
-      log.dim(`  ${file.path}`);
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
     }
   }
 
+  // Non-strict plugin warnings (shown after successful file writes).
   if (
     !opts.ignorePluginVersions &&
+    !opts.strictPluginVersions &&
     listPresetPlugins(applyBundle.primaryPresetId).length > 0
   ) {
     const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
@@ -454,10 +594,7 @@ async function handleApplyCommand(
       inventory,
     );
     for (const issue of issues) {
-      console.warn(chalk.yellow(issue.message));
-    }
-    if (opts.strictPluginVersions && issues.length > 0) {
-      process.exitCode = 2;
+      console.warn(ui.theme.warn(issue.message));
     }
   }
 }
@@ -469,7 +606,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -478,7 +615,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
       printJson({ snapshots: [] });
       return;
     }
-    log.warn("No project record found. Run `harnessdeck project scan` first.");
+    ui.warn("No project record found. Run `harnessdeck project scan` first.");
     return;
   }
   const snapshots = listSnapshots(project.id);
@@ -487,7 +624,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
       printJson({ snapshots: [] });
       return;
     }
-    log.dim("No snapshots found.");
+    ui.dim("No snapshots found.");
     return;
   }
   if (format === "json") {
@@ -500,28 +637,39 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
     );
     return;
   }
-  for (const snapshot of snapshots) {
-    log.info(`${snapshot.id} ${snapshot.created_at} — ${snapshot.label}`);
-  }
+  const rows = snapshots.map((s) => ({
+    when: s.created_at,
+    id: s.id,
+    label: s.label ?? "",
+  }));
+  ui.table.print({
+    columns: [
+      { key: "when", header: "WHEN", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
+      { key: "id", header: "ID", width: 14, transform: (value) => ui.format.shortenId(String(value)) },
+      { key: "label", header: "LABEL", width: 36 },
+    ],
+    rows,
+    summary: `${rows.length} snapshots`,
+  });
 }
 
 function handleRevertCommand(snapshotId?: string): void {
   const db = getDb();
   initializeSchema(db);
   if (!snapshotId) {
-    log.error(
+    ui.danger(
       "Please provide a snapshot ID. Use `harnessdeck project history` to list them.",
     );
     return;
   }
   const snapshot = getSnapshot(snapshotId);
   if (!snapshot) {
-    log.error(`Snapshot not found: ${snapshotId}`);
+    ui.danger(`Snapshot not found: ${snapshotId}`);
     return;
   }
   const project = getProject(snapshot.project_id);
   if (!project) {
-    log.error("Snapshot project not found.");
+    ui.danger("Snapshot project not found.");
     return;
   }
   const files = Object.entries(snapshot.state.platform_files).flatMap(
@@ -532,8 +680,9 @@ function handleRevertCommand(snapshotId?: string): void {
       })),
   );
   writeFiles(files, project.local_path);
-  log.info(`Reverting to snapshot: ${snapshot.label} (${snapshot.created_at})`);
-  log.success(`Restored ${files.length} file(s) to ${project.local_path}`);
+  ui.success(
+    `Restored ${formatCount(files.length, "file")} from snapshot ${ui.theme.muted(ui.format.shortenId(snapshot.id))} (${ui.format.formatRelativeTime(snapshot.created_at)})`,
+  );
 }
 
 function handlePresetExportCommand(
@@ -544,15 +693,15 @@ function handlePresetExportCommand(
   initializeSchema(db);
   const filePath = opts.file ?? `${presetName}.harnessdeck.json`;
   exportToFile(presetName, filePath, { embedPlugins: opts.embedPlugins });
-  log.success(`Exported to ${filePath}`);
+  ui.success(`Exported preset ${ui.theme.accent(presetName)} ${ui.icons.hint} ${filePath}`);
 }
 
 function handlePresetImportCommand(file: string): void {
   const db = getDb();
   initializeSchema(db);
   const { preset, resources } = importFromFile(file);
-  log.success(
-    `Imported preset "${preset.name}" with ${resources.length} resources`,
+  ui.success(
+    `Imported preset ${ui.theme.accent(preset.name)} ${ui.icons.bullet} ${formatCount(resources.length, "resource")}`,
   );
 }
 
@@ -563,10 +712,21 @@ function handlePlatformListCommand(opts: { format?: string } = {}): void {
     printJson(platforms);
     return;
   }
-  for (const platform of platforms) {
-    const features = [...platform.supports].join(", ");
-    log.info(`${platform.id.padEnd(20)} ${platform.name.padEnd(20)} [${features}]`);
-  }
+  const rows = platforms.map((p) => ({
+    id: p.id,
+    name: p.name,
+    supports: [...p.supports].join(", "),
+  }));
+  ui.table.print({
+    columns: [
+      { key: "id", header: "ID", width: 20 },
+      { key: "name", header: "NAME", width: 20 },
+      { key: "supports", header: "SUPPORTS", width: 40 },
+    ],
+    rows,
+    summary: `${platforms.length} platforms`,
+    empty: "No platforms found.",
+  });
 }
 
 function handlePresetShowCommand(
@@ -578,7 +738,7 @@ function handlePresetShowCommand(
   const format = parseOutputFormat(opts.format);
   const preset = getPreset(name);
   if (!preset) {
-    log.error(`Preset not found: ${name}`);
+    ui.danger(`Preset not found: ${name}`);
     return;
   }
   const resources = getPresetResources(preset.id);
@@ -599,15 +759,38 @@ function handlePresetShowCommand(
     return;
   }
 
-  log.info(`${preset.name} — ${preset.description}`);
-  for (const r of resources) {
-    log.dim(`  ${r.type.padEnd(14)} ${r.name} (${r.id})`);
-  }
+  ui.panel({
+    title: ["PRESET", preset.name],
+    rows: [
+      ["Description", preset.description || "—"],
+      ["Tags", preset.tags.length > 0 ? preset.tags.join(", ") : "—"],
+      ["ID", ui.format.shortenId(preset.id)],
+      ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
+      ["Plugins", plugins.length === 0 ? "(none pinned)" : `${plugins.length}`],
+      ["Updated", ui.format.formatRelativeTime(preset.updated_at)],
+    ],
+  });
+
+  ui.subheader("RESOURCES");
+  ui.table.print({
+    columns: [
+      { key: "type", header: "TYPE", width: 14 },
+      { key: "name", header: "NAME", width: 26 },
+      { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
+    ],
+    rows: resources,
+    empty: "No resources in this preset.",
+  });
+
   if (plugins.length > 0) {
-    console.log(chalk.bold("Plugins"));
-    for (const p of plugins) {
-      log.dim(`  ${p.ref.padEnd(42)} ${p.version_constraint}`);
-    }
+    ui.subheader("PLUGINS");
+    ui.table.print({
+      columns: [
+        { key: "ref", header: "REF", width: 36 },
+        { key: "version_constraint", header: "CONSTRAINT", width: 20 },
+      ],
+      rows: plugins,
+    });
   }
 }
 
@@ -683,33 +866,28 @@ async function handlePluginInventoryListCommand(
   sortByRef(committed);
   sortByRef(effective);
 
-  const formatEnabled = (v: boolean) =>
-    v ? chalk.green("yes") : chalk.hex("#6b7280")("no");
+  ui.subheader("COMMITTED");
+  ui.table.print({
+    columns: [
+      { key: "ref", header: "REF", width: 42 },
+      { key: "version", header: "VERSION", width: 14 },
+      { key: "enabled", header: "ENABLED", width: 8, transform: (v) => (v === "true" ? "yes" : "no") },
+    ],
+    rows: committed,
+    empty: "(none)",
+  });
 
-  console.log(chalk.bold("Committed"));
-  if (committed.length === 0) {
-    console.log(chalk.hex("#6b7280")("  (none)"));
-  } else {
-    console.log(`  ${"ref".padEnd(42)} ${"version".padEnd(14)} enabled`);
-    for (const row of committed) {
-      console.log(
-        `  ${row.ref.padEnd(42)} ${row.version.padEnd(14)} ${formatEnabled(row.enabled)}`,
-      );
-    }
-  }
-
-  console.log();
-  console.log(chalk.bold("Effective"));
-  if (effective.length === 0) {
-    console.log(chalk.hex("#6b7280")("  (none)"));
-  } else {
-    console.log(`  ${"ref".padEnd(42)} ${"version".padEnd(14)} enabled    scope`);
-    for (const row of effective) {
-      console.log(
-        `  ${row.ref.padEnd(42)} ${row.version.padEnd(14)} ${formatEnabled(row.enabled)}    ${row.scope}`,
-      );
-    }
-  }
+  ui.subheader("EFFECTIVE");
+  ui.table.print({
+    columns: [
+      { key: "ref", header: "REF", width: 42 },
+      { key: "version", header: "VERSION", width: 14 },
+      { key: "enabled", header: "ENABLED", width: 8, transform: (v) => (v === "true" ? "yes" : "no") },
+      { key: "scope", header: "SCOPE", width: 12 },
+    ],
+    rows: effective,
+    empty: "(none)",
+  });
 }
 
 async function handlePluginInventoryShowCommand(
@@ -737,32 +915,30 @@ async function handlePluginInventoryShowCommand(
     return;
   }
 
-  console.log(`${chalk.bold("ref:")} ${ref}`);
-  if (declaredScopes.length > 0) {
-    console.log(
-      `${chalk.bold("Declared by scopes:")} ${declaredScopes.join(", ")}`,
-    );
-  } else {
-    console.log(
-      `${chalk.bold("Declared by scopes:")} ${chalk.hex("#6b7280")("(none)")}`,
-    );
-  }
-
   if (install == null) {
-    console.log(
-      chalk.hex("#f59e0b")("No matching entry in merged effective inventory."),
-    );
+    ui.panel({
+      title: ["PLUGIN", ref],
+      rows: [
+        ["Ref", ref],
+        ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
+        ["Effective install", ui.theme.warn("(not found in merged inventory)")],
+      ],
+    });
     return;
   }
 
-  console.log(chalk.bold("Effective install:"));
-  console.log(`  platform: ${install.platformId}`);
-  console.log(`  version:  ${install.version}`);
-  console.log(`  enabled:  ${install.enabled ? chalk.green("yes") : chalk.hex("#6b7280")("no")}`);
-  console.log(`  scope:    ${install.scope}`);
-  if (install.installPath) {
-    console.log(`  path:     ${install.installPath}`);
-  }
+  ui.panel({
+    title: ["PLUGIN", ref],
+    rows: [
+      ["Ref", ref],
+      ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
+      ["Platform", install.platformId],
+      ["Version", install.version],
+      ["Enabled", install.enabled ? "yes" : "no"],
+      ["Scope", install.scope],
+      ...(install.installPath ? [["Path", install.installPath] as [string, string]] : []),
+    ],
+  });
 }
 
 async function handlePluginInstalledListCommand(
@@ -775,16 +951,25 @@ async function handlePluginInstalledListCommand(
     printJson(result);
     return;
   }
-  if (result.installs.length === 0) {
-    log.dim("No plugins found.");
-  }
-  for (const install of result.installs) {
-    log.info(
-      `${install.platformId.padEnd(12)} ${install.ref.padEnd(36)} ${install.version.padEnd(12)} ${install.scope}`,
-    );
-  }
+  const rows = result.installs.map((install) => ({
+    platform: install.platformId,
+    ref: install.ref,
+    version: install.version,
+    scope: install.scope,
+  }));
+  ui.table.print({
+    columns: [
+      { key: "platform", header: "PLATFORM", width: 14 },
+      { key: "ref", header: "REF", width: 36 },
+      { key: "version", header: "VERSION", width: 14 },
+      { key: "scope", header: "SCOPE", width: 10 },
+    ],
+    rows,
+    summary: rows.length === 0 ? undefined : `${rows.length} plugins`,
+    empty: "No plugins found.",
+  });
   if (result.unsupported_platforms.length > 0) {
-    log.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
+    ui.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
   }
 }
 
@@ -793,6 +978,29 @@ async function handlePluginCheckCommand(
   opts: { platform?: string; scope?: string; refresh?: boolean; format?: string },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
+
+  // When --refresh is requested in human mode, use spinner + verdict instead of table.
+  if (opts.refresh && format === "human") {
+    const spin = createProgress("Checking plugins…");
+    const report = await checkPlugins({
+      ...pluginLifecycleBase(path, opts),
+      scopes: parseScopeFilter(opts.scope),
+      forceRefresh: true,
+    });
+    const outdated = report.summary.outdated;
+    const verdictMsg = `Refreshed ${formatCount(report.refreshed_sources.length, "source")} ${ui.icons.bullet} ${report.summary.current} current, ${outdated} outdated`;
+    if (outdated > 0) {
+      spin.fail(verdictMsg);
+    } else {
+      spin.succeed(verdictMsg);
+    }
+    for (const source of report.refreshed_sources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${source}`));
+    }
+    if (outdated > 0) process.exitCode = 1;
+    return;
+  }
+
   const report = await checkPlugins({
     ...pluginLifecycleBase(path, opts),
     scopes: parseScopeFilter(opts.scope),
@@ -803,20 +1011,39 @@ async function handlePluginCheckCommand(
     if (report.summary.outdated > 0) process.exitCode = 1;
     return;
   }
-  log.info(
-    `Plugins: ${report.summary.outdated} outdated, ${report.summary.current} current, ${report.summary.unknown} unknown`,
-  );
-  for (const row of report.results) {
-    const arrow =
-      row.status === "outdated" && row.latestVersion
-        ? ` → ${row.latestVersion}`
-        : "";
-    log.info(
-      `${row.platformId.padEnd(12)} ${row.ref.padEnd(36)} ${row.version}${arrow}  ${row.scope.padEnd(8)} ${row.status}`,
-    );
-  }
+  const rows = report.results.map((row) => ({
+    status: row.status,
+    platform: row.platformId,
+    ref: row.ref,
+    version: row.version,
+    latest: row.status === "outdated" && row.latestVersion ? row.latestVersion : row.version,
+    scope: row.scope,
+  }));
+  ui.table.print({
+    columns: [
+      {
+        key: "status",
+        header: "STATUS",
+        width: 10,
+        style: (value) =>
+          value === "outdated"
+            ? ui.theme.warn(value)
+            : value === "current"
+              ? ui.theme.success(value)
+              : ui.theme.muted(value),
+      },
+      { key: "platform", header: "PLATFORM", width: 14, style: (value) => ui.theme.muted(value) },
+      { key: "ref", header: "REF", width: 28 },
+      { key: "version", header: "VERSION", width: 12 },
+      { key: "latest", header: "LATEST", width: 12 },
+      { key: "scope", header: "SCOPE", width: 10 },
+    ],
+    rows,
+    summary: `${rows.length} plugins ${ui.icons.bullet} ${report.summary.current} current ${ui.icons.bullet} ${report.summary.outdated} outdated ${ui.icons.bullet} ${report.summary.unknown} unknown`,
+    empty: "No plugins found.",
+  });
   if (report.unsupported_platforms.length > 0) {
-    log.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
+    ui.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
   }
   if (report.summary.outdated > 0) process.exitCode = 1;
 }
@@ -832,6 +1059,20 @@ async function handlePluginUpdateCommand(
   },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
+  if (format === "json") {
+    const report = await updatePlugins({
+      ...pluginLifecycleBase(".", opts),
+      ref,
+      all: opts.all,
+      yes: opts.yes,
+      scopes: parseScopeFilter(opts.scope),
+    });
+    printJson(report);
+    if (report.summary.failed > 0) process.exitCode = 1;
+    return;
+  }
+
+  const spin = createProgress("Updating plugins…");
   const report = await updatePlugins({
     ...pluginLifecycleBase(".", opts),
     ref,
@@ -839,13 +1080,25 @@ async function handlePluginUpdateCommand(
     yes: opts.yes,
     scopes: parseScopeFilter(opts.scope),
   });
-  if (format === "json") {
-    printJson(report);
-    if (report.summary.failed > 0) process.exitCode = 1;
-    return;
-  }
-  for (const row of report.results) {
-    log.info(`${row.ref}: ${row.status} — ${row.message}`);
+
+  if (report.results.length === 0) {
+    spin.stop();
+    ui.info("No plugins to update.");
+  } else {
+    const updatedCount = report.summary.updated;
+    const failedCount = report.summary.failed;
+    const verdictMsg =
+      failedCount > 0
+        ? `${formatCount(updatedCount, "plugin")} updated, ${formatCount(failedCount, "failed")}`
+        : `${formatCount(updatedCount, "plugin")} updated`;
+    if (failedCount > 0) {
+      spin.fail(verdictMsg);
+    } else {
+      spin.succeed(verdictMsg);
+    }
+    for (const row of report.results) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${row.ref}: ${row.status} — ${row.message}`));
+    }
   }
   if (report.summary.failed > 0) process.exitCode = 1;
 }
@@ -854,15 +1107,19 @@ async function handlePluginRefreshCommand(
   opts: { platform?: string; format?: string },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
-  if (format === "json") {
-    printJson(result);
+  if (format === "human") {
+    const spin = createProgress("Refreshing plugin sources…");
+    const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
+    spin.succeed(
+      `Refreshed ${formatCount(result.refreshed_sources.length, "source")}`,
+    );
+    for (const source of result.refreshed_sources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${source}`));
+    }
     return;
   }
-  log.success(`Refreshed ${result.refreshed_sources.length} source(s)`);
-  for (const source of result.refreshed_sources) {
-    log.dim(`  ${source}`);
-  }
+  const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
+  printJson(result);
 }
 
 async function handleProjectStatusCommand(
@@ -885,9 +1142,15 @@ async function handleProjectStatusCommand(
       });
       return;
     }
-    console.log(`Project root:  ${projectRoot}`);
-    console.log(`Git origin:    (none)`);
-    console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
+    ui.panel({
+      title: ["PROJECT"],
+      rows: [
+        ["Root", projectRoot],
+        ["Git origin", "(none)"],
+        ["Platforms", detected.join(", ") || "(none detected)"],
+        ["Plugins", "(not tracked — no git origin)"],
+      ],
+    });
     return;
   }
 
@@ -925,37 +1188,36 @@ async function handleProjectStatusCommand(
     return;
   }
 
-  console.log(`Project root:  ${projectRoot}`);
-  console.log(`Git origin:    ${gitOrigin}`);
-  console.log(`Platforms:     ${detected.join(", ") || "(none detected)"}`);
-
-  if (!project) {
-    return;
-  }
-
-  console.log(`Applied presets: ${presets.length}`);
-  console.log(`Snapshots:       ${snapshots.length}`);
-
-  if (detected.includes("claude-code")) {
-    const inventory = getProjectPluginState(project.id);
-    if (inventory) {
-      console.log(
-        `Plugins (claude-code): ${inventory.committed.length} committed, ${inventory.effective.length} effective`,
-      );
-    }
-  }
-
+  let pluginsLine = "(none detected)";
   try {
     const plugins = await listPlugins({ projectRoot, homeRoot: homedir() });
     if (plugins.installs.length > 0) {
       const check = await checkPlugins({ projectRoot, homeRoot: homedir() });
-      console.log(
-        `Plugins:         ${plugins.installs.length} installed (${check.summary.outdated} outdated)`,
-      );
+      pluginsLine = `${plugins.installs.length} installed (${check.summary.outdated} outdated)`;
     }
   } catch {
     // best-effort
   }
+
+  if (detected.includes("claude-code") && project) {
+    const inventory = getProjectPluginState(project.id);
+    if (inventory) {
+      pluginsLine = `${inventory.committed.length} committed, ${inventory.effective.length} effective`;
+    }
+  }
+
+  const rows: [string, string][] = [
+    ["Root", projectRoot],
+    ["Git origin", gitOrigin],
+    ["Platforms", detected.join(", ") || "(none detected)"],
+  ];
+  if (project) {
+    rows.push(["Applied presets", `${presets.length}`]);
+    rows.push(["Snapshots", `${snapshots.length}`]);
+  }
+  rows.push(["Plugins", pluginsLine]);
+
+  ui.panel({ title: ["PROJECT"], rows });
 }
 
 async function handleInitCommand(opts: {
@@ -1017,22 +1279,26 @@ async function handleInitCommand(opts: {
     getAllPlatforms().map((platform) => [platform.id, platform.name]),
   );
 
-  log.success(chalk.bold("Harnessdeck initialized"));
-  printInitMeta("Database", getDbPath());
-  printInitMeta(
-    "Built-in Presets",
-    seeded > 0
-      ? `seeded ${formatCount(seeded, "built-in preset")}`
-      : "already up to date",
-  );
+  ui.success("Harnessdeck initialized");
+  console.log("");
+  ui.kvBlock([
+    { key: "Database", value: getDbPath() },
+    {
+      key: "Built-in Presets",
+      value:
+        seeded > 0
+          ? `seeded ${formatCount(seeded, "built-in preset")}`
+          : "already up to date",
+    },
+  ]);
 
   if (homeDefaults.detected.length === 0) {
-    printInitMeta(
-      "Home",
-      chalk.hex("#9ca3af")("no default folders discovered"),
-    );
+    console.log("");
+    ui.dim("no default folders discovered");
   } else {
-    log.info(chalk.bold("Home defaults overview"));
+    console.log("");
+    ui.subheader("HOME DEFAULTS");
+    console.log("");
     for (const result of homeDefaults.results) {
       const folder = homeFolderLabel(result.discoveredPaths);
       const foundSummary = summarizeResourceTypes(result.resources);
@@ -1042,29 +1308,36 @@ async function handleInitCommand(opts: {
           ? `${formatCount(importedCount, "new resource")} imported`
           : "already tracked";
 
+      const platformName = platformNames.get(result.platformId) ?? result.platformId;
       console.log(
-        `  ${platformBadge(platformNames.get(result.platformId) ?? result.platformId)} ${folderAccent(folder)}`,
+        `  ${ui.theme.badge(platformName)} ${ui.theme.accent(folder)}`,
       );
-      printInitDetail(
-        "Contains",
-        chalk.hex("#60a5fa")(
-          relativeDiscoveredPaths(result.discoveredPaths, folder),
-        ),
-      );
-      printInitDetail(
-        "Found",
-        `${chalk.bold(formatCount(result.resources.length, "resource"))}${foundSummary ? ` ${chalk.hex("#f472b6")(`(${foundSummary})`)}` : ""}`,
-      );
-      printInitDetail("Status", statusAccent(importedSummary, importedCount));
+      ui.kvBlock([
+        {
+          key: "Contains",
+          value: relativeDiscoveredPaths(result.discoveredPaths, folder),
+        },
+        {
+          key: "Found",
+          value: `${formatCount(result.resources.length, "resource")}${foundSummary ? ` (${foundSummary})` : ""}`,
+        },
+        {
+          key: "Status",
+          value: importedCount > 0 ? ui.theme.warn(importedSummary) : ui.theme.success(importedSummary),
+        },
+      ], { indent: 4, keyWidth: 10 });
     }
   }
 
   if (savedHarnessPreference) {
-    printInitMeta("Main Harness", savedHarnessPreference.main_harness);
-    printInitMeta(
-      "Aliases",
-      savedHarnessPreference.alias_harnesses.join(", ") || "(none)",
-    );
+    console.log("");
+    ui.kvBlock([
+      { key: "MAIN HARNESS", value: savedHarnessPreference.main_harness },
+      {
+        key: "ALIASES",
+        value: savedHarnessPreference.alias_harnesses.join(", ") || "(none)",
+      },
+    ], { keyWidth: 14 });
   }
 }
 
@@ -1082,7 +1355,7 @@ async function handleHarnessSetCommand(opts: {
     current: getHarnessPreference(),
   });
   const saved = setHarnessPreference(selection);
-  log.success(`Saved harness preference: ${saved.main_harness}`);
+  ui.success(`Set harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
 }
 
 function handleHarnessStatusCommand(opts: { format?: string }): void {
@@ -1100,13 +1373,16 @@ function handleHarnessStatusCommand(opts: { format?: string }): void {
     return;
   }
   if (!preference) {
-    log.dim("No harness preference configured.");
+    ui.dim("No harness preference configured.");
     return;
   }
-  console.log(`Main harness:   ${preference.main_harness}`);
-  console.log(
-    `Alias harnesses: ${preference.alias_harnesses.join(", ") || "(none)"}`,
-  );
+  ui.panel({
+    title: ["HARNESS"],
+    rows: [
+      ["Main harness", preference.main_harness],
+      ["Alias harnesses", preference.alias_harnesses.join(", ") || "(none)"],
+    ],
+  });
 }
 
 async function handleHarnessProjectSetCommand(opts: {
@@ -1121,7 +1397,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
 
@@ -1150,7 +1426,7 @@ async function handleHarnessProjectSetCommand(opts: {
         }
       : {}),
   });
-  log.success(`Saved project harness preference: ${saved.main_harness}`);
+  ui.success(`Set project harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
 }
 
 function handleProjectDriftCommand(opts: {
@@ -1163,7 +1439,7 @@ function handleProjectDriftCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -1178,7 +1454,7 @@ function handleProjectDriftCommand(opts: {
       });
       return;
     }
-    log.warn("No project record found. Run `harnessdeck project apply` first.");
+    ui.warn("No project record found. Run `harnessdeck project apply` first.");
     return;
   }
 
@@ -1192,19 +1468,30 @@ function handleProjectDriftCommand(opts: {
     return;
   }
   if (!report.snapshot_id) {
-    log.dim("No snapshots found. Drift detection requires a prior apply or sync.");
+    ui.dim("No snapshots found. Drift detection requires a prior apply or sync.");
     return;
   }
   if (!report.has_drift) {
-    log.success("No drift detected since last snapshot.");
+    ui.success("No drift detected since last snapshot.");
     return;
   }
-  log.warn(
-    `Drift detected (${report.changes.length} change(s)) since snapshot ${report.snapshot_id}`,
+  console.log(`DRIFT  ${projectRoot}`);
+  console.log("");
+  const changeEntries = report.changes.map((c) => ({
+    // Drift reports "deleted", but the shared renderer vocabulary uses "removed".
+    kind:
+      c.type === "deleted"
+        ? ("removed" as const)
+        : c.type,
+    scope: c.type,
+    key: c.path,
+    detail: c.platform ?? "",
+  }));
+  console.log(ui.renderChangeList(changeEntries));
+  console.log("");
+  console.log(
+    `${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
   );
-  for (const change of report.changes) {
-    log.info(`  ${change.type.padEnd(8)} ${change.path}`);
-  }
   process.exitCode = 1;
 }
 
@@ -1222,16 +1509,31 @@ function handlePresetDiffCommand(
       printJson(report);
       return;
     }
-    log.info(`Diff: ${report.left} ↔ ${report.right}`);
     if (report.changes.length === 0) {
-      log.success("No differences.");
+      ui.success("No differences.");
       return;
     }
-    for (const change of report.changes) {
-      log.info(`  [${change.kind}] ${change.key}: ${change.change}`);
-    }
+
+    const changeEntries = report.changes.map((c) => ({
+      kind: (c.change === "reordered" ? "modified" : c.change) as "added" | "removed" | "modified",
+      scope: c.kind,
+      key: c.key,
+      detail: c.change,
+    }));
+
+    const added = changeEntries.filter((c) => c.kind === "added").length;
+    const removed = changeEntries.filter((c) => c.kind === "removed").length;
+    const modified = changeEntries.filter((c) => c.kind === "modified").length;
+
+    console.log(`DIFF  ${report.left} ↔ ${report.right}`);
+    console.log("");
+    console.log(ui.renderChangeList(changeEntries));
+    console.log("");
+    console.log(
+      `${report.changes.length} changes ${ui.icons.bullet} ${added} added ${ui.icons.bullet} ${removed} removed ${ui.icons.bullet} ${modified} modified`,
+    );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1249,13 +1551,18 @@ function handlePresetValidateCommand(
     return;
   }
   if (report.valid && report.issues.length === 0) {
-    log.success(`Preset "${report.preset}" is valid.`);
+    ui.success(`Preset "${report.preset}" is valid.`);
     return;
   }
-  for (const issue of report.issues) {
-    const label = issue.severity === "error" ? chalk.red("error") : chalk.yellow("warn");
-    log.info(`  ${label} ${issue.code}: ${issue.message}`);
-  }
+  ui.table.print({
+    columns: [
+      { key: "severity", header: "SEVERITY", width: 10 },
+      { key: "code", header: "CODE", width: 28 },
+      { key: "message", header: "MESSAGE", width: 40 },
+    ],
+    rows: report.issues,
+    summary: report.valid ? `${report.preset}: valid (warnings only)` : `${report.preset}: invalid`,
+  });
   if (!report.valid) {
     process.exitCode = 1;
   }
@@ -1274,11 +1581,11 @@ async function handlePresetFromProjectCommand(
       projectRoot: resolve(opts.project),
       platform: opts.platform,
     });
-    log.success(
-      `Created preset "${result.preset.name}" with ${result.imported_count} resource(s)`,
+    ui.success(
+      `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1295,24 +1602,38 @@ async function handleProjectSyncCommand(
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
   try {
-    const result = await syncProject({
-      projectRoot,
-      dryRun: opts.dryRun,
-      forceShiftReference: opts.forceShiftReference,
-    });
+    const result = await (async () => {
+      if (format === "human" && !opts.dryRun) {
+        const spin = createProgress("Syncing…");
+        const r = await syncProject({
+          projectRoot,
+          dryRun: false,
+          forceShiftReference: opts.forceShiftReference,
+        });
+        spin.succeed(
+          `Synced ${r.platforms_synced.join(", ") || "(none)"} from ${r.main_harness} ${ui.icons.bullet} ${formatCount(r.files_written, "file")}`,
+        );
+        return r;
+      }
+      return syncProject({
+        projectRoot,
+        dryRun: opts.dryRun,
+        forceShiftReference: opts.forceShiftReference,
+      });
+    })();
     if (format === "json") {
       printJson(result);
       return;
     }
     if (opts.dryRun) {
-      log.dim("(dry run — no files written)");
+      const dryTag = ui.theme.muted("[dry run] ");
+      const verdict = ui.theme.success(
+        `${ui.icons.success} Synced ${result.platforms_synced.join(", ") || "(none)"} from ${result.main_harness} ${ui.icons.bullet} ${formatCount(result.files_written, "file")}`,
+      );
+      console.log(dryTag + verdict);
     }
-    log.success(
-      `Synced ${result.platforms_synced.join(", ") || "(none)"} from main harness ${result.main_harness}`,
-    );
-    log.info(`Files written: ${result.files_written}`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1335,10 +1656,9 @@ function handleMigrateExportCommand(
       printJson({ ...manifest, output: file });
       return;
     }
-    log.success(`Exported migration archive to ${file}`);
-    log.info(`Presets: ${manifest.preset_count}`);
+    ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.preset_count} presets`);
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1355,11 +1675,11 @@ function handleMigrateImportCommand(
       printJson(result);
       return;
     }
-    log.success(
-      `Imported ${result.presets_imported} preset(s) from migration archive`,
+    ui.success(
+      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.presets_imported, "preset")}`,
     );
   } catch (err) {
-    log.error(err instanceof Error ? err.message : String(err));
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -1373,7 +1693,7 @@ function handleHarnessProjectStatusCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    log.error("Not a git repository.");
+    ui.danger("Not a git repository.");
     return;
   }
 
@@ -1392,17 +1712,18 @@ function handleHarnessProjectStatusCommand(opts: {
   }
 
   if (!config) {
-    log.dim("No project harness preference configured.");
+    ui.dim("No project harness preference configured.");
     return;
   }
 
-  console.log(`Main harness:   ${config.main_harness}`);
-  console.log(
-    `Alias harnesses: ${config.alias_harnesses.join(", ") || "(none)"}`,
-  );
-  console.log(
-    `Materialization: ${config.materialization_strategy}`,
-  );
+  ui.panel({
+    title: ["HARNESS", "project"],
+    rows: [
+      ["Main harness", config.main_harness],
+      ["Alias harnesses", config.alias_harnesses.join(", ") || "(none)"],
+      ["Materialization", config.materialization_strategy],
+    ],
+  });
 }
 
 // ── init ────────────────────────────────────────────────────────────────
@@ -1452,7 +1773,7 @@ presetCmd
         description: opts.description,
         tags,
       });
-      log.success(`Preset created: ${preset.name} (${preset.id})`);
+      ui.success(`Created preset ${ui.theme.accent(preset.name)}`);
     },
   );
 
@@ -1469,13 +1790,15 @@ presetCmd
       printJson(presets);
       return;
     }
-    if (presets.length === 0) {
-      log.dim("No presets found.");
-      return;
-    }
-    for (const p of presets) {
-      log.info(`${p.name} — ${p.description || "(no description)"}`);
-    }
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 18 },
+        { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
+      ],
+      rows: presets,
+      summary: `${presets.length} presets ${ui.icons.bullet} run \`harnessdeck preset show <name>\` for details`,
+      empty: "No presets found.",
+    });
   });
 
 presetCmd
@@ -1496,26 +1819,26 @@ presetCmd
     initializeSchema(db);
     const preset = getPreset(presetName);
     if (!preset) {
-      log.error(`Preset not found: ${presetName}`);
+      ui.danger(`Preset not found: ${presetName}`);
       return;
     }
     const resourceResult = resolveResource(resourceSelector);
     if (resourceResult.status !== "found") {
-      log.error(
+      ui.danger(
         resourceResult.status === "ambiguous"
           ? `Ambiguous resource name: ${resourceSelector}`
           : `Resource not found: ${resourceSelector}`,
       );
       if (resourceResult.status === "ambiguous") {
         for (const match of resourceResult.matches) {
-          log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
         }
       }
       return;
     }
     addResourceToPreset(preset.id, resourceResult.resource.id);
-    log.success(
-      `Added resource ${resourceResult.resource.name} to preset ${preset.name}`,
+    ui.success(
+      `Added ${resourceResult.resource.type} ${ui.theme.accent(`"${resourceResult.resource.name}"`)} to preset ${ui.theme.accent(preset.name)}`,
     );
   });
 
@@ -1528,26 +1851,26 @@ presetCmd
     initializeSchema(db);
     const preset = getPreset(presetName);
     if (!preset) {
-      log.error(`Preset not found: ${presetName}`);
+      ui.danger(`Preset not found: ${presetName}`);
       return;
     }
     const resourceResult = resolveResource(resourceSelector);
     if (resourceResult.status !== "found") {
-      log.error(
+      ui.danger(
         resourceResult.status === "ambiguous"
           ? `Ambiguous resource name: ${resourceSelector}`
           : `Resource not found: ${resourceSelector}`,
       );
       if (resourceResult.status === "ambiguous") {
         for (const match of resourceResult.matches) {
-          log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
         }
       }
       return;
     }
     removeResourceFromPreset(preset.id, resourceResult.resource.id);
-    log.success(
-      `Removed resource ${resourceResult.resource.name} from preset ${preset.name}`,
+    ui.success(
+      `Removed ${resourceResult.resource.type} ${ui.theme.accent(`"${resourceResult.resource.name}"`)} from preset ${ui.theme.accent(preset.name)}`,
     );
   });
 
@@ -1570,19 +1893,19 @@ presetCmd
       initializeSchema(db);
       const preset = getPreset(presetName);
       if (!preset) {
-        log.error(`Preset not found: ${presetName}`);
+        ui.danger(`Preset not found: ${presetName}`);
         return;
       }
       try {
         parseVersionConstraint(opts.version);
       } catch (err) {
-        log.error(err instanceof Error ? err.message : String(err));
+        ui.danger(err instanceof Error ? err.message : String(err));
         return;
       }
       addPluginToPreset(preset.id, ref, opts.version);
       syncClaudePresetPluginsAfterAdd(preset, ref, opts.version);
-      log.success(
-        `Added plugin pin ${ref} (${opts.version}) to preset ${preset.name}`,
+      ui.success(
+        `Pinned ${ui.theme.accent(ref)} (${opts.version}) on preset ${ui.theme.accent(preset.name)}`,
       );
     },
   );
@@ -1597,12 +1920,12 @@ presetCmd
     initializeSchema(db);
     const preset = getPreset(presetName);
     if (!preset) {
-      log.error(`Preset not found: ${presetName}`);
+      ui.danger(`Preset not found: ${presetName}`);
       return;
     }
     removePluginFromPreset(preset.id, ref);
     syncClaudePresetPluginsAfterRemove(preset, ref);
-    log.success(`Removed plugin pin ${ref} from preset ${preset.name}`);
+    ui.success(`Removed plugin pin ${ui.theme.accent(ref)} from preset ${ui.theme.accent(preset.name)}`);
   });
 
 presetCmd
@@ -1612,9 +1935,9 @@ presetCmd
     const db = getDb();
     initializeSchema(db);
     if (deletePreset(name)) {
-      log.success(`Preset deleted: ${name}`);
+      ui.success(`Deleted preset ${ui.theme.accent(name)}`);
     } else {
-      log.error(`Preset not found: ${name}`);
+      ui.danger(`Preset not found: ${name}`);
     }
   });
 
@@ -1701,7 +2024,7 @@ resourceCmd
     const format = parseOutputFormat(opts.format);
     const type = opts.type as ResourceType | undefined;
     if (type && !RESOURCE_TYPES.includes(type)) {
-      log.error(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+      ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
       return;
     }
     const resources = listResources({ type, search: opts.search });
@@ -1709,13 +2032,17 @@ resourceCmd
       printJson(resources);
       return;
     }
-    if (resources.length === 0) {
-      log.dim("No resources found.");
-      return;
-    }
-    for (const r of resources) {
-      log.info(`${r.id} ${r.type.padEnd(14)} ${r.name}`);
-    }
+    ui.table.print({
+      columns: [
+        { key: "type", header: "TYPE", width: 14 },
+        { key: "name", header: "NAME", width: 28 },
+        { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
+        { key: "updated_at", header: "UPDATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
+      ],
+      rows: resources,
+      summary: resources.length === 0 ? undefined : `${resources.length} resources`,
+      empty: "No resources found.\n  → Run `harnessdeck project scan` to import some.",
+    });
   });
 
 resourceCmd
@@ -1740,24 +2067,37 @@ resourceCmd
       return;
     }
     if (result.status === "not_found") {
-      log.error(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resource}`);
       return;
     }
     if (result.status === "ambiguous") {
-      log.error(`Ambiguous resource name: ${resource}`);
-      for (const match of result.matches) {
-        log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
-      }
+      ui.danger(`Ambiguous resource selector: ${resource}`);
+      ui.table.print({
+        columns: [
+          { key: "type", header: "TYPE", width: 14 },
+          { key: "name", header: "NAME", width: 26 },
+          { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
+        ],
+        rows: result.matches,
+      });
+      process.exitCode = 1;
       return;
     }
     const r = result.resource;
-    console.log(`Type:        ${r.type}`);
-    console.log(`Name:        ${r.name}`);
-    console.log(`Description: ${r.description}`);
-    console.log(`Source:      ${r.source}`);
-    console.log(`Created:     ${r.created_at}`);
-    console.log(`Metadata:    ${JSON.stringify(r.metadata, null, 2)}`);
-    console.log(`\n--- Content ---\n${r.content}`);
+    ui.panel({
+      title: ["RESOURCE", r.name],
+      rows: [
+        ["Type", r.type],
+        ["Name", r.name],
+        ["Description", r.description || "—"],
+        ["Source", r.source],
+        ["ID", r.id],
+        ["Created", r.created_at],
+        ["Metadata", JSON.stringify(r.metadata)],
+      ],
+    });
+    ui.subheader("CONTENT");
+    console.log(r.content);
   });
 
 resourceCmd
@@ -1768,20 +2108,20 @@ resourceCmd
     initializeSchema(db);
     const result = resolveResource(resource);
     if (result.status === "not_found") {
-      log.error(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resource}`);
       return;
     }
     if (result.status === "ambiguous") {
-      log.error(`Ambiguous resource name: ${resource}`);
+      ui.danger(`Ambiguous resource name: ${resource}`);
       for (const match of result.matches) {
-        log.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+        ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
       }
       return;
     }
     if (deleteResource(result.resource.id)) {
-      log.success(`Deleted resource: ${result.resource.name} (${result.resource.id})`);
+      ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
     } else {
-      log.error(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resource}`);
     }
   });
 
