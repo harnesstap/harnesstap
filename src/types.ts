@@ -116,6 +116,7 @@ export interface ClaudePresetConfig {
 export interface Preset {
   id: string;
   name: string;
+  version: string;
   description: string;
   tags: string[];
   claude?: ClaudePresetConfig;
@@ -127,6 +128,13 @@ export interface Preset {
 export interface PresetResource {
   preset_id: string;
   resource_id: string;
+  order: number;
+}
+
+export interface PresetDependency {
+  preset_id: string;
+  dependency_name: string;
+  version_constraint: string;
   order: number;
 }
 
@@ -227,6 +235,8 @@ export interface ExportBundle {
   plugins: ExportBundlePresetPluginPin[];
   /** Plugin trees inlined in the bundle file. */
   embedded_plugins: ExportBundleEmbeddedPlugin[];
+  /** Preset composition dependencies (name + version constraint). */
+  dependencies?: Array<Omit<PresetDependency, "preset_id">>;
 }
 
 /** Plugin pin carried in bundles (non-embedded). */

@@ -34,6 +34,9 @@ import {
   getPresetResources,
   syncClaudePresetPluginsAfterAdd,
   syncClaudePresetPluginsAfterRemove,
+  addDependencyToPreset,
+  listPresetDependencies,
+  removeDependencyFromPreset,
 } from "./models/preset.js";
 import {
   upsertProject,
@@ -51,7 +54,7 @@ import { getAllPlatforms } from "./platforms/registry.js";
 import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import type { Resource, ResourceType, SnapshotState } from "./types.js";
+import type { Preset, Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import {
   declaringScopesForClaudePlugin,
@@ -114,6 +117,10 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
   ).map((type) => formatCount(counts.get(type) ?? 0, type));
 
   return summary.join(", ");
+}
+
+function formatPresetLabel(preset: Pick<Preset, "name" | "version">): string {
+  return `${preset.name}@${preset.version}`;
 }
 
 function homeFolderLabel(discoveredPaths: string[]): string {
@@ -862,11 +869,13 @@ function handlePresetShowCommand(
   }
   const resources = getPresetResources(preset.id);
   const plugins = listPresetPlugins(preset.id);
+  const dependencies = listPresetDependencies(preset.id);
 
   if (format === "json") {
     printJson({
       id: preset.id,
       name: preset.name,
+      version: preset.version,
       description: preset.description,
       tags: preset.tags,
       ...(preset.claude ? { claude: preset.claude } : {}),
@@ -874,12 +883,13 @@ function handlePresetShowCommand(
       updated_at: preset.updated_at,
       resources,
       plugins,
+      dependencies,
     });
     return;
   }
 
   ui.panel({
-    title: ["PRESET", preset.name],
+    title: ["PRESET", formatPresetLabel(preset)],
     rows: [
       ["Description", preset.description || "—"],
       ["Tags", preset.tags.length > 0 ? preset.tags.join(", ") : "—"],
@@ -901,6 +911,16 @@ function handlePresetShowCommand(
     empty: "No resources in this preset.",
   });
 
+  if (dependencies.length > 0) {
+    ui.subheader("DEPENDENCIES");
+    ui.table.print({
+      columns: [
+        { key: "dependency_name", header: "NAME", width: 26 },
+        { key: "version_constraint", header: "CONSTRAINT", width: 20 },
+      ],
+      rows: dependencies,
+    });
+  }
   if (plugins.length > 0) {
     ui.subheader("PLUGINS");
     ui.table.print({
@@ -1879,20 +1899,22 @@ presetCmd
   .argument("<name>", "Preset name")
   .option("-d, --description <text>", "Preset description")
   .option("--tags <tags>", "Comma-separated tags")
+  .option("--version <semver>", "Preset version (semver)", "1.0.0")
   .action(
     (
       name: string,
-      opts: { description?: string; tags?: string },
+      opts: { description?: string; tags?: string; version?: string },
     ) => {
       const db = getDb();
       initializeSchema(db);
       const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
       const preset = createPreset({
         name,
+        version: opts.version,
         description: opts.description,
         tags,
       });
-      ui.success(`Created preset ${ui.theme.accent(preset.name)}`);
+      ui.success(`Created preset ${ui.theme.accent(formatPresetLabel(preset))}`);
     },
   );
 
@@ -1909,12 +1931,16 @@ presetCmd
       printJson(presets);
       return;
     }
+    const rows = presets.map((preset) => ({
+      ...preset,
+      label: formatPresetLabel(preset),
+    }));
     ui.table.print({
       columns: [
-        { key: "name", header: "NAME", width: 18 },
+        { key: "label", header: "NAME", width: 26 },
         { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
       ],
-      rows: presets,
+      rows,
       summary: `${presets.length} presets ${ui.icons.bullet} run \`harnessdeck preset show <name>\` for details`,
       empty: "No presets found.",
     });
@@ -2048,15 +2074,83 @@ presetCmd
   });
 
 presetCmd
+  .command("add-dependency")
+  .argument("<preset>", "Preset name, name@version selector, or ID")
+  .argument("<dependency>", "Dependency preset name")
+  .requiredOption("--version <constraint>", "Version constraint (semver version or valid range)")
+  .description("Add a preset dependency with a version constraint")
+  .action((presetSelector: string, dependencyName: string, opts: { version: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const preset = getPreset(presetSelector);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetSelector}`);
+        return;
+      }
+      parseVersionConstraint(opts.version);
+      addDependencyToPreset(preset.id, dependencyName, opts.version);
+      ui.success(
+        `Added dependency ${ui.theme.accent(dependencyName)} (${opts.version}) to preset ${ui.theme.accent(formatPresetLabel(preset))}`,
+      );
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+presetCmd
+  .command("remove-dependency")
+  .argument("<preset>", "Preset name, name@version selector, or ID")
+  .argument("<dependency>", "Dependency preset name to remove")
+  .description("Remove a preset dependency")
+  .action((presetSelector: string, dependencyName: string) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const preset = getPreset(presetSelector);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetSelector}`);
+        return;
+      }
+      if (removeDependencyFromPreset(preset.id, dependencyName)) {
+        ui.success(
+          `Removed dependency ${ui.theme.accent(dependencyName)} from preset ${ui.theme.accent(formatPresetLabel(preset))}`,
+        );
+      } else {
+        process.exitCode = 1;
+        ui.danger(
+          `Dependency "${dependencyName}" not found on preset ${formatPresetLabel(preset)}`,
+        );
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+presetCmd
   .command("delete")
-  .argument("<name>", "Preset name or ID")
+  .argument("<name>", "Preset name, name@version selector, or ID")
   .action((name: string) => {
     const db = getDb();
     initializeSchema(db);
-    if (deletePreset(name)) {
-      ui.success(`Deleted preset ${ui.theme.accent(name)}`);
-    } else {
-      ui.danger(`Preset not found: ${name}`);
+    try {
+      const preset = getPreset(name);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${name}`);
+        return;
+      }
+      if (!deletePreset(preset.id)) {
+        throw new Error(`Failed to delete preset ${formatPresetLabel(preset)}`);
+      }
+      ui.success(`Deleted preset ${ui.theme.accent(formatPresetLabel(preset))}`);
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
 
