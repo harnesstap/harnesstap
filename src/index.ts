@@ -2276,7 +2276,7 @@ async function handleCloudLoginCommand(profileName: string | undefined, opts: { 
 
 async function handleCloudWhoamiCommand(opts: { profile?: string; format?: string } = {}): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const { profileName, profile } = await getCloudProfile(opts.profile);
+  const { profile } = await getCloudProfile(opts.profile);
   if (!profile || !profile.accessToken) {
     if (format === "json") {
       printJson({});

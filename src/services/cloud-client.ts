@@ -30,7 +30,8 @@ export async function requestDeviceCode(baseUrl: string, opts?: { client_id?: st
 
   const resp = await fetch(url, { method: "POST", body });
   if (!resp.ok) throw new Error(`Failed to request device code: ${resp.status}`);
-  return resp.json();
+  const data = await resp.json() as DeviceCodeResponse;
+  return data;
 }
 
 export async function pollDeviceToken(baseUrl: string, deviceCode: string, opts?: { interval?: number; maxPolls?: number; client_id?: string; }) : Promise<DeviceTokenResponse> {
@@ -46,8 +47,8 @@ export async function pollDeviceToken(baseUrl: string, deviceCode: string, opts?
 
     const resp = await fetch(url, { method: "POST", body });
     if (resp.ok) {
-      const data = await resp.json();
-      return data as DeviceTokenResponse;
+      const data = await resp.json() as DeviceTokenResponse;
+      return data;
     }
 
     // non-ok: read error and decide
@@ -92,8 +93,8 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
 
     const resp = await fetch(url, { method: "POST", body });
     if (!resp.ok) throw new Error(`Failed to refresh token: ${resp.status}`);
-    const data = await resp.json();
-    const expires_in = (data.expires_in as number) || 3600;
+    const data = await resp.json() as { access_token: string; refresh_token?: string; expires_in?: number };
+    const expires_in = data.expires_in ?? 3600;
     state.token = {
       access_token: data.access_token,
       refresh_token: data.refresh_token || state.token.refresh_token,
@@ -113,26 +114,32 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     async whoami() {
       const res = await authFetch(`${state.baseUrl}/me`);
       if (!res.ok) throw new Error(`whoami failed: ${res.status}`);
-      return res.json();
+      const data = await res.json() as Record<string, unknown>;
+      return data;
     },
+
     async listOrgs() {
       const res = await authFetch(`${state.baseUrl}/orgs`);
       if (!res.ok) throw new Error(`listOrgs failed: ${res.status}`);
-      return res.json();
+      const data = await res.json() as Record<string, unknown>[];
+      return data;
     },
+
     async searchLibraries(query: string) {
       // ensure token automatically inside authFetch
       const q = encodeURIComponent(query);
       const res = await authFetch(`${state.baseUrl}/libraries/search?query=${q}`);
       if (!res.ok) throw new Error(`searchLibraries failed: ${res.status}`);
-      return res.json();
+      const data = await res.json() as Record<string, unknown>[];
+      return data;
     },
+
     async downloadLibraryBundle(id: string, version?: string) {
       // Resolve latest version when omitted
       if (!version) {
         const metaRes = await fetch(`${state.baseUrl}/libraries/${id}/meta`);
         if (!metaRes.ok) throw new Error(`Failed to get library meta: ${metaRes.status}`);
-        const meta = await metaRes.json();
+        const meta = await metaRes.json() as { latest_version: string };
         version = meta.latest_version as string;
       }
       const res = await fetch(`${state.baseUrl}/libraries/${id}/bundle/${version}`);
@@ -149,7 +156,8 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       else form.set("bundle", bundleJson);
       const res = await authFetch(`${state.baseUrl}/presets/publish`, { method: "POST", body: form as any });
       if (!res.ok) throw new Error(`publish failed: ${res.status}`);
-      return res.json();
+      const data = await res.json() as Record<string, unknown>;
+      return data;
     },
     async revokeRefreshToken() {
       if (!state.token || !state.token.refresh_token) return undefined;
