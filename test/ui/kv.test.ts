@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { renderKv } from "../../src/ui/kv.ts";
 
 describe("ui kv", () => {

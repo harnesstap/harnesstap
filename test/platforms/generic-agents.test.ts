@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { GenericAgentsSerializer } from "../../src/platforms/generic-agents.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 import { makeResource } from "../helpers/resources.ts";

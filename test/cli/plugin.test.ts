@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { homedir } from "node:os";
-import { runCli } from "../helpers/cli.js";
+import { runCli } from "../helpers/cli.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
@@ -186,8 +186,7 @@ describe("plugin CLI", () => {
 
   it("update renders a success verdict and detail rows in human mode", async () => {
     const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
-    const spy = vi
-      .spyOn(lifecycle, "updatePlugins")
+    const spy = spyOn(lifecycle, "updatePlugins")
       .mockResolvedValue({
         results: [
           {
@@ -224,8 +223,7 @@ describe("plugin CLI", () => {
 
   it("update renders a failure verdict when plugins fail", async () => {
     const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
-    const spy = vi
-      .spyOn(lifecycle, "updatePlugins")
+    const spy = spyOn(lifecycle, "updatePlugins")
       .mockResolvedValue({
         results: [
           {
@@ -258,8 +256,7 @@ describe("plugin CLI", () => {
 
   it("update reports nothing to update when results are empty", async () => {
     const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
-    const spy = vi
-      .spyOn(lifecycle, "updatePlugins")
+    const spy = spyOn(lifecycle, "updatePlugins")
       .mockResolvedValue({
         results: [],
         summary: { updated: 0, skipped: 0, failed: 0, unsupported: 0 },
@@ -280,8 +277,7 @@ describe("plugin CLI", () => {
 
   it("update --format json returns raw report without verdict rendering", async () => {
     const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
-    const spy = vi
-      .spyOn(lifecycle, "updatePlugins")
+    const spy = spyOn(lifecycle, "updatePlugins")
       .mockResolvedValue({
         results: [
           {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { renderHeader, renderSubheader, renderRule } from "../../src/ui/section.ts";
 
 describe("ui section", () => {

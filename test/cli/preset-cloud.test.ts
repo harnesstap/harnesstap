@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { initGitRepo } from "../helpers/git.ts";
@@ -21,8 +21,8 @@ describe("CLI cloud preset workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = (globalThis as unknown as { fetch?: unknown }).fetch;
-      vi.stubGlobal("fetch", async (input: unknown, init?: unknown) => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
         const url = String(input);
         // token refresh (safety)
         if (url.endsWith("/oauth/token") && init?.method === "POST") {
@@ -53,7 +53,7 @@ describe("CLI cloud preset workflows", () => {
           return { ok: true, json: async () => ({ id: "pub-1", version: "1.2.3", url: "https://mock/presets/pub-1" }) };
         }
         return { ok: false, status: 404, text: async () => "not found" };
-      });
+      }) as typeof fetch;
 
       // preset search should emit JSON when requested and return remote results
       const search = await runCli(["preset", "search", "team", "--profile", "test", "--format", "json"]);
@@ -118,9 +118,7 @@ describe("CLI cloud preset workflows", () => {
       const conflict = await runCli(["preset", "install", "org/conflict@1.0"]);
       expect(conflict.stderr).toContain("Preset name already exists");
 
-      // restore fetch
-      (globalThis as unknown as { fetch?: unknown }).fetch = originalFetch;
-      vi.restoreAllMocks();
+      globalThis.fetch = originalFetch;
     } finally {
       await context.cleanup();
     }

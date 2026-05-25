@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createTempDir } from "../helpers/fs.ts";
 import { cleanupDir } from "../helpers/fs.ts";
 

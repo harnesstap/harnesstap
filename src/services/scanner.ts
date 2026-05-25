@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { ClaudeCodeSerializer } from "../platforms/claude-code.js";
 import { CursorSerializer } from "../platforms/cursor.js";
@@ -13,6 +12,7 @@ import { createResource } from "../models/resource.js";
 import { listResources } from "../models/resource.js";
 import { upsertProjectPluginState } from "../models/plugin.js";
 import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
+import { resolveHomeRoot } from "../utils/home-root.js";
 
 // ── Serializer factory ─────────────────────────────────────────────────
 
@@ -34,10 +34,6 @@ function getSerializer(platformId: string): PlatformSerializer {
       return new GenericAgentsSerializer(platformId);
   }
 }
-function resolveHomeRoot(): string {
-  return process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-}
-
 function resolveConfiguredPath(
   rootPath: string,
   configuredPath: string,

@@ -52,8 +52,8 @@ import {
 } from "./models/snapshot.js";
 import { getAllPlatforms } from "./platforms/registry.js";
 import { seedBuiltInPresets } from "./services/seed-presets.js";
-import { homedir } from "node:os";
 import { basename, resolve } from "node:path";
+import { resolveHomeRoot } from "./utils/home-root.js";
 import type { Preset, Resource, ResourceType, SnapshotState } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import {
@@ -105,11 +105,14 @@ function resolveInvocationName(): "harnessdeck" | "hd" {
   return basename(process.argv[1] ?? "") === "hd" ? "hd" : "harnessdeck";
 }
 
-const invocationName = resolveInvocationName();
-
 function formatCommand(path: string): string {
-  return `${invocationName} ${path}`.trim();
+  return `${resolveInvocationName()} ${path}`.trim();
 }
+
+program.exitOverride();
+program.hook("preAction", () => {
+  process.exitCode = 0;
+});
 
 function formatCount(count: number, noun: string, plural = `${noun}s`): string {
   return `${count} ${count === 1 ? noun : plural}`;
@@ -220,7 +223,7 @@ function renderGroupedCommandHelp(
 }
 
 program
-  .name(invocationName)
+  .name("harnessdeck")
   .description(
     "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
   )
@@ -242,7 +245,7 @@ program
       }
       
       const showHidden = process.argv.includes("--show-hidden");
-      const isTopLevel = cmd.name() === invocationName;
+      const isTopLevel = cmd.parent === null;
       
       if (!isTopLevel) {
         const lines = [
@@ -279,11 +282,11 @@ program
       
       const lines = [
         "",
-        ui.theme.primary(invocationName),
+        ui.theme.primary(resolveInvocationName()),
         "Preset-based AI coding assistant configuration manager",
         "",
         ui.theme.muted("USAGE"),
-        `  ${invocationName} [options] [command]`,
+        `  ${resolveInvocationName()} [options] [command]`,
         "",
         ui.theme.muted("OPTIONS"),
         `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
@@ -347,13 +350,13 @@ async function handleScanCommand(
   try {
     const pluginSummary = await listPlugins({
       projectRoot,
-      homeRoot: homedir(),
+      homeRoot: resolveHomeRoot(),
       platformIds: parsePlatformFilter(opts.platform),
     });
     if (pluginSummary.installs.length > 0) {
       const check = await checkPlugins({
         projectRoot,
-        homeRoot: homedir(),
+        homeRoot: resolveHomeRoot(),
         platformIds: parsePlatformFilter(opts.platform),
       });
       ui.hint(
@@ -383,7 +386,7 @@ async function handleScanCommand(
       projectRoot,
       projectId: registered.id,
       scannedPlatformIds,
-      homeRoot: homedir(),
+      homeRoot: resolveHomeRoot(),
     });
     if (inventorySummary) {
       ui.hint(
@@ -962,7 +965,7 @@ function parseHarnessAliases(aliases?: string): string[] | undefined {
 function pluginLifecycleBase(path: string, opts: { platform?: string }) {
   return {
     projectRoot: resolve(path),
-    homeRoot: homedir(),
+    homeRoot: resolveHomeRoot(),
     platformIds: parsePlatformFilter(opts.platform),
   };
 }
@@ -973,7 +976,7 @@ async function refreshClaudePluginInventoryForCli(
   const db = getDb();
   initializeSchema(db);
   const projectRoot = resolve(path);
-  const homeRoot = homedir();
+  const homeRoot = resolveHomeRoot();
   const inventory = await scanClaudePluginInventory({ projectRoot, homeRoot });
 
   const gitOrigin = getGitOrigin(projectRoot);
@@ -1046,7 +1049,7 @@ async function handlePluginInventoryShowCommand(
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
-  const homeRoot = homedir();
+  const homeRoot = resolveHomeRoot();
   const inventory = await refreshClaudePluginInventoryForCli(path);
   const install = inventory.effective.find((row) => row.ref === ref) ?? null;
   const declaredScopes = declaringScopesForClaudePlugin(ref, {
@@ -1339,9 +1342,9 @@ async function handleProjectStatusCommand(
 
   let pluginsLine = "(none detected)";
   try {
-    const plugins = await listPlugins({ projectRoot, homeRoot: homedir() });
+    const plugins = await listPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
     if (plugins.installs.length > 0) {
-      const check = await checkPlugins({ projectRoot, homeRoot: homedir() });
+      const check = await checkPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
       pluginsLine = `${plugins.installs.length} installed (${check.summary.outdated} outdated)`;
     }
   } catch {
@@ -2874,4 +2877,25 @@ cloudCmd
     await handleCloudLogoutCommand(opts);
   });
 
-await program.parseAsync();
+export async function runHarnessdeckCli(
+  argv: string[] = process.argv,
+): Promise<void> {
+  program.name(resolveInvocationName());
+  process.exitCode = 0;
+  try {
+    await program.parseAsync(argv);
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code: unknown }).code)
+        : "";
+    if (code === "commander.helpDisplayed" || code === "commander.version") {
+      return;
+    }
+    throw error;
+  }
+}
+
+if (import.meta.main) {
+  await runHarnessdeckCli();
+}

@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { spyOn } from "bun:test";
 
 export interface CliResult {
   stdout: string;
@@ -15,17 +15,13 @@ function stringifyArgs(args: unknown[]): string {
   return args.map((value) => String(value)).join(" ");
 }
 
-let cliImportCounter = 0;
-
-async function importCliEntry(): Promise<void> {
-  const cacheBuster = `test=${Date.now()}-${cliImportCounter++}`;
-  await import(/* @vite-ignore */ `../../src/index.ts?${cacheBuster}`);
-}
-
 export async function runCli(
   args: string[],
   options: RunCliOptions = {},
 ): Promise<CliResult> {
+  const connection = await import("../../src/db/connection.ts");
+  connection.closeDb();
+
   const stdout: string[] = [];
   const stderr: string[] = [];
   const tables: unknown[] = [];
@@ -33,64 +29,56 @@ export async function runCli(
   const originalExitCode = process.exitCode;
   const originalForceColor = process.env.FORCE_COLOR;
   const originalNoColor = process.env.NO_COLOR;
-  
-  // Import chalk dynamically to capture its level before test
+
   const chalkModule = await import("chalk");
   const originalChalkLevel = chalkModule.default.level;
 
-  const logSpy = vi.spyOn(console, "log").mockImplementation((...values) => {
+  const logSpy = spyOn(console, "log").mockImplementation((...values) => {
     stdout.push(stringifyArgs(values));
   });
-  const errorSpy = vi
-    .spyOn(console, "error")
-    .mockImplementation((...values) => {
-      stderr.push(stringifyArgs(values));
-    });
-  const warnSpy = vi.spyOn(console, "warn").mockImplementation((...values) => {
+  const errorSpy = spyOn(console, "error").mockImplementation((...values) => {
     stderr.push(stringifyArgs(values));
   });
-  const tableSpy = vi.spyOn(console, "table").mockImplementation((value) => {
+  const warnSpy = spyOn(console, "warn").mockImplementation((...values) => {
+    stderr.push(stringifyArgs(values));
+  });
+  const tableSpy = spyOn(console, "table").mockImplementation((value) => {
     tables.push(value);
   });
-  const stdoutWriteSpy = vi
-    .spyOn(process.stdout, "write")
-    .mockImplementation((chunk: string | Uint8Array) => {
+  const stdoutWriteSpy = spyOn(process.stdout, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
       stdout.push(String(chunk));
       return true;
-    });
-  const stderrWriteSpy = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation((chunk: string | Uint8Array) => {
+    },
+  );
+  const stderrWriteSpy = spyOn(process.stderr, "write").mockImplementation(
+    (chunk: string | Uint8Array) => {
       stderr.push(String(chunk));
       return true;
-    });
+    },
+  );
 
   try {
     process.argv = ["node", options.commandName ?? "harnessdeck", ...args];
-    process.exitCode = undefined;
-    try {
-      await importCliEntry();
-    } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        error.message !== 'process.exit unexpectedly called with "0"'
-      ) {
-        throw error;
-      }
-    }
+    process.exitCode = 0;
+    process.env.FORCE_COLOR = "0";
+    process.env.NO_COLOR = "1";
+
+    const { runHarnessdeckCli } = await import("../../src/index.ts");
+    await runHarnessdeckCli(process.argv);
+
+    const exitCode = process.exitCode;
     return {
       stdout: stdout.join("\n"),
       stderr: stderr.join("\n"),
       tables,
-      exitCode: process.exitCode,
+      exitCode: exitCode === 0 ? undefined : exitCode,
     };
   } finally {
-    const connection = await import("../../src/db/connection.ts");
     connection.closeDb();
     process.argv = originalArgv;
     process.exitCode = originalExitCode;
-    
-    // Restore environment variables
+
     if (originalForceColor === undefined) {
       delete process.env.FORCE_COLOR;
     } else {
@@ -101,10 +89,9 @@ export async function runCli(
     } else {
       process.env.NO_COLOR = originalNoColor;
     }
-    
-    // Restore chalk level
+
     chalkModule.default.level = originalChalkLevel;
-    
+
     logSpy.mockRestore();
     errorSpy.mockRestore();
     warnSpy.mockRestore();
@@ -116,13 +103,11 @@ export async function runCli(
 
 /**
  * Validates that the runCli harness captures UI renderer output produced via
- * console.log and console.error. Use in integration tests to assert end-to-end
- * capture is working, e.g.:
- *
- *   const result = await runCli(["-h"]);
- *   expect(result.stdout.length).toBeGreaterThan(0);
+ * console.log and console.error.
  */
-export async function assertCliOutputCaptured(args: string[] = ["-h"]): Promise<CliResult> {
+export async function assertCliOutputCaptured(
+  args: string[] = ["-h"],
+): Promise<CliResult> {
   const result = await runCli(args);
   if (result.stdout.length === 0 && result.stderr.length === 0) {
     throw new Error(

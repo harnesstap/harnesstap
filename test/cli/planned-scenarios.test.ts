@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, spyOn } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
@@ -121,8 +121,7 @@ describe("CLI planned scenarios", () => {
       expect(drift.exitCode).toBe(1);
 
       const driftService = await import("../../src/services/project-drift.ts");
-      const driftSpy = vi
-        .spyOn(driftService, "detectProjectDriftFromLatest")
+      const driftSpy = spyOn(driftService, "detectProjectDriftFromLatest")
         .mockReturnValue({
           project_root: context.projectDir,
           snapshot_id: "snap-drift-icons",

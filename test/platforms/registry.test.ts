@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("platform registry", () => {
   it("returns known platforms and their capabilities", async () => {
