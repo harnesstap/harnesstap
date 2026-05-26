@@ -105,22 +105,59 @@ describe("planned scenarios services", () => {
     }
   });
 
-  it("validates preset and reports missing resources as warning only when empty", async () => {
-    const context = await createInitializedTestContext("validate");
+  it("runs doctor and reports empty presets as warnings only", async () => {
+    const context = await createInitializedTestContext("doctor");
     try {
       const presetModel = await import("../../src/models/preset.ts");
-      const { validatePreset } = await import(
-        "../../src/services/preset-validate.ts"
+      const { runPresetDoctor } = await import(
+        "../../src/services/preset-doctor.ts"
       );
 
       presetModel.createPreset({ name: "empty-one" });
-      const report = validatePreset("empty-one");
-      expect(report.issues.some((i) => i.code === "empty_preset")).toBe(true);
+      const report = runPresetDoctor({ nameOrId: "empty-one" });
+      const emptyPresetResult = report.results.find(
+        (result) => result.check === "empty-preset",
+      );
       expect(report.valid).toBe(true);
-      // renderer fields: severity, code, message used by ui.table in handlePresetValidateCommand
-      const emptyIssue = report.issues.find((i) => i.code === "empty_preset");
-      expect(emptyIssue?.severity).toBe("warning");
-      expect(emptyIssue?.message).toBeTruthy();
+      expect(emptyPresetResult?.severity).toBe("warn");
+      expect(emptyPresetResult?.message).toMatch(/has no resources/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("runs plugin-metadata checks against invalid plugin refs and versions", async () => {
+    const context = await createInitializedTestContext("doctor-plugin-meta");
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const { runPresetDoctor } = await import(
+        "../../src/services/preset-doctor.ts"
+      );
+
+      const preset = presetModel.createPreset({ name: "bad-plugin-meta" });
+      pluginModel.addPluginToPreset(preset.id, "formatter", "not-semver");
+
+      const report = runPresetDoctor({
+        nameOrId: "bad-plugin-meta",
+        checkIds: ["plugin-metadata"],
+      });
+
+      expect(report.valid).toBe(false);
+      expect(report.results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            check: "plugin-metadata",
+            severity: "error",
+            message: "Plugin ref must include marketplace: formatter",
+          }),
+          expect.objectContaining({
+            check: "plugin-metadata",
+            severity: "error",
+            message: expect.stringMatching(/invalid version constraint/i),
+          }),
+        ]),
+      );
     } finally {
       await context.cleanup();
     }

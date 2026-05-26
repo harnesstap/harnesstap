@@ -99,6 +99,9 @@ export async function resolveHarnessSelection(
         "Select additional harnesses to keep in sync as aliases",
       default: defaultAliases.filter((harness) => harness !== main_harness),
       choices: harnesses.filter((choice) => choice.value !== main_harness),
+      pageSize: 10,
+      instructions: "Use space to toggle selections",
+      loop: false,
     },
   ]);
 

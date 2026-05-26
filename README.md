@@ -1,6 +1,6 @@
 # harnessdeck
 
-`harnessdeck` is a preset-based CLI for managing AI coding assistant configuration across multiple tools. You can scan an existing repository, store the detected instructions and skills in a local database, import supported defaults from your home directory, group them into presets, and apply those presets back to one or more target platforms.
+`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It scans existing agent setup, stores canonical resources locally, groups them into reusable presets, and materializes those presets back into one or more supported harnesses.
 
 ## What you can do with it
 
@@ -9,8 +9,8 @@
 - Scan existing Claude Code, Codex, Cursor, GitHub Copilot, Copilot CLI, and related project layouts.
 - Store imported configuration as canonical resources in SQLite.
 - Group resources into reusable presets.
-- Apply a preset to one or more target platforms.
-- Create presets from scanned projects, diff presets, and validate them before apply.
+- Apply a preset to one or more target harnesses.
+- Create presets from scanned projects, diff presets, and run `preset doctor` before apply.
 - Record preset dependencies and Claude plugin version pins in portable preset bundles.
 - Export or import presets as JSON bundles.
 - Seed and apply built-in starter templates.
@@ -70,11 +70,19 @@ harnessdeck project status . #confirm the final state
 
 ## Quick start
 
-The fastest way to try `harnessdeck` is to initialize the local database, import supported defaults from your home directory, scan an existing repository, and then build a preset from the imported resources.
+The fastest way to try `harnessdeck` is to initialize the local database, import supported defaults from your home directory, scan an existing repository, turn the imported resources into a reusable preset, and apply that preset back to your preferred harnesses.
 
 Once installed, `hd` is a shorthand alias for the same CLI. Use whichever form you prefer in the examples below.
 
-The visible CLI groups related actions under noun-based commands such as `project`, `preset`, and `platform`. Older top-level verbs still work for now, but they print deprecation warnings.
+The visible CLI groups related actions under noun-based commands such as `project`, `preset`, and `harness`. Older top-level verbs and hidden aliases still work for compatibility, but they print deprecation warnings.
+
+```mermaid
+flowchart LR
+  A[Init local toolkit state] --> B[Scan repo and home defaults]
+  B --> C[Store canonical resources]
+  C --> D[Group resources into presets]
+  D --> E[Apply presets to selected harnesses]
+```
 
 1. Initialize the local database, import any supported home-directory defaults, and optionally choose a default main harness plus aliases.
   ```bash
@@ -94,9 +102,9 @@ The visible CLI groups related actions under noun-based commands such as `projec
    hd preset create my-setup --description "Shared project assistant setup"
   ```
 5. Add imported resources to that preset.
-  ```bash
-   hd preset add my-setup openapi-mcp-baseline
-  ```
+   ```bash
+   hd preset add my-setup research-helper --type skill
+   ```
 6. Apply the preset to one or more target platforms.
   ```bash
    hd project apply my-setup --project . --platform claude-code,codex,cursor
@@ -128,16 +136,16 @@ The repository currently includes `nextjs-fullstack` and `python-fastapi`.
 
 ## More preset workflows
 
-Use these commands when you want to compare, validate, or derive presets beyond the basic create/add/apply loop.
+Use these commands when you want to compare, diagnose, or derive presets beyond the basic create/add/apply loop.
 
 ```bash
 hd preset add-dependency team-stack shared-baseline --version "^1.2.0"
-hd preset validate team-stack
+hd preset doctor team-stack
 hd preset diff team-stack ./team-stack.harnessdeck.json
 hd preset from-project inferred-stack --project .
 ```
 
-Preset dependencies are stored with semver constraints and round-trip through bundle export/import. `preset validate` checks for problems such as duplicate resources or invalid plugin pins, `preset diff` compares preset metadata and contents, and `preset from-project` scans a repository and turns the imported resources into a new preset.
+Preset dependencies are stored with semver constraints and round-trip through bundle export/import. `preset doctor` checks for problems such as duplicate resources, empty content, or invalid plugin metadata, `preset diff` compares preset metadata and contents, and `preset from-project` scans a repository and turns the imported resources into a new preset.
 
 ## Import and export
 
@@ -185,15 +193,15 @@ For Claude Code, **committed** plugins are those declared in the project’s `.c
 hd plugin list
 hd plugin show formatter@my-marketplace
 hd plugin installed
-hd preset add-plugin my-setup formatter@my-marketplace --version "2.1.0"
-hd preset remove-plugin my-setup formatter@my-marketplace
+hd preset add my-setup formatter@my-marketplace --type plugin --version "2.1.0"
+hd preset remove my-setup formatter@my-marketplace --type plugin
 hd preset export my-setup --file ./team.harnessdeck.json --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
 
 On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation.
 
-Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset add-plugin` is the **plugin semver pin or range**, not the global version flag.
+Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset add ... --type plugin` is the **plugin semver pin or range**, not the global version flag.
 
 Preset export bundles use schema `**urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a preset declares versioned dependencies. See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
 
@@ -235,14 +243,14 @@ hd migrate import ./harnessdeck-migrate.tar.gz
 
 `project drift` compares the current working tree against the latest apply/sync snapshot. Migration archives export local preset bundles plus global harness preferences and `~/.harnessdeck/config.json`; cloud profiles remain in `cloud-profiles.json`.
 
-## Supported platforms
+## Supported harnesses
 
-`harnessdeck` has dedicated serializers for Claude Code, Codex, and Cursor. It also registers a broader set of platforms through a generic path-driven serializer, including GitHub Copilot, Copilot CLI, Windsurf, Warp, OpenCode, Roo, Continue, Gemini CLI, and others.
+`harnessdeck` has dedicated serializers for Claude Code, Codex, and Cursor. It also registers a broader set of harnesses through a generic path-driven serializer, including GitHub Copilot, Copilot CLI, Windsurf, Warp, OpenCode, Roo, Continue, Gemini CLI, and others.
 
 Run this command to see the current registry in your installed version.
 
 ```bash
-hd platform list
+hd harness list
 ```
 
 ## Where data lives
@@ -257,25 +265,57 @@ HarnessDeck can interact with the Harness cloud for publishing, searching, and i
 
 Common workflows
 
-- Authenticate and create a profile
-harnessdeck cloud login [profile]
-Options: --base-url  Cloud base URL (defaults to [https://harnessdeck.kayrnt.fr](https://harnessdeck.kayrnt.fr))
-This performs device-code authentication in the browser/terminal and saves a named profile. If no name is provided the profile is saved as `default` and becomes the default profile.
-- Inspect authenticated user
-harnessdeck cloud whoami [--profile ] [--format json|human]
-- List or switch organizations
-harnessdeck cloud orgs [--profile ] [--switch ]
-- Log out and remove a profile
-harnessdeck cloud logout [--profile ]
-- Search the remote preset catalog
-harnessdeck preset search  [--profile ] [--format json|human]
-- Install a preset from the cloud
-harnessdeck preset install org/library[@version] [--as ] [--profile ]
-Downloads a preset bundle from the cloud and imports it into the local preset database. Use `--as` to avoid name conflicts with existing presets.
-- Publish a local preset to the cloud
-harnessdeck preset publish  [--profile ]
-- Apply an installed preset to a project
-harnessdeck project apply  --project  [--platform ]
+1. Authenticate and create a profile.
+
+   ```bash
+   harnessdeck cloud login [profile] [--base-url <url>]
+   ```
+
+   This performs device-code authentication in the browser/terminal and saves a named profile. If no name is provided the profile is saved as `default` and becomes the default profile. The default base URL is `https://harnessdeck.kayrnt.fr`.
+
+2. Inspect the authenticated user.
+
+   ```bash
+   harnessdeck cloud whoami [--profile <name>] [--format human|json]
+   ```
+
+3. List organizations or switch the active organization.
+
+   ```bash
+   harnessdeck cloud orgs [--profile <name>] [--switch <slug>]
+   ```
+
+4. Log out and remove a local profile.
+
+   ```bash
+   harnessdeck cloud logout [--profile <name>]
+   ```
+
+5. Search the remote preset catalog.
+
+   ```bash
+   harnessdeck preset search <query> [--profile <name>] [--format human|json]
+   ```
+
+6. Install a preset from the cloud.
+
+   ```bash
+   harnessdeck preset install <org>/<library>[@version] [--as <name>] [--profile <name>]
+   ```
+
+   This downloads a preset bundle from the cloud and imports it into the local preset database. Use `--as` to avoid name conflicts with existing presets.
+
+7. Publish a local preset to the cloud.
+
+   ```bash
+   harnessdeck preset publish <preset> [--profile <name>]
+   ```
+
+8. Apply an installed preset to a project.
+
+   ```bash
+   harnessdeck project apply <preset> --project <path> [--platform <harnesses>]
+   ```
 
 Notes
 

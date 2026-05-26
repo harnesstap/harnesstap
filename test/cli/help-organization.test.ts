@@ -12,7 +12,6 @@ describe("CLI help and command organization", () => {
       ["preset"],
       ["resource"],
       ["project"],
-      ["platform"],
       ["plugin"],
       ["cloud"],
       ["migrate"],
@@ -29,6 +28,15 @@ describe("CLI help and command organization", () => {
     }
   });
 
+  it("keeps removed preset subcommands as unknown commands", async () => {
+    const result = runCli(["preset", "validate", "empty-preset"]);
+    await expect(result).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+      exitCode: 1,
+      message: expect.stringMatching(/unknown command/i),
+    });
+  });
+
   it("shows top-level help without an error when invoked with no arguments", async () => {
     const result = await runCli([]);
     expect(result.exitCode).toBeUndefined();
@@ -41,6 +49,9 @@ describe("CLI help and command organization", () => {
     const result = await runCli(["--help"]);
     expect(result.stdout).toContain("USAGE");
     expect(result.stdout).toContain("COMMANDS");
+    expect(result.stdout).toContain(
+      "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
+    );
     expect(result.stdout).toContain("--no-color");
     expect(result.stdout).not.toContain("help [command]");
   });
@@ -95,7 +106,7 @@ describe("CLI help and command organization", () => {
     
     try {
       await runCli(["init"]);
-      const result = await runCli(["--no-color", "platform", "list"]);
+      const result = await runCli(["--no-color", "harness", "list"]);
       // ANSI escape codes start with ESC [ (character code 27 followed by [)
       const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
       expect(result.stdout).not.toMatch(ansiEscapeRegex);
@@ -118,10 +129,11 @@ describe("CLI help and command organization", () => {
     expect(help.stdout).toContain("project");
     expect(help.stdout).toContain("preset");
     expect(help.stdout).toContain("resource");
-    expect(help.stdout).toContain("platform");
     expect(help.stdout).toContain("harness");
+    expect(help.stdout).not.toContain("\n  platform");
     expect(harnessHelp.stdout).toContain("status");
     expect(harnessHelp.stdout).toContain("set");
+    expect(harnessHelp.stdout).toContain("list");
     expect(harnessHelp.stdout).toContain("project");
     expect(help.stdout).not.toContain("help [command]");
     expect(help.stdout).not.toContain("apply [options] <preset>");
@@ -216,5 +228,17 @@ describe("CLI help and command organization", () => {
     } finally {
       await context.cleanup();
     }
+  });
+
+  it("keeps the hidden platforms alias coherent with harness list", async () => {
+    const result = await runCli(["platforms", "--format", "json"], {
+      commandName: "hd",
+    });
+
+    expect(JSON.parse(result.stdout)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "claude-code" })]),
+    );
+    expect(result.stderr).toContain("deprecated");
+    expect(result.stderr).toContain("hd harness list");
   });
 });

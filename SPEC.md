@@ -4,7 +4,7 @@ This document describes the intended behavior of `harnessdeck`.
 
 ## Product summary
 
-`harnessdeck` is a local CLI for collecting AI agent configuration, grouping it into reusable presets, and syncing those presets into project directories across multiple supported agent harnesses.
+`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It collects agent configuration into canonical local resources, groups those resources into reusable presets, and syncs those presets into project directories across supported agent harnesses.
 
 An **agent harness** is the complete infrastructure that wraps around an LLM and makes it a functional agent. In practice, that includes things like skills, MCP servers, hooks, plugins, rules, agent manifests, commands, and harness-specific configuration files.
 
@@ -13,7 +13,7 @@ The product currently supports these main workflows:
 - Initialize local state, seed built-in presets, discover supported home-directory defaults, and choose global harness preferences.
 - Scan an existing repository and import agent configuration into a local database.
 - Group imported resources into versioned presets.
-- Diff, validate, export, import, publish, search, install, or derive presets from a project scan.
+- Diff, doctor, export, import, publish, search, install, or derive presets from a project scan.
 - Record preset dependencies and Claude plugin version pins alongside preset resources.
 - Apply one or more presets, a local bundle file, or a bundle URL to a project.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
@@ -21,6 +21,13 @@ The product currently supports these main workflows:
 - Export or import a machine-migration archive of local presets, harness preferences, and config.
 
 ## Core concepts
+
+```mermaid
+flowchart LR
+  A[Home defaults and project files] --> B[Canonical resources]
+  B --> C[Reusable presets]
+  C --> D[Selected harness outputs]
+```
 
 The CLI uses a small set of concepts consistently across commands.
 
@@ -45,7 +52,7 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | `harnessdeck migrate ...` | Exports or imports a machine-migration archive containing preset bundles plus local HarnessDeck preferences and config. |
 | `harnessdeck resource ...` | Lists, shows, or deletes canonical resources stored in SQLite. |
 | `harnessdeck project ...` | Scans projects, applies presets, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
-| `harnessdeck platform list` | Lists registered harness/platform targets. |
+| `harnessdeck harness list` | Lists registered harness targets. |
 | `harnessdeck harness ...` | Manages global and project-scoped main/alias harness preferences. |
 | `harnessdeck plugin ...` | Shows Claude plugin inventory and runs lifecycle commands such as installed/check/update/refresh. |
 | `harnessdeck cloud ...` | Authenticates with Harness cloud and manages local cloud profiles. |
@@ -57,10 +64,8 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | `harnessdeck preset create` | Creates a preset with optional description and tags. |
 | `harnessdeck preset list` | Lists locally stored presets. |
 | `harnessdeck preset show` | Shows preset metadata, resources, dependencies, and plugin pins. |
-| `harnessdeck preset add` | Adds a resource to a preset. |
-| `harnessdeck preset remove` | Removes a resource from a preset. |
-| `harnessdeck preset add-plugin` | Records a Claude plugin ref pin on a preset with a required semver/range constraint. |
-| `harnessdeck preset remove-plugin` | Removes a plugin pin from a preset. |
+| `harnessdeck preset add <preset> <selector>` | Adds a typed attachment to a preset. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for preset dependencies. |
+| `harnessdeck preset remove <preset> <selector>` | Removes a typed attachment from a preset. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
 | `harnessdeck preset add-dependency` | Records version-constrained dependency metadata on a preset. |
 | `harnessdeck preset remove-dependency` | Removes dependency metadata from a preset. |
 | `harnessdeck preset delete` | Deletes a preset by selector. |
@@ -70,7 +75,7 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | `harnessdeck preset install` | Downloads a remote preset bundle and imports it into the local database. |
 | `harnessdeck preset publish` | Publishes a local preset to the remote catalog. |
 | `harnessdeck preset diff` | Compares two local presets, or a preset and a bundle file, across metadata, resources, dependencies, and plugin pins. |
-| `harnessdeck preset validate` | Validates a preset for duplicate resources, empty content, and malformed plugin metadata. |
+| `harnessdeck preset doctor` | Diagnoses a preset for duplicate resources, empty content, malformed plugin metadata, and related issues. |
 | `harnessdeck preset from-project` | Scans a project and creates a preset from the imported resources. |
 
 ### `resource` subcommands
@@ -147,6 +152,21 @@ The init flow works in this order:
 The CLI should allow the main harness to be selected even if that harness was not the one first discovered on disk. The important invariant is that every later sync operation has a single reference harness and a defined set of secondary outputs.
 
 After init, users can update the global record with `harnessdeck harness set` or add project-specific overrides with `harnessdeck harness project set`. Both surfaces support interactive prompting as well as explicit flags.
+
+## Wizard mode
+
+Several noun-grouped commands support wizard mode for interactive use, including `preset add`, `preset delete`, `preset from-project`, `project apply`, and `resource delete`.
+
+Wizard mode triggers when all of these are true:
+
+1. The process is attached to a TTY.
+2. CI is not enabled.
+3. `HARNESSDECK_NO_INTERACTIVE` is not set to `1`.
+4. `--no-interactive` is not present.
+5. The command is not using `--format json`.
+6. The command was invoked with `--interactive`, or required positional input is missing.
+
+When those conditions are not met, the CLI stays in explicit flag-and-argument mode.
 
 ## Storage and state
 
@@ -278,7 +298,7 @@ The registry currently contains 31 harness IDs:
 - `cortex`
 - `neovate`
 
-`harnessdeck platform list` is the executable source of truth for this list. `harnessdeck harness status` and `harnessdeck harness project status` are the source of truth for the user's configured main and alias harness selection.
+`harnessdeck harness list` is the executable source of truth for this list. The hidden `platforms` alias remains for compatibility, but `harness list` is the visible command surface. `harnessdeck harness status` and `harnessdeck harness project status` are the source of truth for the user's configured main and alias harness selection.
 
 ## Scan, apply, import, and sync behavior
 

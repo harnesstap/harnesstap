@@ -191,6 +191,36 @@ describe("VHS scenario manifest", () => {
     expect(existsSync(resolve(repoRoot, walkthroughDoc))).toBe(true);
   });
 
+  it("README reflects the current toolkit framing and command surface", () => {
+    const readmePath = resolve(repoRoot, "README.md");
+    const readme = readFileSync(readmePath, "utf-8");
+
+    expect(readme).toContain("Agent harness configuration toolkit");
+    expect(readme).toContain("hd harness list");
+    expect(readme).toContain("hd preset doctor");
+    expect(readme).toContain("hd preset add my-setup research-helper --type skill");
+    expect(readme).toContain("hd preset add my-setup formatter@my-marketplace --type plugin");
+    expect(readme).not.toContain("hd platform list");
+    expect(readme).not.toContain("hd preset validate");
+    expect(readme).not.toContain("hd preset add-plugin");
+    expect(readme).toContain("```mermaid");
+  });
+
+  it("SPEC reflects the current toolkit framing and command surface", () => {
+    const specPath = resolve(repoRoot, "SPEC.md");
+    const spec = readFileSync(specPath, "utf-8");
+
+    expect(spec).toContain("Agent harness configuration toolkit");
+    expect(spec).toContain("harnessdeck harness list");
+    expect(spec).toContain("harnessdeck preset doctor");
+    expect(spec).toContain("harnessdeck preset add <preset> <selector>");
+    expect(spec).toContain("harnessdeck preset remove <preset> <selector>");
+    expect(spec).toContain("wizard mode");
+    expect(spec).toContain("```mermaid");
+    expect(spec).not.toContain("harnessdeck platform list");
+    expect(spec).not.toContain("harnessdeck preset validate");
+  });
+
   it("new GIF artifact exists on disk", () => {
     const newGif = resolve(repoRoot, "docs/scenarios/vhs/output/01-existing-repo-adoption.gif");
     expect(existsSync(newGif), "01-existing-repo-adoption.gif must be generated").toBe(true);
