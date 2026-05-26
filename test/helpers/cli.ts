@@ -35,7 +35,12 @@ export async function runCli(
   const originalStdoutIsTTY = process.stdout.isTTY;
   const originalStdinIsTTY = process.stdin.isTTY;
   const effectiveIsTTY = options.isTTY ?? false;
-  const envEntries = Object.entries(options.env ?? {});
+  const envOverrides = {
+    CI: undefined,
+    HARNESSDECK_NO_INTERACTIVE: undefined,
+    ...(options.env ?? {}),
+  };
+  const envEntries = Object.entries(envOverrides);
   const originalEnv = new Map(
     envEntries.map(([key]) => [key, process.env[key]]),
   );

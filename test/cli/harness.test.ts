@@ -152,6 +152,32 @@ describe("CLI harness", () => {
     }
   });
 
+  it("isolates positive wizard tests from inherited CI env", async () => {
+    const context = await createTestContext("cli-harness-inherited-ci");
+    const originalCi = process.env.CI;
+    process.env.CI = "true";
+
+    try {
+      const result = await runCli(["harness", "set"], {
+        isTTY: true,
+        promptResponses: [
+          { main_harness: "claude-code" },
+          { alias_harnesses: ["cursor"] },
+        ],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("Set harness preference");
+    } finally {
+      if (originalCi === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = originalCi;
+      }
+      await context.cleanup();
+    }
+  });
+
   it("init uses the shared trigger rule for auto-prompting", async () => {
     const context = await createTestContext("cli-init-shared-trigger");
     try {
