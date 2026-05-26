@@ -1,37 +1,12 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ClaudeCodeSerializer } from "../platforms/claude-code.js";
-import { CursorSerializer } from "../platforms/cursor.js";
-import { CodexSerializer } from "../platforms/codex.js";
-import { OpenCodeSerializer } from "../platforms/opencode.js";
-import { CopilotSerializer } from "../platforms/copilot.js";
-import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import { applyClaudePresetExtensions } from "../platforms/claude-preset-extensions.js";
 import type {
   ClaudePresetConfig,
-  PlatformSerializer,
   Resource,
   SerializedFile,
 } from "../types.js";
-
-function getSerializer(platformId: string): PlatformSerializer {
-  switch (platformId) {
-    case "claude-code":
-      return new ClaudeCodeSerializer();
-    case "cursor":
-      return new CursorSerializer();
-    case "codex":
-      return new CodexSerializer();
-    case "opencode":
-      return new OpenCodeSerializer();
-    case "github-copilot":
-      return new CopilotSerializer("github-copilot");
-    case "copilot-cli":
-      return new CopilotSerializer("copilot-cli");
-    default:
-      return new GenericAgentsSerializer(platformId);
-  }
-}
+import { getPlatformSerializer } from "./platform-serializers.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -51,7 +26,7 @@ export async function generateFiles(
   const results: ApplyResult[] = [];
 
   for (const pid of platforms) {
-    const serializer = getSerializer(pid);
+    const serializer = getPlatformSerializer(pid);
     let files = await serializer.serialize(resources, projectRoot);
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudePresetExtensions(files, claudeConfig, projectRoot);

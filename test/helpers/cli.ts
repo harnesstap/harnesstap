@@ -9,6 +9,9 @@ export interface CliResult {
 
 export interface RunCliOptions {
   commandName?: string;
+  isTTY?: boolean;
+  env?: Record<string, string | undefined>;
+  promptResponses?: Array<Record<string, unknown>>;
 }
 
 function stringifyArgs(args: unknown[]): string {
@@ -29,6 +32,13 @@ export async function runCli(
   const originalExitCode = process.exitCode;
   const originalForceColor = process.env.FORCE_COLOR;
   const originalNoColor = process.env.NO_COLOR;
+  const originalStdoutIsTTY = process.stdout.isTTY;
+  const originalStdinIsTTY = process.stdin.isTTY;
+  const effectiveIsTTY = options.isTTY ?? false;
+  const envEntries = Object.entries(options.env ?? {});
+  const originalEnv = new Map(
+    envEntries.map(([key]) => [key, process.env[key]]),
+  );
 
   const chalkModule = await import("chalk");
   const originalChalkLevel = chalkModule.default.level;
@@ -64,8 +74,46 @@ export async function runCli(
     process.env.FORCE_COLOR = "0";
     process.env.NO_COLOR = "1";
 
-    const { runHarnessdeckCli } = await import("../../src/index.ts");
-    await runHarnessdeckCli(process.argv);
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: effectiveIsTTY,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: effectiveIsTTY,
+      configurable: true,
+    });
+
+    for (const [key, value] of envEntries) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+
+    const inquirerModule = await import("inquirer");
+    const originalPrompt = inquirerModule.default.prompt;
+    const promptResponses = [...(options.promptResponses ?? [])];
+    inquirerModule.default.prompt = (async () => {
+      const next = promptResponses.shift();
+      if (!next) {
+        throw new Error("Unexpected interactive prompt in runCli test harness");
+      }
+      return next;
+    }) as typeof inquirerModule.default.prompt;
+
+    try {
+      const { runHarnessdeckCli } = await import("../../src/index.ts");
+      await runHarnessdeckCli(process.argv);
+
+      if (promptResponses.length > 0) {
+        throw new Error(
+          `Unused prompt responses in runCli test harness: ${promptResponses.length}`,
+        );
+      }
+    } finally {
+      inquirerModule.default.prompt = originalPrompt;
+    }
 
     const exitCode = process.exitCode;
     return {
@@ -88,6 +136,23 @@ export async function runCli(
       delete process.env.NO_COLOR;
     } else {
       process.env.NO_COLOR = originalNoColor;
+    }
+
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: originalStdinIsTTY,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: originalStdoutIsTTY,
+      configurable: true,
+    });
+
+    for (const [key, value] of originalEnv) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
     }
 
     chalkModule.default.level = originalChalkLevel;

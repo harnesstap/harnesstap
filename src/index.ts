@@ -29,14 +29,8 @@ import {
   getPreset,
   listPresets,
   deletePreset,
-  addResourceToPreset,
-  removeResourceFromPreset,
   getPresetResources,
-  syncClaudePresetPluginsAfterAdd,
-  syncClaudePresetPluginsAfterRemove,
-  addDependencyToPreset,
   listPresetDependencies,
-  removeDependencyFromPreset,
 } from "./models/preset.js";
 import {
   upsertProject,
@@ -50,7 +44,10 @@ import {
   listSnapshots,
   getSnapshot,
 } from "./models/snapshot.js";
-import { getAllPlatforms } from "./platforms/registry.js";
+import {
+  getAllPlatforms,
+} from "./platforms/registry.js";
+import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
 import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { basename, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
@@ -67,10 +64,8 @@ import {
   updatePlugins,
 } from "./services/plugin-lifecycle.js";
 import {
-  addPluginToPreset,
   getProjectPluginState,
   listPresetPlugins,
-  removePluginFromPreset,
   upsertProjectPluginState,
 } from "./models/plugin.js";
 import type { PluginScope } from "./plugins/types.js";
@@ -86,18 +81,30 @@ import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudP
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
 import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
+import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffPresets } from "./services/preset-diff.js";
-import { validatePreset } from "./services/preset-validate.js";
+import { listPresetDoctorChecks, runPresetDoctor } from "./services/preset-doctor.js";
 import { mergePresets } from "./services/preset-merge.js";
 import { createPresetFromProject } from "./services/preset-from-project.js";
 import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath, writePresetBundleToTempFile } from "./services/preset-source.js";
 import { syncProject } from "./services/project-sync.js";
 import {
+  addPresetAttachment,
+  PRESET_ATTACHMENT_TYPES,
+  removePresetAttachment,
+} from "./services/preset-attachments.js";
+import {
   exportMigrationState,
   importMigrationState,
 } from "./services/migrate.js";
 import { createProgress } from "./ui/progress.js";
+import { shouldUseWizard } from "./services/wizards/shared.js";
+import { runPresetAddWizard } from "./services/wizards/preset-add.js";
+import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
+import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
+import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
+import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
 
 const program = new Command();
 
@@ -157,13 +164,18 @@ function relativeDiscoveredPaths(
     .join(", ");
 }
 
+function renderDeprecatedCommandWarning(
+  legacyCommand: string,
+  replacementCommand: string,
+): string {
+  return `\`${legacyCommand}\` is deprecated; use \`${replacementCommand}\` instead.`;
+}
+
 function warnDeprecatedCommand(
   legacyCommand: string,
   replacementCommand: string,
 ): void {
-  ui.warn(
-    `\`${legacyCommand}\` is deprecated; use \`${replacementCommand}\` instead.`,
-  );
+  ui.warn(renderDeprecatedCommandWarning(legacyCommand, replacementCommand));
 }
 
 function renderGroupedCommandHelp(
@@ -230,13 +242,37 @@ function configureCommandGroup(cmd: Command): Command {
   return cmd;
 }
 
+function isGroupedCommandFallbackError(error: unknown): error is {
+  code: string;
+  exitCode: number;
+  message: string;
+} {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as {
+    code?: unknown;
+    exitCode?: unknown;
+    message?: unknown;
+  };
+
+  return candidate.code === "commander.excessArguments"
+    && candidate.exitCode === 1
+    && typeof candidate.message === "string"
+    && /too many arguments for '(preset|resource|project|plugin|cloud|migrate|harness)'/i.test(candidate.message);
+}
+
+const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
+
 program
   .name("harnessdeck")
   .description(
-    "Preset-based AI coding assistant configuration manager for Claude Code, Codex, Cursor, and other coding CLIs",
+    "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
   )
   .version("0.1.0", "-V, --harnessdeck-version")
   .option("--no-color", "Disable color output")
+  .option("--no-interactive", "Disable interactive prompts")
   .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
   .helpCommand(false)
   .hook("preAction", (command) => {
@@ -291,7 +327,7 @@ program
       const lines = [
         "",
         ui.theme.primary(resolveInvocationName()),
-        "Preset-based AI coding assistant configuration manager",
+        "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
         "",
         ui.theme.muted("USAGE"),
         `  ${resolveInvocationName()} [options] [command]`,
@@ -478,12 +514,26 @@ async function handleApplyCommand(
     format?: string;
     ignorePluginVersions?: boolean;
     strictPluginVersions?: boolean;
+    interactive?: boolean;
+    noInteractive?: boolean;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
 
-  if (presetNames.length === 0) {
+   const resolvedPresetNames = presetNames.length > 0
+    ? presetNames
+    : await (shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: parseOutputFormat(opts.format),
+        missingRequiredArgs: true,
+      })
+        ? runProjectApplyWizard().then((presetName) => [presetName] as [string])
+        : Promise.resolve([] as []));
+
+  if (resolvedPresetNames.length === 0) {
+    process.exitCode = 1;
     ui.danger("Provide at least one preset name, bundle path, or URL.");
     return;
   }
@@ -492,7 +542,7 @@ async function handleApplyCommand(
   let applyBundle: Awaited<ReturnType<typeof resolveApplyPresets>>;
   try {
     applyBundle = await resolveApplyPresets(
-      presetNames as [string, ...string[]],
+      resolvedPresetNames as [string, ...string[]],
       projectRoot,
     );
   } catch (err) {
@@ -576,9 +626,9 @@ async function handleApplyCommand(
     };
     createSnapshot({
       project_id: project.id,
-      label:
-        presetNames.length > 1
-          ? `Before applying: ${presetNames.join(" + ")}`
+        label:
+        resolvedPresetNames.length > 1
+          ? `Before applying: ${resolvedPresetNames.join(" + ")}`
           : `Before applying: ${primaryPreset.name}`,
       state: snapshotState,
     });
@@ -595,7 +645,7 @@ async function handleApplyCommand(
     if (format === "json") {
       printJson({
         preset: primaryPreset.name,
-        presets: presetNames,
+        presets: resolvedPresetNames,
         project_root: projectRoot,
         platforms: generated.map((result) => ({
           platform: result.platformId,
@@ -884,9 +934,13 @@ async function handlePresetPublishCommand(presetName: string, opts: { profile?: 
   }
 }
 
-function handlePlatformListCommand(opts: { format?: string } = {}): void {
+function handleHarnessListCommand(
+  opts: { format?: string; supported?: boolean } = {},
+): void {
   const format = parseOutputFormat(opts.format);
-  const platforms = getAllPlatforms();
+  const platforms = getAllPlatforms().filter(
+    (platform) => !opts.supported || NATIVE_HARNESS_IDS.has(platform.id),
+  );
   if (format === "json") {
     printJson(platforms);
     return;
@@ -903,8 +957,8 @@ function handlePlatformListCommand(opts: { format?: string } = {}): void {
       { key: "supports", header: "SUPPORTS", width: 40 },
     ],
     rows,
-    summary: `${platforms.length} platforms`,
-    empty: "No platforms found.",
+    summary: `${platforms.length} harnesses`,
+    empty: "No harnesses found.",
   });
 }
 
@@ -1417,22 +1471,21 @@ async function handleInitCommand(opts: {
   main?: string;
   aliases?: string;
   interactive?: boolean;
+  noInteractive?: boolean;
 } = {}): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const seeded = seedBuiltInPresets();
   const homeDefaults = await scanAndPersistHomeDefaults();
-  const interactiveSelection =
-    format === "human" && opts.interactive && process.stdin.isTTY;
-  const autoPromptSelection =
-    format === "human" &&
-    !opts.main &&
-    !opts.aliases &&
-    process.stdin.isTTY;
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    format,
+    missingRequiredArgs: !opts.main && !opts.aliases,
+  });
   const shouldSelectHarness =
-    interactiveSelection ||
-    autoPromptSelection ||
+    useWizard ||
     Boolean(opts.main) ||
     Boolean(opts.aliases);
   let savedHarnessPreference:
@@ -1443,7 +1496,7 @@ async function handleInitCommand(opts: {
     const selection = await resolveHarnessSelection({
       main: opts.main,
       aliases: parseHarnessAliases(opts.aliases),
-      nonInteractive: !(interactiveSelection || autoPromptSelection),
+      nonInteractive: !useWizard,
       current: getHarnessPreference(),
       detected: homeDefaults.detected.map((result) => result.platformId),
       mainMessage: "Select the default main harness",
@@ -1537,13 +1590,19 @@ async function handleHarnessSetCommand(opts: {
   main?: string;
   aliases?: string;
   interactive?: boolean;
+  noInteractive?: boolean;
 }): Promise<void> {
   const db = getDb();
   initializeSchema(db);
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    missingRequiredArgs: !opts.main && !opts.aliases,
+  });
   const selection = await resolveHarnessSelection({
     main: opts.main,
     aliases: parseHarnessAliases(opts.aliases),
-    nonInteractive: !opts.interactive,
+    nonInteractive: !useWizard,
     current: getHarnessPreference(),
   });
   const saved = setHarnessPreference(selection);
@@ -1583,6 +1642,7 @@ async function handleHarnessProjectSetCommand(opts: {
   aliases?: string;
   materializationStrategy?: string;
   interactive?: boolean;
+  noInteractive?: boolean;
 }): Promise<void> {
   const db = getDb();
   initializeSchema(db);
@@ -1599,10 +1659,16 @@ async function handleHarnessProjectSetCommand(opts: {
     local_path: projectRoot,
   });
 
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    missingRequiredArgs: !opts.main && !opts.aliases,
+  });
+
   const selection = await resolveHarnessSelection({
     main: opts.main,
     aliases: parseHarnessAliases(opts.aliases),
-    nonInteractive: !opts.interactive,
+    nonInteractive: !useWizard,
     current: getProjectHarnessConfig(project.id),
     detected: detectPlatforms(projectRoot),
   });
@@ -1729,46 +1795,105 @@ function handlePresetDiffCommand(
   }
 }
 
-function handlePresetValidateCommand(
-  name: string,
-  opts: { format?: string },
+function handlePresetDoctorCommand(
+  name: string | undefined,
+  opts: { check?: string[]; format?: string; listChecks?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const report = validatePreset(name);
-  if (format === "json") {
-    printJson(report);
-    if (!report.valid) process.exitCode = 1;
-    return;
-  }
-  if (report.valid && report.issues.length === 0) {
-    ui.success(`Preset "${report.preset}" is valid.`);
-    return;
-  }
-  ui.table.print({
-    columns: [
-      { key: "severity", header: "SEVERITY", width: 10 },
-      { key: "code", header: "CODE", width: 28 },
-      { key: "message", header: "MESSAGE", width: 40 },
-    ],
-    rows: report.issues,
-    summary: report.valid ? `${report.preset}: valid (warnings only)` : `${report.preset}: invalid`,
-  });
-  if (!report.valid) {
+  try {
+    if (opts.listChecks) {
+      const checks = listPresetDoctorChecks().map((check) => ({
+        id: check.id,
+        description: check.description,
+      }));
+
+      if (format === "json") {
+        printJson(checks);
+        return;
+      }
+
+      ui.table.print({
+        columns: [
+          { key: "id", header: "CHECK", width: 24 },
+          { key: "description", header: "DESCRIPTION", width: 56 },
+        ],
+        rows: checks,
+        summary: `${checks.length} checks`,
+      });
+      return;
+    }
+
+    if (!name) {
+      throw new Error("Preset name or ID is required unless --list-checks is used.");
+    }
+
+    const report = runPresetDoctor({
+      nameOrId: name,
+      checkIds: opts.check,
+    });
+
+    if (format === "json") {
+      printJson(report);
+      if (!report.valid) process.exitCode = 1;
+      return;
+    }
+
+    if (report.results.length === 0) {
+      ui.success(`Preset "${report.preset}" passed doctor.`);
+      return;
+    }
+
+    ui.table.print({
+      columns: [
+        { key: "severity", header: "SEVERITY", width: 10 },
+        { key: "check", header: "CHECK", width: 22 },
+        { key: "message", header: "MESSAGE", width: 46 },
+      ],
+      rows: report.results,
+      summary: report.valid ? `${report.preset}: valid (warnings only)` : `${report.preset}: invalid`,
+    });
+    if (!report.valid) {
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   }
 }
 
 async function handlePresetFromProjectCommand(
-  name: string,
-  opts: { project: string; description?: string; platform?: string },
+  name: string | undefined,
+  opts: {
+    project: string;
+    description?: string;
+    platform?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+    format?: string;
+  },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   try {
+    const resolvedName = name ?? await (shouldUseWizard({
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: parseOutputFormat(opts.format),
+      missingRequiredArgs: true,
+    })
+      ? runPresetFromProjectWizard()
+      : Promise.resolve(undefined));
+
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger("error: missing required argument 'name'");
+      return;
+    }
+
     const result = await createPresetFromProject({
-      name,
+      name: resolvedName,
       description: opts.description,
       projectRoot: resolve(opts.project),
       platform: opts.platform,
@@ -1944,6 +2069,7 @@ program
 const presetCmd = configureCommandGroup(
   program
     .command("preset")
+    .alias("p")
     .description("Manage presets (named bundles of resources that can be applied to a project)"),
 );
 
@@ -2011,69 +2137,104 @@ presetCmd
 presetCmd
   .command("add")
   .argument("<preset>", "Preset name or ID")
-  .argument("<resource>", "Resource name or ID")
-  .action((presetName: string, resourceSelector: string) => {
+  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
+  .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--version <constraint>", "Version constraint for plugin or preset dependency")
+  .option("--embed", "Embed plugin files on export (plugin attachments only)")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (presetName: string, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
-    const preset = getPreset(presetName);
-    if (!preset) {
-      ui.danger(`Preset not found: ${presetName}`);
-      return;
-    }
-    const resourceResult = resolveResource(resourceSelector);
-    if (resourceResult.status !== "found") {
-      ui.danger(
-        resourceResult.status === "ambiguous"
-          ? `Ambiguous resource name: ${resourceSelector}`
-          : `Resource not found: ${resourceSelector}`,
-      );
-      if (resourceResult.status === "ambiguous") {
-        for (const match of resourceResult.matches) {
-          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
-        }
+    try {
+      const preset = getPreset(presetName);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetName}`);
+        return;
       }
-      return;
+
+      const wizardValues = await runPresetAddWizard({
+        selector,
+        type: opts.type,
+        version: opts.version,
+        shouldPrompt: shouldUseWizard({
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+          format: parseOutputFormat(opts.format),
+          missingRequiredArgs: !selector || !opts.type,
+        }),
+      });
+
+      if (!wizardValues.selector) {
+        throw new Error(`error: missing required argument 'selector'`);
+      }
+
+      ui.success(ui.theme.accent(addPresetAttachment({
+        preset,
+        selector: wizardValues.selector,
+        type: wizardValues.type,
+        version: wizardValues.version,
+        embed: opts.embed,
+      })));
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
-    addResourceToPreset(preset.id, resourceResult.resource.id);
-    ui.success(
-      `Added ${resourceResult.resource.type} ${ui.theme.accent(`"${resourceResult.resource.name}"`)} to preset ${ui.theme.accent(preset.name)}`,
-    );
   });
 
 presetCmd
   .command("remove")
   .argument("<preset>", "Preset name or ID")
-  .argument("<resource>", "Resource name or ID")
-  .action((presetName: string, resourceSelector: string) => {
+  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
+  .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (presetName: string, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
-    const preset = getPreset(presetName);
-    if (!preset) {
-      ui.danger(`Preset not found: ${presetName}`);
-      return;
-    }
-    const resourceResult = resolveResource(resourceSelector);
-    if (resourceResult.status !== "found") {
-      ui.danger(
-        resourceResult.status === "ambiguous"
-          ? `Ambiguous resource name: ${resourceSelector}`
-          : `Resource not found: ${resourceSelector}`,
-      );
-      if (resourceResult.status === "ambiguous") {
-        for (const match of resourceResult.matches) {
-          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
-        }
+    try {
+      const preset = getPreset(presetName);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetName}`);
+        return;
       }
-      return;
+
+      const wizardValues = await runPresetAddWizard({
+        selector,
+        type: opts.type,
+        shouldPrompt: shouldUseWizard({
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+          format: parseOutputFormat(opts.format),
+          missingRequiredArgs: !selector || !opts.type,
+        }),
+      });
+
+      if (!wizardValues.selector) {
+        throw new Error(`error: missing required argument 'selector'`);
+      }
+
+      const result = removePresetAttachment({
+        preset,
+        selector: wizardValues.selector,
+        type: wizardValues.type,
+      });
+      if (!result.removed && wizardValues.type === "preset-dependency") {
+        process.exitCode = 1;
+        ui.danger(result.message);
+        return;
+      }
+      ui.success(ui.theme.accent(result.message));
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
-    removeResourceFromPreset(preset.id, resourceResult.resource.id);
-    ui.success(
-      `Removed ${resourceResult.resource.type} ${ui.theme.accent(`"${resourceResult.resource.name}"`)} from preset ${ui.theme.accent(preset.name)}`,
-    );
   });
 
 presetCmd
-  .command("add-plugin")
+  .command("add-plugin", { hidden: true })
   .argument("<preset>", "Preset name or ID")
   .argument("<ref>", "Plugin ref (e.g. formatter@marketplace)")
   .requiredOption(
@@ -2089,45 +2250,53 @@ presetCmd
     ) => {
       const db = getDb();
       initializeSchema(db);
-      const preset = getPreset(presetName);
-      if (!preset) {
-        ui.danger(`Preset not found: ${presetName}`);
-        return;
-      }
       try {
-        parseVersionConstraint(opts.version);
+        const preset = getPreset(presetName);
+        if (!preset) {
+          process.exitCode = 1;
+          ui.danger(`Preset not found: ${presetName}`);
+          return;
+        }
+        warnDeprecatedCommand("preset add-plugin", "preset add ... --type plugin");
+        ui.success(ui.theme.accent(addPresetAttachment({
+          preset,
+          selector: ref,
+          type: "plugin",
+          version: opts.version,
+        })));
       } catch (err) {
+        process.exitCode = 1;
         ui.danger(err instanceof Error ? err.message : String(err));
-        return;
       }
-      addPluginToPreset(preset.id, ref, opts.version);
-      syncClaudePresetPluginsAfterAdd(preset, ref, opts.version);
-      ui.success(
-        `Pinned ${ui.theme.accent(ref)} (${opts.version}) on preset ${ui.theme.accent(preset.name)}`,
-      );
     },
   );
 
 presetCmd
-  .command("remove-plugin")
+  .command("remove-plugin", { hidden: true })
   .argument("<preset>", "Preset name or ID")
   .argument("<ref>", "Plugin ref to unpin")
   .description("Remove a plugin pin from a preset")
   .action((presetName: string, ref: string) => {
     const db = getDb();
     initializeSchema(db);
-    const preset = getPreset(presetName);
-    if (!preset) {
-      ui.danger(`Preset not found: ${presetName}`);
-      return;
+    try {
+      const preset = getPreset(presetName);
+      if (!preset) {
+        process.exitCode = 1;
+        ui.danger(`Preset not found: ${presetName}`);
+        return;
+      }
+      warnDeprecatedCommand("preset remove-plugin", "preset remove ... --type plugin");
+      const result = removePresetAttachment({ preset, selector: ref, type: "plugin" });
+      ui.success(ui.theme.accent(result.message));
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
-    removePluginFromPreset(preset.id, ref);
-    syncClaudePresetPluginsAfterRemove(preset, ref);
-    ui.success(`Removed plugin pin ${ui.theme.accent(ref)} from preset ${ui.theme.accent(preset.name)}`);
   });
 
 presetCmd
-  .command("add-dependency")
+  .command("add-dependency", { hidden: true })
   .argument("<preset>", "Preset name, name@version selector, or ID")
   .argument("<dependency>", "Dependency preset name")
   .requiredOption("--version <constraint>", "Version constraint (semver version or valid range)")
@@ -2142,11 +2311,13 @@ presetCmd
         ui.danger(`Preset not found: ${presetSelector}`);
         return;
       }
-      parseVersionConstraint(opts.version);
-      addDependencyToPreset(preset.id, dependencyName, opts.version);
-      ui.success(
-        `Added dependency ${ui.theme.accent(dependencyName)} (${opts.version}) to preset ${ui.theme.accent(formatPresetLabel(preset))}`,
-      );
+      warnDeprecatedCommand("preset add-dependency", "preset add ... --type preset-dependency");
+      ui.success(ui.theme.accent(addPresetAttachment({
+        preset,
+        selector: dependencyName,
+        type: "preset-dependency",
+        version: opts.version,
+      })));
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
@@ -2154,7 +2325,7 @@ presetCmd
   });
 
 presetCmd
-  .command("remove-dependency")
+  .command("remove-dependency", { hidden: true })
   .argument("<preset>", "Preset name, name@version selector, or ID")
   .argument("<dependency>", "Dependency preset name to remove")
   .description("Remove a preset dependency")
@@ -2168,16 +2339,18 @@ presetCmd
         ui.danger(`Preset not found: ${presetSelector}`);
         return;
       }
-      if (removeDependencyFromPreset(preset.id, dependencyName)) {
-        ui.success(
-          `Removed dependency ${ui.theme.accent(dependencyName)} from preset ${ui.theme.accent(formatPresetLabel(preset))}`,
-        );
-      } else {
+      warnDeprecatedCommand("preset remove-dependency", "preset remove ... --type preset-dependency");
+      const result = removePresetAttachment({
+        preset,
+        selector: dependencyName,
+        type: "preset-dependency",
+      });
+      if (!result.removed) {
         process.exitCode = 1;
-        ui.danger(
-          `Dependency "${dependencyName}" not found on preset ${formatPresetLabel(preset)}`,
-        );
+        ui.danger(result.message);
+        return;
       }
+      ui.success(ui.theme.accent(result.message));
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
@@ -2186,15 +2359,30 @@ presetCmd
 
 presetCmd
   .command("delete")
-  .argument("<name>", "Preset name, name@version selector, or ID")
-  .action((name: string) => {
+  .argument("[name]", "Preset name, name@version selector, or ID")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (name: string | undefined, opts: { interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const preset = getPreset(name);
+      const resolvedName = name ?? await (shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: parseOutputFormat(opts.format),
+        missingRequiredArgs: true,
+      })
+        ? runPresetDeleteWizard()
+        : Promise.resolve(undefined));
+
+      if (!resolvedName) {
+        throw new Error("Preset name is required");
+      }
+
+      const preset = getPreset(resolvedName);
       if (!preset) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${name}`);
+        ui.danger(`Preset not found: ${resolvedName}`);
         return;
       }
       if (!deletePreset(preset.id)) {
@@ -2258,18 +2446,22 @@ presetCmd
   .action(handlePresetDiffCommand);
 
 presetCmd
-  .command("validate")
-  .argument("<name>", "Preset name or ID")
+  .command("doctor")
+  .argument("[name]", "Preset name or ID")
+  .option("--check <name>", "Run only the named check", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--list-checks", "List available checks")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Validate a preset without applying it to a project")
-  .action(handlePresetValidateCommand);
+  .description("Run doctor checks against a preset")
+  .action(handlePresetDoctorCommand);
 
 presetCmd
   .command("from-project")
-  .argument("<name>", "New preset name")
+  .argument("[name]", "New preset name")
   .option("--project <path>", "Project directory", ".")
   .option("-d, --description <text>", "Preset description")
   .option("-p, --platform <slug>", "Scan only a specific platform")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Scan a project and create a preset from imported resources")
   .action(handlePresetFromProjectCommand);
 
@@ -2301,6 +2493,7 @@ migrateCmd
 const resourceCmd = configureCommandGroup(
   program
     .command("resource")
+    .alias("r")
     .description("Manage resources (individual pieces of AI configuration like agents, skills, or instructions)"),
 );
 
@@ -2394,17 +2587,34 @@ resourceCmd
 
 resourceCmd
   .command("delete")
-  .argument("<resource>", "Resource name or ID")
-  .action((resource: string) => {
+  .argument("[resource]", "Resource name or ID")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (resource: string | undefined, opts: { interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
-    const result = resolveResource(resource);
+    const resolvedResource = resource ?? await (shouldUseWizard({
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: parseOutputFormat(opts.format),
+      missingRequiredArgs: true,
+    })
+      ? runResourceDeleteWizard()
+      : Promise.resolve(undefined));
+
+    if (!resolvedResource) {
+      process.exitCode = 1;
+      ui.danger("Resource name is required");
+      return;
+    }
+
+    const result = resolveResource(resolvedResource);
     if (result.status === "not_found") {
-      ui.danger(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resolvedResource}`);
       return;
     }
     if (result.status === "ambiguous") {
-      ui.danger(`Ambiguous resource name: ${resource}`);
+      ui.danger(`Ambiguous resource name: ${resolvedResource}`);
       for (const match of result.matches) {
         ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
       }
@@ -2413,7 +2623,7 @@ resourceCmd
     if (deleteResource(result.resource.id)) {
       ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
     } else {
-      ui.danger(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resolvedResource}`);
     }
   });
 
@@ -2422,6 +2632,7 @@ resourceCmd
 const projectCmd = configureCommandGroup(
   program
     .command("project")
+    .alias("pj")
     .description("Manage project scanning, apply state, and snapshots"),
 );
 
@@ -2438,13 +2649,14 @@ projectCmd
 projectCmd
   .command("apply")
   .argument(
-    "<presets...>",
+    "[presets...]",
     "Preset name(s), bundle path, or URL (multiple presets are merged in order)",
   )
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
   .option("--dry-run", "Show what would be written")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
   .option(
     "--ignore-plugin-versions",
     "Skip validating preset Claude plugin pins against installed versions",
@@ -2503,30 +2715,22 @@ projectCmd
     await handleProjectStatusCommand(path, opts);
   });
 
-// ── platform ────────────────────────────────────────────────────────────
-
-const platformCmd = configureCommandGroup(
-  program
-    .command("platform")
-    .description("Inspect supported platforms (target coding assistants or formats like Claude Code, Cursor, or Codex)"),
-);
-
-platformCmd
-  .command("list")
-  .alias("ls")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description(
-    "List all supported platforms (e.g., Claude Code, Cursor, Codex)",
-  )
-  .action(handlePlatformListCommand);
-
 // ── harness ─────────────────────────────────────────────────────────────
 
 const harnessCmd = configureCommandGroup(
   program
     .command("harness")
+    .alias("h")
     .description("Manage harness preferences for main and alias platforms"),
 );
+
+harnessCmd
+  .command("list")
+  .alias("ls")
+  .option("--supported", "Only show natively serialized harnesses")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List supported harnesses")
+  .action(handleHarnessListCommand);
 
 harnessCmd
   .command("set")
@@ -2727,10 +2931,19 @@ program
 
 program
   .command("platforms", { hidden: true })
+  .option("--supported", "Only show natively serialized harnesses")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string }) => {
-    warnDeprecatedCommand(formatCommand("platforms"), formatCommand("platform list"));
-    handlePlatformListCommand(opts);
+  .action((opts: { format?: string; supported?: boolean }) => {
+    const warning = renderDeprecatedCommandWarning(
+      formatCommand("platforms"),
+      formatCommand("harness list"),
+    );
+    if (parseOutputFormat(opts.format) === "json") {
+      console.warn(ui.theme.warn(`${ui.icons.warn} ${warning}`));
+    } else {
+      warnDeprecatedCommand(formatCommand("platforms"), formatCommand("harness list"));
+    }
+    handleHarnessListCommand(opts);
   });
 
 
@@ -2884,6 +3097,7 @@ async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promis
 const cloudCmd = configureCommandGroup(
   program
     .command("cloud")
+    .alias("c")
     .description("Authenticate with Harness cloud and manage cloud profiles"),
 );
 
@@ -2938,6 +3152,16 @@ export async function runHarnessdeckCli(
       error && typeof error === "object" && "code" in error
         ? String((error as { code: unknown }).code)
         : "";
+    if (isGroupedCommandFallbackError(error)) {
+      const match = error.message.match(/too many arguments for '([^']+)'\. Expected 0 arguments but got \d+\./i);
+      const commandName = match?.[1] ?? "command";
+      const attemptedSubcommand = argv[3];
+      error.code = "commander.unknownCommand";
+      error.message = attemptedSubcommand
+        ? `error: unknown command '${commandName} ${attemptedSubcommand}'`
+        : `error: unknown command '${commandName}'`;
+      throw error;
+    }
     if (
       code === "commander.help" ||
       code === "commander.helpDisplayed" ||

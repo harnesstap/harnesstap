@@ -1,18 +1,19 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
+import type { CommanderError } from "commander";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI platforms, status, and built-in presets", () => {
-  it("lists platforms and applies built-in presets", async () => {
+  it("lists harnesses and applies built-in presets", async () => {
     const context = await createTestContext("cli-builtins");
 
     try {
       await runCli(["init"]);
 
-      const platforms = await runCli(["platform", "list"]);
+      const platforms = await runCli(["harness", "list"]);
       const templates = await runCli(["preset", "list"]);
       const applied = await runCli([
         "project",
@@ -34,6 +35,14 @@ describe("CLI platforms, status, and built-in presets", () => {
     } finally {
       await context.cleanup();
     }
+  });
+
+  it("rejects the removed platform list command", async () => {
+    await expect(runCli(["platform", "list"], { commandName: "hd" })).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+      exitCode: 1,
+      message: expect.stringMatching(/unknown command/i),
+    } satisfies Partial<CommanderError>);
   });
 
   it("reports project status for tracked presets and snapshots", async () => {

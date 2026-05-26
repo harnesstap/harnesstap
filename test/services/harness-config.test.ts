@@ -176,4 +176,98 @@ describe("harness config service", () => {
 
     expect(selection.alias_harnesses).toEqual([]);
   });
+
+  it("uses the wizard when required args are missing on an interactive TTY", async () => {
+    const originalStdinIsTTY = process.stdin.isTTY;
+    const originalStdoutIsTTY = process.stdout.isTTY;
+    const originalCi = process.env.CI;
+    const originalNoInteractive = process.env.HARNESSDECK_NO_INTERACTIVE;
+
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    delete process.env.CI;
+    delete process.env.HARNESSDECK_NO_INTERACTIVE;
+
+    try {
+      const shared = await import("../../src/services/wizards/shared.ts");
+      expect(shared.shouldUseWizard({ missingRequiredArgs: true })).toBe(true);
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalStdinIsTTY,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: originalStdoutIsTTY,
+        configurable: true,
+      });
+      if (originalCi === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = originalCi;
+      }
+      if (originalNoInteractive === undefined) {
+        delete process.env.HARNESSDECK_NO_INTERACTIVE;
+      } else {
+        process.env.HARNESSDECK_NO_INTERACTIVE = originalNoInteractive;
+      }
+    }
+  });
+
+  it("suppresses the wizard for json, CI, and no-interactive flows", async () => {
+    const originalStdinIsTTY = process.stdin.isTTY;
+    const originalStdoutIsTTY = process.stdout.isTTY;
+    const originalCi = process.env.CI;
+    const originalNoInteractive = process.env.HARNESSDECK_NO_INTERACTIVE;
+
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    try {
+      const shared = await import("../../src/services/wizards/shared.ts");
+
+      expect(shared.shouldUseWizard({ missingRequiredArgs: true, format: "json" })).toBe(false);
+      expect(shared.shouldUseWizard({ missingRequiredArgs: true, noInteractive: true })).toBe(false);
+
+      process.env.CI = "true";
+      expect(shared.shouldUseWizard({ missingRequiredArgs: true })).toBe(false);
+
+      process.env.CI = "1";
+      expect(shared.shouldUseWizard({ missingRequiredArgs: true })).toBe(false);
+
+      delete process.env.CI;
+      process.env.HARNESSDECK_NO_INTERACTIVE = "1";
+      expect(shared.shouldUseWizard({ missingRequiredArgs: true })).toBe(false);
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalStdinIsTTY,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: originalStdoutIsTTY,
+        configurable: true,
+      });
+      if (originalCi === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = originalCi;
+      }
+      if (originalNoInteractive === undefined) {
+        delete process.env.HARNESSDECK_NO_INTERACTIVE;
+      } else {
+        process.env.HARNESSDECK_NO_INTERACTIVE = originalNoInteractive;
+      }
+    }
+  });
 });
