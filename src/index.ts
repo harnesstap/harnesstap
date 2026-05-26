@@ -2882,6 +2882,10 @@ export async function runHarnessdeckCli(
 ): Promise<void> {
   program.name(resolveInvocationName());
   process.exitCode = 0;
+  if (argv.length <= 2) {
+    program.outputHelp();
+    return;
+  }
   try {
     await program.parseAsync(argv);
   } catch (error) {
