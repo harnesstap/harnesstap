@@ -9,12 +9,17 @@ export function isPresetUrl(source: string): boolean {
 }
 
 export function isBundleFilePath(source: string): boolean {
-  return source.endsWith(".json") || source.endsWith(".harnessdeck.json");
+  return (
+    source.endsWith(".json") ||
+    source.endsWith(".jsonc") ||
+    source.endsWith(".harnessdeck.json") ||
+    source.endsWith(".harnessdeck.jsonc")
+  );
 }
 
 export function writePresetBundleToTempFile(body: string): string {
   const dir = mkdtempSync(join(tmpdir(), "harnessdeck-bundle-"));
-  const filePath = join(dir, "remote.harnessdeck.json");
+  const filePath = join(dir, "remote.harnessdeck.jsonc");
   writeFileSync(filePath, body, "utf-8");
   return filePath;
 }

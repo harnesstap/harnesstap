@@ -74,6 +74,34 @@ describe("exporter services", () => {
     }
   });
 
+  it("writes .jsonc bundles with a leading comment block", async () => {
+    const exportContext = await createInitializedTestContext("export-jsonc-comment-block");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const preset = presetModel.createPreset({ name: "commented-export" });
+      const bundlePath = join(exportContext.projectDir, "commented-export.jsonc");
+      exporter.exportToFile(preset.id, bundlePath);
+
+      const raw = readFileSync(bundlePath, "utf-8");
+      expect(raw.startsWith("/*\n")).toBe(true);
+      expect(raw).toContain('"$schema": "urn:harnessdeck:bundle:v1"');
+      expect(raw).toContain(" * Source machine: ");
+
+      const importContext = await createInitializedTestContext("import-jsonc-comment-block");
+      try {
+        const importedExporter = await import("../../src/services/exporter.ts");
+        expect(() => importedExporter.importFromFile(bundlePath)).not.toThrow();
+      } finally {
+        await importContext.cleanup();
+      }
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
+
   it("throws when exporting a non-existent preset", async () => {
     const context = await createInitializedTestContext("export-not-found");
 
@@ -127,6 +155,85 @@ describe("exporter services", () => {
         writeTextFile(bundlePath, "this is not json");
 
         expect(() => exporter.importFromFile(bundlePath)).toThrow();
+      } finally {
+        require("node:fs").rmSync(tempDir, { recursive: true, force: true });
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("throws when importing truncated JSONC that parses to a partial object", async () => {
+    const context = await createInitializedTestContext("export-truncated-jsonc");
+
+    try {
+      const exporter = await import("../../src/services/exporter.ts");
+      const tempDir = createTempDir("export-truncated-jsonc");
+
+      try {
+        const bundlePath = join(tempDir, "bundle.jsonc");
+        writeTextFile(
+          bundlePath,
+          `{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "preset": {
+    "name": "truncated-bundle",
+    "description": "broken",
+    "tags": []
+  },
+  "resources": []`,
+        );
+
+        expect(() => exporter.importFromFile(bundlePath)).toThrow();
+      } finally {
+        require("node:fs").rmSync(tempDir, { recursive: true, force: true });
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("imports a bundle file with comments and trailing commas", async () => {
+    const context = await createInitializedTestContext("export-jsonc-import");
+
+    try {
+      const exporter = await import("../../src/services/exporter.ts");
+      const tempDir = createTempDir("export-jsonc-import");
+
+      try {
+        const bundlePath = join(tempDir, "bundle.jsonc");
+        writeTextFile(
+          bundlePath,
+          `{
+  // comment before schema
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "preset": {
+    "name": "jsonc-bundle",
+    "version": "1.2.3",
+    "description": "JSONC bundle",
+    "tags": ["jsonc",],
+  },
+  "resources": [
+    {
+      "type": "instruction",
+      "name": "shared",
+      "description": "Shared skill",
+      "content": "# Shared",
+      "metadata": {},
+    },
+  ],
+  "plugins": [],
+  "embedded_plugins": [],
+}`,
+        );
+
+        const imported = exporter.importFromFile(bundlePath);
+        expect(imported.preset.name).toBe("jsonc-bundle");
+        expect(imported.preset.version).toBe("1.2.3");
+        expect(imported.resources).toHaveLength(1);
+        expect(imported.resources[0]?.name).toBe("shared");
       } finally {
         require("node:fs").rmSync(tempDir, { recursive: true, force: true });
       }
@@ -406,6 +513,242 @@ describe("exporter services", () => {
 
       const imported = exporter.importFromFile(bundlePath, { presetNameOverride: "override-name" });
       expect(imported.preset.name).toBe("override-name");
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
+
+  it("exports and imports a multi-preset bundle with shared embedded plugins", async () => {
+    const exportContext = await createInitializedTestContext("export-multi-preset");
+
+    try {
+      const pluginRoot = join(exportContext.projectDir, "plugins/shared-plugin");
+      mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ version: "1.0.0", name: "shared-plugin" }),
+      );
+      writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const alpha = presetModel.createPreset({ name: "alpha", version: "1.0.0" });
+      const beta = presetModel.createPreset({ name: "beta", version: "2.0.0" });
+      const alphaResource = resourceModel.createResource(makeResourceInput({ name: "alpha-skill" }));
+      const betaResource = resourceModel.createResource(makeResourceInput({ name: "beta-skill" }));
+      presetModel.addResourceToPreset(alpha.id, alphaResource.id);
+      presetModel.addResourceToPreset(beta.id, betaResource.id);
+      pluginModel.addPluginToPreset(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginModel.addPluginToPreset(beta.id, "./plugins/shared-plugin", "^1.0.0");
+
+      const bundle = exporter.exportPreset([alpha.id, beta.id], {
+        projectRoot: exportContext.projectDir,
+      });
+
+      expect(bundle.presets).toHaveLength(2);
+      expect(bundle.presets?.map((preset) => preset.name)).toEqual(["alpha", "beta"]);
+      expect(bundle.presets?.[0]).toEqual(
+        expect.objectContaining({
+          name: "alpha",
+          version: "1.0.0",
+          resources: expect.any(Array),
+          plugins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
+        }),
+      );
+      expect(bundle.presets?.[0]).not.toHaveProperty("preset");
+      expect(bundle.embedded_plugins).toHaveLength(1);
+
+      const bundlePath = join(exportContext.projectDir, "multi-bundle.jsonc");
+      exporter.exportToFile([alpha.id, beta.id], bundlePath, {
+        projectRoot: exportContext.projectDir,
+      });
+
+      const importContext = await createInitializedTestContext("import-multi-preset");
+
+      try {
+        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedPresetModel = await import("../../src/models/preset.ts");
+        const importedPluginModel = await import("../../src/models/plugin.ts");
+
+        const imported = importedExporter.importFromFile(bundlePath, {
+          embeddedTargetDir: importContext.projectDir,
+        });
+
+        expect(imported.presets).toHaveLength(2);
+        expect(imported.presets.map((entry) => entry.preset.name)).toEqual(["alpha", "beta"]);
+
+        const importedAlpha = importedPresetModel.getPreset("alpha");
+        const importedBeta = importedPresetModel.getPreset("beta");
+        expect(importedAlpha).toBeDefined();
+        expect(importedBeta).toBeDefined();
+
+        if (!importedAlpha || !importedBeta) {
+          throw new Error("expected imported presets");
+        }
+
+        expect(importedPluginModel.listPresetPlugins(importedAlpha.id)).toEqual([
+          expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
+        ]);
+        expect(importedPluginModel.listPresetPlugins(importedBeta.id)).toEqual([
+          expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
+        ]);
+      } finally {
+        await importContext.cleanup();
+      }
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
+
+  it("imports multi-preset bundles without attaching embedded plugins to unrelated presets", async () => {
+    const exportContext = await createInitializedTestContext("export-multi-preset-selective-plugin");
+
+    try {
+      const pluginRoot = join(exportContext.projectDir, "plugins/shared-plugin");
+      mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ version: "1.0.0", name: "shared-plugin" }),
+      );
+      writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const alpha = presetModel.createPreset({ name: "alpha-only-plugin", version: "1.0.0" });
+      const beta = presetModel.createPreset({ name: "beta-no-plugin", version: "1.0.0" });
+      pluginModel.addPluginToPreset(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+
+      const bundle = exporter.exportPreset([alpha.id, beta.id], {
+        projectRoot: exportContext.projectDir,
+      });
+
+      expect(bundle.presets).toHaveLength(2);
+      expect(bundle.embedded_plugins).toHaveLength(1);
+      expect(bundle.presets?.[0]?.plugins).toEqual([
+        { ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" },
+      ]);
+      expect(bundle.presets?.[1]?.plugins).toEqual([]);
+      expect(bundle.presets?.[0]).toEqual(
+        expect.objectContaining({
+          name: "alpha-only-plugin",
+          version: "1.0.0",
+          resources: [],
+          plugins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
+        }),
+      );
+      expect(bundle.presets?.[1]).toEqual(
+        expect.objectContaining({
+          name: "beta-no-plugin",
+          version: "1.0.0",
+          resources: [],
+          plugins: [],
+        }),
+      );
+      expect(bundle.presets?.[0]).not.toHaveProperty("preset");
+
+      const bundlePath = join(exportContext.projectDir, "selective-multi.jsonc");
+      exporter.exportToFile([alpha.id, beta.id], bundlePath, {
+        projectRoot: exportContext.projectDir,
+      });
+
+      const importContext = await createInitializedTestContext("import-multi-preset-selective-plugin");
+
+      try {
+        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedPresetModel = await import("../../src/models/preset.ts");
+        const importedPluginModel = await import("../../src/models/plugin.ts");
+
+        importedExporter.importFromFile(bundlePath, {
+          embeddedTargetDir: importContext.projectDir,
+        });
+
+        const importedAlpha = importedPresetModel.getPreset("alpha-only-plugin");
+        const importedBeta = importedPresetModel.getPreset("beta-no-plugin");
+        if (!importedAlpha || !importedBeta) {
+          throw new Error("expected imported presets");
+        }
+
+        expect(importedPluginModel.listPresetPlugins(importedAlpha.id)).toEqual([
+          expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
+        ]);
+        expect(importedPluginModel.listPresetPlugins(importedBeta.id)).toEqual([]);
+      } finally {
+        await importContext.cleanup();
+      }
+    } finally {
+      await exportContext.cleanup();
+    }
+  });
+
+  it("preserves per-preset embedded plugin version constraints when refs are shared", async () => {
+    const exportContext = await createInitializedTestContext("export-shared-ref-different-constraints");
+
+    try {
+      const pluginRoot = join(exportContext.projectDir, "plugins/shared-plugin");
+      mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ version: "1.0.0", name: "shared-plugin" }),
+      );
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const alpha = presetModel.createPreset({ name: "alpha-shared-ref", version: "1.0.0" });
+      const beta = presetModel.createPreset({ name: "beta-shared-ref", version: "1.0.0" });
+      pluginModel.addPluginToPreset(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginModel.addPluginToPreset(beta.id, "./plugins/shared-plugin", "^2.0.0");
+
+      const bundle = exporter.exportPreset([alpha.id, beta.id], {
+        projectRoot: exportContext.projectDir,
+      });
+
+      expect(bundle.embedded_plugins).toHaveLength(2);
+      expect(bundle.presets?.[0]?.plugins).toContainEqual({
+        ref: "./plugins/shared-plugin",
+        version_constraint: "^1.0.0",
+      });
+      expect(bundle.presets?.[1]?.plugins).toContainEqual({
+        ref: "./plugins/shared-plugin",
+        version_constraint: "^2.0.0",
+      });
+
+      const bundlePath = join(exportContext.projectDir, "shared-ref-constraints.jsonc");
+      exporter.exportToFile([alpha.id, beta.id], bundlePath, {
+        projectRoot: exportContext.projectDir,
+      });
+
+      const importContext = await createInitializedTestContext("import-shared-ref-different-constraints");
+      try {
+        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedPresetModel = await import("../../src/models/preset.ts");
+        const importedPluginModel = await import("../../src/models/plugin.ts");
+
+        importedExporter.importFromFile(bundlePath, {
+          embeddedTargetDir: importContext.projectDir,
+        });
+
+        const importedAlpha = importedPresetModel.getPreset("alpha-shared-ref");
+        const importedBeta = importedPresetModel.getPreset("beta-shared-ref");
+        if (!importedAlpha || !importedBeta) {
+          throw new Error("expected imported presets");
+        }
+
+        expect(importedPluginModel.listPresetPlugins(importedAlpha.id)).toEqual([
+          expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
+        ]);
+        expect(importedPluginModel.listPresetPlugins(importedBeta.id)).toEqual([
+          expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^2.0.0" }),
+        ]);
+      } finally {
+        await importContext.cleanup();
+      }
     } finally {
       await exportContext.cleanup();
     }

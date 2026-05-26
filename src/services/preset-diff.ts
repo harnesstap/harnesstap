@@ -1,8 +1,7 @@
-import { readFileSync } from "node:fs";
 import { getPreset, getPresetResources, listPresetDependencies } from "../models/preset.js";
 import { listPresetPlugins } from "../models/plugin.js";
-import type { ExportBundle, Resource } from "../types.js";
-import { BUNDLE_SCHEMA, BUNDLE_VERSION } from "../types.js";
+import type { Resource } from "../types.js";
+import { inspectBundleFile } from "./exporter.js";
 
 export interface PresetDiffEntry {
   kind: "resource" | "plugin" | "metadata";
@@ -35,10 +34,20 @@ function resourceKey(resource: Pick<Resource, "type" | "name">): string {
 }
 
 function loadPresetView(nameOrPath: string): PresetView {
-  if (nameOrPath.endsWith(".json") || nameOrPath.endsWith(".harnessdeck.json")) {
-    const raw = readFileSync(nameOrPath, "utf-8");
-    const bundle = JSON.parse(raw) as ExportBundle;
-    if (bundle.$schema !== BUNDLE_SCHEMA || bundle.version !== BUNDLE_VERSION) {
+  if (
+    nameOrPath.endsWith(".json") ||
+    nameOrPath.endsWith(".jsonc") ||
+    nameOrPath.endsWith(".harnessdeck.json") ||
+    nameOrPath.endsWith(".harnessdeck.jsonc")
+  ) {
+    const summary = inspectBundleFile(nameOrPath);
+    if (summary.presets.length > 1) {
+      throw new Error(
+        `Multi-preset bundles are not supported by preset diff: ${nameOrPath}`,
+      );
+    }
+    const [bundle] = summary.presets;
+    if (!bundle) {
       throw new Error(`Unsupported bundle: ${nameOrPath}`);
     }
     const resources = bundle.resources.map((r, order) => ({
@@ -63,10 +72,10 @@ function loadPresetView(nameOrPath: string): PresetView {
         ref: p.ref,
         version_constraint: p.version_constraint,
       })),
-      description: bundle.preset.description,
-      tags: bundle.preset.tags,
-      claudeJson: JSON.stringify(bundle.claude ?? bundle.preset.claude ?? null),
-      version: bundle.preset.version ?? "",
+      description: bundle.description,
+      tags: bundle.tags,
+      claudeJson: JSON.stringify(bundle.claude ?? null),
+      version: bundle.version ?? "",
       dependenciesJson: JSON.stringify(
         (bundle.dependencies ?? []).map((d) => ({
           dependency_name: d.dependency_name,
