@@ -6,7 +6,7 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI planned scenarios", () => {
-  it("runs preset validate, diff, and from-project", async () => {
+  it("runs preset doctor, diff, and from-project", async () => {
     const context = await createTestContext("cli-planned");
     try {
       await runCli(["init"]);
@@ -30,14 +30,14 @@ describe("CLI planned scenarios", () => {
       expect(fromProject.stdout).toMatch(/\d+ resources?/);
       expect(fromProject.stdout).not.toContain("1 resources");
 
-      const validate = await runCli([
+      const doctor = await runCli([
         "preset",
-        "validate",
+        "doctor",
         "cli-inferred",
         "--format",
         "json",
       ]);
-      expect(validate.stdout).toContain('"valid"');
+      expect(doctor.stdout).toContain('"results"');
 
       await runCli(["preset", "create", "other"]);
       const diff = await runCli([
@@ -49,6 +49,66 @@ describe("CLI planned scenarios", () => {
         "json",
       ]);
       expect(diff.stdout).toContain('"changes"');
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("auto-prompts preset from-project on a TTY when the preset name is missing", async () => {
+    const context = await createTestContext("cli-from-project-wizard");
+    try {
+      await runCli(["init"]);
+      mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
+      writeFileSync(
+        join(context.projectDir, "CLAUDE.md"),
+        "# CLI preset from project\n",
+        "utf-8",
+      );
+
+      const result = await runCli([
+        "preset",
+        "from-project",
+        "--project",
+        context.projectDir,
+      ], {
+        isTTY: true,
+        promptResponses: [{ value: "wizard-preset" }],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("wizard-preset");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("keeps preset from-project non-interactive when json or CI suppress prompting", async () => {
+    const context = await createTestContext("cli-from-project-wizard-suppressed");
+    try {
+      await runCli(["init"]);
+
+      const jsonSuppressed = await runCli([
+        "preset",
+        "from-project",
+        "--project",
+        context.projectDir,
+        "--format",
+        "json",
+      ], {
+        isTTY: true,
+      });
+      expect(jsonSuppressed.exitCode).toBe(1);
+
+      const ciSuppressed = await runCli([
+        "preset",
+        "from-project",
+        "--project",
+        context.projectDir,
+      ], {
+        isTTY: true,
+        env: { CI: "true" },
+      });
+      expect(ciSuppressed.exitCode).toBe(1);
     } finally {
       await context.cleanup();
     }
@@ -167,6 +227,92 @@ describe("CLI planned scenarios", () => {
       ]);
       expect(syncHuman.stdout).toContain("Synced");
       expect(syncHuman.exitCode ?? 0).toBe(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("auto-prompts project apply on a TTY when presets are missing", async () => {
+    const context = await createTestContext("cli-project-apply-wizard");
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/apply-wizard.git");
+      await runCli(["init"]);
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+      const preset = presetModel.createPreset({ name: "apply-preset" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "apply-context",
+          content: "# Apply wizard\n",
+        }),
+      );
+      presetModel.addResourceToPreset(preset.id, resource.id);
+
+      const result = await runCli([
+        "project",
+        "apply",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+      ], {
+        isTTY: true,
+        promptResponses: [{ value: "apply-preset" }],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("CLAUDE.md");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("keeps project apply non-interactive when json or no-interactive suppress prompting", async () => {
+    const context = await createTestContext("cli-project-apply-wizard-suppressed");
+    try {
+      await runCli(["init"]);
+
+      const jsonSuppressed = await runCli([
+        "project",
+        "apply",
+        "--project",
+        context.projectDir,
+        "--format",
+        "json",
+      ], {
+        isTTY: true,
+      });
+      expect(jsonSuppressed.exitCode).toBe(1);
+
+      const disabled = await runCli([
+        "--no-interactive",
+        "project",
+        "apply",
+        "--project",
+        context.projectDir,
+      ], {
+        isTTY: true,
+      });
+      expect(disabled.exitCode).toBe(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resource delete without prompting fails as a normal CLI error", async () => {
+    const context = await createTestContext("cli-resource-delete-no-prompt");
+    try {
+      const result = await runCli(["--no-interactive", "resource", "delete"], {
+        isTTY: true,
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Resource name is required");
+      expect(result.stderr).not.toContain("Error:");
+      expect(result.stderr).not.toContain("at ");
     } finally {
       await context.cleanup();
     }

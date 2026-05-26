@@ -10,11 +10,11 @@ import { makeResourceInput } from "../helpers/resources.ts";
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
 describe("CLI output format", () => {
-  it("emits JSON for preset, status, history, platform, init, and apply dry-run commands", async () => {
+  it("emits JSON for preset, status, history, harness, init, and apply dry-run commands", async () => {
     const context = await createTestContext("cli-output-format");
     try {
       await runCli(["init"]);
-      const platforms = await runCli(["platform", "list", "--format", "json"]);
+      const platforms = await runCli(["harness", "list", "--format", "json"]);
       expect(JSON.parse(platforms.stdout)).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: "claude-code" })]),
       );

@@ -1,39 +1,14 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
-import { ClaudeCodeSerializer } from "../platforms/claude-code.js";
-import { CursorSerializer } from "../platforms/cursor.js";
-import { CodexSerializer } from "../platforms/codex.js";
-import { OpenCodeSerializer } from "../platforms/opencode.js";
-import { CopilotSerializer } from "../platforms/copilot.js";
-import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
-import type { PlatformPaths, PlatformSerializer, Resource } from "../types.js";
+import type { PlatformPaths, Resource } from "../types.js";
 import { createResource } from "../models/resource.js";
 import { listResources } from "../models/resource.js";
 import { upsertProjectPluginState } from "../models/plugin.js";
 import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
+import { getPlatformSerializer } from "./platform-serializers.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
-// ── Serializer factory ─────────────────────────────────────────────────
-
-function getSerializer(platformId: string): PlatformSerializer {
-  switch (platformId) {
-    case "claude-code":
-      return new ClaudeCodeSerializer();
-    case "cursor":
-      return new CursorSerializer();
-    case "codex":
-      return new CodexSerializer();
-    case "opencode":
-      return new OpenCodeSerializer();
-    case "github-copilot":
-      return new CopilotSerializer("github-copilot");
-    case "copilot-cli":
-      return new CopilotSerializer("copilot-cli");
-    default:
-      return new GenericAgentsSerializer(platformId);
-  }
-}
 function resolveConfiguredPath(
   rootPath: string,
   configuredPath: string,
@@ -116,7 +91,7 @@ export async function scanPlatform(
   platformId: string,
   projectRoot: string,
 ): Promise<ScanResult> {
-  const serializer = getSerializer(platformId);
+  const serializer = getPlatformSerializer(platformId);
   const resources = await serializer.scan(projectRoot);
   return { platformId, resources };
 }
@@ -148,7 +123,7 @@ export async function scanHomeDefaults(
 
   const results: HomeScanResult[] = [];
   for (const result of platforms) {
-    const serializer = getSerializer(result.platformId);
+    const serializer = getPlatformSerializer(result.platformId);
     const resources = serializer.scanGlobal
       ? await serializer.scanGlobal(homeRoot)
       : await serializer.scan(homeRoot);
