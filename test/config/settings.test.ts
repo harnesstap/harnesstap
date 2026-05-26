@@ -20,6 +20,64 @@ describe("loadSettings", () => {
     expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(48);
   });
 
+  it("prefers config.jsonc over config.json", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ plugins: { refreshMaxAgeHours: 48 } }),
+    );
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ plugins: { refreshMaxAgeHours: 72 } }),
+    );
+
+    expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(72);
+  });
+
+  it("reads JSONC comments and trailing commas", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      `{
+  // keep plugin metadata fresh
+  "plugins": {
+    "refreshMaxAgeHours": 36,
+  },
+}`,
+    );
+
+    expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(36);
+  });
+
+  it("falls back to defaults for malformed config content", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      `{
+  "plugins": {
+    "refreshMaxAgeHours": 36,
+  // missing closing braces on purpose
+`,
+    );
+
+    expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(24);
+  });
+
+  it("parses quoted // content without treating it as a comment", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      `{
+  "note": "keep https://example.com/docs // literal text",
+  "plugins": {
+    "refreshMaxAgeHours": 12,
+  },
+}`,
+    );
+
+    expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(12);
+  });
+
   it("falls back to default for invalid refreshMaxAgeHours", () => {
     const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
     writeFileSync(

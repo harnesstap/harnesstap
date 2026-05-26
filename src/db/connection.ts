@@ -54,12 +54,28 @@ function resolveDbPath(): string {
   return join(resolveHarnessdeckDir(), "harnessdeck.db");
 }
 
+function resolveConfigJsoncPath(): string {
+  return join(resolveHarnessdeckDir(), "config.jsonc");
+}
+
+function resolveLegacyConfigPath(): string {
+  return join(resolveHarnessdeckDir(), "config.json");
+}
+
 export function getDbPath(): string {
   return resolveDbPath();
 }
 
 export function getHarnessdeckDir(): string {
   return resolveHarnessdeckDir();
+}
+
+export function getConfigJsoncPath(): string {
+  return resolveConfigJsoncPath();
+}
+
+export function getLegacyConfigPath(): string {
+  return resolveLegacyConfigPath();
 }
 
 export function getDb(): SqliteDatabase {

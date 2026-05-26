@@ -57,7 +57,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 ## Demo
 
 Initialise HarnessDeck, scan an existing repository, browse built-in presets, apply one, and confirm the final state — all in about a minute:
-[existing-repo-adoption demo](../output/01-existing-repo-adoption.gif)
+[![existing-repo-adoption demo](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```
 harnessdeck init #initialise HarnessDeck in the repository

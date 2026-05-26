@@ -258,4 +258,51 @@ describe("diffPresets - metadata: version and dependencies", () => {
       await context.cleanup();
     }
   });
+
+  it("rejects diffing against a multi-preset bundle without explicit preset selection", async () => {
+    const context = await createInitializedTestContext("diff-multi-bundle-rejected");
+
+    try {
+      const presetModel = await import("../../src/models/preset.ts");
+      const { diffPresets } = await import("../../src/services/preset-diff.ts");
+      const { createTempDir } = await import("../helpers/fs.ts");
+      const tmpDir = createTempDir("diff-multi-bundle-rejected");
+
+      presetModel.createPreset({ name: "local-preset", version: "1.0.0" });
+
+      const bundlePath = join(tmpDir, "multi.harnessdeck.jsonc");
+      writeTextFile(
+        bundlePath,
+        `{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "presets": [
+    {
+      "name": "first",
+      "version": "1.0.0",
+      "description": "",
+      "tags": [],
+      "resources": [],
+      "plugins": []
+    },
+    {
+      "name": "second",
+      "version": "1.0.0",
+      "description": "",
+      "tags": [],
+      "resources": [],
+      "plugins": []
+    }
+  ],
+  "embedded_plugins": []
+}`,
+      );
+
+      expect(() => diffPresets(bundlePath, "local-preset")).toThrow(
+        "Multi-preset bundles are not supported by preset diff",
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

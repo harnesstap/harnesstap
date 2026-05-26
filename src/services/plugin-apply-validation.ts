@@ -9,15 +9,15 @@ export interface PluginValidationIssue {
   message: string;
 }
 
-/**
- * Validates preset Claude plugin pins against the merged effective inventory.
- * Only compares rows whose `ref` appears in `inventory.effective`.
- */
-export function validatePresetPluginConstraints(
-  presetId: string,
+interface PluginConstraintPin {
+  ref: string;
+  version_constraint: string;
+}
+
+function validatePluginConstraintPins(
+  rows: PluginConstraintPin[],
   inventory: ProjectPluginInventory,
 ): PluginValidationIssue[] {
-  const rows = listPresetPlugins(presetId);
   const effectiveByRef = new Map(inventory.effective.map((p) => [p.ref, p]));
   const issues: PluginValidationIssue[] = [];
 
@@ -34,4 +34,22 @@ export function validatePresetPluginConstraints(
   }
 
   return issues;
+}
+
+/**
+ * Validates preset Claude plugin pins against the merged effective inventory.
+ * Only compares rows whose `ref` appears in `inventory.effective`.
+ */
+export function validatePresetPluginConstraints(
+  presetId: string,
+  inventory: ProjectPluginInventory,
+): PluginValidationIssue[] {
+  return validatePluginConstraintPins(listPresetPlugins(presetId), inventory);
+}
+
+export function validatePluginPinsAgainstInventory(
+  pins: PluginConstraintPin[],
+  inventory: ProjectPluginInventory,
+): PluginValidationIssue[] {
+  return validatePluginConstraintPins(pins, inventory);
 }

@@ -236,4 +236,123 @@ describe("CLI apply", () => {
       await context.cleanup();
     }
   });
+
+  it("reuses imported presets when reapplying the same bundle path", async () => {
+    const context = await createTestContext("cli-apply-bundle-reuse");
+
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-bundle-reuse.git");
+      await runCli(["init"]);
+
+      const bundlePath = join(context.projectDir, "bundle.jsonc");
+      writeFileSync(
+        bundlePath,
+        `{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "preset": {
+    "name": "bundle-reuse",
+    "version": "1.0.0",
+    "description": "",
+    "tags": []
+  },
+  "resources": [
+    {
+      "type": "instruction",
+      "name": "ctx",
+      "description": "",
+      "content": "# Reusable",
+      "metadata": {}
+    }
+  ],
+  "plugins": [],
+  "embedded_plugins": []
+}`,
+        "utf-8",
+      );
+
+      const firstApply = await runCli([
+        "project",
+        "apply",
+        bundlePath,
+        "--project",
+        context.projectDir,
+        "--platform",
+        "codex",
+      ]);
+      const secondApply = await runCli([
+        "project",
+        "apply",
+        bundlePath,
+        "--project",
+        context.projectDir,
+        "--platform",
+        "codex",
+      ]);
+
+      expect(firstApply.exitCode).toBeUndefined();
+      expect(secondApply.exitCode).toBeUndefined();
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const presets = presetModel
+        .listPresets()
+        .filter((preset) => preset.name === "bundle-reuse" && preset.version === "1.0.0");
+      expect(presets).toHaveLength(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("validates merged plugin pins from earlier presets in strict mode", async () => {
+    const context = await createTestContext("cli-apply-plugins-merged-strict");
+
+    try {
+      seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-merged-strict.git");
+      await runCli(["init"]);
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+
+      const base = presetModel.createPreset({ name: "base-plugins" });
+      pluginModel.addPluginToPreset(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const baseResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "base",
+          content: "# Base",
+        }),
+      );
+      presetModel.addResourceToPreset(base.id, baseResource.id);
+
+      const overlay = presetModel.createPreset({ name: "overlay-no-plugins" });
+      const overlayResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "overlay",
+          content: "# Overlay",
+        }),
+      );
+      presetModel.addResourceToPreset(overlay.id, overlayResource.id);
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "base-plugins",
+        "overlay-no-plugins",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+        "--strict-plugin-versions",
+      ]);
+
+      expect(applyResult.exitCode).toBe(2);
+      expect(applyResult.stderr).toContain("Plugin version mismatch:");
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

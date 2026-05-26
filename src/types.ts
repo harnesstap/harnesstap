@@ -224,20 +224,55 @@ export interface PlatformDefinition {
 export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
 export const BUNDLE_VERSION = 1 as const;
 
-export interface ExportBundle {
-  $schema: typeof BUNDLE_SCHEMA;
-  version: typeof BUNDLE_VERSION;
-  preset: Omit<Preset, "id" | "created_at" | "updated_at">;
-  resources: Omit<Resource, "id" | "created_at" | "updated_at" | "source">[];
+export type ExportBundlePreset = Omit<Preset, "id" | "created_at" | "updated_at">;
+
+export type ExportBundleResource = Omit<
+  Resource,
+  "id" | "created_at" | "updated_at" | "source"
+>;
+
+export type ExportBundleDependency = Omit<PresetDependency, "preset_id">;
+
+export interface ExportBundlePresetEntry extends ExportBundlePreset {
+  name: string;
+  version: string;
+  description: string;
+  tags: string[];
+  resources: ExportBundleResource[];
   /** Claude Code marketplace and plugin configuration for this preset. */
   claude?: ClaudePresetConfig;
   /** Preset plugin pins (marketplace refs, not inlined in the bundle file). */
   plugins: ExportBundlePresetPluginPin[];
+  /** Embedded plugin refs used by this preset; payload lives at bundle root. */
+  embedded_plugin_refs?: string[];
+  /** Preset composition dependencies (name + version constraint). */
+  dependencies?: ExportBundleDependency[];
+}
+
+export interface LegacyExportBundle {
+  $schema: typeof BUNDLE_SCHEMA;
+  version: typeof BUNDLE_VERSION;
+  preset: ExportBundlePreset;
+  resources: ExportBundleResource[];
+  /** Claude Code marketplace and plugin configuration for this preset. */
+  claude?: ClaudePresetConfig;
+  /** Preset plugin pins (marketplace refs, not inlined in the bundle file). */
+  plugins: ExportBundlePresetPluginPin[];
+  /** Preset composition dependencies (name + version constraint). */
+  dependencies?: ExportBundleDependency[];
   /** Plugin trees inlined in the bundle file. */
   embedded_plugins: ExportBundleEmbeddedPlugin[];
-  /** Preset composition dependencies (name + version constraint). */
-  dependencies?: Array<Omit<PresetDependency, "preset_id">>;
 }
+
+export interface MultiPresetExportBundle {
+  $schema: typeof BUNDLE_SCHEMA;
+  version: typeof BUNDLE_VERSION;
+  presets: ExportBundlePresetEntry[];
+  /** Plugin trees inlined in the bundle file and shared by bundle presets. */
+  embedded_plugins: ExportBundleEmbeddedPlugin[];
+}
+
+export type ExportBundle = LegacyExportBundle | MultiPresetExportBundle;
 
 /** Plugin pin carried in bundles (non-embedded). */
 export interface ExportBundlePresetPluginPin {
