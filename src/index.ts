@@ -2698,7 +2698,7 @@ process.on("exit", () => closeDb());
 
 async function handleCloudLoginCommand(profileName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
   const name = profileName ?? "default";
-  const baseUrl = opts.baseUrl ?? "https://app.harness.io";
+  const baseUrl = opts.baseUrl ?? "https://harnessdeck.kayrnt.fr";
   try {
     const device = await requestDeviceCode(baseUrl);
     console.log(`Visit: ${device.verification_uri}`);

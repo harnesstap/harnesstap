@@ -20,7 +20,7 @@ afterEach(() => {
 
 test("round-trips a saved profile under HARNESSDECK_HOME", async () => {
   const profile = {
-    cloudBaseUrl: "https://app.harness.io",
+    cloudBaseUrl: "https://harnessdeck.kayrnt.fr",
     scopes: ["core"],
   };
 
@@ -28,7 +28,7 @@ test("round-trips a saved profile under HARNESSDECK_HOME", async () => {
   const got = await cp.getCloudProfile("my-profile");
   expect(got.profileName).toBe("my-profile");
   expect(got.profile).toBeTruthy();
-  expect(got.profile.cloudBaseUrl).toBe("https://app.harness.io");
+  expect(got.profile.cloudBaseUrl).toBe("https://harnessdeck.kayrnt.fr");
 
   // Also verify file exists
   const p = cp.getCloudProfilesPath();
