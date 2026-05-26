@@ -222,6 +222,14 @@ function renderGroupedCommandHelp(
   return lines.join("\n");
 }
 
+function configureCommandGroup(cmd: Command): Command {
+  cmd.helpCommand(false);
+  cmd.action(() => {
+    cmd.outputHelp();
+  });
+  return cmd;
+}
+
 program
   .name("harnessdeck")
   .description(
@@ -1901,11 +1909,11 @@ program
 
 // ── preset ──────────────────────────────────────────────────────────────
 
-const presetCmd = program
-  .command("preset")
-  .description("Manage presets (named bundles of resources that can be applied to a project)");
-presetCmd.helpCommand(false);
-presetCmd.helpCommand(false);
+const presetCmd = configureCommandGroup(
+  program
+    .command("preset")
+    .description("Manage presets (named bundles of resources that can be applied to a project)"),
+);
 
 presetCmd
   .command("create")
@@ -2235,10 +2243,11 @@ presetCmd
 
 // ── migrate ─────────────────────────────────────────────────────────────
 
-const migrateCmd = program
-  .command("migrate")
-  .description("Export or import full HarnessDeck state for machine migration");
-migrateCmd.helpCommand(false);
+const migrateCmd = configureCommandGroup(
+  program
+    .command("migrate")
+    .description("Export or import full HarnessDeck state for machine migration"),
+);
 
 migrateCmd
   .command("export")
@@ -2257,11 +2266,11 @@ migrateCmd
 
 // ── resource ────────────────────────────────────────────────────────────
 
-const resourceCmd = program
-  .command("resource")
-  .description("Manage resources (individual pieces of AI configuration like agents, skills, or instructions)");
-resourceCmd.helpCommand(false);
-resourceCmd.helpCommand(false);
+const resourceCmd = configureCommandGroup(
+  program
+    .command("resource")
+    .description("Manage resources (individual pieces of AI configuration like agents, skills, or instructions)"),
+);
 
 resourceCmd
   .command("list")
@@ -2378,11 +2387,11 @@ resourceCmd
 
 // ── project ─────────────────────────────────────────────────────────────
 
-const projectCmd = program
-  .command("project")
-  .description("Manage project scanning, apply state, and snapshots");
-projectCmd.helpCommand(false);
-projectCmd.helpCommand(false);
+const projectCmd = configureCommandGroup(
+  program
+    .command("project")
+    .description("Manage project scanning, apply state, and snapshots"),
+);
 
 projectCmd
   .command("scan")
@@ -2464,11 +2473,11 @@ projectCmd
 
 // ── platform ────────────────────────────────────────────────────────────
 
-const platformCmd = program
-  .command("platform")
-  .description("Inspect supported platforms (target coding assistants or formats like Claude Code, Cursor, or Codex)");
-platformCmd.helpCommand(false);
-platformCmd.helpCommand(false);
+const platformCmd = configureCommandGroup(
+  program
+    .command("platform")
+    .description("Inspect supported platforms (target coding assistants or formats like Claude Code, Cursor, or Codex)"),
+);
 
 platformCmd
   .command("list")
@@ -2481,10 +2490,11 @@ platformCmd
 
 // ── harness ─────────────────────────────────────────────────────────────
 
-const harnessCmd = program
-  .command("harness")
-  .description("Manage harness preferences for main and alias platforms");
-harnessCmd.helpCommand(false);
+const harnessCmd = configureCommandGroup(
+  program
+    .command("harness")
+    .description("Manage harness preferences for main and alias platforms"),
+);
 
 harnessCmd
   .command("set")
@@ -2500,10 +2510,11 @@ harnessCmd
   .description("Show global harness preferences")
   .action(handleHarnessStatusCommand);
 
-const harnessProjectCmd = harnessCmd
-  .command("project")
-  .description("Manage harness preferences for a git-backed project");
-harnessProjectCmd.helpCommand(false);
+const harnessProjectCmd = configureCommandGroup(
+  harnessCmd
+    .command("project")
+    .description("Manage harness preferences for a git-backed project"),
+);
 
 harnessProjectCmd
   .command("set")
@@ -2527,10 +2538,11 @@ harnessProjectCmd
 
 // ── plugin ──────────────────────────────────────────────────────────────
 
-const pluginCmd = program
-  .command("plugin")
-  .description("Plugin inventory and lifecycle");
-pluginCmd.helpCommand(false);
+const pluginCmd = configureCommandGroup(
+  program
+    .command("plugin")
+    .description("Plugin inventory and lifecycle"),
+);
 
 pluginCmd
   .command("list")
@@ -2837,10 +2849,11 @@ async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promis
 
 // ── cloud ───────────────────────────────────────────────────────────────
 
-const cloudCmd = program
-  .command("cloud")
-  .description("Authenticate with Harness cloud and manage cloud profiles");
-cloudCmd.helpCommand(false);
+const cloudCmd = configureCommandGroup(
+  program
+    .command("cloud")
+    .description("Authenticate with Harness cloud and manage cloud profiles"),
+);
 
 cloudCmd
   .command("login [profile]")
@@ -2893,7 +2906,11 @@ export async function runHarnessdeckCli(
       error && typeof error === "object" && "code" in error
         ? String((error as { code: unknown }).code)
         : "";
-    if (code === "commander.helpDisplayed" || code === "commander.version") {
+    if (
+      code === "commander.help" ||
+      code === "commander.helpDisplayed" ||
+      code === "commander.version"
+    ) {
       return;
     }
     throw error;

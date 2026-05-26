@@ -57,7 +57,16 @@ export PATH="$HOME/.bun/bin:$PATH"
 ## Demo
 
 Initialise HarnessDeck, scan an existing repository, browse built-in presets, apply one, and confirm the final state — all in about a minute:
-[![HarnessDeck walkthrough](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
+[existing-repo-adoption demo](../output/01-existing-repo-adoption.gif)
+
+```
+harnessdeck init #initialise HarnessDeck in the repository
+harnessdeck project scan . #detect existing resources
+harnessdeck resource list #review discovered resources
+harnessdeck preset list  #browse available presets
+harnessdeck project apply nextjs-fullstack --project . --platform codex #apply a preset
+harnessdeck project status . #confirm the final state
+```
 
 ## Quick start
 
@@ -68,74 +77,41 @@ Once installed, `hd` is a shorthand alias for the same CLI. Use whichever form y
 The visible CLI groups related actions under noun-based commands such as `project`, `preset`, and `platform`. Older top-level verbs still work for now, but they print deprecation warnings.
 
 1. Initialize the local database, import any supported home-directory defaults, and optionally choose a default main harness plus aliases.
-
-   ```bash
+  ```bash
    hd init
    hd init --main claude-code --aliases cursor,codex
-   ```
-
+  ```
 2. Scan the current repository.
-
-   ```bash
+  ```bash
    hd project scan .
-   ```
-
-   ```
-   ✓ claude-code · 3 resources
-     · instruction project-context
-     · agent research
-     · skill analyze
-   ✓ Project registered: my-project (git@github.com:org/my-project.git)
-   ```
-
+  ```
 3. List the imported resources.
-
-   ```bash
+  ```bash
    hd resource list
-   hd resource list --format json
-   ```
-
+  ```
 4. Create a preset.
-
-   ```bash
+  ```bash
    hd preset create my-setup --description "Shared project assistant setup"
-   ```
-
+  ```
 5. Add imported resources to that preset.
-
-   ```bash
+  ```bash
    hd preset add my-setup openapi-mcp-baseline
-   ```
-
+  ```
 6. Apply the preset to one or more target platforms.
-
-   ```bash
+  ```bash
    hd project apply my-setup --project . --platform claude-code,codex,cursor
-   ```
-
-   ```
-   ✓ claude-code · wrote 2 files
-     · CLAUDE.md
-     · .claude/settings.json
-   ✓ codex · wrote 1 file
-     · AGENTS.md
-   ```
-
+  ```
    `hd project apply` also accepts multiple preset names, a local `.harnessdeck.json` bundle, or a bundle URL. When you pass multiple preset names, later presets override earlier ones for matching resources and plugin pins.
-
 7. Check the tracked project state.
-
-   ```bash
+  ```bash
    hd project status .
    hd project history --project .
-   ```
-
+  ```
 8. Inspect or change harness preferences after init.
-
-   ```bash
+  ```bash
    hd harness status --format json
    hd harness set --main claude-code --aliases cursor,codex
-   ```
+  ```
 
 If the repository has a git `origin`, `hd project apply` stores a snapshot before it writes files. You can restore that snapshot later with `hd project revert`.
 
@@ -215,11 +191,11 @@ hd preset export my-setup --file ./team.harnessdeck.json --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
 
-On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass **`--strict-plugin-versions`** to fail the command (exit code 2), or **`--ignore-plugin-versions`** to skip validation.
+On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation.
 
-Use **`hd -V`**, **`harnessdeck -V`**, or **`--harnessdeck-version`** for the harnessdeck CLI version. The **`--version`** on `preset add-plugin` is the **plugin semver pin or range**, not the global version flag.
+Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset add-plugin` is the **plugin semver pin or range**, not the global version flag.
 
-Preset export bundles use schema **`urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a preset declares versioned dependencies. See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
+Preset export bundles use schema `**urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a preset declares versioned dependencies. See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
 
 ## Plugin check and update
 
@@ -282,42 +258,24 @@ HarnessDeck can interact with the Harness cloud for publishing, searching, and i
 Common workflows
 
 - Authenticate and create a profile
-
-  harnessdeck cloud login [profile]
-
-  Options: --base-url <url> Cloud base URL (defaults to https://harnessdeck.kayrnt.fr)
-
-  This performs device-code authentication in the browser/terminal and saves a named profile. If no name is provided the profile is saved as `default` and becomes the default profile.
-
+harnessdeck cloud login [profile]
+Options: --base-url  Cloud base URL (defaults to [https://harnessdeck.kayrnt.fr](https://harnessdeck.kayrnt.fr))
+This performs device-code authentication in the browser/terminal and saves a named profile. If no name is provided the profile is saved as `default` and becomes the default profile.
 - Inspect authenticated user
-
-  harnessdeck cloud whoami [--profile <name>] [--format json|human]
-
+harnessdeck cloud whoami [--profile ] [--format json|human]
 - List or switch organizations
-
-  harnessdeck cloud orgs [--profile <name>] [--switch <org_slug>]
-
+harnessdeck cloud orgs [--profile ] [--switch ]
 - Log out and remove a profile
-
-  harnessdeck cloud logout [--profile <name>]
-
+harnessdeck cloud logout [--profile ]
 - Search the remote preset catalog
-
-  harnessdeck preset search <query> [--profile <name>] [--format json|human]
-
+harnessdeck preset search  [--profile ] [--format json|human]
 - Install a preset from the cloud
-
-  harnessdeck preset install org/library[@version] [--as <local-name>] [--profile <name>]
-
-  Downloads a preset bundle from the cloud and imports it into the local preset database. Use `--as` to avoid name conflicts with existing presets.
-
+harnessdeck preset install org/library[@version] [--as ] [--profile ]
+Downloads a preset bundle from the cloud and imports it into the local preset database. Use `--as` to avoid name conflicts with existing presets.
 - Publish a local preset to the cloud
-
-  harnessdeck preset publish <preset-name> [--profile <name>]
-
+harnessdeck preset publish  [--profile ]
 - Apply an installed preset to a project
-
-  harnessdeck project apply <preset-name> --project <path> [--platform <list>]
+harnessdeck project apply  --project  [--platform ]
 
 Notes
 

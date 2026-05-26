@@ -7,6 +7,28 @@ import { writeTextFile } from "../helpers/fs.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI help and command organization", () => {
+  it("shows grouped command help without throwing when no subcommand is provided", async () => {
+    const groupedCommands = [
+      ["preset"],
+      ["resource"],
+      ["project"],
+      ["platform"],
+      ["plugin"],
+      ["cloud"],
+      ["migrate"],
+      ["harness"],
+      ["harness", "project"],
+    ];
+
+    for (const args of groupedCommands) {
+      const result = await runCli(args);
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain("USAGE");
+      expect(result.stdout).toContain("COMMANDS");
+    }
+  });
+
   it("shows top-level help without an error when invoked with no arguments", async () => {
     const result = await runCli([]);
     expect(result.exitCode).toBeUndefined();
