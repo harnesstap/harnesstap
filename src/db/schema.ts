@@ -1,6 +1,7 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
+const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
   1: `
@@ -141,6 +142,43 @@ const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (preset_id, dependency_name)
     );
   `,
+
+  6: `
+    ALTER TABLE presets ADD COLUMN source_path TEXT NOT NULL DEFAULT '';
+    ALTER TABLE presets ADD COLUMN source_hash TEXT NOT NULL DEFAULT '';
+    ALTER TABLE presets ADD COLUMN source_present INTEGER NOT NULL DEFAULT 1;
+
+    CREATE TABLE projects_new (
+      id          TEXT PRIMARY KEY,
+      git_origin  TEXT NOT NULL DEFAULT '',
+      local_id    TEXT NOT NULL DEFAULT '',
+      name        TEXT NOT NULL DEFAULT '',
+      local_path  TEXT NOT NULL DEFAULT '',
+      tracked_at  TEXT NOT NULL DEFAULT '',
+      created_at  TEXT NOT NULL,
+      CHECK (git_origin != '' OR local_id != '')
+    );
+
+    INSERT INTO projects_new (id, git_origin, local_id, name, local_path, tracked_at, created_at)
+      SELECT id,
+             git_origin,
+             CASE
+               WHEN git_origin = '' THEN '${LEGACY_LOCAL_ID_PREFIX}' || id
+               ELSE ''
+             END,
+             name,
+             local_path,
+             created_at,
+             created_at
+        FROM projects;
+
+    DROP TABLE projects;
+
+    ALTER TABLE projects_new RENAME TO projects;
+
+    CREATE UNIQUE INDEX idx_projects_git_origin ON projects(git_origin) WHERE git_origin != '';
+    CREATE UNIQUE INDEX idx_projects_local_id ON projects(local_id) WHERE local_id != '';
+  `,
 };
 
 export function initializeSchema(db: SqliteDatabase): void {
@@ -148,13 +186,11 @@ export function initializeSchema(db: SqliteDatabase): void {
 
   if (currentVersion >= SCHEMA_VERSION) return;
 
-  // Migration 5 rebuilds the presets table using the rename trick (CREATE new,
+  // Migrations 5 and 6 rebuild parent tables using the rename trick (CREATE new,
   // copy, DROP old, RENAME). SQLite fires ON DELETE CASCADE on child tables even
-  // for DROP TABLE when foreign_keys=ON, which would destroy preset_resources /
-  // preset_plugins rows. PRAGMA foreign_keys cannot be toggled inside a
-  // transaction, so we toggle it here, outside the transaction, and restore it
-  // in a finally block.
-  const needsFkToggle = currentVersion < 5;
+  // for DROP TABLE when foreign_keys=ON, so we must toggle it outside the
+  // transaction and restore it afterward.
+  const needsFkToggle = currentVersion < 5 || currentVersion < 6;
   if (needsFkToggle) {
     db.exec("PRAGMA foreign_keys = OFF");
   }

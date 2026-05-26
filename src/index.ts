@@ -85,7 +85,7 @@ import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { parseVersionConstraint } from "./services/plugin-constraints.js";
-import { validatePresetPluginConstraints } from "./services/plugin-apply-validation.js";
+import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffPresets } from "./services/preset-diff.js";
 import { validatePreset } from "./services/preset-validate.js";
@@ -415,29 +415,36 @@ async function resolveApplyPresets(
   claude?: import("./types.js").ClaudePresetConfig;
   primaryPresetId: string;
 }> {
-  if (presetNames.length === 1 && isPresetUrl(presetNames[0])) {
-    const tempFile = await fetchPresetBundleToTempFile(presetNames[0]);
-    const { preset, resources } = importFromFile(tempFile, {
-      embeddedTargetDir: projectRoot,
-    });
+  function importedBundleToApplyResult(imported: ReturnType<typeof importFromFile>) {
+    const presets = imported.presets.map((entry) => entry.preset);
+    const primaryPreset = presets[presets.length - 1];
+    if (!primaryPreset) {
+      throw new Error("Bundle contains no presets.");
+    }
+    const merged = mergePresets(presets.map((preset) => preset.id));
     return {
-      presets: [preset],
-      resources,
-      claude: preset.claude,
-      primaryPresetId: preset.id,
+      presets,
+      resources: merged.resources,
+      claude: merged.claude,
+      primaryPresetId: primaryPreset.id,
     };
   }
 
+  if (presetNames.length === 1 && isPresetUrl(presetNames[0])) {
+    const tempFile = await fetchPresetBundleToTempFile(presetNames[0]);
+    return importedBundleToApplyResult(
+      importFromFile(tempFile, {
+        embeddedTargetDir: projectRoot,
+      }),
+    );
+  }
+
   if (presetNames.length === 1 && isBundleFilePath(presetNames[0])) {
-    const { preset, resources } = importFromFile(presetNames[0], {
-      embeddedTargetDir: projectRoot,
-    });
-    return {
-      presets: [preset],
-      resources,
-      claude: preset.claude,
-      primaryPresetId: preset.id,
-    };
+    return importedBundleToApplyResult(
+      importFromFile(presetNames[0], {
+        embeddedTargetDir: projectRoot,
+      }),
+    );
   }
 
   if (presetNames.length > 1) {
@@ -509,6 +516,19 @@ async function handleApplyCommand(
   }
 
   const { resources, claude } = applyBundle;
+  const mergedPluginPins = (() => {
+    const pins = new Map<string, { ref: string; version_constraint: string }>();
+    for (const preset of applyBundle.presets) {
+      if (!preset) continue;
+      for (const plugin of listPresetPlugins(preset.id)) {
+        pins.set(plugin.ref, {
+          ref: plugin.ref,
+          version_constraint: plugin.version_constraint,
+        });
+      }
+    }
+    return [...pins.values()];
+  })();
   const generated = await generateFiles(
     resources,
     platforms,
@@ -521,13 +541,10 @@ async function handleApplyCommand(
     !opts.dryRun &&
     opts.strictPluginVersions &&
     !opts.ignorePluginVersions &&
-    listPresetPlugins(applyBundle.primaryPresetId).length > 0
+    mergedPluginPins.length > 0
   ) {
     const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
-    const issues = validatePresetPluginConstraints(
-      applyBundle.primaryPresetId,
-      inventory,
-    );
+    const issues = validatePluginPinsAgainstInventory(mergedPluginPins, inventory);
     if (issues.length > 0) {
       for (const issue of issues) {
         console.warn(ui.theme.warn(issue.message));
@@ -616,13 +633,10 @@ async function handleApplyCommand(
   if (
     !opts.ignorePluginVersions &&
     !opts.strictPluginVersions &&
-    listPresetPlugins(applyBundle.primaryPresetId).length > 0
+    mergedPluginPins.length > 0
   ) {
     const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
-    const issues = validatePresetPluginConstraints(
-      applyBundle.primaryPresetId,
-      inventory,
-    );
+    const issues = validatePluginPinsAgainstInventory(mergedPluginPins, inventory);
     for (const issue of issues) {
       console.warn(ui.theme.warn(issue.message));
     }
@@ -716,14 +730,32 @@ function handleRevertCommand(snapshotId?: string): void {
 }
 
 function handlePresetExportCommand(
-  presetName: string,
+  presetSelector: string,
   opts: { file?: string; embedPlugins?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
-  const filePath = opts.file ?? `${presetName}.harnessdeck.json`;
-  exportToFile(presetName, filePath, { embedPlugins: opts.embedPlugins });
-  ui.success(`Exported preset ${ui.theme.accent(presetName)} ${ui.icons.hint} ${filePath}`);
+  const presetNames = presetSelector
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  if (presetNames.length === 0) {
+    ui.danger("Provide at least one preset name or ID to export.");
+    return;
+  }
+  const [firstPresetName] = presetNames;
+  if (!firstPresetName) {
+    ui.danger("Provide at least one preset name or ID to export.");
+    return;
+  }
+  const filePath = opts.file ?? `${firstPresetName}.harnessdeck.jsonc`;
+  const exportSelector = presetNames.length === 1 ? firstPresetName : presetNames;
+  exportToFile(exportSelector, filePath, {
+    embedPlugins: opts.embedPlugins,
+  });
+  ui.success(
+    `Exported preset ${ui.theme.accent(presetNames.join(", "))} ${ui.icons.hint} ${filePath}`,
+  );
 }
 
 function handlePresetImportCommand(file: string): void {
@@ -2177,7 +2209,7 @@ presetCmd
 
 presetCmd
   .command("export")
-  .argument("<preset>", "Preset name or ID")
+  .argument("<preset>", "Preset name/ID, or comma-separated preset list")
   .option("-f, --file <path>", "Output file path")
   .option(
     "--embed-plugins",

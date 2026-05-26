@@ -5,6 +5,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { writeTextFile } from "../helpers/fs.ts";
+import { initGitRepo } from "../helpers/git.ts";
 
 describe("CLI export and import", () => {
   it("exports and imports a preset bundle across isolated homes", async () => {
@@ -113,6 +114,172 @@ describe("CLI export and import", () => {
         ]),
         plugins: [],
       });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("exports a preset bundle to a .jsonc path", async () => {
+    const context = await createTestContext("cli-export-jsonc");
+
+    try {
+      await runCli(["init"]);
+
+      const presetModel = await import("../../src/models/preset.ts");
+      presetModel.createPreset({ name: "jsonc-export" });
+
+      const bundlePath = join(context.projectDir, "bundle.jsonc");
+      const exportResult = await runCli([
+        "preset",
+        "export",
+        "jsonc-export",
+        "--file",
+        bundlePath,
+      ]);
+
+      expect(exportResult.stdout).toContain("Exported preset");
+      expect(existsSync(bundlePath)).toBe(true);
+      const raw = readFileSync(bundlePath, "utf-8");
+      expect(raw.startsWith("/*\n")).toBe(true);
+      expect(raw).toContain('"$schema": "urn:harnessdeck:bundle:v1"');
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("imports a commented bundle file", async () => {
+    const context = await createTestContext("cli-import-jsonc");
+
+    try {
+      await runCli(["init"]);
+
+      const bundlePath = join(context.projectDir, "commented-bundle.jsonc");
+      writeTextFile(
+        bundlePath,
+        `{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "preset": {
+    "name": "commented-import",
+    "version": "1.0.0",
+    "description": "Imported from JSONC",
+    "tags": ["commented",],
+  },
+  // resources stay comment-friendly
+  "resources": [],
+  "plugins": [],
+  "embedded_plugins": [],
+}`,
+      );
+
+      const importResult = await runCli(["preset", "import", bundlePath]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      expect(importResult.stdout).toContain("Imported preset");
+      expect(presetModel.getPreset("commented-import")).toBeDefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("exports multiple presets into a multi-preset bundle from the CLI", async () => {
+    const context = await createTestContext("cli-export-multi-preset");
+
+    try {
+      await runCli(["init"]);
+
+      const presetModel = await import("../../src/models/preset.ts");
+      presetModel.createPreset({ name: "alpha" });
+      presetModel.createPreset({ name: "beta" });
+
+      const bundlePath = join(context.projectDir, "multi-export.jsonc");
+      const exportResult = await runCli([
+        "preset",
+        "export",
+        "alpha,beta",
+        "--file",
+        bundlePath,
+      ]);
+
+      expect(exportResult.stdout).toContain("Exported preset");
+      const raw = readFileSync(bundlePath, "utf-8");
+      expect(raw).toContain('"presets"');
+
+      const parsed = await import("../../src/services/exporter.ts");
+      const bundle = parsed.inspectBundleFile(bundlePath);
+      expect(bundle.presets.map((preset) => preset.name)).toEqual(["alpha", "beta"]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("applies every preset from a multi-preset bundle path in declaration order", async () => {
+    const context = await createTestContext("cli-apply-multi-bundle");
+
+    try {
+      await runCli(["init"]);
+      initGitRepo(context.projectDir, "git@github.com:acme/multi-bundle-apply.git");
+
+      const bundlePath = join(context.projectDir, "apply-bundle.jsonc");
+      writeTextFile(
+        bundlePath,
+        `{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "presets": [
+    {
+      "name": "alpha-imported",
+      "version": "1.0.0",
+      "description": "",
+      "tags": [],
+      "resources": [
+        {
+          "type": "instruction",
+          "name": "shared",
+          "description": "",
+          "content": "# Alpha",
+          "metadata": {}
+        }
+      ],
+      "plugins": []
+    },
+    {
+      "name": "beta-imported",
+      "version": "1.0.0",
+      "description": "",
+      "tags": [],
+      "resources": [
+        {
+          "type": "instruction",
+          "name": "shared",
+          "description": "",
+          "content": "# Beta",
+          "metadata": {}
+        }
+      ],
+      "plugins": []
+    }
+  ],
+  "embedded_plugins": []
+}`,
+      );
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        bundlePath,
+        "--project",
+        context.projectDir,
+        "--platform",
+        "codex",
+      ]);
+
+      expect(applyResult.exitCode).toBeUndefined();
+      expect(readFileSync(join(context.projectDir, "AGENTS.md"), "utf-8")).toBe("# Beta");
+
+      const presetModel = await import("../../src/models/preset.ts");
+      expect(presetModel.getPreset("alpha-imported")).toBeDefined();
+      expect(presetModel.getPreset("beta-imported")).toBeDefined();
     } finally {
       await context.cleanup();
     }

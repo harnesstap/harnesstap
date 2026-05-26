@@ -4,7 +4,8 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, resolve } from "node:path";
+import { basename, extname, resolve } from "node:path";
+import { parse as parseJsonc, type ParseError, printParseErrorCode } from "jsonc-parser";
 import {
   getPreset,
   getPresetResources,
@@ -20,7 +21,12 @@ import { createResource } from "../models/resource.js";
 import { loadInstalled } from "../plugins/claude-installed.js";
 import type {
   ExportBundle,
+  ExportBundleDependency,
+  ExportBundlePreset,
+  ExportBundlePresetEntry,
   ExportBundlePresetPluginPin,
+  LegacyExportBundle,
+  MultiPresetExportBundle,
   Preset,
   Resource,
 } from "../types.js";
@@ -40,6 +46,39 @@ export interface ImportPresetOptions {
   embeddedTargetDir?: string;
   /** Override the imported preset name (useful when installing a remote library under a different local name). */
   presetNameOverride?: string;
+  /** Override the resource source label recorded on imported resources. */
+  resourceSource?: string;
+  /** Skip bundle presets whose name/version key is not allowed. */
+  includePresets?: (preset: ExportBundlePresetEntry) => boolean;
+}
+
+export interface ImportedPresetBundleEntry {
+  preset: Preset;
+  resources: Resource[];
+}
+
+export interface ImportedPresetBundle {
+  preset: Preset;
+  resources: Resource[];
+  presets: ImportedPresetBundleEntry[];
+}
+
+type ExportPresetSelector = string | string[];
+
+interface NormalizedExportBundle {
+  embedded_plugins: LegacyExportBundle["embedded_plugins"];
+  presets: ExportBundlePresetEntry[];
+  multiPreset: boolean;
+}
+
+interface ExportBundlePayloadWithEmbedded extends ExportBundlePresetEntry {
+  embedded_plugins: LegacyExportBundle["embedded_plugins"];
+}
+
+interface ParsedBundleSummary {
+  presets: ExportBundlePresetEntry[];
+  embedded_plugins: LegacyExportBundle["embedded_plugins"];
+  multiPreset: boolean;
 }
 
 function resolveHomeRoot(opts?: ExportPresetOptions): string {
@@ -149,16 +188,20 @@ function classifyPresetPluginsForExport(
   return { pins, embeddedRoots };
 }
 
-/**
- * Export a preset and its resources as a portable JSON bundle.
- */
-export function exportPreset(
-  presetNameOrId: string,
-  exportOpts?: ExportPresetOptions,
-): ExportBundle {
-  const preset = getPreset(presetNameOrId);
-  if (!preset) throw new Error(`Preset not found: ${presetNameOrId}`);
+function toExportBundlePreset(preset: Preset): ExportBundlePreset {
+  return {
+    name: preset.name,
+    version: preset.version,
+    description: preset.description,
+    tags: preset.tags,
+    ...(preset.claude ? { claude: preset.claude } : {}),
+  };
+}
 
+function collectBundlePayload(
+  preset: Preset,
+  exportOpts?: ExportPresetOptions,
+): ExportBundlePayloadWithEmbedded {
   const resources = getPresetResources(preset.id);
   const presetRows = listPresetPlugins(preset.id);
   const deps = listPresetDependencies(preset.id);
@@ -167,18 +210,11 @@ export function exportPreset(
     exportOpts,
   );
 
-  const presetSubset = {
+  const payload: ExportBundlePayloadWithEmbedded = {
     name: preset.name,
     version: preset.version,
     description: preset.description,
     tags: preset.tags,
-    ...(preset.claude ? { claude: preset.claude } : {}),
-  };
-
-  const bundle: ExportBundle = {
-    $schema: BUNDLE_SCHEMA,
-    version: BUNDLE_VERSION,
-    preset: presetSubset,
     ...(preset.claude ? { claude: preset.claude } : {}),
     resources: resources.map((r) => ({
       type: r.type,
@@ -188,6 +224,9 @@ export function exportPreset(
       metadata: r.metadata,
     })),
     plugins: pins,
+    ...(embeddedRoots.length > 0
+      ? { embedded_plugin_refs: embeddedRoots.map((plugin) => plugin.ref) }
+      : {}),
     embedded_plugins: embeddedRoots,
     ...(deps.length > 0
       ? {
@@ -195,38 +234,182 @@ export function exportPreset(
             dependency_name: d.dependency_name,
             version_constraint: d.version_constraint,
             order: d.order,
-          })),
+          } satisfies ExportBundleDependency)),
         }
       : {}),
   };
 
-  return bundle;
+  return payload;
+}
+
+function normalizeExportBundle(bundle: ExportBundle): NormalizedExportBundle {
+  if ("presets" in bundle) {
+    return {
+      embedded_plugins: bundle.embedded_plugins ?? [],
+      presets: bundle.presets.map((preset) => ({
+        ...preset,
+        plugins: [...(preset.plugins ?? [])],
+      })),
+      multiPreset: true,
+    };
+  }
+
+  const { embedded_plugins, ...presetPayload } = bundle;
+  return {
+    embedded_plugins: embedded_plugins ?? [],
+      presets: [
+        {
+          ...presetPayload.preset,
+          plugins: [...(presetPayload.plugins ?? [])],
+          resources: presetPayload.resources,
+          ...(presetPayload.claude ? { claude: presetPayload.claude } : {}),
+          ...(presetPayload.dependencies ? { dependencies: presetPayload.dependencies } : {}),
+        },
+      ],
+      multiPreset: false,
+  };
+}
+
+function parseBundle(raw: string): ParsedBundleSummary {
+  const parseErrors: ParseError[] = [];
+  const parsed = parseJsonc(raw, parseErrors, {
+    allowTrailingComma: true,
+    disallowComments: false,
+  }) as ExportBundle;
+
+  if (parseErrors.length > 0) {
+    const [firstError] = parseErrors;
+    const detail = firstError
+      ? `${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`
+      : "invalid JSONC";
+    throw new Error(`Invalid bundle JSONC: ${detail}`);
+  }
+
+  if (parsed.version !== BUNDLE_VERSION) {
+    throw new Error(`Unsupported bundle version: ${parsed.version}`);
+  }
+
+  return normalizeExportBundle(parsed);
+}
+
+export function inspectBundleFile(filePath: string): ParsedBundleSummary {
+  return parseBundle(readFileSync(filePath, "utf-8"));
+}
+
+function formatBundleAsJsonc(bundle: ExportBundle): string {
+  const presetNames = "presets" in bundle
+    ? bundle.presets.map((preset) => preset.name)
+    : [bundle.preset.name];
+  const sourceMachine = process.env.HOSTNAME ?? process.env.COMPUTERNAME ?? "unknown";
+
+  return [
+    "/*",
+    " * HarnessDeck preset bundle",
+    ` * Presets: ${presetNames.join(", ")}`,
+    ` * Generated at: ${new Date().toISOString()}`,
+    ` * Source machine: ${sourceMachine}`,
+    " */",
+    JSON.stringify(bundle, null, 2),
+  ].join("\n");
+}
+
+/**
+ * Export a preset and its resources as a portable JSON bundle.
+ */
+export function exportPreset(
+  presetNameOrId: ExportPresetSelector,
+  exportOpts?: ExportPresetOptions,
+): ExportBundle {
+  const selectors = Array.isArray(presetNameOrId) ? presetNameOrId : [presetNameOrId];
+  const presets = selectors.map((selector) => {
+    const preset = getPreset(selector);
+    if (!preset) throw new Error(`Preset not found: ${selector}`);
+    return preset;
+  });
+  const payloads = presets.map((preset) => collectBundlePayload(preset, exportOpts));
+
+  if (payloads.length === 1) {
+    const [payload] = payloads;
+    if (!payload) {
+      throw new Error("Expected a bundle payload for export");
+    }
+    return {
+      $schema: BUNDLE_SCHEMA,
+      version: BUNDLE_VERSION,
+      preset: toExportBundlePreset({
+        id: "",
+        name: payload.name,
+        version: payload.version,
+        description: payload.description,
+        tags: payload.tags,
+        ...(payload.claude ? { claude: payload.claude } : {}),
+        created_at: "",
+        updated_at: "",
+      }),
+      resources: payload.resources,
+      ...(payload.claude ? { claude: payload.claude } : {}),
+      plugins: payload.plugins,
+      embedded_plugins: payload.embedded_plugins,
+      ...(payload.dependencies ? { dependencies: payload.dependencies } : {}),
+    } satisfies LegacyExportBundle;
+  }
+
+  const embeddedPluginsByKey = new Map<string, LegacyExportBundle["embedded_plugins"][number]>();
+  for (const payload of payloads) {
+    for (const plugin of payload.embedded_plugins) {
+      const key = `${plugin.ref}\u0000${plugin.version_constraint}`;
+      if (!embeddedPluginsByKey.has(key)) {
+        embeddedPluginsByKey.set(key, plugin);
+      }
+    }
+  }
+
+  return {
+    $schema: BUNDLE_SCHEMA,
+    version: BUNDLE_VERSION,
+    presets: payloads.map(({ embedded_plugins: _embeddedPlugins, ...payload }) => ({
+      ...payload,
+      plugins: [
+        ...payload.plugins,
+        ..._embeddedPlugins.map((plugin) => ({
+          ref: plugin.ref,
+          version_constraint: plugin.version_constraint,
+        })),
+      ],
+    })),
+    embedded_plugins: [...embeddedPluginsByKey.values()],
+  } satisfies MultiPresetExportBundle;
 }
 
 /**
  * Write a bundle to a file.
  */
 export function exportToFile(
-  presetNameOrId: string,
+  presetNameOrId: ExportPresetSelector,
   filePath: string,
   exportOpts?: ExportPresetOptions,
 ): void {
   const bundle = exportPreset(presetNameOrId, exportOpts);
-  writeFileSync(filePath, JSON.stringify(bundle, null, 2), "utf-8");
+  const content = extname(filePath).toLowerCase() === ".jsonc"
+    ? formatBundleAsJsonc(bundle)
+    : JSON.stringify(bundle, null, 2);
+  writeFileSync(filePath, content, "utf-8");
 }
 
 function importPresetFromBundleParsed(
-  bundle: ExportBundle,
+  bundle: ExportBundlePresetEntry,
+  embeddedPlugins: LegacyExportBundle["embedded_plugins"],
+  useLegacyEmbeddedFallback: boolean,
   filePath: string,
   opts?: ImportPresetOptions,
 ): { preset: Preset; resources: Resource[] } {
-  const claude = bundle.claude ?? bundle.preset.claude;
+  const claude = bundle.claude;
 
   const preset = createPreset({
-    name: opts?.presetNameOverride ?? bundle.preset.name,
-    version: bundle.preset.version,
-    description: bundle.preset.description,
-    tags: bundle.preset.tags,
+    name: opts?.presetNameOverride ?? bundle.name,
+    version: bundle.version,
+    description: bundle.description,
+    tags: bundle.tags,
     ...(claude ? { claude } : {}),
   });
 
@@ -238,15 +421,30 @@ function importPresetFromBundleParsed(
       description: r.description,
       content: r.content,
       metadata: r.metadata,
-      source: `import:${filePath}`,
+      source: opts?.resourceSource ?? `import:${filePath}`,
     });
     addResourceToPreset(preset.id, resource.id);
     resources.push(resource);
   }
 
   const presetId = preset.id;
-  const pluginPins = bundle.plugins ?? [];
-  const embeddedPlugins = bundle.embedded_plugins ?? [];
+  const embeddedPluginKeys = new Set(
+    useLegacyEmbeddedFallback
+      ? embeddedPlugins.map((plugin) => `${plugin.ref}\u0000${plugin.version_constraint}`)
+      : (bundle.plugins ?? [])
+          .map((plugin) => `${plugin.ref}\u0000${plugin.version_constraint}`)
+          .filter((key) =>
+            embeddedPlugins.some(
+              (plugin) => `${plugin.ref}\u0000${plugin.version_constraint}` === key,
+            ),
+          ),
+  );
+  const pluginPins = (bundle.plugins ?? []).filter(
+    (plugin) => !embeddedPluginKeys.has(`${plugin.ref}\u0000${plugin.version_constraint}`),
+  );
+  const presetEmbeddedPlugins = embeddedPlugins.filter((plugin) =>
+    embeddedPluginKeys.has(`${plugin.ref}\u0000${plugin.version_constraint}`),
+  );
 
   function syncPinsAfterMutation(ref: string, versionConstraint: string): void {
     const refreshed = getPreset(presetId);
@@ -264,9 +462,9 @@ function importPresetFromBundleParsed(
   }
 
   const embeddedDir = opts?.embeddedTargetDir ?? resolve(process.cwd());
-  if (embeddedPlugins.length > 0) {
-    writeEmbeddedPluginsOnImport(embeddedDir, embeddedPlugins);
-    for (const e of embeddedPlugins) {
+  if (presetEmbeddedPlugins.length > 0) {
+    writeEmbeddedPluginsOnImport(embeddedDir, presetEmbeddedPlugins);
+    for (const e of presetEmbeddedPlugins) {
       addPluginToPreset(presetId, e.ref, e.version_constraint, {
         /** Pin only; inlined trees live in `embedded_plugins` on the bundle, not persisted as “always embed”. */
         embedOnExport: false,
@@ -292,13 +490,32 @@ function importPresetFromBundleParsed(
 export function importFromFile(
   filePath: string,
   opts?: ImportPresetOptions,
-): { preset: Preset; resources: Resource[] } {
-  const raw = readFileSync(filePath, "utf-8");
-  const parsed = JSON.parse(raw) as ExportBundle;
-
-  if (parsed.version !== BUNDLE_VERSION) {
-    throw new Error(`Unsupported bundle version: ${parsed.version}`);
+) : ImportedPresetBundle {
+  const normalized = inspectBundleFile(filePath);
+  const bundlePresets = normalized.presets.filter((bundlePreset) =>
+    opts?.includePresets ? opts.includePresets(bundlePreset) : true,
+  );
+  const presets = bundlePresets.map((bundlePreset, index) =>
+    importPresetFromBundleParsed(
+      bundlePreset,
+      normalized.embedded_plugins,
+      !normalized.multiPreset,
+      filePath,
+      {
+        ...opts,
+        presetNameOverride:
+          index === 0 ? opts?.presetNameOverride : undefined,
+      },
+    ),
+  );
+  const [firstPreset] = presets;
+  if (!firstPreset) {
+    throw new Error(`Bundle contains no presets: ${filePath}`);
   }
 
-  return importPresetFromBundleParsed(parsed, filePath, opts);
+  return {
+    preset: firstPreset.preset,
+    resources: firstPreset.resources,
+    presets,
+  };
 }

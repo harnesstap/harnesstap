@@ -1,15 +1,30 @@
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  getPreset,
-  createPreset,
-  addResourceToPreset,
-} from "../models/preset.js";
-import { createResource } from "../models/resource.js";
-import type { ExportBundle } from "../types.js";
+import { getPreset } from "../models/preset.js";
+import { importFromFile, inspectBundleFile } from "./exporter.js";
+
+function normalizePresetVersion(version: string | undefined): string {
+  return typeof version === "string" && version.length > 0 ? version : "";
+}
+
+function presetKey(name: string, version: string | undefined): string {
+  return `${name}\u0000${normalizePresetVersion(version)}`;
+}
+
+function hasPresetInstalled(name: string, version: string | undefined): boolean {
+  const normalizedVersion = normalizePresetVersion(version);
+  return normalizedVersion.length > 0
+    ? getPreset(`${name}@${normalizedVersion}`) !== undefined
+    : getPreset(name) !== undefined;
+}
 
 function getBuiltInPresetsDir(): string {
+  const overrideDir = process.env.HARNESSDECK_BUILTIN_PRESETS_DIR;
+  if (overrideDir && existsSync(overrideDir)) {
+    return overrideDir;
+  }
+
   const currentFile = fileURLToPath(import.meta.url);
   const currentDir = dirname(currentFile);
   const candidates = [
@@ -37,34 +52,22 @@ export function seedBuiltInPresets(): number {
   let seeded = 0;
 
   for (const file of readdirSync(presetsDir)) {
-    if (!file.endsWith(".json")) continue;
+    if (!file.endsWith(".json") && !file.endsWith(".jsonc")) continue;
 
-    const raw = readFileSync(join(presetsDir, file), "utf-8");
-    const bundle = JSON.parse(raw) as ExportBundle;
+    const filePath = join(presetsDir, file);
+    const summary = inspectBundleFile(filePath);
+    const missingPresetKeys = new Set(
+      summary.presets
+        .filter((preset) => !hasPresetInstalled(preset.name, preset.version))
+        .map((preset) => presetKey(preset.name, preset.version)),
+    );
+    if (missingPresetKeys.size === 0) continue;
 
-    if (getPreset(bundle.preset.name)) continue;
-
-    const claude = bundle.claude ?? bundle.preset.claude;
-
-    const preset = createPreset({
-      name: bundle.preset.name,
-      description: bundle.preset.description,
-      tags: bundle.preset.tags,
-      ...(claude ? { claude } : {}),
+    importFromFile(filePath, {
+      resourceSource: `builtin:${file}`,
+      includePresets: (preset) =>
+        missingPresetKeys.has(presetKey(preset.name, preset.version)),
     });
-
-    for (const resource of bundle.resources) {
-      const saved = createResource({
-        type: resource.type,
-        name: resource.name,
-        description: resource.description,
-        content: resource.content,
-        metadata: resource.metadata,
-        source: `builtin:${file}`,
-      });
-      addResourceToPreset(preset.id, saved.id);
-    }
-
     seeded++;
   }
 
