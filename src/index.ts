@@ -103,6 +103,7 @@ import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
 import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import type { Column } from "./ui/table.js";
 
 const program = new Command();
 
@@ -193,6 +194,17 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
 
 function formatPresetLabel(preset: Pick<Preset, "name" | "version">): string {
   return `${preset.name}@${preset.version}`;
+}
+
+function makeIdColumn(showId: boolean, width = 12): Column[] {
+  return showId
+    ? [{
+        key: "id",
+        header: "ID",
+        width,
+        transform: (value: string) => ui.format.shortenId(String(value)),
+      }]
+    : [];
 }
 
 function homeFolderLabel(discoveredPaths: string[]): string {
@@ -1021,7 +1033,7 @@ function handleHarnessListCommand(
 
 function handlePresetShowCommand(
   name: string,
-  opts: { format?: string },
+  opts: { format?: string; showId?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
@@ -1067,9 +1079,9 @@ function handlePresetShowCommand(
   ui.subheader("RESOURCES");
   ui.table.print({
     columns: [
+      ...makeIdColumn(Boolean(opts.showId)),
       { key: "type", header: "TYPE", width: 14 },
       { key: "name", header: "NAME", width: 26 },
-      { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
     ],
     rows: resources,
     empty: "No resources in this preset.",
@@ -2158,7 +2170,8 @@ presetCmd
   .command("list")
   .alias("ls")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string }) => {
+  .option("--show-id", "Show IDs in human-readable tables")
+  .action((opts: { format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -2167,16 +2180,14 @@ presetCmd
       printJson(presets);
       return;
     }
-    const rows = presets.map((preset) => ({
-      ...preset,
-      label: formatPresetLabel(preset),
-    }));
     ui.table.print({
       columns: [
-        { key: "label", header: "NAME", width: 26 },
+        ...makeIdColumn(Boolean(opts.showId)),
+        { key: "name", header: "NAME", width: 26 },
+        { key: "version", header: "VERSION", width: 12 },
         { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
       ],
-      rows,
+      rows: presets,
       summary: `${presets.length} presets ${ui.icons.bullet} run \`${formatCommand("preset show <name>")}\` for details`,
       empty: "No presets found.",
     });
@@ -2186,8 +2197,9 @@ presetCmd
   .command("show")
   .argument("<name>", "Preset name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--show-id", "Show IDs in list-oriented human tables")
   .description("Show preset details, resources, and plugin pins")
-  .action((name: string, opts: { format?: string }) => {
+  .action((name: string, opts: { format?: string; showId?: boolean }) => {
     handlePresetShowCommand(name, opts);
   });
 
@@ -2597,7 +2609,8 @@ resourceCmd
   .option("-t, --type <type>", "Filter by resource type")
   .option("-s, --search <query>", "Search by name or description")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { type?: string; search?: string; format?: string }) => {
+  .option("--show-id", "Show IDs in human-readable tables")
+  .action((opts: { type?: string; search?: string; format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -2613,9 +2626,9 @@ resourceCmd
     }
     ui.table.print({
       columns: [
+        ...makeIdColumn(Boolean(opts.showId)),
         { key: "type", header: "TYPE", width: 14 },
         { key: "name", header: "NAME", width: 28 },
-        { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
         { key: "updated_at", header: "UPDATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
       ],
       rows: resources,
@@ -2628,7 +2641,8 @@ resourceCmd
   .command("show")
   .argument("<resource>", "Resource name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((resource: string, opts: { format?: string }) => {
+  .option("--show-id", "Show IDs in list-oriented human tables")
+  .action((resource: string, opts: { format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -2653,9 +2667,9 @@ resourceCmd
       ui.danger(`Ambiguous resource selector: ${resource}`);
       ui.table.print({
         columns: [
+          ...makeIdColumn(Boolean(opts.showId)),
           { key: "type", header: "TYPE", width: 14 },
           { key: "name", header: "NAME", width: 26 },
-          { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
         ],
         rows: result.matches,
       });

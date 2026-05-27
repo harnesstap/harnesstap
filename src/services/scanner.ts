@@ -3,11 +3,13 @@ import { join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
 import { createResource } from "../models/resource.js";
+import { deleteResource } from "../models/resource.js";
 import { listResources } from "../models/resource.js";
 import { upsertProjectPluginState } from "../models/plugin.js";
 import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { loadScanIgnore } from "./scanner-ignore.js";
 
 function resolveConfiguredPath(
   rootPath: string,
@@ -86,6 +88,14 @@ export interface PersistedScanResults {
   importedCounts: Map<string, number>;
 }
 
+const SHARED_PROJECT_INSTRUCTION_NAMES = new Map<string, string>([
+  ["AGENTS.md", "agents-instructions"],
+]);
+
+const SYNTHETIC_INSTRUCTION_NAMES = new Set(
+  getAllPlatforms().map((platform) => `${platform.id}-instructions`),
+);
+
 /** Scan a single platform in a project directory. */
 export async function scanPlatform(
   platformId: string,
@@ -109,7 +119,7 @@ export async function scanProject(
   for (const pid of platforms) {
     results.push(await scanPlatform(pid, projectRoot));
   }
-  return results;
+  return normalizeProjectScanResults(projectRoot, results);
 }
 
 export async function scanHomeDefaults(
@@ -139,6 +149,64 @@ export async function scanHomeDefaults(
 
 function resourceDedupKey(resource: Pick<Resource, "type" | "name">): string {
   return `${resource.type}:${resource.name}`;
+}
+
+function canonicalInstructionNameForSource(source: string): string | undefined {
+  return SHARED_PROJECT_INSTRUCTION_NAMES.get(source);
+}
+
+function normalizeProjectScanResults(
+  projectRoot: string,
+  results: ScanResult[],
+): ScanResult[] {
+  const ignore = loadScanIgnore(projectRoot);
+  const seenSharedSources = new Set<string>();
+
+  return results.map((result) => ({
+    ...result,
+    resources: result.resources.flatMap((resource) => {
+      if (ignore.ignores(resource.source)) {
+        return [];
+      }
+
+      const canonicalName =
+        resource.type === "instruction"
+          ? canonicalInstructionNameForSource(resource.source)
+          : undefined;
+
+      if (!canonicalName) {
+        return [resource];
+      }
+
+      if (seenSharedSources.has(resource.source)) {
+        return [];
+      }
+
+      seenSharedSources.add(resource.source);
+      return [{ ...resource, name: canonicalName }];
+    }),
+  }));
+}
+
+function cleanupSharedInstructionDuplicates(resources: Resource[]): void {
+  const existing = listResources();
+
+  for (const resource of resources) {
+    if (resource.type !== "instruction") continue;
+
+    const canonicalName = canonicalInstructionNameForSource(resource.source);
+    if (!canonicalName) continue;
+
+    for (const duplicate of existing) {
+      if (duplicate.type !== "instruction") continue;
+      if (duplicate.source !== resource.source) continue;
+      if (duplicate.content !== resource.content) continue;
+      if (!SYNTHETIC_INSTRUCTION_NAMES.has(duplicate.name)) continue;
+      if (duplicate.name === canonicalName) continue;
+
+      deleteResource(duplicate.id);
+    }
+  }
 }
 
 export function persistScanResults(
@@ -173,6 +241,8 @@ export function persistScanResults(
       );
     }
   }
+
+  cleanupSharedInstructionDuplicates(persisted);
 
   return { resources: persisted, importedCounts };
 }

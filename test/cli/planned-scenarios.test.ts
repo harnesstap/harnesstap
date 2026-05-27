@@ -114,6 +114,45 @@ describe("CLI planned scenarios", () => {
     }
   });
 
+  it("preset from-project excludes ignored resources", async () => {
+    const context = await createTestContext("cli-from-project-ignore");
+    try {
+      await runCli(["init"]);
+      mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
+      writeFileSync(join(context.projectDir, "CLAUDE.md"), "# Keep me\n", "utf-8");
+      writeFileSync(join(context.projectDir, "AGENTS.md"), "# Ignore me\n", "utf-8");
+      writeFileSync(
+        join(context.projectDir, ".harnessdeckignore"),
+        "AGENTS.md\n",
+        "utf-8",
+      );
+
+      const result = await runCli([
+        "preset",
+        "from-project",
+        "cli-inferred",
+        "--project",
+        context.projectDir,
+      ]);
+
+      expect(result.stdout).toContain("cli-inferred");
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const preset = presetModel.getPreset("cli-inferred");
+      if (!preset) throw new Error("Expected cli-inferred preset");
+
+      const resources = presetModel.getPresetResources(preset.id);
+      expect(resources.some((resource) => resource.source === "AGENTS.md")).toBe(
+        false,
+      );
+      expect(resources.some((resource) => resource.source === "CLAUDE.md")).toBe(
+        true,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("runs project drift and sync", async () => {
     const context = await createTestContext("cli-sync-drift");
     try {
