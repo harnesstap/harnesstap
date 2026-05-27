@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
 import { createResource } from "../models/resource.js";
+import { deleteResource } from "../models/resource.js";
 import { listResources } from "../models/resource.js";
 import { upsertProjectPluginState } from "../models/plugin.js";
 import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
@@ -86,6 +87,14 @@ export interface PersistedScanResults {
   importedCounts: Map<string, number>;
 }
 
+const SHARED_PROJECT_INSTRUCTION_NAMES = new Map<string, string>([
+  ["AGENTS.md", "agents-instructions"],
+]);
+
+const SYNTHETIC_INSTRUCTION_NAMES = new Set(
+  getAllPlatforms().map((platform) => `${platform.id}-instructions`),
+);
+
 /** Scan a single platform in a project directory. */
 export async function scanPlatform(
   platformId: string,
@@ -141,10 +150,61 @@ function resourceDedupKey(resource: Pick<Resource, "type" | "name">): string {
   return `${resource.type}:${resource.name}`;
 }
 
+function canonicalInstructionNameForSource(source: string): string | undefined {
+  return SHARED_PROJECT_INSTRUCTION_NAMES.get(source);
+}
+
+function normalizeProjectScanResults(results: ScanResult[]): ScanResult[] {
+  const seenSharedSources = new Set<string>();
+
+  return results.map((result) => ({
+    ...result,
+    resources: result.resources.flatMap((resource) => {
+      const canonicalName =
+        resource.type === "instruction"
+          ? canonicalInstructionNameForSource(resource.source)
+          : undefined;
+
+      if (!canonicalName) {
+        return [resource];
+      }
+
+      if (seenSharedSources.has(resource.source)) {
+        return [];
+      }
+
+      seenSharedSources.add(resource.source);
+      return [{ ...resource, name: canonicalName }];
+    }),
+  }));
+}
+
+function cleanupSharedInstructionDuplicates(resources: Resource[]): void {
+  const existing = listResources();
+
+  for (const resource of resources) {
+    if (resource.type !== "instruction") continue;
+
+    const canonicalName = canonicalInstructionNameForSource(resource.source);
+    if (!canonicalName) continue;
+
+    for (const duplicate of existing) {
+      if (duplicate.type !== "instruction") continue;
+      if (duplicate.source !== resource.source) continue;
+      if (duplicate.content !== resource.content) continue;
+      if (!SYNTHETIC_INSTRUCTION_NAMES.has(duplicate.name)) continue;
+      if (duplicate.name === canonicalName) continue;
+
+      deleteResource(duplicate.id);
+    }
+  }
+}
+
 export function persistScanResults(
   results: ScanResult[],
   options?: { skipExistingDuplicates?: boolean },
 ): PersistedScanResults {
+  const normalizedResults = normalizeProjectScanResults(results);
   const seen = new Set<string>();
   const persisted: Resource[] = [];
   const importedCounts = new Map<string, number>();
@@ -152,7 +212,7 @@ export function persistScanResults(
     ? new Set(listResources().map((resource) => resourceDedupKey(resource)))
     : undefined;
 
-  for (const result of results) {
+  for (const result of normalizedResults) {
     for (const r of result.resources) {
       const key = resourceDedupKey(r);
       if (seen.has(key) || existing?.has(key)) continue;
@@ -173,6 +233,8 @@ export function persistScanResults(
       );
     }
   }
+
+  cleanupSharedInstructionDuplicates(persisted);
 
   return { resources: persisted, importedCounts };
 }

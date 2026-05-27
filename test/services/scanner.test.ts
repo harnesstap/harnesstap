@@ -67,6 +67,29 @@ describe("scanner services", () => {
     }
   });
 
+  it("collapses overlapping AGENTS.md instructions into one canonical imported resource", async () => {
+    const context = await createInitializedTestContext("scanner-shared-agents");
+
+    try {
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Shared agents instructions");
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+
+      const resources = await scanner.scanAndPersist(context.projectDir);
+      const instructions = resources.filter((resource) => resource.type === "instruction");
+
+      expect(instructions).toHaveLength(1);
+      expect(instructions[0]?.name).toBe("agents-instructions");
+      expect(instructions[0]?.source).toBe("AGENTS.md");
+      expect(
+        resourceModel.listResources().filter((resource) => resource.source === "AGENTS.md"),
+      ).toHaveLength(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("detects and scans default home folders", async () => {
     const context = await createInitializedTestContext("scanner-home-defaults");
 
