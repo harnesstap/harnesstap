@@ -67,6 +67,64 @@ describe("scanner services", () => {
     }
   });
 
+  it("collapses overlapping AGENTS.md instructions into one canonical imported resource", async () => {
+    const context = await createInitializedTestContext("scanner-shared-agents");
+
+    try {
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Shared agents instructions");
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+
+      const resources = await scanner.scanAndPersist(context.projectDir);
+      const instructions = resources.filter((resource) => resource.type === "instruction");
+
+      expect(instructions).toHaveLength(1);
+      expect(instructions[0]?.name).toBe("agents-instructions");
+      expect(instructions[0]?.source).toBe("AGENTS.md");
+      expect(
+        resourceModel.listResources().filter((resource) => resource.source === "AGENTS.md"),
+      ).toHaveLength(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("respects .harnessdeckignore patterns and ! re-inclusion", async () => {
+    const context = await createInitializedTestContext("scanner-ignore");
+
+    try {
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Ignore me");
+      writeTextFile(
+        `${context.projectDir}/.agents/skills/private-helper/SKILL.md`,
+        "---\nname: private-helper\ndescription: Private helper\n---\n# Private helper\n",
+      );
+      writeTextFile(
+        `${context.projectDir}/.agents/skills/shared-helper/SKILL.md`,
+        "---\nname: shared-helper\ndescription: Shared helper\n---\n# Shared helper\n",
+      );
+      writeTextFile(
+        `${context.projectDir}/.harnessdeckignore`,
+        "AGENTS.md\n.agents/skills/*\n!.agents/skills/shared-helper/SKILL.md\n",
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const resources = await scanner.scanAndPersist(context.projectDir);
+
+      expect(resources.some((resource) => resource.source === "AGENTS.md")).toBe(
+        false,
+      );
+      expect(
+        resources.some((resource) => resource.name === "private-helper"),
+      ).toBe(false);
+      expect(
+        resources.some((resource) => resource.name === "shared-helper"),
+      ).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("detects and scans default home folders", async () => {
     const context = await createInitializedTestContext("scanner-home-defaults");
 
