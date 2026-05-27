@@ -22,6 +22,7 @@ export const icons = {
 } as const;
 
 export const theme = {
+  // Existing tokens for backward compatibility
   primary: maybe((value) => chalk.bold(value)),
   accent: maybe((value) => chalk.hex("#3b82f6")(value)),
   muted: maybe((value) => chalk.hex("#6b7280")(value)),
@@ -29,6 +30,16 @@ export const theme = {
   warn: maybe((value) => chalk.hex("#f59e0b")(value)),
   danger: maybe((value) => chalk.hex("#ef4444")(value)),
   badge: maybe((value) => chalk.bgHex("#1d4ed8").white.bold(` ${value} `)),
+
+  // Role-based tokens
+  heading: maybe((value) => chalk.bold.hex("#3b82f6")(value)),
+  label: maybe((value) => chalk.hex("#6b7280")(value)),
+  command: maybe((value) => chalk.hex("#10b981")(value)),
+  flag: maybe((value) => chalk.hex("#3b82f6")(value)),
+  entity: maybe((value) => chalk.hex("#f59e0b")(value)),
+  path: maybe((value) => chalk.hex("#8b5cf6")(value)),
+  info: maybe((value) => chalk.hex("#6b7280")(value)),
+  border: maybe((value) => chalk.hex("#374151")(value)),
 };
 
 export function disableColor(): void {
