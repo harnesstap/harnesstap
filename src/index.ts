@@ -97,7 +97,7 @@ import {
   importMigrationState,
 } from "./services/migrate.js";
 import { createProgress } from "./ui/progress.js";
-import { shouldUseWizard } from "./services/wizards/shared.js";
+import { promptForChoice, shouldUseWizard } from "./services/wizards/shared.js";
 import { runPresetAddWizard } from "./services/wizards/preset-add.js";
 import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
 import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
@@ -112,6 +112,60 @@ function resolveInvocationName(): "harnessdeck" | "hd" {
 
 function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
+}
+
+function isVerboseMode(argv: string[] = process.argv): boolean {
+  return argv.includes("-v") || argv.includes("--verbose");
+}
+
+function renderCliError(error: unknown, argv: string[] = process.argv): void {
+  if (isVerboseMode(argv)) {
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+      return;
+    }
+    console.error(String(error));
+    return;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  ui.danger(message);
+}
+
+async function resolvePresetMutationTarget(input: {
+  presetName?: string;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  format?: string;
+  message: string;
+}): Promise<string | undefined> {
+  if (input.presetName) {
+    return input.presetName;
+  }
+
+  const shouldPrompt = shouldUseWizard({
+    interactive: input.interactive,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+
+  if (!shouldPrompt) {
+    return undefined;
+  }
+
+  const presets = listPresets();
+  if (presets.length === 0) {
+    return undefined;
+  }
+
+  return promptForChoice({
+    message: input.message,
+    choices: presets.map((preset) => ({
+      name: formatPresetLabel(preset),
+      value: formatPresetLabel(preset),
+    })),
+  });
 }
 
 program.exitOverride();
@@ -269,10 +323,14 @@ program
     "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
   )
   .version("0.1.0", "-V, --harnessdeck-version")
+  .option("-v, --verbose", "Show verbose error output")
   .option("--no-color", "Disable color output")
   .option("--no-interactive", "Disable interactive prompts")
   .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
   .helpCommand(false)
+  .configureOutput({
+    outputError: () => {},
+  })
   .hook("preAction", (command) => {
     const opts = command.optsWithGlobals<{ color?: boolean }>();
     if (opts.color === false) {
@@ -332,6 +390,7 @@ program
         "",
         ui.theme.muted("OPTIONS"),
         `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
+        `  ${ui.theme.accent("-v, --verbose")}              show verbose error output`,
         `  ${ui.theme.accent("--no-color")}               disable color output`,
         `  ${ui.theme.accent("--show-hidden")}            show all commands including hidden ones`,
         `  ${ui.theme.accent("-h, --help")}               display help for command`,
@@ -2134,21 +2193,38 @@ presetCmd
 
 presetCmd
   .command("add")
-  .argument("<preset>", "Preset name or ID")
+  .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
   .option("--version <constraint>", "Version constraint for plugin or preset dependency")
   .option("--embed", "Embed plugin files on export (plugin attachments only)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (presetName: string, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const preset = getPreset(presetName);
+      const presetTarget = await resolvePresetMutationTarget({
+        presetName,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which preset do you want to update?",
+      });
+      if (!presetTarget) {
+        process.exitCode = 1;
+        ui.danger(
+          listPresets().length > 0
+            ? "error: missing required argument 'preset'"
+            : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+        );
+        return;
+      }
+
+      const preset = getPreset(presetTarget);
       if (!preset) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetName}`);
+        ui.danger(`Preset not found: ${presetTarget}`);
         return;
       }
 
@@ -2162,7 +2238,7 @@ presetCmd
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !selector || !opts.type,
+          missingRequiredArgs: !presetName || !selector || !opts.type,
         }),
       });
 
@@ -2185,19 +2261,36 @@ presetCmd
 
 presetCmd
   .command("remove")
-  .argument("<preset>", "Preset name or ID")
+  .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (presetName: string, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const preset = getPreset(presetName);
+      const presetTarget = await resolvePresetMutationTarget({
+        presetName,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which preset do you want to update?",
+      });
+      if (!presetTarget) {
+        process.exitCode = 1;
+        ui.danger(
+          listPresets().length > 0
+            ? "error: missing required argument 'preset'"
+            : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+        );
+        return;
+      }
+
+      const preset = getPreset(presetTarget);
       if (!preset) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetName}`);
+        ui.danger(`Preset not found: ${presetTarget}`);
         return;
       }
 
@@ -2209,7 +2302,7 @@ presetCmd
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !selector || !opts.type,
+          missingRequiredArgs: !presetName || !selector || !opts.type,
         }),
       });
 
@@ -3156,7 +3249,11 @@ export async function runHarnessdeckCli(
     if (isGroupedCommandFallbackError(error)) {
       const match = error.message.match(/too many arguments for '([^']+)'\. Expected 0 arguments but got \d+\./i);
       const commandName = match?.[1] ?? "command";
-      const attemptedSubcommand = argv[3];
+      const commandIndex = argv.findIndex(
+        (value, index) => index >= 2 && value === commandName,
+      );
+      const attemptedSubcommand =
+        commandIndex >= 0 ? argv[commandIndex + 1] : undefined;
       error.code = "commander.unknownCommand";
       error.message = attemptedSubcommand
         ? `error: unknown command '${commandName} ${attemptedSubcommand}'`
@@ -3175,5 +3272,13 @@ export async function runHarnessdeckCli(
 }
 
 if (import.meta.main) {
-  await runHarnessdeckCli();
+  try {
+    await runHarnessdeckCli();
+  } catch (error) {
+    process.exitCode =
+      error && typeof error === "object" && "exitCode" in error
+        ? Number((error as { exitCode?: unknown }).exitCode) || 1
+        : 1;
+    renderCliError(error);
+  }
 }
