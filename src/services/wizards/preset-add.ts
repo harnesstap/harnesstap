@@ -56,7 +56,7 @@ function getDependencyChoices(currentPresetName: string | undefined) {
 
 function getResourceChoices(type: string) {
   return listResources({ type: type as never }).map((resource) => ({
-    name: `${resource.name} (${resource.id})`,
+    name: resource.name,
     value: resource.id,
   }));
 }
