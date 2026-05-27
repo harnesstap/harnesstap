@@ -14,7 +14,7 @@ export interface ProgressHandle {
  */
 export function createProgress(message: string): ProgressHandle {
   let spinner: Ora | null = null;
-  if (isTty()) {
+  if (isTty() && process.env.NODE_ENV !== "test") {
     spinner = ora(message).start();
   }
 

@@ -1,6 +1,18 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 
 describe("ui progress", () => {
+  let originalStdoutIsTTY: boolean | undefined;
+
+  afterEach(() => {
+    if (originalStdoutIsTTY !== undefined) {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: originalStdoutIsTTY,
+        configurable: true,
+      });
+      originalStdoutIsTTY = undefined;
+    }
+  });
+
   it("createProgress factory returns a handle with succeed, fail, stop", async () => {
     const { createProgress } = await import("../../src/ui/progress.ts");
     const handle = createProgress("test operation");
@@ -43,5 +55,25 @@ describe("ui progress", () => {
       console.error = origError;
     }
     expect(lines.some((l) => l.includes("work failed"))).toBe(true);
+  });
+
+  it("suppresses spinner in test mode even when stdout is a TTY", async () => {
+    originalStdoutIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    const { createProgress } = await import("../../src/ui/progress.ts");
+    const lines: string[] = [];
+    const origLog = console.log;
+    console.log = (...args: unknown[]) => lines.push(args.map(String).join(" "));
+    try {
+      const handle = createProgress("doing work");
+      handle.succeed("work done");
+    } finally {
+      console.log = origLog;
+    }
+    expect(lines.some((l) => l.includes("work done"))).toBe(true);
   });
 });

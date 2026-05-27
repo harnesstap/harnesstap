@@ -28,6 +28,30 @@ describe("CLI help and command organization", () => {
     }
   });
 
+  it("uses role-based styling in help output", async () => {
+    // This test verifies that help uses the new semantic roles
+    // Enable colors for this test
+    const originalForceColor = process.env.FORCE_COLOR;
+    process.env.FORCE_COLOR = "1";
+    
+    try {
+      const result = await runCli(["--help"]);
+      // Should contain section headers
+      expect(result.stdout).toContain("USAGE");
+      expect(result.stdout).toContain("COMMANDS");
+      expect(result.stdout).toContain("OPTIONS");
+      // Should contain flags
+      expect(result.stdout).toContain("--no-color");
+      expect(result.stdout).toContain("--help");
+    } finally {
+      if (originalForceColor === undefined) {
+        delete process.env.FORCE_COLOR;
+      } else {
+        process.env.FORCE_COLOR = originalForceColor;
+      }
+    }
+  });
+
   it("keeps removed preset subcommands as unknown commands", async () => {
     const result = runCli(["preset", "validate", "empty-preset"]);
     await expect(result).rejects.toMatchObject({

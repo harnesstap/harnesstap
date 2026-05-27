@@ -1,15 +1,15 @@
 import { terminalColumns, theme } from "./theme.js";
 
 export function renderHeader(title: string): string {
-  return theme.primary(title);
+  return theme.heading(title);
 }
 
 export function renderSubheader(title: string): string {
-  return theme.muted(title);
+  return theme.label(title);
 }
 
 export function renderRule(): string {
-  return theme.muted("─".repeat(terminalColumns()));
+  return theme.border("─".repeat(terminalColumns()));
 }
 
 export function header(title: string): void {
