@@ -2156,6 +2156,8 @@ presetCmd
         selector,
         type: opts.type,
         version: opts.version,
+        embed: opts.embed,
+        presetName: preset.name,
         shouldPrompt: shouldUseWizard({
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
@@ -2173,7 +2175,7 @@ presetCmd
         selector: wizardValues.selector,
         type: wizardValues.type,
         version: wizardValues.version,
-        embed: opts.embed,
+        embed: wizardValues.embed ?? opts.embed,
       })));
     } catch (err) {
       process.exitCode = 1;
@@ -2202,6 +2204,7 @@ presetCmd
       const wizardValues = await runPresetAddWizard({
         selector,
         type: opts.type,
+        presetName: preset.name,
         shouldPrompt: shouldUseWizard({
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
