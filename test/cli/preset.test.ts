@@ -662,6 +662,38 @@ describe("CLI preset", () => {
     }
   });
 
+  it("auto-prompts preset add for the preset when the preset name is missing", async () => {
+    const context = await createTestContext("cli-preset-add-missing-preset");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const preset = presetModel.createPreset({ name: "team" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
+      );
+
+      const result = await runCli(["preset", "add"], {
+        isTTY: true,
+        promptResponses: [
+          { value: "team@1.0.0" },
+          { value: "resource" },
+          { value: "skill" },
+          { value: resource.id },
+        ],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("Added");
+      expect(result.stdout).toContain('"shared-skill"');
+      expect(presetModel.getPresetResources(preset.id)).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: resource.id })]),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("does not auto-prompt preset add when --format json is requested", async () => {
     const context = await createTestContext("cli-preset-add-wizard-json");
     try {
