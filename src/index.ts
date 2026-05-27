@@ -292,7 +292,7 @@ function renderGroupedCommandHelp(
     if (!command || !nameStr) continue;
     const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
     const desc = command.description() || "";
-    lines.push(`  ${ui.theme.accent(nameStr)}${padding}${desc}`);
+    lines.push(`  ${ui.theme.command(nameStr)}${padding}${desc}`);
   }
 
   return lines.join("\n");
@@ -362,7 +362,7 @@ program
       if (!isTopLevel) {
         const lines = [
           "",
-          ui.theme.muted("USAGE"),
+          ui.theme.heading("USAGE"),
           `  ${cmd.name()} ${cmd.usage()}`,
           "",
         ];
@@ -373,18 +373,18 @@ program
         
         const opts = cmd.options.filter((opt) => !opt.hidden);
         if (opts.length > 0) {
-          lines.push(ui.theme.muted("OPTIONS"));
+          lines.push(ui.theme.heading("OPTIONS"));
           for (const opt of opts) {
             const flags = opt.flags;
             const desc = opt.description || "";
-            lines.push(`  ${ui.theme.accent(flags)}  ${desc}`);
+            lines.push(`  ${ui.theme.flag(flags)}  ${desc}`);
           }
           lines.push("");
         }
         
         const subcommands = renderGroupedCommandHelp(cmd, showHidden);
         if (subcommands) {
-          lines.push(ui.theme.muted("COMMANDS"));
+          lines.push(ui.theme.heading("COMMANDS"));
           lines.push(subcommands);
           lines.push("");
         }
@@ -397,17 +397,17 @@ program
         ui.theme.primary(resolveInvocationName()),
         "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
         "",
-        ui.theme.muted("USAGE"),
+        ui.theme.heading("USAGE"),
         `  ${resolveInvocationName()} [options] [command]`,
         "",
-        ui.theme.muted("OPTIONS"),
-        `  ${ui.theme.accent("-V, --harnessdeck-version")}  output the version number`,
-        `  ${ui.theme.accent("-v, --verbose")}              show verbose error output`,
-        `  ${ui.theme.accent("--no-color")}               disable color output`,
-        `  ${ui.theme.accent("--show-hidden")}            show all commands including hidden ones`,
-        `  ${ui.theme.accent("-h, --help")}               display help for command`,
+        ui.theme.heading("OPTIONS"),
+        `  ${ui.theme.flag("-V, --harnessdeck-version")}  output the version number`,
+        `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
+        `  ${ui.theme.flag("--no-color")}               disable color output`,
+        `  ${ui.theme.flag("--show-hidden")}            show all commands including hidden ones`,
+        `  ${ui.theme.flag("-h, --help")}               display help for command`,
         "",
-        ui.theme.muted("COMMANDS"),
+        ui.theme.heading("COMMANDS"),
         renderGroupedCommandHelp(cmd, showHidden),
         "",
       ];

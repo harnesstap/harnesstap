@@ -60,4 +60,6 @@ scratchpad.md
 
 #workspaces
 *.code-workspace
+
+# Worktrees
 .worktrees/

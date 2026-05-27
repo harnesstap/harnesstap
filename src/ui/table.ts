@@ -39,7 +39,7 @@ export function renderTable({ columns, rows, summary, empty }: TableOptions): st
   });
 
   const t = new Table({
-    head: columns.map((col) => col.header),
+    head: columns.map((col) => theme.heading(col.header)),
     colWidths,
     chars: getTableChars(),
     style: { head: [], border: [] },
@@ -59,7 +59,7 @@ export function renderTable({ columns, rows, summary, empty }: TableOptions): st
 
   if (summary) {
     lines.push("");
-    lines.push(theme.muted(summary));
+    lines.push(theme.info(summary));
   }
 
   return lines.join("\n");
