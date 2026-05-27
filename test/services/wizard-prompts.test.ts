@@ -55,6 +55,13 @@ describe("wizard prompts", () => {
       expect(promptCalls[0]?.type).toBe("list");
       expect(promptCalls[1]?.type).toBe("list");
       expect(promptCalls[2]?.type).toBe("list");
+      expect(promptCalls[2]?.message).toBe("Which skill should be attached?");
+      expect(promptCalls[2]?.choices).toEqual([
+        {
+          name: "shared-skill",
+          value: resource.id,
+        },
+      ]);
     } finally {
       promptSpy.mockRestore();
       await context.cleanup();

@@ -97,12 +97,13 @@ import {
   importMigrationState,
 } from "./services/migrate.js";
 import { createProgress } from "./ui/progress.js";
-import { shouldUseWizard } from "./services/wizards/shared.js";
+import { promptForChoice, shouldUseWizard } from "./services/wizards/shared.js";
 import { runPresetAddWizard } from "./services/wizards/preset-add.js";
 import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
 import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import type { Column } from "./ui/table.js";
 
 const program = new Command();
 
@@ -112,6 +113,60 @@ function resolveInvocationName(): "harnessdeck" | "hd" {
 
 function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
+}
+
+function isVerboseMode(argv: string[] = process.argv): boolean {
+  return argv.includes("-v") || argv.includes("--verbose");
+}
+
+function renderCliError(error: unknown, argv: string[] = process.argv): void {
+  if (isVerboseMode(argv)) {
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+      return;
+    }
+    console.error(String(error));
+    return;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  ui.danger(message);
+}
+
+async function resolvePresetMutationTarget(input: {
+  presetName?: string;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  format?: string;
+  message: string;
+}): Promise<string | undefined> {
+  if (input.presetName) {
+    return input.presetName;
+  }
+
+  const shouldPrompt = shouldUseWizard({
+    interactive: input.interactive,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+
+  if (!shouldPrompt) {
+    return undefined;
+  }
+
+  const presets = listPresets();
+  if (presets.length === 0) {
+    return undefined;
+  }
+
+  return promptForChoice({
+    message: input.message,
+    choices: presets.map((preset) => ({
+      name: formatPresetLabel(preset),
+      value: formatPresetLabel(preset),
+    })),
+  });
 }
 
 program.exitOverride();
@@ -139,6 +194,17 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
 
 function formatPresetLabel(preset: Pick<Preset, "name" | "version">): string {
   return `${preset.name}@${preset.version}`;
+}
+
+function makeIdColumn(showId: boolean, width = 12): Column[] {
+  return showId
+    ? [{
+        key: "id",
+        header: "ID",
+        width,
+        transform: (value: string) => ui.format.shortenId(String(value)),
+      }]
+    : [];
 }
 
 function homeFolderLabel(discoveredPaths: string[]): string {
@@ -269,10 +335,14 @@ program
     "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
   )
   .version("0.1.0", "-V, --harnessdeck-version")
+  .option("-v, --verbose", "Show verbose error output")
   .option("--no-color", "Disable color output")
   .option("--no-interactive", "Disable interactive prompts")
   .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
   .helpCommand(false)
+  .configureOutput({
+    outputError: () => {},
+  })
   .hook("preAction", (command) => {
     const opts = command.optsWithGlobals<{ color?: boolean }>();
     if (opts.color === false) {
@@ -332,6 +402,7 @@ program
         "",
         ui.theme.heading("OPTIONS"),
         `  ${ui.theme.flag("-V, --harnessdeck-version")}  output the version number`,
+        `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
         `  ${ui.theme.flag("--no-color")}               disable color output`,
         `  ${ui.theme.flag("--show-hidden")}            show all commands including hidden ones`,
         `  ${ui.theme.flag("-h, --help")}               display help for command`,
@@ -962,7 +1033,7 @@ function handleHarnessListCommand(
 
 function handlePresetShowCommand(
   name: string,
-  opts: { format?: string },
+  opts: { format?: string; showId?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
@@ -1008,9 +1079,9 @@ function handlePresetShowCommand(
   ui.subheader("RESOURCES");
   ui.table.print({
     columns: [
+      ...makeIdColumn(Boolean(opts.showId)),
       { key: "type", header: "TYPE", width: 14 },
       { key: "name", header: "NAME", width: 26 },
-      { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
     ],
     rows: resources,
     empty: "No resources in this preset.",
@@ -2099,7 +2170,8 @@ presetCmd
   .command("list")
   .alias("ls")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string }) => {
+  .option("--show-id", "Show IDs in human-readable tables")
+  .action((opts: { format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -2108,16 +2180,14 @@ presetCmd
       printJson(presets);
       return;
     }
-    const rows = presets.map((preset) => ({
-      ...preset,
-      label: formatPresetLabel(preset),
-    }));
     ui.table.print({
       columns: [
-        { key: "label", header: "NAME", width: 26 },
+        ...makeIdColumn(Boolean(opts.showId)),
+        { key: "name", header: "NAME", width: 26 },
+        { key: "version", header: "VERSION", width: 12 },
         { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
       ],
-      rows,
+      rows: presets,
       summary: `${presets.length} presets ${ui.icons.bullet} run \`${formatCommand("preset show <name>")}\` for details`,
       empty: "No presets found.",
     });
@@ -2127,28 +2197,46 @@ presetCmd
   .command("show")
   .argument("<name>", "Preset name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--show-id", "Show IDs in list-oriented human tables")
   .description("Show preset details, resources, and plugin pins")
-  .action((name: string, opts: { format?: string }) => {
+  .action((name: string, opts: { format?: string; showId?: boolean }) => {
     handlePresetShowCommand(name, opts);
   });
 
 presetCmd
   .command("add")
-  .argument("<preset>", "Preset name or ID")
+  .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
   .option("--version <constraint>", "Version constraint for plugin or preset dependency")
   .option("--embed", "Embed plugin files on export (plugin attachments only)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (presetName: string, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const preset = getPreset(presetName);
+      const presetTarget = await resolvePresetMutationTarget({
+        presetName,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which preset do you want to update?",
+      });
+      if (!presetTarget) {
+        process.exitCode = 1;
+        ui.danger(
+          listPresets().length > 0
+            ? "error: missing required argument 'preset'"
+            : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+        );
+        return;
+      }
+
+      const preset = getPreset(presetTarget);
       if (!preset) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetName}`);
+        ui.danger(`Preset not found: ${presetTarget}`);
         return;
       }
 
@@ -2162,7 +2250,7 @@ presetCmd
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !selector || !opts.type,
+          missingRequiredArgs: !presetName || !selector || !opts.type,
         }),
       });
 
@@ -2185,19 +2273,36 @@ presetCmd
 
 presetCmd
   .command("remove")
-  .argument("<preset>", "Preset name or ID")
+  .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (presetName: string, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const preset = getPreset(presetName);
+      const presetTarget = await resolvePresetMutationTarget({
+        presetName,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which preset do you want to update?",
+      });
+      if (!presetTarget) {
+        process.exitCode = 1;
+        ui.danger(
+          listPresets().length > 0
+            ? "error: missing required argument 'preset'"
+            : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+        );
+        return;
+      }
+
+      const preset = getPreset(presetTarget);
       if (!preset) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetName}`);
+        ui.danger(`Preset not found: ${presetTarget}`);
         return;
       }
 
@@ -2209,7 +2314,7 @@ presetCmd
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !selector || !opts.type,
+          missingRequiredArgs: !presetName || !selector || !opts.type,
         }),
       });
 
@@ -2504,7 +2609,8 @@ resourceCmd
   .option("-t, --type <type>", "Filter by resource type")
   .option("-s, --search <query>", "Search by name or description")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { type?: string; search?: string; format?: string }) => {
+  .option("--show-id", "Show IDs in human-readable tables")
+  .action((opts: { type?: string; search?: string; format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -2520,9 +2626,9 @@ resourceCmd
     }
     ui.table.print({
       columns: [
+        ...makeIdColumn(Boolean(opts.showId)),
         { key: "type", header: "TYPE", width: 14 },
         { key: "name", header: "NAME", width: 28 },
-        { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
         { key: "updated_at", header: "UPDATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
       ],
       rows: resources,
@@ -2535,7 +2641,8 @@ resourceCmd
   .command("show")
   .argument("<resource>", "Resource name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((resource: string, opts: { format?: string }) => {
+  .option("--show-id", "Show IDs in list-oriented human tables")
+  .action((resource: string, opts: { format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -2560,9 +2667,9 @@ resourceCmd
       ui.danger(`Ambiguous resource selector: ${resource}`);
       ui.table.print({
         columns: [
+          ...makeIdColumn(Boolean(opts.showId)),
           { key: "type", header: "TYPE", width: 14 },
           { key: "name", header: "NAME", width: 26 },
-          { key: "id", header: "ID", width: 12, transform: (value) => ui.format.shortenId(String(value)) },
         ],
         rows: result.matches,
       });
@@ -3156,7 +3263,11 @@ export async function runHarnessdeckCli(
     if (isGroupedCommandFallbackError(error)) {
       const match = error.message.match(/too many arguments for '([^']+)'\. Expected 0 arguments but got \d+\./i);
       const commandName = match?.[1] ?? "command";
-      const attemptedSubcommand = argv[3];
+      const commandIndex = argv.findIndex(
+        (value, index) => index >= 2 && value === commandName,
+      );
+      const attemptedSubcommand =
+        commandIndex >= 0 ? argv[commandIndex + 1] : undefined;
       error.code = "commander.unknownCommand";
       error.message = attemptedSubcommand
         ? `error: unknown command '${commandName} ${attemptedSubcommand}'`
@@ -3175,5 +3286,13 @@ export async function runHarnessdeckCli(
 }
 
 if (import.meta.main) {
-  await runHarnessdeckCli();
+  try {
+    await runHarnessdeckCli();
+  } catch (error) {
+    process.exitCode =
+      error && typeof error === "object" && "exitCode" in error
+        ? Number((error as { exitCode?: unknown }).exitCode) || 1
+        : 1;
+    renderCliError(error);
+  }
 }

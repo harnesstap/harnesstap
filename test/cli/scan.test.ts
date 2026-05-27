@@ -57,4 +57,45 @@ describe("CLI scan", () => {
       await context.cleanup();
     }
   });
+
+  it("removes stale synthetic AGENTS.md duplicates on a rescan", async () => {
+    const context = await createTestContext("cli-scan-shared-agents-cleanup");
+
+    try {
+      initGitRepo(context.projectDir);
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Shared agents instructions");
+
+      await runCli(["init"]);
+      const resourceModel = await import("../../src/models/resource.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+
+      resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "kode-instructions",
+          content: "# Shared agents instructions",
+          source: "AGENTS.md",
+        }),
+      );
+      resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "codex-instructions",
+          content: "# Shared agents instructions",
+          source: "AGENTS.md",
+        }),
+      );
+
+      await runCli(["project", "scan", context.projectDir]);
+
+      const names = resourceModel
+        .listResources()
+        .filter((resource) => resource.source === "AGENTS.md")
+        .map((resource) => resource.name);
+
+      expect(names).toEqual(["agents-instructions"]);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

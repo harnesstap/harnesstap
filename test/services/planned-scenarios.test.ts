@@ -172,6 +172,12 @@ describe("planned scenarios services", () => {
         "# From project\n",
         "utf-8",
       );
+      writeFileSync(join(context.projectDir, "AGENTS.md"), "# Ignore me\n", "utf-8");
+      writeFileSync(
+        join(context.projectDir, ".harnessdeckignore"),
+        "AGENTS.md\n",
+        "utf-8",
+      );
 
       const { createPresetFromProject } = await import(
         "../../src/services/preset-from-project.ts"
@@ -185,6 +191,12 @@ describe("planned scenarios services", () => {
       expect(result.imported_count).toBeGreaterThan(0);
       const resources = presetModel.getPresetResources(result.preset.id);
       expect(resources.length).toBeGreaterThan(0);
+      expect(resources.some((resource) => resource.source === "AGENTS.md")).toBe(
+        false,
+      );
+      expect(resources.some((resource) => resource.source === "CLAUDE.md")).toBe(
+        true,
+      );
     } finally {
       await context.cleanup();
     }
