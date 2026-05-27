@@ -9,6 +9,7 @@ import { upsertProjectPluginState } from "../models/plugin.js";
 import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { loadScanIgnore } from "./scanner-ignore.js";
 
 function resolveConfiguredPath(
   rootPath: string,
@@ -118,7 +119,7 @@ export async function scanProject(
   for (const pid of platforms) {
     results.push(await scanPlatform(pid, projectRoot));
   }
-  return results;
+  return normalizeProjectScanResults(projectRoot, results);
 }
 
 export async function scanHomeDefaults(
@@ -154,12 +155,20 @@ function canonicalInstructionNameForSource(source: string): string | undefined {
   return SHARED_PROJECT_INSTRUCTION_NAMES.get(source);
 }
 
-function normalizeProjectScanResults(results: ScanResult[]): ScanResult[] {
+function normalizeProjectScanResults(
+  projectRoot: string,
+  results: ScanResult[],
+): ScanResult[] {
+  const ignore = loadScanIgnore(projectRoot);
   const seenSharedSources = new Set<string>();
 
   return results.map((result) => ({
     ...result,
     resources: result.resources.flatMap((resource) => {
+      if (ignore.ignores(resource.source)) {
+        return [];
+      }
+
       const canonicalName =
         resource.type === "instruction"
           ? canonicalInstructionNameForSource(resource.source)
@@ -204,7 +213,6 @@ export function persistScanResults(
   results: ScanResult[],
   options?: { skipExistingDuplicates?: boolean },
 ): PersistedScanResults {
-  const normalizedResults = normalizeProjectScanResults(results);
   const seen = new Set<string>();
   const persisted: Resource[] = [];
   const importedCounts = new Map<string, number>();
@@ -212,7 +220,7 @@ export function persistScanResults(
     ? new Set(listResources().map((resource) => resourceDedupKey(resource)))
     : undefined;
 
-  for (const result of normalizedResults) {
+  for (const result of results) {
     for (const r of result.resources) {
       const key = resourceDedupKey(r);
       if (seen.has(key) || existing?.has(key)) continue;
