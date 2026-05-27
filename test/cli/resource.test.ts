@@ -25,6 +25,7 @@ describe("CLI resource", () => {
 
       expect(resourceList.stdout).toContain("shared-skill");
       expect(resourceShow.stdout).toContain("RESOURCE");
+      expect(resourceShow.stdout).toContain(resource.id);
       expect(resourceShow.stdout).toContain("CONTENT");
       expect(resourceShow.stdout).toContain("# Shared");
 
@@ -62,8 +63,8 @@ describe("CLI resource", () => {
     }
   });
 
-  it("lists the full resource ID", async () => {
-    const context = await createTestContext("cli-resource-list-full-id");
+  it("resource list hides IDs by default and reveals them with --show-id", async () => {
+    const context = await createTestContext("cli-resource-show-id-flag");
 
     try {
       await runCli(["init"]);
@@ -77,11 +78,15 @@ describe("CLI resource", () => {
           content: "# OpenAPI MCP Baseline",
         }),
       );
+      const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
 
-      const resourceList = await runCli(["resource", "list"]);
+      const hidden = await runCli(["resource", "list"]);
+      const shown = await runCli(["resource", "list", "--show-id"]);
 
-      // IDs are shortened in human-mode table output (first 6 chars always visible)
-      expect(resourceList.stdout).toContain(resource.id.slice(0, 6));
+      expect(hidden.stdout).not.toMatch(/\|\s+ID\s+\|/);
+      expect(hidden.stdout).not.toContain(shortId);
+      expect(shown.stdout).toMatch(/\|\s+ID\s+\|/);
+      expect(shown.stdout).toContain(shortId);
     } finally {
       await context.cleanup();
     }
@@ -192,8 +197,8 @@ describe("CLI resource", () => {
     }
   });
 
-  it("reports an ambiguous resource name", async () => {
-    const context = await createTestContext("cli-resource-ambiguous-name");
+  it("resource ambiguity table hides IDs by default and reveals them with --show-id", async () => {
+    const context = await createTestContext("cli-resource-ambiguous-show-id");
 
     try {
       await runCli(["init"]);
@@ -216,15 +221,18 @@ describe("CLI resource", () => {
         }),
       );
 
-      const resourceShow = await runCli(["resource", "show", "duplicate-name"]);
+      const hidden = await runCli(["resource", "show", "duplicate-name"]);
+      const shown = await runCli(["resource", "show", "duplicate-name", "--show-id"]);
 
-      expect(resourceShow.stderr).toContain("Ambiguous resource selector: duplicate-name");
-      expect(resourceShow.stdout).not.toContain("# First");
-      expect(resourceShow.stdout).not.toContain("# Second");
-      // match table headers must appear in stdout
-      expect(resourceShow.stdout).toContain("TYPE");
-      expect(resourceShow.stdout).toContain("NAME");
-      expect(resourceShow.stdout).toContain("ID");
+      expect(hidden.stderr).toContain("Ambiguous resource selector: duplicate-name");
+      expect(hidden.stdout).not.toContain("# First");
+      expect(hidden.stdout).not.toContain("# Second");
+      expect(hidden.stdout).toContain("TYPE");
+      expect(hidden.stdout).toContain("NAME");
+      expect(hidden.stdout).not.toMatch(/\|\s+ID\s+\|/);
+
+      expect(shown.stderr).toContain("Ambiguous resource selector: duplicate-name");
+      expect(shown.stdout).toMatch(/\|\s+ID\s+\|/);
     } finally {
       await context.cleanup();
     }

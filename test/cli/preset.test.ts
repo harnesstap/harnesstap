@@ -21,7 +21,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset list shows name@version and distinguishes multiple versions", async () => {
+  it("preset list shows separate name and version columns", async () => {
     const context = await createTestContext("cli-preset-list-versions");
     try {
       await runCli(["init"]);
@@ -30,13 +30,36 @@ describe("CLI preset", () => {
       await runCli(["preset", "create", "team-stack", "--version", "2.0.0"]);
 
       const listResult = await runCli(["preset", "list"]);
-      expect(listResult.stdout).toContain("team-stack@1.0.0");
-      expect(listResult.stdout).toContain("team-stack@2.0.0");
-      // Both versions must appear as separate lines, not collapsed into one
-      const teamStackLines = listResult.stdout
-        .split("\n")
-        .filter((line) => line.includes("team-stack@"));
-      expect(teamStackLines).toHaveLength(2);
+      expect(listResult.stdout).toContain("NAME");
+      expect(listResult.stdout).toContain("VERSION");
+      expect(listResult.stdout).toContain("DESCRIPTION");
+      expect(listResult.stdout).not.toContain("team-stack@1.0.0");
+      expect(listResult.stdout).not.toContain("team-stack@2.0.0");
+      expect(listResult.stdout).toMatch(/team-stack\s+\|\s+1\.0\.0/);
+      expect(listResult.stdout).toMatch(/team-stack\s+\|\s+2\.0\.0/);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset list hides IDs by default and reveals them with --show-id", async () => {
+    const context = await createTestContext("cli-preset-list-show-id");
+    try {
+      await runCli(["init"]);
+      const presetModel = await import("../../src/models/preset.ts");
+
+      await runCli(["preset", "create", "team-stack", "--version", "1.0.0"]);
+      const preset = presetModel.getPreset("team-stack");
+      if (!preset) throw new Error("Expected preset to exist");
+      const shortId = `${preset.id.slice(0, 6)}…${preset.id.slice(-4)}`;
+
+      const hidden = await runCli(["preset", "list"]);
+      const shown = await runCli(["preset", "list", "--show-id"]);
+
+      expect(hidden.stdout).not.toMatch(/\|\s+ID\s+\|/);
+      expect(hidden.stdout).not.toContain(shortId);
+      expect(shown.stdout).toMatch(/\|\s+ID\s+\|/);
+      expect(shown.stdout).toContain(shortId);
     } finally {
       await context.cleanup();
     }
@@ -335,8 +358,6 @@ describe("CLI preset", () => {
       const presetShow = await runCli(["preset", "show", "team"]);
       expect(presetShow.stdout).toContain("team");
       expect(presetShow.stdout).toContain("shared-skill");
-      // IDs are shortened in human-mode panel output (first 6 chars always visible)
-      expect(presetShow.stdout).toContain(resource.id.slice(0, 6));
 
       const removeResult = await runCli([
         "preset",
@@ -364,6 +385,37 @@ describe("CLI preset", () => {
       expect(deleteResult.stdout).toContain("team");
 
       expect(presetModel.getPreset("team")).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset show hides resource IDs by default and reveals them with --show-id", async () => {
+    const context = await createTestContext("cli-preset-show-ids");
+    try {
+      await runCli(["init"]);
+      const resourceModel = await import("../../src/models/resource.ts");
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "shared-skill",
+          description: "Shared helper",
+          content: "# Shared",
+        }),
+      );
+
+      await runCli(["preset", "create", "team"]);
+      await runCli(["preset", "add", "team", resource.id, "--type", "skill"]);
+      const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
+
+      const hidden = await runCli(["preset", "show", "team"]);
+      const shown = await runCli(["preset", "show", "team", "--show-id"]);
+
+      expect(hidden.stdout).toContain("RESOURCES");
+      expect(hidden.stdout).not.toMatch(/\|\s+ID\s+\|/);
+      expect(hidden.stdout).not.toContain(shortId);
+      expect(shown.stdout).toMatch(/\|\s+ID\s+\|/);
+      expect(shown.stdout).toContain(shortId);
     } finally {
       await context.cleanup();
     }
