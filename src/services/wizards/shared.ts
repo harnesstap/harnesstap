@@ -59,3 +59,48 @@ export async function promptForValue(input: {
 
   return value.trim();
 }
+
+export interface PromptChoice<T extends string = string> {
+  name: string;
+  value: T;
+}
+
+function promptPageSize(choiceCount: number): number {
+  return Math.min(Math.max(choiceCount, 5), 12);
+}
+
+export async function promptForChoice<T extends string>(input: {
+  message: string;
+  choices: PromptChoice<T>[];
+  default?: T;
+}): Promise<T> {
+  const { value } = await inquirer.prompt<{ value: T }>([
+    {
+      type: "list",
+      name: "value",
+      message: input.message,
+      default: input.default,
+      choices: input.choices,
+      pageSize: promptPageSize(input.choices.length),
+      loop: false,
+    },
+  ]);
+
+  return value;
+}
+
+export async function promptForConfirmation(input: {
+  message: string;
+  default?: boolean;
+}): Promise<boolean> {
+  const { value } = await inquirer.prompt<{ value: boolean }>([
+    {
+      type: "confirm",
+      name: "value",
+      message: input.message,
+      default: input.default ?? false,
+    },
+  ]);
+
+  return value;
+}

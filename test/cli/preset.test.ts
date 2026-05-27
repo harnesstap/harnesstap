@@ -640,7 +640,7 @@ describe("CLI preset", () => {
     try {
       await runCli(["init"]);
       const resourceModel = await import("../../src/models/resource.ts");
-      resourceModel.createResource(
+      const resource = resourceModel.createResource(
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
       await runCli(["preset", "create", "team"]);
@@ -648,8 +648,9 @@ describe("CLI preset", () => {
       const result = await runCli(["preset", "add", "team"], {
         isTTY: true,
         promptResponses: [
+          { value: "resource" },
           { value: "skill" },
-          { value: "shared-skill" },
+          { value: resource.id },
         ],
       });
 
