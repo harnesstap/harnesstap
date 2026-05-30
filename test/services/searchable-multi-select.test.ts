@@ -1,6 +1,6 @@
 import { render } from "@inquirer/testing";
 import { describe, expect, it } from "bun:test";
-import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.js";
+import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.ts?actual";
 
 const CTRL_A = { name: "a", ctrl: true } as const;
 const CTRL_X = { name: "x", ctrl: true } as const;
