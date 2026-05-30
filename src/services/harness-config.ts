@@ -1,10 +1,7 @@
-import inquirer from "inquirer";
 import { getAllPlatforms, getPlatformIds } from "../platforms/registry.js";
 import type { HarnessPreference, HarnessSelection } from "../types.js";
-import {
-  promptForOptionalValue,
-  promptForSearchableChoice,
-} from "./wizards/shared.js";
+import { promptForSearchableChoice } from "./wizards/shared.js";
+import { promptForSearchableMultiSelect } from "./wizards/searchable-multi-select.js";
 
 export interface ResolveHarnessSelectionOptions {
   current?: HarnessPreference | HarnessSelection;
@@ -111,48 +108,20 @@ export async function resolveHarnessSelection(
     choices: harnesses,
   });
   const aliasChoices = harnesses.filter((choice) => choice.value !== main_harness);
-  const aliasFilter = await promptForOptionalValue({
+  const alias_harnesses = await promptForSearchableMultiSelect({
     message: [
-      "Search alias harnesses (optional)",
+      options.aliasMessage ??
+      "Select additional harnesses to keep in sync as aliases",
       currentSummary,
     ].filter(Boolean).join("\n"),
+    default: defaultAliases.filter((harness) => harness !== main_harness),
+    choices: aliasChoices,
+    pageSize: 10,
+    loop: false,
   });
-  const normalizedAliasFilter = aliasFilter.toLowerCase();
-  const filteredAliasChoices =
-    normalizedAliasFilter.length > 0
-      ? aliasChoices.filter((choice) =>
-          `${choice.name} ${choice.value}`.toLowerCase().includes(normalizedAliasFilter),
-        )
-      : aliasChoices;
-  const visibleAliasValues = new Set(
-    filteredAliasChoices.map((choice) => choice.value),
-  );
-  const hiddenDefaultAliases = defaultAliases.filter(
-    (harness) =>
-      harness !== main_harness
-      && !visibleAliasValues.has(harness),
-  );
-
-  const { alias_harnesses } = await inquirer.prompt<{
-    alias_harnesses: string[];
-  }>([
-    {
-      type: "checkbox",
-      name: "alias_harnesses",
-      message: [
-        options.aliasMessage ??
-        "Select additional harnesses to keep in sync as aliases",
-        currentSummary,
-      ].filter(Boolean).join("\n"),
-      default: defaultAliases.filter((harness) => visibleAliasValues.has(harness)),
-      choices: filteredAliasChoices,
-      pageSize: 10,
-      loop: false,
-    },
-  ]);
 
   return normalizeSelection({
     main_harness,
-    alias_harnesses: [...hiddenDefaultAliases, ...alias_harnesses],
+    alias_harnesses,
   });
 }

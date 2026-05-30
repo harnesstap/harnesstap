@@ -61,22 +61,6 @@ export async function promptForValue(input: {
   return value.trim();
 }
 
-export async function promptForOptionalValue(input: {
-  message: string;
-  default?: string;
-}): Promise<string> {
-  const { value } = await inquirer.prompt<{ value: string }>([
-    {
-      type: "input",
-      name: "value",
-      message: input.message,
-      default: input.default,
-    },
-  ]);
-
-  return value.trim();
-}
-
 export interface PromptChoice<T extends string = string> {
   name: string;
   value: T;

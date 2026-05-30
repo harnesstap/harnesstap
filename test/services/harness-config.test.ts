@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 const promptMock = mock(() => Promise.resolve({}));
 const searchPromptMock = mock(() => Promise.resolve("cursor"));
+const aliasPromptMock = mock(() => Promise.resolve([]));
 
 mock.module("inquirer", () => ({
   default: {
@@ -13,10 +14,15 @@ mock.module("@inquirer/search", () => ({
   default: searchPromptMock,
 }));
 
+mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
+  promptForSearchableMultiSelect: aliasPromptMock,
+}));
+
 describe("harness config service", () => {
   beforeEach(() => {
     promptMock.mockReset();
     searchPromptMock.mockReset();
+    aliasPromptMock.mockReset();
   });
 
   it("excludes the chosen main harness from alias choices", async () => {
@@ -27,9 +33,7 @@ describe("harness config service", () => {
     });
 
     searchPromptMock.mockResolvedValueOnce("cursor");
-    promptMock
-      .mockResolvedValueOnce({ value: "" })
-      .mockResolvedValueOnce({ alias_harnesses: ["codex"] });
+    aliasPromptMock.mockResolvedValueOnce(["codex"]);
 
     try {
       const service = await import("../../src/services/harness-config.ts");
@@ -47,12 +51,15 @@ describe("harness config service", () => {
       });
 
       expect(searchPromptMock).toHaveBeenCalledTimes(1);
-      expect(promptMock).toHaveBeenCalledTimes(2);
+      expect(aliasPromptMock).toHaveBeenCalledTimes(1);
 
-      const aliasQuestion = promptMock.mock.calls[1]?.[0]?.[0];
-      expect(aliasQuestion?.default).toEqual(["codex"]);
+      const aliasPrompt = aliasPromptMock.mock.calls[0]?.[0] as {
+        default?: string[];
+        choices?: Array<{ value: string }>;
+      };
+      expect(aliasPrompt?.default).toEqual(["codex"]);
       expect(
-        (aliasQuestion?.choices as Array<{ value: string }>).map(
+        (aliasPrompt?.choices as Array<{ value: string }>).map(
           (choice) => choice.value,
         ),
       ).not.toContain("cursor");
@@ -138,6 +145,7 @@ describe("harness config service", () => {
         alias_harnesses: [],
       });
       expect(promptMock).not.toHaveBeenCalled();
+      expect(aliasPromptMock).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(process.stdin, "isTTY", {
         value: originalIsTTY,
@@ -175,9 +183,7 @@ describe("harness config service", () => {
     });
 
     searchPromptMock.mockResolvedValueOnce("cursor");
-    promptMock
-      .mockResolvedValueOnce({ value: "" })
-      .mockResolvedValueOnce({ alias_harnesses: [] });
+    aliasPromptMock.mockResolvedValueOnce([]);
 
     try {
       const service = await import("../../src/services/harness-config.ts");
@@ -206,9 +212,7 @@ describe("harness config service", () => {
     });
 
     searchPromptMock.mockResolvedValueOnce("cursor");
-    promptMock
-      .mockResolvedValueOnce({ value: "" })
-      .mockResolvedValueOnce({ alias_harnesses: ["codex"] });
+    aliasPromptMock.mockResolvedValueOnce(["codex"]);
 
     try {
       const service = await import("../../src/services/harness-config.ts");
@@ -243,7 +247,7 @@ describe("harness config service", () => {
     }
   });
 
-  it("preserves hidden default aliases when alias search narrows the checkbox choices", async () => {
+  it("passes alias defaults through the searchable multi-select prompt", async () => {
     const originalIsTTY = process.stdin.isTTY;
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
@@ -251,9 +255,7 @@ describe("harness config service", () => {
     });
 
     searchPromptMock.mockResolvedValueOnce("claude-code");
-    promptMock
-      .mockResolvedValueOnce({ value: "copilot-cli" })
-      .mockResolvedValueOnce({ alias_harnesses: ["copilot-cli"] });
+    aliasPromptMock.mockResolvedValueOnce(["cursor", "codex", "copilot-cli"]);
 
     try {
       const service = await import("../../src/services/harness-config.ts");
@@ -269,18 +271,20 @@ describe("harness config service", () => {
         main_harness: "claude-code",
         alias_harnesses: ["cursor", "codex", "copilot-cli"],
       });
-      expect(promptMock).toHaveBeenCalledTimes(2);
+      expect(aliasPromptMock).toHaveBeenCalledTimes(1);
 
-      const filterQuestion = promptMock.mock.calls[0]?.[0]?.[0];
-      expect(filterQuestion?.message).toContain("Search alias harnesses");
-
-      const aliasQuestion = promptMock.mock.calls[1]?.[0]?.[0];
+      const aliasPrompt = aliasPromptMock.mock.calls[0]?.[0] as {
+        default?: string[];
+        choices?: Array<{ value: string }>;
+        message?: string;
+      };
+      expect(aliasPrompt?.message).toContain("Select additional harnesses");
+      expect(aliasPrompt?.default).toEqual(["cursor", "codex", "copilot-cli"]);
       expect(
-        (aliasQuestion?.choices as Array<{ value: string }>).map(
+        (aliasPrompt?.choices as Array<{ value: string }>).map(
           (choice) => choice.value,
         ),
-      ).toEqual(["copilot-cli"]);
-      expect(aliasQuestion?.instructions).toBeUndefined();
+      ).toContain("copilot-cli");
     } finally {
       Object.defineProperty(process.stdin, "isTTY", {
         value: originalIsTTY,
