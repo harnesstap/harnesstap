@@ -13,8 +13,8 @@ async function delay(ms = 5): Promise<void> {
 async function runPrompt(inputKeys: string[], defaults: string[] = []) {
   const input = new PassThrough();
   Object.assign(input, { isTTY: true });
-
   const output = new PassThrough();
+  Object.assign(output, { isTTY: true, columns: 80, rows: 24 });
   output.resume();
 
   const answerPromise = promptForSearchableMultiSelect(
