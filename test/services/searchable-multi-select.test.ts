@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { PassThrough } from "node:stream";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.js";
 
-const ENTER = "\r";
+const ENTER = "\n";
 const CTRL_A = "\u0001";
 const CTRL_X = "\u0018";
 
