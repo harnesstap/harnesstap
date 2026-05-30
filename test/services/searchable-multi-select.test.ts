@@ -1,37 +1,13 @@
+import { render } from "@inquirer/testing";
 import { describe, expect, it } from "bun:test";
-import { PassThrough } from "node:stream";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.js";
 
-const ENTER = { name: "enter" } as const;
 const CTRL_A = { name: "a", ctrl: true } as const;
 const CTRL_X = { name: "x", ctrl: true } as const;
 
-async function delay(ms = 5): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-type PromptInput =
-  | string
-  | { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean };
-
-function sendInput(input: PassThrough, key: PromptInput) {
-  if (typeof key === "string") {
-    input.write(key);
-    input.emit("keypress", null, { name: key });
-    return;
-  }
-
-  input.emit("keypress", null, key);
-}
-
-async function runPrompt(inputKeys: PromptInput[], defaults: string[] = []) {
-  const input = new PassThrough();
-  Object.assign(input, { isTTY: true });
-  const output = new PassThrough();
-  Object.assign(output, { isTTY: true, columns: 80, rows: 24 });
-  output.resume();
-
-  const answerPromise = promptForSearchableMultiSelect(
+function renderPrompt(defaults: string[] = []) {
+  return render(
+    promptForSearchableMultiSelect,
     {
       message: "Select alias harnesses",
       default: defaults,
@@ -42,44 +18,38 @@ async function runPrompt(inputKeys: PromptInput[], defaults: string[] = []) {
         { name: "Cursor", value: "cursor" },
       ],
     },
-    { input, output, clearPromptOnDone: true },
+    { clearPromptOnDone: true },
   );
-
-  for (const key of inputKeys) {
-    sendInput(input, key);
-    await delay();
-  }
-
-  const answer = await answerPromise;
-  input.end();
-  output.end();
-  return answer;
 }
 
 describe("searchable multi-select prompt", () => {
   it("filters choices as you type and toggles the filtered alias with space", async () => {
-    const answer = await runPrompt(
-      ["c", "o", "p", "i", "l", "o", "t", " ", ENTER],
-    );
+    const { answer, events } = await renderPrompt();
 
-    expect(answer).toEqual(["copilot-cli"]);
+    events.type("copilot");
+    events.keypress("space");
+    events.keypress("enter");
+
+    await expect(answer).resolves.toEqual(["copilot-cli"]);
   });
 
   it("selects all visible filtered aliases with ctrl+a", async () => {
-    const answer = await runPrompt(
-      ["c", "o", "p", "i", "l", "o", "t", CTRL_A, ENTER],
-      ["cursor"],
-    );
+    const { answer, events } = await renderPrompt(["cursor"]);
 
-    expect(answer).toEqual(["copilot-cli", "cursor"]);
+    events.type("copilot");
+    events.keypress(CTRL_A);
+    events.keypress("enter");
+
+    await expect(answer).resolves.toEqual(["copilot-cli", "cursor"]);
   });
 
   it("clears only the visible filtered aliases with ctrl+x", async () => {
-    const answer = await runPrompt(
-      ["c", "o", "p", "i", "l", "o", "t", CTRL_X, ENTER],
-      ["cursor", "copilot-cli"],
-    );
+    const { answer, events } = await renderPrompt(["cursor", "copilot-cli"]);
 
-    expect(answer).toEqual(["cursor"]);
+    events.type("copilot");
+    events.keypress(CTRL_X);
+    events.keypress("enter");
+
+    await expect(answer).resolves.toEqual(["cursor"]);
   });
 });

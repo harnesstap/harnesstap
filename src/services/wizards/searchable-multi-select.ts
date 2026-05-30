@@ -31,6 +31,13 @@ type PromptConfig<T extends string> = {
   loop?: boolean;
 };
 
+type PromptContext = {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  clearPromptOnDone?: boolean;
+  signal?: AbortSignal;
+};
+
 const searchableMultiSelectTheme = {
   icon: {
     checked: "[x]",
@@ -85,10 +92,11 @@ function isSearchCharacter(key: {
   );
 }
 
-export const promptForSearchableMultiSelect = createPrompt<
-  string[],
-  PromptConfig<string>
->((config, done) => {
+export const promptForSearchableMultiSelect: (
+  config: PromptConfig<string>,
+  context?: PromptContext,
+) => Promise<string[]> = createPrompt<string[], PromptConfig<string>>(
+  (config, done) => {
   const theme = makeTheme(searchableMultiSelectTheme, {});
   const prefix = usePrefix({ status: "idle", theme });
   const [items, setItems] = useState(() =>
@@ -171,7 +179,8 @@ export const promptForSearchableMultiSelect = createPrompt<
       setQuery(query + key.sequence);
       setActive(0);
     }
-  });
+    },
+  );
 
   const page =
     visibleEntries.length === 0

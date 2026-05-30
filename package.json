@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
+    "@inquirer/testing": "^3.3.8",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.0",
     "@types/semver": "^7.7.1",
