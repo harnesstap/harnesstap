@@ -2178,14 +2178,25 @@ async function handlePresetFromProjectCommand(
 
       if (!canPrompt) {
         process.exitCode = 1;
-        ui.danger(`Preset "${resolvedName}" already exists with ${preview.conflicts.length} conflicting resource(s). Use --interactive to resolve conflicts.`);
+        const parts = [];
+        if (preview.conflicts.length > 0) {
+          parts.push(`${preview.conflicts.length} conflicting resource(s)`);
+        }
+        if (preview.newResources.length > 0) {
+          parts.push(`${preview.newResources.length} new resource(s)`);
+        }
+        ui.danger(`Preset "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
         return;
       }
 
       // Show preview
       ui.info(`\nPreset "${resolvedName}" already exists.`);
-      ui.info(`Conflicts detected: ${preview.conflicts.length} resource(s) would be overwritten`);
-      ui.info(`New resources: ${preview.newResources.length}`);
+      if (preview.conflicts.length > 0) {
+        ui.info(`Conflicts: ${preview.conflicts.length} resource(s) would be overwritten`);
+      }
+      if (preview.newResources.length > 0) {
+        ui.info(`New resources: ${preview.newResources.length} would be added`);
+      }
       ui.info(`Total imports: ${preview.totalImports}\n`);
 
       const action = await promptForChoice({

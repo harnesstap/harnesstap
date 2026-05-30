@@ -991,4 +991,95 @@ describe("CLI cloud preset workflows", () => {
       await context.cleanup();
     }
   });
+
+  it("preset from-project with only new resources (no conflicts) errors clearly in non-interactive mode", async () => {
+    const context = await createTestContext("cli-preset-from-project-new-only");
+    try {
+      await runCli(["init"]);
+
+      // Create an existing preset with a resource
+      const presetModel = await import("../../src/models/preset.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const existingPreset = presetModel.createPreset({ name: "existing" });
+      const existingResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "other-resource",
+          description: "unrelated",
+          content: "# UNRELATED",
+        })
+      );
+      presetModel.addResourceToPreset(existingPreset.id, existingResource.id);
+
+      // Create a project directory with a NEW resource (not conflicting)
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const projectDir = join(context.homeDir, "test-project-new");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, ".cursorrules"), "# NEW RESOURCE");
+
+      // Try to create preset in non-interactive mode
+      const result = await runCli(
+        ["preset", "from-project", "existing", "--project", projectDir],
+        { isTTY: false }
+      );
+
+      expect(result.exitCode).toBe(1);
+      // Should mention new resources, not conflicting resources
+      expect(result.stderr).toContain("already exists");
+      expect(result.stderr).not.toContain("0 conflicting");
+      expect(result.stderr).toMatch(/1 new resource/i);
+      expect(result.stderr).not.toMatch(/conflicting/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset from-project with only new resources shows accurate preview in interactive mode", async () => {
+    const context = await createTestContext("cli-preset-from-project-new-interactive");
+    try {
+      await runCli(["init"]);
+
+      // Create an existing preset with a resource
+      const presetModel = await import("../../src/models/preset.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const existingPreset = presetModel.createPreset({ name: "existing-new" });
+      const existingResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "existing-res",
+          description: "existing",
+          content: "# EXISTING",
+        })
+      );
+      presetModel.addResourceToPreset(existingPreset.id, existingResource.id);
+
+      // Create a project directory with a NEW resource
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const projectDir = join(context.homeDir, "test-new-interactive");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, ".cursorrules"), "# NEW");
+
+      // Interactive mode with cancel to check messaging
+      const result = await runCli(
+        ["preset", "from-project", "existing-new", "--project", projectDir],
+        {
+          isTTY: true,
+          promptResponses: [{ value: "cancel" }]
+        }
+      );
+
+      // Should show accurate preview
+      expect(result.stdout).toContain("already exists");
+      expect(result.stdout).toMatch(/New resources: 1 would be added/);
+      // Should NOT show conflicts when there are none
+      expect(result.stdout).not.toMatch(/Conflicts:/);
+      expect(result.stdout).not.toMatch(/0.*overwritten/);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
