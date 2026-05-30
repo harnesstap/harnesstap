@@ -150,6 +150,12 @@ describe("CLI output format", () => {
               }),
           } as Response;
         }
+        if (url.endsWith("/orgs")) {
+          return {
+            ok: true,
+            json: async () => [{ slug: "acme", name: "Acme Corp" }],
+          } as Response;
+        }
         if (url.endsWith("/presets/publish")) {
           return {
             ok: true,
