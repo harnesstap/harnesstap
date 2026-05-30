@@ -243,7 +243,7 @@ describe("harness config service", () => {
     }
   });
 
-  it("filters alias choices from an interactive search term before showing the checkbox prompt", async () => {
+  it("preserves hidden default aliases when alias search narrows the checkbox choices", async () => {
     const originalIsTTY = process.stdin.isTTY;
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
@@ -267,7 +267,7 @@ describe("harness config service", () => {
 
       expect(selection).toEqual({
         main_harness: "claude-code",
-        alias_harnesses: ["copilot-cli"],
+        alias_harnesses: ["cursor", "codex", "copilot-cli"],
       });
       expect(promptMock).toHaveBeenCalledTimes(2);
 

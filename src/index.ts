@@ -1625,7 +1625,7 @@ async function handleInitCommand(opts: {
     getAllPlatforms().map((platform) => [platform.id, platform.name]),
   );
 
-  if (currentHarnessPreference) {
+  if (shouldSelectHarness && currentHarnessPreference) {
     const aliasSummary =
       currentHarnessPreference.alias_harnesses.join(", ") || "(none)";
     ui.warn(

@@ -124,6 +124,14 @@ export async function resolveHarnessSelection(
           `${choice.name} ${choice.value}`.toLowerCase().includes(normalizedAliasFilter),
         )
       : aliasChoices;
+  const visibleAliasValues = new Set(
+    filteredAliasChoices.map((choice) => choice.value),
+  );
+  const hiddenDefaultAliases = defaultAliases.filter(
+    (harness) =>
+      harness !== main_harness
+      && !visibleAliasValues.has(harness),
+  );
 
   const { alias_harnesses } = await inquirer.prompt<{
     alias_harnesses: string[];
@@ -136,12 +144,15 @@ export async function resolveHarnessSelection(
         "Select additional harnesses to keep in sync as aliases",
         currentSummary,
       ].filter(Boolean).join("\n"),
-      default: defaultAliases.filter((harness) => harness !== main_harness),
+      default: defaultAliases.filter((harness) => visibleAliasValues.has(harness)),
       choices: filteredAliasChoices,
       pageSize: 10,
       loop: false,
     },
   ]);
 
-  return normalizeSelection({ main_harness, alias_harnesses });
+  return normalizeSelection({
+    main_harness,
+    alias_harnesses: [...hiddenDefaultAliases, ...alias_harnesses],
+  });
 }

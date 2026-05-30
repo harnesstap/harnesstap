@@ -138,4 +138,26 @@ describe("CLI init", () => {
       await context.cleanup();
     }
   });
+
+  it("does not warn about harness defaults when init reruns without harness selection input", async () => {
+    const context = await createTestContext("cli-init-rerun-no-harness-change");
+
+    try {
+      await runCli([
+        "init",
+        "--main",
+        "claude-code",
+        "--aliases",
+        "cursor",
+      ]);
+
+      const rerun = await runCli(["init"]);
+
+      expect(rerun.stdout).toContain("Harnessdeck initialized");
+      expect(rerun.stdout).not.toContain("will be overwritten");
+      expect(rerun.stdout).not.toContain("Existing harness defaults");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
