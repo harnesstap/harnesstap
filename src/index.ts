@@ -131,6 +131,42 @@ function renderCliError(error: unknown, argv: string[] = process.argv): void {
 
   const message = error instanceof Error ? error.message : String(error);
   ui.danger(message);
+  
+  // Append contextual help for Commander-style errors
+  const contextCommand = findContextCommand(argv);
+  if (contextCommand) {
+    console.error(`\n${contextCommand.helpInformation()}`);
+  }
+}
+
+function findContextCommand(argv: string[]): Command | null {
+  // Skip node path and script path
+  const args = argv.slice(2);
+  
+  // Try to find the deepest matching command
+  let currentCommand: Command = program;
+  
+  for (const arg of args) {
+    // Skip flags
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    
+    // Try to find a subcommand matching this arg
+    const subCommand = currentCommand.commands.find(
+      (cmd) => cmd.name() === arg || cmd.aliases().includes(arg)
+    );
+    
+    if (subCommand) {
+      currentCommand = subCommand;
+    } else {
+      // No matching subcommand, use current level
+      break;
+    }
+  }
+  
+  // Only return if we found a subcommand (not the root program)
+  return currentCommand !== program ? currentCommand : null;
 }
 
 async function resolvePresetMutationTarget(input: {
@@ -268,17 +304,12 @@ function renderGroupedCommandHelp(
       return `[${arg.name()}]`;
     }).join(" ") || "";
     
-    const hasOptions = c.options.filter((opt) => !opt.hidden).length > 0;
-    
     let fullStr = name;
     if (aliases.length) {
       fullStr += ` (${aliases.join(", ")})`;
     }
-    if (hasOptions || args) {
-      fullStr += " ";
-      if (hasOptions) fullStr += "[options]";
-      if (hasOptions && args) fullStr += " ";
-      if (args) fullStr += args;
+    if (args) {
+      fullStr += ` ${args}`;
     }
     
     return fullStr;

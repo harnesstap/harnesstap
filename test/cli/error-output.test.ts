@@ -35,4 +35,31 @@ describe("CLI error output", () => {
     expect(result.stderr).toContain("CommanderError");
     expect(result.stderr).toContain("node_modules/commander/lib/command.js");
   });
+
+  it("appends contextual usage and command list after error message", () => {
+    const result = runCliProcess(["preset", "validate", "empty-preset"]);
+
+    expect(result.status).toBe(1);
+    // Should show error message
+    expect(result.stderr).toContain("error: unknown command 'preset validate'");
+    // Should append contextual help
+    expect(result.stderr).toContain("USAGE");
+    expect(result.stderr).toContain("COMMANDS");
+    // Should show actual preset commands (without [options] in command name)
+    expect(result.stderr).toContain("show <name>");
+    expect(result.stderr).toContain("doctor");
+    // Should not show stack trace
+    expect(result.stderr).not.toContain("CommanderError");
+    expect(result.stderr).not.toContain("node_modules/commander/lib/command.js");
+  });
+
+  it("does not append contextual help when verbose mode is enabled", () => {
+    const result = runCliProcess(["--verbose", "preset", "validate", "empty-preset"]);
+
+    expect(result.status).toBe(1);
+    // Should show stack trace in verbose mode
+    expect(result.stderr).toContain("CommanderError");
+    // Should NOT append contextual help when showing stack trace
+    expect(result.stderr).not.toContain("USAGE");
+  });
 });
