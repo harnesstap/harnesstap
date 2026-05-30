@@ -89,6 +89,43 @@ describe("CLI preset", () => {
     }
   });
 
+  it("preset show prompts for preset name when omitted on TTY", async () => {
+    const context = await createTestContext("cli-preset-show-prompt");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
+      await runCli(["preset", "create", "baseline", "--version", "1.0.0"]);
+
+      const result = await runCli(["preset", "show"], {
+        isTTY: true,
+        promptResponses: [{ value: "team-stack@1.2.0" }],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("team-stack@1.2.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset show fails without prompt when name is omitted in non-interactive mode", async () => {
+    const context = await createTestContext("cli-preset-show-no-prompt");
+    try {
+      await runCli(["init"]);
+      await runCli(["preset", "create", "team-stack"]);
+
+      const result = await runCli(["preset", "show"], {
+        isTTY: false,
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("missing required argument 'name'");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+
   it("preset attach/detach --type preset-dependency manage dependencies via CLI", async () => {
     const context = await createTestContext("cli-preset-dependency");
     try {

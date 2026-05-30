@@ -939,6 +939,56 @@ function parseRemoteLibrarySelector(selector: string): { org_slug: string; libra
   return { org_slug: org, library_slug: library, version };
 }
 
+function normalizeRemoteLibrarySelector(
+  selector: string,
+  opts: { org?: string; version?: string },
+): { org_slug: string; library_slug: string; version?: string } {
+  // Try to parse as full selector first
+  const fullMatch = selector.match(/^([^/@]+)\/([^@]+)(?:@(.+))?$/);
+  if (fullMatch) {
+    const selectorOrg = String(fullMatch[1]);
+    const library = String(fullMatch[2]);
+    const selectorVersion = fullMatch[3] !== undefined ? String(fullMatch[3]) : undefined;
+
+    // Check for conflicts
+    if (opts.org && selectorOrg) {
+      throw new Error(`--org conflicts with org in selector. Remove --org or use selector without org.`);
+    }
+    if (opts.version && selectorVersion) {
+      throw new Error(`--version conflicts with version in selector. Remove --version or use selector without version.`);
+    }
+
+    return {
+      org_slug: selectorOrg,
+      library_slug: library,
+      version: opts.version ?? selectorVersion,
+    };
+  }
+
+  // Selector is library-only or library@version
+  const libraryMatch = selector.match(/^([^@]+)(?:@(.+))?$/);
+  if (!libraryMatch) {
+    throw new Error(`Invalid library selector: ${selector}. Use org/library[@version] or library[@version] with --org`);
+  }
+
+  const library = String(libraryMatch[1]);
+  const selectorVersion = libraryMatch[2] !== undefined ? String(libraryMatch[2]) : undefined;
+
+  if (!opts.org) {
+    throw new Error(`org is required. Provide it in the selector as org/library or use --org <slug>`);
+  }
+
+  if (opts.version && selectorVersion) {
+    throw new Error(`--version conflicts with version in selector. Remove --version or use selector without version.`);
+  }
+
+  return {
+    org_slug: opts.org,
+    library_slug: library,
+    version: opts.version ?? selectorVersion,
+  };
+}
+
 async function handlePresetSearchCommand(query: string, opts: { profile?: string; format?: string }) {
   const format = parseOutputFormat(opts.format);
   try {
@@ -967,19 +1017,21 @@ async function handlePresetSearchCommand(query: string, opts: { profile?: string
   }
 }
 
-async function handlePresetInstallCommand(selector: string, opts: { as?: string; profile?: string; format?: string }) {
+async function handlePresetInstallCommand(selector: string, opts: { as?: string; org?: string; version?: string; profile?: string; format?: string }) {
   const db = getDb();
   initializeSchema(db);
   let parsed: { org_slug: string; library_slug: string; version?: string };
   try {
-    parsed = parseRemoteLibrarySelector(selector);
+    parsed = normalizeRemoteLibrarySelector(selector, { org: opts.org, version: opts.version });
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
   const localName = opts.as ?? parsed.library_slug;
   const existing = getPreset(localName);
   if (existing && !opts.as) {
+    process.exitCode = 1;
     ui.danger(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
     return;
   }
@@ -988,6 +1040,7 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
   try {
     const client = await resolveCloudClientForPresetCommand(opts.profile);
     if (!client) {
+      process.exitCode = 1;
       ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
       return;
     }
@@ -1001,6 +1054,7 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
     }
     ui.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
@@ -2584,8 +2638,10 @@ presetCmd
 
 presetCmd
   .command("add")
-  .argument("<selector>", "Remote library selector: org/library[@version]")
+  .argument("<selector>", "Remote library selector: org/library[@version] or library[@version] with --org")
   .option("--as <name>", "Install under a different local preset name")
+  .option("--org <slug>", "Organization slug (when selector omits org)")
+  .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Install a preset from the remote catalog into the local DB")
@@ -2595,10 +2651,12 @@ presetCmd
   .command("install", { hidden: true })
   .argument("<selector>", "Remote library selector: org/library[@version]")
   .option("--as <name>", "Install under a different local preset name")
+  .option("--org <slug>", "Organization slug (when selector omits org)")
+  .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Install a preset from the remote catalog into the local DB")
-  .action((selector: string, opts: { as?: string; profile?: string; format?: string }) => {
+  .action((selector: string, opts: { as?: string; org?: string; version?: string; profile?: string; format?: string }) => {
     warnDeprecatedCommand("preset install", "preset add");
     return handlePresetInstallCommand(selector, opts);
   });
