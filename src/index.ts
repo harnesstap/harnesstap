@@ -2168,9 +2168,9 @@ async function handlePresetFromProjectCommand(
     });
 
     // If preset exists and has conflicts, prompt for resolution
-    if (preview.presetExists && preview.conflicts.length > 0) {
+    if (preview.presetExists && (preview.conflicts.length > 0 || preview.newResources.length > 0)) {
       const canPrompt = shouldUseWizard({
-        interactive: opts.interactive,
+        interactive: true, // Conflicts require interactive resolution
         noInteractive: opts.noInteractive,
         format: parseOutputFormat(opts.format),
         missingRequiredArgs: false,

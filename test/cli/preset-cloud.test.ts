@@ -799,4 +799,196 @@ describe("CLI cloud preset workflows", () => {
       await context.cleanup();
     }
   });
+
+  it("preset from-project with conflict shows preview and allows overwrite", async () => {
+    const context = await createTestContext("cli-preset-from-project-overwrite");
+    try {
+      await runCli(["init"]);
+
+      // Create an existing preset with a resource
+      const presetModel = await import("../../src/models/preset.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const existingPreset = presetModel.createPreset({ name: "mypreset" });
+      const existingResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "cursorrules",
+          description: "old cursor rules",
+          content: "# OLD CONTENT",
+        })
+      );
+      presetModel.addResourceToPreset(existingPreset.id, existingResource.id);
+
+      // Verify initial state
+      const initialResources = presetModel.getPresetResources(existingPreset.id);
+      expect(initialResources.length).toBe(1);
+      expect(initialResources[0].content).toBe("# OLD CONTENT");
+
+      // Create a project directory with a file that will be scanned
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const projectDir = join(context.homeDir, "test-project-over");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, ".cursorrules"), "# NEW CONTENT\nThis is updated");
+
+      // Run from-project with interactive mode and choose overwrite
+      const result = await runCli(
+        ["preset", "from-project", "mypreset", "--project", projectDir],
+        {
+          isTTY: true,
+          promptResponses: [{ value: "overwrite" }]
+        }
+      );
+
+      // Should show preview information
+      expect(result.stdout).toContain("already exists");
+      expect(result.stdout).toMatch(/conflict|Conflict/i);
+
+      // Should complete successfully
+      expect(result.stdout).toMatch(/Created preset|Updated preset/i);
+
+      // Verify the preset was updated (not just content changed)
+      const updatedPreset = presetModel.getPreset("mypreset");
+      expect(updatedPreset).toBeTruthy();
+      const updatedResources = presetModel.getPresetResources(updatedPreset!.id);
+      
+      // Should have new content
+      const cursorRulesResource = updatedResources.find(r => r.name === "cursorrules");
+      expect(cursorRulesResource).toBeTruthy();
+      expect(cursorRulesResource!.content).toContain("NEW CONTENT");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset from-project with conflict shows preview and allows rename", async () => {
+    const context = await createTestContext("cli-preset-from-project-rename");
+    try {
+      await runCli(["init"]);
+
+      // Create an existing preset
+      const presetModel = await import("../../src/models/preset.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const existingPreset = presetModel.createPreset({ name: "original" });
+      const existingResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "cursorrules",
+          description: "original rules",
+          content: "# ORIGINAL",
+        })
+      );
+      presetModel.addResourceToPreset(existingPreset.id, existingResource.id);
+
+      // Verify initial state
+      const initialResources = presetModel.getPresetResources(existingPreset.id);
+      expect(initialResources.length).toBe(1);
+      expect(initialResources[0].content).toBe("# ORIGINAL");
+
+      // Create a project directory with new content
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const projectDir = join(context.homeDir, "test-project-rename");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, ".cursorrules"), "# RENAMED CONTENT");
+
+      // Run from-project and choose rename
+      const result = await runCli(
+        ["preset", "from-project", "original", "--project", projectDir],
+        {
+          isTTY: true,
+          promptResponses: [
+            { value: "rename" },
+            { value: "original-renamed" }
+          ]
+        }
+      );
+
+      // Should show preview
+      expect(result.stdout).toContain("already exists");
+      
+      // Should complete successfully
+      expect(result.stdout).toMatch(/Created preset/i);
+
+      // Verify original preset is unchanged
+      const originalPreset = presetModel.getPreset("original");
+      expect(originalPreset).toBeTruthy();
+      const originalResources = presetModel.getPresetResources(originalPreset!.id);
+      expect(originalResources[0].content).toBe("# ORIGINAL");
+
+      // Verify new preset was created
+      const renamedPreset = presetModel.getPreset("original-renamed");
+      expect(renamedPreset).toBeTruthy();
+      const renamedResources = presetModel.getPresetResources(renamedPreset!.id);
+      const renamedCursorRules = renamedResources.find(r => r.name === "cursorrules");
+      expect(renamedCursorRules).toBeTruthy();
+      expect(renamedCursorRules!.content).toContain("RENAMED CONTENT");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset from-project with conflict shows preview and allows cancel", async () => {
+    const context = await createTestContext("cli-preset-from-project-cancel");
+    try {
+      await runCli(["init"]);
+
+      // Create an existing preset
+      const presetModel = await import("../../src/models/preset.ts");
+      const { makeResourceInput } = await import("../helpers/resources.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const existingPreset = presetModel.createPreset({ name: "tocancel" });
+      const existingResource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "cursorrules",
+          description: "original",
+          content: "# SHOULD NOT CHANGE",
+        })
+      );
+      presetModel.addResourceToPreset(existingPreset.id, existingResource.id);
+
+      // Record initial state
+      const initialPresetCount = presetModel.listPresets().length;
+      const initialResources = presetModel.getPresetResources(existingPreset.id);
+      expect(initialResources.length).toBe(1);
+      expect(initialResources[0].content).toBe("# SHOULD NOT CHANGE");
+
+      // Create a project directory
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const projectDir = join(context.homeDir, "test-project-cancel");
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(join(projectDir, ".cursorrules"), "# THIS SHOULD NOT BE IMPORTED");
+
+      // Run from-project and choose cancel
+      const result = await runCli(
+        ["preset", "from-project", "tocancel", "--project", projectDir],
+        {
+          isTTY: true,
+          promptResponses: [{ value: "cancel" }]
+        }
+      );
+
+      // Should show preview
+      expect(result.stdout).toContain("already exists");
+      
+      // Should indicate cancellation
+      expect(result.stdout).toMatch(/cancel|Cancel/i);
+
+      // Verify no changes were made to the preset
+      const unchangedPreset = presetModel.getPreset("tocancel");
+      expect(unchangedPreset).toBeTruthy();
+      const unchangedResources = presetModel.getPresetResources(unchangedPreset!.id);
+      expect(unchangedResources.length).toBe(1);
+      expect(unchangedResources[0].content).toBe("# SHOULD NOT CHANGE");
+
+      // Verify no new presets were created
+      expect(presetModel.listPresets().length).toBe(initialPresetCount);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

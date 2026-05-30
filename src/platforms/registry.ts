@@ -75,6 +75,7 @@ const PLATFORMS: PlatformDefinition[] = [
     "instructions", "skills", "rules", "mcp", "agents", "hooks"
   ], {
     instructions: "AGENTS.md",
+    legacy_instructions: ".cursorrules",
     rules: ".cursor/rules/",
     skills: ".agents/skills/",
     mcp: ".cursor/mcp.json",
