@@ -17,7 +17,6 @@ type SearchableChoice<T extends string> = {
   value: T;
   short?: string;
   description?: string;
-  disabled?: boolean;
 };
 
 type NormalizedChoice<T extends string> = SearchableChoice<T> & {
