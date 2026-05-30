@@ -2105,19 +2105,53 @@ function handlePresetDoctorCommand(
       return;
     }
 
-    if (report.results.length === 0) {
-      ui.success(`Preset "${report.preset}" passed doctor.`);
-      return;
+    // Human format: show all checks with pass/fail markers
+    const allChecks = listPresetDoctorChecks().filter((check) => 
+      opts.check?.length ? opts.check.includes(check.id) : true
+    );
+
+    const rows: Array<{ check: string; result: string; message: string }> = [];
+    const findingsByCheck = new Map<string, typeof report.results>();
+    
+    for (const result of report.results) {
+      if (!findingsByCheck.has(result.check)) {
+        findingsByCheck.set(result.check, []);
+      }
+      const findings = findingsByCheck.get(result.check);
+      if (findings) {
+        findings.push(result);
+      }
+    }
+
+    for (const check of allChecks) {
+      const findings = findingsByCheck.get(check.id);
+      if (findings && findings.length > 0) {
+        // Show each finding as a separate row
+        for (const finding of findings) {
+          rows.push({
+            check: check.id,
+            result: finding.severity === "error" ? "✗ error" : "✗ warn",
+            message: finding.message,
+          });
+        }
+      } else {
+        // No findings - show pass
+        rows.push({
+          check: check.id,
+          result: "✓ pass",
+          message: "",
+        });
+      }
     }
 
     ui.table.print({
       columns: [
-        { key: "severity", header: "SEVERITY", width: 10 },
         { key: "check", header: "CHECK", width: 22 },
-        { key: "message", header: "MESSAGE", width: 46 },
+        { key: "result", header: "RESULT", width: 12 },
+        { key: "message", header: "MESSAGE", width: 44 },
       ],
-      rows: report.results,
-      summary: report.valid ? `${report.preset}: valid (warnings only)` : `${report.preset}: invalid`,
+      rows,
+      summary: report.valid ? `${report.preset}: valid` : `${report.preset}: invalid`,
     });
     if (!report.valid) {
       process.exitCode = 1;
@@ -2518,6 +2552,7 @@ presetCmd
   .option("--embed", "Embed plugin files on export (plugin attachments only)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Attach a resource, plugin, or dependency to a preset")
   .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -2584,6 +2619,7 @@ presetCmd
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Remove a resource, plugin, or dependency from a preset")
   .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -2893,7 +2929,7 @@ presetCmd
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Scan a project and create a preset from imported resources")
+  .description("Scan current folder and create a preset from its resources")
   .action(handlePresetFromProjectCommand);
 
 // ── migrate ─────────────────────────────────────────────────────────────

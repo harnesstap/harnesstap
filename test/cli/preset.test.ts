@@ -496,23 +496,28 @@ describe("CLI preset", () => {
     }
   });
 
-  it("runs preset doctor and renders the severity table", async () => {
+  it("runs preset doctor and shows all checks with pass markers for healthy preset", async () => {
     const context = await createTestContext("cli-preset-doctor-ui");
     try {
       await runCli(["init"]);
       const presetModel = await import("../../src/models/preset.ts");
-      presetModel.createPreset({ name: "empty-preset" });
+      presetModel.createPreset({ name: "healthy-preset" });
 
-      const result = await runCli(["preset", "doctor", "empty-preset"]);
-      expect(result.stdout).toContain("SEVERITY");
+      const result = await runCli(["preset", "doctor", "healthy-preset"]);
+      expect(result.stdout).toContain("CHECK");
+      expect(result.stdout).toContain("RESULT");
+      expect(result.stdout).toContain("✓"); // pass marker
       expect(result.stdout).toContain("empty-preset");
+      expect(result.stdout).toContain("duplicate-resources");
+      expect(result.stdout).toContain("empty-content");
+      expect(result.stdout).toContain("plugin-metadata");
       expect(result.exitCode).toBeUndefined();
     } finally {
       await context.cleanup();
     }
   });
 
-  it("reports plugin-metadata errors and exits with failure", async () => {
+  it("reports plugin-metadata errors with fail markers and exits with failure", async () => {
     const context = await createTestContext("cli-preset-doctor-plugin-metadata");
     try {
       await runCli(["init"]);
@@ -530,7 +535,10 @@ describe("CLI preset", () => {
       ]);
 
       expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain("CHECK");
+      expect(result.stdout).toContain("RESULT");
       expect(result.stdout).toContain("plugin-metadata");
+      expect(result.stdout).toContain("✗"); // fail marker
       expect(result.stdout).toContain("Plugin ref must include marketplace: formatter");
       expect(result.stdout).toMatch(/invalid version constraint/i);
     } finally {

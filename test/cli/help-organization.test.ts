@@ -279,4 +279,16 @@ describe("CLI help and command organization", () => {
     expect(presetHelp.stdout).not.toContain("publish [options]");
     expect(presetHelp.stdout).not.toContain("export [options]");
   });
+
+  it("exposes attach/detach commands with updated descriptions in preset help", async () => {
+    const presetHelp = await runCli(["preset", "--help"]);
+    
+    // Should show attach and detach commands
+    expect(presetHelp.stdout).toContain("attach");
+    expect(presetHelp.stdout).toContain("detach");
+    
+    // Should describe from-project correctly
+    expect(presetHelp.stdout).toContain("from-project");
+    expect(presetHelp.stdout).toContain("Scan current folder and create a preset from its resources");
+  });
 });
