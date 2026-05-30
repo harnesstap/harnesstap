@@ -3,7 +3,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI preset plugin pins", () => {
-  it("adds and shows plugin pin on preset through preset add --type plugin", async () => {
+  it("adds and shows plugin pin on preset through preset attach --type plugin", async () => {
     const context = await createTestContext("cli-preset-plugin");
 
     try {
@@ -11,7 +11,7 @@ describe("CLI preset plugin pins", () => {
       await runCli(["preset", "create", "p1"]);
       await runCli([
         "preset",
-        "add",
+        "attach",
         "p1",
         "fmt@acme",
         "--type",
@@ -27,7 +27,7 @@ describe("CLI preset plugin pins", () => {
     }
   });
 
-  it("includes plugins in preset show JSON after preset add --type plugin", async () => {
+  it("includes plugins in preset show JSON after preset attach --type plugin", async () => {
     const context = await createTestContext("cli-preset-plugin-json");
 
     try {
@@ -35,7 +35,7 @@ describe("CLI preset plugin pins", () => {
       await runCli(["preset", "create", "pj"]);
       await runCli([
         "preset",
-        "add",
+        "attach",
         "pj",
         "tools@hub",
         "--type",
@@ -61,7 +61,7 @@ describe("CLI preset plugin pins", () => {
     }
   });
 
-  it("preset remove --type plugin drops pin from show", async () => {
+  it("preset detach --type plugin drops pin from show", async () => {
     const context = await createTestContext("cli-preset-plugin-remove");
 
     try {
@@ -69,7 +69,7 @@ describe("CLI preset plugin pins", () => {
       await runCli(["preset", "create", "pr"]);
       await runCli([
         "preset",
-        "add",
+        "attach",
         "pr",
         "gone@mp",
         "--type",
@@ -77,7 +77,7 @@ describe("CLI preset plugin pins", () => {
         "--version",
         "1.0.0",
       ]);
-      await runCli(["preset", "remove", "pr", "gone@mp", "--type", "plugin"]);
+      await runCli(["preset", "detach", "pr", "gone@mp", "--type", "plugin"]);
       const show = await runCli(["preset", "show", "pr"]);
       expect(show.stdout).not.toContain("gone@mp");
     } finally {
@@ -85,7 +85,7 @@ describe("CLI preset plugin pins", () => {
     }
   });
 
-  it("requires --version for preset add --type plugin", async () => {
+  it("requires --version for preset attach --type plugin", async () => {
     const context = await createTestContext("cli-preset-plugin-version-required");
 
     try {
@@ -94,7 +94,7 @@ describe("CLI preset plugin pins", () => {
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "pv",
         "tools@hub",
         "--type",
@@ -108,7 +108,7 @@ describe("CLI preset plugin pins", () => {
     }
   });
 
-  it("persists embed_on_export for preset add --type plugin --embed", async () => {
+  it("persists embed_on_export for preset attach --type plugin --embed", async () => {
     const context = await createTestContext("cli-preset-plugin-embed");
 
     try {
@@ -119,7 +119,7 @@ describe("CLI preset plugin pins", () => {
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "embed-preset",
         "tools@hub",
         "--type",
@@ -163,7 +163,7 @@ describe("CLI preset plugin pins", () => {
         "--version",
         "^1.2.3",
       ]);
-      expect(addResult.stdout).toContain("`preset add-plugin` is deprecated; use `preset add ... --type plugin` instead.");
+      expect(addResult.stdout).toContain("`preset add-plugin` is deprecated; use `preset attach ... --type plugin` instead.");
 
       const preset = presetModel.getPreset("legacy-preset");
       if (!preset) throw new Error("Expected preset to exist");
@@ -179,7 +179,7 @@ describe("CLI preset plugin pins", () => {
         "legacy-preset",
         "tools@hub",
       ]);
-      expect(removeResult.stdout).toContain("`preset remove-plugin` is deprecated; use `preset remove ... --type plugin` instead.");
+      expect(removeResult.stdout).toContain("`preset remove-plugin` is deprecated; use `preset detach ... --type plugin` instead.");
       expect(pluginModel.listPresetPlugins(preset.id)).toHaveLength(0);
     } finally {
       await context.cleanup();
@@ -203,7 +203,7 @@ describe("CLI preset plugin pins", () => {
       ]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain("`preset add-plugin` is deprecated; use `preset add ... --type plugin` instead.");
+      expect(result.stdout).toContain("`preset add-plugin` is deprecated; use `preset attach ... --type plugin` instead.");
       expect(result.stderr).toMatch(/invalid version constraint/i);
     } finally {
       await context.cleanup();

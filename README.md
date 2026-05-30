@@ -103,7 +103,7 @@ flowchart LR
   ```
 5. Add imported resources to that preset.
    ```bash
-   hd preset add my-setup research-helper --type skill
+   hd preset attach my-setup research-helper --type skill
    ```
 6. Apply the preset to one or more target platforms.
   ```bash
@@ -139,7 +139,7 @@ The repository currently includes `nextjs-fullstack` and `python-fastapi`.
 Use these commands when you want to compare, diagnose, or derive presets beyond the basic create/add/apply loop.
 
 ```bash
-hd preset add-dependency team-stack shared-baseline --version "^1.2.0"
+hd preset attach team-stack shared-baseline --type preset-dependency --version "^1.2.0"
 hd preset doctor team-stack
 hd preset diff team-stack ./team-stack.harnessdeck.json
 hd preset from-project inferred-stack --project .
@@ -193,15 +193,15 @@ For Claude Code, **committed** plugins are those declared in the project’s `.c
 hd plugin list
 hd plugin show formatter@my-marketplace
 hd plugin installed
-hd preset add my-setup formatter@my-marketplace --type plugin --version "2.1.0"
-hd preset remove my-setup formatter@my-marketplace --type plugin
+hd preset attach my-setup formatter@my-marketplace --type plugin --version "2.1.0"
+hd preset detach my-setup formatter@my-marketplace --type plugin
 hd preset export my-setup --file ./team.harnessdeck.json --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
 
 On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation.
 
-Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset add ... --type plugin` is the **plugin semver pin or range**, not the global version flag.
+Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset attach ... --type plugin` is the **plugin semver pin or range**, not the global version flag.
 
 Preset export bundles use schema `**urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a preset declares versioned dependencies. See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
 

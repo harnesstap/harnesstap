@@ -110,8 +110,8 @@ describe("CLI help and command organization", () => {
   it("shows hidden aliases only when --help --show-hidden is used", async () => {
     const defaultHelp = await runCli(["--help"]);
     const allHelp = await runCli(["--help", "--show-hidden"]);
-    expect(defaultHelp.stdout).not.toContain("apply [options]");
-    expect(allHelp.stdout).toContain("apply [options]");
+    expect(defaultHelp.stdout).not.toContain("apply <preset>");
+    expect(allHelp.stdout).toContain("apply <preset>");
   });
 
   it("does not collide global --show-hidden with plugin update --all", async () => {
@@ -264,5 +264,31 @@ describe("CLI help and command organization", () => {
     );
     expect(result.stderr).toContain("deprecated");
     expect(result.stderr).toContain("hd harness list");
+  });
+
+  it("does not append [options] to subcommands in grouped help", async () => {
+    const presetHelp = await runCli(["preset", "--help"]);
+    
+    // Should show arguments but not [options] for subcommands
+    expect(presetHelp.stdout).toContain("show [name]");
+    expect(presetHelp.stdout).toContain("publish <preset>");
+    expect(presetHelp.stdout).toContain("export <preset>");
+    
+    // Should NOT contain [options] in the command name column
+    expect(presetHelp.stdout).not.toContain("show [options]");
+    expect(presetHelp.stdout).not.toContain("publish [options]");
+    expect(presetHelp.stdout).not.toContain("export [options]");
+  });
+
+  it("exposes attach/detach commands with updated descriptions in preset help", async () => {
+    const presetHelp = await runCli(["preset", "--help"]);
+    
+    // Should show attach and detach commands
+    expect(presetHelp.stdout).toContain("attach");
+    expect(presetHelp.stdout).toContain("detach");
+    
+    // Should describe from-project correctly
+    expect(presetHelp.stdout).toContain("from-project");
+    expect(presetHelp.stdout).toContain("Scan current folder and create a preset from its resources");
   });
 });
