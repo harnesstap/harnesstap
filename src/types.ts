@@ -182,6 +182,34 @@ export interface Snapshot {
   created_at: string;
 }
 
+export const IMPORTED_SOURCE_KINDS = [
+  "cursor-plugin",
+  "claude-plugin",
+  "marketplace",
+] as const;
+
+export type ImportedSourceKind = (typeof IMPORTED_SOURCE_KINDS)[number];
+
+export type ImportedSnapshotMetadata = Record<string, unknown>;
+
+export interface ImportedSnapshot {
+  id: string;
+  source_kind: ImportedSourceKind;
+  source_label: string;
+  plugin_name: string;
+  plugin_version?: string;
+  resource_ids: string[];
+  metadata: ImportedSnapshotMetadata;
+  created_at: string;
+}
+
+export interface ImportedSnapshotInstall {
+  snapshot_id: string;
+  platform_id: string;
+  files: string[];
+  installed_at: string;
+}
+
 // ── Platform definitions ────────────────────────────────────────────────
 
 export const PLATFORM_FEATURES = [
