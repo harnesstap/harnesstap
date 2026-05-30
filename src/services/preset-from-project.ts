@@ -5,7 +5,6 @@ import {
   getPresetResources,
   deletePreset,
 } from "../models/preset.js";
-import { createResource, updateResource, listResources, getResource, resolveResource } from "../models/resource.js";
 import { scanAndPersist } from "./scanner.js";
 import type { Preset, Resource } from "../types.js";
 
