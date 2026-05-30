@@ -851,12 +851,14 @@ describe("CLI cloud preset workflows", () => {
       // Verify the preset was updated (not just content changed)
       const updatedPreset = presetModel.getPreset("mypreset");
       expect(updatedPreset).toBeTruthy();
-      const updatedResources = presetModel.getPresetResources(updatedPreset!.id);
+      if (!updatedPreset) throw new Error("Expected updated preset to exist");
+      const updatedResources = presetModel.getPresetResources(updatedPreset.id);
       
       // Should have new content
       const cursorRulesResource = updatedResources.find(r => r.name === "cursorrules");
       expect(cursorRulesResource).toBeTruthy();
-      expect(cursorRulesResource!.content).toContain("NEW CONTENT");
+      if (!cursorRulesResource) throw new Error("Expected cursor rules resource to exist");
+      expect(cursorRulesResource.content).toContain("NEW CONTENT");
     } finally {
       await context.cleanup();
     }
@@ -915,16 +917,19 @@ describe("CLI cloud preset workflows", () => {
       // Verify original preset is unchanged
       const originalPreset = presetModel.getPreset("original");
       expect(originalPreset).toBeTruthy();
-      const originalResources = presetModel.getPresetResources(originalPreset!.id);
+      if (!originalPreset) throw new Error("Expected original preset to exist");
+      const originalResources = presetModel.getPresetResources(originalPreset.id);
       expect(originalResources[0].content).toBe("# ORIGINAL");
 
       // Verify new preset was created
       const renamedPreset = presetModel.getPreset("original-renamed");
       expect(renamedPreset).toBeTruthy();
-      const renamedResources = presetModel.getPresetResources(renamedPreset!.id);
+      if (!renamedPreset) throw new Error("Expected renamed preset to exist");
+      const renamedResources = presetModel.getPresetResources(renamedPreset.id);
       const renamedCursorRules = renamedResources.find(r => r.name === "cursorrules");
       expect(renamedCursorRules).toBeTruthy();
-      expect(renamedCursorRules!.content).toContain("RENAMED CONTENT");
+      if (!renamedCursorRules) throw new Error("Expected cursor rules resource to exist");
+      expect(renamedCursorRules.content).toContain("RENAMED CONTENT");
     } finally {
       await context.cleanup();
     }
@@ -981,7 +986,8 @@ describe("CLI cloud preset workflows", () => {
       // Verify no changes were made to the preset
       const unchangedPreset = presetModel.getPreset("tocancel");
       expect(unchangedPreset).toBeTruthy();
-      const unchangedResources = presetModel.getPresetResources(unchangedPreset!.id);
+      if (!unchangedPreset) throw new Error("Expected unchanged preset to exist");
+      const unchangedResources = presetModel.getPresetResources(unchangedPreset.id);
       expect(unchangedResources.length).toBe(1);
       expect(unchangedResources[0].content).toBe("# SHOULD NOT CHANGE");
 

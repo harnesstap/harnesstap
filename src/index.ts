@@ -1131,7 +1131,12 @@ async function handlePresetPublishCommand(presetName: string, opts: { org?: stri
         return;
       } else if (orgs.length === 1) {
         // Auto-select the only org
-        orgSlug = String(orgs[0]!.slug);
+        const [firstOrg] = orgs;
+        if (!firstOrg) {
+          ui.danger("No organizations found.");
+          return;
+        }
+        orgSlug = String(firstOrg.slug);
         if (parseOutputFormat(opts.format) === "human") {
           ui.info(`Auto-selected organization: ${orgSlug}`);
         }

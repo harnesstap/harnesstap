@@ -201,6 +201,7 @@ export type PlatformFeature = (typeof PLATFORM_FEATURES)[number];
 
 export interface PlatformPaths {
   instructions?: string;
+  legacy_instructions?: string;
   skills?: string;
   rules?: string;
   mcp?: string;
