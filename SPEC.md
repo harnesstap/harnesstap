@@ -64,15 +64,15 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | `harnessdeck preset create` | Creates a preset with optional description and tags. |
 | `harnessdeck preset list` | Lists locally stored presets. |
 | `harnessdeck preset show` | Shows preset metadata, resources, dependencies, and plugin pins. |
-| `harnessdeck preset add <preset> <selector>` | Adds a typed attachment to a preset. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for preset dependencies. |
-| `harnessdeck preset remove <preset> <selector>` | Removes a typed attachment from a preset. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
+| `harnessdeck preset attach <preset> <selector>` | Adds a typed attachment to a preset. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for preset dependencies. |
+| `harnessdeck preset detach <preset> <selector>` | Removes a typed attachment from a preset. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
 | `harnessdeck preset add-dependency` | Records version-constrained dependency metadata on a preset. |
 | `harnessdeck preset remove-dependency` | Removes dependency metadata from a preset. |
 | `harnessdeck preset delete` | Deletes a preset by selector. |
 | `harnessdeck preset export` | Writes a portable JSON bundle for a preset (`urn:harnessdeck:bundle:v1`), with optional embedded Claude plugin trees. |
 | `harnessdeck preset import` | Imports a preset bundle into the local database. |
 | `harnessdeck preset search` | Searches the remote preset catalog through the configured cloud profile. |
-| `harnessdeck preset install` | Downloads a remote preset bundle and imports it into the local database. |
+| `harnessdeck preset add [selector]` | Downloads a remote preset bundle and imports it into the local database. Accepts the canonical `org/library[@version]` selector, and on TTY launches interactive remote search when no selector is provided. |
 | `harnessdeck preset publish` | Publishes a local preset to the remote catalog. |
 | `harnessdeck preset diff` | Compares two local presets, or a preset and a bundle file, across metadata, resources, dependencies, and plugin pins. |
 | `harnessdeck preset doctor` | Diagnoses a preset for duplicate resources, empty content, malformed plugin metadata, and related issues. |
@@ -155,7 +155,7 @@ After init, users can update the global record with `harnessdeck harness set` or
 
 ## Wizard mode
 
-Several noun-grouped commands support wizard mode for interactive use, including `preset add`, `preset delete`, `preset from-project`, `project apply`, and `resource delete`.
+Several noun-grouped commands support wizard mode for interactive use, including `preset add`, `preset show`, `preset delete`, `preset from-project`, `project apply`, and `resource delete`.
 
 Wizard mode triggers when all of these are true:
 

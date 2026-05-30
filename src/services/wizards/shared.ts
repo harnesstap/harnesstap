@@ -1,4 +1,5 @@
 import inquirer from "inquirer";
+import search from "@inquirer/search";
 
 export interface WizardTriggerInput {
   interactive?: boolean;
@@ -87,6 +88,47 @@ export async function promptForChoice<T extends string>(input: {
   ]);
 
   return value;
+}
+
+function sortChoicesWithDefaultFirst<T extends string>(
+  choices: PromptChoice<T>[],
+  defaultValue?: T,
+): PromptChoice<T>[] {
+  if (!defaultValue) {
+    return choices;
+  }
+
+  const defaultChoice = choices.find((choice) => choice.value === defaultValue);
+  if (!defaultChoice) {
+    return choices;
+  }
+
+  return [
+    defaultChoice,
+    ...choices.filter((choice) => choice.value !== defaultValue),
+  ];
+}
+
+export async function promptForSearchableChoice<T extends string>(input: {
+  message: string;
+  choices: PromptChoice<T>[];
+  default?: T;
+}): Promise<T> {
+  return search<T>({
+    message: input.message,
+    pageSize: promptPageSize(input.choices.length),
+    source: async (term) => {
+      const normalizedTerm = term?.trim().toLowerCase();
+      const choices = sortChoicesWithDefaultFirst(input.choices, input.default);
+      if (!normalizedTerm) {
+        return choices;
+      }
+
+      return choices.filter((choice) =>
+        `${choice.name} ${choice.value}`.toLowerCase().includes(normalizedTerm),
+      );
+    },
+  });
 }
 
 export async function promptForConfirmation(input: {

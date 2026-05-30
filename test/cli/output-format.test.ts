@@ -150,6 +150,12 @@ describe("CLI output format", () => {
               }),
           } as Response;
         }
+        if (url.endsWith("/orgs")) {
+          return {
+            ok: true,
+            json: async () => [{ slug: "acme", name: "Acme Corp" }],
+          } as Response;
+        }
         if (url.endsWith("/presets/publish")) {
           return {
             ok: true,
@@ -181,7 +187,7 @@ describe("CLI output format", () => {
 
         const install = await runCli([
           "preset",
-          "install",
+          "add",
           "acme/lib@1.0",
           "--as",
           "lib-local",

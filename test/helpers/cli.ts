@@ -1,4 +1,7 @@
-import { spyOn } from "bun:test";
+import inquirer from "inquirer";
+import search from "@inquirer/search";
+import { mock, spyOn } from "bun:test";
+import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
 
 export interface CliResult {
   stdout: string;
@@ -13,6 +16,78 @@ export interface RunCliOptions {
   env?: Record<string, string | undefined>;
   promptResponses?: Array<Record<string, unknown>>;
 }
+
+let activePromptResponses: Array<Record<string, unknown>> = [];
+let runCliHarnessActive = false;
+
+function shiftPromptResponse(): Record<string, unknown> {
+  const next = activePromptResponses.shift();
+  if (!next) {
+    throw new Error("Unexpected interactive prompt in runCli test harness");
+  }
+  return next;
+}
+
+function shiftSinglePromptValue(): unknown {
+  const next = shiftPromptResponse();
+  const values = Object.values(next);
+  if (values.length !== 1) {
+    throw new Error(
+      "Search prompt responses must provide exactly one value in runCli test harness",
+    );
+  }
+  return values[0];
+}
+
+const promptMock = mock(async (...args: Parameters<typeof inquirer.prompt>) => {
+  if (!runCliHarnessActive) {
+    return inquirer.prompt(...args);
+  }
+  return shiftPromptResponse();
+});
+const searchPromptMock = mock(async (...args: Parameters<typeof search>) => {
+  if (!runCliHarnessActive) {
+    return search(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value !== "string") {
+    throw new Error(
+      "Search prompt responses must resolve to a string in runCli test harness",
+    );
+  }
+  return value;
+});
+const searchableMultiSelectMock = mock(async (
+  ...args: Parameters<typeof SearchableMultiSelectPrompt>
+) => {
+  if (!runCliHarnessActive) {
+    const actualPromptModule = await import(
+      "../../src/services/wizards/searchable-multi-select.ts?actual"
+    );
+    return actualPromptModule.promptForSearchableMultiSelect(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (!Array.isArray(value)) {
+    throw new Error(
+      "Multi-select prompt responses must resolve to an array in runCli test harness",
+    );
+  }
+  return value;
+});
+
+mock.module("inquirer", () => ({
+  default: {
+    prompt: promptMock,
+  },
+}));
+
+mock.module("@inquirer/search", () => ({
+  default: searchPromptMock,
+}));
+
+mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
+  promptForSearchableMultiSelect: searchableMultiSelectMock,
+}));
 
 function stringifyArgs(args: unknown[]): string {
   return args.map((value) => String(value)).join(" ");
@@ -96,28 +171,19 @@ export async function runCli(
       }
     }
 
-    const inquirerModule = await import("inquirer");
-    const originalPrompt = inquirerModule.default.prompt;
-    const promptResponses = [...(options.promptResponses ?? [])];
-    inquirerModule.default.prompt = (async () => {
-      const next = promptResponses.shift();
-      if (!next) {
-        throw new Error("Unexpected interactive prompt in runCli test harness");
-      }
-      return next;
-    }) as typeof inquirerModule.default.prompt;
+    activePromptResponses = [...(options.promptResponses ?? [])];
+    runCliHarnessActive = true;
+    promptMock.mockClear();
+    searchPromptMock.mockClear();
+    searchableMultiSelectMock.mockClear();
 
-    try {
-      const { runHarnessdeckCli } = await import("../../src/index.ts");
-      await runHarnessdeckCli(process.argv);
+    const { runHarnessdeckCli } = await import("../../src/index.ts");
+    await runHarnessdeckCli(process.argv);
 
-      if (promptResponses.length > 0) {
-        throw new Error(
-          `Unused prompt responses in runCli test harness: ${promptResponses.length}`,
-        );
-      }
-    } finally {
-      inquirerModule.default.prompt = originalPrompt;
+    if (activePromptResponses.length > 0) {
+      throw new Error(
+        `Unused prompt responses in runCli test harness: ${activePromptResponses.length}`,
+      );
     }
 
     const exitCode = process.exitCode;
@@ -161,6 +227,8 @@ export async function runCli(
     }
 
     chalkModule.default.level = originalChalkLevel;
+    activePromptResponses = [];
+    runCliHarnessActive = false;
 
     logSpy.mockRestore();
     errorSpy.mockRestore();

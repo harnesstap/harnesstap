@@ -97,7 +97,7 @@ import {
   importMigrationState,
 } from "./services/migrate.js";
 import { createProgress } from "./ui/progress.js";
-import { promptForChoice, shouldUseWizard } from "./services/wizards/shared.js";
+import { promptForChoice, promptForSearchableChoice, promptForValue, shouldUseWizard } from "./services/wizards/shared.js";
 import { runPresetAddWizard } from "./services/wizards/preset-add.js";
 import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
 import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
@@ -131,6 +131,42 @@ function renderCliError(error: unknown, argv: string[] = process.argv): void {
 
   const message = error instanceof Error ? error.message : String(error);
   ui.danger(message);
+  
+  // Append contextual help for Commander-style errors
+  const contextCommand = findContextCommand(argv);
+  if (contextCommand) {
+    console.error(`\n${contextCommand.helpInformation()}`);
+  }
+}
+
+function findContextCommand(argv: string[]): Command | null {
+  // Skip node path and script path
+  const args = argv.slice(2);
+  
+  // Try to find the deepest matching command
+  let currentCommand: Command = program;
+  
+  for (const arg of args) {
+    // Skip flags
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    
+    // Try to find a subcommand matching this arg
+    const subCommand = currentCommand.commands.find(
+      (cmd) => cmd.name() === arg || cmd.aliases().includes(arg)
+    );
+    
+    if (subCommand) {
+      currentCommand = subCommand;
+    } else {
+      // No matching subcommand, use current level
+      break;
+    }
+  }
+  
+  // Only return if we found a subcommand (not the root program)
+  return currentCommand !== program ? currentCommand : null;
 }
 
 async function resolvePresetMutationTarget(input: {
@@ -268,17 +304,12 @@ function renderGroupedCommandHelp(
       return `[${arg.name()}]`;
     }).join(" ") || "";
     
-    const hasOptions = c.options.filter((opt) => !opt.hidden).length > 0;
-    
     let fullStr = name;
     if (aliases.length) {
       fullStr += ` (${aliases.join(", ")})`;
     }
-    if (hasOptions || args) {
-      fullStr += " ";
-      if (hasOptions) fullStr += "[options]";
-      if (hasOptions && args) fullStr += " ";
-      if (args) fullStr += args;
+    if (args) {
+      fullStr += ` ${args}`;
     }
     
     return fullStr;
@@ -898,14 +929,54 @@ async function resolveCloudClientForPresetCommand(profileName?: string) {
   return createCloudClient({ baseUrl: profile.cloudBaseUrl, token });
 }
 
-function parseRemoteLibrarySelector(selector: string): { org_slug: string; library_slug: string; version?: string } {
-  // expected forms: org/library@version or org/library
-  const m = selector.match(/^([^/@]+)\/([^@]+)(?:@(.+))?$/);
-  if (!m) throw new Error(`Invalid library selector: ${selector}. Use org/library[@version]`);
-  const org = String(m[1]);
-  const library = String(m[2]);
-  const version = m[3] !== undefined ? String(m[3]) : undefined;
-  return { org_slug: org, library_slug: library, version };
+function normalizeRemoteLibrarySelector(
+  selector: string,
+  opts: { org?: string; version?: string },
+): { org_slug: string; library_slug: string; version?: string } {
+  // Try to parse as full selector first
+  const fullMatch = selector.match(/^([^/@]+)\/([^@]+)(?:@(.+))?$/);
+  if (fullMatch) {
+    const selectorOrg = String(fullMatch[1]);
+    const library = String(fullMatch[2]);
+    const selectorVersion = fullMatch[3] !== undefined ? String(fullMatch[3]) : undefined;
+
+    // Check for conflicts
+    if (opts.org && selectorOrg) {
+      throw new Error(`--org conflicts with org in selector. Remove --org or use selector without org.`);
+    }
+    if (opts.version && selectorVersion) {
+      throw new Error(`--version conflicts with version in selector. Remove --version or use selector without version.`);
+    }
+
+    return {
+      org_slug: selectorOrg,
+      library_slug: library,
+      version: opts.version ?? selectorVersion,
+    };
+  }
+
+  // Selector is library-only or library@version
+  const libraryMatch = selector.match(/^([^@]+)(?:@(.+))?$/);
+  if (!libraryMatch) {
+    throw new Error(`Invalid library selector: ${selector}. Use org/library[@version] or library[@version] with --org`);
+  }
+
+  const library = String(libraryMatch[1]);
+  const selectorVersion = libraryMatch[2] !== undefined ? String(libraryMatch[2]) : undefined;
+
+  if (!opts.org) {
+    throw new Error(`org is required. Provide it in the selector as org/library or use --org <slug>`);
+  }
+
+  if (opts.version && selectorVersion) {
+    throw new Error(`--version conflicts with version in selector. Remove --version or use selector without version.`);
+  }
+
+  return {
+    org_slug: opts.org,
+    library_slug: library,
+    version: opts.version ?? selectorVersion,
+  };
 }
 
 async function handlePresetSearchCommand(query: string, opts: { profile?: string; format?: string }) {
@@ -936,19 +1007,75 @@ async function handlePresetSearchCommand(query: string, opts: { profile?: string
   }
 }
 
-async function handlePresetInstallCommand(selector: string, opts: { as?: string; profile?: string; format?: string }) {
+async function handlePresetInstallCommand(
+  selector: string | undefined,
+  opts: { as?: string; org?: string; version?: string; profile?: string; format?: string; interactive?: boolean; noInteractive?: boolean }
+) {
   const db = getDb();
   initializeSchema(db);
+
+  // If selector is missing, check if we can prompt for it
+  if (!selector) {
+    const canPrompt = shouldUseWizard({
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: parseOutputFormat(opts.format),
+      missingRequiredArgs: true,
+    });
+
+    if (!canPrompt) {
+      process.exitCode = 1;
+      ui.danger("error: selector is required in non-interactive mode. Use: preset add org/library[@version]");
+      return;
+    }
+
+    // Launch interactive search
+    try {
+      const client = await resolveCloudClientForPresetCommand(opts.profile);
+      if (!client) {
+        process.exitCode = 1;
+        ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+        return;
+      }
+
+      // Search for all presets to show in picker
+      const results = await client.searchLibraries("");
+      if (!results || results.length === 0) {
+        process.exitCode = 1;
+        ui.danger("No remote presets found.");
+        return;
+      }
+
+      const choices = results.map((r: Record<string, unknown>) => ({
+        name: `${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`,
+        value: `${r.org_slug}/${r.library_slug}`,
+      }));
+
+      const selected = await promptForSearchableChoice({
+        message: "Select a preset to install",
+        choices,
+      });
+
+      selector = selected;
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+      return;
+    }
+  }
+
   let parsed: { org_slug: string; library_slug: string; version?: string };
   try {
-    parsed = parseRemoteLibrarySelector(selector);
+    parsed = normalizeRemoteLibrarySelector(selector, { org: opts.org, version: opts.version });
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
   const localName = opts.as ?? parsed.library_slug;
   const existing = getPreset(localName);
   if (existing && !opts.as) {
+    process.exitCode = 1;
     ui.danger(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
     return;
   }
@@ -957,6 +1084,7 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
   try {
     const client = await resolveCloudClientForPresetCommand(opts.profile);
     if (!client) {
+      process.exitCode = 1;
       ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
       return;
     }
@@ -970,36 +1098,100 @@ async function handlePresetInstallCommand(selector: string, opts: { as?: string;
     }
     ui.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
-async function handlePresetPublishCommand(presetName: string, opts: { profile?: string; format?: string }) {
+async function handlePresetPublishCommand(presetName: string, opts: { org?: string; profile?: string; format?: string }) {
   const db = getDb();
   initializeSchema(db);
   const preset = getPreset(presetName);
   if (!preset) {
+    process.exitCode = 1;
     ui.danger(`Preset not found: ${presetName}`);
     return;
   }
-  // build bundle using exporter
-  const bundle = exportPreset(preset.id);
-  const bundleJson = JSON.stringify(bundle);
 
   try {
     const client = await resolveCloudClientForPresetCommand(opts.profile);
     if (!client) {
+      process.exitCode = 1;
       ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
       return;
     }
-    const resp = await client.publishPresetBundle({ preset_name: preset.name }, bundleJson);
+
+    // Resolve org slug
+    let orgSlug = opts.org;
+    if (!orgSlug) {
+      const orgs = await client.listOrgs();
+      if (orgs.length === 0) {
+        process.exitCode = 1;
+        ui.danger("No organizations found. You must belong to at least one organization to publish presets.");
+        return;
+      } else if (orgs.length === 1) {
+        // Auto-select the only org
+        const [firstOrg] = orgs;
+        if (!firstOrg) {
+          ui.danger("No organizations found.");
+          return;
+        }
+        orgSlug = String(firstOrg.slug);
+        if (parseOutputFormat(opts.format) === "human") {
+          ui.info(`Auto-selected organization: ${orgSlug}`);
+        }
+      } else {
+        // Multiple orgs - prompt user
+        const canPrompt = shouldUseWizard({
+          interactive: true,
+          noInteractive: false,
+          format: parseOutputFormat(opts.format),
+          missingRequiredArgs: true,
+        });
+
+        if (!canPrompt) {
+          process.exitCode = 1;
+          ui.danger("Multiple organizations found. Use --org to specify which organization to publish under.");
+          return;
+        }
+
+        const choices = orgs.map((org) => ({
+          name: String(org.name ?? org.slug),
+          value: String(org.slug),
+        }));
+
+        orgSlug = await promptForChoice({
+          message: "Select organization to publish under",
+          choices,
+        });
+      }
+    }
+
+    if (!orgSlug) {
+      process.exitCode = 1;
+      ui.danger("Failed to determine organization. Use --org to specify.");
+      return;
+    }
+
+    // build bundle using exporter
+    const bundle = exportPreset(preset.id);
+    const bundleJson = JSON.stringify(bundle);
+
+    const resp = await client.publishPresetBundle({ preset_name: preset.name, org_slug: orgSlug }, bundleJson);
     if (parseOutputFormat(opts.format) === "json") {
       printJson(resp);
       return;
     }
-    ui.success(`Published preset ${preset.name}`);
+    ui.success(`Published preset ${preset.name} to ${orgSlug}`);
   } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    // Enhance error message for common cases
+    if (errorMsg.includes("409")) {
+      ui.danger(`Library slug "${preset.name}" already exists in organization. Choose a different preset name or delete the existing library.`);
+    } else {
+      ui.danger(errorMsg);
+    }
   }
 }
 
@@ -1557,6 +1749,7 @@ async function handleInitCommand(opts: {
     useWizard ||
     Boolean(opts.main) ||
     Boolean(opts.aliases);
+  const currentHarnessPreference = getHarnessPreference();
   let savedHarnessPreference:
     | ReturnType<typeof setHarnessPreference>
     | undefined;
@@ -1566,7 +1759,7 @@ async function handleInitCommand(opts: {
       main: opts.main,
       aliases: parseHarnessAliases(opts.aliases),
       nonInteractive: !useWizard,
-      current: getHarnessPreference(),
+      current: currentHarnessPreference,
       detected: homeDefaults.detected.map((result) => result.platformId),
       mainMessage: "Select the default main harness",
       aliasMessage: "Select default alias harnesses to keep in sync",
@@ -1593,17 +1786,25 @@ async function handleInitCommand(opts: {
     getAllPlatforms().map((platform) => [platform.id, platform.name]),
   );
 
+  if (shouldSelectHarness && currentHarnessPreference) {
+    const aliasSummary =
+      currentHarnessPreference.alias_harnesses.join(", ") || "(none)";
+    ui.warn(
+      `Existing harness defaults will be overwritten (main: ${currentHarnessPreference.main_harness}, aliases: ${aliasSummary}).`,
+    );
+    console.log("");
+  }
+
   ui.success("Harnessdeck initialized");
   console.log("");
   ui.kvBlock([
     { key: "Database", value: getDbPath() },
-    {
-      key: "Built-in Presets",
-      value:
-        seeded > 0
-          ? `seeded ${formatCount(seeded, "built-in preset")}`
-          : "already up to date",
-    },
+    ...(seeded > 0
+      ? [{
+          key: "Built-in Presets",
+          value: `seeded ${formatCount(seeded, "built-in preset")}`,
+        }]
+      : []),
   ]);
 
   if (homeDefaults.detected.length === 0) {
@@ -1909,19 +2110,53 @@ function handlePresetDoctorCommand(
       return;
     }
 
-    if (report.results.length === 0) {
-      ui.success(`Preset "${report.preset}" passed doctor.`);
-      return;
+    // Human format: show all checks with pass/fail markers
+    const allChecks = listPresetDoctorChecks().filter((check) => 
+      opts.check?.length ? opts.check.includes(check.id) : true
+    );
+
+    const rows: Array<{ check: string; result: string; message: string }> = [];
+    const findingsByCheck = new Map<string, typeof report.results>();
+    
+    for (const result of report.results) {
+      if (!findingsByCheck.has(result.check)) {
+        findingsByCheck.set(result.check, []);
+      }
+      const findings = findingsByCheck.get(result.check);
+      if (findings) {
+        findings.push(result);
+      }
+    }
+
+    for (const check of allChecks) {
+      const findings = findingsByCheck.get(check.id);
+      if (findings && findings.length > 0) {
+        // Show each finding as a separate row
+        for (const finding of findings) {
+          rows.push({
+            check: check.id,
+            result: finding.severity === "error" ? "✗ error" : "✗ warn",
+            message: finding.message,
+          });
+        }
+      } else {
+        // No findings - show pass
+        rows.push({
+          check: check.id,
+          result: "✓ pass",
+          message: "",
+        });
+      }
     }
 
     ui.table.print({
       columns: [
-        { key: "severity", header: "SEVERITY", width: 10 },
         { key: "check", header: "CHECK", width: 22 },
-        { key: "message", header: "MESSAGE", width: 46 },
+        { key: "result", header: "RESULT", width: 12 },
+        { key: "message", header: "MESSAGE", width: 44 },
       ],
-      rows: report.results,
-      summary: report.valid ? `${report.preset}: valid (warnings only)` : `${report.preset}: invalid`,
+      rows,
+      summary: report.valid ? `${report.preset}: valid` : `${report.preset}: invalid`,
     });
     if (!report.valid) {
       process.exitCode = 1;
@@ -1961,16 +2196,110 @@ async function handlePresetFromProjectCommand(
       return;
     }
 
+    const projectRoot = resolve(opts.project);
+
+    // First, preview what would happen
+    const { previewPresetFromProject } = await import("./services/preset-from-project.js");
+    const preview = await previewPresetFromProject({
+      name: resolvedName,
+      projectRoot,
+      platform: opts.platform,
+    });
+
+    // If preset exists and has conflicts, prompt for resolution
+    if (preview.presetExists && (preview.conflicts.length > 0 || preview.newResources.length > 0)) {
+      const canPrompt = shouldUseWizard({
+        interactive: true, // Conflicts require interactive resolution
+        noInteractive: opts.noInteractive,
+        format: parseOutputFormat(opts.format),
+        missingRequiredArgs: false,
+      });
+
+      if (!canPrompt) {
+        process.exitCode = 1;
+        const parts = [];
+        if (preview.conflicts.length > 0) {
+          parts.push(`${preview.conflicts.length} conflicting resource(s)`);
+        }
+        if (preview.newResources.length > 0) {
+          parts.push(`${preview.newResources.length} new resource(s)`);
+        }
+        ui.danger(`Preset "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
+        return;
+      }
+
+      // Show preview
+      ui.info(`\nPreset "${resolvedName}" already exists.`);
+      if (preview.conflicts.length > 0) {
+        ui.info(`Conflicts: ${preview.conflicts.length} resource(s) would be overwritten`);
+      }
+      if (preview.newResources.length > 0) {
+        ui.info(`New resources: ${preview.newResources.length} would be added`);
+      }
+      ui.info(`Total imports: ${preview.totalImports}\n`);
+
+      const action = await promptForChoice({
+        message: "How do you want to proceed?",
+        choices: [
+          { name: "Overwrite conflicting resources", value: "overwrite" },
+          { name: "Create with a different name", value: "rename" },
+          { name: "Cancel", value: "cancel" },
+        ],
+      });
+
+      if (action === "cancel") {
+        ui.info("Operation cancelled.");
+        return;
+      }
+
+      if (action === "rename") {
+        const newName = await promptForValue({
+          message: "Enter new preset name",
+          default: `${resolvedName}-copy`,
+        });
+
+        const result = await createPresetFromProject({
+          name: newName,
+          description: opts.description,
+          projectRoot,
+          platform: opts.platform,
+        });
+
+        ui.success(
+          `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
+        );
+        return;
+      }
+
+      if (action === "overwrite") {
+        const result = await createPresetFromProject({
+          name: resolvedName,
+          description: opts.description,
+          projectRoot,
+          platform: opts.platform,
+          conflictStrategy: "overwrite",
+        });
+
+        ui.success(
+          `Updated preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
+        );
+        return;
+      }
+    }
+
+    // No conflicts or preset doesn't exist - proceed normally
     const result = await createPresetFromProject({
       name: resolvedName,
       description: opts.description,
-      projectRoot: resolve(opts.project),
+      projectRoot,
       platform: opts.platform,
     });
+
     ui.success(
       `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
     );
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
@@ -2195,16 +2524,32 @@ presetCmd
 
 presetCmd
   .command("show")
-  .argument("<name>", "Preset name or ID")
+  .argument("[name]", "Preset name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
   .description("Show preset details, resources, and plugin pins")
-  .action((name: string, opts: { format?: string; showId?: boolean }) => {
-    handlePresetShowCommand(name, opts);
+  .action(async (name: string | undefined, opts: { format?: string; showId?: boolean; interactive?: boolean; noInteractive?: boolean }) => {
+    const resolvedName = name ?? await resolvePresetMutationTarget({
+      presetName: name,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+      message: "Which preset do you want to show?",
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger(
+        listPresets().length > 0
+          ? "error: missing required argument 'name'"
+          : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+      );
+      return;
+    }
+    handlePresetShowCommand(resolvedName, opts);
   });
 
 presetCmd
-  .command("add")
+  .command("attach")
   .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
@@ -2212,6 +2557,7 @@ presetCmd
   .option("--embed", "Embed plugin files on export (plugin attachments only)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Attach a resource, plugin, or dependency to a preset")
   .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -2272,12 +2618,13 @@ presetCmd
   });
 
 presetCmd
-  .command("remove")
+  .command("detach")
   .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Remove a resource, plugin, or dependency from a preset")
   .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -2363,7 +2710,7 @@ presetCmd
           ui.danger(`Preset not found: ${presetName}`);
           return;
         }
-        warnDeprecatedCommand("preset add-plugin", "preset add ... --type plugin");
+        warnDeprecatedCommand("preset add-plugin", "preset attach ... --type plugin");
         ui.success(ui.theme.accent(addPresetAttachment({
           preset,
           selector: ref,
@@ -2392,7 +2739,7 @@ presetCmd
         ui.danger(`Preset not found: ${presetName}`);
         return;
       }
-      warnDeprecatedCommand("preset remove-plugin", "preset remove ... --type plugin");
+      warnDeprecatedCommand("preset remove-plugin", "preset detach ... --type plugin");
       const result = removePresetAttachment({ preset, selector: ref, type: "plugin" });
       ui.success(ui.theme.accent(result.message));
     } catch (err) {
@@ -2417,7 +2764,7 @@ presetCmd
         ui.danger(`Preset not found: ${presetSelector}`);
         return;
       }
-      warnDeprecatedCommand("preset add-dependency", "preset add ... --type preset-dependency");
+      warnDeprecatedCommand("preset add-dependency", "preset attach ... --type preset-dependency");
       ui.success(ui.theme.accent(addPresetAttachment({
         preset,
         selector: dependencyName,
@@ -2445,7 +2792,7 @@ presetCmd
         ui.danger(`Preset not found: ${presetSelector}`);
         return;
       }
-      warnDeprecatedCommand("preset remove-dependency", "preset remove ... --type preset-dependency");
+      warnDeprecatedCommand("preset remove-dependency", "preset detach ... --type preset-dependency");
       const result = removePresetAttachment({
         preset,
         selector: dependencyName,
@@ -2527,17 +2874,36 @@ presetCmd
   .action(handlePresetSearchCommand);
 
 presetCmd
-  .command("install")
-  .argument("<selector>", "Remote library selector: org/library[@version]")
+  .command("add")
+  .argument("[selector]", "Remote library selector: org/library[@version] or library[@version] with --org")
   .option("--as <name>", "Install under a different local preset name")
+  .option("--org <slug>", "Organization slug (when selector omits org)")
+  .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Install a preset from the remote catalog into the local DB")
   .action(handlePresetInstallCommand);
 
 presetCmd
+  .command("install", { hidden: true })
+  .argument("[selector]", "Remote library selector: org/library[@version]")
+  .option("--as <name>", "Install under a different local preset name")
+  .option("--org <slug>", "Organization slug (when selector omits org)")
+  .option("--version <constraint>", "Version constraint (when selector omits version)")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Install a preset from the remote catalog into the local DB")
+  .action((selector: string | undefined, opts: { as?: string; org?: string; version?: string; profile?: string; format?: string; interactive?: boolean }) => {
+    warnDeprecatedCommand("preset install", "preset add");
+    return handlePresetInstallCommand(selector, opts);
+  });
+
+presetCmd
   .command("publish")
   .argument("<preset>", "Local preset name to publish")
+  .option("--org <slug>", "Organization slug to publish under")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Publish a local preset to the cloud catalog")
@@ -2568,7 +2934,7 @@ presetCmd
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Scan a project and create a preset from imported resources")
+  .description("Scan current folder and create a preset from its resources")
   .action(handlePresetFromProjectCommand);
 
 // ── migrate ─────────────────────────────────────────────────────────────
