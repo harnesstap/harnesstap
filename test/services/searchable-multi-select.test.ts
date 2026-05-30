@@ -2,15 +2,29 @@ import { describe, expect, it } from "bun:test";
 import { PassThrough } from "node:stream";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.js";
 
-const ENTER = "\n";
-const CTRL_A = "\u0001";
-const CTRL_X = "\u0018";
+const ENTER = { name: "enter" } as const;
+const CTRL_A = { name: "a", ctrl: true } as const;
+const CTRL_X = { name: "x", ctrl: true } as const;
 
 async function delay(ms = 5): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function runPrompt(inputKeys: string[], defaults: string[] = []) {
+type PromptInput =
+  | string
+  | { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean };
+
+function sendInput(input: PassThrough, key: PromptInput) {
+  if (typeof key === "string") {
+    input.write(key);
+    input.emit("keypress", null, { name: key });
+    return;
+  }
+
+  input.emit("keypress", null, key);
+}
+
+async function runPrompt(inputKeys: PromptInput[], defaults: string[] = []) {
   const input = new PassThrough();
   Object.assign(input, { isTTY: true });
   const output = new PassThrough();
@@ -32,7 +46,7 @@ async function runPrompt(inputKeys: string[], defaults: string[] = []) {
   );
 
   for (const key of inputKeys) {
-    input.write(key);
+    sendInput(input, key);
     await delay();
   }
 
