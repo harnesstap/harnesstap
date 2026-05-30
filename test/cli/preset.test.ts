@@ -89,7 +89,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset add/remove --type preset-dependency manage dependencies via CLI", async () => {
+  it("preset attach/detach --type preset-dependency manage dependencies via CLI", async () => {
     const context = await createTestContext("cli-preset-dependency");
     try {
       await runCli(["init"]);
@@ -98,7 +98,7 @@ describe("CLI preset", () => {
       await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
 
       await runCli([
-        "preset", "add",
+        "preset", "attach",
         "team-stack@1.2.0",
         "baseline",
         "--type", "preset-dependency",
@@ -115,7 +115,7 @@ describe("CLI preset", () => {
 
       await runCli([
         "preset",
-        "remove",
+        "detach",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -129,13 +129,13 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset add --type preset-dependency reports error for invalid preset selector instead of crashing", async () => {
+  it("preset attach --type preset-dependency reports error for invalid preset selector instead of crashing", async () => {
     const context = await createTestContext("cli-preset-dep-invalid-selector");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
-        "preset", "add",
+        "preset", "attach",
         "team-stack@not-semver",
         "baseline",
         "--type", "preset-dependency",
@@ -151,14 +151,14 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset add --type preset-dependency sets a failing exit code when the preset is missing", async () => {
+  it("preset attach --type preset-dependency sets a failing exit code when the preset is missing", async () => {
     const context = await createTestContext("cli-preset-dep-missing-preset");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "missing-preset",
         "baseline",
         "--type",
@@ -175,7 +175,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset add --type preset-dependency sets a failing exit code for an invalid version constraint", async () => {
+  it("preset attach --type preset-dependency sets a failing exit code for an invalid version constraint", async () => {
     const context = await createTestContext("cli-preset-dep-invalid-version");
     try {
       await runCli(["init"]);
@@ -183,7 +183,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -199,14 +199,14 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset remove --type preset-dependency sets a failing exit code when the preset is missing", async () => {
+  it("preset detach --type preset-dependency sets a failing exit code when the preset is missing", async () => {
     const context = await createTestContext("cli-preset-remove-dep-missing-preset");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "preset",
-        "remove",
+        "detach",
         "missing-preset",
         "baseline",
         "--type",
@@ -220,7 +220,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("preset remove --type preset-dependency sets a failing exit code when the dependency is missing", async () => {
+  it("preset detach --type preset-dependency sets a failing exit code when the dependency is missing", async () => {
     const context = await createTestContext("cli-preset-remove-dep-missing-dependency");
     try {
       await runCli(["init"]);
@@ -228,7 +228,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "remove",
+        "detach",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -344,7 +344,7 @@ describe("CLI preset", () => {
 
       const addResult = await runCli([
         "preset",
-        "add",
+        "attach",
         "team",
         resource.id,
         "--type",
@@ -361,7 +361,7 @@ describe("CLI preset", () => {
 
       const removeResult = await runCli([
         "preset",
-        "remove",
+        "detach",
         "team",
         resource.id,
         "--type",
@@ -405,7 +405,7 @@ describe("CLI preset", () => {
       );
 
       await runCli(["preset", "create", "team"]);
-      await runCli(["preset", "add", "team", resource.id, "--type", "skill"]);
+      await runCli(["preset", "attach", "team", resource.id, "--type", "skill"]);
       const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
 
       const hidden = await runCli(["preset", "show", "team"]);
@@ -588,19 +588,19 @@ describe("CLI preset", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
 
-      await runCli(["preset", "add", "team", "shared-skill", "--type", "skill"]);
+      await runCli(["preset", "attach", "team", "shared-skill", "--type", "skill"]);
       expect(presetModel.getPresetResources(preset.id)).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: resource.id })]),
       );
 
-      await runCli(["preset", "remove", "team", "shared-skill", "--type", "skill"]);
+      await runCli(["preset", "detach", "team", "shared-skill", "--type", "skill"]);
       expect(presetModel.getPresetResources(preset.id)).toHaveLength(0);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("shows candidate details for ambiguous typed preset add resource matches", async () => {
+  it("shows candidate details for ambiguous typed preset attach resource matches", async () => {
     const context = await createTestContext("cli-preset-add-ambiguous-resource");
     try {
       await runCli(["init"]);
@@ -615,7 +615,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "team",
         "shared-skill",
         "--type",
@@ -633,7 +633,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("shows candidate details for ambiguous typed preset remove resource matches", async () => {
+  it("shows candidate details for ambiguous typed preset detach resource matches", async () => {
     const context = await createTestContext("cli-preset-remove-ambiguous-resource");
     try {
       await runCli(["init"]);
@@ -651,7 +651,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "remove",
+        "detach",
         "team",
         "shared-skill",
         "--type",
@@ -669,13 +669,13 @@ describe("CLI preset", () => {
     }
   });
 
-  it("requires --type for preset add", async () => {
+  it("requires --type for preset attach", async () => {
     const context = await createTestContext("cli-preset-add-type-required");
     try {
       await runCli(["init"]);
       await runCli(["preset", "create", "team"]);
 
-      const result = await runCli(["preset", "add", "team", "shared-skill"]);
+      const result = await runCli(["preset", "attach", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("--type is required");
@@ -687,7 +687,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("auto-prompts preset add on a TTY when required args are missing", async () => {
+  it("auto-prompts preset attach on a TTY when required args are missing", async () => {
     const context = await createTestContext("cli-preset-add-wizard");
     try {
       await runCli(["init"]);
@@ -697,7 +697,7 @@ describe("CLI preset", () => {
       );
       await runCli(["preset", "create", "team"]);
 
-      const result = await runCli(["preset", "add", "team"], {
+      const result = await runCli(["preset", "attach", "team"], {
         isTTY: true,
         promptResponses: [
           { value: "resource" },
@@ -714,7 +714,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("auto-prompts preset add for the preset when the preset name is missing", async () => {
+  it("auto-prompts preset attach for the preset when the preset name is missing", async () => {
     const context = await createTestContext("cli-preset-add-missing-preset");
     try {
       await runCli(["init"]);
@@ -725,7 +725,7 @@ describe("CLI preset", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
 
-      const result = await runCli(["preset", "add"], {
+      const result = await runCli(["preset", "attach"], {
         isTTY: true,
         promptResponses: [
           { value: "team@1.0.0" },
@@ -746,13 +746,13 @@ describe("CLI preset", () => {
     }
   });
 
-  it("does not auto-prompt preset add when --format json is requested", async () => {
+  it("does not auto-prompt preset attach when --format json is requested", async () => {
     const context = await createTestContext("cli-preset-add-wizard-json");
     try {
       await runCli(["init"]);
       await runCli(["preset", "create", "team"]);
 
-      const result = await runCli(["preset", "add", "team", "--format", "json"], {
+      const result = await runCli(["preset", "attach", "team", "--format", "json"], {
         isTTY: true,
       });
 
@@ -763,13 +763,13 @@ describe("CLI preset", () => {
     }
   });
 
-  it("does not auto-prompt preset add when CI disables interactivity", async () => {
+  it("does not auto-prompt preset attach when CI disables interactivity", async () => {
     const context = await createTestContext("cli-preset-add-wizard-ci");
     try {
       await runCli(["init"]);
       await runCli(["preset", "create", "team"]);
 
-      const result = await runCli(["preset", "add", "team"], {
+      const result = await runCli(["preset", "attach", "team"], {
         isTTY: true,
         env: { CI: "true" },
       });
@@ -781,13 +781,13 @@ describe("CLI preset", () => {
     }
   });
 
-  it("does not auto-prompt preset add when --no-interactive is requested", async () => {
+  it("does not auto-prompt preset attach when --no-interactive is requested", async () => {
     const context = await createTestContext("cli-preset-add-wizard-disabled");
     try {
       await runCli(["init"]);
       await runCli(["preset", "create", "team"]);
 
-      const result = await runCli(["--no-interactive", "preset", "add", "team"], {
+      const result = await runCli(["--no-interactive", "preset", "attach", "team"], {
         isTTY: true,
       });
 
@@ -798,13 +798,13 @@ describe("CLI preset", () => {
     }
   });
 
-  it("requires --type for preset remove", async () => {
+  it("requires --type for preset detach", async () => {
     const context = await createTestContext("cli-preset-remove-type-required");
     try {
       await runCli(["init"]);
       await runCli(["preset", "create", "team"]);
 
-      const result = await runCli(["preset", "remove", "team", "shared-skill"]);
+      const result = await runCli(["preset", "detach", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("--type is required");
@@ -816,7 +816,7 @@ describe("CLI preset", () => {
     }
   });
 
-  it("rejects invalid --type for preset remove", async () => {
+  it("rejects invalid --type for preset detach", async () => {
     const context = await createTestContext("cli-preset-remove-type-invalid");
     try {
       await runCli(["init"]);
@@ -824,7 +824,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "remove",
+        "detach",
         "team",
         "shared-skill",
         "--type",
@@ -852,7 +852,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "team",
         "shared-skill",
         "--type",
@@ -880,7 +880,7 @@ describe("CLI preset", () => {
 
       const versionResult = await runCli([
         "preset",
-        "add",
+        "attach",
         "team",
         "shared-skill",
         "--type",
@@ -893,7 +893,7 @@ describe("CLI preset", () => {
 
       const embedResult = await runCli([
         "preset",
-        "add",
+        "attach",
         "team",
         "shared-skill",
         "--type",
@@ -915,7 +915,7 @@ describe("CLI preset", () => {
 
       const result = await runCli([
         "preset",
-        "add",
+        "attach",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -947,7 +947,7 @@ describe("CLI preset", () => {
         "--version",
         "^1.0.0",
       ]);
-      expect(addResult.stdout).toContain("`preset add-dependency` is deprecated; use `preset add ... --type preset-dependency` instead.");
+      expect(addResult.stdout).toContain("`preset add-dependency` is deprecated; use `preset attach ... --type preset-dependency` instead.");
 
       const preset = presetModel.getPreset("team-stack@1.2.0");
       if (!preset) throw new Error("Expected preset to exist");
@@ -963,7 +963,7 @@ describe("CLI preset", () => {
         "team-stack@1.2.0",
         "baseline",
       ]);
-      expect(removeResult.stdout).toContain("`preset remove-dependency` is deprecated; use `preset remove ... --type preset-dependency` instead.");
+      expect(removeResult.stdout).toContain("`preset remove-dependency` is deprecated; use `preset detach ... --type preset-dependency` instead.");
       expect(presetModel.listPresetDependencies(preset.id)).toHaveLength(0);
     } finally {
       await context.cleanup();
@@ -978,7 +978,7 @@ describe("CLI preset", () => {
 
       const addResult = await runCli([
         "preset",
-        "add",
+        "attach",
         "plugin-test",
         "formatter@marketplace",
         "--type",
@@ -993,7 +993,7 @@ describe("CLI preset", () => {
 
       const removeResult = await runCli([
         "preset",
-        "remove",
+        "detach",
         "plugin-test",
         "formatter@marketplace",
         "--type",

@@ -270,7 +270,7 @@ describe("CLI help and command organization", () => {
     const presetHelp = await runCli(["preset", "--help"]);
     
     // Should show arguments but not [options] for subcommands
-    expect(presetHelp.stdout).toContain("show <name>");
+    expect(presetHelp.stdout).toContain("show [name]");
     expect(presetHelp.stdout).toContain("publish <preset>");
     expect(presetHelp.stdout).toContain("export <preset>");
     

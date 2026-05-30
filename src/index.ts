@@ -2235,16 +2235,32 @@ presetCmd
 
 presetCmd
   .command("show")
-  .argument("<name>", "Preset name or ID")
+  .argument("[name]", "Preset name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
   .description("Show preset details, resources, and plugin pins")
-  .action((name: string, opts: { format?: string; showId?: boolean }) => {
-    handlePresetShowCommand(name, opts);
+  .action(async (name: string | undefined, opts: { format?: string; showId?: boolean; interactive?: boolean; noInteractive?: boolean }) => {
+    const resolvedName = name ?? await resolvePresetMutationTarget({
+      presetName: name,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+      message: "Which preset do you want to show?",
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger(
+        listPresets().length > 0
+          ? "error: missing required argument 'name'"
+          : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+      );
+      return;
+    }
+    handlePresetShowCommand(resolvedName, opts);
   });
 
 presetCmd
-  .command("add")
+  .command("attach")
   .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
@@ -2312,7 +2328,7 @@ presetCmd
   });
 
 presetCmd
-  .command("remove")
+  .command("detach")
   .argument("[preset]", "Preset name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
@@ -2403,7 +2419,7 @@ presetCmd
           ui.danger(`Preset not found: ${presetName}`);
           return;
         }
-        warnDeprecatedCommand("preset add-plugin", "preset add ... --type plugin");
+        warnDeprecatedCommand("preset add-plugin", "preset attach ... --type plugin");
         ui.success(ui.theme.accent(addPresetAttachment({
           preset,
           selector: ref,
@@ -2432,7 +2448,7 @@ presetCmd
         ui.danger(`Preset not found: ${presetName}`);
         return;
       }
-      warnDeprecatedCommand("preset remove-plugin", "preset remove ... --type plugin");
+      warnDeprecatedCommand("preset remove-plugin", "preset detach ... --type plugin");
       const result = removePresetAttachment({ preset, selector: ref, type: "plugin" });
       ui.success(ui.theme.accent(result.message));
     } catch (err) {
@@ -2457,7 +2473,7 @@ presetCmd
         ui.danger(`Preset not found: ${presetSelector}`);
         return;
       }
-      warnDeprecatedCommand("preset add-dependency", "preset add ... --type preset-dependency");
+      warnDeprecatedCommand("preset add-dependency", "preset attach ... --type preset-dependency");
       ui.success(ui.theme.accent(addPresetAttachment({
         preset,
         selector: dependencyName,
@@ -2485,7 +2501,7 @@ presetCmd
         ui.danger(`Preset not found: ${presetSelector}`);
         return;
       }
-      warnDeprecatedCommand("preset remove-dependency", "preset remove ... --type preset-dependency");
+      warnDeprecatedCommand("preset remove-dependency", "preset detach ... --type preset-dependency");
       const result = removePresetAttachment({
         preset,
         selector: dependencyName,
@@ -2567,13 +2583,25 @@ presetCmd
   .action(handlePresetSearchCommand);
 
 presetCmd
-  .command("install")
+  .command("add")
   .argument("<selector>", "Remote library selector: org/library[@version]")
   .option("--as <name>", "Install under a different local preset name")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Install a preset from the remote catalog into the local DB")
   .action(handlePresetInstallCommand);
+
+presetCmd
+  .command("install", { hidden: true })
+  .argument("<selector>", "Remote library selector: org/library[@version]")
+  .option("--as <name>", "Install under a different local preset name")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Install a preset from the remote catalog into the local DB")
+  .action((selector: string, opts: { as?: string; profile?: string; format?: string }) => {
+    warnDeprecatedCommand("preset install", "preset add");
+    return handlePresetInstallCommand(selector, opts);
+  });
 
 presetCmd
   .command("publish")

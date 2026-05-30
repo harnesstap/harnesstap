@@ -198,8 +198,8 @@ describe("VHS scenario manifest", () => {
     expect(readme).toContain("Agent harness configuration toolkit");
     expect(readme).toContain("hd harness list");
     expect(readme).toContain("hd preset doctor");
-    expect(readme).toContain("hd preset add my-setup research-helper --type skill");
-    expect(readme).toContain("hd preset add my-setup formatter@my-marketplace --type plugin");
+    expect(readme).toContain("hd preset attach my-setup research-helper --type skill");
+    expect(readme).toContain("hd preset attach my-setup formatter@my-marketplace --type plugin");
     expect(readme).not.toContain("hd platform list");
     expect(readme).not.toContain("hd preset validate");
     expect(readme).not.toContain("hd preset add-plugin");
@@ -213,8 +213,8 @@ describe("VHS scenario manifest", () => {
     expect(spec).toContain("Agent harness configuration toolkit");
     expect(spec).toContain("harnessdeck harness list");
     expect(spec).toContain("harnessdeck preset doctor");
-    expect(spec).toContain("harnessdeck preset add <preset> <selector>");
-    expect(spec).toContain("harnessdeck preset remove <preset> <selector>");
+    expect(spec).toContain("harnessdeck preset attach <preset> <selector>");
+    expect(spec).toContain("harnessdeck preset detach <preset> <selector>");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
     expect(spec).not.toContain("harnessdeck platform list");

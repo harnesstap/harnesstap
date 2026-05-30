@@ -46,7 +46,7 @@ describe("CLI error output", () => {
     expect(result.stderr).toContain("USAGE");
     expect(result.stderr).toContain("COMMANDS");
     // Should show actual preset commands (without [options] in command name)
-    expect(result.stderr).toContain("show <name>");
+    expect(result.stderr).toContain("show [name]");
     expect(result.stderr).toContain("doctor");
     // Should not show stack trace
     expect(result.stderr).not.toContain("CommanderError");

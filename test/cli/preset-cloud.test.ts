@@ -5,7 +5,7 @@ import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI cloud preset workflows", () => {
-  it("search, install, publish, apply cloud-installed preset, and conflict handling", async () => {
+  it("search, add (remote install), publish, apply cloud-installed preset, and conflict handling", async () => {
     const context = await createTestContext("cli-preset-cloud");
     try {
       await runCli(["init"]);
@@ -61,10 +61,10 @@ describe("CLI cloud preset workflows", () => {
       expect(Array.isArray(searchJson)).toBe(true);
       expect(searchJson[0]).toEqual(expect.objectContaining({ org_slug: "acme", library_slug: "team" }));
 
-      // install from a remote selector; use --as to pick local name
-      const install = await runCli([
+      // add (remote install) from a remote selector; use --as to pick local name
+      const add = await runCli([
         "preset",
-        "install",
+        "add",
         "acme/team@1.0",
         "--as",
         "team-cloud",
@@ -73,8 +73,8 @@ describe("CLI cloud preset workflows", () => {
         "--format",
         "json",
       ]);
-      const installPayload = JSON.parse(install.stdout);
-      expect(installPayload).toEqual(
+      const addPayload = JSON.parse(add.stdout);
+      expect(addPayload).toEqual(
         expect.objectContaining({
           preset_name: "team-cloud",
           org_slug: "acme",
@@ -113,10 +113,69 @@ describe("CLI cloud preset workflows", () => {
         expect.objectContaining({ preset: "team-cloud" }),
       );
 
-      // install conflict when local preset name exists and --as missing
+      // add conflict when local preset name exists and --as missing
       const _conflictPreset = presetModel.createPreset({ name: "conflict" });
-      const conflict = await runCli(["preset", "install", "org/conflict@1.0"]);
+      const conflict = await runCli(["preset", "add", "org/conflict@1.0"]);
       expect(conflict.stderr).toContain("Preset name already exists");
+
+      globalThis.fetch = originalFetch;
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("preset install (deprecated) warns and forwards to preset add", async () => {
+    const context = await createTestContext("cli-preset-install-deprecated");
+    try {
+      await runCli(["init"]);
+
+      // configure cloud profile and stub fetch
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/oauth/token") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
+          };
+        }
+        if (/\/libraries\/.+\/meta$/.test(url)) {
+          return { ok: true, json: async () => ({ latest_version: "1.0" }) };
+        }
+        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
+          const bundle = JSON.stringify({
+            $schema: "urn:harnessdeck:bundle:v1",
+            version: 1,
+            preset: { name: "remote-team", description: "from cloud", tags: [] },
+            resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
+          });
+          return { ok: true, text: async () => bundle };
+        }
+        return { ok: false, status: 404, text: async () => "not found" };
+      }) as typeof fetch;
+
+      const install = await runCli([
+        "preset",
+        "install",
+        "acme/legacy@1.0",
+        "--as",
+        "legacy-installed",
+        "--profile",
+        "test",
+      ]);
+
+      expect(install.stdout).toContain("`preset install` is deprecated; use `preset add` instead.");
+      expect(install.stdout).toContain("Installed preset");
 
       globalThis.fetch = originalFetch;
     } finally {

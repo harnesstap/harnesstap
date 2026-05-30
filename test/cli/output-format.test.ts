@@ -181,7 +181,7 @@ describe("CLI output format", () => {
 
         const install = await runCli([
           "preset",
-          "install",
+          "add",
           "acme/lib@1.0",
           "--as",
           "lib-local",
