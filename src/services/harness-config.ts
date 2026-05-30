@@ -1,6 +1,10 @@
 import inquirer from "inquirer";
 import { getAllPlatforms, getPlatformIds } from "../platforms/registry.js";
 import type { HarnessPreference, HarnessSelection } from "../types.js";
+import {
+  promptForOptionalValue,
+  promptForSearchableChoice,
+} from "./wizards/shared.js";
 
 export interface ResolveHarnessSelectionOptions {
   current?: HarnessPreference | HarnessSelection;
@@ -50,6 +54,16 @@ function normalizeSelection(selection: HarnessSelection): HarnessSelection {
   };
 }
 
+function formatCurrentHarnessSummary(
+  current: HarnessPreference | HarnessSelection | undefined,
+): string | undefined {
+  if (!current) {
+    return undefined;
+  }
+
+  return `Current main: ${current.main_harness} | aliases: ${current.alias_harnesses.join(", ") || "(none)"}`;
+}
+
 export async function resolveHarnessSelection(
   options: ResolveHarnessSelectionOptions = {},
 ): Promise<HarnessSelection> {
@@ -71,22 +85,45 @@ export async function resolveHarnessSelection(
     });
   }
 
+  if (
+    detected.length === 1
+    && detected[0] === defaultMain
+    && defaultAliases.length === 0
+  ) {
+    return normalizeSelection({
+      main_harness: defaultMain,
+      alias_harnesses: [],
+    });
+  }
+
   const harnesses = getAllPlatforms().map((platform) => ({
     name: `${platform.name} (${platform.id})`,
     value: platform.id,
   }));
 
-  const { main_harness } = await inquirer.prompt<{
-    main_harness: string;
-  }>([
-    {
-      type: "list",
-      name: "main_harness",
-      message: options.mainMessage ?? "Select the main harness",
-      default: defaultMain,
-      choices: harnesses,
-    },
-  ]);
+  const currentSummary = formatCurrentHarnessSummary(current);
+  const main_harness = await promptForSearchableChoice({
+    message: [
+      options.mainMessage ?? "Select the main harness",
+      currentSummary,
+    ].filter(Boolean).join("\n"),
+    default: defaultMain,
+    choices: harnesses,
+  });
+  const aliasChoices = harnesses.filter((choice) => choice.value !== main_harness);
+  const aliasFilter = await promptForOptionalValue({
+    message: [
+      "Search alias harnesses (optional)",
+      currentSummary,
+    ].filter(Boolean).join("\n"),
+  });
+  const normalizedAliasFilter = aliasFilter.toLowerCase();
+  const filteredAliasChoices =
+    normalizedAliasFilter.length > 0
+      ? aliasChoices.filter((choice) =>
+          `${choice.name} ${choice.value}`.toLowerCase().includes(normalizedAliasFilter),
+        )
+      : aliasChoices;
 
   const { alias_harnesses } = await inquirer.prompt<{
     alias_harnesses: string[];
@@ -94,13 +131,14 @@ export async function resolveHarnessSelection(
     {
       type: "checkbox",
       name: "alias_harnesses",
-      message:
+      message: [
         options.aliasMessage ??
         "Select additional harnesses to keep in sync as aliases",
+        currentSummary,
+      ].filter(Boolean).join("\n"),
       default: defaultAliases.filter((harness) => harness !== main_harness),
-      choices: harnesses.filter((choice) => choice.value !== main_harness),
+      choices: filteredAliasChoices,
       pageSize: 10,
-      instructions: "Use space to toggle selections",
       loop: false,
     },
   ]);

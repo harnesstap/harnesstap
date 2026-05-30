@@ -1588,6 +1588,7 @@ async function handleInitCommand(opts: {
     useWizard ||
     Boolean(opts.main) ||
     Boolean(opts.aliases);
+  const currentHarnessPreference = getHarnessPreference();
   let savedHarnessPreference:
     | ReturnType<typeof setHarnessPreference>
     | undefined;
@@ -1597,7 +1598,7 @@ async function handleInitCommand(opts: {
       main: opts.main,
       aliases: parseHarnessAliases(opts.aliases),
       nonInteractive: !useWizard,
-      current: getHarnessPreference(),
+      current: currentHarnessPreference,
       detected: homeDefaults.detected.map((result) => result.platformId),
       mainMessage: "Select the default main harness",
       aliasMessage: "Select default alias harnesses to keep in sync",
@@ -1624,17 +1625,25 @@ async function handleInitCommand(opts: {
     getAllPlatforms().map((platform) => [platform.id, platform.name]),
   );
 
+  if (currentHarnessPreference) {
+    const aliasSummary =
+      currentHarnessPreference.alias_harnesses.join(", ") || "(none)";
+    ui.warn(
+      `Existing harness defaults will be overwritten (main: ${currentHarnessPreference.main_harness}, aliases: ${aliasSummary}).`,
+    );
+    console.log("");
+  }
+
   ui.success("Harnessdeck initialized");
   console.log("");
   ui.kvBlock([
     { key: "Database", value: getDbPath() },
-    {
-      key: "Built-in Presets",
-      value:
-        seeded > 0
-          ? `seeded ${formatCount(seeded, "built-in preset")}`
-          : "already up to date",
-    },
+    ...(seeded > 0
+      ? [{
+          key: "Built-in Presets",
+          value: `seeded ${formatCount(seeded, "built-in preset")}`,
+        }]
+      : []),
   ]);
 
   if (homeDefaults.detected.length === 0) {

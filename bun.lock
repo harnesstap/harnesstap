@@ -5,6 +5,7 @@
     "": {
       "name": "harnessdeck",
       "dependencies": {
+        "@inquirer/search": "^3.2.2",
         "better-sqlite3": "^11.7.0",
         "chalk": "^5.4.1",
         "cli-table3": "^0.6.5",

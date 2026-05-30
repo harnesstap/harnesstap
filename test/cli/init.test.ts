@@ -107,4 +107,35 @@ describe("CLI init", () => {
       await context.cleanup();
     }
   });
+
+  it("warns when init reruns with saved harness defaults and hides the no-op built-in preset summary", async () => {
+    const context = await createTestContext("cli-init-rerun-warning");
+
+    try {
+      await runCli([
+        "init",
+        "--main",
+        "claude-code",
+        "--aliases",
+        "cursor",
+      ]);
+
+      const rerun = await runCli([
+        "init",
+        "--main",
+        "cursor",
+        "--aliases",
+        "codex",
+      ]);
+
+      expect(rerun.stdout).toContain("Harnessdeck initialized");
+      expect(rerun.stdout).toContain("main: claude-code");
+      expect(rerun.stdout).toContain("aliases: cursor");
+      expect(rerun.stdout).toContain("will be overwritten");
+      expect(rerun.stdout).not.toContain("Built-in Presets");
+      expect(rerun.stdout).not.toContain("already up to date");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

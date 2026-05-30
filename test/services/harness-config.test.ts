@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 const promptMock = mock(() => Promise.resolve({}));
+const searchPromptMock = mock(() => Promise.resolve("cursor"));
 
 mock.module("inquirer", () => ({
   default: {
@@ -8,9 +9,14 @@ mock.module("inquirer", () => ({
   },
 }));
 
+mock.module("@inquirer/search", () => ({
+  default: searchPromptMock,
+}));
+
 describe("harness config service", () => {
   beforeEach(() => {
     promptMock.mockReset();
+    searchPromptMock.mockReset();
   });
 
   it("excludes the chosen main harness from alias choices", async () => {
@@ -20,8 +26,9 @@ describe("harness config service", () => {
       configurable: true,
     });
 
+    searchPromptMock.mockResolvedValueOnce("cursor");
     promptMock
-      .mockResolvedValueOnce({ main_harness: "cursor" })
+      .mockResolvedValueOnce({ value: "" })
       .mockResolvedValueOnce({ alias_harnesses: ["codex"] });
 
     try {
@@ -39,6 +46,7 @@ describe("harness config service", () => {
         alias_harnesses: ["codex"],
       });
 
+      expect(searchPromptMock).toHaveBeenCalledTimes(1);
       expect(promptMock).toHaveBeenCalledTimes(2);
 
       const aliasQuestion = promptMock.mock.calls[1]?.[0]?.[0];
@@ -108,6 +116,36 @@ describe("harness config service", () => {
     expect(selection.main_harness).toBe("cursor");
   });
 
+  it("skips prompts when only one harness is detected", async () => {
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    promptMock
+      .mockResolvedValueOnce({ main_harness: "claude-code" })
+      .mockResolvedValueOnce({ alias_harnesses: [] });
+
+    try {
+      const service = await import("../../src/services/harness-config.ts");
+      const selection = await service.resolveHarnessSelection({
+        detected: ["claude-code"],
+      });
+
+      expect(selection).toEqual({
+        main_harness: "claude-code",
+        alias_harnesses: [],
+      });
+      expect(promptMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalIsTTY,
+        configurable: true,
+      });
+    }
+  });
+
   it("defaults main to first registered platform when nothing else available", async () => {
     const service = await import("../../src/services/harness-config.ts");
     const selection = await service.resolveHarnessSelection({
@@ -136,8 +174,9 @@ describe("harness config service", () => {
       configurable: true,
     });
 
+    searchPromptMock.mockResolvedValueOnce("cursor");
     promptMock
-      .mockResolvedValueOnce({ main_harness: "cursor" })
+      .mockResolvedValueOnce({ value: "" })
       .mockResolvedValueOnce({ alias_harnesses: [] });
 
     try {
@@ -147,8 +186,101 @@ describe("harness config service", () => {
         nonInteractive: false,
       });
 
-      const mainQuestion = promptMock.mock.calls[0]?.[0]?.[0];
+      const mainQuestion = searchPromptMock.mock.calls[0]?.[0] as {
+        message?: string;
+      };
       expect(mainQuestion?.message).toBe("Pick your main");
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalIsTTY,
+        configurable: true,
+      });
+    }
+  });
+
+  it("uses a searchable main prompt and includes the current defaults in the prompt context", async () => {
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    searchPromptMock.mockResolvedValueOnce("cursor");
+    promptMock
+      .mockResolvedValueOnce({ value: "" })
+      .mockResolvedValueOnce({ alias_harnesses: ["codex"] });
+
+    try {
+      const service = await import("../../src/services/harness-config.ts");
+      const selection = await service.resolveHarnessSelection({
+        current: {
+          main_harness: "claude-code",
+          alias_harnesses: ["codex"],
+          updated_at: new Date().toISOString(),
+        },
+      });
+
+      expect(selection).toEqual({
+        main_harness: "cursor",
+        alias_harnesses: ["codex"],
+      });
+      expect(searchPromptMock).toHaveBeenCalledTimes(1);
+
+      const mainPrompt = searchPromptMock.mock.calls[0]?.[0] as {
+        message?: string;
+        source?: (term?: string) => Promise<Array<{ value: string }>>;
+      };
+      expect(mainPrompt.message).toContain("Current main: claude-code");
+      expect(mainPrompt.message).toContain("aliases: codex");
+
+      const defaultChoices = await mainPrompt.source?.();
+      expect(defaultChoices?.[0]?.value).toBe("claude-code");
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: originalIsTTY,
+        configurable: true,
+      });
+    }
+  });
+
+  it("filters alias choices from an interactive search term before showing the checkbox prompt", async () => {
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    searchPromptMock.mockResolvedValueOnce("claude-code");
+    promptMock
+      .mockResolvedValueOnce({ value: "copilot-cli" })
+      .mockResolvedValueOnce({ alias_harnesses: ["copilot-cli"] });
+
+    try {
+      const service = await import("../../src/services/harness-config.ts");
+      const selection = await service.resolveHarnessSelection({
+        current: {
+          main_harness: "claude-code",
+          alias_harnesses: ["cursor", "codex", "copilot-cli"],
+          updated_at: new Date().toISOString(),
+        },
+      });
+
+      expect(selection).toEqual({
+        main_harness: "claude-code",
+        alias_harnesses: ["copilot-cli"],
+      });
+      expect(promptMock).toHaveBeenCalledTimes(2);
+
+      const filterQuestion = promptMock.mock.calls[0]?.[0]?.[0];
+      expect(filterQuestion?.message).toContain("Search alias harnesses");
+
+      const aliasQuestion = promptMock.mock.calls[1]?.[0]?.[0];
+      expect(
+        (aliasQuestion?.choices as Array<{ value: string }>).map(
+          (choice) => choice.value,
+        ),
+      ).toEqual(["copilot-cli"]);
+      expect(aliasQuestion?.instructions).toBeUndefined();
     } finally {
       Object.defineProperty(process.stdin, "isTTY", {
         value: originalIsTTY,
