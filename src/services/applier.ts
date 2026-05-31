@@ -43,6 +43,7 @@ export interface MaterializeFilesOptions {
   conflictResolver?: (
     conflict: MaterializationConflict,
   ) => Promise<ConflictResolution> | ConflictResolution;
+  currentSnapshotId?: string;
 }
 
 export interface GenerateFilesOptions extends SerializeOptions {
@@ -62,6 +63,17 @@ export interface MaterializationResult {
 
 export interface GlobalApplyResult extends MaterializationResult {
   results: ApplyResult[];
+}
+
+function isSelfOwnedConflict(
+  conflict: MaterializationConflict,
+  snapshotId?: string,
+): boolean {
+  return Boolean(
+    snapshotId &&
+      conflict.owners.length > 0 &&
+      conflict.owners.every((owner) => owner.snapshot_id === snapshotId),
+  );
 }
 
 function resolveMaterializedPath(rootPath: string, relativePath: string): string {
@@ -169,10 +181,11 @@ async function planConflicts(
     seen.add(file.path);
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
     if (!existsSync(fullPath)) return [];
+    const owners = findImportedSnapshotOwnersByFile(file.path);
     return [{
       path: file.path,
       fullPath,
-      owners: findImportedSnapshotOwnersByFile(file.path),
+      owners,
     }];
   });
 }
@@ -195,6 +208,13 @@ export async function materializeFiles(
       decisions.set(conflict.path, "skip");
       continue;
     }
+    if (
+      !options.conflictResolver &&
+      isSelfOwnedConflict(conflict, options.currentSnapshotId)
+    ) {
+      decisions.set(conflict.path, "replace");
+      continue;
+    }
     if (!options.conflictResolver) {
       decisions.set(conflict.path, "cancel");
       break;
@@ -213,7 +233,13 @@ export async function materializeFiles(
       skippedFiles: files
         .filter((file) => decisions.get(file.path) === "skip")
         .map((file) => file.path),
-      conflicts,
+      conflicts: conflicts.filter(
+        (conflict) =>
+          !(
+            !options.conflictResolver &&
+            isSelfOwnedConflict(conflict, options.currentSnapshotId)
+          ),
+      ),
     };
   }
 
@@ -236,7 +262,13 @@ export async function materializeFiles(
     cancelled: false,
     writtenFiles,
     skippedFiles,
-    conflicts,
+    conflicts: conflicts.filter(
+      (conflict) =>
+        !(
+          !options.conflictResolver &&
+          isSelfOwnedConflict(conflict, options.currentSnapshotId)
+        ),
+    ),
   };
 }
 
@@ -274,6 +306,7 @@ export async function applyToGlobal(
   const materialized = await materializeFiles(allFiles, homeRoot, {
     conflictPolicy: options.conflictPolicy ?? "prompt",
     conflictResolver: options.conflictResolver,
+    currentSnapshotId: options.snapshotId,
   });
 
   if (!materialized.cancelled && options.snapshotId) {

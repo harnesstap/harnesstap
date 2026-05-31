@@ -543,6 +543,51 @@ describe("applier services", () => {
     }
   });
 
+  it("reapplies the same imported snapshot without self-conflicting", async () => {
+    const context = await createInitializedTestContext("applier-global-self-reapply");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      const resources = await import("../../src/models/resource.ts");
+      const snapshots = await import("../../src/models/imported-snapshot.ts");
+
+      const skill = resources.createResource({
+        type: "skill",
+        name: "research",
+        description: "Research helper",
+        content: "# Research",
+        metadata: {},
+        source: "manual",
+      });
+      const snapshot = snapshots.createImportedSnapshot({
+        source_kind: "cursor-plugin",
+        source_label: "fixtures/demo",
+        plugin_name: "demo-plugin",
+        resource_ids: [skill.id],
+        metadata: {},
+      });
+
+      await applier.applyImportedSnapshotToGlobal(
+        snapshot.id,
+        ["copilot-cli"],
+        context.homeDir,
+        { conflictPolicy: "replace" },
+      );
+
+      const result = await applier.applyImportedSnapshotToGlobal(
+        snapshot.id,
+        ["copilot-cli"],
+        context.homeDir,
+      );
+
+      expect(result.cancelled).toBe(false);
+      expect(result.conflicts).toEqual([]);
+      expect(result.writtenFiles).toContain(".copilot/skills/research/SKILL.md");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("removes replaced files from older snapshot ownership records", async () => {
     const context = await createInitializedTestContext("applier-global-owner-replace");
 
