@@ -1,0 +1,8 @@
+{
+  "name": "bad-entry-marketplace",
+  "plugins": [
+    {
+      "path": 123
+    }
+  ]
+}

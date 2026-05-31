@@ -90,6 +90,12 @@ export function getResource(nameOrId: string): Resource | undefined {
   return result.status === "found" ? result.resource : undefined;
 }
 
+export function getResourcesByIds(resourceIds: string[]): Resource[] {
+  return resourceIds
+    .map((resourceId) => getResource(resourceId))
+    .filter((resource): resource is Resource => Boolean(resource));
+}
+
 export function listResources(filters?: {
   type?: ResourceType;
   search?: string;

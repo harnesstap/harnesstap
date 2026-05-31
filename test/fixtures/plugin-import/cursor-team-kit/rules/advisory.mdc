@@ -1,0 +1,5 @@
+---
+description: Advisory review guidance
+---
+
+This rule should stay scoped unless Cursor marks it alwaysApply.

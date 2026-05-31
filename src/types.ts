@@ -182,6 +182,53 @@ export interface Snapshot {
   created_at: string;
 }
 
+export const IMPORTED_SOURCE_KINDS = [
+  "cursor-plugin",
+  "claude-plugin",
+  "marketplace",
+] as const;
+
+export type ImportedSourceKind = (typeof IMPORTED_SOURCE_KINDS)[number];
+
+export type ImportedSnapshotMetadata = Record<string, unknown>;
+
+export interface ImportedSnapshot {
+  id: string;
+  source_kind: ImportedSourceKind;
+  source_label: string;
+  plugin_name: string;
+  plugin_version?: string;
+  resource_ids: string[];
+  metadata: ImportedSnapshotMetadata;
+  created_at: string;
+}
+
+export interface ImportedSnapshotInstall {
+  snapshot_id: string;
+  platform_id: string;
+  files: string[];
+  installed_at: string;
+}
+
+export interface ImportedResourceProvenance {
+  source_kind: ImportedSourceKind;
+  source_label: string;
+  plugin_name: string;
+  plugin_version?: string;
+  source_plugin_kind: Exclude<ImportedSourceKind, "marketplace">;
+  relative_path: string;
+  imported_at: string;
+}
+
+export interface PluginSourceScanResult {
+  source_kind: ImportedSourceKind;
+  source_label: string;
+  plugin_name: string;
+  plugin_version?: string;
+  metadata: ImportedSnapshotMetadata;
+  resources: Array<Omit<Resource, "id" | "created_at" | "updated_at">>;
+}
+
 // ── Platform definitions ────────────────────────────────────────────────
 
 export const PLATFORM_FEATURES = [
@@ -298,6 +345,12 @@ export interface SerializedFile {
   content: string;
 }
 
+export type SerializerTarget = "project" | "global";
+
+export interface SerializeOptions {
+  target?: SerializerTarget;
+}
+
 export interface PlatformSerializer {
   readonly platformId: string;
 
@@ -311,5 +364,6 @@ export interface PlatformSerializer {
   serialize(
     resources: Resource[],
     projectRoot: string,
+    options?: SerializeOptions,
   ): Promise<SerializedFile[]>;
 }

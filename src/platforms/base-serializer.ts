@@ -8,6 +8,9 @@ import type {
   SerializedFile,
   PlatformDefinition,
   ResourceType,
+  PlatformPaths,
+  SerializerTarget,
+  SerializeOptions,
 } from "../types.js";
 
 /**
@@ -26,6 +29,7 @@ export abstract class BaseSerializer implements PlatformSerializer {
   abstract serialize(
     resources: Resource[],
     projectRoot: string,
+    options?: SerializeOptions,
   ): Promise<SerializedFile[]>;
 
   // ── Filesystem helpers ──────────────────────────────────────────────
@@ -66,6 +70,21 @@ export abstract class BaseSerializer implements PlatformSerializer {
     return configuredPath.startsWith("~/")
       ? join(homeRoot, configuredPath.slice(2))
       : join(homeRoot, configuredPath);
+  }
+
+  protected getTargetPaths(target: SerializerTarget = "project"): PlatformPaths {
+    return target === "global" ? this.platform.globalPaths : this.platform.projectPaths;
+  }
+
+  protected toTargetRelativePath(
+    configuredPath: string | undefined,
+    target: SerializerTarget = "project",
+  ): string | undefined {
+    if (!configuredPath) return undefined;
+    if (target === "global" && configuredPath.startsWith("~/")) {
+      return configuredPath.slice(2);
+    }
+    return configuredPath;
   }
 
   protected prefixedRelativePath(

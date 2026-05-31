@@ -6,6 +6,7 @@ import type {
   Resource,
   SerializedFile,
   McpServerMetadata,
+  SerializeOptions,
 } from "../types.js";
 
 interface CopilotMcpConfigEntry {
@@ -162,28 +163,37 @@ export class CopilotSerializer extends BaseSerializer {
   async serialize(
     resources: Resource[],
     _projectRoot: string,
+    options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
+    const target = options.target ?? "project";
+    const targetPaths = this.getTargetPaths(target);
+    const instructionsPath = this.toTargetRelativePath(targetPaths.instructions, target);
+    const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
+    const mcpPath = this.toTargetRelativePath(
+      target === "global" ? targetPaths.settings : targetPaths.mcp,
+      target,
+    );
 
     // Instructions
     const instructions = resources.filter((r) => r.type === "instruction");
-    if (instructions.length > 0 && this.platform.projectPaths.instructions) {
+    if (instructions.length > 0 && instructionsPath) {
       files.push({
-        path: this.platform.projectPaths.instructions,
+        path: instructionsPath,
         content: instructions.map((r) => r.content).join("\n\n"),
       });
     }
 
     // Skills
     const skills = resources.filter((r) => r.type === "skill");
-    if (this.platform.projectPaths.skills) {
+    if (skillsPath) {
       for (const r of skills) {
         const fm: Record<string, unknown> = {
           name: r.name,
           description: r.description,
         };
         files.push({
-          path: join(this.platform.projectPaths.skills, r.name, "SKILL.md"),
+          path: join(skillsPath, r.name, "SKILL.md"),
           content: this.emitFrontmatter(fm, r.content),
         });
       }
@@ -191,7 +201,7 @@ export class CopilotSerializer extends BaseSerializer {
 
     // MCP servers
     const mcps = resources.filter((r) => r.type === "mcp_server");
-    if (mcps.length > 0 && this.platform.projectPaths.mcp) {
+    if (mcps.length > 0 && mcpPath) {
       const mcpServers: Record<string, CopilotSerializedMcpEntry> = {};
       for (const r of mcps) {
         const meta = r.metadata as McpServerMetadata;
@@ -212,7 +222,7 @@ export class CopilotSerializer extends BaseSerializer {
         }
       }
       files.push({
-        path: this.platform.projectPaths.mcp,
+        path: mcpPath,
         content: JSON.stringify({ mcpServers }, null, 2),
       });
     }

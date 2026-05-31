@@ -1,0 +1,8 @@
+{
+  "name": "backslash-marketplace",
+  "plugins": [
+    {
+      "path": "..\\..\\cursor-team-kit"
+    }
+  ]
+}

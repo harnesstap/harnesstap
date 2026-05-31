@@ -8,6 +8,7 @@ import type {
   RuleMetadata,
   McpServerMetadata,
   HookMetadata,
+  SerializeOptions,
 } from "../types.js";
 
 interface GenericHookCommand {
@@ -317,29 +318,38 @@ export class GenericAgentsSerializer extends BaseSerializer {
   async serialize(
     resources: Resource[],
     _projectRoot: string,
+    options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
-    const skillsPath = this.platform.projectPaths.skills ?? ".agents/skills/";
-    const rulesPath = this.platform.projectPaths.rules;
-    const mcpPath = this.platform.projectPaths.mcp;
-    const agentsPath = this.platform.projectPaths.agents;
-    const hooksPath = this.platform.projectPaths.hooks;
+    const target = options.target ?? "project";
+    const targetPaths = this.getTargetPaths(target);
+    const skillsPath =
+      this.toTargetRelativePath(targetPaths.skills, target) ??
+      (target === "project" ? ".agents/skills/" : undefined);
+    const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
+    const mcpPath = this.toTargetRelativePath(
+      target === "global" ? targetPaths.settings : targetPaths.mcp,
+      target,
+    );
+    const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
+    const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
+    const instructionPath =
+      this.toTargetRelativePath(targetPaths.instructions, target) ??
+      (target === "project" ? "AGENTS.md" : undefined);
 
     // Instructions
     const instructions = resources.filter((r) => r.type === "instruction");
     // Only embed rules into AGENTS.md if there is natively no rules feature support
     const rules = resources.filter((r) => r.type === "rule");
 
-    if (instructions.length > 0 || (!rulesPath && rules.length > 0)) {
+    if ((instructions.length > 0 || (!rulesPath && rules.length > 0)) && instructionPath) {
       const parts: string[] = [];
-      const platformInstructionPath =
-        this.platform.projectPaths.instructions ?? "AGENTS.md";
       for (const r of instructions) parts.push(r.content);
       if (!rulesPath) {
         for (const r of rules) parts.push(`## ${r.name}\n\n${r.content}`);
       }
       files.push({
-        path: platformInstructionPath,
+        path: instructionPath,
         content: parts.join("\n\n"),
       });
     }
@@ -400,15 +410,17 @@ export class GenericAgentsSerializer extends BaseSerializer {
     }
 
     // Skills
-    for (const r of resources.filter((r) => r.type === "skill")) {
-      const fm: Record<string, unknown> = {
-        name: r.name,
-        description: r.description,
-      };
-      files.push({
-        path: `${skillsPath}${r.name}/SKILL.md`,
-        content: this.emitFrontmatter(fm, r.content),
-      });
+    if (skillsPath) {
+      for (const r of resources.filter((r) => r.type === "skill")) {
+        const fm: Record<string, unknown> = {
+          name: r.name,
+          description: r.description,
+        };
+        files.push({
+          path: `${skillsPath}${r.name}/SKILL.md`,
+          content: this.emitFrontmatter(fm, r.content),
+        });
+      }
     }
 
     // MCP

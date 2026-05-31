@@ -16,6 +16,8 @@ describe("initializeSchema", () => {
       expect(tables.map((table) => table.name)).toEqual(
         expect.arrayContaining([
           "harness_preferences",
+          "imported_snapshot_installs",
+          "imported_snapshots",
           "preset_dependencies",
           "project_harnesses",
           "preset_plugins",
@@ -35,7 +37,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(6);
+      expect(versionRow.version).toBe(7);
 
       const presetColumns = context.connection
         .getDb()
@@ -107,7 +109,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 6 }]);
+      expect(versionRows).toEqual([{ version: 7 }]);
     } finally {
       await context.cleanup();
     }
@@ -303,7 +305,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(6);
+      expect(versionRow.version).toBe(7);
 
       const presetColumns = db
         .prepare("PRAGMA table_info(presets)")
@@ -549,6 +551,62 @@ describe("initializeSchema", () => {
       expect(project?.name).toBe("local project");
       expect(project?.local_path).toBe("/tmp/local-project");
       expect(project?.created_at).toBe(now);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 7 creates imported snapshot tables", async () => {
+    const context = await createTestContext("schema-migration-7");
+
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const db = context.connection.getDb();
+
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all() as Array<{ name: string }>;
+      const names = tables.map((table) => table.name);
+      expect(names).toContain("imported_snapshots");
+      expect(names).toContain("imported_snapshot_installs");
+
+      const snapshotColumns = db
+        .prepare("PRAGMA table_info(imported_snapshots)")
+        .all() as Array<{ name: string; notnull: number; dflt_value: string | null }>;
+      expect(snapshotColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining([
+          "id",
+          "source_kind",
+          "source_label",
+          "plugin_name",
+          "plugin_version",
+          "resource_ids",
+          "metadata",
+          "created_at",
+        ]),
+      );
+      expect(
+        snapshotColumns.find((column) => column.name === "resource_ids")?.dflt_value,
+      ).toBe("'[]'");
+      expect(
+        snapshotColumns.find((column) => column.name === "metadata")?.dflt_value,
+      ).toBe("'{}'");
+
+      const installColumns = db
+        .prepare("PRAGMA table_info(imported_snapshot_installs)")
+        .all() as Array<{ name: string; pk: number; dflt_value: string | null }>;
+      expect(installColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining(["snapshot_id", "platform_id", "files", "installed_at"]),
+      );
+      expect(
+        installColumns.find((column) => column.name === "snapshot_id")?.pk,
+      ).toBe(1);
+      expect(
+        installColumns.find((column) => column.name === "platform_id")?.pk,
+      ).toBe(2);
+      expect(
+        installColumns.find((column) => column.name === "files")?.dflt_value,
+      ).toBe("'[]'");
     } finally {
       await context.cleanup();
     }
