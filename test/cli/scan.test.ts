@@ -251,6 +251,145 @@ describe("CLI scan", () => {
     }
   });
 
+  it("reapplies an imported plugin globally when rescanned", async () => {
+    const context = await createTestContext("cli-scan-plugin-global-rescan");
+
+    try {
+      await runCli(["init"]);
+      await runCli([
+        "harness",
+        "set",
+        "--main",
+        "copilot-cli",
+        "--aliases",
+        "cursor",
+      ]);
+
+      await runCli([
+        "project",
+        "scan",
+        join(pluginImportFixtureRoot, "cursor-team-kit"),
+        "--global",
+      ]);
+      const secondResult = await runCli([
+        "project",
+        "scan",
+        join(pluginImportFixtureRoot, "cursor-team-kit"),
+        "--global",
+      ]);
+
+      const importedSnapshotModel = await import(
+        "../../src/models/imported-snapshot.ts"
+      );
+      const snapshots = importedSnapshotModel.listImportedSnapshots();
+      const latestSnapshot = snapshots[0];
+
+      expect(secondResult.stdout).toContain("Installed cursor-team-kit globally");
+      expect(snapshots).toHaveLength(2);
+      expect(
+        importedSnapshotModel.listImportedSnapshotInstalls(latestSnapshot?.id ?? "").map(
+          (install) => install.platform_id,
+        ),
+      ).toEqual(["copilot-cli", "cursor"]);
+      expect(
+        importedSnapshotModel.findImportedSnapshotOwnersByFile(
+          ".copilot/skills/team/SKILL.md",
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          snapshot_id: latestSnapshot?.id,
+          platform_id: "copilot-cli",
+          plugin_name: "cursor-team-kit",
+        }),
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("removes stale global installs when rescanning to a narrower harness set", async () => {
+    const context = await createTestContext("cli-scan-plugin-global-retarget");
+
+    try {
+      await runCli(["init"]);
+      await runCli([
+        "harness",
+        "set",
+        "--main",
+        "copilot-cli",
+        "--aliases",
+        "cursor",
+      ]);
+
+      await runCli([
+        "project",
+        "scan",
+        join(pluginImportFixtureRoot, "cursor-team-kit"),
+        "--global",
+      ]);
+      await runCli([
+        "project",
+        "scan",
+        join(pluginImportFixtureRoot, "cursor-team-kit"),
+        "--global",
+        "--harness",
+        "copilot-cli",
+      ]);
+
+      const importedSnapshotModel = await import(
+        "../../src/models/imported-snapshot.ts"
+      );
+
+      expect(
+        existsSync(join(context.homeDir, ".copilot/skills/team/SKILL.md")),
+      ).toBe(true);
+      expect(
+        existsSync(join(context.homeDir, ".cursor/skills/team/SKILL.md")),
+      ).toBe(false);
+      expect(
+        importedSnapshotModel.findImportedSnapshotOwnersByFile(
+          ".cursor/skills/team/SKILL.md",
+        ),
+      ).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("avoids partial global installs when a marketplace import hits a later conflict", async () => {
+    const context = await createTestContext("cli-scan-marketplace-global-atomic");
+
+    try {
+      await runCli(["init"]);
+      await runCli(["harness", "set", "--main", "cursor"]);
+
+      await expect(
+        runCli([
+          "project",
+          "scan",
+          join(pluginImportFixtureRoot, "marketplace/.cursor-plugin/marketplace.json"),
+          "--global",
+          "--harness",
+          "cursor",
+        ]),
+      ).rejects.toThrow(/Global install cancelled for release-guardian/);
+
+      const importedSnapshotModel = await import(
+        "../../src/models/imported-snapshot.ts"
+      );
+      const snapshots = importedSnapshotModel.listImportedSnapshots();
+
+      expect(existsSync(join(context.homeDir, ".cursor/rules/review.mdc"))).toBe(false);
+      expect(
+        snapshots.flatMap((snapshot) =>
+          importedSnapshotModel.listImportedSnapshotInstalls(snapshot.id),
+        ),
+      ).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("keeps project scan behavior when a project also contains a plugin manifest", async () => {
     const context = await createTestContext("cli-scan-project-over-plugin-root");
 

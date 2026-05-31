@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, dirname, join, relative, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import type {
   AgentMetadata,
@@ -159,6 +159,21 @@ function parseFrontmatter(filePath: string, content: string): {
   };
 }
 
+function assertSafeImportedResourceName(name: string, filePath: string): string {
+  const trimmed = name.trim();
+  if (
+    trimmed.length === 0 ||
+    trimmed === "." ||
+    trimmed === ".." ||
+    trimmed.includes("/") ||
+    trimmed.includes("\\") ||
+    isAbsolute(trimmed)
+  ) {
+    throw new Error(`Invalid imported resource name in ${filePath}: ${name}`);
+  }
+  return trimmed;
+}
+
 function resolvePluginRoot(sourcePath: string): {
   rootPath: string;
   manifestPath: string;
@@ -243,7 +258,10 @@ function scanSkills(rootPath: string, metadata: {
 
     resources.push({
       type: "skill",
-      name: (parsed.data["name"] as string) || entry,
+      name: assertSafeImportedResourceName(
+        (parsed.data["name"] as string) || entry,
+        skillPath,
+      ),
       description: (parsed.data["description"] as string) || "",
       content: parsed.content,
       source: provenance.relative_path,
@@ -297,8 +315,10 @@ function scanAgents(rootPath: string, metadata: {
 
     resources.push({
       type: "agent",
-      name:
+      name: assertSafeImportedResourceName(
         (parsed.data["name"] as string) || entry.replace(/\.md$/, ""),
+        agentPath,
+      ),
       description: (parsed.data["description"] as string) || "",
       content: parsed.content,
       source: provenance.relative_path,
@@ -353,7 +373,10 @@ function scanRules(rootPath: string, metadata: {
 
     resources.push({
       type: "rule",
-      name: entry.replace(/\.(md|mdc)$/, ""),
+      name: assertSafeImportedResourceName(
+        entry.replace(/\.(md|mdc)$/, ""),
+        rulePath,
+      ),
       description: (parsed.data["description"] as string) || "",
       content: parsed.content,
       source: provenance.relative_path,

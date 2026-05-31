@@ -20,6 +20,7 @@ import {
 import {
   applyImportedSnapshotToGlobal,
   generateFiles,
+  materializeFiles,
   writeFiles,
 } from "./services/applier.js";
 import { exportToFile, importFromFile, exportPreset } from "./services/exporter.js";
@@ -55,7 +56,13 @@ import { getDedicatedSerializerPlatformIds } from "./services/platform-serialize
 import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { basename, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
-import type { Preset, Resource, ResourceType, SnapshotState } from "./types.js";
+import type {
+  ImportedSnapshot,
+  Preset,
+  Resource,
+  ResourceType,
+  SnapshotState,
+} from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import {
   declaringScopesForClaudePlugin,
@@ -79,6 +86,7 @@ import {
   getProjectHarnessConfig,
   setProjectHarnessConfig,
 } from "./models/harness.js";
+import { listImportedSnapshots } from "./models/imported-snapshot.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
@@ -108,6 +116,7 @@ import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
 import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import type { PersistedPluginSourceResults } from "./services/scanner.js";
 import type { Column } from "./ui/table.js";
 
 const program = new Command();
@@ -476,6 +485,7 @@ async function handleScanCommand(
 
     const homeRoot = resolveHomeRoot();
     const harnessTargets = resolveScanGlobalHarnessTargets(opts.harness, homeRoot);
+    await preflightImportedGlobalInstall(persisted, harnessTargets, homeRoot);
 
     for (const snapshot of persisted.snapshots) {
       const install = await applyImportedSnapshotToGlobal(
@@ -1209,6 +1219,62 @@ function assertSupportedHarnessTargets(harnesses: string[]): void {
   const invalid = harnesses.filter((harness) => !supported.has(harness));
   if (invalid.length > 0) {
     throw new Error(`Unsupported harness: ${invalid.join(", ")}`);
+  }
+}
+
+function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
+  return listImportedSnapshots()
+    .filter((candidate) =>
+      candidate.id !== snapshot.id &&
+      candidate.source_kind === snapshot.source_kind &&
+      candidate.source_label === snapshot.source_label &&
+      candidate.plugin_name === snapshot.plugin_name,
+    )
+    .map((candidate) => candidate.id);
+}
+
+async function preflightImportedGlobalInstall(
+  persisted: PersistedPluginSourceResults,
+  harnessTargets: string[],
+  homeRoot: string,
+): Promise<void> {
+  const resourcesById = new Map(persisted.resources.map((resource) => [resource.id, resource]));
+  const plannedPaths = new Map<string, string>();
+
+  for (const snapshot of persisted.snapshots) {
+    const resources = snapshot.resource_ids.map((id) => resourcesById.get(id)).filter(
+      (resource): resource is Resource => Boolean(resource),
+    );
+    if (resources.length !== snapshot.resource_ids.length) {
+      throw new Error(`Imported snapshot ${snapshot.id} is missing one or more resources`);
+    }
+
+    const results = await generateFiles(resources, harnessTargets, homeRoot, {
+      target: "global",
+    });
+    const files = results.flatMap((result) => result.files);
+
+    for (const file of files) {
+      const existingSnapshotId = plannedPaths.get(file.path);
+      if (existingSnapshotId && existingSnapshotId !== snapshot.id) {
+        throw new Error(
+          `Global install cancelled for ${snapshot.plugin_name}; resolve conflicts and retry.`,
+        );
+      }
+      plannedPaths.set(file.path, snapshot.id);
+    }
+
+    const preflight = await materializeFiles(files, homeRoot, {
+      conflictPolicy: "prompt",
+      currentSnapshotId: snapshot.id,
+      replaceOwnedSnapshotIds: listRelatedImportedSnapshotIds(snapshot),
+      dryRun: true,
+    });
+    if (preflight.cancelled) {
+      throw new Error(
+        `Global install cancelled for ${snapshot.plugin_name}; resolve conflicts and retry.`,
+      );
+    }
   }
 }
 

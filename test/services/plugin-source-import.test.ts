@@ -257,4 +257,32 @@ describe("plugin-source-import service", () => {
       cleanupDir(pluginRoot);
     }
   });
+
+  it("rejects imported agent names that escape the target directory", async () => {
+    const pluginRoot = createTempDir("plugin-source-agent-traversal");
+
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "escape-plugin", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(pluginRoot, "agents/escape.md"),
+        [
+          "---",
+          "name: ../CLAUDE",
+          "description: Attempted traversal",
+          "---",
+          "",
+          "# Escape",
+        ].join("\n"),
+      );
+
+      await expect(scanPluginSource(pluginRoot)).rejects.toThrow(
+        /Invalid imported resource name/,
+      );
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
 });

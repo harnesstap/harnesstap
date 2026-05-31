@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import {
   findImportedSnapshotOwnersByFile,
   getImportedSnapshot,
+  listImportedSnapshots,
   listImportedSnapshotInstalls,
   removeImportedSnapshotOwnershipForFiles,
   recordImportedSnapshotInstall,
@@ -44,6 +45,8 @@ export interface MaterializeFilesOptions {
     conflict: MaterializationConflict,
   ) => Promise<ConflictResolution> | ConflictResolution;
   currentSnapshotId?: string;
+  replaceOwnedSnapshotIds?: string[];
+  dryRun?: boolean;
 }
 
 export interface GenerateFilesOptions extends SerializeOptions {
@@ -65,14 +68,19 @@ export interface GlobalApplyResult extends MaterializationResult {
   results: ApplyResult[];
 }
 
-function isSelfOwnedConflict(
+function isAutoReplaceConflict(
   conflict: MaterializationConflict,
   snapshotId?: string,
+  replaceOwnedSnapshotIds: readonly string[] = [],
 ): boolean {
+  const allowedSnapshotIds = new Set([
+    ...replaceOwnedSnapshotIds,
+    ...(snapshotId ? [snapshotId] : []),
+  ]);
   return Boolean(
-    snapshotId &&
+    allowedSnapshotIds.size > 0 &&
       conflict.owners.length > 0 &&
-      conflict.owners.every((owner) => owner.snapshot_id === snapshotId),
+      conflict.owners.every((owner) => allowedSnapshotIds.has(owner.snapshot_id)),
   );
 }
 
@@ -116,6 +124,13 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
   }
 
   return fullPath;
+}
+
+function removeMaterializedFiles(rootPath: string, filePaths: string[]): void {
+  for (const filePath of new Set(filePaths)) {
+    const fullPath = assertMaterializedPathIsSafe(rootPath, filePath);
+    rmSync(fullPath, { force: true });
+  }
 }
 
 /**
@@ -175,11 +190,22 @@ async function planConflicts(
   files: SerializedFile[],
   rootPath: string,
 ): Promise<MaterializationConflict[]> {
+  const pathCounts = files.reduce((counts, file) => {
+    counts.set(file.path, (counts.get(file.path) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
   const seen = new Set<string>();
   return files.flatMap((file) => {
     if (seen.has(file.path)) return [];
     seen.add(file.path);
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
+    if ((pathCounts.get(file.path) ?? 0) > 1) {
+      return [{
+        path: file.path,
+        fullPath,
+        owners: [],
+      }];
+    }
     if (!existsSync(fullPath)) return [];
     const owners = findImportedSnapshotOwnersByFile(file.path);
     return [{
@@ -210,7 +236,11 @@ export async function materializeFiles(
     }
     if (
       !options.conflictResolver &&
-      isSelfOwnedConflict(conflict, options.currentSnapshotId)
+      isAutoReplaceConflict(
+        conflict,
+        options.currentSnapshotId,
+        options.replaceOwnedSnapshotIds,
+      )
     ) {
       decisions.set(conflict.path, "replace");
       continue;
@@ -237,7 +267,11 @@ export async function materializeFiles(
         (conflict) =>
           !(
             !options.conflictResolver &&
-            isSelfOwnedConflict(conflict, options.currentSnapshotId)
+            isAutoReplaceConflict(
+              conflict,
+              options.currentSnapshotId,
+              options.replaceOwnedSnapshotIds,
+            )
           ),
       ),
     };
@@ -245,6 +279,29 @@ export async function materializeFiles(
 
   const writtenFiles: string[] = [];
   const skippedFiles: string[] = [];
+
+  if (options.dryRun) {
+    return {
+      cancelled: false,
+      writtenFiles: files
+        .filter((file) => decisions.get(file.path) !== "skip")
+        .map((file) => file.path),
+      skippedFiles: files
+        .filter((file) => decisions.get(file.path) === "skip")
+        .map((file) => file.path),
+      conflicts: conflicts.filter(
+        (conflict) =>
+          !(
+            !options.conflictResolver &&
+            isAutoReplaceConflict(
+              conflict,
+              options.currentSnapshotId,
+              options.replaceOwnedSnapshotIds,
+            )
+          ),
+      ),
+    };
+  }
 
   for (const file of files) {
     const decision = decisions.get(file.path);
@@ -266,7 +323,11 @@ export async function materializeFiles(
       (conflict) =>
         !(
           !options.conflictResolver &&
-          isSelfOwnedConflict(conflict, options.currentSnapshotId)
+          isAutoReplaceConflict(
+            conflict,
+            options.currentSnapshotId,
+            options.replaceOwnedSnapshotIds,
+          )
         ),
     ),
   };
@@ -307,6 +368,7 @@ export async function applyToGlobal(
     conflictPolicy: options.conflictPolicy ?? "prompt",
     conflictResolver: options.conflictResolver,
     currentSnapshotId: options.snapshotId,
+    replaceOwnedSnapshotIds: options.replaceOwnedSnapshotIds,
   });
 
   if (!materialized.cancelled && options.snapshotId) {
@@ -333,6 +395,18 @@ export async function applyToGlobal(
         files: installFiles,
       });
     }
+
+    const desiredFiles = new Set(allFiles.map((file) => file.path));
+    const staleFiles = [
+      ...new Set(
+        [options.snapshotId, ...(options.replaceOwnedSnapshotIds ?? [])]
+          .flatMap((snapshotId) => listImportedSnapshotInstalls(snapshotId))
+          .flatMap((install) => install.files)
+          .filter((filePath) => !desiredFiles.has(filePath)),
+      ),
+    ];
+    removeMaterializedFiles(homeRoot, staleFiles);
+    removeImportedSnapshotOwnershipForFiles(staleFiles);
   }
 
   return {
@@ -357,8 +431,18 @@ export async function applyImportedSnapshotToGlobal(
     throw new Error(`Imported snapshot ${snapshotId} is missing one or more resources`);
   }
 
+  const replaceOwnedSnapshotIds = listImportedSnapshots()
+    .filter((candidate) =>
+      candidate.id !== snapshot.id &&
+      candidate.source_kind === snapshot.source_kind &&
+      candidate.source_label === snapshot.source_label &&
+      candidate.plugin_name === snapshot.plugin_name,
+    )
+    .map((candidate) => candidate.id);
+
   return applyToGlobal(resources, platforms, homeRoot, {
     ...options,
     snapshotId,
+    replaceOwnedSnapshotIds,
   });
 }
