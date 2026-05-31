@@ -42,6 +42,7 @@ describe("CLI help and command organization", () => {
       expect(result.stdout).toContain("OPTIONS");
       // Should contain flags
       expect(result.stdout).toContain("--no-color");
+      expect(result.stdout).toContain("--no-interactive");
       expect(result.stdout).toContain("--help");
     } finally {
       if (originalForceColor === undefined) {
@@ -77,6 +78,7 @@ describe("CLI help and command organization", () => {
       "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
     );
     expect(result.stdout).toContain("--no-color");
+    expect(result.stdout).toContain("--no-interactive");
     expect(result.stdout).not.toContain("help [command]");
   });
 
