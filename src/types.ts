@@ -210,6 +210,25 @@ export interface ImportedSnapshotInstall {
   installed_at: string;
 }
 
+export interface ImportedResourceProvenance {
+  source_kind: ImportedSourceKind;
+  source_label: string;
+  plugin_name: string;
+  plugin_version?: string;
+  source_plugin_kind: Exclude<ImportedSourceKind, "marketplace">;
+  relative_path: string;
+  imported_at: string;
+}
+
+export interface PluginSourceScanResult {
+  source_kind: ImportedSourceKind;
+  source_label: string;
+  plugin_name: string;
+  plugin_version?: string;
+  metadata: ImportedSnapshotMetadata;
+  resources: Array<Omit<Resource, "id" | "created_at" | "updated_at">>;
+}
+
 // ── Platform definitions ────────────────────────────────────────────────
 
 export const PLATFORM_FEATURES = [

@@ -1,0 +1,5 @@
+{
+  "name": "release-guardian",
+  "version": "0.6.0",
+  "description": "Claude release readiness reviewer"
+}
