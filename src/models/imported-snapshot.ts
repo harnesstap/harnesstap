@@ -143,6 +143,50 @@ export function recordImportedSnapshotInstall(input: {
   return install;
 }
 
+export function removeImportedSnapshotOwnershipForFiles(
+  filePaths: string[],
+  excludeSnapshotId?: string,
+): void {
+  if (filePaths.length === 0) return;
+
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT snapshot_id, platform_id, files, installed_at
+       FROM imported_snapshot_installs`,
+    )
+    .all() as ImportedSnapshotInstallRow[];
+  const fileSet = new Set(filePaths);
+  const now = new Date().toISOString();
+
+  for (const row of rows) {
+    if (excludeSnapshotId && row.snapshot_id === excludeSnapshotId) continue;
+
+    const files = JSON.parse(row.files) as string[];
+    const remainingFiles = files.filter((file) => !fileSet.has(file));
+    if (remainingFiles.length === files.length) continue;
+
+    if (remainingFiles.length === 0) {
+      db.prepare(
+        `DELETE FROM imported_snapshot_installs
+         WHERE snapshot_id = ? AND platform_id = ?`,
+      ).run(row.snapshot_id, row.platform_id);
+      continue;
+    }
+
+    db.prepare(
+      `UPDATE imported_snapshot_installs
+       SET files = ?, installed_at = ?
+       WHERE snapshot_id = ? AND platform_id = ?`,
+    ).run(
+      JSON.stringify(remainingFiles),
+      now,
+      row.snapshot_id,
+      row.platform_id,
+    );
+  }
+}
+
 export function listImportedSnapshotInstalls(
   snapshotId: string,
 ): ImportedSnapshotInstall[] {

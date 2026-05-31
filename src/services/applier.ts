@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
-import { dirname, resolve, sep } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import {
   findImportedSnapshotOwnersByFile,
   getImportedSnapshot,
   listImportedSnapshotInstalls,
+  removeImportedSnapshotOwnershipForFiles,
   recordImportedSnapshotInstall,
 } from "../models/imported-snapshot.js";
 import { getResourcesByIds } from "../models/resource.js";
@@ -152,7 +153,7 @@ export function writeFiles(
   projectRoot: string,
 ): void {
   for (const file of files) {
-    const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
+    const fullPath = join(projectRoot, file.path);
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, file.content, "utf-8");
   }
@@ -276,6 +277,7 @@ export async function applyToGlobal(
   });
 
   if (!materialized.cancelled && options.snapshotId) {
+    removeImportedSnapshotOwnershipForFiles(materialized.writtenFiles, options.snapshotId);
     const existingInstalls = listImportedSnapshotInstalls(options.snapshotId);
     for (const result of results) {
       const previousFiles =

@@ -48,6 +48,26 @@ describe("applier services", () => {
     }
   });
 
+  it("preserves project writes through symlinked project directories", async () => {
+    const context = await createInitializedTestContext("applier-project-symlink");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      const outsideDir = join(context.rootDir, "claude-home");
+      mkdirSync(outsideDir, { recursive: true });
+      symlinkSync(outsideDir, join(context.projectDir, ".claude"), "dir");
+
+      applier.writeFiles(
+        [{ path: ".claude/skills/demo/SKILL.md", content: "# Demo" }],
+        context.projectDir,
+      );
+
+      expect(readFileSync(join(outsideDir, "skills/demo/SKILL.md"), "utf-8")).toBe("# Demo");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("materializes files in nested directories", async () => {
     const context = await createInitializedTestContext("applier-nested");
 
@@ -518,6 +538,74 @@ describe("applier services", () => {
           ]),
         }),
       ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("removes replaced files from older snapshot ownership records", async () => {
+    const context = await createInitializedTestContext("applier-global-owner-replace");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      const resources = await import("../../src/models/resource.ts");
+      const snapshots = await import("../../src/models/imported-snapshot.ts");
+
+      const skillA = resources.createResource({
+        type: "skill",
+        name: "research",
+        description: "Research helper",
+        content: "# Research A",
+        metadata: {},
+        source: "manual",
+      });
+      const snapshotA = snapshots.createImportedSnapshot({
+        source_kind: "cursor-plugin",
+        source_label: "fixtures/a",
+        plugin_name: "plugin-a",
+        resource_ids: [skillA.id],
+        metadata: {},
+      });
+
+      const skillB = resources.createResource({
+        type: "skill",
+        name: "research",
+        description: "Research helper",
+        content: "# Research B",
+        metadata: {},
+        source: "manual",
+      });
+      const snapshotB = snapshots.createImportedSnapshot({
+        source_kind: "cursor-plugin",
+        source_label: "fixtures/b",
+        plugin_name: "plugin-b",
+        resource_ids: [skillB.id],
+        metadata: {},
+      });
+
+      await applier.applyImportedSnapshotToGlobal(
+        snapshotA.id,
+        ["copilot-cli"],
+        context.homeDir,
+        { conflictPolicy: "replace" },
+      );
+      await applier.applyImportedSnapshotToGlobal(
+        snapshotB.id,
+        ["copilot-cli"],
+        context.homeDir,
+        { conflictPolicy: "replace" },
+      );
+
+      expect(
+        snapshots.findImportedSnapshotOwnersByFile(".copilot/skills/research/SKILL.md"),
+      ).toEqual([
+        expect.objectContaining({
+          snapshot_id: snapshotB.id,
+          plugin_name: "plugin-b",
+          platform_id: "copilot-cli",
+        }),
+      ]);
+      expect(snapshots.listImportedSnapshotInstalls(snapshotA.id)).toEqual([]);
     } finally {
       await context.cleanup();
     }
