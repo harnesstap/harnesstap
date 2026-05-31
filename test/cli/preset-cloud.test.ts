@@ -412,11 +412,11 @@ describe("CLI cloud preset workflows", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["preset", "add", "missing-slash"]);
+      const result = await runCli(["preset", "add", "@broken"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain(
-        "Invalid library selector: missing-slash. Use org/library[@version] or library[@version] with --org",
+        "Invalid library selector: @broken. Use org/library[@version] or library[@version] with --org",
       );
     } finally {
       await context.cleanup();
@@ -1100,4 +1100,8 @@ describe("CLI cloud preset workflows", () => {
       // Should NOT show conflicts when there are none
       expect(result.stdout).not.toMatch(/Conflicts:/);
       expect(result.stdout).not.toMatch(/0.*overwritten/);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
