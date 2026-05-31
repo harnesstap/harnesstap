@@ -1,15 +1,20 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
 import { createResource } from "../models/resource.js";
 import { deleteResource } from "../models/resource.js";
 import { listResources } from "../models/resource.js";
+import {
+  createImportedSnapshot,
+} from "../models/imported-snapshot.js";
 import { upsertProjectPluginState } from "../models/plugin.js";
 import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
+import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
+import type { ImportedSnapshot } from "../types.js";
 
 function resolveConfiguredPath(
   rootPath: string,
@@ -72,6 +77,21 @@ export function detectHomePlatforms(
     .filter((result) => result.discoveredPaths.length > 0);
 }
 
+export function isPluginSourcePath(sourcePath: string): boolean {
+  if (!existsSync(sourcePath)) {
+    return false;
+  }
+
+  if (basename(sourcePath) === "marketplace.json") {
+    return true;
+  }
+
+  return (
+    existsSync(join(sourcePath, ".cursor-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".claude-plugin", "plugin.json"))
+  );
+}
+
 // ── Scanning ───────────────────────────────────────────────────────────
 
 export interface ScanResult {
@@ -86,6 +106,12 @@ export interface HomeScanResult extends ScanResult {
 export interface PersistedScanResults {
   resources: Resource[];
   importedCounts: Map<string, number>;
+}
+
+export interface PersistedPluginSourceResults {
+  imports: Awaited<ReturnType<typeof scanPluginSource>>;
+  resources: Resource[];
+  snapshots: ImportedSnapshot[];
 }
 
 const SHARED_PROJECT_INSTRUCTION_NAMES = new Map<string, string>([
@@ -257,6 +283,49 @@ export async function scanAndPersist(
 ): Promise<Resource[]> {
   const results = await scanProject(projectRoot, platformFilter);
   return persistScanResults(results).resources;
+}
+
+export async function scanAndPersistPluginSource(
+  sourcePath: string,
+): Promise<PersistedPluginSourceResults> {
+  const imports = await scanPluginSource(sourcePath);
+  const resources: Resource[] = [];
+  const snapshots: ImportedSnapshot[] = [];
+  const returnedResourceIds = new Set<string>();
+
+  for (const result of imports) {
+    const resourceIds: string[] = [];
+
+    for (const resource of result.resources) {
+      const saved = createResource({
+        type: resource.type,
+        name: resource.name,
+        description: resource.description,
+        content: resource.content,
+        metadata: resource.metadata,
+        source: resource.source,
+      });
+
+      resourceIds.push(saved.id);
+      if (!returnedResourceIds.has(saved.id)) {
+        returnedResourceIds.add(saved.id);
+        resources.push(saved);
+      }
+    }
+
+    snapshots.push(
+      createImportedSnapshot({
+        source_kind: result.source_kind,
+        source_label: result.source_label,
+        plugin_name: result.plugin_name,
+        plugin_version: result.plugin_version,
+        resource_ids: resourceIds,
+        metadata: result.metadata,
+      }),
+    );
+  }
+
+  return { imports, resources, snapshots };
 }
 
 /** Persist Claude Code plugin inventory for a registered project after a scan including that platform. */

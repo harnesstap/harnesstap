@@ -102,6 +102,65 @@ describe("ClaudeCodeSerializer", () => {
     );
   });
 
+  it("serializes claude agent metadata as frontmatter", async () => {
+    const serializer = new ClaudeCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "agent",
+          name: "release-reviewer",
+          description: "Release review specialist",
+          content: "# Release Reviewer",
+          metadata: {
+            model: "claude-sonnet-4-5",
+            reasoning_effort: "high",
+            sandbox_mode: "workspace-write",
+          },
+        }),
+      ],
+      ".",
+    );
+
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatchObject({ path: ".claude/agents/release-reviewer.md" });
+    expect(files[0]?.content).toContain("model: claude-sonnet-4-5");
+    expect(files[0]?.content).toContain("reasoning_effort: high");
+    expect(files[0]?.content).toContain("sandbox_mode: workspace-write");
+    expect(files[0]?.content).toContain("# Release Reviewer");
+  });
+
+  it("serializes global Claude Code resources into global paths", async () => {
+    const serializer = new ClaudeCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({ type: "instruction", name: "claude", content: "# Root" }),
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+        makeResource({
+          type: "agent",
+          name: "helper",
+          description: "Helper",
+          content: "# Helper",
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual(
+      expect.arrayContaining([
+        ".claude/CLAUDE.md",
+        ".claude/skills/research/SKILL.md",
+        ".claude/agents/helper.md",
+      ]),
+    );
+    expect(files.find((file) => file.path === "CLAUDE.md")).toBeUndefined();
+  });
+
   it("omits unsupported ask permissions from Claude settings output", async () => {
     const serializer = new ClaudeCodeSerializer();
     const files = await serializer.serialize(

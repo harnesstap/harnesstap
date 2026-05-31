@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -178,6 +178,33 @@ const MIGRATIONS: Record<number, string> = {
 
     CREATE UNIQUE INDEX idx_projects_git_origin ON projects(git_origin) WHERE git_origin != '';
     CREATE UNIQUE INDEX idx_projects_local_id ON projects(local_id) WHERE local_id != '';
+  `,
+
+  7: `
+    CREATE TABLE IF NOT EXISTS imported_snapshots (
+      id              TEXT PRIMARY KEY,
+      source_kind     TEXT NOT NULL CHECK(source_kind IN ('cursor-plugin', 'claude-plugin', 'marketplace')),
+      source_label    TEXT NOT NULL,
+      plugin_name     TEXT NOT NULL,
+      plugin_version  TEXT,
+      resource_ids    TEXT NOT NULL DEFAULT '[]',
+      metadata        TEXT NOT NULL DEFAULT '{}',
+      created_at      TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_imported_snapshots_created_at
+      ON imported_snapshots(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS imported_snapshot_installs (
+      snapshot_id    TEXT NOT NULL REFERENCES imported_snapshots(id) ON DELETE CASCADE,
+      platform_id    TEXT NOT NULL,
+      files          TEXT NOT NULL DEFAULT '[]',
+      installed_at   TEXT NOT NULL,
+      PRIMARY KEY (snapshot_id, platform_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_imported_snapshot_installs_installed_at
+      ON imported_snapshot_installs(installed_at DESC);
   `,
 };
 

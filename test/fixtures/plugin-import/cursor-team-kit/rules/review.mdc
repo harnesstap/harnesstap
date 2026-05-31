@@ -1,0 +1,7 @@
+---
+description: Review TypeScript changes carefully
+alwaysApply: false
+globs: src/**/*.ts, test/**/*.ts
+---
+
+Focus on correctness, regressions, and test coverage.

@@ -6,6 +6,7 @@ import type {
   Resource,
   SerializedFile,
   RuleMetadata,
+  SerializeOptions,
 } from "../types.js";
 
 export class CursorSerializer extends BaseSerializer {
@@ -162,24 +163,31 @@ export class CursorSerializer extends BaseSerializer {
   async serialize(
     resources: Resource[],
     _projectRoot: string,
+    options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
+    const target = options.target ?? "project";
+    const targetPaths = this.getTargetPaths(target);
+    const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
+    const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
 
     for (const r of resources) {
       switch (r.type) {
         case "instruction": {
+          if (!rulesPath) break;
           // Emit as always-apply .mdc rule
           const fm: Record<string, unknown> = {
             description: r.description || r.name,
             alwaysApply: true,
           };
           files.push({
-            path: `.cursor/rules/${r.name}.mdc`,
+            path: join(rulesPath, `${r.name}.mdc`),
             content: this.emitFrontmatter(fm, r.content),
           });
           break;
         }
         case "rule": {
+          if (!rulesPath) break;
           const meta = r.metadata as RuleMetadata;
           const fm: Record<string, unknown> = {
             description: r.description || r.name,
@@ -189,19 +197,31 @@ export class CursorSerializer extends BaseSerializer {
             fm["globs"] = meta.globs.join(",");
           }
           files.push({
-            path: `.cursor/rules/${r.name}.mdc`,
+            path: join(rulesPath, `${r.name}.mdc`),
             content: this.emitFrontmatter(fm, r.content),
           });
           break;
         }
         case "skill": {
-          // Cursor doesn't have native skills — emit as agent-requested rule
+          if (target === "global" && skillsPath) {
+            const fm: Record<string, unknown> = {
+              name: r.name,
+              description: r.description,
+            };
+            files.push({
+              path: join(skillsPath, r.name, "SKILL.md"),
+              content: this.emitFrontmatter(fm, r.content),
+            });
+            break;
+          }
+          if (!rulesPath) break;
+          // Cursor doesn't have native project skills — emit as agent-requested rule
           const fm: Record<string, unknown> = {
             description: r.description || `Skill: ${r.name}`,
             alwaysApply: false,
           };
           files.push({
-            path: `.cursor/rules/${r.name}.mdc`,
+            path: join(rulesPath, `${r.name}.mdc`),
             content: this.emitFrontmatter(fm, r.content),
           });
           break;

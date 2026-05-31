@@ -11,11 +11,16 @@ import {
   scanProject,
   persistScanResults,
   detectPlatforms,
+  detectHomePlatforms,
+  isPluginSourcePath,
+  scanAndPersistPluginSource,
   scanAndPersistHomeDefaults,
   persistClaudePluginInventoryForProject,
 } from "./services/scanner.js";
 import {
+  applyImportedSnapshotToGlobal,
   generateFiles,
+  materializeFiles,
   writeFiles,
 } from "./services/applier.js";
 import { exportToFile, importFromFile, exportPreset } from "./services/exporter.js";
@@ -51,7 +56,13 @@ import { getDedicatedSerializerPlatformIds } from "./services/platform-serialize
 import { seedBuiltInPresets } from "./services/seed-presets.js";
 import { basename, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
-import type { Preset, Resource, ResourceType, SnapshotState } from "./types.js";
+import type {
+  ImportedSnapshot,
+  Preset,
+  Resource,
+  ResourceType,
+  SnapshotState,
+} from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import {
   declaringScopesForClaudePlugin,
@@ -75,6 +86,7 @@ import {
   getProjectHarnessConfig,
   setProjectHarnessConfig,
 } from "./models/harness.js";
+import { listImportedSnapshots } from "./models/imported-snapshot.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
@@ -87,6 +99,7 @@ import { mergePresets } from "./services/preset-merge.js";
 import { createPresetFromProject } from "./services/preset-from-project.js";
 import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath, writePresetBundleToTempFile } from "./services/preset-source.js";
 import { syncProject } from "./services/project-sync.js";
+import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
   addPresetAttachment,
   PRESET_ATTACHMENT_TYPES,
@@ -103,6 +116,7 @@ import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
 import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import type { PersistedPluginSourceResults } from "./services/scanner.js";
 import type { Column } from "./ui/table.js";
 
 const program = new Command();
@@ -450,13 +464,84 @@ program
 
 async function handleScanCommand(
   path: string,
-  opts: { platform?: string; dryRun?: boolean },
+  opts: { platform?: string; dryRun?: boolean; global?: boolean; harness?: string },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const projectRoot = resolve(path);
-
   const detected = detectPlatforms(projectRoot);
+  const pluginSourcePath = detected.length === 0 && isPluginSourcePath(projectRoot);
+
+  if (opts.harness && !opts.global) {
+    throw new Error("--harness can only be used together with --global");
+  }
+
+  if (pluginSourcePath) {
+    if (opts.platform) {
+      throw new Error("--platform is not supported when scanning a plugin source");
+    }
+
+    if (opts.dryRun) {
+      if (opts.global) {
+        ui.warn("--global is ignored with --dry-run");
+      }
+      const imports = await scanPluginSource(projectRoot);
+      for (const result of imports) {
+        const count = result.resources.length;
+        const dryTag = ui.theme.muted("[dry run] ");
+        const verdict = ui.theme.success(
+          `${ui.icons.success} ${result.plugin_name} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
+        );
+        console.log(dryTag + verdict);
+        for (const resource of result.resources) {
+          console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+        }
+      }
+      return;
+    }
+
+    const spin = createProgress("Scanning…");
+    const persisted = await scanAndPersistPluginSource(projectRoot);
+    spin.stop();
+
+    for (const result of persisted.imports) {
+      ui.success(`${result.plugin_name} ${ui.icons.bullet} ${formatCount(result.resources.length, "resource")}`);
+      for (const resource of result.resources) {
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+      }
+    }
+
+    if (!opts.global) {
+      return;
+    }
+
+    const homeRoot = resolveHomeRoot();
+    const harnessTargets = resolveScanGlobalHarnessTargets(opts.harness, homeRoot);
+    await preflightImportedGlobalInstall(persisted, harnessTargets, homeRoot);
+
+    for (const snapshot of persisted.snapshots) {
+      const install = await applyImportedSnapshotToGlobal(
+        snapshot.id,
+        harnessTargets,
+        homeRoot,
+      );
+      if (install.cancelled) {
+        throw new Error(
+          `Global install cancelled for ${snapshot.plugin_name}; resolve conflicts and retry.`,
+        );
+      }
+      ui.success(
+        `Installed ${snapshot.plugin_name} globally to ${harnessTargets.join(", ")} ${ui.icons.bullet} ${formatCount(install.writtenFiles.length, "file")}`,
+      );
+    }
+
+    return;
+  }
+
+  if (opts.global) {
+    throw new Error("--global is only supported when scanning a plugin source");
+  }
+
   if (detected.length === 0) {
     ui.warn("No coding CLI configurations detected in this directory.");
     return;
@@ -1328,6 +1413,106 @@ function parseHarnessAliases(aliases?: string): string[] | undefined {
     ?.split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function uniqueHarnessTargets(harnesses: string[]): string[] {
+  return [...new Set(harnesses.filter(Boolean))];
+}
+
+function assertSupportedHarnessTargets(harnesses: string[]): void {
+  const supported = new Set(getAllPlatforms().map((platform) => platform.id));
+  const invalid = harnesses.filter((harness) => !supported.has(harness));
+  if (invalid.length > 0) {
+    throw new Error(`Unsupported harness: ${invalid.join(", ")}`);
+  }
+}
+
+function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
+  return listImportedSnapshots()
+    .filter((candidate) =>
+      candidate.id !== snapshot.id &&
+      candidate.source_kind === snapshot.source_kind &&
+      candidate.source_label === snapshot.source_label &&
+      candidate.plugin_name === snapshot.plugin_name,
+    )
+    .map((candidate) => candidate.id);
+}
+
+async function preflightImportedGlobalInstall(
+  persisted: PersistedPluginSourceResults,
+  harnessTargets: string[],
+  homeRoot: string,
+): Promise<void> {
+  const resourcesById = new Map(persisted.resources.map((resource) => [resource.id, resource]));
+  const plannedPaths = new Map<string, string>();
+
+  for (const snapshot of persisted.snapshots) {
+    const resources = snapshot.resource_ids.map((id) => resourcesById.get(id)).filter(
+      (resource): resource is Resource => Boolean(resource),
+    );
+    if (resources.length !== snapshot.resource_ids.length) {
+      throw new Error(`Imported snapshot ${snapshot.id} is missing one or more resources`);
+    }
+
+    const results = await generateFiles(resources, harnessTargets, homeRoot, {
+      target: "global",
+    });
+    const files = results.flatMap((result) => result.files);
+
+    for (const file of files) {
+      const existingSnapshotId = plannedPaths.get(file.path);
+      if (existingSnapshotId && existingSnapshotId !== snapshot.id) {
+        throw new Error(
+          `Global install cancelled for ${snapshot.plugin_name}; resolve conflicts and retry.`,
+        );
+      }
+      plannedPaths.set(file.path, snapshot.id);
+    }
+
+    const preflight = await materializeFiles(files, homeRoot, {
+      conflictPolicy: "prompt",
+      currentSnapshotId: snapshot.id,
+      replaceOwnedSnapshotIds: listRelatedImportedSnapshotIds(snapshot),
+      dryRun: true,
+    });
+    if (preflight.cancelled) {
+      throw new Error(
+        `Global install cancelled for ${snapshot.plugin_name}; resolve conflicts and retry.`,
+      );
+    }
+  }
+}
+
+function resolveScanGlobalHarnessTargets(
+  harnessOption?: string,
+  homeRoot = resolveHomeRoot(),
+): string[] {
+  const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
+  if (explicitTargets.length > 0) {
+    assertSupportedHarnessTargets(explicitTargets);
+    return explicitTargets;
+  }
+
+  const preference = getHarnessPreference();
+  if (preference) {
+    const preferredTargets = uniqueHarnessTargets([
+      preference.main_harness,
+      ...preference.alias_harnesses,
+    ]);
+    assertSupportedHarnessTargets(preferredTargets);
+    return preferredTargets;
+  }
+
+  const detectedTargets = uniqueHarnessTargets(
+    detectHomePlatforms(homeRoot).map((result) => result.platformId),
+  );
+  if (detectedTargets.length > 0) {
+    return detectedTargets;
+  }
+
+  throw new Error(
+    "No global harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
+  );
 }
 
 function pluginLifecycleBase(path: string, opts: { platform?: string }) {
@@ -3125,11 +3310,16 @@ const projectCmd = configureCommandGroup(
 
 projectCmd
   .command("scan")
-  .argument("[path]", "Project directory to scan", ".")
+  .argument("[path]", "Project directory or plugin source to scan", ".")
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--dry-run", "Show what would be imported without writing to DB")
+  .option("--global", "Install imported plugin sources into global harness locations")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs to target for --global plugin installs",
+  )
   .description(
-    "Scan a project directory and import configurations into the database",
+    "Scan a project directory or plugin source and import configurations into the database",
   )
   .action(handleScanCommand);
 
@@ -3329,10 +3519,18 @@ pluginCmd
 
 program
   .command("scan", { hidden: true })
-  .argument("[path]", "Project directory to scan", ".")
+  .argument("[path]", "Project directory or plugin source to scan", ".")
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--dry-run", "Show what would be imported without writing to DB")
-  .action(async (path: string, opts: { platform?: string; dryRun?: boolean }) => {
+  .option("--global", "Install imported plugin sources into global harness locations")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs to target for --global plugin installs",
+  )
+  .action(async (
+    path: string,
+    opts: { platform?: string; dryRun?: boolean; global?: boolean; harness?: string },
+  ) => {
     warnDeprecatedCommand(formatCommand("scan"), formatCommand("project scan"));
     await handleScanCommand(path, opts);
   });

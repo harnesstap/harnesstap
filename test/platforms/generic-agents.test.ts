@@ -44,6 +44,33 @@ describe("GenericAgentsSerializer", () => {
     expect(files.find((file) => file.path === "AGENTS.md")?.content).toContain("## api");
   });
 
+  it("serializes global generic skills into their configured global path", async () => {
+    const serializer = new GenericAgentsSerializer("amp");
+    const files = await (serializer as unknown as {
+      serialize: (
+        resources: ReturnType<typeof makeResource>[],
+        root: string,
+        options: { target: "global" },
+      ) => Promise<Array<{ path: string; content: string }>>;
+    }).serialize(
+      [
+        makeResource({ type: "instruction", name: "amp", content: "# Amp" }),
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual([
+      ".config/agents/skills/research/SKILL.md",
+    ]);
+  });
+
   it("skips malformed skill frontmatter for generic platforms", async () => {
     const projectDir = createTempDir("generic-malformed");
 

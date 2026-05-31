@@ -1,0 +1,8 @@
+{
+  "name": "whitespace-marketplace",
+  "plugins": [
+    {
+      "path": "  ../../cursor-team-kit  "
+    }
+  ]
+}

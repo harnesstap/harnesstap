@@ -2,12 +2,14 @@ import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import type {
+  AgentMetadata,
   PlatformDefinition,
   Resource,
   SerializedFile,
   RuleMetadata,
   McpServerMetadata,
   PermissionMetadata,
+  SerializeOptions,
 } from "../types.js";
 
 export class ClaudeCodeSerializer extends BaseSerializer {
@@ -310,8 +312,20 @@ export class ClaudeCodeSerializer extends BaseSerializer {
   async serialize(
     resources: Resource[],
     _projectRoot: string,
+    options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
+    const target = options.target ?? "project";
+    const targetPaths = this.getTargetPaths(target);
+    const instructionsPath =
+      this.toTargetRelativePath(targetPaths.instructions, target) ??
+      (target === "project" ? "CLAUDE.md" : undefined);
+    const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
+    const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
+    const mcpPath = this.toTargetRelativePath(targetPaths.mcp, target);
+    const settingsPath = this.toTargetRelativePath(targetPaths.settings, target);
+    const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
+    const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
 
     // Group resources by type
     const byType = new Map<string, Resource[]>();
@@ -323,35 +337,37 @@ export class ClaudeCodeSerializer extends BaseSerializer {
 
     // Instructions → CLAUDE.md
     const instructions = byType.get("instruction") ?? [];
-    if (instructions.length > 0) {
+    if (instructions.length > 0 && instructionsPath) {
       const combined = instructions.map((r) => r.content).join("\n\n");
-      files.push({ path: "CLAUDE.md", content: combined });
+      files.push({ path: instructionsPath, content: combined });
     }
 
     // Rules → .claude/rules/{name}.md
     for (const r of byType.get("rule") ?? []) {
+      if (!rulesPath) continue;
       const meta = r.metadata as RuleMetadata;
       const frontmatter: Record<string, unknown> = {};
       if (meta.globs.length > 0) {
         frontmatter["paths"] = meta.globs;
       }
       const content = this.emitFrontmatter(frontmatter, r.content);
-      files.push({ path: `.claude/rules/${r.name}.md`, content });
+      files.push({ path: `${rulesPath}${r.name}.md`, content });
     }
 
     // Skills → .claude/skills/{name}/SKILL.md
     for (const r of byType.get("skill") ?? []) {
+      if (!skillsPath) continue;
       const fm: Record<string, unknown> = {
         name: r.name,
         description: r.description,
       };
       const content = this.emitFrontmatter(fm, r.content);
-      files.push({ path: `.claude/skills/${r.name}/SKILL.md`, content });
+      files.push({ path: `${skillsPath}${r.name}/SKILL.md`, content });
     }
 
     // MCP servers → .mcp.json
     const mcpServers = byType.get("mcp_server") ?? [];
-    if (mcpServers.length > 0) {
+    if (mcpServers.length > 0 && mcpPath) {
       const mcpConfig: Record<string, Record<string, unknown>> = {};
       for (const r of mcpServers) {
         const meta = r.metadata as McpServerMetadata;
@@ -368,7 +384,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         mcpConfig[r.name] = entry;
       }
       files.push({
-        path: ".mcp.json",
+        path: mcpPath,
         content: JSON.stringify({ mcpServers: mcpConfig }, null, 2),
       });
     }
@@ -376,7 +392,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     // Permissions + env + hooks → .claude/settings.json
     const permissions = byType.get("permission") ?? [];
     const envVars = byType.get("env_var") ?? [];
-    if (permissions.length > 0 || envVars.length > 0) {
+    if ((permissions.length > 0 || envVars.length > 0) && settingsPath) {
       const settings: Record<string, unknown> = {};
       if (permissions.length > 0) {
         const allow: string[] = [];
@@ -400,7 +416,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       }
       if (Object.keys(settings).length > 0) {
         files.push({
-          path: ".claude/settings.json",
+          path: settingsPath,
           content: JSON.stringify(settings, null, 2),
         });
       }
@@ -408,12 +424,25 @@ export class ClaudeCodeSerializer extends BaseSerializer {
 
     // Agents → .claude/agents/{name}.md
     for (const r of byType.get("agent") ?? []) {
-      files.push({ path: `.claude/agents/${r.name}.md`, content: r.content });
+      if (!agentsPath) continue;
+      const meta = r.metadata as AgentMetadata;
+      const frontmatter: Record<string, unknown> = {
+        name: r.name,
+        description: r.description || undefined,
+        model: meta.model,
+        reasoning_effort: meta.reasoning_effort,
+        sandbox_mode: meta.sandbox_mode,
+      };
+      const content = r.content.startsWith("---")
+        ? r.content
+        : this.emitFrontmatter(frontmatter, r.content);
+      files.push({ path: `${agentsPath}${r.name}.md`, content });
     }
 
     // Commands → .claude/commands/{name}.md
     for (const r of byType.get("command") ?? []) {
-      files.push({ path: `.claude/commands/${r.name}.md`, content: r.content });
+      if (!commandsPath) continue;
+      files.push({ path: `${commandsPath}${r.name}.md`, content: r.content });
     }
 
     return files;

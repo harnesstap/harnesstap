@@ -1,0 +1,11 @@
+{
+  "name": "team-marketplace",
+  "plugins": [
+    {
+      "path": "../../cursor-team-kit"
+    },
+    {
+      "path": "../plugins/release-guardian"
+    }
+  ]
+}
