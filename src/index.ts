@@ -3074,13 +3074,13 @@ presetCmd
 presetCmd
   .command("add")
   .argument("[selector]", "Remote library selector: org/library[@version] or library[@version] with --org")
-  .option("--as <name>", "Install under a different local preset name")
+  .option("--as <name>", "Add under a different local preset name")
   .option("--org <slug>", "Organization slug (when selector omits org)")
   .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Install a preset from the remote catalog into the local DB")
+  .description("Add a preset from the remote catalog into the local DB")
   .action(handlePresetInstallCommand);
 
 presetCmd

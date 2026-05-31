@@ -1,5 +1,5 @@
 import pkg from "../../package.json";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 describe("published CLI bins", () => {
   it("uses the toolkit package description", () => {
