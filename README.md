@@ -335,10 +335,10 @@ Common workflows
    harnessdeck preset search <query> [--profile <name>] [--format human|json]
    ```
 
-6. Install a preset from the cloud.
+6. Add a preset from the cloud.
 
    ```bash
-   harnessdeck preset install <org>/<library>[@version] [--as <name>] [--profile <name>]
+   harnessdeck preset add <org>/<library>[@version] [--as <name>] [--profile <name>]
    ```
 
    This downloads a preset bundle from the cloud and imports it into the local preset database. Use `--as` to avoid name conflicts with existing presets.

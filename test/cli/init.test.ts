@@ -16,9 +16,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Database");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
-      expect(
-        presetModel.listPresets({ templates_only: true }).length,
-      ).toBeGreaterThan(0);
+      expect(presetModel.listPresets().length).toBeGreaterThan(0);
     } finally {
       await context.cleanup();
     }
