@@ -188,9 +188,8 @@ export async function materializeFiles(
       continue;
     }
     if (!options.conflictResolver) {
-      throw new Error(
-        `Conflict resolver required for prompt policy on ${conflict.path}`,
-      );
+      decisions.set(conflict.path, "cancel");
+      break;
     }
     const decision = await options.conflictResolver(conflict);
     decisions.set(conflict.path, decision);

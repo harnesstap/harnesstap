@@ -315,6 +315,39 @@ describe("applier services", () => {
     }
   });
 
+  it("cancels prompt-policy global apply without a resolver before writing any files", async () => {
+    const context = await createInitializedTestContext("applier-global-default-prompt");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      const targetPath = join(context.homeDir, ".copilot/skills/research/SKILL.md");
+      mkdirSync(join(context.homeDir, ".copilot/skills/research"), { recursive: true });
+      writeFileSync(targetPath, "existing", "utf-8");
+
+      const result = await applier.applyToGlobal(
+        [
+          makeResource({
+            type: "skill",
+            name: "research",
+            description: "Research helper",
+            content: "# Research",
+          }),
+        ],
+        ["copilot-cli", "codex"],
+        context.homeDir,
+      );
+
+      expect(result.cancelled).toBe(true);
+      expect(result.conflicts.map((conflict) => conflict.path)).toEqual([
+        ".copilot/skills/research/SKILL.md",
+      ]);
+      expect(readFileSync(targetPath, "utf-8")).toBe("existing");
+      expect(existsSync(join(context.homeDir, ".agents/skills/research/SKILL.md"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("stops prompting after the first cancel decision", async () => {
     const context = await createInitializedTestContext("applier-global-cancel-stop");
 

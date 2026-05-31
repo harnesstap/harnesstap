@@ -51,6 +51,37 @@ describe("CodexSerializer", () => {
     expect(files.find((file) => file.path === "AGENTS.md")?.content).toContain("## api");
   });
 
+  it("serializes global Codex resources into global paths", async () => {
+    const serializer = new CodexSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({ type: "instruction", name: "codex", content: "# Codex" }),
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+        makeResource({
+          type: "agent",
+          name: "reviewer",
+          content: 'name = "reviewer"\n',
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual(
+      expect.arrayContaining([
+        ".codex/AGENTS.md",
+        ".agents/skills/research/SKILL.md",
+        ".codex/agents/reviewer.toml",
+      ]),
+    );
+    expect(files.find((file) => file.path === "AGENTS.md")).toBeUndefined();
+  });
+
   it("skips malformed skill frontmatter instead of aborting the scan", async () => {
     const projectDir = createTempDir("codex-malformed");
 

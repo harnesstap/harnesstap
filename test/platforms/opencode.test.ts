@@ -100,6 +100,37 @@ describe("OpenCodeSerializer", () => {
     expect(agnts?.content).toBe("# First\n\n# Second");
   });
 
+  it("serializes global OpenCode resources into global paths", async () => {
+    const serializer = new OpenCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+        makeResource({ type: "agent", name: "helper", content: "# Helper agent" }),
+        makeResource({ type: "command", name: "test", content: "# Test command" }),
+        makeResource({
+          type: "mcp_server",
+          name: "fs",
+          metadata: { transport: "stdio", command: "npx", args: ["-y", "server"] },
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    const paths = files.map((f) => f.path);
+    expect(paths).toContain(".config/opencode/skills/research/SKILL.md");
+    expect(paths).toContain(".config/opencode/agents/helper.md");
+    expect(paths).toContain(".config/opencode/commands/test.md");
+    expect(paths).toContain(".config/opencode/opencode.json");
+    expect(paths).not.toContain("AGENTS.md");
+    expect(paths).not.toContain("opencode.json");
+  });
+
   it("serializes MCP servers with correct format", async () => {
     const serializer = new OpenCodeSerializer();
     const files = await serializer.serialize(

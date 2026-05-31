@@ -129,6 +129,38 @@ describe("ClaudeCodeSerializer", () => {
     expect(files[0]?.content).toContain("# Release Reviewer");
   });
 
+  it("serializes global Claude Code resources into global paths", async () => {
+    const serializer = new ClaudeCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({ type: "instruction", name: "claude", content: "# Root" }),
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+        makeResource({
+          type: "agent",
+          name: "helper",
+          description: "Helper",
+          content: "# Helper",
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual(
+      expect.arrayContaining([
+        ".claude/CLAUDE.md",
+        ".claude/skills/research/SKILL.md",
+        ".claude/agents/helper.md",
+      ]),
+    );
+    expect(files.find((file) => file.path === "CLAUDE.md")).toBeUndefined();
+  });
+
   it("omits unsupported ask permissions from Claude settings output", async () => {
     const serializer = new ClaudeCodeSerializer();
     const files = await serializer.serialize(
