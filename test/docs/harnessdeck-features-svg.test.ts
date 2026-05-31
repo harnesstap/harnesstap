@@ -18,6 +18,10 @@ function decodeXmlText(source: string): string {
     .replaceAll("&apos;", "'");
 }
 
+function countOccurrences(source: string, text: string): number {
+  return source.split(text).length - 1;
+}
+
 describe("HarnessDeck features SVG", () => {
   test("documents the approved HarnessDeck feature map", async () => {
     const svg = await readFile("docs/assets/harnessdeck-features.svg", "utf8");
@@ -32,6 +36,9 @@ describe("HarnessDeck features SVG", () => {
     expect(matchAttribute(rootTag?.[1] ?? "", "aria-describedby")).toBe("desc");
     expect(matchAttribute(title?.[1] ?? "", "id")).toBe("title");
     expect(matchAttribute(description?.[1] ?? "", "id")).toBe("desc");
+    expect(countOccurrences(svg, "Agent harnesses")).toBe(1);
+    expect(svg).toContain('<tspan x="334" dy="0">Move libraries, preferences, and config</tspan>');
+    expect(svg).toContain('<tspan x="334" dy="22">across harnesses without losing structure.</tspan>');
 
     const requiredLabels = [
       "HarnessDeck",

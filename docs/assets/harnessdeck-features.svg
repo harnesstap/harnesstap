@@ -187,12 +187,15 @@
       <text x="28" y="120" class="small">team-ready presets.</text>
     </g>
 
-    <g transform="translate(420 912)">
-      <rect class="card" width="760" height="74" rx="28"/>
-      <circle class="iconCircle" cx="58" cy="37" r="22"/>
-      <path d="M46 37 h24 M64 25 l12 12 -12 12" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="96" y="42" class="label">Migration export</text>
-      <text x="334" y="42" class="small">Move libraries, preferences, and config across harnesses without losing structure.</text>
+    <g transform="translate(420 904)">
+      <rect class="card" width="760" height="82" rx="28"/>
+      <circle class="iconCircle" cx="58" cy="41" r="22"/>
+      <path d="M46 41 h24 M64 29 l12 12 -12 12" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="96" y="46" class="label">Migration export</text>
+      <text x="334" y="38" class="small">
+        <tspan x="334" dy="0">Move libraries, preferences, and config</tspan>
+        <tspan x="334" dy="22">across harnesses without losing structure.</tspan>
+      </text>
     </g>
   </g>
 
