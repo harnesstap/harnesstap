@@ -66,8 +66,6 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | `harnessdeck preset show` | Shows preset metadata, resources, dependencies, and plugin pins. |
 | `harnessdeck preset attach <preset> <selector>` | Adds a typed attachment to a preset. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for preset dependencies. |
 | `harnessdeck preset detach <preset> <selector>` | Removes a typed attachment from a preset. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
-| `harnessdeck preset add-dependency` | _Deprecated._ Records version-constrained dependency metadata on a preset; use `preset attach <preset> <selector> --type dependency --version <range>` instead. |
-| `harnessdeck preset remove-dependency` | _Deprecated._ Removes dependency metadata from a preset; use `preset detach <preset> <selector> --type dependency` instead. |
 | `harnessdeck preset delete` | Deletes a preset by selector. |
 | `harnessdeck preset export` | Writes a portable JSON bundle for a preset (`urn:harnessdeck:bundle:v1`), with optional embedded Claude plugin trees. |
 | `harnessdeck preset import` | Imports a preset bundle into the local database. |

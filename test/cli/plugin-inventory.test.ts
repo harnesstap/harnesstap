@@ -46,7 +46,7 @@ describe("CLI plugin inventory (scan + project status)", () => {
       process.env.HOME = fixtureHome;
 
       await runCli(["init"]);
-      const scanOut = await runCli(["scan", context.projectDir]);
+      const scanOut = await runCli(["project", "scan", context.projectDir]);
       expect(scanOut.stdout).toMatch(/claude-code plugins: .*committed.*effective/i);
 
       const statusOut = await runCli([
