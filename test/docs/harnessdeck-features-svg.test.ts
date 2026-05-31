@@ -35,10 +35,12 @@ describe("HarnessDeck features SVG", () => {
 
     const requiredLabels = [
       "HarnessDeck",
+      "Agent harnesses",
       "Claude Code",
       "Cursor",
       "Codex",
       "GitHub Copilot",
+      "Other CLIs",
       "Scan",
       "SQLite library",
       "Reusable presets",
@@ -49,10 +51,15 @@ describe("HarnessDeck features SVG", () => {
       "Cloud sharing",
       "Migration export",
     ];
+    const removedLabels = ["Future Harnesses"];
     const textContent = decodeXmlText(svg.replace(/<[^>]+>/g, " "));
 
     for (const label of requiredLabels) {
       expect(textContent).toContain(label);
+    }
+
+    for (const label of removedLabels) {
+      expect(textContent).not.toContain(label);
     }
   });
 });
