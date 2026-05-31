@@ -102,6 +102,33 @@ describe("ClaudeCodeSerializer", () => {
     );
   });
 
+  it("serializes claude agent metadata as frontmatter", async () => {
+    const serializer = new ClaudeCodeSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "agent",
+          name: "release-reviewer",
+          description: "Release review specialist",
+          content: "# Release Reviewer",
+          metadata: {
+            model: "claude-sonnet-4-5",
+            reasoning_effort: "high",
+            sandbox_mode: "workspace-write",
+          },
+        }),
+      ],
+      ".",
+    );
+
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatchObject({ path: ".claude/agents/release-reviewer.md" });
+    expect(files[0]?.content).toContain("model: claude-sonnet-4-5");
+    expect(files[0]?.content).toContain("reasoning_effort: high");
+    expect(files[0]?.content).toContain("sandbox_mode: workspace-write");
+    expect(files[0]?.content).toContain("# Release Reviewer");
+  });
+
   it("omits unsupported ask permissions from Claude settings output", async () => {
     const serializer = new ClaudeCodeSerializer();
     const files = await serializer.serialize(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { scanPluginSource } from "../../src/services/plugin-source-import.ts";
+import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const fixtureRoot = join(import.meta.dirname, "../fixtures/plugin-import");
 
@@ -190,5 +191,70 @@ describe("plugin-source-import service", () => {
       source_label: "backslash-marketplace",
       plugin_name: "cursor-team-kit",
     });
+  });
+
+  it("fails when a plugin resource starts with malformed frontmatter", async () => {
+    const pluginRoot = createTempDir("plugin-source-bad-frontmatter");
+
+    try {
+      writeTextFile(
+        join(pluginRoot, ".cursor-plugin/plugin.json"),
+        JSON.stringify({ name: "broken-frontmatter-plugin", version: "1.0.0" }),
+      );
+      writeTextFile(
+        join(pluginRoot, "skills/broken/SKILL.md"),
+        "----\n# Looks like frontmatter but is malformed\n",
+      );
+
+      await expect(scanPluginSource(pluginRoot)).rejects.toThrow(
+        /Malformed resource frontmatter/,
+      );
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
+  it("captures claude agent frontmatter options in canonical metadata", async () => {
+    const pluginRoot = createTempDir("plugin-source-claude-agent");
+
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "release-guardian", version: "0.6.0" }),
+      );
+      writeTextFile(
+        join(pluginRoot, "agents/release-reviewer.md"),
+        [
+          "---",
+          "name: release-reviewer",
+          "description: Release review specialist",
+          "model: claude-sonnet-4-5",
+          "reasoning_effort: high",
+          "sandbox_mode: workspace-write",
+          "---",
+          "",
+          "# Release Reviewer",
+          "",
+          "Check release notes, migration steps, and rollback safety.",
+        ].join("\n"),
+      );
+
+      const entries = await scanPluginSource(pluginRoot);
+      const agent = entries[0]?.resources.find((resource) => resource.type === "agent");
+
+      expect(agent).toMatchObject({
+        name: "release-reviewer",
+        description: "Release review specialist",
+        content:
+          "# Release Reviewer\n\nCheck release notes, migration steps, and rollback safety.",
+        metadata: {
+          model: "claude-sonnet-4-5",
+          reasoning_effort: "high",
+          sandbox_mode: "workspace-write",
+        },
+      });
+    } finally {
+      cleanupDir(pluginRoot);
+    }
   });
 });

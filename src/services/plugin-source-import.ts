@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import type {
+  AgentMetadata,
   ImportedResourceProvenance,
   ImportedSourceKind,
   ImportedSnapshotMetadata,
@@ -139,11 +140,19 @@ function isDirectory(path: string): boolean {
   }
 }
 
-function parseFrontmatter(content: string): {
+function parseFrontmatter(filePath: string, content: string): {
   data: Record<string, unknown>;
   content: string;
 } {
-  const parsed = matter(content);
+  let parsed: matter.GrayMatterFile<string>;
+  try {
+    parsed = matter(content);
+  } catch {
+    throw new Error(`Malformed resource frontmatter: ${filePath}`);
+  }
+  if (content.startsWith("---") && parsed.content === content) {
+    throw new Error(`Malformed resource frontmatter: ${filePath}`);
+  }
   return {
     data: parsed.data as Record<string, unknown>,
     content: parsed.content.trim(),
@@ -226,7 +235,7 @@ function scanSkills(rootPath: string, metadata: {
     const raw = readText(skillPath);
     if (!isDirectory(skillDir) || !raw) continue;
 
-    const parsed = parseFrontmatter(raw);
+    const parsed = parseFrontmatter(skillPath, raw);
     const provenance = buildProvenance({
       ...metadata,
       relativePath: relativePath(rootPath, skillPath),
@@ -267,11 +276,24 @@ function scanAgents(rootPath: string, metadata: {
     const raw = readText(agentPath);
     if (!raw) continue;
 
-    const parsed = parseFrontmatter(raw);
+    const parsed = parseFrontmatter(agentPath, raw);
     const provenance = buildProvenance({
       ...metadata,
       relativePath: relativePath(rootPath, agentPath),
     });
+    const agentMetadata: AgentMetadata & { imported_from: ImportedResourceProvenance } = {
+      imported_from: provenance,
+    };
+
+    if (typeof parsed.data["model"] === "string") {
+      agentMetadata.model = parsed.data["model"];
+    }
+    if (typeof parsed.data["reasoning_effort"] === "string") {
+      agentMetadata.reasoning_effort = parsed.data["reasoning_effort"];
+    }
+    if (typeof parsed.data["sandbox_mode"] === "string") {
+      agentMetadata.sandbox_mode = parsed.data["sandbox_mode"];
+    }
 
     resources.push({
       type: "agent",
@@ -280,9 +302,7 @@ function scanAgents(rootPath: string, metadata: {
       description: (parsed.data["description"] as string) || "",
       content: parsed.content,
       source: provenance.relative_path,
-      metadata: {
-        imported_from: provenance,
-      },
+      metadata: agentMetadata,
     });
   }
 
@@ -307,7 +327,7 @@ function scanRules(rootPath: string, metadata: {
     const raw = readText(rulePath);
     if (!raw) continue;
 
-    const parsed = parseFrontmatter(raw);
+    const parsed = parseFrontmatter(rulePath, raw);
     const provenance = buildProvenance({
       ...metadata,
       relativePath: relativePath(rootPath, rulePath),

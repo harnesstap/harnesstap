@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import type {
+  AgentMetadata,
   PlatformDefinition,
   Resource,
   SerializedFile,
@@ -408,7 +409,18 @@ export class ClaudeCodeSerializer extends BaseSerializer {
 
     // Agents → .claude/agents/{name}.md
     for (const r of byType.get("agent") ?? []) {
-      files.push({ path: `.claude/agents/${r.name}.md`, content: r.content });
+      const meta = r.metadata as AgentMetadata;
+      const frontmatter: Record<string, unknown> = {
+        name: r.name,
+        description: r.description || undefined,
+        model: meta.model,
+        reasoning_effort: meta.reasoning_effort,
+        sandbox_mode: meta.sandbox_mode,
+      };
+      const content = r.content.startsWith("---")
+        ? r.content
+        : this.emitFrontmatter(frontmatter, r.content);
+      files.push({ path: `.claude/agents/${r.name}.md`, content });
     }
 
     // Commands → .claude/commands/{name}.md
