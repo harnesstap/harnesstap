@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
 import { createResource } from "../models/resource.js";
@@ -75,6 +75,21 @@ export function detectHomePlatforms(
       discoveredPaths: existingPaths(platform.globalPaths, homeRoot),
     }))
     .filter((result) => result.discoveredPaths.length > 0);
+}
+
+export function isPluginSourcePath(sourcePath: string): boolean {
+  if (!existsSync(sourcePath)) {
+    return false;
+  }
+
+  if (basename(sourcePath) === "marketplace.json") {
+    return true;
+  }
+
+  return (
+    existsSync(join(sourcePath, ".cursor-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".claude-plugin", "plugin.json"))
+  );
 }
 
 // ── Scanning ───────────────────────────────────────────────────────────
