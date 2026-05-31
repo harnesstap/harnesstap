@@ -7,6 +7,32 @@ import { runCli } from "../helpers/cli.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
+function makePluginCheckReport() {
+  return {
+    refreshed_sources: ["claude:marketplace:demo-market"],
+    results: [
+      {
+        platformId: "claude-code",
+        ref: "demo@demo-market",
+        version: "1.0.0",
+        latestVersion: "2.0.0",
+        scope: "user",
+        status: "outdated",
+        latestSource: "claude:marketplace:demo-market",
+        refreshSkipped: false,
+      },
+    ],
+    summary: { outdated: 1, current: 0, unknown: 0 },
+    unsupported_platforms: [],
+  } as const;
+}
+
+function makeRefreshReport() {
+  return {
+    refreshed_sources: ["claude:marketplace:demo-market"],
+  } as const;
+}
+
 describe("plugin CLI", () => {
   let harnessdeckHome: string;
   let previousHarnessdeckHome: string | undefined;
@@ -103,22 +129,35 @@ describe("plugin CLI", () => {
   it(
     "renders plugin check --refresh as verdict output instead of table",
     async () => {
-      const result = await runCli([
-        "plugin",
-        "check",
-        "--platform",
-        "claude-code",
-        "--refresh",
-      ]);
-      // Progress/verdict mode: table headers must not appear
-      expect(result.stdout).not.toContain("STATUS");
-      expect(result.stdout).not.toContain("PLATFORM");
-      // Verdict text must contain the summary counts (may be in stderr via spinner)
-      const combined = result.stdout + result.stderr;
-      expect(combined).toMatch(/current/);
-      expect(combined).toMatch(/outdated/);
-      // Should still detect the outdated plugin and exit 1
-      expect(result.exitCode).toBe(1);
+      const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
+      const spy = spyOn(lifecycle, "checkPlugins")
+        .mockResolvedValue(makePluginCheckReport());
+      try {
+        const result = await runCli([
+          "plugin",
+          "check",
+          "--platform",
+          "claude-code",
+          "--refresh",
+        ]);
+        expect(spy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            platformIds: ["claude-code"],
+            forceRefresh: true,
+          }),
+        );
+        // Progress/verdict mode: table headers must not appear
+        expect(result.stdout).not.toContain("STATUS");
+        expect(result.stdout).not.toContain("PLATFORM");
+        // Verdict text must contain the summary counts (may be in stderr via spinner)
+        const combined = result.stdout + result.stderr;
+        expect(combined).toMatch(/current/);
+        expect(combined).toMatch(/outdated/);
+        // Should still detect the outdated plugin and exit 1
+        expect(result.exitCode).toBe(1);
+      } finally {
+        spy.mockRestore();
+      }
     },
     15000,
   );
@@ -126,21 +165,34 @@ describe("plugin CLI", () => {
   it(
     "check --refresh --format json returns full report (no table mode change)",
     async () => {
-      const result = await runCli([
-        "plugin",
-        "check",
-        "--platform",
-        "claude-code",
-        "--refresh",
-        "--format",
-        "json",
-      ]);
-      const parsed = JSON.parse(result.stdout) as {
-        summary: { outdated: number };
-        refreshed_sources: string[];
-      };
-      expect(typeof parsed.summary.outdated).toBe("number");
-      expect(Array.isArray(parsed.refreshed_sources)).toBe(true);
+      const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
+      const spy = spyOn(lifecycle, "checkPlugins")
+        .mockResolvedValue(makePluginCheckReport());
+      try {
+        const result = await runCli([
+          "plugin",
+          "check",
+          "--platform",
+          "claude-code",
+          "--refresh",
+          "--format",
+          "json",
+        ]);
+        expect(spy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            platformIds: ["claude-code"],
+            forceRefresh: true,
+          }),
+        );
+        const parsed = JSON.parse(result.stdout) as {
+          summary: { outdated: number };
+          refreshed_sources: string[];
+        };
+        expect(typeof parsed.summary.outdated).toBe("number");
+        expect(Array.isArray(parsed.refreshed_sources)).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
     },
     15000,
   );
@@ -150,17 +202,29 @@ describe("plugin CLI", () => {
   it(
     "refresh renders a Refreshed verdict in human mode",
     async () => {
-      const result = await runCli([
-        "plugin",
-        "refresh",
-        "--platform",
-        "claude-code",
-      ]);
-      // Must show a verdict line — no table headers
-      expect(result.stdout).not.toContain("STATUS");
-      // Verdict text: "✔ Refreshed N source(s)" — may be in stderr via ora spinner
-      const combined = result.stdout + result.stderr;
-      expect(combined).toMatch(/Refreshed \d+ sources?/);
+      const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
+      const spy = spyOn(lifecycle, "refreshPluginSources")
+        .mockResolvedValue(makeRefreshReport());
+      try {
+        const result = await runCli([
+          "plugin",
+          "refresh",
+          "--platform",
+          "claude-code",
+        ]);
+        expect(spy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            platformIds: ["claude-code"],
+          }),
+        );
+        // Must show a verdict line — no table headers
+        expect(result.stdout).not.toContain("STATUS");
+        // Verdict text: "✔ Refreshed N source(s)" — may be in stderr via ora spinner
+        const combined = result.stdout + result.stderr;
+        expect(combined).toMatch(/Refreshed \d+ sources?/);
+      } finally {
+        spy.mockRestore();
+      }
     },
     15000,
   );
@@ -168,16 +232,28 @@ describe("plugin CLI", () => {
   it(
     "refresh --format json returns refreshed_sources array",
     async () => {
-      const result = await runCli([
-        "plugin",
-        "refresh",
-        "--platform",
-        "claude-code",
-        "--format",
-        "json",
-      ]);
-      const parsed = JSON.parse(result.stdout) as { refreshed_sources: string[] };
-      expect(Array.isArray(parsed.refreshed_sources)).toBe(true);
+      const lifecycle = await import("../../src/services/plugin-lifecycle.ts");
+      const spy = spyOn(lifecycle, "refreshPluginSources")
+        .mockResolvedValue(makeRefreshReport());
+      try {
+        const result = await runCli([
+          "plugin",
+          "refresh",
+          "--platform",
+          "claude-code",
+          "--format",
+          "json",
+        ]);
+        expect(spy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            platformIds: ["claude-code"],
+          }),
+        );
+        const parsed = JSON.parse(result.stdout) as { refreshed_sources: string[] };
+        expect(Array.isArray(parsed.refreshed_sources)).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
     },
     15000,
   );

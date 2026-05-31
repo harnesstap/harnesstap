@@ -21,9 +21,25 @@ bun run test:run
 # Lint the codebase
 bun run lint
 
+# Type-check the codebase
+bun run typecheck
+
 # Build the project
 bun run build
 ```
+
+Common development commands:
+
+| Command | Purpose |
+| --- | --- |
+| `bun run preflight` | CI-equivalent lint + typecheck + tests + build |
+| `bun run test:run` | Run the full test suite with dot output |
+| `bun run typecheck` | Run TypeScript-only validation |
+| `bun run start -- <args>` | Run the grouped CLI from source |
+| `bun run start:dist -- <args>` | Run the built CLI from `dist/` |
+| `bun run lint:fix` | Apply Biome lint fixes |
+| `bun run clean` | Remove the `dist/` build output |
+| `bun run docs:vhs` | Rebuild recorded CLI VHS scenarios |
 
 ### Running the CLI Locally
 
@@ -31,10 +47,10 @@ To run the CLI commands during development without having to build it first, you
 
 ```bash
 # Option 1: Using the start script defined in package.json
-bun run start -- status
+bun run start -- project status .
 
 # Option 2: Execute the TypeScript file directly
-bun src/index.ts apply <preset-name>
+bun src/index.ts project apply <preset-name> --project .
 ```
 
 ### Installing the current checkout globally
@@ -46,7 +62,7 @@ build the repository and install the current checkout globally with Bun.
 bun install
 bun run build
 bun link
-harnessdeck status
+harnessdeck project status .
 ```
 
 Re-run `bun run build && bun link` after changes when you want the global

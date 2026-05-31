@@ -107,4 +107,22 @@ describe("CLI init", () => {
       await context.cleanup();
     }
   });
+
+  it("recovers from a malformed cloud profile store during init", async () => {
+    const context = await createTestContext("cli-init-malformed-cloud-store");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.harnessdeck/cloud-profiles.json`,
+        "{not-valid-json",
+      );
+
+      const result = await runCli(["init"]);
+
+      expect(result.stdout).toContain("Harnessdeck initialized");
+      expect(existsSync(context.connection.getDbPath())).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

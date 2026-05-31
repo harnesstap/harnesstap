@@ -404,6 +404,7 @@ program
         `  ${ui.theme.flag("-V, --harnessdeck-version")}  output the version number`,
         `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
         `  ${ui.theme.flag("--no-color")}               disable color output`,
+        `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
         `  ${ui.theme.flag("--show-hidden")}            show all commands including hidden ones`,
         `  ${ui.theme.flag("-h, --help")}               display help for command`,
         "",
@@ -607,6 +608,14 @@ async function handleApplyCommand(
     return;
   }
 
+  if (opts.strictPluginVersions && opts.ignorePluginVersions) {
+    process.exitCode = 1;
+    ui.danger(
+      "Choose either --strict-plugin-versions or --ignore-plugin-versions, not both.",
+    );
+    return;
+  }
+
   const projectRoot = resolve(opts.project);
   let applyBundle: Awaited<ReturnType<typeof resolveApplyPresets>>;
   try {
@@ -769,6 +778,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
+    process.exitCode = 1;
     ui.danger("Not a git repository.");
     return;
   }
@@ -820,6 +830,7 @@ function handleRevertCommand(snapshotId?: string): void {
   const db = getDb();
   initializeSchema(db);
   if (!snapshotId) {
+    process.exitCode = 1;
     ui.danger(
       `Please provide a snapshot ID. Use \`${formatCommand("project history")}\` to list them.`,
     );
@@ -827,11 +838,13 @@ function handleRevertCommand(snapshotId?: string): void {
   }
   const snapshot = getSnapshot(snapshotId);
   if (!snapshot) {
+    process.exitCode = 1;
     ui.danger(`Snapshot not found: ${snapshotId}`);
     return;
   }
   const project = getProject(snapshot.project_id);
   if (!project) {
+    process.exitCode = 1;
     ui.danger("Snapshot project not found.");
     return;
   }
@@ -3145,6 +3158,7 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
     if (opts.switch) {
       const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)['slug']) === opts.switch || String((o as Record<string, unknown>)['id']) === opts.switch);
       if (!target) {
+        process.exitCode = 1;
         ui.danger(`Organization not found: ${opts.switch}`);
         return;
       }

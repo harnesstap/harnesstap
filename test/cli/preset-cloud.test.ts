@@ -123,4 +123,19 @@ describe("CLI cloud preset workflows", () => {
       await context.cleanup();
     }
   });
+
+  it("rejects malformed remote library selectors before contacting the cloud", async () => {
+    const context = await createTestContext("cli-preset-cloud-selector");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["preset", "install", "missing-slash"]);
+
+      expect(result.stderr).toContain(
+        "Invalid library selector: missing-slash. Use org/library[@version]",
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
