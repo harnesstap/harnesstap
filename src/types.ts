@@ -344,6 +344,12 @@ export interface SerializedFile {
   content: string;
 }
 
+export type SerializerTarget = "project" | "global";
+
+export interface SerializeOptions {
+  target?: SerializerTarget;
+}
+
 export interface PlatformSerializer {
   readonly platformId: string;
 
@@ -357,5 +363,6 @@ export interface PlatformSerializer {
   serialize(
     resources: Resource[],
     projectRoot: string,
+    options?: SerializeOptions,
   ): Promise<SerializedFile[]>;
 }

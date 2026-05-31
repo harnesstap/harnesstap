@@ -24,6 +24,13 @@ interface ImportedSnapshotInstallRow {
   installed_at: string;
 }
 
+export interface ImportedSnapshotFileOwner {
+  snapshot_id: string;
+  platform_id: string;
+  plugin_name: string;
+  plugin_version?: string;
+}
+
 function rowToImportedSnapshot(row: ImportedSnapshotRow): ImportedSnapshot {
   return {
     ...row,
@@ -97,6 +104,14 @@ export function listImportedSnapshots(): ImportedSnapshot[] {
   return rows.map(rowToImportedSnapshot);
 }
 
+export function getImportedSnapshot(snapshotId: string): ImportedSnapshot | undefined {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT * FROM imported_snapshots WHERE id = ?")
+    .get(snapshotId) as ImportedSnapshotRow | undefined;
+  return row ? rowToImportedSnapshot(row) : undefined;
+}
+
 export function recordImportedSnapshotInstall(input: {
   snapshot_id: string;
   platform_id: string;
@@ -141,4 +156,40 @@ export function listImportedSnapshotInstalls(
     )
     .all(snapshotId) as ImportedSnapshotInstallRow[];
   return rows.map(rowToImportedSnapshotInstall);
+}
+
+export function findImportedSnapshotOwnersByFile(
+  filePath: string,
+): ImportedSnapshotFileOwner[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT installs.snapshot_id, installs.platform_id, snapshots.plugin_name, snapshots.plugin_version
+       FROM imported_snapshot_installs installs
+       JOIN imported_snapshots snapshots ON snapshots.id = installs.snapshot_id`,
+    )
+    .all() as Array<{
+    snapshot_id: string;
+    platform_id: string;
+    plugin_name: string;
+    plugin_version: string | null;
+  }>;
+
+  return rows.filter((row) => {
+    const install = db
+      .prepare(
+        `SELECT files
+         FROM imported_snapshot_installs
+         WHERE snapshot_id = ? AND platform_id = ?`,
+      )
+      .get(row.snapshot_id, row.platform_id) as { files: string } | undefined;
+    if (!install) return false;
+    const files = JSON.parse(install.files) as string[];
+    return files.includes(filePath);
+  }).map((row) => ({
+    snapshot_id: row.snapshot_id,
+    platform_id: row.platform_id,
+    plugin_name: row.plugin_name,
+    plugin_version: row.plugin_version ?? undefined,
+  }));
 }

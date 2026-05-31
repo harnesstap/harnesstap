@@ -71,6 +71,30 @@ describe("CursorSerializer", () => {
     );
   });
 
+  it("serializes global Cursor skills into the global layout", async () => {
+    const serializer = new CursorSerializer();
+    const files = await (serializer as unknown as {
+      serialize: (
+        resources: ReturnType<typeof makeResource>[],
+        root: string,
+        options: { target: "global" },
+      ) => Promise<Array<{ path: string; content: string }>>;
+    }).serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual([".cursor/skills/research/SKILL.md"]);
+  });
+
   it("skips malformed rule frontmatter instead of aborting the scan", async () => {
     const projectDir = createTempDir("cursor-malformed");
 

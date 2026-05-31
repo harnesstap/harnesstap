@@ -136,6 +136,38 @@ describe("CopilotSerializer", () => {
     expect(paths).toContain(".copilot/mcp-config.json");
   });
 
+  it("serializes copilot-cli global resources into global paths", async () => {
+    const serializer = new CopilotSerializer("copilot-cli");
+    const files = await (serializer as unknown as {
+      serialize: (
+        resources: ReturnType<typeof makeResource>[],
+        root: string,
+        options: { target: "global" },
+      ) => Promise<Array<{ path: string; content: string }>>;
+    }).serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+        makeResource({
+          type: "mcp_server",
+          name: "cli",
+          metadata: { transport: "stdio", command: "npx", args: ["cli"] },
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    const paths = files.map((file) => file.path);
+    expect(paths).toContain(".copilot/skills/research/SKILL.md");
+    expect(paths).toContain(".copilot/mcp-config.json");
+    expect(paths).not.toContain(".agents/skills/research/SKILL.md");
+  });
+
   it("serializes MCP servers with tools: [\"*\"] for copilot", async () => {
     const serializer = new CopilotSerializer("github-copilot");
     const githubFiles = await serializer.serialize(

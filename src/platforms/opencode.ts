@@ -6,6 +6,7 @@ import type {
   Resource,
   SerializedFile,
   McpServerMetadata,
+  SerializeOptions,
 } from "../types.js";
 
 interface OpenCodeMcpConfigEntry {
@@ -203,8 +204,21 @@ export class OpenCodeSerializer extends BaseSerializer {
   async serialize(
     resources: Resource[],
     _projectRoot: string,
+    options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
+    const target = options.target ?? "project";
+    const targetPaths = this.getTargetPaths(target);
+    const instructionsPath =
+      this.toTargetRelativePath(targetPaths.instructions, target) ??
+      (target === "project" ? "AGENTS.md" : undefined);
+    const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
+    const mcpPath = this.toTargetRelativePath(
+      target === "global" ? targetPaths.settings : targetPaths.mcp,
+      target,
+    );
+    const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
+    const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
 
     // Group by type
     const instructions = resources.filter((r) => r.type === "instruction");
@@ -214,43 +228,49 @@ export class OpenCodeSerializer extends BaseSerializer {
     const commands = resources.filter((r) => r.type === "command");
 
     // AGENTS.md
-    if (instructions.length > 0) {
+    if (instructions.length > 0 && instructionsPath) {
       files.push({
-        path: "AGENTS.md",
+        path: instructionsPath,
         content: instructions.map((r) => r.content).join("\n\n"),
       });
     }
 
     // .opencode/skills/
-    for (const r of skills) {
-      const fm: Record<string, unknown> = {
-        name: r.name,
-        description: r.description,
-      };
-      files.push({
-        path: `.opencode/skills/${r.name}/SKILL.md`,
-        content: this.emitFrontmatter(fm, r.content),
-      });
+    if (skillsPath) {
+      for (const r of skills) {
+        const fm: Record<string, unknown> = {
+          name: r.name,
+          description: r.description,
+        };
+        files.push({
+          path: `${skillsPath}${r.name}/SKILL.md`,
+          content: this.emitFrontmatter(fm, r.content),
+        });
+      }
     }
 
     // .opencode/agents/
-    for (const r of agents) {
-      files.push({
-        path: `.opencode/agents/${r.name}.md`,
-        content: r.content,
-      });
+    if (agentsPath) {
+      for (const r of agents) {
+        files.push({
+          path: `${agentsPath}${r.name}.md`,
+          content: r.content,
+        });
+      }
     }
 
     // .opencode/commands/
-    for (const r of commands) {
-      files.push({
-        path: `.opencode/commands/${r.name}.md`,
-        content: r.content,
-      });
+    if (commandsPath) {
+      for (const r of commands) {
+        files.push({
+          path: `${commandsPath}${r.name}.md`,
+          content: r.content,
+        });
+      }
     }
 
     // opencode.json
-    if (mcps.length > 0) {
+    if (mcps.length > 0 && mcpPath) {
       const mcpConfig: Record<string, OpenCodeSerializedMcpEntry> = {};
       for (const r of mcps) {
         const meta = r.metadata as McpServerMetadata;
@@ -272,7 +292,7 @@ export class OpenCodeSerializer extends BaseSerializer {
         }
       }
       files.push({
-        path: "opencode.json",
+        path: mcpPath,
         content: JSON.stringify(
           {
             $schema: "https://opencode.ai/config.json",

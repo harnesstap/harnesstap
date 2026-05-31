@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import type { PlatformDefinition, Resource, SerializedFile } from "../types.js";
+import type {
+  PlatformDefinition,
+  Resource,
+  SerializedFile,
+  SerializeOptions,
+} from "../types.js";
 
 export class CodexSerializer extends BaseSerializer {
   readonly platformId = "codex";
@@ -90,52 +95,64 @@ export class CodexSerializer extends BaseSerializer {
   async serialize(
     resources: Resource[],
     _projectRoot: string,
+    options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
+    const target = options.target ?? "project";
+    const targetPaths = this.getTargetPaths(target);
+    const instructionsPath =
+      this.toTargetRelativePath(targetPaths.instructions, target) ??
+      (target === "project" ? "AGENTS.md" : undefined);
+    const skillsPath =
+      this.toTargetRelativePath(targetPaths.skills, target) ??
+      (target === "project" ? ".agents/skills/" : undefined);
+    const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
 
     // Instructions → AGENTS.md
     const instructions = resources.filter((r) => r.type === "instruction");
-    if (instructions.length > 0) {
+    if (instructions.length > 0 && instructionsPath) {
       files.push({
-        path: "AGENTS.md",
+        path: instructionsPath,
         content: instructions.map((r) => r.content).join("\n\n"),
       });
     }
 
     // Skills → .agents/skills/{name}/SKILL.md
     for (const r of resources.filter((r) => r.type === "skill")) {
+      if (!skillsPath) continue;
       const fm: Record<string, unknown> = {
         name: r.name,
         description: r.description,
       };
       files.push({
-        path: `.agents/skills/${r.name}/SKILL.md`,
+        path: `${skillsPath}${r.name}/SKILL.md`,
         content: this.emitFrontmatter(fm, r.content),
       });
     }
 
     // Agents → .codex/agents/{name}.toml
     for (const r of resources.filter((r) => r.type === "agent")) {
+      if (!agentsPath) continue;
       files.push({
-        path: `.codex/agents/${r.name}.toml`,
+        path: `${agentsPath}${r.name}.toml`,
         content: r.content,
       });
     }
 
     // Rules → append to AGENTS.md (Codex doesn't have a native rules system)
     const rules = resources.filter((r) => r.type === "rule");
-    if (rules.length > 0 && instructions.length > 0) {
+    if (rules.length > 0 && instructions.length > 0 && instructionsPath) {
       // Append rules as sections to AGENTS.md
       const rulesSections = rules
         .map((r) => `## ${r.name}\n\n${r.content}`)
         .join("\n\n");
-      const existing = files.find((f) => f.path === "AGENTS.md");
+      const existing = files.find((f) => f.path === instructionsPath);
       if (existing) {
         existing.content += `\n\n${rulesSections}`;
       }
-    } else if (rules.length > 0) {
+    } else if (rules.length > 0 && instructionsPath) {
       files.push({
-        path: "AGENTS.md",
+        path: instructionsPath,
         content: rules.map((r) => `## ${r.name}\n\n${r.content}`).join("\n\n"),
       });
     }
