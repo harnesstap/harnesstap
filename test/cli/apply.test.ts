@@ -237,6 +237,92 @@ describe("CLI apply", () => {
     }
   });
 
+  it("rejects combining --strict-plugin-versions and --ignore-plugin-versions", async () => {
+    const context = await createTestContext("cli-apply-plugins-conflict");
+
+    try {
+      seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-conflict.git");
+      await runCli(["init"]);
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const pluginModel = await import("../../src/models/plugin.ts");
+
+      const preset = presetModel.createPreset({ name: "conflict-plugins" });
+      pluginModel.addPluginToPreset(
+        preset.id,
+        "formatter@acme-marketplace",
+        ">=2.1.0 <3.0.0",
+      );
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "ctx",
+          content: "# Ctx",
+        }),
+      );
+      presetModel.addResourceToPreset(preset.id, resource.id);
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "conflict-plugins",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+        "--strict-plugin-versions",
+        "--ignore-plugin-versions",
+      ]);
+
+      expect(applyResult.exitCode).toBe(1);
+      expect(applyResult.stderr).toContain(
+        "Choose either --strict-plugin-versions or --ignore-plugin-versions, not both.",
+      );
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("applies successfully in a non-git project without tracking snapshot state", async () => {
+    const context = await createTestContext("cli-apply-non-git");
+
+    try {
+      await runCli(["init"]);
+
+      const presetModel = await import("../../src/models/preset.ts");
+      const projectModel = await import("../../src/models/project.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const preset = presetModel.createPreset({ name: "non-git-apply" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "ctx",
+          content: "# Non-git",
+        }),
+      );
+      presetModel.addResourceToPreset(preset.id, resource.id);
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "non-git-apply",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+      ]);
+
+      expect(applyResult.stdout).toContain("claude-code");
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
+      expect(projectModel.listProjects()).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("reuses imported presets when reapplying the same bundle path", async () => {
     const context = await createTestContext("cli-apply-bundle-reuse");
 
