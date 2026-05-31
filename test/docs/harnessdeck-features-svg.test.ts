@@ -37,6 +37,8 @@ describe("HarnessDeck features SVG", () => {
     expect(matchAttribute(title?.[1] ?? "", "id")).toBe("title");
     expect(matchAttribute(description?.[1] ?? "", "id")).toBe("desc");
     expect(countOccurrences(svg, "Agent harnesses")).toBe(1);
+    expect(countOccurrences(svg, 'class="panel"')).toBe(1);
+    expect(countOccurrences(svg, 'class="chipText"')).toBe(6);
     expect(svg).toContain('<tspan x="334" dy="0">Move libraries, preferences, and config</tspan>');
     expect(svg).toContain('<tspan x="334" dy="22">across harnesses without losing structure.</tspan>');
 
