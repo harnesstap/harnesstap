@@ -178,4 +178,17 @@ describe("plugin-source-import service", () => {
       plugin_name: "cursor-team-kit",
     });
   });
+
+  it("normalizes backslash-separated marketplace entry paths before resolving them", async () => {
+    const entries = await scanPluginSource(
+      join(fixtureRoot, "backslash-marketplace/.cursor-plugin/marketplace.json"),
+    );
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      source_kind: "marketplace",
+      source_label: "backslash-marketplace",
+      plugin_name: "cursor-team-kit",
+    });
+  });
 });

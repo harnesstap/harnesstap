@@ -24,6 +24,20 @@ interface MarketplaceManifest {
   plugins?: MarketplacePluginEntry[];
 }
 
+interface ValidatedPluginManifest {
+  name: string;
+  version?: string;
+}
+
+interface ValidatedMarketplacePluginEntry {
+  path: string;
+}
+
+interface ValidatedMarketplaceManifest {
+  name: string;
+  plugins: ValidatedMarketplacePluginEntry[];
+}
+
 type ResourceInput = Omit<Resource, "id" | "created_at" | "updated_at">;
 type PluginSourceRootKind = Exclude<ImportedSourceKind, "marketplace">;
 
@@ -50,10 +64,14 @@ function readRequiredJson<T>(filePath: string, label: string): T {
   throw new Error(`Malformed ${label}: ${filePath}`);
 }
 
+function normalizeMarketplaceEntryPath(path: string): string {
+  return path.trim().replaceAll("\\", "/");
+}
+
 function validatePluginManifest(
   manifest: PluginManifest,
   manifestPath: string,
-): PluginManifest & { name: string; version?: string } {
+): ValidatedPluginManifest {
   if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
     throw new Error(`Invalid plugin manifest: ${manifestPath}`);
   }
@@ -64,17 +82,15 @@ function validatePluginManifest(
     throw new Error(`Invalid plugin manifest: ${manifestPath}`);
   }
 
-  return {
-    ...manifest,
-    name: manifest.name.trim(),
-    version: manifest.version?.trim(),
-  };
+  const name = manifest.name.trim();
+  const version = manifest.version?.trim();
+  return version ? { name, version } : { name };
 }
 
 function validateMarketplaceManifest(
   manifest: MarketplaceManifest,
   manifestPath: string,
-): MarketplaceManifest & { name: string; plugins: MarketplacePluginEntry[] } {
+): ValidatedMarketplaceManifest {
   if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
     throw new Error(`Invalid marketplace manifest: ${manifestPath}`);
   }
@@ -83,10 +99,14 @@ function validateMarketplaceManifest(
   }
 
   const plugins = manifest.plugins.map((entry) => {
-    if (typeof entry?.path !== "string" || entry.path.trim().length === 0) {
+    if (typeof entry?.path !== "string") {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
-    return { path: entry.path.trim() };
+    const path = normalizeMarketplaceEntryPath(entry.path);
+    if (path.length === 0) {
+      throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
+    }
+    return { path };
   });
 
   return {
@@ -134,7 +154,7 @@ function resolvePluginRoot(sourcePath: string): {
   rootPath: string;
   manifestPath: string;
   sourcePluginKind: PluginSourceRootKind;
-  manifest: PluginManifest;
+  manifest: ValidatedPluginManifest;
 } {
   const cursorManifestPath = join(sourcePath, ".cursor-plugin", "plugin.json");
   const claudeManifestPath = join(sourcePath, ".claude-plugin", "plugin.json");
