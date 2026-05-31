@@ -116,4 +116,11 @@ describe("plugin-source-import service", () => {
       },
     });
   });
+
+  it("fails when a plugin manifest is malformed", async () => {
+    const brokenRoot = join(fixtureRoot, "broken-plugin");
+    await expect(scanPluginSource(brokenRoot)).rejects.toThrow(
+      /Malformed plugin manifest/,
+    );
+  });
 });

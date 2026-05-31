@@ -385,4 +385,36 @@ describe("scanner services", () => {
       await context.cleanup();
     }
   });
+
+  it("does not persist resources or snapshots from a malformed plugin manifest", async () => {
+    const context = await createInitializedTestContext("scanner-plugin-malformed-manifest");
+
+    try {
+      const scanner = await import("../../src/services/scanner.ts");
+      const importedSnapshotModel = await import(
+        "../../src/models/imported-snapshot.ts"
+      );
+      const resourceModel = await import("../../src/models/resource.ts");
+
+      const pluginRoot = join(context.rootDir, "broken-plugin");
+      mkdirSync(join(pluginRoot, ".cursor-plugin"), { recursive: true });
+      mkdirSync(join(pluginRoot, "skills", "team"), { recursive: true });
+      writeFileSync(
+        join(pluginRoot, ".cursor-plugin", "plugin.json"),
+        "{ invalid json",
+      );
+      writeFileSync(
+        join(pluginRoot, "skills", "team", "SKILL.md"),
+        `---\nname: team\n---\n\nShould not import\n`,
+      );
+
+      await expect(scanner.scanAndPersistPluginSource(pluginRoot)).rejects.toThrow(
+        /Malformed plugin manifest/,
+      );
+      expect(importedSnapshotModel.listImportedSnapshots()).toHaveLength(0);
+      expect(resourceModel.listResources()).toHaveLength(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

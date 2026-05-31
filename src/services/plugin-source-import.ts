@@ -44,6 +44,12 @@ function readJson<T>(filePath: string): T | null {
   }
 }
 
+function readRequiredJson<T>(filePath: string, label: string): T {
+  const value = readJson<T>(filePath);
+  if (value !== null) return value;
+  throw new Error(`Malformed ${label}: ${filePath}`);
+}
+
 function readText(filePath: string): string | undefined {
   try {
     return readFileSync(filePath, "utf-8");
@@ -89,22 +95,28 @@ function resolvePluginRoot(sourcePath: string): {
   const claudeManifestPath = join(sourcePath, ".claude-plugin", "plugin.json");
 
   if (existsSync(cursorManifestPath)) {
-    const manifest = readJson<PluginManifest>(cursorManifestPath);
+    const manifest = readRequiredJson<PluginManifest>(
+      cursorManifestPath,
+      "plugin manifest",
+    );
     return {
       rootPath: sourcePath,
       manifestPath: cursorManifestPath,
       sourcePluginKind: "cursor-plugin",
-      manifest: manifest ?? {},
+      manifest,
     };
   }
 
   if (existsSync(claudeManifestPath)) {
-    const manifest = readJson<PluginManifest>(claudeManifestPath);
+    const manifest = readRequiredJson<PluginManifest>(
+      claudeManifestPath,
+      "plugin manifest",
+    );
     return {
       rootPath: sourcePath,
       manifestPath: claudeManifestPath,
       sourcePluginKind: "claude-plugin",
-      manifest: manifest ?? {},
+      manifest,
     };
   }
 
