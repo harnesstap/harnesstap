@@ -103,13 +103,14 @@ describe("CLI scan", () => {
     }
   });
 
-  it("imports plugin marketplace manifests from the hidden scan alias", async () => {
+  it("imports plugin marketplace manifests", async () => {
     const context = await createTestContext("cli-scan-plugin-marketplace");
 
     try {
       await runCli(["init"]);
 
       await runCli([
+        "project",
         "scan",
         join(pluginImportFixtureRoot, "marketplace/.cursor-plugin/marketplace.json"),
       ]);

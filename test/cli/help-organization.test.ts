@@ -1,10 +1,5 @@
-import { existsSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
-import { createTestContext } from "../helpers/db.ts";
-import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
-import { writeTextFile } from "../helpers/fs.ts";
-import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI help and command organization", () => {
   it("shows grouped command help without throwing when no subcommand is provided", async () => {
@@ -109,17 +104,7 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("shows hidden aliases only when --help --show-hidden is used", async () => {
-    const defaultHelp = await runCli(["--help"]);
-    const allHelp = await runCli(["--help", "--show-hidden"]);
-    expect(defaultHelp.stdout).not.toContain("apply <preset>");
-    expect(allHelp.stdout).toContain("apply <preset>");
-  });
-
-  it("does not collide global --show-hidden with plugin update --all", async () => {
-    // Verify that plugin update --all can be parsed without being affected by global flags
-    // We're not actually running the update, just checking that the command can be invoked
-    // without the global --show-hidden flag interfering with --all
+  it("documents plugin update --all in command help", async () => {
     const pluginHelp = await runCli(["plugin", "update", "--help"]);
     expect(pluginHelp.stdout).toContain("--all");
     expect(pluginHelp.stdout).toContain("Update all outdated plugins");
@@ -178,94 +163,6 @@ describe("CLI help and command organization", () => {
     expect(cloudHelp.stdout).toContain("login");
     expect(cloudHelp.stdout).toContain("whoami");
     expect(cloudHelp.stdout).toContain("orgs");
-  });
-
-  it("keeps deprecated aliases working while steering users to grouped commands", async () => {
-    const context = await createTestContext("cli-aliases");
-
-    try {
-      initGitRepo(context.projectDir);
-      writeTextFile(`${context.projectDir}/CLAUDE.md`, "# Claude instructions");
-      writeTextFile(
-        `${context.projectDir}/.claude/skills/research/SKILL.md`,
-        "---\nname: research\ndescription: Research helper\n---\n# Research\n",
-      );
-
-      await runCli(["init"]);
-
-      const scanResult = await runCli(["scan", context.projectDir]);
-      expect(scanResult.stdout).toContain("deprecated");
-      expect(scanResult.stdout).toContain("project scan");
-      // New per-platform verdict format
-      expect(scanResult.stdout).toMatch(/resource/);
-
-      const presetModel = await import("../../src/models/preset.ts");
-      const resourceModel = await import("../../src/models/resource.ts");
-      const preset = presetModel.createPreset({ name: "bundle-preset" });
-      const resource = resourceModel.createResource(
-        makeResourceInput({ name: "shared", content: "# Shared" }),
-      );
-      presetModel.addResourceToPreset(preset.id, resource.id);
-
-      const bundlePath = `${context.projectDir}/bundle.json`;
-      const exportResult = await runCli([
-        "export",
-        "bundle-preset",
-        "--file",
-        bundlePath,
-      ]);
-      expect(exportResult.stdout).toContain("deprecated");
-      expect(exportResult.stdout).toContain("preset export");
-      expect(exportResult.stdout).toContain("Exported preset");
-      expect(existsSync(bundlePath)).toBe(true);
-
-      const applyResult = await runCli([
-        "apply",
-        "bundle-preset",
-        "--project",
-        context.projectDir,
-        "--platform",
-        "claude-code",
-        "--dry-run",
-      ]);
-      expect(applyResult.stdout).toContain("deprecated");
-      expect(applyResult.stdout).toContain("project apply");
-      expect(applyResult.stdout).toContain("SKILL.md");
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("uses the invoked alias in deprecated command guidance", async () => {
-    const context = await createTestContext("cli-hd-aliases");
-
-    try {
-      initGitRepo(context.projectDir);
-      writeTextFile(`${context.projectDir}/CLAUDE.md`, "# Claude instructions");
-
-      await runCli(["init"], { commandName: "hd" });
-
-      const scanResult = await runCli(["scan", context.projectDir], {
-        commandName: "hd",
-      });
-
-      expect(scanResult.stdout).toContain("`hd scan` is deprecated");
-      expect(scanResult.stdout).toContain("`hd project scan`");
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("keeps the hidden platforms alias coherent with harness list", async () => {
-    const result = await runCli(["platforms", "--format", "json"], {
-      commandName: "hd",
-    });
-
-    expect(JSON.parse(result.stdout)).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: "claude-code" })]),
-    );
-    expect(result.stderr).toContain("deprecated");
-    expect(result.stderr).toContain("hd harness list");
   });
 
   it("does not append [options] to subcommands in grouped help", async () => {

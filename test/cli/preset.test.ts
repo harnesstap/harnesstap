@@ -977,44 +977,6 @@ describe("CLI preset", () => {
     }
   });
 
-  it("legacy add-dependency and remove-dependency commands emit deprecation warnings and forward", async () => {
-    const context = await createTestContext("cli-preset-dependency-legacy-forward");
-    try {
-      await runCli(["init"]);
-      const presetModel = await import("../../src/models/preset.ts");
-      await runCli(["preset", "create", "team-stack", "--version", "1.2.0"]);
-
-      const addResult = await runCli([
-        "preset",
-        "add-dependency",
-        "team-stack@1.2.0",
-        "baseline",
-        "--version",
-        "^1.0.0",
-      ]);
-      expect(addResult.stdout).toContain("`preset add-dependency` is deprecated; use `preset attach ... --type preset-dependency` instead.");
-
-      const preset = presetModel.getPreset("team-stack@1.2.0");
-      if (!preset) throw new Error("Expected preset to exist");
-      expect(presetModel.listPresetDependencies(preset.id)).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ dependency_name: "baseline", version_constraint: "^1.0.0" }),
-        ]),
-      );
-
-      const removeResult = await runCli([
-        "preset",
-        "remove-dependency",
-        "team-stack@1.2.0",
-        "baseline",
-      ]);
-      expect(removeResult.stdout).toContain("`preset remove-dependency` is deprecated; use `preset detach ... --type preset-dependency` instead.");
-      expect(presetModel.listPresetDependencies(preset.id)).toHaveLength(0);
-    } finally {
-      await context.cleanup();
-    }
-  });
-
   it("adds and removes plugin pins with typed verdicts", async () => {
     const context = await createTestContext("cli-preset-plugin-verdicts");
     try {

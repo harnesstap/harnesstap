@@ -278,29 +278,12 @@ function relativeDiscoveredPaths(
     .join(", ");
 }
 
-function renderDeprecatedCommandWarning(
-  legacyCommand: string,
-  replacementCommand: string,
-): string {
-  return `\`${legacyCommand}\` is deprecated; use \`${replacementCommand}\` instead.`;
-}
-
-function warnDeprecatedCommand(
-  legacyCommand: string,
-  replacementCommand: string,
-): void {
-  ui.warn(renderDeprecatedCommandWarning(legacyCommand, replacementCommand));
-}
-
-function renderGroupedCommandHelp(
-  cmd: Command,
-  showHidden: boolean,
-): string {
+function renderGroupedCommandHelp(cmd: Command): string {
   const commands = cmd.commands.filter((c) => {
     const hidden = (c as { _hidden?: boolean })._hidden;
-    return showHidden || !hidden;
+    return !hidden;
   });
-  
+
   if (commands.length === 0) {
     return "";
   }
@@ -383,7 +366,6 @@ program
   .option("-v, --verbose", "Show verbose error output")
   .option("--no-color", "Disable color output")
   .option("--no-interactive", "Disable interactive prompts")
-  .option("--show-hidden", "Show all commands including hidden ones (use with --help)")
   .helpCommand(false)
   .configureOutput({
     outputError: () => {},
@@ -401,7 +383,6 @@ program
         ui.disableColor();
       }
       
-      const showHidden = process.argv.includes("--show-hidden");
       const isTopLevel = cmd.parent === null;
       
       if (!isTopLevel) {
@@ -427,7 +408,7 @@ program
           lines.push("");
         }
         
-        const subcommands = renderGroupedCommandHelp(cmd, showHidden);
+        const subcommands = renderGroupedCommandHelp(cmd);
         if (subcommands) {
           lines.push(ui.theme.heading("COMMANDS"));
           lines.push(subcommands);
@@ -450,11 +431,10 @@ program
         `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
         `  ${ui.theme.flag("--no-color")}               disable color output`,
         `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
-        `  ${ui.theme.flag("--show-hidden")}            show all commands including hidden ones`,
         `  ${ui.theme.flag("-h, --help")}               display help for command`,
         "",
         ui.theme.heading("COMMANDS"),
-        renderGroupedCommandHelp(cmd, showHidden),
+        renderGroupedCommandHelp(cmd),
         "",
       ];
       
@@ -2885,130 +2865,6 @@ presetCmd
   });
 
 presetCmd
-  .command("add-plugin", { hidden: true })
-  .argument("<preset>", "Preset name or ID")
-  .argument("<ref>", "Plugin ref (e.g. formatter@marketplace)")
-  .requiredOption(
-    "--version <constraint>",
-    "Version constraint (semver version or valid range)",
-  )
-  .description("Pin a plugin version constraint on a preset")
-  .action(
-    (
-      presetName: string,
-      ref: string,
-      opts: { version: string },
-    ) => {
-      const db = getDb();
-      initializeSchema(db);
-      try {
-        const preset = getPreset(presetName);
-        if (!preset) {
-          process.exitCode = 1;
-          ui.danger(`Preset not found: ${presetName}`);
-          return;
-        }
-        warnDeprecatedCommand("preset add-plugin", "preset attach ... --type plugin");
-        ui.success(ui.theme.accent(addPresetAttachment({
-          preset,
-          selector: ref,
-          type: "plugin",
-          version: opts.version,
-        })));
-      } catch (err) {
-        process.exitCode = 1;
-        ui.danger(err instanceof Error ? err.message : String(err));
-      }
-    },
-  );
-
-presetCmd
-  .command("remove-plugin", { hidden: true })
-  .argument("<preset>", "Preset name or ID")
-  .argument("<ref>", "Plugin ref to unpin")
-  .description("Remove a plugin pin from a preset")
-  .action((presetName: string, ref: string) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const preset = getPreset(presetName);
-      if (!preset) {
-        process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetName}`);
-        return;
-      }
-      warnDeprecatedCommand("preset remove-plugin", "preset detach ... --type plugin");
-      const result = removePresetAttachment({ preset, selector: ref, type: "plugin" });
-      ui.success(ui.theme.accent(result.message));
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-presetCmd
-  .command("add-dependency", { hidden: true })
-  .argument("<preset>", "Preset name, name@version selector, or ID")
-  .argument("<dependency>", "Dependency preset name")
-  .requiredOption("--version <constraint>", "Version constraint (semver version or valid range)")
-  .description("Add a preset dependency with a version constraint")
-  .action((presetSelector: string, dependencyName: string, opts: { version: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const preset = getPreset(presetSelector);
-      if (!preset) {
-        process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetSelector}`);
-        return;
-      }
-      warnDeprecatedCommand("preset add-dependency", "preset attach ... --type preset-dependency");
-      ui.success(ui.theme.accent(addPresetAttachment({
-        preset,
-        selector: dependencyName,
-        type: "preset-dependency",
-        version: opts.version,
-      })));
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-presetCmd
-  .command("remove-dependency", { hidden: true })
-  .argument("<preset>", "Preset name, name@version selector, or ID")
-  .argument("<dependency>", "Dependency preset name to remove")
-  .description("Remove a preset dependency")
-  .action((presetSelector: string, dependencyName: string) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const preset = getPreset(presetSelector);
-      if (!preset) {
-        process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetSelector}`);
-        return;
-      }
-      warnDeprecatedCommand("preset remove-dependency", "preset detach ... --type preset-dependency");
-      const result = removePresetAttachment({
-        preset,
-        selector: dependencyName,
-        type: "preset-dependency",
-      });
-      if (!result.removed) {
-        process.exitCode = 1;
-        ui.danger(result.message);
-        return;
-      }
-      ui.success(ui.theme.accent(result.message));
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-presetCmd
   .command("delete")
   .argument("[name]", "Preset name, name@version selector, or ID")
   .option("--interactive", "Prompt instead of relying on explicit flags")
@@ -3082,21 +2938,6 @@ presetCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Add a preset from the remote catalog into the local DB")
   .action(handlePresetInstallCommand);
-
-presetCmd
-  .command("install", { hidden: true })
-  .argument("[selector]", "Remote library selector: org/library[@version]")
-  .option("--as <name>", "Install under a different local preset name")
-  .option("--org <slug>", "Organization slug (when selector omits org)")
-  .option("--version <constraint>", "Version constraint (when selector omits version)")
-  .option("--profile <name>", "Cloud profile to use")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Install a preset from the remote catalog into the local DB")
-  .action((selector: string | undefined, opts: { as?: string; org?: string; version?: string; profile?: string; format?: string; interactive?: boolean }) => {
-    warnDeprecatedCommand("preset install", "preset add");
-    return handlePresetInstallCommand(selector, opts);
-  });
 
 presetCmd
   .command("publish")
@@ -3514,123 +3355,6 @@ pluginCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Force refresh plugin source metadata")
   .action(handlePluginRefreshCommand);
-
-// ── hidden compatibility aliases ────────────────────────────────────────
-
-program
-  .command("scan", { hidden: true })
-  .argument("[path]", "Project directory or plugin source to scan", ".")
-  .option("-p, --platform <slug>", "Scan only a specific platform")
-  .option("--dry-run", "Show what would be imported without writing to DB")
-  .option("--global", "Install imported plugin sources into global harness locations")
-  .option(
-    "--harness <slugs>",
-    "Comma-separated harness slugs to target for --global plugin installs",
-  )
-  .action(async (
-    path: string,
-    opts: { platform?: string; dryRun?: boolean; global?: boolean; harness?: string },
-  ) => {
-    warnDeprecatedCommand(formatCommand("scan"), formatCommand("project scan"));
-    await handleScanCommand(path, opts);
-  });
-
-program
-  .command("apply", { hidden: true })
-  .argument("<preset>", "Preset name or ID")
-  .option("--project <path>", "Project directory", ".")
-  .option("--platform <slugs>", "Comma-separated platform slugs")
-  .option("--dry-run", "Show what would be written")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option(
-    "--ignore-plugin-versions",
-    "Skip validating preset Claude plugin pins against installed versions",
-  )
-  .option(
-    "--strict-plugin-versions",
-    "Fail apply (exit 2) if any pinned plugin violates its version constraint",
-  )
-  .action(
-    async (
-      presetName: string,
-      opts: {
-        project: string;
-        platform?: string;
-        dryRun?: boolean;
-        format?: string;
-        ignorePluginVersions?: boolean;
-        strictPluginVersions?: boolean;
-      },
-    ) => {
-      warnDeprecatedCommand(formatCommand("apply"), formatCommand("project apply"));
-      await handleApplyCommand([presetName], opts);
-    },
-  );
-
-program
-  .command("history", { hidden: true })
-  .option("--project <path>", "Project directory", ".")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { project: string; format?: string }) => {
-    warnDeprecatedCommand(formatCommand("history"), formatCommand("project history"));
-    handleHistoryCommand(opts);
-  });
-
-program
-  .command("revert", { hidden: true })
-  .argument("[snapshot-id]", "Snapshot ID to revert to")
-  .action((snapshotId?: string) => {
-    warnDeprecatedCommand(formatCommand("revert"), formatCommand("project revert"));
-    handleRevertCommand(snapshotId);
-  });
-
-program
-  .command("status", { hidden: true })
-  .argument("[path]", "Project directory", ".")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (path: string, opts: { format?: string }) => {
-    warnDeprecatedCommand(formatCommand("status"), formatCommand("project status"));
-    await handleProjectStatusCommand(path, opts);
-  });
-
-program
-  .command("export", { hidden: true })
-  .argument("<preset>", "Preset name or ID")
-  .option("-f, --file <path>", "Output file path")
-  .option(
-    "--embed-plugins",
-    "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
-  )
-  .action((presetName: string, opts: { file?: string; embedPlugins?: boolean }) => {
-    warnDeprecatedCommand(formatCommand("export"), formatCommand("preset export"));
-    handlePresetExportCommand(presetName, opts);
-  });
-
-program
-  .command("import", { hidden: true })
-  .argument("<file>", "JSON bundle file to import")
-  .action((file: string) => {
-    warnDeprecatedCommand(formatCommand("import"), formatCommand("preset import"));
-    handlePresetImportCommand(file);
-  });
-
-program
-  .command("platforms", { hidden: true })
-  .option("--supported", "Only show natively serialized harnesses")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string; supported?: boolean }) => {
-    const warning = renderDeprecatedCommandWarning(
-      formatCommand("platforms"),
-      formatCommand("harness list"),
-    );
-    if (parseOutputFormat(opts.format) === "json") {
-      console.warn(ui.theme.warn(`${ui.icons.warn} ${warning}`));
-    } else {
-      warnDeprecatedCommand(formatCommand("platforms"), formatCommand("harness list"));
-    }
-    handleHarnessListCommand(opts);
-  });
-
 
 // ── cleanup ─────────────────────────────────────────────────────────────
 

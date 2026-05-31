@@ -13,10 +13,44 @@
 - Create presets from scanned projects, diff presets, and run `preset doctor` before apply.
 - Record preset dependencies and Claude plugin version pins in portable preset bundles.
 - Export or import presets as JSON bundles.
-- Seed and apply built-in starter templates.
+- Seed and apply built-in starter presets.
 - Snapshot tracked projects before apply, detect drift later, and revert when needed.
-- Search, install, and publish shared presets through HarnessDeck Cloud.
+- Search, add, and publish shared presets through HarnessDeck Cloud.
 - Export your local preset library, harness preferences, and config for machine migration.
+
+```mermaid
+flowchart TB
+  subgraph Sources[Configuration sources]
+    Home[Home defaults]
+    Repo[Existing project files]
+    Cloud[HarnessDeck Cloud presets]
+    BuiltIn[Built-in starter presets]
+  end
+
+  subgraph Library[Local HarnessDeck library]
+    Resources[Canonical resources in SQLite]
+    Presets[Reusable presets]
+    Bundles[Portable JSON bundles]
+  end
+
+  subgraph Targets[Materialized harnesses]
+    Claude[Claude Code]
+    Codex[Codex]
+    Cursor[Cursor]
+    Generic[Copilot, Windsurf, Warp, OpenCode, Roo, Continue, Gemini CLI]
+  end
+
+  Home --> Resources
+  Repo --> Resources
+  Cloud --> Presets
+  BuiltIn --> Presets
+  Resources --> Presets
+  Presets <--> Bundles
+  Presets --> Claude
+  Presets --> Codex
+  Presets --> Cursor
+  Presets --> Generic
+```
 
 ## Requirements
 
@@ -74,9 +108,9 @@ The fastest way to try `harnessdeck` is to initialize the local database, import
 
 Once installed, `hd` is a shorthand alias for the same CLI. Use whichever form you prefer in the examples below.
 
-The visible CLI groups related actions under noun-based commands such as `project`, `preset`, and `harness`. Older top-level verbs and hidden aliases still work for compatibility, but they print deprecation warnings.
+The CLI groups related actions under noun-based commands such as `project`, `preset`, and `harness`.
 
-For the full grouped command surface, global flags, and compatibility alias map, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
+For the full grouped command surface and global flags, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
 
 ```mermaid
 flowchart LR
@@ -125,22 +159,24 @@ flowchart LR
 
 If the repository has a git `origin`, `hd project apply` stores a snapshot before it writes files. You can restore that snapshot later with `hd project revert`.
 
-## Hidden compatibility aliases
+```mermaid
+sequenceDiagram
+  participant User
+  participant CLI as hd CLI
+  participant DB as Local SQLite library
+  participant Project as Target project
 
-HarnessDeck still accepts older top-level verbs for compatibility, but the grouped commands below are the supported public surface:
-
-| Hidden alias | Grouped command |
-| --- | --- |
-| `hd scan` | `hd project scan` |
-| `hd apply` | `hd project apply` |
-| `hd history` | `hd project history` |
-| `hd revert` | `hd project revert` |
-| `hd status` | `hd project status` |
-| `hd export` | `hd preset export` |
-| `hd import` | `hd preset import` |
-| `hd platforms` | `hd harness list` |
-
-Use `hd --help --show-hidden` if you need to inspect those aliases directly.
+  User->>CLI: hd project scan .
+  CLI->>Project: Detect supported harness files
+  CLI->>DB: Import resources canonically
+  User->>CLI: hd preset create / attach
+  CLI->>DB: Save reusable preset
+  User->>CLI: hd project apply preset --platform ...
+  CLI->>Project: Snapshot tracked files
+  CLI->>Project: Write platform-specific configuration
+  User->>CLI: hd project status / drift / revert
+  CLI->>Project: Compare or restore snapshots
+```
 
 ## Built-in presets
 

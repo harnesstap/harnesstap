@@ -10,8 +10,8 @@ preset to describe not just files, but also expected plugin versions.
 Typical commands:
 
 ```bash
-harnessdeck preset add-plugin my-setup formatter@team-marketplace --version "^2.1.0"
-harnessdeck preset remove-plugin my-setup formatter@team-marketplace
+harnessdeck preset attach my-setup formatter@team-marketplace --type plugin --version "^2.1.0"
+harnessdeck preset detach my-setup formatter@team-marketplace --type plugin
 harnessdeck preset show my-setup
 ```
 

@@ -58,18 +58,6 @@ describe("CLI harness", () => {
         commandName: "hd",
       });
       expect(JSON.parse(cloudWhoami.stdout)).toEqual({});
-
-      const supportedAlias = await runCli([
-        "platforms",
-        "--supported",
-        "--format",
-        "json",
-      ], { commandName: "hd" });
-      expect(JSON.parse(supportedAlias.stdout)).toEqual(
-        supportedHarnesses,
-      );
-      expect(supportedAlias.stderr).toContain("deprecated");
-      expect(supportedAlias.stderr).toContain("hd harness list");
     } finally {
       await context.cleanup();
     }

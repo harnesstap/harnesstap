@@ -10,7 +10,6 @@ Available on `harnessdeck` / `hd`:
 - `-v, --verbose` — show verbose error output
 - `--no-color` — disable ANSI colors
 - `--no-interactive` — disable interactive prompts
-- `--show-hidden` — reveal compatibility aliases and hidden commands in help output
 - `-h, --help` — show help
 
 ## init
@@ -193,20 +192,3 @@ Move full HarnessDeck state between machines.
 - `migrate export --include-plugins`
 - `migrate export --format json`
 - `migrate import --format json`
-
-## Hidden compatibility aliases
-
-These commands still work for compatibility, but they are hidden from normal help output and emit deprecation warnings:
-
-| Hidden alias | Current grouped command |
-| --- | --- |
-| `scan` | `project scan` |
-| `apply` | `project apply` |
-| `history` | `project history` |
-| `revert` | `project revert` |
-| `status` | `project status` |
-| `export` | `preset export` |
-| `import` | `preset import` |
-| `platforms` | `harness list` |
-
-Run `hd --help --show-hidden` if you need to inspect the compatibility layer directly.
