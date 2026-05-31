@@ -407,6 +407,22 @@ describe("CLI cloud preset workflows", () => {
     }
   });
 
+  it("rejects malformed remote library selectors before contacting the cloud", async () => {
+    const context = await createTestContext("cli-preset-cloud-selector");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["preset", "add", "@broken"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain(
+        "Invalid library selector: @broken. Use org/library[@version] or library[@version] with --org",
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   // ── Task 4: Interactive remote preset search ──────────────────────────────
 
   it("preset add with no selector on TTY launches interactive remote search", async () => {

@@ -129,4 +129,55 @@ describe("CLI history and revert", () => {
       await context.cleanup();
     }
   });
+
+  it("warns when history is requested outside a git repository", async () => {
+    const context = await createTestContext("cli-history-non-git");
+
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli([
+        "project",
+        "history",
+        "--project",
+        context.projectDir,
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Not a git repository.");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("requires a snapshot id for revert", async () => {
+    const context = await createTestContext("cli-revert-missing-id");
+
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["project", "revert"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Please provide a snapshot ID.");
+      expect(result.stderr).toContain("project history");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports when a snapshot id does not exist", async () => {
+    const context = await createTestContext("cli-revert-missing-snapshot");
+
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["project", "revert", "missing-snapshot"]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Snapshot not found: missing-snapshot");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

@@ -76,6 +76,8 @@ Once installed, `hd` is a shorthand alias for the same CLI. Use whichever form y
 
 The visible CLI groups related actions under noun-based commands such as `project`, `preset`, and `harness`. Older top-level verbs and hidden aliases still work for compatibility, but they print deprecation warnings.
 
+For the full grouped command surface, global flags, and compatibility alias map, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
+
 ```mermaid
 flowchart LR
   A[Init local toolkit state] --> B[Scan repo and home defaults]
@@ -122,6 +124,23 @@ flowchart LR
   ```
 
 If the repository has a git `origin`, `hd project apply` stores a snapshot before it writes files. You can restore that snapshot later with `hd project revert`.
+
+## Hidden compatibility aliases
+
+HarnessDeck still accepts older top-level verbs for compatibility, but the grouped commands below are the supported public surface:
+
+| Hidden alias | Grouped command |
+| --- | --- |
+| `hd scan` | `hd project scan` |
+| `hd apply` | `hd project apply` |
+| `hd history` | `hd project history` |
+| `hd revert` | `hd project revert` |
+| `hd status` | `hd project status` |
+| `hd export` | `hd preset export` |
+| `hd import` | `hd preset import` |
+| `hd platforms` | `hd harness list` |
+
+Use `hd --help --show-hidden` if you need to inspect those aliases directly.
 
 ## Built-in presets
 
@@ -199,7 +218,7 @@ hd preset export my-setup --file ./team.harnessdeck.json --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
 
-On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation.
+On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation. These flags are mutually exclusive.
 
 Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset attach ... --type plugin` is the **plugin semver pin or range**, not the global version flag.
 
@@ -230,6 +249,18 @@ Configure how often remote metadata is refreshed in `~/.harnessdeck/config.json`
 
 Use `--refresh` on `plugin check` to force a marketplace/git refresh. Without it, harnessdeck uses cached metadata unless it is older than `refreshMaxAgeHours`.
 
+## Output modes and exit codes
+
+Most reporting commands accept `--format human|json`. Prefer `--format json` for automation and scripting.
+
+HarnessDeck intentionally uses non-zero exit codes for some actionable findings:
+
+| Exit code | Meaning | Examples |
+| --- | --- | --- |
+| `0` | Success / no actionable issue | `plugin check` with everything current |
+| `1` | Actionable finding or user-correctable error | outdated plugins, drift detected, invalid command input |
+| `2` | Strict validation failure during apply | `project apply --strict-plugin-versions` with mismatched plugin pins |
+
 ## Project maintenance and migration
 
 HarnessDeck keeps snapshots of generated project files for tracked repositories, which lets you inspect drift, sync alias harnesses, and move your local setup to another machine.
@@ -242,6 +273,13 @@ hd migrate import ./harnessdeck-migrate.tar.gz
 ```
 
 `project drift` compares the current working tree against the latest apply/sync snapshot. Migration archives export local preset bundles plus global harness preferences and `~/.harnessdeck/config.json`; cloud profiles remain in `cloud-profiles.json`.
+
+Project command preconditions:
+
+- `project history` and `project drift` require a git-backed project.
+- `project apply` can write files outside git, but snapshot/history support only works when the target project has a git `origin`.
+- `project revert` requires a snapshot ID from `project history`.
+- `harness project set` and `harness project status` require a git-backed project.
 
 ## Supported harnesses
 

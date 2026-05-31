@@ -50,4 +50,40 @@ describe("cloud CLI auth flow", () => {
     const afterLogout = await cloudProfiles.getCloudProfile("testprofile");
     expect(afterLogout.profile).toBeUndefined();
   });
+
+  it("returns empty JSON payloads when no cloud profile is configured", async () => {
+    const whoami = await runCli(["cloud", "whoami", "--format", "json"]);
+    const orgs = await runCli(["cloud", "orgs", "--format", "json"]);
+
+    expect(JSON.parse(whoami.stdout)).toEqual({});
+    expect(JSON.parse(orgs.stdout)).toEqual([]);
+  });
+
+  it("reports missing orgs when switching to an unknown organization", async () => {
+    await cloudProfiles.saveCloudProfile("testprofile", {
+      cloudBaseUrl: "https://api.example",
+      accessToken: "AT-XYZ",
+      refreshToken: "RT-XYZ",
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      scopes: [],
+    });
+
+    globalThis.fetch = mock().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => [{ id: "org1", slug: "org-slug", name: "Org" }],
+    }) as unknown as typeof fetch;
+
+    const result = await runCli([
+      "cloud",
+      "orgs",
+      "--profile",
+      "testprofile",
+      "--switch",
+      "missing-org",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Organization not found: missing-org");
+  });
 });
