@@ -429,6 +429,30 @@ describe("applier services", () => {
     }
   });
 
+  it("rejects global writes to symlinked file targets that escape the home root", async () => {
+    const context = await createInitializedTestContext("applier-global-file-symlink");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      const outsideFile = join(context.rootDir, "outside-file.json");
+      mkdirSync(join(context.homeDir, ".copilot"), { recursive: true });
+      writeFileSync(outsideFile, '{"outside":true}', "utf-8");
+      symlinkSync(outsideFile, join(context.homeDir, ".copilot/mcp-config.json"), "file");
+
+      await expect(
+        applier.materializeFiles(
+          [{ path: ".copilot/mcp-config.json", content: "{}" }],
+          context.homeDir,
+          { conflictPolicy: "replace" },
+        ),
+      ).rejects.toThrow(/outside root|symlink/i);
+
+      expect(readFileSync(outsideFile, "utf-8")).toBe('{"outside":true}');
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("preserves ownership for skipped files on partial snapshot reapply", async () => {
     const context = await createInitializedTestContext("applier-global-ownership");
 

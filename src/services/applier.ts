@@ -81,6 +81,13 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
   const fullPath = resolveMaterializedPath(rootPath, relativePath);
   const resolvedRoot = realpathSync(rootPath);
 
+  if (existsSync(fullPath)) {
+    const resolvedTarget = realpathSync(fullPath);
+    if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(`${resolvedRoot}${sep}`)) {
+      throw new Error(`Refusing to materialize path outside root via symlink: ${relativePath}`);
+    }
+  }
+
   let probePath = dirname(fullPath);
   while (!existsSync(probePath)) {
     const parentPath = dirname(probePath);
