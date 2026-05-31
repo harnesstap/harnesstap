@@ -130,6 +130,12 @@ describe("plugin-source-import service", () => {
     ).rejects.toThrow(/Invalid plugin manifest/);
   });
 
+  it("fails when a parsed plugin manifest has a non-string version", async () => {
+    await expect(
+      scanPluginSource(join(fixtureRoot, "invalid-version-plugin")),
+    ).rejects.toThrow(/Invalid plugin manifest/);
+  });
+
   it("fails clearly when marketplace plugins is not an array", async () => {
     await expect(
       scanPluginSource(
@@ -147,5 +153,29 @@ describe("plugin-source-import service", () => {
         ),
       ),
     ).rejects.toThrow(/Marketplace entry path must be a string/);
+  });
+
+  it("fails when marketplace name is missing a usable string", async () => {
+    await expect(
+      scanPluginSource(
+        join(
+          fixtureRoot,
+          "invalid-marketplace-name/.cursor-plugin/marketplace.json",
+        ),
+      ),
+    ).rejects.toThrow(/Invalid marketplace manifest/);
+  });
+
+  it("trims marketplace entry paths before resolving them", async () => {
+    const entries = await scanPluginSource(
+      join(fixtureRoot, "whitespace-marketplace/.cursor-plugin/marketplace.json"),
+    );
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      source_kind: "marketplace",
+      source_label: "whitespace-marketplace",
+      plugin_name: "cursor-team-kit",
+    });
   });
 });

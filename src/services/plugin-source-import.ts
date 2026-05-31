@@ -53,32 +53,46 @@ function readRequiredJson<T>(filePath: string, label: string): T {
 function validatePluginManifest(
   manifest: PluginManifest,
   manifestPath: string,
-): PluginManifest & { name: string } {
+): PluginManifest & { name: string; version?: string } {
   if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
+    throw new Error(`Invalid plugin manifest: ${manifestPath}`);
+  }
+  if (
+    manifest.version !== undefined &&
+    typeof manifest.version !== "string"
+  ) {
     throw new Error(`Invalid plugin manifest: ${manifestPath}`);
   }
 
   return {
     ...manifest,
     name: manifest.name.trim(),
+    version: manifest.version?.trim(),
   };
 }
 
 function validateMarketplaceManifest(
   manifest: MarketplaceManifest,
   manifestPath: string,
-): MarketplaceManifest & { plugins: MarketplacePluginEntry[] } {
+): MarketplaceManifest & { name: string; plugins: MarketplacePluginEntry[] } {
+  if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
+    throw new Error(`Invalid marketplace manifest: ${manifestPath}`);
+  }
   if (!Array.isArray(manifest.plugins) || manifest.plugins.length === 0) {
     throw new Error(`Invalid marketplace manifest: ${manifestPath}`);
   }
 
-  for (const entry of manifest.plugins) {
+  const plugins = manifest.plugins.map((entry) => {
     if (typeof entry?.path !== "string" || entry.path.trim().length === 0) {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
-  }
+    return { path: entry.path.trim() };
+  });
 
-  return manifest as MarketplaceManifest & { plugins: MarketplacePluginEntry[] };
+  return {
+    name: manifest.name.trim(),
+    plugins,
+  };
 }
 
 function readText(filePath: string): string | undefined {
@@ -396,8 +410,7 @@ export async function scanPluginSource(
     sourcePath,
   );
 
-  const marketplaceName =
-    manifest.name ?? basename(dirname(dirname(sourcePath)));
+  const marketplaceName = manifest.name;
   const manifestDir = dirname(sourcePath);
 
   return manifest.plugins.map((entry) => {

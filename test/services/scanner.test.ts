@@ -439,4 +439,26 @@ describe("scanner services", () => {
       await context.cleanup();
     }
   });
+
+  it("does not persist resources or snapshots from a parsed plugin manifest with invalid version", async () => {
+    const context = await createInitializedTestContext("scanner-plugin-invalid-version");
+
+    try {
+      const scanner = await import("../../src/services/scanner.ts");
+      const importedSnapshotModel = await import(
+        "../../src/models/imported-snapshot.ts"
+      );
+      const resourceModel = await import("../../src/models/resource.ts");
+
+      await expect(
+        scanner.scanAndPersistPluginSource(
+          join(pluginImportFixtureRoot, "invalid-version-plugin"),
+        ),
+      ).rejects.toThrow(/Invalid plugin manifest/);
+      expect(importedSnapshotModel.listImportedSnapshots()).toHaveLength(0);
+      expect(resourceModel.listResources()).toHaveLength(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
