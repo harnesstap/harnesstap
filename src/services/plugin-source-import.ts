@@ -50,6 +50,37 @@ function readRequiredJson<T>(filePath: string, label: string): T {
   throw new Error(`Malformed ${label}: ${filePath}`);
 }
 
+function validatePluginManifest(
+  manifest: PluginManifest,
+  manifestPath: string,
+): PluginManifest & { name: string } {
+  if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
+    throw new Error(`Invalid plugin manifest: ${manifestPath}`);
+  }
+
+  return {
+    ...manifest,
+    name: manifest.name.trim(),
+  };
+}
+
+function validateMarketplaceManifest(
+  manifest: MarketplaceManifest,
+  manifestPath: string,
+): MarketplaceManifest & { plugins: MarketplacePluginEntry[] } {
+  if (!Array.isArray(manifest.plugins) || manifest.plugins.length === 0) {
+    throw new Error(`Invalid marketplace manifest: ${manifestPath}`);
+  }
+
+  for (const entry of manifest.plugins) {
+    if (typeof entry?.path !== "string" || entry.path.trim().length === 0) {
+      throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
+    }
+  }
+
+  return manifest as MarketplaceManifest & { plugins: MarketplacePluginEntry[] };
+}
+
 function readText(filePath: string): string | undefined {
   try {
     return readFileSync(filePath, "utf-8");
@@ -95,9 +126,9 @@ function resolvePluginRoot(sourcePath: string): {
   const claudeManifestPath = join(sourcePath, ".claude-plugin", "plugin.json");
 
   if (existsSync(cursorManifestPath)) {
-    const manifest = readRequiredJson<PluginManifest>(
+    const manifest = validatePluginManifest(
+      readRequiredJson<PluginManifest>(cursorManifestPath, "plugin manifest"),
       cursorManifestPath,
-      "plugin manifest",
     );
     return {
       rootPath: sourcePath,
@@ -108,9 +139,9 @@ function resolvePluginRoot(sourcePath: string): {
   }
 
   if (existsSync(claudeManifestPath)) {
-    const manifest = readRequiredJson<PluginManifest>(
+    const manifest = validatePluginManifest(
+      readRequiredJson<PluginManifest>(claudeManifestPath, "plugin manifest"),
       claudeManifestPath,
-      "plugin manifest",
     );
     return {
       rootPath: sourcePath,
@@ -291,7 +322,7 @@ function scanPluginRoot(
   const { rootPath, manifestPath, sourcePluginKind, manifest } =
     resolvePluginRoot(sourcePath);
   const importedAt = new Date().toISOString();
-  const pluginName = manifest.name ?? basename(rootPath);
+  const pluginName = manifest.name;
   const sourceKind = opts?.sourceKind ?? sourcePluginKind;
   const sourceLabel = opts?.sourceLabel ?? pluginName;
   const pluginVersion = manifest.version;
@@ -360,20 +391,16 @@ export async function scanPluginSource(
     throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
   }
 
-  const manifest = readJson<MarketplaceManifest>(sourcePath);
-  if (!manifest?.plugins?.length) {
-    throw new Error(`Invalid marketplace manifest: ${sourcePath}`);
-  }
+  const manifest = validateMarketplaceManifest(
+    readRequiredJson<MarketplaceManifest>(sourcePath, "marketplace manifest"),
+    sourcePath,
+  );
 
   const marketplaceName =
     manifest.name ?? basename(dirname(dirname(sourcePath)));
   const manifestDir = dirname(sourcePath);
 
   return manifest.plugins.map((entry) => {
-    if (!entry.path) {
-      throw new Error(`Marketplace entry is missing path in ${sourcePath}`);
-    }
-
     return scanPluginRoot(join(manifestDir, entry.path), {
       sourceKind: "marketplace",
       sourceLabel: marketplaceName,

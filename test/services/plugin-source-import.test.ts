@@ -123,4 +123,29 @@ describe("plugin-source-import service", () => {
       /Malformed plugin manifest/,
     );
   });
+
+  it("fails when a parsed plugin manifest is missing a usable name", async () => {
+    await expect(
+      scanPluginSource(join(fixtureRoot, "missing-name-plugin")),
+    ).rejects.toThrow(/Invalid plugin manifest/);
+  });
+
+  it("fails clearly when marketplace plugins is not an array", async () => {
+    await expect(
+      scanPluginSource(
+        join(fixtureRoot, "invalid-marketplace/.cursor-plugin/marketplace.json"),
+      ),
+    ).rejects.toThrow(/Invalid marketplace manifest/);
+  });
+
+  it("fails clearly when a marketplace entry path is not a string", async () => {
+    await expect(
+      scanPluginSource(
+        join(
+          fixtureRoot,
+          "bad-entry-marketplace/.cursor-plugin/marketplace.json",
+        ),
+      ),
+    ).rejects.toThrow(/Marketplace entry path must be a string/);
+  });
 });
