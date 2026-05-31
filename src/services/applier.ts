@@ -260,7 +260,7 @@ export async function applyToGlobal(
 ): Promise<GlobalApplyResult> {
   const results = await generateFiles(resources, platforms, homeRoot, {
     ...options,
-    target: options.target ?? "global",
+    target: "global",
   });
   const allFiles = results.flatMap((result) => result.files);
   const materialized = await materializeFiles(allFiles, homeRoot, {

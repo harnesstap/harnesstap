@@ -348,6 +348,32 @@ describe("applier services", () => {
     }
   });
 
+  it("forces global target paths even when a project target override is supplied", async () => {
+    const context = await createInitializedTestContext("applier-global-force-target");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+
+      await applier.applyToGlobal(
+        [
+          makeResource({
+            type: "instruction",
+            name: "codex",
+            content: "# Global Codex",
+          }),
+        ],
+        ["codex"],
+        context.homeDir,
+        { conflictPolicy: "replace", target: "project" },
+      );
+
+      expect(existsSync(join(context.homeDir, ".codex/AGENTS.md"))).toBe(true);
+      expect(existsSync(join(context.homeDir, "AGENTS.md"))).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("stops prompting after the first cancel decision", async () => {
     const context = await createInitializedTestContext("applier-global-cancel-stop");
 
