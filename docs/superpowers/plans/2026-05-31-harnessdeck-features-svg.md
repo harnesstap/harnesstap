@@ -16,7 +16,7 @@
 - Create: `test/docs/harnessdeck-features-svg.test.ts`
 - Create: `docs/assets/harnessdeck-features.svg`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { readFile } from "node:fs/promises";
@@ -54,21 +54,21 @@ describe("HarnessDeck features SVG", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bun test test/docs/harnessdeck-features-svg.test.ts`
 Expected: FAIL with `ENOENT` because `docs/assets/harnessdeck-features.svg` does not exist yet.
 
-- [ ] **Step 3: Create the SVG asset**
+- [x] **Step 3: Create the SVG asset**
 
 Create `docs/assets/harnessdeck-features.svg` as a self-contained 1600x1000 SVG. Use a dark radial-gradient background, central HarnessDeck hub, connected harness nodes, and labeled feature cards for scan, SQLite library, presets, apply/sync, snapshots, drift detection, plugin governance, cloud sharing, and migration export.
 
-- [ ] **Step 4: Run focused test to verify it passes**
+- [x] **Step 4: Run focused test to verify it passes**
 
 Run: `bun test test/docs/harnessdeck-features-svg.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Run repository verification**
+- [x] **Step 5: Run repository verification**
 
 Run: `bun run lint && bun run typecheck && bun test test/docs/harnessdeck-features-svg.test.ts && bun run build`
 Expected: all commands pass.
