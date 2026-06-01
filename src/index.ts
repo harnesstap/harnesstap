@@ -279,10 +279,7 @@ function relativeDiscoveredPaths(
 }
 
 function renderGroupedCommandHelp(cmd: Command): string {
-  const commands = cmd.commands.filter((c) => {
-    const hidden = (c as { _hidden?: boolean })._hidden;
-    return !hidden;
-  });
+  const commands = cmd.commands;
 
   if (commands.length === 0) {
     return "";
