@@ -67,34 +67,34 @@ describe("plugin model", () => {
     }
   });
 
-  it("round-trips preset plugin rows", async () => {
-    const context = await createInitializedTestContext("plugin-preset-plugins");
+  it("round-trips layer plugin rows", async () => {
+    const context = await createInitializedTestContext("plugin-layer-plugins");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const pluginModel = await import("../../src/models/plugin.ts");
 
-      const preset = presetModel.createPreset({ name: "with-plugins-row" });
+      const layer = layerModel.createLayer({ name: "with-plugins-row" });
 
-      pluginModel.addPluginToPreset(preset.id, "@m/a", ">=1 <2");
-      pluginModel.addPluginToPreset(preset.id, "@m/b", "=3.4.5", {
+      pluginModel.addPluginToLayer(layer.id, "@m/a", ">=1 <2");
+      pluginModel.addPluginToLayer(layer.id, "@m/b", "=3.4.5", {
         embedOnExport: true,
       });
-      pluginModel.addPluginToPreset(preset.id, "@m/c", "*");
+      pluginModel.addPluginToLayer(layer.id, "@m/c", "*");
 
-      const rows = pluginModel.listPresetPlugins(preset.id);
+      const rows = pluginModel.listLayerPlugins(layer.id);
 
       expect(rows).toHaveLength(3);
 
       expect(rows.find((r) => r.ref === "@m/a")).toMatchObject({
-        preset_id: preset.id,
+        layer_id: layer.id,
         ref: "@m/a",
         version_constraint: ">=1 <2",
         embed_on_export: false,
       });
 
       expect(rows.find((r) => r.ref === "@m/b")).toMatchObject({
-        preset_id: preset.id,
+        layer_id: layer.id,
         ref: "@m/b",
         version_constraint: "=3.4.5",
         embed_on_export: true,
@@ -102,9 +102,9 @@ describe("plugin model", () => {
 
       expect(rows.map((r) => r.order)).toEqual(expect.arrayContaining([0, 1, 2]));
 
-      pluginModel.removePluginFromPreset(preset.id, "@m/b");
+      pluginModel.removePluginFromLayer(layer.id, "@m/b");
 
-      const afterRemove = pluginModel.listPresetPlugins(preset.id).map((r) => r.ref);
+      const afterRemove = pluginModel.listLayerPlugins(layer.id).map((r) => r.ref);
       expect(afterRemove).toEqual(expect.arrayContaining(["@m/a", "@m/c"]));
       expect(afterRemove).not.toContain("@m/b");
     } finally {

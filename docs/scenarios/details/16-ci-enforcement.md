@@ -1,10 +1,10 @@
-# Scenario 16: Enforce preset and plugin state in CI
+# Scenario 16: Enforce layer and plugin state in CI
 
 **Frequency: Occasional** (per-project; in CI it runs on every PR) · **Status: Shipped**
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when you want CI to fail if the project drifts away from its preset
+Use this when you want CI to fail if the project drifts away from its layer
 or its pinned plugin versions.
 
 Typical commands (each exits non-zero on a problem):

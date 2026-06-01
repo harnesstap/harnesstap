@@ -68,7 +68,7 @@ export interface CloudClient {
   listOrgs(): Promise<Record<string, unknown>[]>;
   searchLibraries(query: string): Promise<Record<string, unknown>[]>;
   downloadLibraryBundle(id: string, version?: string): Promise<{ version: string; body: string }>;
-  publishPresetBundle(metadata: Record<string, unknown>, bundleJson: string): Promise<Record<string, unknown>>;
+  publishLayerBundle(metadata: Record<string, unknown>, bundleJson: string): Promise<Record<string, unknown>>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 }
@@ -159,14 +159,14 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       const body = await res.text();
       return { version: version as string, body };
     },
-    async publishPresetBundle(metadata: Record<string, unknown>, bundleJson: string) {
+    async publishLayerBundle(metadata: Record<string, unknown>, bundleJson: string) {
       const form = new FormData();
       form.set("metadata", JSON.stringify(metadata));
       // Some FormData implementations (Node test env) require the value to be a Blob when a filename is provided.
       const bundleBlob = typeof Blob !== 'undefined' ? new Blob([bundleJson], { type: 'application/json' }) : undefined;
       if (bundleBlob) form.set("bundle", bundleBlob, "bundle.json");
       else form.set("bundle", bundleJson);
-      const res = await authFetch(`${state.baseUrl}/presets/publish`, { method: "POST", body: form });
+      const res = await authFetch(`${state.baseUrl}/layers/publish`, { method: "POST", body: form });
       if (!res.ok) throw new Error(`publish failed: ${res.status}`);
       const data = await res.json() as Record<string, unknown>;
       return data;

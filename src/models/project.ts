@@ -1,6 +1,6 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
-import type { Project, ProjectPreset } from "../types.js";
+import type { Project, ProjectLayer } from "../types.js";
 
 export function createProject(input: {
   git_origin: string;
@@ -56,25 +56,25 @@ export function listProjects(): Project[] {
   return db.prepare("SELECT * FROM projects ORDER BY name").all() as Project[];
 }
 
-export function applyPresetToProject(input: {
+export function applyLayerToProject(input: {
   project_id: string;
-  preset_id: string;
+  layer_id: string;
   platforms: string[];
 }): void {
   const db = getDb();
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT OR REPLACE INTO project_presets (project_id, preset_id, platforms, applied_at)
+    `INSERT OR REPLACE INTO project_layers (project_id, layer_id, platforms, applied_at)
      VALUES (?, ?, ?, ?)`,
-  ).run(input.project_id, input.preset_id, JSON.stringify(input.platforms), now);
+  ).run(input.project_id, input.layer_id, JSON.stringify(input.platforms), now);
 }
 
-export function getProjectPresets(projectId: string): ProjectPreset[] {
+export function getProjectLayers(projectId: string): ProjectLayer[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT * FROM project_presets WHERE project_id = ? ORDER BY applied_at DESC")
-    .all(projectId) as Array<Omit<ProjectPreset, "platforms"> & { platforms: string }>;
+    .prepare("SELECT * FROM project_layers WHERE project_id = ? ORDER BY applied_at DESC")
+    .all(projectId) as Array<Omit<ProjectLayer, "platforms"> & { platforms: string }>;
 
   return rows.map((row) => ({
     ...row,

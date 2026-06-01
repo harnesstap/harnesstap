@@ -1,4 +1,4 @@
-# Scenario 15: Apply a preset to a subset of target platforms
+# Scenario 15: Apply a layer to a subset of target platforms
 
 **Frequency: Common** · **Status: Shipped**
 
@@ -22,5 +22,5 @@ a follow-up run.
 
 ## Occasional
 
-Reach for these during initial setup, when curating presets, when sharing
+Reach for these during initial setup, when curating layers, when sharing
 baselines, or when integrating HarnessDeck into tooling.

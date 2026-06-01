@@ -189,7 +189,7 @@ export async function syncProject(
 
   if (gitOrigin && projectId) {
     const snapshotState: SnapshotState = {
-      presets: [],
+      layers: [],
       resources,
       platform_files: Object.fromEntries(
         allGenerated.map((result) => [

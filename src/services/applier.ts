@@ -9,9 +9,9 @@ import {
   recordImportedSnapshotInstall,
 } from "../models/imported-snapshot.js";
 import { getResourcesByIds } from "../models/resource.js";
-import { applyClaudePresetExtensions } from "../platforms/claude-preset-extensions.js";
+import { applyClaudeLayerExtensions } from "../platforms/claude-layer-extensions.js";
 import type {
-  ClaudePresetConfig,
+  ClaudeLayerConfig,
   Resource,
   SerializedFile,
   SerializeOptions,
@@ -50,7 +50,7 @@ export interface MaterializeFilesOptions {
 }
 
 export interface GenerateFilesOptions extends SerializeOptions {
-  claudeConfig?: ClaudePresetConfig;
+  claudeConfig?: ClaudeLayerConfig;
 }
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
@@ -141,7 +141,7 @@ export async function generateFiles(
   resources: Resource[],
   platforms: string[],
   projectRoot: string,
-  claudeConfigOrOptions?: ClaudePresetConfig | GenerateFilesOptions,
+  claudeConfigOrOptions?: ClaudeLayerConfig | GenerateFilesOptions,
   maybeOptions?: GenerateFilesOptions,
 ): Promise<ApplyResult[]> {
   const options =
@@ -155,7 +155,7 @@ export async function generateFiles(
     maybeOptions?.claudeConfig ??
     ("target" in (claudeConfigOrOptions ?? {}) || "claudeConfig" in (claudeConfigOrOptions ?? {})
       ? (claudeConfigOrOptions as GenerateFilesOptions | undefined)?.claudeConfig
-      : (claudeConfigOrOptions as ClaudePresetConfig | undefined));
+      : (claudeConfigOrOptions as ClaudeLayerConfig | undefined));
 
   const results: ApplyResult[] = [];
   const target = options.target ?? "project";
@@ -164,7 +164,7 @@ export async function generateFiles(
     const serializer = getPlatformSerializer(pid);
     let files = await serializer.serialize(resources, projectRoot, { target });
     if (pid === "claude-code" && claudeConfig) {
-      files = applyClaudePresetExtensions(files, claudeConfig, projectRoot);
+      files = applyClaudeLayerExtensions(files, claudeConfig, projectRoot);
     }
     results.push({ platformId: pid, files });
   }
@@ -340,7 +340,7 @@ export async function applyToProject(
   resources: Resource[],
   platforms: string[],
   projectRoot: string,
-  claudeConfig?: ClaudePresetConfig,
+  claudeConfig?: ClaudeLayerConfig,
 ): Promise<ApplyResult[]> {
   const results = await generateFiles(resources, platforms, projectRoot, claudeConfig, {
     target: "project",

@@ -52,16 +52,16 @@ export function getProjectPluginState(
   };
 }
 
-export interface PresetPluginRow {
-  preset_id: string;
+export interface LayerPluginRow {
+  layer_id: string;
   ref: string;
   version_constraint: string;
   order: number;
   embed_on_export: boolean;
 }
 
-export function addPluginToPreset(
-  presetId: string,
+export function addPluginToLayer(
+  layerId: string,
   ref: string,
   versionConstraint: string,
   opts?: { embedOnExport?: boolean; order?: number },
@@ -72,41 +72,41 @@ export function addPluginToPreset(
   if (order === undefined) {
     const maxOrder = db
       .prepare(
-        'SELECT COALESCE(MAX("order"), -1) as max_order FROM preset_plugins WHERE preset_id = ?',
+        'SELECT COALESCE(MAX("order"), -1) as max_order FROM layer_plugins WHERE layer_id = ?',
       )
-      .get(presetId) as { max_order: number };
+      .get(layerId) as { max_order: number };
     order = maxOrder.max_order + 1;
   }
 
   db.prepare(
-    `INSERT INTO preset_plugins (preset_id, ref, version_constraint, "order", embed_on_export)
+    `INSERT INTO layer_plugins (layer_id, ref, version_constraint, "order", embed_on_export)
      VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(preset_id, ref) DO UPDATE SET
+     ON CONFLICT(layer_id, ref) DO UPDATE SET
        version_constraint = excluded.version_constraint,
        "order" = excluded."order",
        embed_on_export = excluded.embed_on_export`,
-  ).run(presetId, ref, versionConstraint, order, embed);
+  ).run(layerId, ref, versionConstraint, order, embed);
 }
 
-export function removePluginFromPreset(presetId: string, ref: string): void {
+export function removePluginFromLayer(layerId: string, ref: string): void {
   const db = getDb();
-  db.prepare(`DELETE FROM preset_plugins WHERE preset_id = ? AND ref = ?`).run(
-    presetId,
+  db.prepare(`DELETE FROM layer_plugins WHERE layer_id = ? AND ref = ?`).run(
+    layerId,
     ref,
   );
 }
 
-export function listPresetPlugins(presetId: string): PresetPluginRow[] {
+export function listLayerPlugins(layerId: string): LayerPluginRow[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT preset_id, ref, version_constraint, "order", embed_on_export
-       FROM preset_plugins
-       WHERE preset_id = ?
+      `SELECT layer_id, ref, version_constraint, "order", embed_on_export
+       FROM layer_plugins
+       WHERE layer_id = ?
        ORDER BY "order" ASC`,
     )
-    .all(presetId) as Array<{
-      preset_id: string;
+    .all(layerId) as Array<{
+      layer_id: string;
       ref: string;
       version_constraint: string;
       order: number;
@@ -114,7 +114,7 @@ export function listPresetPlugins(presetId: string): PresetPluginRow[] {
     }>;
 
   return rows.map((r) => ({
-    preset_id: r.preset_id,
+    layer_id: r.layer_id,
     ref: r.ref,
     version_constraint: r.version_constraint,
     order: r.order,

@@ -4,40 +4,40 @@ This document describes the intended behavior of `harnessdeck`.
 
 ## Product summary
 
-`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It collects agent configuration into canonical local resources, groups those resources into reusable presets, and syncs those presets into project directories across supported agent harnesses.
+`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It collects agent configuration into canonical local resources, groups those resources into reusable layers, and syncs those layers into project directories across supported agent harnesses.
 
 An **agent harness** is the complete infrastructure that wraps around an LLM and makes it a functional agent. In practice, that includes things like skills, MCP servers, hooks, plugins, rules, agent manifests, commands, and harness-specific configuration files.
 
 The product currently supports these main workflows:
 
-- Initialize local state, seed built-in presets, discover supported home-directory defaults, and choose global harness preferences.
+- Initialize local state, seed built-in layers, discover supported home-directory defaults, and choose global harness preferences.
 - Scan an existing repository and import agent configuration into a local database.
-- Group imported resources into versioned presets.
-- Diff, doctor, export, import, publish, search, install, or derive presets from a project scan.
-- Record preset dependencies and Claude plugin version pins alongside preset resources.
-- Apply one or more presets, a local bundle file, or a bundle URL to a project.
+- Group imported resources into versioned layers.
+- Diff, doctor, export, import, publish, search, install, or derive layers from a project scan.
+- Record layer dependencies and Claude plugin version pins alongside layer resources.
+- Apply one or more layers, a local bundle file, or a bundle URL to a project.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Inspect plugin inventory and run supported plugin lifecycle commands.
-- Export or import a machine-migration archive of local presets, harness preferences, and config.
+- Export or import a machine-migration archive of local layers, harness preferences, and config.
 
 ## Core concepts
 
 ```mermaid
 flowchart LR
   A[Home defaults and project files] --> B[Canonical resources]
-  B --> C[Reusable presets]
+  B --> C[Reusable layers]
   C --> D[Selected harness outputs]
 ```
 
 The CLI uses a small set of concepts consistently across commands.
 
 - `resource`: a single canonical item such as an instruction, skill, rule, MCP server definition, permission rule, hook, agent, command, environment variable, or model configuration.
-- `preset`: an ordered collection of resources. Presets are the main reusable unit.
+- `layer`: an ordered collection of resources. Layers are the main reusable unit.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
-- `main harness`: the project's canonical harness reference. Imports, preset application, and sync planning normalize through this harness first.
+- `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses should use symlinks when the file layout allows it, and generated copies otherwise.
 - `project`: a git-backed repository tracked by normalized git origin.
-- `snapshot`: a saved copy of files generated during preset application or project sync.
+- `snapshot`: a saved copy of files generated during layer application or project sync.
 
 ## Command surface
 
@@ -47,34 +47,34 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in presets, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
-| `harnessdeck preset ...` | Manages reusable presets, preset bundles, remote preset catalog operations, and preset comparison/validation helpers. |
-| `harnessdeck migrate ...` | Exports or imports a machine-migration archive containing preset bundles plus local HarnessDeck preferences and config. |
+| `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in layers, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
+| `harnessdeck layer ...` | Manages reusable layers, layer bundles, remote layer catalog operations, and layer comparison/validation helpers. |
+| `harnessdeck migrate ...` | Exports or imports a machine-migration archive containing layer bundles plus local HarnessDeck preferences and config. |
 | `harnessdeck resource ...` | Lists, shows, or deletes canonical resources stored in SQLite. |
-| `harnessdeck project ...` | Scans projects, applies presets, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
+| `harnessdeck project ...` | Scans projects, applies layers, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
 | `harnessdeck harness list` | Lists registered harness targets. |
 | `harnessdeck harness ...` | Manages global and project-scoped main/alias harness preferences. |
 | `harnessdeck plugin ...` | Shows Claude plugin inventory and runs lifecycle commands such as installed/check/update/refresh. |
 | `harnessdeck cloud ...` | Authenticates with Harness cloud and manages local cloud profiles. |
 
-### `preset` subcommands
+### `layer` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck preset create` | Creates a preset with optional description and tags. |
-| `harnessdeck preset list` | Lists locally stored presets. |
-| `harnessdeck preset show` | Shows preset metadata, resources, dependencies, and plugin pins. |
-| `harnessdeck preset attach <preset> <selector>` | Adds a typed attachment to a preset. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for preset dependencies. |
-| `harnessdeck preset detach <preset> <selector>` | Removes a typed attachment from a preset. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
-| `harnessdeck preset delete` | Deletes a preset by selector. |
-| `harnessdeck preset export` | Writes a portable JSON bundle for a preset (`urn:harnessdeck:bundle:v1`), with optional embedded Claude plugin trees. |
-| `harnessdeck preset import` | Imports a preset bundle into the local database. |
-| `harnessdeck preset search` | Searches the remote preset catalog through the configured cloud profile. |
-| `harnessdeck preset add [selector]` | Downloads a remote preset bundle and imports it into the local database. Accepts the canonical `org/library[@version]` selector, and on TTY launches interactive remote search when no selector is provided. |
-| `harnessdeck preset publish` | Publishes a local preset to the remote catalog. |
-| `harnessdeck preset diff` | Compares two local presets, or a preset and a bundle file, across metadata, resources, dependencies, and plugin pins. |
-| `harnessdeck preset doctor` | Diagnoses a preset for duplicate resources, empty content, malformed plugin metadata, and related issues. |
-| `harnessdeck preset from-project` | Scans a project and creates a preset from the imported resources. |
+| `harnessdeck layer create` | Creates a layer with optional description and tags. |
+| `harnessdeck layer list` | Lists locally stored layers. |
+| `harnessdeck layer show` | Shows layer metadata, resources, dependencies, and plugin pins. |
+| `harnessdeck layer attach <layer> <selector>` | Adds a typed attachment to a layer. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for layer dependencies. |
+| `harnessdeck layer detach <layer> <selector>` | Removes a typed attachment from a layer. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
+| `harnessdeck layer delete` | Deletes a layer by selector. |
+| `harnessdeck layer export` | Writes a portable JSON bundle for a layer (`urn:harnessdeck:bundle:v1`), with optional embedded Claude plugin trees. |
+| `harnessdeck layer import` | Imports a layer bundle into the local database. |
+| `harnessdeck layer search` | Searches the remote layer catalog through the configured cloud profile. |
+| `harnessdeck layer add [selector]` | Downloads a remote layer bundle and imports it into the local database. Accepts the canonical `org/library[@version]` selector, and on TTY launches interactive remote search when no selector is provided. |
+| `harnessdeck layer publish` | Publishes a local layer to the remote catalog. |
+| `harnessdeck layer diff` | Compares two local layers, or a layer and a bundle file, across metadata, resources, dependencies, and plugin pins. |
+| `harnessdeck layer doctor` | Diagnoses a layer for duplicate resources, empty content, malformed plugin metadata, and related issues. |
+| `harnessdeck layer from-project` | Scans a project and creates a layer from the imported resources. |
 
 ### `resource` subcommands
 
@@ -89,12 +89,12 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | Command | Current behavior |
 | --- | --- |
 | `harnessdeck project scan [path]` | Detects supported harnesses in a project, imports discovered resources, persists Claude plugin inventory when possible, and registers the project when a git origin exists. |
-| `harnessdeck project apply <presets...>` | Applies one or more preset selectors, a local bundle file, or a bundle URL to a project; serializes files for each selected/detected platform; snapshots tracked projects before writing. |
+| `harnessdeck project apply <layers...>` | Applies one or more layer selectors, a local bundle file, or a bundle URL to a project; serializes files for each selected/detected platform; snapshots tracked projects before writing. |
 | `harnessdeck project drift` | Compares the current project files against the latest apply/sync snapshot. |
 | `harnessdeck project sync [path]` | Re-materializes alias harness outputs from the on-disk main harness reference, using symlinks when possible and copies otherwise. |
 | `harnessdeck project history` | Lists stored snapshots for a tracked project. |
 | `harnessdeck project revert [snapshot-id]` | Restores files captured in a saved snapshot. |
-| `harnessdeck project status [path]` | Shows detected harnesses, tracked presets, snapshots, and configured harness preferences for a project. |
+| `harnessdeck project status [path]` | Shows detected harnesses, tracked layers, snapshots, and configured harness preferences for a project. |
 
 ### `harness` subcommands
 
@@ -129,7 +129,7 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck migrate export <file>` | Exports local presets as bundle files together with global harness preferences and config. |
+| `harnessdeck migrate export <file>` | Exports local layers as bundle files together with global harness preferences and config. |
 | `harnessdeck migrate import <file>` | Imports a migration archive produced by `migrate export`. |
 
 **Plugin check/update** behavior and rollout are documented in [docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md). Inventory and bundle format are specified in [docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md).
@@ -141,9 +141,9 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 The init flow works in this order:
 
 1. Initialize the local database.
-2. Seed the built-in starter presets.
+2. Seed the built-in starter layers.
 3. Discover supported harness configuration already present in the user's home directory and import what it finds.
-4. Choose the **main harness** for future imports, preset application, and sync operations.
+4. Choose the **main harness** for future imports, layer application, and sync operations.
 5. Choose any additional supported harnesses.
 6. Mark those additional harnesses as **alias harnesses** and prefer symlinked materialization whenever the file layout and filesystem support it.
 
@@ -153,7 +153,7 @@ After init, users can update the global record with `harnessdeck harness set` or
 
 ## Wizard mode
 
-Several noun-grouped commands support wizard mode for interactive use, including `preset add`, `preset show`, `preset delete`, `preset from-project`, `project apply`, and `resource delete`.
+Several noun-grouped commands support wizard mode for interactive use, including `layer add`, `layer show`, `layer delete`, `layer from-project`, `project apply`, and `resource delete`.
 
 Wizard mode triggers when all of these are true:
 
@@ -193,12 +193,12 @@ Named Harness cloud profiles are stored outside SQLite in `~/.harnessdeck/cloud-
 The schema should include these logical tables:
 
 - `resources`: canonical configuration items.
-- `presets`: versioned named collections of resources.
-- `preset_resources`: ordered many-to-many link table between presets and resources.
-- `preset_dependencies`: ordered dependency metadata for presets.
-- `preset_plugins`: Claude plugin version pins associated with presets.
+- `layers`: versioned named collections of resources.
+- `layer_resources`: ordered many-to-many link table between layers and resources.
+- `layer_dependencies`: ordered dependency metadata for layers.
+- `layer_plugins`: Claude plugin version pins associated with layers.
 - `projects`: tracked repositories keyed by normalized git origin.
-- `project_presets`: which presets have been applied to which projects.
+- `project_layers`: which layers have been applied to which projects.
 - `harness_preferences`: the global main/alias harness record.
 - `project_harnesses`: the main harness, alias harnesses, and materialization strategy for each tracked project.
 - `project_plugin_state`: persisted committed/effective Claude plugin inventory per tracked project.
@@ -234,13 +234,13 @@ The canonical model is broader than any single harness format, but it remains sm
 
 Metadata is stored as JSON and varies by resource type.
 
-### Preset model
+### Layer model
 
-Presets are the shareable unit. A preset has a unique `(name, version)`, description, tag list, optional Claude marketplace/plugin config, ordered resources, optional plugin pins, and optional dependency metadata. Resource order is stored in the join table and is preserved during serialization.
+Layers are the shareable unit. A layer has a unique `(name, version)`, description, tag list, optional Claude marketplace/plugin config, ordered resources, optional plugin pins, and optional dependency metadata. Resource order is stored in the join table and is preserved during serialization.
 
-CLI preset selectors may refer to a preset by ULID, by bare name (highest local version wins), or by `name@constraint` (highest compatible local version wins).
+CLI layer selectors may refer to a layer by ULID, by bare name (highest local version wins), or by `name@constraint` (highest compatible local version wins).
 
-Preset bundles store canonical resources directly. `project apply` serializes those canonical resources into the requested or detected platforms, while alias harnesses remain derived outputs rather than independent preset variants.
+Layer bundles store canonical resources directly. `project apply` serializes those canonical resources into the requested or detected platforms, while alias harnesses remain derived outputs rather than independent layer variants.
 
 ## Agent harness model
 
@@ -310,7 +310,7 @@ When one supported harness already exists in a project, that harness becomes the
 
 ### Apply
 
-`harnessdeck project apply` accepts one or more local preset selectors, a local bundle file, or a bundle URL. When multiple local presets are provided, later presets override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs.
+`harnessdeck project apply` accepts one or more local layer selectors, a local bundle file, or a bundle URL. When multiple local layers are provided, later layers override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs.
 
 The command serializes resources for the requested or detected platforms and, when the target has a git origin, updates tracked project metadata and stores a snapshot so later drift/revert/sync operations have a reference point.
 
@@ -336,15 +336,15 @@ The sync rules are:
 
 ### Import and export
 
-Preset export and import use a JSON bundle format with schema identifier `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains exactly one preset definition, a flat list of resources, preset plugin pins (`plugins[]`), optional inlined plugin trees (`embedded_plugins[]`, for example when exporting with `--embed-plugins`), and optional dependency metadata (`dependencies[]`). Bundles may also include an optional top-level `claude` object with Claude Code marketplace and plugin configuration (`extraKnownMarketplaces` and `enabledPlugins` semantics). Older hand-written bundles without `plugins`, `embedded_plugins`, or `dependencies` import as empty arrays.
+Layer export and import use a JSON bundle format with schema identifier `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains exactly one layer definition, a flat list of resources, layer plugin pins (`plugins[]`), optional inlined plugin trees (`embedded_plugins[]`, for example when exporting with `--embed-plugins`), and optional dependency metadata (`dependencies[]`). Bundles may also include an optional top-level `claude` object with Claude Code marketplace and plugin configuration (`extraKnownMarketplaces` and `enabledPlugins` semantics). Older hand-written bundles without `plugins`, `embedded_plugins`, or `dependencies` import as empty arrays.
 
 Internal database IDs, timestamps, and `source` fields are not exported.
 
-When importing a preset bundle, `harnessdeck` creates a local preset together with its canonical resources, plugin pins, and dependency metadata. If the bundle carries embedded plugin trees, those trees are written into the selected target directory during import/apply of that bundle.
+When importing a layer bundle, `harnessdeck` creates a local layer together with its canonical resources, plugin pins, and dependency metadata. If the bundle carries embedded plugin trees, those trees are written into the selected target directory during import/apply of that bundle.
 
 ### Migration archives
 
-`harnessdeck migrate export` writes either a `.json` file or a tar.gz archive containing a manifest, exported preset bundles, the global harness preference record, and `config.json`. `harnessdeck migrate import` restores those artifacts on another machine.
+`harnessdeck migrate export` writes either a `.json` file or a tar.gz archive containing a manifest, exported layer bundles, the global harness preference record, and `config.json`. `harnessdeck migrate import` restores those artifacts on another machine.
 
 Migration archives do not include tracked project records, snapshots, or cloud profiles.
 
@@ -354,7 +354,7 @@ Harness cloud authentication stores named profiles in `~/.harnessdeck/cloud-prof
 
 - `harnessdeck cloud login` performs device authentication and saves a local profile.
 - `harnessdeck cloud whoami`, `cloud orgs`, and `cloud logout` inspect, switch, or remove those local profiles.
-- `harnessdeck preset search`, `preset add`, and `preset publish` use the selected cloud profile to interact with the remote preset catalog.
+- `harnessdeck layer search`, `layer add`, and `layer publish` use the selected cloud profile to interact with the remote layer catalog.
 
 ## Build, test, and release workflow
 
@@ -387,8 +387,8 @@ This section captures the biggest constraints in the current direction.
 - Only a subset of registered harnesses will have fully native serializers at first.
 - Generic harness support may remain path-driven and intentionally shallow.
 - Sync writes files directly and does not yet provide interactive conflict resolution.
-- Export and import operate on one preset bundle at a time.
-- Preset dependency metadata is stored, shown, diffed, and exported/imported, but `project apply` does not yet expand dependency graphs automatically.
+- Export and import operate on one layer bundle at a time.
+- Layer dependency metadata is stored, shown, diffed, and exported/imported, but `project apply` does not yet expand dependency graphs automatically.
 - Plugin lifecycle (`plugin check|update|refresh`) delegates to harness-native tooling; harnessdeck does not host its own plugin registry or install flow.
 
 ## Near-term direction

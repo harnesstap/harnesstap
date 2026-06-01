@@ -4,7 +4,7 @@ import { runCli } from "../helpers/cli.ts";
 describe("CLI help and command organization", () => {
   it("shows grouped command help without throwing when no subcommand is provided", async () => {
     const groupedCommands = [
-      ["preset"],
+      ["layer"],
       ["resource"],
       ["project"],
       ["plugin"],
@@ -48,8 +48,8 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("keeps removed preset subcommands as unknown commands", async () => {
-    const result = runCli(["preset", "validate", "empty-preset"]);
+  it("keeps removed layer subcommands as unknown commands", async () => {
+    const result = runCli(["layer", "validate", "empty-layer"]);
     await expect(result).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
@@ -133,12 +133,12 @@ describe("CLI help and command organization", () => {
   it("shows grouped commands in help and hides legacy top-level verbs", async () => {
     const help = await runCli(["-h"]);
     const projectHelp = await runCli(["project", "-h"]);
-    const presetHelp = await runCli(["preset", "-h"]);
+    const layerHelp = await runCli(["layer", "-h"]);
 
     const harnessHelp = await runCli(["harness", "-h"]);
 
     expect(help.stdout).toContain("project");
-    expect(help.stdout).toContain("preset");
+    expect(help.stdout).toContain("layer");
     expect(help.stdout).toContain("resource");
     expect(help.stdout).toContain("harness");
     expect(help.stdout).not.toContain("\n  platform");
@@ -147,16 +147,16 @@ describe("CLI help and command organization", () => {
     expect(harnessHelp.stdout).toContain("list");
     expect(harnessHelp.stdout).toContain("project");
     expect(help.stdout).not.toContain("help [command]");
-    expect(help.stdout).not.toContain("apply [options] <preset>");
+    expect(help.stdout).not.toContain("apply [options] <layer>");
     expect(help.stdout).not.toContain("history [options]");
     expect(help.stdout).not.toContain("revert [snapshot-id]");
-    expect(help.stdout).not.toContain("export [options] <preset>");
+    expect(help.stdout).not.toContain("export [options] <layer>");
     expect(help.stdout).not.toContain("import <file>");
     expect(help.stdout).not.toContain("\n  platforms");
     expect(help.stdout).not.toContain("status [path]");
     expect(help.stdout).not.toContain("scan [options] [path]");
     expect(projectHelp.stdout).not.toContain("help [command]");
-    expect(presetHelp.stdout).not.toContain("help [command]");
+    expect(layerHelp.stdout).not.toContain("help [command]");
     // cloud command group should exist in top-level help
     expect(help.stdout).toContain("cloud");
     const cloudHelp = await runCli(["cloud", "-h"]);
@@ -166,28 +166,28 @@ describe("CLI help and command organization", () => {
   });
 
   it("does not append [options] to subcommands in grouped help", async () => {
-    const presetHelp = await runCli(["preset", "--help"]);
+    const layerHelp = await runCli(["layer", "--help"]);
     
     // Should show arguments but not [options] for subcommands
-    expect(presetHelp.stdout).toContain("show [name]");
-    expect(presetHelp.stdout).toContain("publish <preset>");
-    expect(presetHelp.stdout).toContain("export <preset>");
+    expect(layerHelp.stdout).toContain("show [name]");
+    expect(layerHelp.stdout).toContain("publish <layer>");
+    expect(layerHelp.stdout).toContain("export <layer>");
     
     // Should NOT contain [options] in the command name column
-    expect(presetHelp.stdout).not.toContain("show [options]");
-    expect(presetHelp.stdout).not.toContain("publish [options]");
-    expect(presetHelp.stdout).not.toContain("export [options]");
+    expect(layerHelp.stdout).not.toContain("show [options]");
+    expect(layerHelp.stdout).not.toContain("publish [options]");
+    expect(layerHelp.stdout).not.toContain("export [options]");
   });
 
-  it("exposes attach/detach commands with updated descriptions in preset help", async () => {
-    const presetHelp = await runCli(["preset", "--help"]);
+  it("exposes attach/detach commands with updated descriptions in layer help", async () => {
+    const layerHelp = await runCli(["layer", "--help"]);
     
     // Should show attach and detach commands
-    expect(presetHelp.stdout).toContain("attach");
-    expect(presetHelp.stdout).toContain("detach");
+    expect(layerHelp.stdout).toContain("attach");
+    expect(layerHelp.stdout).toContain("detach");
     
     // Should describe from-project correctly
-    expect(presetHelp.stdout).toContain("from-project");
-    expect(presetHelp.stdout).toContain("Scan current folder and create a preset from its resources");
+    expect(layerHelp.stdout).toContain("from-project");
+    expect(layerHelp.stdout).toContain("Scan current folder and create a layer from its resources");
   });
 });

@@ -4,7 +4,7 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when a preset write produced files you want to inspect or undo.
+Use this when a layer write produced files you want to inspect or undo.
 
 Typical commands:
 
