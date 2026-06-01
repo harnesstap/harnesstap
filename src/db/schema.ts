@@ -23,7 +23,7 @@ const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
     CREATE INDEX IF NOT EXISTS idx_resources_name ON resources(name);
 
-    CREATE TABLE IF NOT EXISTS presets (
+    CREATE TABLE IF NOT EXISTS layers (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL UNIQUE,
       description TEXT NOT NULL DEFAULT '',
@@ -33,11 +33,11 @@ const MIGRATIONS: Record<number, string> = {
       updated_at  TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS preset_resources (
-      preset_id   TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS layer_resources (
+      layer_id   TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
       "order"     INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (preset_id, resource_id)
+      PRIMARY KEY (layer_id, resource_id)
     );
 
     CREATE TABLE IF NOT EXISTS projects (
@@ -48,12 +48,12 @@ const MIGRATIONS: Record<number, string> = {
       created_at  TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS project_presets (
+    CREATE TABLE IF NOT EXISTS project_layers (
       project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-      preset_id   TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+      layer_id   TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       platforms   TEXT NOT NULL DEFAULT '[]',
       applied_at  TEXT NOT NULL,
-      PRIMARY KEY (project_id, preset_id)
+      PRIMARY KEY (project_id, layer_id)
     );
 
     CREATE TABLE IF NOT EXISTS snapshots (
@@ -91,7 +91,7 @@ const MIGRATIONS: Record<number, string> = {
   `,
 
   3: `
-    ALTER TABLE presets ADD COLUMN claude_config TEXT NOT NULL DEFAULT '{}';
+    ALTER TABLE layers ADD COLUMN claude_config TEXT NOT NULL DEFAULT '{}';
   `,
 
   4: `
@@ -104,18 +104,18 @@ const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (project_id, harness)
     );
 
-    CREATE TABLE IF NOT EXISTS preset_plugins (
-      preset_id            TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS layer_plugins (
+      layer_id            TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       ref                  TEXT NOT NULL,
       version_constraint   TEXT NOT NULL,
       "order"              INTEGER NOT NULL DEFAULT 0,
       embed_on_export      INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (preset_id, ref)
+      PRIMARY KEY (layer_id, ref)
     );
   `,
 
   5: `
-    CREATE TABLE presets_new (
+    CREATE TABLE layers_new (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL,
       version     TEXT NOT NULL DEFAULT '1.0.0',
@@ -127,26 +127,26 @@ const MIGRATIONS: Record<number, string> = {
       UNIQUE(name, version)
     );
 
-    INSERT INTO presets_new (id, name, version, description, tags, claude_config, created_at, updated_at)
-      SELECT id, name, '1.0.0', description, tags, claude_config, created_at, updated_at FROM presets;
+    INSERT INTO layers_new (id, name, version, description, tags, claude_config, created_at, updated_at)
+      SELECT id, name, '1.0.0', description, tags, claude_config, created_at, updated_at FROM layers;
 
-    DROP TABLE presets;
+    DROP TABLE layers;
 
-    ALTER TABLE presets_new RENAME TO presets;
+    ALTER TABLE layers_new RENAME TO layers;
 
-    CREATE TABLE IF NOT EXISTS preset_dependencies (
-      preset_id           TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS layer_dependencies (
+      layer_id           TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       dependency_name     TEXT NOT NULL,
       version_constraint  TEXT NOT NULL,
       "order"             INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (preset_id, dependency_name)
+      PRIMARY KEY (layer_id, dependency_name)
     );
   `,
 
   6: `
-    ALTER TABLE presets ADD COLUMN source_path TEXT NOT NULL DEFAULT '';
-    ALTER TABLE presets ADD COLUMN source_hash TEXT NOT NULL DEFAULT '';
-    ALTER TABLE presets ADD COLUMN source_present INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE layers ADD COLUMN source_path TEXT NOT NULL DEFAULT '';
+    ALTER TABLE layers ADD COLUMN source_hash TEXT NOT NULL DEFAULT '';
+    ALTER TABLE layers ADD COLUMN source_present INTEGER NOT NULL DEFAULT 1;
 
     CREATE TABLE projects_new (
       id          TEXT PRIMARY KEY,

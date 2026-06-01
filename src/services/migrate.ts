@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { getHarnessdeckDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
-import { listPresets } from "../models/preset.js";
+import { listLayers } from "../models/layer.js";
 import { exportToFile, importFromFile } from "./exporter.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnessdeckSettings } from "../config/settings.js";
@@ -24,7 +24,7 @@ export const MIGRATE_MANIFEST_VERSION = 1 as const;
 export interface MigrateManifest {
   version: typeof MIGRATE_MANIFEST_VERSION;
   exported_at: string;
-  preset_count: number;
+  layer_count: number;
   include_plugins: boolean;
 }
 
@@ -66,11 +66,11 @@ function createArchive(sourceDir: string, outputPath: string): void {
       config: existsSync(join(sourceDir, "config.json"))
         ? JSON.parse(readFileSync(join(sourceDir, "config.json"), "utf-8"))
         : null,
-      presets: readdirSync(join(sourceDir, "presets"))
+      layers: readdirSync(join(sourceDir, "layers"))
         .filter((f) => f.endsWith(".json"))
         .map((f) =>
           JSON.parse(
-            readFileSync(join(sourceDir, "presets", f), "utf-8"),
+            readFileSync(join(sourceDir, "layers", f), "utf-8"),
           ),
         ),
     };
@@ -86,16 +86,16 @@ function dirnameSafe(path: string): string {
 }
 
 /**
- * Export all presets, harness preferences, and config into an archive.
+ * Export all layers, harness preferences, and config into an archive.
  */
 export function exportMigrationState(opts: MigrateExportOptions): MigrateManifest {
   const workDir = mkdtempSync(join(tmpdir(), "harnessdeck-migrate-"));
-  const presetsDir = join(workDir, "presets");
-  mkdirSync(presetsDir, { recursive: true });
+  const layersDir = join(workDir, "layers");
+  mkdirSync(layersDir, { recursive: true });
 
-  const presets = listPresets();
-  for (const preset of presets) {
-    exportToFile(preset.name, join(presetsDir, `${preset.name}.harnessdeck.json`), {
+  const layers = listLayers();
+  for (const layer of layers) {
+    exportToFile(layer.name, join(layersDir, `${layer.name}.harnessdeck.json`), {
       embedPlugins: opts.includePlugins ?? false,
     });
   }
@@ -111,7 +111,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   const manifest: MigrateManifest = {
     version: MIGRATE_MANIFEST_VERSION,
     exported_at: new Date().toISOString(),
-    preset_count: presets.length,
+    layer_count: layers.length,
     include_plugins: opts.includePlugins ?? false,
   };
   writeJson(join(workDir, "manifest.json"), manifest);
@@ -128,7 +128,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
  */
 export function importMigrationState(opts: MigrateImportOptions): {
   manifest: MigrateManifest;
-  presets_imported: number;
+  layers_imported: number;
 } {
   const workDir = mkdtempSync(join(tmpdir(), "harnessdeck-migrate-import-"));
 
@@ -136,7 +136,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
     extractArchive(opts.archivePath, workDir);
 
     let manifest: MigrateManifest;
-    let presetsDir: string;
+    let layersDir: string;
     let harnessPath: string;
     let configPath: string;
 
@@ -147,15 +147,15 @@ export function importMigrationState(opts: MigrateImportOptions): {
         manifest: MigrateManifest;
         harness: HarnessPreference | null;
         config: HarnessdeckSettings;
-        presets: unknown[];
+        layers: unknown[];
       };
       manifest = state.manifest;
-      presetsDir = join(workDir, "import-presets");
-      mkdirSync(presetsDir, { recursive: true });
-      for (let i = 0; i < state.presets.length; i++) {
+      layersDir = join(workDir, "import-layers");
+      mkdirSync(layersDir, { recursive: true });
+      for (let i = 0; i < state.layers.length; i++) {
         writeJson(
-          join(presetsDir, `preset-${i}.harnessdeck.json`),
-          state.presets[i],
+          join(layersDir, `layer-${i}.harnessdeck.json`),
+          state.layers[i],
         );
       }
       if (state.harness) {
@@ -168,7 +168,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       manifest = JSON.parse(
         readFileSync(join(workDir, "manifest.json"), "utf-8"),
       ) as MigrateManifest;
-      presetsDir = join(workDir, "presets");
+      layersDir = join(workDir, "layers");
       harnessPath = join(workDir, "harness.json");
       configPath = join(workDir, "config.json");
     }
@@ -177,12 +177,12 @@ export function importMigrationState(opts: MigrateImportOptions): {
       throw new Error(`Unsupported migration manifest version: ${manifest.version}`);
     }
 
-    let presetsImported = 0;
-    if (existsSync(presetsDir)) {
-      for (const file of readdirSync(presetsDir)) {
+    let layersImported = 0;
+    if (existsSync(layersDir)) {
+      for (const file of readdirSync(layersDir)) {
         if (!file.endsWith(".json")) continue;
-        importFromFile(join(presetsDir, file));
-        presetsImported++;
+        importFromFile(join(layersDir, file));
+        layersImported++;
       }
     }
 
@@ -205,7 +205,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       writeJson(join(targetDir, "config.json"), config);
     }
 
-    return { manifest, presets_imported: presetsImported };
+    return { manifest, layers_imported: layersImported };
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }

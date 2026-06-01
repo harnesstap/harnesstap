@@ -1,6 +1,6 @@
 # harnessdeck
 
-`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It scans existing agent setup, stores canonical resources locally, groups them into reusable presets, and materializes those presets back into one or more supported harnesses.
+`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It scans existing agent setup, stores canonical resources locally, groups them into reusable layers, and materializes those layers back into one or more supported harnesses.
 
 ## What you can do with it
 
@@ -8,28 +8,28 @@
 
 - Scan existing Claude Code, Codex, Cursor, GitHub Copilot, Copilot CLI, and related project layouts.
 - Store imported configuration as canonical resources in SQLite.
-- Group resources into reusable presets.
-- Apply a preset to one or more target harnesses.
-- Create presets from scanned projects, diff presets, and run `preset doctor` before apply.
-- Record preset dependencies and Claude plugin version pins in portable preset bundles.
-- Export or import presets as JSON bundles.
-- Seed and apply built-in starter presets.
+- Group resources into reusable layers.
+- Apply a layer to one or more target harnesses.
+- Create layers from scanned projects, diff layers, and run `layer doctor` before apply.
+- Record layer dependencies and Claude plugin version pins in portable layer bundles.
+- Export or import layers as JSON bundles.
+- Seed and apply built-in starter layers.
 - Snapshot tracked projects before apply, detect drift later, and revert when needed.
-- Search, add, and publish shared presets through HarnessDeck Cloud.
-- Export your local preset library, harness preferences, and config for machine migration.
+- Search, add, and publish shared layers through HarnessDeck Cloud.
+- Export your local layer library, harness preferences, and config for machine migration.
 
 ```mermaid
 flowchart TB
   subgraph Sources[Configuration sources]
     Home[Home defaults]
     Repo[Existing project files]
-    Cloud[HarnessDeck Cloud presets]
-    BuiltIn[Built-in starter presets]
+    Cloud[HarnessDeck Cloud layers]
+    BuiltIn[Built-in starter layers]
   end
 
   subgraph Library[Local HarnessDeck library]
     Resources[Canonical resources in SQLite]
-    Presets[Reusable presets]
+    Layers[Reusable layers]
     Bundles[Portable JSON bundles]
   end
 
@@ -42,14 +42,14 @@ flowchart TB
 
   Home --> Resources
   Repo --> Resources
-  Cloud --> Presets
-  BuiltIn --> Presets
-  Resources --> Presets
-  Presets <--> Bundles
-  Presets --> Claude
-  Presets --> Codex
-  Presets --> Cursor
-  Presets --> Generic
+  Cloud --> Layers
+  BuiltIn --> Layers
+  Resources --> Layers
+  Layers <--> Bundles
+  Layers --> Claude
+  Layers --> Codex
+  Layers --> Cursor
+  Layers --> Generic
 ```
 
 ## Requirements
@@ -90,25 +90,25 @@ export PATH="$HOME/.bun/bin:$PATH"
 
 ## Demo
 
-Initialise HarnessDeck, scan an existing repository, browse built-in presets, apply one, and confirm the final state — all in about a minute:
+Initialise HarnessDeck, scan an existing repository, browse built-in layers, apply one, and confirm the final state — all in about a minute:
 [![existing-repo-adoption demo](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```
 harnessdeck init #initialise HarnessDeck in the repository
 harnessdeck project scan . #detect existing resources
 harnessdeck resource list #review discovered resources
-harnessdeck preset list  #browse available presets
-harnessdeck project apply nextjs-fullstack --project . --platform codex #apply a preset
+harnessdeck layer list  #browse available layers
+harnessdeck project apply nextjs-fullstack --project . --platform codex #apply a layer
 harnessdeck project status . #confirm the final state
 ```
 
 ## Quick start
 
-The fastest way to try `harnessdeck` is to initialize the local database, import supported defaults from your home directory, scan an existing repository, turn the imported resources into a reusable preset, and apply that preset back to your preferred harnesses.
+The fastest way to try `harnessdeck` is to initialize the local database, import supported defaults from your home directory, scan an existing repository, turn the imported resources into a reusable layer, and apply that layer back to your preferred harnesses.
 
 Once installed, `hd` is a shorthand alias for the same CLI. Use whichever form you prefer in the examples below.
 
-The CLI groups related actions under noun-based commands such as `project`, `preset`, and `harness`.
+The CLI groups related actions under noun-based commands such as `project`, `layer`, and `harness`.
 
 For the full grouped command surface and global flags, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
 
@@ -116,8 +116,8 @@ For the full grouped command surface and global flags, see [docs/cli/command-ref
 flowchart LR
   A[Init local toolkit state] --> B[Scan repo and home defaults]
   B --> C[Store canonical resources]
-  C --> D[Group resources into presets]
-  D --> E[Apply presets to selected harnesses]
+  C --> D[Group resources into layers]
+  D --> E[Apply layers to selected harnesses]
 ```
 
 1. Initialize the local database, import any supported home-directory defaults, and optionally choose a default main harness plus aliases.
@@ -133,19 +133,19 @@ flowchart LR
   ```bash
    hd resource list
   ```
-4. Create a preset.
+4. Create a layer.
   ```bash
-   hd preset create my-setup --description "Shared project assistant setup"
+   hd layer create my-setup --description "Shared project assistant setup"
   ```
-5. Add imported resources to that preset.
+5. Add imported resources to that layer.
    ```bash
-   hd preset attach my-setup research-helper --type skill
+   hd layer attach my-setup research-helper --type skill
    ```
-6. Apply the preset to one or more target platforms.
+6. Apply the layer to one or more target platforms.
   ```bash
    hd project apply my-setup --project . --platform claude-code,codex,cursor
   ```
-   `hd project apply` also accepts multiple preset names, a local `.harnessdeck.json` bundle, or a bundle URL. When you pass multiple preset names, later presets override earlier ones for matching resources and plugin pins.
+   `hd project apply` also accepts multiple layer names, a local `.harnessdeck.json` bundle, or a bundle URL. When you pass multiple layer names, later layers override earlier ones for matching resources and plugin pins.
 7. Check the tracked project state.
   ```bash
    hd project status .
@@ -169,50 +169,50 @@ sequenceDiagram
   User->>CLI: hd project scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
-  User->>CLI: hd preset create / attach
-  CLI->>DB: Save reusable preset
-  User->>CLI: hd project apply preset --platform ...
+  User->>CLI: hd layer create / attach
+  CLI->>DB: Save reusable layer
+  User->>CLI: hd project apply layer --platform ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
   User->>CLI: hd project status / drift / revert
   CLI->>Project: Compare or restore snapshots
 ```
 
-## Built-in presets
+## Built-in layers
 
-`harnessdeck` ships with starter presets that are seeded during `hd init`. The same command also scans supported default folders in your home directory, imports any resources it finds, and prints the discovered locations. Use these commands to inspect and apply the built-in presets.
+`harnessdeck` ships with starter layers that are seeded during `hd init`. The same command also scans supported default folders in your home directory, imports any resources it finds, and prints the discovered locations. Use these commands to inspect and apply the built-in layers.
 
 ```bash
-hd preset list
+hd layer list
 hd project apply nextjs-fullstack --project . --platform codex
 ```
 
 The repository currently includes `nextjs-fullstack` and `python-fastapi`.
 
-## More preset workflows
+## More layer workflows
 
-Use these commands when you want to compare, diagnose, or derive presets beyond the basic create/add/apply loop.
+Use these commands when you want to compare, diagnose, or derive layers beyond the basic create/add/apply loop.
 
 ```bash
-hd preset attach team-stack shared-baseline --type preset-dependency --version "^1.2.0"
-hd preset doctor team-stack
-hd preset diff team-stack ./team-stack.harnessdeck.json
-hd preset from-project inferred-stack --project .
+hd layer attach team-stack shared-baseline --type layer-dependency --version "^1.2.0"
+hd layer doctor team-stack
+hd layer diff team-stack ./team-stack.harnessdeck.json
+hd layer from-project inferred-stack --project .
 ```
 
-Preset dependencies are stored with semver constraints and round-trip through bundle export/import. `preset doctor` checks for problems such as duplicate resources, empty content, or invalid plugin metadata, `preset diff` compares preset metadata and contents, and `preset from-project` scans a repository and turns the imported resources into a new preset.
+Layer dependencies are stored with semver constraints and round-trip through bundle export/import. `layer doctor` checks for problems such as duplicate resources, empty content, or invalid plugin metadata, `layer diff` compares layer metadata and contents, and `layer from-project` scans a repository and turns the imported resources into a new layer.
 
 ## Import and export
 
-Presets can move between machines as JSON bundle files. Export strips local-only database fields and keeps the portable preset definition plus its resources.
+Layers can move between machines as JSON bundle files. Export strips local-only database fields and keeps the portable layer definition plus its resources.
 
-Preset bundles may also include Claude Code marketplace configuration under a top-level `claude` key. When you apply such a preset to a project with `claude-code`, harnessdeck merges `extraKnownMarketplaces` and `enabledPlugins` into `.claude/settings.json`:
+Layer bundles may also include Claude Code marketplace configuration under a top-level `claude` key. When you apply such a layer to a project with `claude-code`, harnessdeck merges `extraKnownMarketplaces` and `enabledPlugins` into `.claude/settings.json`:
 
 ```json
 {
   "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
-  "preset": {
+  "layer": {
     "name": "team-stack",
     "version": "1.0.0",
     "description": "...",
@@ -236,8 +236,8 @@ Preset bundles may also include Claude Code marketplace configuration under a to
 ```
 
 ```bash
-hd preset export my-setup --file ./my-setup.harnessdeck.json
-hd preset import ./my-setup.harnessdeck.json
+hd layer export my-setup --file ./my-setup.harnessdeck.json
+hd layer import ./my-setup.harnessdeck.json
 ```
 
 ## Plugin inventory
@@ -248,17 +248,17 @@ For Claude Code, **committed** plugins are those declared in the project’s `.c
 hd plugin list
 hd plugin show formatter@my-marketplace
 hd plugin installed
-hd preset attach my-setup formatter@my-marketplace --type plugin --version "2.1.0"
-hd preset detach my-setup formatter@my-marketplace --type plugin
-hd preset export my-setup --file ./team.harnessdeck.json --embed-plugins
+hd layer attach my-setup formatter@my-marketplace --type plugin --version "2.1.0"
+hd layer detach my-setup formatter@my-marketplace --type plugin
+hd layer export my-setup --file ./team.harnessdeck.json --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
 
-On `project apply`, harnessdeck compares preset plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation. These flags are mutually exclusive.
+On `project apply`, harnessdeck compares layer plugin pins to installed versions: it **warns** on mismatch by default; pass `**--strict-plugin-versions`** to fail the command (exit code 2), or `**--ignore-plugin-versions`** to skip validation. These flags are mutually exclusive.
 
-Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `preset attach ... --type plugin` is the **plugin semver pin or range**, not the global version flag.
+Use `**hd -V**`, `**harnessdeck -V**`, or `**--harnessdeck-version**` for the harnessdeck CLI version. The `**--version**` on `layer attach ... --type plugin` is the **plugin semver pin or range**, not the global version flag.
 
-Preset export bundles use schema `**urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a preset declares versioned dependencies. See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
+Layer export bundles use schema `**urn:harnessdeck:bundle:v1`** and always include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a layer declares versioned dependencies. See [bundle format](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md#bundle-format) in the design spec.
 
 ## Plugin check and update
 
@@ -308,7 +308,7 @@ hd migrate export ./harnessdeck-migrate.tar.gz
 hd migrate import ./harnessdeck-migrate.tar.gz
 ```
 
-`project drift` compares the current working tree against the latest apply/sync snapshot. Migration archives export local preset bundles plus global harness preferences and `~/.harnessdeck/config.json`; cloud profiles remain in `cloud-profiles.json`.
+`project drift` compares the current working tree against the latest apply/sync snapshot. Migration archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.json`; cloud profiles remain in `cloud-profiles.json`.
 
 Project command preconditions:
 
@@ -329,13 +329,13 @@ hd harness list
 
 ## Where data lives
 
-`harnessdeck` stores its operational state in `~/.harnessdeck/harnessdeck.db`. The database holds resources, presets, tracked projects, snapshots, and harness preference state. Optional settings (such as plugin refresh cache age) live in `~/.harnessdeck/config.json`.
+`harnessdeck` stores its operational state in `~/.harnessdeck/harnessdeck.db`. The database holds resources, layers, tracked projects, snapshots, and harness preference state. Optional settings (such as plugin refresh cache age) live in `~/.harnessdeck/config.json`.
 
 When you run `hd init`, the CLI also checks registered platform default folders in your home directory, such as `~/.claude/` and `~/.codex/`, and imports any supported resources it finds.
 
 ## HarnessDeck Cloud
 
-HarnessDeck can interact with the Harness cloud for publishing, searching, and installing shared presets. Local cloud profiles are stored in `~/.harnessdeck/cloud-profiles.json` by default. You can override the base HarnessDeck directory by setting the `HARNESSDECK_HOME` environment variable; profiles will live under `<HARNESSDECK_HOME>/cloud-profiles.json` when set.
+HarnessDeck can interact with the Harness cloud for publishing, searching, and installing shared layers. Local cloud profiles are stored in `~/.harnessdeck/cloud-profiles.json` by default. You can override the base HarnessDeck directory by setting the `HARNESSDECK_HOME` environment variable; profiles will live under `<HARNESSDECK_HOME>/cloud-profiles.json` when set.
 
 Common workflows
 
@@ -365,30 +365,30 @@ Common workflows
    harnessdeck cloud logout [--profile <name>]
    ```
 
-5. Search the remote preset catalog.
+5. Search the remote layer catalog.
 
    ```bash
-   harnessdeck preset search <query> [--profile <name>] [--format human|json]
+   harnessdeck layer search <query> [--profile <name>] [--format human|json]
    ```
 
-6. Add a preset from the cloud.
+6. Add a layer from the cloud.
 
    ```bash
-   harnessdeck preset add <org>/<library>[@version] [--as <name>] [--profile <name>]
+   harnessdeck layer add <org>/<library>[@version] [--as <name>] [--profile <name>]
    ```
 
-   This downloads a preset bundle from the cloud and imports it into the local preset database. Use `--as` to avoid name conflicts with existing presets.
+   This downloads a layer bundle from the cloud and imports it into the local layer database. Use `--as` to avoid name conflicts with existing layers.
 
-7. Publish a local preset to the cloud.
+7. Publish a local layer to the cloud.
 
    ```bash
-   harnessdeck preset publish <preset> [--profile <name>]
+   harnessdeck layer publish <layer> [--profile <name>]
    ```
 
-8. Apply an installed preset to a project.
+8. Apply an installed layer to a project.
 
    ```bash
-   harnessdeck project apply <preset> --project <path> [--platform <harnesses>]
+   harnessdeck project apply <layer> --project <path> [--platform <harnesses>]
    ```
 
 Notes

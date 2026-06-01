@@ -1,4 +1,4 @@
-# Scenario 24: Apply a preset directly from a URL
+# Scenario 24: Apply a layer directly from a URL
 
 **Frequency: Occasional** · **Status: Shipped**
 

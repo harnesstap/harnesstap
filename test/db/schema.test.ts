@@ -18,13 +18,13 @@ describe("initializeSchema", () => {
           "harness_preferences",
           "imported_snapshot_installs",
           "imported_snapshots",
-          "preset_dependencies",
+          "layer_dependencies",
           "project_harnesses",
-          "preset_plugins",
+          "layer_plugins",
           "project_plugin_state",
-          "project_presets",
-          "preset_resources",
-          "presets",
+          "project_layers",
+          "layer_resources",
+          "layers",
           "projects",
           "resources",
           "schema_version",
@@ -39,11 +39,11 @@ describe("initializeSchema", () => {
 
       expect(versionRow.version).toBe(7);
 
-      const presetColumns = context.connection
+      const layerColumns = context.connection
         .getDb()
-        .prepare("PRAGMA table_info(presets)")
+        .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
-      expect(presetColumns.map((column) => column.name)).toEqual(
+      expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
           "source_path",
           "source_hash",
@@ -51,7 +51,7 @@ describe("initializeSchema", () => {
         ]),
       );
 
-      const sourcePresentColumn = presetColumns.find(
+      const sourcePresentColumn = layerColumns.find(
         (column) => column.name === "source_present",
       );
       expect(sourcePresentColumn?.dflt_value).toBe("1");
@@ -115,7 +115,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("migration 4 creates project_plugin_state and preset_plugins", async () => {
+  it("migration 4 creates project_plugin_state and layer_plugins", async () => {
     const context = await createTestContext("schema-migration-4");
 
     try {
@@ -130,13 +130,13 @@ describe("initializeSchema", () => {
 
       const names = tables.map((t) => t.name);
       expect(names).toContain("project_plugin_state");
-      expect(names).toContain("preset_plugins");
+      expect(names).toContain("layer_plugins");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("migration 5 adds version column to presets and creates preset_dependencies", async () => {
+  it("migration 5 adds version column to layers and creates layer_dependencies", async () => {
     const context = await createTestContext("schema-migration-5");
 
     try {
@@ -146,11 +146,11 @@ describe("initializeSchema", () => {
       const tables = db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all() as Array<{ name: string }>;
-      expect(tables.map((t) => t.name)).toContain("preset_dependencies");
+      expect(tables.map((t) => t.name)).toContain("layer_dependencies");
 
-      // presets table should have a version column
+      // layers table should have a version column
       const cols = db
-        .prepare("PRAGMA table_info(presets)")
+        .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       const versionCol = cols.find((c) => c.name === "version");
       expect(versionCol).toBeDefined();
@@ -159,13 +159,13 @@ describe("initializeSchema", () => {
       // (name, version) uniqueness: same name+version must conflict
       const now = new Date().toISOString();
       db.prepare(
-        `INSERT INTO presets (id, name, version, description, tags, claude_config, created_at, updated_at)
+        `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
          VALUES ('id1', 'foo', '1.0.0', '', '[]', '{}', ?, ?)`,
       ).run(now, now);
 
       expect(() =>
         db.prepare(
-          `INSERT INTO presets (id, name, version, description, tags, claude_config, created_at, updated_at)
+          `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
            VALUES ('id2', 'foo', '1.0.0', '', '[]', '{}', ?, ?)`,
         ).run(now, now),
       ).toThrow();
@@ -173,7 +173,7 @@ describe("initializeSchema", () => {
       // different version with same name should succeed
       expect(() =>
         db.prepare(
-          `INSERT INTO presets (id, name, version, description, tags, claude_config, created_at, updated_at)
+          `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
            VALUES ('id3', 'foo', '2.0.0', '', '[]', '{}', ?, ?)`,
         ).run(now, now),
       ).not.toThrow();
@@ -182,7 +182,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("migration 5 preserves existing preset_resources, preset_plugins, and project_presets rows", async () => {
+  it("migration 5 preserves existing layer_resources, layer_plugins, and project_layers rows", async () => {
     const context = await createTestContext("schema-migration-5-preserve");
 
     try {
@@ -194,23 +194,23 @@ describe("initializeSchema", () => {
 
       const now = new Date().toISOString();
 
-      // Insert a preset and a resource, then link them via preset_resources
+      // Insert a layer and a resource, then link them via layer_resources
       db.prepare(
-        `INSERT INTO presets (id, name, version, description, tags, claude_config, created_at, updated_at)
-         VALUES ('p1', 'test-preset', '1.0.0', '', '[]', '{}', ?, ?)`,
+        `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+         VALUES ('p1', 'test-layer', '1.0.0', '', '[]', '{}', ?, ?)`,
       ).run(now, now);
       db.prepare(
         `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
          VALUES ('r1', 'instruction', 'my-instruction', '', '', '{}', 'manual', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO preset_resources (preset_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
+        `INSERT INTO layer_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
       ).run();
 
       const row = db
-        .prepare("SELECT * FROM preset_resources WHERE preset_id = 'p1'")
-        .get() as { preset_id: string } | undefined;
-      expect(row?.preset_id).toBe("p1");
+        .prepare("SELECT * FROM layer_resources WHERE layer_id = 'p1'")
+        .get() as { layer_id: string } | undefined;
+      expect(row?.layer_id).toBe("p1");
     } finally {
       await context.cleanup();
     }
@@ -231,7 +231,7 @@ describe("initializeSchema", () => {
           metadata TEXT NOT NULL DEFAULT '{}', source TEXT NOT NULL DEFAULT 'manual',
           created_at TEXT NOT NULL, updated_at TEXT NOT NULL
         );
-        CREATE TABLE presets (
+        CREATE TABLE layers (
           id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
           description TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '[]',
           claude_config TEXT NOT NULL DEFAULT '{}',
@@ -244,17 +244,17 @@ describe("initializeSchema", () => {
           local_path TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL
         );
-        CREATE TABLE preset_resources (
-          preset_id TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+        CREATE TABLE layer_resources (
+          layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
           resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
           "order" INTEGER NOT NULL DEFAULT 0,
-          PRIMARY KEY (preset_id, resource_id)
+          PRIMARY KEY (layer_id, resource_id)
         );
-        CREATE TABLE preset_plugins (
-          preset_id TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+        CREATE TABLE layer_plugins (
+          layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
           ref TEXT NOT NULL, version_constraint TEXT NOT NULL,
           "order" INTEGER NOT NULL DEFAULT 0, embed_on_export INTEGER NOT NULL DEFAULT 0,
-          PRIMARY KEY (preset_id, ref)
+          PRIMARY KEY (layer_id, ref)
         );
         CREATE TABLE schema_version (version INTEGER NOT NULL);
         INSERT INTO schema_version (version) VALUES (4);
@@ -262,40 +262,40 @@ describe("initializeSchema", () => {
 
       // Populate v4 data
       db.prepare(
-        `INSERT INTO presets (id, name, description, tags, claude_config, created_at, updated_at)
-         VALUES ('p1', 'my-preset', 'a preset', '["tag"]', '{}', ?, ?)`,
+        `INSERT INTO layers (id, name, description, tags, claude_config, created_at, updated_at)
+         VALUES ('p1', 'my-layer', 'a layer', '["tag"]', '{}', ?, ?)`,
       ).run(now, now);
       db.prepare(
         `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
          VALUES ('r1', 'instruction', 'instr', '', '', '{}', 'manual', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO preset_resources (preset_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
+        `INSERT INTO layer_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
       ).run();
       db.prepare(
-        `INSERT INTO preset_plugins (preset_id, ref, version_constraint, "order") VALUES ('p1', 'plugin@marketplace', '^1.0', 0)`,
+        `INSERT INTO layer_plugins (layer_id, ref, version_constraint, "order") VALUES ('p1', 'plugin@marketplace', '^1.0', 0)`,
       ).run();
 
       // Run migration 5
       context.schema.initializeSchema(db);
 
-      // Preset row carries version '1.0.0' and original fields intact
-      const preset = db
-        .prepare("SELECT * FROM presets WHERE id = 'p1'")
+      // Layer row carries version '1.0.0' and original fields intact
+      const layer = db
+        .prepare("SELECT * FROM layers WHERE id = 'p1'")
         .get() as { name: string; version: string; description: string } | undefined;
-      expect(preset?.name).toBe("my-preset");
-      expect(preset?.version).toBe("1.0.0");
-      expect(preset?.description).toBe("a preset");
+      expect(layer?.name).toBe("my-layer");
+      expect(layer?.version).toBe("1.0.0");
+      expect(layer?.description).toBe("a layer");
 
       // FK-linked rows survived
       const prRow = db
-        .prepare("SELECT * FROM preset_resources WHERE preset_id = 'p1'")
+        .prepare("SELECT * FROM layer_resources WHERE layer_id = 'p1'")
         .get() as { resource_id: string } | undefined;
       expect(prRow).toBeDefined();
       expect(prRow?.resource_id).toBe("r1");
 
       const ppRow = db
-        .prepare("SELECT * FROM preset_plugins WHERE preset_id = 'p1'")
+        .prepare("SELECT * FROM layer_plugins WHERE layer_id = 'p1'")
         .get() as { ref: string; version_constraint: string } | undefined;
       expect(ppRow).toBeDefined();
       expect(ppRow?.ref).toBe("plugin@marketplace");
@@ -307,10 +307,10 @@ describe("initializeSchema", () => {
         .get() as { version: number };
       expect(versionRow.version).toBe(7);
 
-      const presetColumns = db
-        .prepare("PRAGMA table_info(presets)")
+      const layerColumns = db
+        .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
-      expect(presetColumns.map((column) => column.name)).toEqual(
+      expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
           "source_path",
           "source_hash",
@@ -360,7 +360,7 @@ describe("initializeSchema", () => {
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
-        CREATE TABLE presets (
+        CREATE TABLE layers (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           version TEXT NOT NULL DEFAULT '1.0.0',
@@ -378,12 +378,12 @@ describe("initializeSchema", () => {
           local_path TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL
         );
-        CREATE TABLE project_presets (
+        CREATE TABLE project_layers (
           project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-          preset_id TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+          layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
           platforms TEXT NOT NULL DEFAULT '[]',
           applied_at TEXT NOT NULL,
-          PRIMARY KEY (project_id, preset_id)
+          PRIMARY KEY (project_id, layer_id)
         );
         CREATE TABLE snapshots (
           id TEXT PRIMARY KEY,
@@ -412,16 +412,16 @@ describe("initializeSchema", () => {
       `);
 
       db.prepare(
-        `INSERT INTO presets (id, name, version, description, tags, claude_config, created_at, updated_at)
-         VALUES ('preset-1', 'my-preset', '1.0.0', '', '[]', '{}', ?, ?)`,
+        `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+         VALUES ('layer-1', 'my-layer', '1.0.0', '', '[]', '{}', ?, ?)`,
       ).run(now, now);
       db.prepare(
         `INSERT INTO projects (id, git_origin, name, local_path, created_at)
          VALUES ('project-1', 'https://example.com/repo.git', 'repo', '/tmp/repo', ?)`,
       ).run(now);
       db.prepare(
-        `INSERT INTO project_presets (project_id, preset_id, platforms, applied_at)
-         VALUES ('project-1', 'preset-1', '["claude-code"]', ?)`,
+        `INSERT INTO project_layers (project_id, layer_id, platforms, applied_at)
+         VALUES ('project-1', 'layer-1', '["claude-code"]', ?)`,
       ).run(now);
       db.prepare(
         `INSERT INTO snapshots (id, project_id, label, state, created_at)
@@ -451,14 +451,14 @@ describe("initializeSchema", () => {
         tracked_at: now,
       });
 
-      const projectPreset = db
+      const projectLayer = db
         .prepare(
-          "SELECT project_id, preset_id FROM project_presets WHERE project_id = 'project-1'",
+          "SELECT project_id, layer_id FROM project_layers WHERE project_id = 'project-1'",
         )
-        .get() as { project_id: string; preset_id: string } | undefined;
-      expect(projectPreset).toEqual({
+        .get() as { project_id: string; layer_id: string } | undefined;
+      expect(projectLayer).toEqual({
         project_id: 'project-1',
-        preset_id: 'preset-1',
+        layer_id: 'layer-1',
       });
 
       const snapshot = db
@@ -500,7 +500,7 @@ describe("initializeSchema", () => {
       const now = new Date().toISOString();
 
       db.exec(`
-        CREATE TABLE presets (
+        CREATE TABLE layers (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           version TEXT NOT NULL DEFAULT '1.0.0',

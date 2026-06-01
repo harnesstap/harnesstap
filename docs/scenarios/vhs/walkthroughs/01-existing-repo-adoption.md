@@ -2,7 +2,7 @@
 
 This walkthrough demonstrates adopting HarnessDeck in a repository that already
 contains project files (the `scan-project` fixture). It covers the full flow from
-initialisation through applying a preset and confirming the final state.
+initialisation through applying a layer and confirming the final state.
 
 [![existing-repo-adoption demo](../output/01-existing-repo-adoption.gif)](../output/01-existing-repo-adoption.gif)
 
@@ -13,6 +13,6 @@ Tape: [../tapes/01-existing-repo-adoption.tape](../tapes/01-existing-repo-adopti
 1. `harnessdeck init` — initialise HarnessDeck in the repository
 2. `harnessdeck project scan .` — detect existing resources
 3. `harnessdeck resource list` — review discovered resources
-4. `harnessdeck preset list` — browse available presets
-5. `harnessdeck project apply nextjs-fullstack --project . --platform codex` — apply a preset
+4. `harnessdeck layer list` — browse available layers
+5. `harnessdeck project apply nextjs-fullstack --project . --platform codex` — apply a layer
 6. `harnessdeck project status .` — confirm the final state

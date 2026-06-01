@@ -33,10 +33,10 @@ describe("CLI harness", () => {
         "copilot-cli",
       ]);
 
-      const presetList = await runCli(["p", "ls", "--format", "json"], {
+      const layerList = await runCli(["l", "ls", "--format", "json"], {
         commandName: "hd",
       });
-      expect(Array.isArray(JSON.parse(presetList.stdout))).toBe(true);
+      expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
 
       const resourceList = await runCli(["r", "ls", "--format", "json"], {
         commandName: "hd",
@@ -44,7 +44,7 @@ describe("CLI harness", () => {
       expect(Array.isArray(JSON.parse(resourceList.stdout))).toBe(true);
 
       const projectStatus = await runCli([
-        "pj",
+        "p",
         "status",
         context.projectDir,
         "--format",
