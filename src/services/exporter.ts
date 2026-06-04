@@ -7,16 +7,16 @@ import {
 import { basename, extname, resolve } from "node:path";
 import { parse as parseJsonc, type ParseError, printParseErrorCode } from "jsonc-parser";
 import {
-  getLayer,
-  getLayerResources,
-  createLayer,
-  addResourceToLayer,
+  getPlugin,
+  getPluginResources,
+  createPlugin,
+  addResourceToPlugin,
   syncClaudeLayerPluginsAfterAdd,
-  listLayerDependencies,
-  addDependencyToLayer,
-} from "../models/layer.js";
-import { listLayerPlugins, addPluginToLayer } from "../models/plugin.js";
-import type { LayerPluginRow } from "../models/plugin.js";
+  listPluginDependencies,
+  addDependencyToPlugin,
+} from "../models/plugin-component.js";
+import { listLayerPlugins, addPluginToLayer } from "../models/plugin-pins.js";
+import type { LayerPluginRow } from "../models/plugin-pins.js";
 import { createResource } from "../models/resource.js";
 import { loadInstalled } from "../plugins/claude-installed.js";
 import type {
@@ -202,9 +202,9 @@ function collectBundlePayload(
   layer: Layer,
   exportOpts?: ExportLayerOptions,
 ): ExportBundlePayloadWithEmbedded {
-  const resources = getLayerResources(layer.id);
+  const resources = getPluginResources(layer.id);
   const layerRows = listLayerPlugins(layer.id);
-  const deps = listLayerDependencies(layer.id);
+  const deps = listPluginDependencies(layer.id);
   const { pins, embeddedRoots } = classifyLayerPluginsForExport(
     layerRows,
     exportOpts,
@@ -323,7 +323,7 @@ export function exportLayer(
 ): ExportBundle {
   const selectors = Array.isArray(layerNameOrId) ? layerNameOrId : [layerNameOrId];
   const layers = selectors.map((selector) => {
-    const layer = getLayer(selector);
+    const layer = getPlugin(selector);
     if (!layer) throw new Error(`Layer not found: ${selector}`);
     return layer;
   });
@@ -406,7 +406,7 @@ function importLayerFromBundleParsed(
 ): { layer: Layer; resources: Resource[] } {
   const claude = bundle.claude;
 
-  const layer = createLayer({
+  const layer = createPlugin({
     name: opts?.layerNameOverride ?? bundle.name,
     version: bundle.version,
     description: bundle.description,
@@ -424,7 +424,7 @@ function importLayerFromBundleParsed(
       metadata: r.metadata,
       source: opts?.resourceSource ?? `import:${filePath}`,
     });
-    addResourceToLayer(layer.id, resource.id);
+    addResourceToPlugin(layer.id, resource.id);
     resources.push(resource);
   }
 
@@ -448,7 +448,7 @@ function importLayerFromBundleParsed(
   );
 
   function syncPinsAfterMutation(ref: string, versionConstraint: string): void {
-    const refreshed = getLayer(layerId);
+    const refreshed = getPlugin(layerId);
     if (!refreshed) {
       throw new Error(`Layer ${layerId} not found during bundle import`);
     }
@@ -475,10 +475,10 @@ function importLayerFromBundleParsed(
   }
 
   for (const dep of bundle.dependencies ?? []) {
-    addDependencyToLayer(layer.id, dep.dependency_name, dep.version_constraint);
+    addDependencyToPlugin(layer.id, dep.dependency_name, dep.version_constraint);
   }
 
-  const finalized = getLayer(layer.id);
+  const finalized = getPlugin(layer.id);
   if (!finalized) {
     throw new Error(`Layer ${layer.id} not found after bundle import`);
   }

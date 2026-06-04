@@ -1,4 +1,4 @@
-import { listLayers } from "../../models/layer.js";
+import { listPlugins } from "../../models/plugin-component.js";
 import { listResources } from "../../models/resource.js";
 import { RESOURCE_TYPES } from "../../types.js";
 import {
@@ -46,7 +46,7 @@ function getDefaultSelector(type: string | undefined): string | undefined {
 }
 
 function getDependencyChoices(currentLayerName: string | undefined) {
-  return listLayers()
+  return listPlugins()
     .filter((layer) => layer.name !== currentLayerName)
     .map((layer) => ({
       name: `${layer.name}@${layer.version}`,

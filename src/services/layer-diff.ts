@@ -1,5 +1,5 @@
-import { getLayer, getLayerResources, listLayerDependencies } from "../models/layer.js";
-import { listLayerPlugins } from "../models/plugin.js";
+import { getPlugin, getPluginResources, listPluginDependencies } from "../models/plugin-component.js";
+import { listLayerPlugins } from "../models/plugin-pins.js";
 import type { Resource } from "../types.js";
 import { inspectBundleFile } from "./exporter.js";
 
@@ -85,11 +85,11 @@ function loadLayerView(nameOrPath: string): LayerView {
     };
   }
 
-  const layer = getLayer(nameOrPath);
+  const layer = getPlugin(nameOrPath);
   if (!layer) {
     throw new Error(`Layer not found: ${nameOrPath}`);
   }
-  const resources = getLayerResources(layer.id).map((resource, order) => ({
+  const resources = getPluginResources(layer.id).map((resource, order) => ({
     key: resourceKey(resource),
     order,
     resource,
@@ -98,7 +98,7 @@ function loadLayerView(nameOrPath: string): LayerView {
     ref: p.ref,
     version_constraint: p.version_constraint,
   }));
-  const deps = listLayerDependencies(layer.id);
+  const deps = listPluginDependencies(layer.id);
   return {
     label: layer.name,
     resources,

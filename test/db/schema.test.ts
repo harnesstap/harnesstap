@@ -37,7 +37,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(8);
+      expect(versionRow.version).toBe(9);
 
       const layerColumns = context.connection
         .getDb()
@@ -109,7 +109,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 8 }]);
+      expect(versionRows).toEqual([{ version: 9 }]);
     } finally {
       await context.cleanup();
     }
@@ -305,7 +305,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(8);
+      expect(versionRow.version).toBe(9);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -709,7 +709,54 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(8);
+      expect(versionRow.version).toBe(9);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 9 adds needs_config to plugins", async () => {
+    const context = await createTestContext("schema-migration-9");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+
+      db.exec(`
+        CREATE TABLE plugins (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          source_path TEXT NOT NULL DEFAULT '',
+          source_hash TEXT NOT NULL DEFAULT '',
+          source_present INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name, version)
+        );
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (8);
+      `);
+
+      db.prepare(
+        `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
+         VALUES ('p-needs', 'needs-plugin', '1.0.0', '', '[]', '{}', ?, ?)`,
+      ).run(now, now);
+
+      context.schema.initializeSchema(db);
+
+      const row = db
+        .prepare("SELECT needs_config FROM plugins WHERE id = 'p-needs'")
+        .get() as { needs_config: string };
+      expect(row.needs_config).toBe("[]");
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(9);
     } finally {
       await context.cleanup();
     }

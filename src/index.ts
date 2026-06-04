@@ -30,13 +30,13 @@ import {
   resolveResource,
 } from "./models/resource.js";
 import {
-  createLayer,
-  getLayer,
-  listLayers,
-  deleteLayer,
-  getLayerResources,
-  listLayerDependencies,
-} from "./models/layer.js";
+  createPlugin,
+  getPlugin,
+  listPlugins,
+  deletePlugin,
+  getPluginResources,
+  listPluginDependencies,
+} from "./models/plugin-component.js";
 import {
   upsertProject,
   getProject,
@@ -76,9 +76,9 @@ import {
 } from "./services/plugin-lifecycle.js";
 import {
   getProjectPluginState,
-  listLayerPlugins,
   upsertProjectPluginState,
 } from "./models/plugin.js";
+import { listLayerPlugins } from "./models/plugin-pins.js";
 import type { PluginScope } from "./plugins/types.js";
 import {
   getHarnessPreference,
@@ -205,7 +205,7 @@ async function resolveLayerMutationTarget(input: {
     return undefined;
   }
 
-  const layers = listLayers();
+  const layers = listPlugins();
   if (layers.length === 0) {
     return undefined;
   }
@@ -609,7 +609,7 @@ async function resolveApplyLayers(
   layerNames: [string, ...string[]],
   projectRoot: string,
 ): Promise<{
-  layers: ReturnType<typeof getLayer>[];
+  layers: ReturnType<typeof getPlugin>[];
   resources: Resource[];
   claude?: import("./types.js").ClaudeLayerConfig;
   primaryLayerId: string;
@@ -656,13 +656,13 @@ async function resolveApplyLayers(
     };
   }
 
-  const layer = getLayer(layerNames[0]);
+  const layer = getPlugin(layerNames[0]);
   if (!layer) {
     throw new Error(`Layer not found: ${layerNames[0]}`);
   }
   return {
     layers: [layer],
-    resources: getLayerResources(layer.id),
+    resources: getPluginResources(layer.id),
     claude: layer.claude,
     primaryLayerId: layer.id,
   };
@@ -1148,7 +1148,7 @@ async function handleLayerInstallCommand(
     return;
   }
   const localName = opts.as ?? parsed.library_slug;
-  const existing = getLayer(localName);
+  const existing = getPlugin(localName);
   if (existing && !opts.as) {
     process.exitCode = 1;
     ui.danger(`Layer name already exists: ${localName}. Use --as to install under a different name.`);
@@ -1181,7 +1181,7 @@ async function handleLayerInstallCommand(
 async function handleLayerPublishCommand(layerName: string, opts: { org?: string; profile?: string; format?: string }) {
   const db = getDb();
   initializeSchema(db);
-  const layer = getLayer(layerName);
+  const layer = getPlugin(layerName);
   if (!layer) {
     process.exitCode = 1;
     ui.danger(`Layer not found: ${layerName}`);
@@ -1305,14 +1305,14 @@ function handleLayerShowCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const layer = getLayer(name);
+  const layer = getPlugin(name);
   if (!layer) {
     ui.danger(`Layer not found: ${name}`);
     return;
   }
-  const resources = getLayerResources(layer.id);
+  const resources = getPluginResources(layer.id);
   const plugins = listLayerPlugins(layer.id);
-  const dependencies = listLayerDependencies(layer.id);
+  const dependencies = listPluginDependencies(layer.id);
 
   if (format === "json") {
     printJson({
@@ -2660,7 +2660,7 @@ layerCmd
       const db = getDb();
       initializeSchema(db);
       const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
-      const layer = createLayer({
+      const layer = createPlugin({
         name,
         version: opts.version,
         description: opts.description,
@@ -2679,7 +2679,7 @@ layerCmd
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const layers = listLayers();
+    const layers = listPlugins();
     if (format === "json") {
       printJson(layers);
       return;
@@ -2714,7 +2714,7 @@ layerCmd
     if (!resolvedName) {
       process.exitCode = 1;
       ui.danger(
-        listLayers().length > 0
+        listPlugins().length > 0
           ? "error: missing required argument 'name'"
           : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
       );
@@ -2747,14 +2747,14 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listLayers().length > 0
+          listPlugins().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const layer = getLayer(layerTarget);
+      const layer = getPlugin(layerTarget);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${layerTarget}`);
@@ -2814,14 +2814,14 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listLayers().length > 0
+          listPlugins().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const layer = getLayer(layerTarget);
+      const layer = getPlugin(layerTarget);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${layerTarget}`);
@@ -2883,13 +2883,13 @@ layerCmd
         throw new Error("Layer name is required");
       }
 
-      const layer = getLayer(resolvedName);
+      const layer = getPlugin(resolvedName);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${resolvedName}`);
         return;
       }
-      if (!deleteLayer(layer.id)) {
+      if (!deletePlugin(layer.id)) {
         throw new Error(`Failed to delete layer ${formatLayerLabel(layer)}`);
       }
       ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);

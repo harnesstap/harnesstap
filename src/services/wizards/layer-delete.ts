@@ -1,8 +1,8 @@
-import { listLayers } from "../../models/layer.js";
+import { listPlugins } from "../../models/plugin-component.js";
 import { promptForChoice, promptForValue } from "./shared.js";
 
 export async function runLayerDeleteWizard(): Promise<string> {
-  const layers = listLayers();
+  const layers = listPlugins();
   if (layers.length > 0) {
     return promptForChoice({
       message: "Which layer do you want to delete?",

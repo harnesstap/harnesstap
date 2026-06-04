@@ -1,4 +1,4 @@
-import { listLayerPlugins } from "../models/plugin.js";
+import { listLayerPlugins } from "../models/plugin-pins.js";
 import type { ProjectPluginInventory } from "./claude-plugin-inventory.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 
