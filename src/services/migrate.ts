@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { getHarnessdeckDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
-import { listLayers } from "../models/layer.js";
+import { listPlugins } from "../models/plugin-component.js";
 import { exportToFile, importFromFile } from "./exporter.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnessdeckSettings } from "../config/settings.js";
@@ -93,7 +93,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   const layersDir = join(workDir, "layers");
   mkdirSync(layersDir, { recursive: true });
 
-  const layers = listLayers();
+  const layers = listPlugins();
   for (const layer of layers) {
     exportToFile(layer.name, join(layersDir, `${layer.name}.harnessdeck.json`), {
       embedPlugins: opts.includePlugins ?? false,

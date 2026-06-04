@@ -1,5 +1,5 @@
-import { getLayer, getLayerResources } from "../models/layer.js";
-import { listLayerPlugins } from "../models/plugin.js";
+import { getPlugin, getPluginResources } from "../models/plugin-component.js";
+import { listLayerPlugins } from "../models/plugin-pins.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
 
@@ -18,7 +18,7 @@ export interface LayerValidationReport {
 const PLATFORM_IDS = new Set(getAllPlatforms().map((p) => p.id));
 
 export function validateLayer(nameOrId: string): LayerValidationReport {
-  const layer = getLayer(nameOrId);
+  const layer = getPlugin(nameOrId);
   const issues: LayerValidationIssue[] = [];
 
   if (!layer) {
@@ -35,7 +35,7 @@ export function validateLayer(nameOrId: string): LayerValidationReport {
     };
   }
 
-  const resources = getLayerResources(layer.id);
+  const resources = getPluginResources(layer.id);
   if (resources.length === 0) {
     issues.push({
       severity: "warning",

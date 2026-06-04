@@ -1,5 +1,5 @@
-import { getLayer, getLayerResources } from "../models/layer.js";
-import { listLayerPlugins } from "../models/plugin.js";
+import { getPlugin, getPluginResources } from "../models/plugin-component.js";
+import { listLayerPlugins } from "../models/plugin-pins.js";
 import type {
   ClaudePluginEntry,
   ClaudeLayerConfig,
@@ -53,13 +53,13 @@ export function mergeLayers(layerNames: string[]): MergedLayerContent {
   let claude: ClaudeLayerConfig | undefined;
 
   for (const name of layerNames) {
-    const layer = getLayer(name);
+    const layer = getPlugin(name);
     if (!layer) {
       throw new Error(`Layer not found: ${name}`);
     }
     layers.push(layer);
 
-    for (const resource of getLayerResources(layer.id)) {
+    for (const resource of getPluginResources(layer.id)) {
       const key = resourceKey(resource);
       if (!resourceByKey.has(key)) {
         resourceOrder.push(key);

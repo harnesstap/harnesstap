@@ -1,7 +1,7 @@
 import { readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getLayer } from "../models/layer.js";
+import { getPlugin } from "../models/plugin-component.js";
 import { importFromFile, inspectBundleFile } from "./exporter.js";
 
 function normalizeLayerVersion(version: string | undefined): string {
@@ -15,8 +15,8 @@ function layerKey(name: string, version: string | undefined): string {
 function hasLayerInstalled(name: string, version: string | undefined): boolean {
   const normalizedVersion = normalizeLayerVersion(version);
   return normalizedVersion.length > 0
-    ? getLayer(`${name}@${normalizedVersion}`) !== undefined
-    : getLayer(name) !== undefined;
+    ? getPlugin(`${name}@${normalizedVersion}`) !== undefined
+    : getPlugin(name) !== undefined;
 }
 
 function getBuiltInLayersDir(): string {

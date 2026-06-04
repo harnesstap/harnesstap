@@ -72,17 +72,17 @@ describe("plugin model", () => {
 
     try {
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pinModel = await import("../../src/models/plugin-pins.ts");
 
       const layer = layerModel.createLayer({ name: "with-plugins-row" });
 
-      pluginModel.addPluginToLayer(layer.id, "@m/a", ">=1 <2");
-      pluginModel.addPluginToLayer(layer.id, "@m/b", "=3.4.5", {
+      pinModel.addPluginToLayer(layer.id, "@m/a", ">=1 <2");
+      pinModel.addPluginToLayer(layer.id, "@m/b", "=3.4.5", {
         embedOnExport: true,
       });
-      pluginModel.addPluginToLayer(layer.id, "@m/c", "*");
+      pinModel.addPluginToLayer(layer.id, "@m/c", "*");
 
-      const rows = pluginModel.listLayerPlugins(layer.id);
+      const rows = pinModel.listLayerPlugins(layer.id);
 
       expect(rows).toHaveLength(3);
 
@@ -102,9 +102,9 @@ describe("plugin model", () => {
 
       expect(rows.map((r) => r.order)).toEqual(expect.arrayContaining([0, 1, 2]));
 
-      pluginModel.removePluginFromLayer(layer.id, "@m/b");
+      pinModel.removePluginFromLayer(layer.id, "@m/b");
 
-      const afterRemove = pluginModel.listLayerPlugins(layer.id).map((r) => r.ref);
+      const afterRemove = pinModel.listLayerPlugins(layer.id).map((r) => r.ref);
       expect(afterRemove).toEqual(expect.arrayContaining(["@m/a", "@m/c"]));
       expect(afterRemove).not.toContain("@m/b");
     } finally {

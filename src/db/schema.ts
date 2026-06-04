@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -178,6 +178,10 @@ const MIGRATIONS: Record<number, string> = {
 
     CREATE UNIQUE INDEX idx_projects_git_origin ON projects(git_origin) WHERE git_origin != '';
     CREATE UNIQUE INDEX idx_projects_local_id ON projects(local_id) WHERE local_id != '';
+  `,
+
+  9: `
+    ALTER TABLE plugins ADD COLUMN needs_config TEXT NOT NULL DEFAULT '[]';
   `,
 
   7: `

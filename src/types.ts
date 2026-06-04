@@ -113,17 +113,22 @@ export interface ClaudeLayerConfig {
   plugins?: ClaudePluginEntry[];
 }
 
-export interface Layer {
+export interface Plugin {
   id: string;
   name: string;
   version: string;
   description: string;
   tags: string[];
   claude?: ClaudeLayerConfig;
+  /** Config contract keys this plugin requires from an environment. */
+  needs?: string[];
 
   created_at: string;
   updated_at: string;
 }
+
+/** @deprecated Use Plugin */
+export type Layer = Plugin;
 
 export interface LayerResource {
   layer_id: string;

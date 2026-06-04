@@ -1,12 +1,12 @@
 import {
-  addResourceToLayer,
-  removeResourceFromLayer,
+  addResourceToPlugin,
+  removeResourceFromPlugin,
   syncClaudeLayerPluginsAfterAdd,
   syncClaudeLayerPluginsAfterRemove,
-  addDependencyToLayer,
-  removeDependencyFromLayer,
-} from "../models/layer.js";
-import { addPluginToLayer, removePluginFromLayer } from "../models/plugin.js";
+  addDependencyToPlugin,
+  removeDependencyFromPlugin,
+} from "../models/plugin-component.js";
+import { addPluginToLayer, removePluginFromLayer } from "../models/plugin-pins.js";
 import { resolveResource } from "../models/resource.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
 import type { Layer, ResourceType } from "../types.js";
@@ -95,7 +95,7 @@ export function addLayerAttachment(input: AddLayerAttachmentInput): string {
     assertNoVersion(type as ResourceType, input.version);
     assertNoEmbed(type, input.embed);
     const resource = resolveTypedResource(input.selector, type as ResourceType);
-    addResourceToLayer(input.layer.id, resource.id);
+    addResourceToPlugin(input.layer.id, resource.id);
     return `Added ${resource.type} "${resource.name}" to layer ${input.layer.name}`;
   }
 
@@ -116,7 +116,7 @@ export function addLayerAttachment(input: AddLayerAttachmentInput): string {
   }
   assertNoEmbed(type, input.embed);
   parseVersionConstraint(input.version);
-  addDependencyToLayer(input.layer.id, input.selector, input.version);
+  addDependencyToPlugin(input.layer.id, input.selector, input.version);
   return `Added dependency ${input.selector} (${input.version}) to layer ${input.layer.name}@${input.layer.version}`;
 }
 
@@ -128,7 +128,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
 
   if (RESOURCE_TYPES.includes(type as ResourceType)) {
     const resource = resolveTypedResource(input.selector, type as ResourceType);
-    removeResourceFromLayer(input.layer.id, resource.id);
+    removeResourceFromPlugin(input.layer.id, resource.id);
     return {
       removed: true,
       message: `Removed ${resource.type} "${resource.name}" from layer ${input.layer.name}`,
@@ -144,7 +144,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     };
   }
 
-  const removed = removeDependencyFromLayer(input.layer.id, input.selector);
+  const removed = removeDependencyFromPlugin(input.layer.id, input.selector);
   return {
     removed,
     message: removed
