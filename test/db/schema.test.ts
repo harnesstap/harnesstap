@@ -18,6 +18,9 @@ describe("initializeSchema", () => {
           "harness_preferences",
           "imported_snapshot_installs",
           "imported_snapshots",
+          "environment_resources",
+          "environment_secret_refs",
+          "environments",
           "plugin_dependencies",
           "project_harnesses",
           "plugin_native_pins",
@@ -37,7 +40,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(9);
+      expect(versionRow.version).toBe(10);
 
       const layerColumns = context.connection
         .getDb()
@@ -109,7 +112,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 9 }]);
+      expect(versionRows).toEqual([{ version: 10 }]);
     } finally {
       await context.cleanup();
     }
@@ -305,7 +308,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(9);
+      expect(versionRow.version).toBe(10);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -709,7 +712,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(9);
+      expect(versionRow.version).toBe(10);
     } finally {
       await context.cleanup();
     }
@@ -756,7 +759,74 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(9);
+      expect(versionRow.version).toBe(10);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 10 creates environment tables", async () => {
+    const context = await createTestContext("schema-migration-10");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+
+      db.exec(`
+        CREATE TABLE resources (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          content TEXT NOT NULL DEFAULT '',
+          metadata TEXT NOT NULL DEFAULT '{}',
+          source TEXT NOT NULL DEFAULT 'manual',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE plugins (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          source_path TEXT NOT NULL DEFAULT '',
+          source_hash TEXT NOT NULL DEFAULT '',
+          source_present INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name, version)
+        );
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (9);
+      `);
+
+      context.schema.initializeSchema(db);
+
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all() as Array<{ name: string }>;
+      const names = tables.map((table) => table.name);
+      expect(names).toContain("environments");
+      expect(names).toContain("environment_resources");
+      expect(names).toContain("environment_secret_refs");
+
+      db.prepare(
+        `INSERT INTO environments (id, name, description, created_at, updated_at)
+         VALUES ('env1', 'prod', '', ?, ?)`,
+      ).run(now, now);
+
+      const row = db
+        .prepare("SELECT name FROM environments WHERE id = 'env1'")
+        .get() as { name: string };
+      expect(row).toEqual({ name: "prod" });
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(10);
     } finally {
       await context.cleanup();
     }

@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -182,6 +182,32 @@ const MIGRATIONS: Record<number, string> = {
 
   9: `
     ALTER TABLE plugins ADD COLUMN needs_config TEXT NOT NULL DEFAULT '[]';
+  `,
+
+  10: `
+    CREATE TABLE environments (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(name)
+    );
+
+    CREATE TABLE environment_resources (
+      environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+      resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (environment_id, resource_id)
+    );
+
+    CREATE TABLE environment_secret_refs (
+      environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+      key TEXT NOT NULL,
+      provider TEXT NOT NULL CHECK(provider IN ('keychain','env','file')),
+      ref TEXT NOT NULL,
+      PRIMARY KEY (environment_id, key)
+    );
   `,
 
   7: `
