@@ -585,8 +585,11 @@ describe("CLI cloud layer workflows", () => {
         }
       );
 
-      if (result.stderr) {
-        throw new Error(`Command failed with stderr: ${result.stderr}`);
+      const stderr = result.stderr
+        ?.replace(/^Warning: exportLayer writes bundle v1[^\n]*\n?/m, "")
+        .trim();
+      if (stderr) {
+        throw new Error(`Command failed with stderr: ${stderr}`);
       }
       expect(result.stdout).toContain("Published layer");
 

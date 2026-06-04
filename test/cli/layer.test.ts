@@ -522,9 +522,9 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const layer = layerModel.createLayer({ name: "bad-plugin-meta" });
-      pluginModel.addPluginToLayer(layer.id, "formatter", "not-semver");
+      pluginPins.addPluginToLayer(layer.id, "formatter", "not-semver");
 
       const result = await runCli([
         "layer",

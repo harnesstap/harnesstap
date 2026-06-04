@@ -32,7 +32,7 @@ import {
 import {
   createPlugin,
   getPlugin,
-  listPlugins,
+  listPlugins as listDesignPlugins,
   deletePlugin,
   getPluginResources,
   listPluginDependencies,
@@ -74,7 +74,7 @@ import {
 } from "./services/claude-plugin-inventory.js";
 import {
   checkPlugins,
-  listPlugins,
+  listPlugins as listInstalledPlugins,
   refreshPluginSources,
   updatePlugins,
 } from "./services/plugin-lifecycle.js";
@@ -211,7 +211,7 @@ async function resolveLayerMutationTarget(input: {
     return undefined;
   }
 
-  const layers = listPlugins();
+  const layers = listDesignPlugins();
   if (layers.length === 0) {
     return undefined;
   }
@@ -561,7 +561,7 @@ async function handleScanCommand(
   }
 
   try {
-    const pluginSummary = await listPlugins({
+    const pluginSummary = await listInstalledPlugins({
       projectRoot,
       homeRoot: resolveHomeRoot(),
       platformIds: parsePlatformFilter(opts.platform),
@@ -1643,7 +1643,7 @@ async function handlePluginInstalledListCommand(
   opts: { platform?: string; format?: string },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const result = await listPlugins(pluginLifecycleBase(path, opts));
+  const result = await listInstalledPlugins(pluginLifecycleBase(path, opts));
   if (format === "json") {
     printJson(result);
     return;
@@ -1887,7 +1887,7 @@ async function handleProjectStatusCommand(
 
   let pluginsLine = "(none detected)";
   try {
-    const plugins = await listPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
+    const plugins = await listInstalledPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
     if (plugins.installs.length > 0) {
       const check = await checkPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
       pluginsLine = `${plugins.installs.length} installed (${check.summary.outdated} outdated)`;
@@ -2694,7 +2694,7 @@ layerCmd
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const layers = listPlugins();
+    const layers = listDesignPlugins();
     if (format === "json") {
       printJson(layers);
       return;
@@ -2729,7 +2729,7 @@ layerCmd
     if (!resolvedName) {
       process.exitCode = 1;
       ui.danger(
-        listPlugins().length > 0
+        listDesignPlugins().length > 0
           ? "error: missing required argument 'name'"
           : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
       );
@@ -2762,7 +2762,7 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listPlugins().length > 0
+          listDesignPlugins().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
@@ -2829,7 +2829,7 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listPlugins().length > 0
+          listDesignPlugins().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );

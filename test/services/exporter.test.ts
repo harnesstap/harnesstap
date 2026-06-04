@@ -247,11 +247,11 @@ describe("exporter services", () => {
 
     try {
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "plugs" });
-      pluginModel.addPluginToLayer(layer.id, "fmt@acme-marketplace", ">=2");
+      pluginPins.addPluginToLayer(layer.id, "fmt@acme-marketplace", ">=2");
 
       const bundle = exporter.exportLayer(layer.id);
       expect(bundle.version).toBe(1);
@@ -282,11 +282,11 @@ describe("exporter services", () => {
       writeTextFile(join(demoRoot, "README.md"), "hello");
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "local-plug" });
-      pluginModel.addPluginToLayer(layer.id, "./plugins/demo", "1.x");
+      pluginPins.addPluginToLayer(layer.id, "./plugins/demo", "1.x");
 
       const bundle = exporter.exportLayer(layer.id, {
         projectRoot: context.projectDir,
@@ -329,11 +329,11 @@ describe("exporter services", () => {
       );
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "mkt-plug" });
-      pluginModel.addPluginToLayer(layer.id, "fmt@acme-marketplace", "2.x");
+      pluginPins.addPluginToLayer(layer.id, "fmt@acme-marketplace", "2.x");
 
       const bundle = exporter.exportLayer(layer.id, {
         embedPlugins: true,
@@ -531,7 +531,7 @@ describe("exporter services", () => {
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
@@ -541,8 +541,8 @@ describe("exporter services", () => {
       const betaResource = resourceModel.createResource(makeResourceInput({ name: "beta-skill" }));
       layerModel.addResourceToLayer(alpha.id, alphaResource.id);
       layerModel.addResourceToLayer(beta.id, betaResource.id);
-      pluginModel.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
-      pluginModel.addPluginToLayer(beta.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginPins.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginPins.addPluginToLayer(beta.id, "./plugins/shared-plugin", "^1.0.0");
 
       const bundle = exporter.exportLayer([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
@@ -616,12 +616,12 @@ describe("exporter services", () => {
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const alpha = layerModel.createLayer({ name: "alpha-only-plugin", version: "1.0.0" });
       const beta = layerModel.createLayer({ name: "beta-no-plugin", version: "1.0.0" });
-      pluginModel.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginPins.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
 
       const bundle = exporter.exportLayer([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
@@ -697,13 +697,13 @@ describe("exporter services", () => {
       );
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const alpha = layerModel.createLayer({ name: "alpha-shared-ref", version: "1.0.0" });
       const beta = layerModel.createLayer({ name: "beta-shared-ref", version: "1.0.0" });
-      pluginModel.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
-      pluginModel.addPluginToLayer(beta.id, "./plugins/shared-plugin", "^2.0.0");
+      pluginPins.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginPins.addPluginToLayer(beta.id, "./plugins/shared-plugin", "^2.0.0");
 
       const bundle = exporter.exportLayer([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
