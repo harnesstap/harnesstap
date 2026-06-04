@@ -18,13 +18,13 @@ describe("initializeSchema", () => {
           "harness_preferences",
           "imported_snapshot_installs",
           "imported_snapshots",
-          "layer_dependencies",
+          "plugin_dependencies",
           "project_harnesses",
-          "layer_plugins",
+          "plugin_native_pins",
           "project_plugin_state",
           "project_layers",
-          "layer_resources",
-          "layers",
+          "plugin_resources",
+          "plugins",
           "projects",
           "resources",
           "schema_version",
@@ -37,11 +37,11 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(7);
+      expect(versionRow.version).toBe(8);
 
       const layerColumns = context.connection
         .getDb()
-        .prepare("PRAGMA table_info(layers)")
+        .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
@@ -109,13 +109,13 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 7 }]);
+      expect(versionRows).toEqual([{ version: 8 }]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("migration 4 creates project_plugin_state and layer_plugins", async () => {
+  it("migration 4 creates project_plugin_state and plugin_native_pins (was layer_plugins)", async () => {
     const context = await createTestContext("schema-migration-4");
 
     try {
@@ -130,13 +130,13 @@ describe("initializeSchema", () => {
 
       const names = tables.map((t) => t.name);
       expect(names).toContain("project_plugin_state");
-      expect(names).toContain("layer_plugins");
+      expect(names).toContain("plugin_native_pins");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("migration 5 adds version column to layers and creates layer_dependencies", async () => {
+  it("migration 5 adds version column to plugins and creates plugin_dependencies", async () => {
     const context = await createTestContext("schema-migration-5");
 
     try {
@@ -146,11 +146,11 @@ describe("initializeSchema", () => {
       const tables = db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all() as Array<{ name: string }>;
-      expect(tables.map((t) => t.name)).toContain("layer_dependencies");
+      expect(tables.map((t) => t.name)).toContain("plugin_dependencies");
 
-      // layers table should have a version column
+      // plugins table should have a version column
       const cols = db
-        .prepare("PRAGMA table_info(layers)")
+        .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       const versionCol = cols.find((c) => c.name === "version");
       expect(versionCol).toBeDefined();
@@ -159,13 +159,13 @@ describe("initializeSchema", () => {
       // (name, version) uniqueness: same name+version must conflict
       const now = new Date().toISOString();
       db.prepare(
-        `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+        `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
          VALUES ('id1', 'foo', '1.0.0', '', '[]', '{}', ?, ?)`,
       ).run(now, now);
 
       expect(() =>
         db.prepare(
-          `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+          `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
            VALUES ('id2', 'foo', '1.0.0', '', '[]', '{}', ?, ?)`,
         ).run(now, now),
       ).toThrow();
@@ -173,7 +173,7 @@ describe("initializeSchema", () => {
       // different version with same name should succeed
       expect(() =>
         db.prepare(
-          `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+          `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
            VALUES ('id3', 'foo', '2.0.0', '', '[]', '{}', ?, ?)`,
         ).run(now, now),
       ).not.toThrow();
@@ -182,7 +182,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("migration 5 preserves existing layer_resources, layer_plugins, and project_layers rows", async () => {
+  it("migration 5 preserves existing plugin_resources, plugin_native_pins, and project_layers rows", async () => {
     const context = await createTestContext("schema-migration-5-preserve");
 
     try {
@@ -194,9 +194,9 @@ describe("initializeSchema", () => {
 
       const now = new Date().toISOString();
 
-      // Insert a layer and a resource, then link them via layer_resources
+      // Insert a plugin and a resource, then link them via plugin_resources
       db.prepare(
-        `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+        `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
          VALUES ('p1', 'test-layer', '1.0.0', '', '[]', '{}', ?, ?)`,
       ).run(now, now);
       db.prepare(
@@ -204,11 +204,11 @@ describe("initializeSchema", () => {
          VALUES ('r1', 'instruction', 'my-instruction', '', '', '{}', 'manual', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO layer_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
+        `INSERT INTO plugin_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
       ).run();
 
       const row = db
-        .prepare("SELECT * FROM layer_resources WHERE layer_id = 'p1'")
+        .prepare("SELECT * FROM plugin_resources WHERE layer_id = 'p1'")
         .get() as { layer_id: string } | undefined;
       expect(row?.layer_id).toBe("p1");
     } finally {
@@ -279,9 +279,9 @@ describe("initializeSchema", () => {
       // Run migration 5
       context.schema.initializeSchema(db);
 
-      // Layer row carries version '1.0.0' and original fields intact
+      // Plugin row carries version '1.0.0' and original fields intact
       const layer = db
-        .prepare("SELECT * FROM layers WHERE id = 'p1'")
+        .prepare("SELECT * FROM plugins WHERE id = 'p1'")
         .get() as { name: string; version: string; description: string } | undefined;
       expect(layer?.name).toBe("my-layer");
       expect(layer?.version).toBe("1.0.0");
@@ -289,13 +289,13 @@ describe("initializeSchema", () => {
 
       // FK-linked rows survived
       const prRow = db
-        .prepare("SELECT * FROM layer_resources WHERE layer_id = 'p1'")
+        .prepare("SELECT * FROM plugin_resources WHERE layer_id = 'p1'")
         .get() as { resource_id: string } | undefined;
       expect(prRow).toBeDefined();
       expect(prRow?.resource_id).toBe("r1");
 
       const ppRow = db
-        .prepare("SELECT * FROM layer_plugins WHERE layer_id = 'p1'")
+        .prepare("SELECT * FROM plugin_native_pins WHERE layer_id = 'p1'")
         .get() as { ref: string; version_constraint: string } | undefined;
       expect(ppRow).toBeDefined();
       expect(ppRow?.ref).toBe("plugin@marketplace");
@@ -305,10 +305,10 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(7);
+      expect(versionRow.version).toBe(8);
 
       const layerColumns = db
-        .prepare("PRAGMA table_info(layers)")
+        .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
@@ -607,6 +607,109 @@ describe("initializeSchema", () => {
       expect(
         installColumns.find((column) => column.name === "files")?.dflt_value,
       ).toBe("'[]'");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 8 renames layers to plugins and preserves rows", async () => {
+    const context = await createTestContext("schema-migration-8");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+
+      db.exec(`
+        CREATE TABLE resources (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL CHECK(type IN (
+            'instruction','skill','rule','mcp_server','permission',
+            'hook','agent','command','env_var','model_config'
+          )),
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          content TEXT NOT NULL DEFAULT '',
+          metadata TEXT NOT NULL DEFAULT '{}',
+          source TEXT NOT NULL DEFAULT 'manual',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE layers (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          source_path TEXT NOT NULL DEFAULT '',
+          source_hash TEXT NOT NULL DEFAULT '',
+          source_present INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name, version)
+        );
+        CREATE TABLE layer_resources (
+          layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
+          resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, resource_id)
+        );
+        CREATE TABLE layer_dependencies (
+          layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
+          dependency_name TEXT NOT NULL,
+          version_constraint TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, dependency_name)
+        );
+        CREATE TABLE layer_plugins (
+          layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
+          ref TEXT NOT NULL,
+          version_constraint TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          embed_on_export INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, ref)
+        );
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (7);
+      `);
+
+      db.prepare(
+        `INSERT INTO layers (id, name, version, description, tags, claude_config, created_at, updated_at)
+         VALUES ('p1', 'team-stack', '1.0.0', '', '[]', '{}', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
+         VALUES ('r1', 'instruction', 'instr', '', '', '{}', 'manual', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO layer_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
+      ).run();
+
+      context.schema.initializeSchema(db);
+
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all() as Array<{ name: string }>;
+      const names = tables.map((table) => table.name);
+      expect(names).toContain("plugins");
+      expect(names).not.toContain("layers");
+      expect(names).toContain("plugin_resources");
+      expect(names).not.toContain("layer_resources");
+
+      const row = db
+        .prepare("SELECT name FROM plugins WHERE id = ?")
+        .get("p1") as { name: string } | undefined;
+      expect(row).toEqual({ name: "team-stack" });
+
+      const link = db
+        .prepare("SELECT layer_id FROM plugin_resources WHERE layer_id = 'p1'")
+        .get() as { layer_id: string } | undefined;
+      expect(link?.layer_id).toBe("p1");
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(8);
     } finally {
       await context.cleanup();
     }
