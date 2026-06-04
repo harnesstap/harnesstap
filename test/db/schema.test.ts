@@ -27,6 +27,8 @@ describe("initializeSchema", () => {
           "project_plugin_state",
           "configured_layer_plugins",
           "configured_layers",
+          "deck_configured_layers",
+          "decks",
           "project_configured_layers",
           "plugin_resources",
           "plugins",
@@ -42,7 +44,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(11);
+      expect(versionRow.version).toBe(12);
 
       const layerColumns = context.connection
         .getDb()
@@ -114,7 +116,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 11 }]);
+      expect(versionRows).toEqual([{ version: 12 }]);
     } finally {
       await context.cleanup();
     }
@@ -310,7 +312,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(11);
+      expect(versionRow.version).toBe(12);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -718,7 +720,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(11);
+      expect(versionRow.version).toBe(12);
     } finally {
       await context.cleanup();
     }
@@ -765,7 +767,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(11);
+      expect(versionRow.version).toBe(12);
     } finally {
       await context.cleanup();
     }
@@ -832,7 +834,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(11);
+      expect(versionRow.version).toBe(12);
     } finally {
       await context.cleanup();
     }
@@ -925,7 +927,84 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(11);
+      expect(versionRow.version).toBe(12);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 12 creates deck tables", async () => {
+    const context = await createTestContext("schema-migration-12");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+
+      db.exec(`
+        CREATE TABLE environments (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name)
+        );
+        CREATE TABLE configured_layers (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          description TEXT NOT NULL DEFAULT '',
+          default_environment_id TEXT REFERENCES environments(id),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name, version)
+        );
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (11);
+      `);
+
+      context.schema.initializeSchema(db);
+
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all() as Array<{ name: string }>;
+      const names = tables.map((table) => table.name);
+      expect(names).toContain("decks");
+      expect(names).toContain("deck_configured_layers");
+
+      db.prepare(
+        `INSERT INTO environments (id, name, description, created_at, updated_at)
+         VALUES ('env-prod', 'prod', '', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO configured_layers (id, name, version, description, created_at, updated_at)
+         VALUES ('cl-1', 'oncall', '1.0.0', '', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO decks (id, name, root_path, active_environment_id, created_at, updated_at)
+         VALUES ('deck-1', 'my-deck', '/tmp/my-deck', 'env-prod', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO deck_configured_layers (deck_id, configured_layer_id, "order")
+         VALUES ('deck-1', 'cl-1', 0)`,
+      ).run();
+
+      const deck = db
+        .prepare("SELECT name, active_environment_id FROM decks WHERE id = 'deck-1'")
+        .get() as { name: string; active_environment_id: string };
+      expect(deck).toEqual({ name: "my-deck", active_environment_id: "env-prod" });
+
+      const link = db
+        .prepare(
+          "SELECT configured_layer_id FROM deck_configured_layers WHERE deck_id = 'deck-1'",
+        )
+        .get() as { configured_layer_id: string };
+      expect(link.configured_layer_id).toBe("cl-1");
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(12);
     } finally {
       await context.cleanup();
     }

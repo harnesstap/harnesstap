@@ -197,6 +197,58 @@ export interface ProjectConfiguredLayer {
   applied_at: string;
 }
 
+export interface Deck {
+  id: string;
+  name: string;
+  root_path: string;
+  active_environment_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeckConfiguredLayer {
+  deck_id: string;
+  configured_layer_id: string;
+  order: number;
+}
+
+export const DECK_SCHEMA = "urn:harnessdeck:deck:v1" as const;
+export const DECK_JSON_VERSION = 1 as const;
+
+export interface DeckJsonLayerPluginRef {
+  name: string;
+  version: string;
+}
+
+export interface DeckJsonLayer {
+  name: string;
+  version: string;
+  plugins: DeckJsonLayerPluginRef[];
+  environment?: string;
+}
+
+export type DeckJsonSecretProvider = "keychain" | "env";
+
+export interface DeckJsonEnvironmentSecretRef {
+  provider: DeckJsonSecretProvider;
+  ref: string;
+}
+
+export interface DeckJsonEnvironment {
+  name: string;
+  values: Record<string, string>;
+  secret_refs?: Record<string, DeckJsonEnvironmentSecretRef>;
+}
+
+export interface DeckJson {
+  $schema: typeof DECK_SCHEMA;
+  version: typeof DECK_JSON_VERSION;
+  name: string;
+  layers: DeckJsonLayer[];
+  environments: DeckJsonEnvironment[];
+  active_environment?: string;
+}
+
 /** @deprecated Use ProjectConfiguredLayer */
 export interface ProjectLayer {
   project_id: string;

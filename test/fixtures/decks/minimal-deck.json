@@ -1,0 +1,27 @@
+{
+  "$schema": "urn:harnessdeck:deck:v1",
+  "version": 1,
+  "name": "minimal-deck",
+  "layers": [
+    {
+      "name": "backend-oncall",
+      "version": "1.0.0",
+      "plugins": [{ "name": "pagerduty", "version": "1.0.0" }],
+      "environment": "prod"
+    }
+  ],
+  "environments": [
+    {
+      "name": "prod",
+      "values": { "PD_REGION": "eu" }
+    },
+    {
+      "name": "staging",
+      "values": { "PD_REGION": "us" },
+      "secret_refs": {
+        "PD_TOKEN": { "provider": "keychain", "ref": "harnessdeck/pd-token" }
+      }
+    }
+  ],
+  "active_environment": "prod"
+}

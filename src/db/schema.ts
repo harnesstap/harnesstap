@@ -1,7 +1,7 @@
 import { ulid } from "ulid";
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -208,6 +208,25 @@ const MIGRATIONS: Record<number, string> = {
       provider TEXT NOT NULL CHECK(provider IN ('keychain','env','file')),
       ref TEXT NOT NULL,
       PRIMARY KEY (environment_id, key)
+    );
+  `,
+
+  12: `
+    CREATE TABLE decks (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      root_path TEXT NOT NULL DEFAULT '',
+      active_environment_id TEXT REFERENCES environments(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(name)
+    );
+
+    CREATE TABLE deck_configured_layers (
+      deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      configured_layer_id TEXT NOT NULL REFERENCES configured_layers(id) ON DELETE CASCADE,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (deck_id, configured_layer_id)
     );
   `,
 
