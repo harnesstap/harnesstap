@@ -57,7 +57,7 @@ describe("CLI apply with environment cascade", () => {
         }),
       );
 
-      const configuredLayer = createConfiguredLayer({
+      createConfiguredLayer({
         name: "env-layer",
         pluginIds: [plugin.id],
         environmentId: prod.id,

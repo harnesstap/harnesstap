@@ -1,5 +1,5 @@
 import type { Layer, Resource } from "../../types.js";
-import type { LayerPluginRow } from "../../models/plugin.js";
+import type { LayerPluginRow } from "../../models/plugin-pins.js";
 
 export interface LayerDoctorCheckResult {
   severity: "ok" | "warn" | "error";
