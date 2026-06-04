@@ -41,9 +41,13 @@ import {
   upsertProject,
   getProject,
   getProjectByOrigin,
-  applyLayerToProject,
-  getProjectLayers,
+  applyConfiguredLayerToProject,
+  getProjectConfiguredLayers,
 } from "./models/project.js";
+import {
+  ensureImplicitConfiguredLayer,
+  resolveConfiguredLayerSelector,
+} from "./models/configured-layer.js";
 import {
   createSnapshot,
   listSnapshots,
@@ -95,7 +99,8 @@ import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-vali
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
-import { mergeLayers } from "./services/layer-merge.js";
+import { mergePlugins } from "./services/layer-merge.js";
+import { mergeConfiguredLayers } from "./services/configured-layer-merge.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { isLayerUrl, fetchLayerBundleToTempFile, isBundleFilePath, writeLayerBundleToTempFile } from "./services/layer-source.js";
 import { syncProject } from "./services/project-sync.js";
@@ -612,20 +617,33 @@ async function resolveApplyLayers(
   layers: ReturnType<typeof getPlugin>[];
   resources: Resource[];
   claude?: import("./types.js").ClaudeLayerConfig;
-  primaryLayerId: string;
+  primaryConfiguredLayerId: string;
 }> {
+  function resolveConfiguredLayerIds(
+    selectors: string[],
+  ): string[] {
+    return selectors.map((selector) => {
+      const configuredLayer = resolveConfiguredLayerSelector(selector);
+      if (!configuredLayer) {
+        throw new Error(`Layer not found: ${selector}`);
+      }
+      return configuredLayer.id;
+    });
+  }
+
   function importedBundleToApplyResult(imported: ReturnType<typeof importFromFile>) {
     const layers = imported.layers.map((entry) => entry.layer);
     const primaryLayer = layers[layers.length - 1];
     if (!primaryLayer) {
       throw new Error("Bundle contains no layers.");
     }
-    const merged = mergeLayers(layers.map((layer) => layer.id));
+    const merged = mergePlugins(layers.map((layer) => layer.id));
+    const configuredLayer = ensureImplicitConfiguredLayer(primaryLayer.id);
     return {
-      layers,
+      layers: merged.layers,
       resources: merged.resources,
       claude: merged.claude,
-      primaryLayerId: primaryLayer.id,
+      primaryConfiguredLayerId: configuredLayer.id,
     };
   }
 
@@ -646,25 +664,14 @@ async function resolveApplyLayers(
     );
   }
 
-  if (layerNames.length > 1) {
-    const merged = mergeLayers(layerNames);
-    return {
-      layers: merged.layers,
-      resources: merged.resources,
-      claude: merged.claude,
-      primaryLayerId: merged.layers[merged.layers.length - 1]?.id ?? "",
-    };
-  }
-
-  const layer = getPlugin(layerNames[0]);
-  if (!layer) {
-    throw new Error(`Layer not found: ${layerNames[0]}`);
-  }
+  const configuredLayerIds = resolveConfiguredLayerIds(layerNames);
+  const merged = mergeConfiguredLayers(configuredLayerIds);
   return {
-    layers: [layer],
-    resources: getPluginResources(layer.id),
-    claude: layer.claude,
-    primaryLayerId: layer.id,
+    layers: merged.layers,
+    resources: merged.resources,
+    claude: merged.claude,
+    primaryConfiguredLayerId:
+      configuredLayerIds[configuredLayerIds.length - 1] ?? "",
   };
 }
 
@@ -804,9 +811,9 @@ async function handleApplyCommand(
       state: snapshotState,
     });
 
-    applyLayerToProject({
+    applyConfiguredLayerToProject({
       project_id: project.id,
-      layer_id: applyBundle.primaryLayerId,
+      configured_layer_id: applyBundle.primaryConfiguredLayerId,
       platforms,
     });
   }
@@ -1838,7 +1845,7 @@ async function handleProjectStatusCommand(
 
   const normalizedOrigin = normalizeGitUrl(gitOrigin);
   const project = getProjectByOrigin(normalizedOrigin);
-  const layers = project ? getProjectLayers(project.id) : [];
+  const layers = project ? getProjectConfiguredLayers(project.id) : [];
   const snapshots = project ? listSnapshots(project.id) : [];
 
   if (format === "json") {

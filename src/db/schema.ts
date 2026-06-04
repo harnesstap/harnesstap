@@ -1,6 +1,7 @@
+import { ulid } from "ulid";
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -210,6 +211,34 @@ const MIGRATIONS: Record<number, string> = {
     );
   `,
 
+  11: `
+    CREATE TABLE configured_layers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      version TEXT NOT NULL DEFAULT '1.0.0',
+      description TEXT NOT NULL DEFAULT '',
+      default_environment_id TEXT REFERENCES environments(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(name, version)
+    );
+
+    CREATE TABLE configured_layer_plugins (
+      configured_layer_id TEXT NOT NULL REFERENCES configured_layers(id) ON DELETE CASCADE,
+      plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (configured_layer_id, plugin_id)
+    );
+
+    CREATE TABLE project_configured_layers (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      configured_layer_id TEXT NOT NULL REFERENCES configured_layers(id) ON DELETE CASCADE,
+      platforms TEXT NOT NULL DEFAULT '[]',
+      applied_at TEXT NOT NULL,
+      PRIMARY KEY (project_id, configured_layer_id)
+    );
+  `,
+
   7: `
     CREATE TABLE IF NOT EXISTS imported_snapshots (
       id              TEXT PRIMARY KEY,
@@ -241,7 +270,7 @@ const MIGRATIONS: Record<number, string> = {
 
 /** Migration 8: layers → plugins (design-time component bundle). */
 function applyMigration8(db: SqliteDatabase): void {
-  // project_layers.layer_id still references plugin id until configured layers (migration 10).
+  // project_layers.layer_id still references plugin id until configured layers (migration 11).
   const renames: Array<[string, string]> = [
     ["layers", "plugins"],
     ["layer_resources", "plugin_resources"],
@@ -340,6 +369,79 @@ function rebuildPluginChildForeignKeys(db: SqliteDatabase): void {
   }
 }
 
+/** Migration 11: configured layers; repoint project attachment from project_layers. */
+function applyMigration11(db: SqliteDatabase): void {
+  const migration = MIGRATIONS[11];
+  if (migration) {
+    db.exec(migration);
+  }
+
+  const hasProjectLayers = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'project_layers'")
+    .get();
+  if (!hasProjectLayers) return;
+
+  const pluginToConfiguredLayer = new Map<string, string>();
+  const projectLayers = db
+    .prepare("SELECT project_id, layer_id, platforms, applied_at FROM project_layers")
+    .all() as Array<{
+      project_id: string;
+      layer_id: string;
+      platforms: string;
+      applied_at: string;
+    }>;
+
+  for (const row of projectLayers) {
+    if (!pluginToConfiguredLayer.has(row.layer_id)) {
+      const plugin = db
+        .prepare("SELECT id, name, version, description, created_at, updated_at FROM plugins WHERE id = ?")
+        .get(row.layer_id) as
+        | {
+            id: string;
+            name: string;
+            version: string;
+            description: string;
+            created_at: string;
+            updated_at: string;
+          }
+        | undefined;
+      if (!plugin) continue;
+
+      const configuredLayerId = `legacy-wrap:${plugin.id}`;
+      db.prepare(
+        `INSERT OR IGNORE INTO configured_layers
+         (id, name, version, description, default_environment_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+      ).run(
+        configuredLayerId,
+        plugin.name,
+        plugin.version,
+        plugin.description,
+        plugin.created_at,
+        plugin.updated_at,
+      );
+      db.prepare(
+        `INSERT OR IGNORE INTO configured_layer_plugins
+         (configured_layer_id, plugin_id, "order")
+         VALUES (?, ?, 0)`,
+      ).run(configuredLayerId, plugin.id);
+      pluginToConfiguredLayer.set(row.layer_id, configuredLayerId);
+    }
+  }
+
+  for (const row of projectLayers) {
+    const configuredLayerId = pluginToConfiguredLayer.get(row.layer_id);
+    if (!configuredLayerId) continue;
+    db.prepare(
+      `INSERT OR REPLACE INTO project_configured_layers
+       (project_id, configured_layer_id, platforms, applied_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(row.project_id, configuredLayerId, row.platforms, row.applied_at);
+  }
+
+  db.exec("DROP TABLE project_layers");
+}
+
 export function initializeSchema(db: SqliteDatabase): void {
   const currentVersion = getSchemaVersion(db);
 
@@ -349,7 +451,7 @@ export function initializeSchema(db: SqliteDatabase): void {
   // copy, DROP old, RENAME). SQLite fires ON DELETE CASCADE on child tables even
   // for DROP TABLE when foreign_keys=ON, so we must toggle it outside the
   // transaction and restore it afterward.
-  const needsFkToggle = currentVersion < 5 || currentVersion < 6 || currentVersion < 8;
+  const needsFkToggle = currentVersion < 5 || currentVersion < 6 || currentVersion < 8 || currentVersion < 11;
   if (needsFkToggle) {
     db.exec("PRAGMA foreign_keys = OFF");
   }
@@ -359,6 +461,10 @@ export function initializeSchema(db: SqliteDatabase): void {
       for (let v = currentVersion + 1; v <= SCHEMA_VERSION; v++) {
         if (v === 8) {
           applyMigration8(db);
+          continue;
+        }
+        if (v === 11) {
+          applyMigration11(db);
           continue;
         }
         const migration = MIGRATIONS[v];

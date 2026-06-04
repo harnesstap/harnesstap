@@ -1,6 +1,6 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
-import type { Project, ProjectLayer } from "../types.js";
+import type { Project, ProjectConfiguredLayer } from "../types.js";
 
 export function createProject(input: {
   git_origin: string;
@@ -56,28 +56,67 @@ export function listProjects(): Project[] {
   return db.prepare("SELECT * FROM projects ORDER BY name").all() as Project[];
 }
 
-export function applyLayerToProject(input: {
+export function applyConfiguredLayerToProject(input: {
   project_id: string;
-  layer_id: string;
+  configured_layer_id: string;
   platforms: string[];
 }): void {
   const db = getDb();
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT OR REPLACE INTO project_layers (project_id, layer_id, platforms, applied_at)
+    `INSERT OR REPLACE INTO project_configured_layers (project_id, configured_layer_id, platforms, applied_at)
      VALUES (?, ?, ?, ?)`,
-  ).run(input.project_id, input.layer_id, JSON.stringify(input.platforms), now);
+  ).run(
+    input.project_id,
+    input.configured_layer_id,
+    JSON.stringify(input.platforms),
+    now,
+  );
 }
 
-export function getProjectLayers(projectId: string): ProjectLayer[] {
+export function getProjectConfiguredLayers(
+  projectId: string,
+): ProjectConfiguredLayer[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT * FROM project_layers WHERE project_id = ? ORDER BY applied_at DESC")
-    .all(projectId) as Array<Omit<ProjectLayer, "platforms"> & { platforms: string }>;
+    .prepare(
+      "SELECT * FROM project_configured_layers WHERE project_id = ? ORDER BY applied_at DESC",
+    )
+    .all(projectId) as Array<
+    Omit<ProjectConfiguredLayer, "platforms"> & { platforms: string }
+  >;
 
   return rows.map((row) => ({
     ...row,
     platforms: JSON.parse(row.platforms) as string[],
+  }));
+}
+
+/** @deprecated Use applyConfiguredLayerToProject */
+export function applyLayerToProject(input: {
+  project_id: string;
+  layer_id: string;
+  platforms: string[];
+}): void {
+  applyConfiguredLayerToProject({
+    project_id: input.project_id,
+    configured_layer_id: input.layer_id,
+    platforms: input.platforms,
+  });
+}
+
+/** @deprecated Use getProjectConfiguredLayers */
+export function getProjectLayers(projectId: string): Array<{
+  project_id: string;
+  layer_id: string;
+  platforms: string[];
+  applied_at: string;
+}> {
+  return getProjectConfiguredLayers(projectId).map((row) => ({
+    project_id: row.project_id,
+    layer_id: row.configured_layer_id,
+    platforms: row.platforms,
+    applied_at: row.applied_at,
   }));
 }

@@ -121,7 +121,7 @@ describe("CLI apply", () => {
 
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
 
       const layer = layerModel.createLayer({ name: "with-plugins" });
       pluginModel.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
@@ -163,7 +163,7 @@ describe("CLI apply", () => {
 
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
 
       const layer = layerModel.createLayer({ name: "strict-plugins" });
       pluginModel.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
@@ -206,7 +206,7 @@ describe("CLI apply", () => {
 
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
 
       const layer = layerModel.createLayer({ name: "ignore-plugins" });
       pluginModel.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
@@ -247,7 +247,7 @@ describe("CLI apply", () => {
 
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
 
       const layer = layerModel.createLayer({ name: "conflict-plugins" });
       pluginModel.addPluginToLayer(
@@ -399,7 +399,7 @@ describe("CLI apply", () => {
 
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
 
       const base = layerModel.createLayer({ name: "base-plugins" });
       pluginModel.addPluginToLayer(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");

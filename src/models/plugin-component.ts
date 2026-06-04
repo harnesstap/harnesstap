@@ -193,7 +193,7 @@ export function parsePluginSelector(selector: string): PluginSelector {
 /** @deprecated Use parsePluginSelector */
 export const parseLayerSelector = parsePluginSelector;
 
-function getPluginById(id: string): Plugin | undefined {
+export function getPluginById(id: string): Plugin | undefined {
   const db = getDb();
   const row = db.prepare("SELECT * FROM plugins WHERE id = ?").get(id) as PluginRow | undefined;
   return row ? rowToPlugin(row) : undefined;
