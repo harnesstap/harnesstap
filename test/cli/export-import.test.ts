@@ -90,10 +90,10 @@ describe("CLI export and import", () => {
       );
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
       const layer = layerModel.createLayer({ name: "embed-flag" });
-      pluginModel.addPluginToLayer(layer.id, "fmt-cli@acme-marketplace", "2.x");
+      pluginPins.addPluginToLayer(layer.id, "fmt-cli@acme-marketplace", "2.x");
 
       const bundlePath = join(context.projectDir, "embedded-cli.json");
       const exportResult = await runCli([
