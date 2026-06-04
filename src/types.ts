@@ -130,6 +130,29 @@ export interface Plugin {
 /** @deprecated Use Plugin */
 export type Layer = Plugin;
 
+export type EnvironmentSecretProvider = "keychain" | "env" | "file";
+
+export interface Environment {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnvironmentResource {
+  environment_id: string;
+  resource_id: string;
+  order: number;
+}
+
+export interface EnvironmentSecretRef {
+  environment_id: string;
+  key: string;
+  provider: EnvironmentSecretProvider;
+  ref: string;
+}
+
 export interface LayerResource {
   layer_id: string;
   resource_id: string;
