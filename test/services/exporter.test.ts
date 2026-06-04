@@ -247,7 +247,7 @@ describe("exporter services", () => {
 
     try {
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "plugs" });
@@ -282,7 +282,7 @@ describe("exporter services", () => {
       writeTextFile(join(demoRoot, "README.md"), "hello");
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "local-plug" });
@@ -329,7 +329,7 @@ describe("exporter services", () => {
       );
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "mkt-plug" });
@@ -358,7 +358,7 @@ describe("exporter services", () => {
       const imported = exporter.importFromFile(bundlePath, {
         embeddedTargetDir: unpack,
       });
-      const pluginModelFresh = await import("../../src/models/plugin.ts");
+      const pluginModelFresh = await import("../../src/models/plugin-pins.ts");
       const layerModelFresh = await import("../../src/models/layer.ts");
 
       const restored = layerModelFresh.getLayer(imported.layer.name);
@@ -531,7 +531,7 @@ describe("exporter services", () => {
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
@@ -571,7 +571,7 @@ describe("exporter services", () => {
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
         const importedLayerModel = await import("../../src/models/layer.ts");
-        const importedPluginModel = await import("../../src/models/plugin.ts");
+        const importedPluginModel = await import("../../src/models/plugin-pins.ts");
 
         const imported = importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
@@ -616,7 +616,7 @@ describe("exporter services", () => {
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const alpha = layerModel.createLayer({ name: "alpha-only-plugin", version: "1.0.0" });
@@ -661,7 +661,7 @@ describe("exporter services", () => {
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
         const importedLayerModel = await import("../../src/models/layer.ts");
-        const importedPluginModel = await import("../../src/models/plugin.ts");
+        const importedPluginModel = await import("../../src/models/plugin-pins.ts");
 
         importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
@@ -697,7 +697,7 @@ describe("exporter services", () => {
       );
 
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginModel = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const alpha = layerModel.createLayer({ name: "alpha-shared-ref", version: "1.0.0" });
@@ -728,7 +728,7 @@ describe("exporter services", () => {
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
         const importedLayerModel = await import("../../src/models/layer.ts");
-        const importedPluginModel = await import("../../src/models/plugin.ts");
+        const importedPluginModel = await import("../../src/models/plugin-pins.ts");
 
         importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
