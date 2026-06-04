@@ -18,19 +18,60 @@ import {
 import { listLayerPlugins, addPluginToLayer } from "../models/plugin-pins.js";
 import type { LayerPluginRow } from "../models/plugin-pins.js";
 import { createResource } from "../models/resource.js";
+import {
+  addConfiguredLayerToDeck,
+  createDeck,
+  getDeck,
+  listDeckConfiguredLayers,
+  setDeckActiveEnvironment,
+} from "../models/deck.js";
+import {
+  createConfiguredLayer,
+  getConfiguredLayer,
+  listConfiguredLayerPlugins,
+} from "../models/configured-layer.js";
+import {
+  addResourceToEnvironment,
+  addSecretRefToEnvironment,
+  createEnvironment,
+  getEnvironment,
+  getEnvironmentByName,
+  getEnvironmentResources,
+  getEnvironmentSecretRefs,
+} from "../models/environment.js";
 import { loadInstalled } from "../plugins/claude-installed.js";
 import type {
+  ConfiguredLayer,
+  Deck,
+  DeckJson,
+  DeckJsonEnvironment,
+  DeckJsonEnvironmentSecretRef,
+  DeckJsonLayer,
+  DeckJsonLayerPluginRef,
+  EnvVarMetadata,
+  Environment,
   ExportBundle,
   ExportBundleDependency,
   ExportBundleLayer,
   ExportBundleLayerEntry,
   ExportBundleLayerPluginPin,
+  ExportBundleResource,
   LegacyExportBundle,
   MultiLayerExportBundle,
   Layer,
+  Plugin,
   Resource,
 } from "../types.js";
-import { BUNDLE_SCHEMA, BUNDLE_VERSION } from "../types.js";
+import {
+  BUNDLE_SCHEMA,
+  BUNDLE_VERSION,
+  DECK_JSON_VERSION,
+  DECK_SCHEMA,
+} from "../types.js";
+import {
+  ENVIRONMENT_RESOURCE_TYPES,
+  PLUGIN_RESOURCE_TYPES,
+} from "./resource-classification.js";
 import { collectEmbeddedPluginFiles, writeEmbeddedPluginsOnImport } from "./plugin-bundle.js";
 
 export interface ExportLayerOptions {
@@ -61,6 +102,27 @@ export interface ImportedLayerBundle {
   layer: Layer;
   resources: Resource[];
   layers: ImportedLayerBundleEntry[];
+}
+
+export interface ImportDeckJsonResult {
+  deck: Deck;
+  plugins: Plugin[];
+  configuredLayers: ConfiguredLayer[];
+  environments: Environment[];
+}
+
+export interface ImportBundleV1AsDeckResult {
+  deck: Deck;
+  deckJson: DeckJson;
+  plugins: Plugin[];
+  configuredLayers: ConfiguredLayer[];
+  environments: Environment[];
+}
+
+export interface ImportDeckJsonOptions {
+  rootPath?: string;
+  resourceSource?: string;
+  deckNameOverride?: string;
 }
 
 type ExportLayerSelector = string | string[];
@@ -290,7 +352,7 @@ function parseBundle(raw: string): ParsedBundleSummary {
     throw new Error(`Unsupported bundle version: ${parsed.version}`);
   }
 
-  return normalizeExportBundle(parsed as ExportBundle);
+  return normalizeExportBundle(parsed as unknown as ExportBundle);
 }
 
 export function inspectBundleFile(filePath: string): ParsedBundleSummary {
@@ -317,10 +379,449 @@ function formatBundleAsJsonc(bundle: ExportBundle): string {
 /**
  * Export a layer and its resources as a portable JSON bundle.
  */
+function isEnvironmentResourceType(type: string): boolean {
+  return (ENVIRONMENT_RESOURCE_TYPES as readonly string[]).includes(type);
+}
+
+function isPluginResourceType(type: string): boolean {
+  return (PLUGIN_RESOURCE_TYPES as readonly string[]).includes(type);
+}
+
+function splitBundleResources(resources: ExportBundleResource[]): {
+  pluginResources: ExportBundleResource[];
+  environmentResources: ExportBundleResource[];
+} {
+  const pluginResources: ExportBundleResource[] = [];
+  const environmentResources: ExportBundleResource[] = [];
+
+  for (const resource of resources) {
+    if (isEnvironmentResourceType(resource.type)) {
+      environmentResources.push(resource);
+    } else if (isPluginResourceType(resource.type)) {
+      pluginResources.push(resource);
+    } else {
+      pluginResources.push(resource);
+    }
+  }
+
+  return { pluginResources, environmentResources };
+}
+
+function environmentResourcesToDeckJson(
+  envName: string,
+  resources: ExportBundleResource[],
+): DeckJsonEnvironment | undefined {
+  const values: Record<string, string> = {};
+
+  for (const resource of resources) {
+    if (resource.type === "env_var") {
+      const meta = resource.metadata as EnvVarMetadata;
+      values[meta.key] = meta.value;
+    }
+  }
+
+  if (Object.keys(values).length === 0) {
+    return undefined;
+  }
+
+  return { name: envName, values };
+}
+
+function defaultEnvironmentNameForLayer(layerName: string): string {
+  return `${layerName}-env`;
+}
+
+function parsedBundleToDeckJson(
+  normalized: NormalizedExportBundle,
+  options?: { deckName?: string },
+): DeckJson {
+  const environmentsByName = new Map<string, DeckJsonEnvironment>();
+  const deckLayers: DeckJsonLayer[] = [];
+
+  for (const layer of normalized.layers) {
+    const version =
+      typeof layer.version === "string" && layer.version.length > 0
+        ? layer.version
+        : "1.0.0";
+    const { environmentResources } = splitBundleResources(layer.resources);
+    const envName = defaultEnvironmentNameForLayer(layer.name);
+    const envEntry = environmentResourcesToDeckJson(
+      envName,
+      environmentResources,
+    );
+    let layerEnvironment: string | undefined;
+    if (envEntry) {
+      environmentsByName.set(envEntry.name, envEntry);
+      layerEnvironment = envEntry.name;
+    }
+
+    deckLayers.push({
+      name: layer.name,
+      version,
+      plugins: [{ name: layer.name, version }],
+      ...(layerEnvironment ? { environment: layerEnvironment } : {}),
+    });
+  }
+
+  const [firstLayer] = normalized.layers;
+  const deckName =
+    options?.deckName ?? firstLayer?.name ?? "imported-deck";
+
+  return {
+    $schema: DECK_SCHEMA,
+    version: DECK_JSON_VERSION,
+    name: deckName,
+    layers: deckLayers,
+    environments: [...environmentsByName.values()].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
+  };
+}
+
+/**
+ * Convert a bundle v1 export into canonical deck.json (plugins + configured layers).
+ */
+export function bundleV1ToDeckJson(
+  bundle: ExportBundle,
+  options?: { deckName?: string },
+): DeckJson {
+  return parsedBundleToDeckJson(normalizeExportBundle(bundle), options);
+}
+
+function environmentToDeckJson(environmentId: string): DeckJsonEnvironment {
+  const environment = getEnvironment(environmentId);
+  if (!environment) {
+    throw new Error(`Environment not found: ${environmentId}`);
+  }
+
+  const values: Record<string, string> = {};
+  for (const resource of getEnvironmentResources(environmentId)) {
+    if (resource.type === "env_var") {
+      const meta = resource.metadata as EnvVarMetadata;
+      values[meta.key] = meta.value;
+    }
+  }
+
+  const secretRefs = getEnvironmentSecretRefs(environmentId);
+  const secret_refs =
+    secretRefs.length > 0
+      ? Object.fromEntries(
+          secretRefs.map((ref) => [
+            ref.key,
+            {
+              provider: ref.provider as DeckJsonEnvironmentSecretRef["provider"],
+              ref: ref.ref,
+            },
+          ]),
+        )
+      : undefined;
+
+  return {
+    name: environment.name,
+    values,
+    ...(secret_refs ? { secret_refs } : {}),
+  };
+}
+
+/**
+ * Serialize a deck row and its configured layers to deck.json.
+ */
+export function exportDeckToDeckJson(deckId: string): DeckJson {
+  const deck = getDeck(deckId);
+  if (!deck) {
+    throw new Error(`Deck not found: ${deckId}`);
+  }
+
+  const environmentsByName = new Map<string, DeckJsonEnvironment>();
+  const deckLayers: DeckJsonLayer[] = [];
+
+  const rememberEnvironment = (environmentId: string | undefined): string | undefined => {
+    if (!environmentId) return undefined;
+    const environment = getEnvironment(environmentId);
+    if (!environment) return undefined;
+    if (!environmentsByName.has(environment.name)) {
+      environmentsByName.set(environment.name, environmentToDeckJson(environmentId));
+    }
+    return environment.name;
+  };
+
+  if (deck.active_environment_id) {
+    rememberEnvironment(deck.active_environment_id);
+  }
+
+  for (const link of listDeckConfiguredLayers(deckId)) {
+    const configuredLayer = getConfiguredLayer(link.configured_layer_id);
+    if (!configuredLayer) continue;
+
+    const pluginRefs: DeckJsonLayerPluginRef[] = [];
+    for (const binding of listConfiguredLayerPlugins(configuredLayer.id)) {
+      const plugin = getPlugin(binding.plugin_id);
+      if (!plugin) continue;
+      pluginRefs.push({ name: plugin.name, version: plugin.version });
+    }
+
+    const layerEnvironment = rememberEnvironment(
+      configuredLayer.default_environment_id,
+    );
+
+    deckLayers.push({
+      name: configuredLayer.name,
+      version: configuredLayer.version,
+      plugins: pluginRefs,
+      ...(layerEnvironment ? { environment: layerEnvironment } : {}),
+    });
+  }
+
+  const activeEnvironment = deck.active_environment_id
+    ? getEnvironment(deck.active_environment_id)?.name
+    : undefined;
+
+  return {
+    $schema: DECK_SCHEMA,
+    version: DECK_JSON_VERSION,
+    name: deck.name,
+    layers: deckLayers,
+    environments: [...environmentsByName.values()].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
+    ...(activeEnvironment ? { active_environment: activeEnvironment } : {}),
+  };
+}
+
+function parseDeckJsonFile(raw: string): DeckJson {
+  const parseErrors: ParseError[] = [];
+  const parsed = parseJsonc(raw, parseErrors, {
+    allowTrailingComma: true,
+    disallowComments: false,
+  }) as Record<string, unknown>;
+
+  if (parseErrors.length > 0) {
+    const [firstError] = parseErrors;
+    const detail = firstError
+      ? `${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`
+      : "invalid JSONC";
+    throw new Error(`Invalid deck JSONC: ${detail}`);
+  }
+
+  if (parsed.$schema !== DECK_SCHEMA) {
+    throw new Error(`Unsupported deck schema: ${parsed.$schema}`);
+  }
+  if (parsed.version !== DECK_JSON_VERSION) {
+    throw new Error(`Unsupported deck version: ${parsed.version}`);
+  }
+
+  return parsed as unknown as DeckJson;
+}
+
+export function readDeckJson(filePath: string): DeckJson {
+  return parseDeckJsonFile(readFileSync(filePath, "utf-8"));
+}
+
+function resolvePluginRef(ref: DeckJsonLayerPluginRef): Plugin {
+  const plugin =
+    getPlugin(`${ref.name}@${ref.version}`) ?? getPlugin(ref.name);
+  if (!plugin) {
+    throw new Error(
+      `Plugin not found for deck import: ${ref.name}@${ref.version}`,
+    );
+  }
+  return plugin;
+}
+
+function importDeckEnvironment(
+  environment: DeckJsonEnvironment,
+  opts?: ImportDeckJsonOptions,
+): Environment {
+  const existing = getEnvironmentByName(environment.name);
+  if (existing) {
+    return existing;
+  }
+
+  const created = createEnvironment({
+    name: environment.name,
+    description: `imported environment ${environment.name}`,
+  });
+
+  for (const [key, value] of Object.entries(environment.values)) {
+    const resource = createResource({
+      type: "env_var",
+      name: key,
+      description: "",
+      content: "",
+      metadata: { key, value },
+      source: opts?.resourceSource ?? "import:deck.json",
+    });
+    addResourceToEnvironment(created.id, resource);
+  }
+
+  for (const [key, secretRef] of Object.entries(environment.secret_refs ?? {})) {
+    addSecretRefToEnvironment(
+      created.id,
+      key,
+      secretRef.provider,
+      secretRef.ref,
+    );
+  }
+
+  return created;
+}
+
+/**
+ * Import deck.json into the database (plugins must already exist).
+ */
+export function importDeckJson(
+  filePath: string,
+  opts?: ImportDeckJsonOptions,
+): ImportDeckJsonResult {
+  const deckJson = readDeckJson(filePath);
+  const environments: Environment[] = [];
+  const environmentIdsByName = new Map<string, string>();
+
+  for (const environment of deckJson.environments) {
+    const imported = importDeckEnvironment(environment, opts);
+    environments.push(imported);
+    environmentIdsByName.set(imported.name, imported.id);
+  }
+
+  const configuredLayers: ConfiguredLayer[] = [];
+  const plugins: Plugin[] = [];
+
+  for (const layer of deckJson.layers) {
+    const pluginIds: string[] = [];
+    for (const ref of layer.plugins) {
+      const plugin = resolvePluginRef(ref);
+      if (!plugins.some((entry) => entry.id === plugin.id)) {
+        plugins.push(plugin);
+      }
+      pluginIds.push(plugin.id);
+    }
+
+    const environmentId = layer.environment
+      ? environmentIdsByName.get(layer.environment)
+      : undefined;
+
+    const configuredLayer = createConfiguredLayer({
+      name: layer.name,
+      version: layer.version,
+      pluginIds,
+      ...(environmentId ? { environmentId } : {}),
+    });
+    configuredLayers.push(configuredLayer);
+  }
+
+  const deck = createDeck({
+    name: opts?.deckNameOverride ?? deckJson.name,
+    rootPath: opts?.rootPath ?? "",
+  });
+
+  for (const configuredLayer of configuredLayers) {
+    addConfiguredLayerToDeck(deck.id, configuredLayer.id);
+  }
+
+  if (deckJson.active_environment) {
+    const activeId = environmentIdsByName.get(deckJson.active_environment);
+    if (activeId) {
+      setDeckActiveEnvironment(deck.id, activeId);
+    }
+  }
+
+  const finalized = getDeck(deck.id);
+  if (!finalized) {
+    throw new Error(`Deck ${deck.id} not found after deck.json import`);
+  }
+
+  return {
+    deck: finalized,
+    plugins,
+    configuredLayers,
+    environments,
+  };
+}
+
+/**
+ * Import bundle v1 via the legacy importer, then materialize deck.json structure.
+ */
+export function importBundleV1AsDeck(
+  filePath: string,
+  opts?: ImportLayerOptions & {
+    deckName?: string;
+    rootPath?: string;
+    resourceSource?: string;
+  },
+): ImportBundleV1AsDeckResult {
+  const deckJson = parsedBundleToDeckJson(inspectBundleFile(filePath), {
+    deckName: opts?.deckName,
+  });
+
+  const imported = importFromFile(filePath, opts);
+  const plugins = imported.layers.map((entry) => entry.layer);
+  const environments: Environment[] = [];
+
+  for (const environment of deckJson.environments) {
+    environments.push(
+      importDeckEnvironment(environment, {
+        resourceSource: opts?.resourceSource,
+      }),
+    );
+  }
+
+  const environmentIdsByName = new Map(
+    environments.map((environment) => [environment.name, environment.id]),
+  );
+
+  const configuredLayers: ConfiguredLayer[] = [];
+  for (const layer of deckJson.layers) {
+    const pluginIds = layer.plugins.map((ref) => resolvePluginRef(ref).id);
+    const environmentId = layer.environment
+      ? environmentIdsByName.get(layer.environment)
+      : undefined;
+    configuredLayers.push(
+      createConfiguredLayer({
+        name: layer.name,
+        version: layer.version,
+        pluginIds,
+        ...(environmentId ? { environmentId } : {}),
+      }),
+    );
+  }
+
+  const deck = createDeck({
+    name: opts?.deckName ?? deckJson.name,
+    rootPath: opts?.rootPath ?? "",
+  });
+
+  for (const configuredLayer of configuredLayers) {
+    addConfiguredLayerToDeck(deck.id, configuredLayer.id);
+  }
+
+  const finalized = getDeck(deck.id);
+  if (!finalized) {
+    throw new Error(`Deck ${deck.id} not found after bundle v1 import`);
+  }
+
+  return {
+    deck: finalized,
+    deckJson,
+    plugins,
+    configuredLayers,
+    environments,
+  };
+}
+
+export function writeDeckJson(filePath: string, deckJson: DeckJson): void {
+  writeFileSync(filePath, `${JSON.stringify(deckJson, null, 2)}\n`, "utf-8");
+}
+
+/**
+ * Export a layer and its resources as a portable JSON bundle.
+ */
 export function exportLayer(
   layerNameOrId: ExportLayerSelector,
   exportOpts?: ExportLayerOptions,
 ): ExportBundle {
+  process.stderr.write(
+    "Warning: exportLayer writes bundle v1 (urn:harnessdeck:bundle:v1). Prefer deck.json export for new decks.\n",
+  );
   const selectors = Array.isArray(layerNameOrId) ? layerNameOrId : [layerNameOrId];
   const layers = selectors.map((selector) => {
     const layer = getPlugin(selector);

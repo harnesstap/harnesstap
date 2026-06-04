@@ -4,15 +4,15 @@ import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
-describe("seed layers service", () => {
-  it("seeds built-in layers from the builtin-layers directory", async () => {
-    const context = await createInitializedTestContext("seed-layers");
+describe("seed plugins service", () => {
+  it("seeds built-in plugins from the builtin-plugins directory", async () => {
+    const context = await createInitializedTestContext("seed-plugins");
 
     try {
-      const seedLayers = await import("../../src/services/seed-layers.ts");
+      const seedPlugins = await import("../../src/services/seed-plugins.ts");
       const layerModel = await import("../../src/models/layer.ts");
 
-      const count = seedLayers.seedBuiltInLayers();
+      const count = seedPlugins.seedBuiltInPlugins();
 
       expect(count).toBeGreaterThan(0);
 
@@ -29,15 +29,15 @@ describe("seed layers service", () => {
     const context = await createInitializedTestContext("seed-duplicate");
 
     try {
-      const seedLayers = await import("../../src/services/seed-layers.ts");
+      const seedPlugins = await import("../../src/services/seed-plugins.ts");
       const layerModel = await import("../../src/models/layer.ts");
 
       // First seed
-      seedLayers.seedBuiltInLayers();
+      seedPlugins.seedBuiltInPlugins();
       const count1 = layerModel.listLayers().length;
 
       // Second seed - should skip existing
-      seedLayers.seedBuiltInLayers();
+      seedPlugins.seedBuiltInPlugins();
       const count2 = layerModel.listLayers().length;
 
       expect(count1).toBe(count2);
@@ -50,7 +50,7 @@ describe("seed layers service", () => {
     const context = await createInitializedTestContext("seed-with-resources");
 
     try {
-      const seedLayers = await import("../../src/services/seed-layers.ts");
+      const seedPlugins = await import("../../src/services/seed-plugins.ts");
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
@@ -59,7 +59,7 @@ describe("seed layers service", () => {
         layerModel.deleteLayer(p.id);
       }
 
-      const count = seedLayers.seedBuiltInLayers();
+      const count = seedPlugins.seedBuiltInPlugins();
 
       expect(count).toBeGreaterThan(0);
 
@@ -76,7 +76,7 @@ describe("seed layers service", () => {
     const context = await createInitializedTestContext("seed-source");
 
     try {
-      const seedLayers = await import("../../src/services/seed-layers.ts");
+      const seedPlugins = await import("../../src/services/seed-plugins.ts");
       const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
@@ -85,7 +85,7 @@ describe("seed layers service", () => {
         layerModel.deleteLayer(p.id);
       }
 
-      seedLayers.seedBuiltInLayers();
+      seedPlugins.seedBuiltInPlugins();
 
       const builtinResources = resourceModel.listResources({ source: "builtin:" });
       expect(builtinResources.length).toBeGreaterThan(0);
@@ -99,11 +99,11 @@ describe("seed layers service", () => {
     const context = await createInitializedTestContext("seed-multi-builtin-bundle");
 
     try {
-      const builtinDir = join(context.projectDir, "builtin-layers");
+      const builtinDir = join(context.projectDir, "builtin-plugins");
       mkdirSync(builtinDir, { recursive: true });
-      const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_LAYERS_DIR;
+      const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
       try {
-        process.env.HARNESSDECK_BUILTIN_LAYERS_DIR = builtinDir;
+        process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = builtinDir;
         writeTextFile(
           join(builtinDir, "multi.jsonc"),
           `{
@@ -131,11 +131,11 @@ describe("seed layers service", () => {
 }`,
         );
 
-        const seedLayers = await import("../../src/services/seed-layers.ts");
+        const seedPlugins = await import("../../src/services/seed-plugins.ts");
         const layerModel = await import("../../src/models/layer.ts");
 
         const before = new Set(layerModel.listLayers().map((layer) => layer.name));
-        const seededCount = seedLayers.seedBuiltInLayers();
+        const seededCount = seedPlugins.seedBuiltInPlugins();
         const after = layerModel.listLayers().map((layer) => layer.name);
 
         expect(seededCount).toBeGreaterThan(0);
@@ -145,12 +145,12 @@ describe("seed layers service", () => {
         expect(before.has("multi-two")).toBe(false);
         expect(after).toContain("multi-one");
         expect(after).toContain("multi-two");
-        expect(seedLayers.seedBuiltInLayers()).toBe(0);
+        expect(seedPlugins.seedBuiltInPlugins()).toBe(0);
       } finally {
         if (originalBuiltinDir === undefined) {
-          delete process.env.HARNESSDECK_BUILTIN_LAYERS_DIR;
+          delete process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
         } else {
-          process.env.HARNESSDECK_BUILTIN_LAYERS_DIR = originalBuiltinDir;
+          process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = originalBuiltinDir;
         }
       }
     } finally {
@@ -162,11 +162,11 @@ describe("seed layers service", () => {
     const context = await createInitializedTestContext("seed-partial-multi-builtin-bundle");
 
     try {
-      const builtinDir = join(context.projectDir, "builtin-layers");
+      const builtinDir = join(context.projectDir, "builtin-plugins");
       mkdirSync(builtinDir, { recursive: true });
-      const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_LAYERS_DIR;
+      const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
       try {
-        process.env.HARNESSDECK_BUILTIN_LAYERS_DIR = builtinDir;
+        process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = builtinDir;
         writeTextFile(
           join(builtinDir, "partial.jsonc"),
           `{
@@ -194,21 +194,21 @@ describe("seed layers service", () => {
 }`,
         );
 
-        const seedLayers = await import("../../src/services/seed-layers.ts");
+        const seedPlugins = await import("../../src/services/seed-plugins.ts");
         const layerModel = await import("../../src/models/layer.ts");
 
         layerModel.createLayer({ name: "partial-one", version: "1.0.0" });
 
-        const seededCount = seedLayers.seedBuiltInLayers();
+        const seededCount = seedPlugins.seedBuiltInPlugins();
 
         expect(seededCount).toBe(1);
         expect(layerModel.getLayer("partial-one@1.0.0")).toBeDefined();
         expect(layerModel.getLayer("partial-two@1.0.0")).toBeDefined();
       } finally {
         if (originalBuiltinDir === undefined) {
-          delete process.env.HARNESSDECK_BUILTIN_LAYERS_DIR;
+          delete process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
         } else {
-          process.env.HARNESSDECK_BUILTIN_LAYERS_DIR = originalBuiltinDir;
+          process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = originalBuiltinDir;
         }
       }
     } finally {

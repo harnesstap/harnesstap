@@ -57,7 +57,7 @@ import {
   getAllPlatforms,
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
-import { seedBuiltInLayers } from "./services/seed-layers.js";
+import { seedBuiltInPlugins } from "./services/seed-plugins.js";
 import { basename, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
@@ -1927,7 +1927,7 @@ async function handleInitCommand(opts: {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const seeded = seedBuiltInLayers();
+  const seeded = seedBuiltInPlugins();
   const homeDefaults = await scanAndPersistHomeDefaults();
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
