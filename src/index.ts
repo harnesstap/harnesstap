@@ -101,6 +101,7 @@ import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergePlugins } from "./services/layer-merge.js";
 import { mergeConfiguredLayers } from "./services/configured-layer-merge.js";
+import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { isLayerUrl, fetchLayerBundleToTempFile, isBundleFilePath, writeLayerBundleToTempFile } from "./services/layer-source.js";
 import { syncProject } from "./services/project-sync.js";
@@ -617,6 +618,7 @@ async function resolveApplyLayers(
   layers: ReturnType<typeof getPlugin>[];
   resources: Resource[];
   claude?: import("./types.js").ClaudeLayerConfig;
+  configuredLayerIds: string[];
   primaryConfiguredLayerId: string;
 }> {
   function resolveConfiguredLayerIds(
@@ -643,6 +645,7 @@ async function resolveApplyLayers(
       layers: merged.layers,
       resources: merged.resources,
       claude: merged.claude,
+      configuredLayerIds: [configuredLayer.id],
       primaryConfiguredLayerId: configuredLayer.id,
     };
   }
@@ -670,6 +673,7 @@ async function resolveApplyLayers(
     layers: merged.layers,
     resources: merged.resources,
     claude: merged.claude,
+    configuredLayerIds,
     primaryConfiguredLayerId:
       configuredLayerIds[configuredLayerIds.length - 1] ?? "",
   };
@@ -744,6 +748,10 @@ async function handleApplyCommand(
   }
 
   const { resources, claude } = applyBundle;
+  const resolvedEnvironment = resolveEnvironmentCascadeForApply({
+    configuredLayerIds: applyBundle.configuredLayerIds,
+    projectRoot,
+  });
   const mergedPluginPins = (() => {
     const pins = new Map<string, { ref: string; version_constraint: string }>();
     for (const layer of applyBundle.layers) {
@@ -761,7 +769,7 @@ async function handleApplyCommand(
     resources,
     platforms,
     projectRoot,
-    claude,
+    { claudeConfig: claude, resolvedEnvironment },
   );
 
   // Strict plugin validation must happen BEFORE any files are written.
