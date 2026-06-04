@@ -288,9 +288,10 @@ describe("CLI scan", () => {
       expect(secondResult.stdout).toContain("Installed cursor-team-kit globally");
       expect(snapshots).toHaveLength(2);
       expect(
-        importedSnapshotModel.listImportedSnapshotInstalls(latestSnapshot?.id ?? "").map(
-          (install) => install.platform_id,
-        ),
+        importedSnapshotModel
+          .listImportedSnapshotInstalls(latestSnapshot?.id ?? "")
+          .map((install) => install.platform_id)
+          .sort(),
       ).toEqual(["copilot-cli", "cursor"]);
       expect(
         importedSnapshotModel.findImportedSnapshotOwnersByFile(
