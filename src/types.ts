@@ -174,6 +174,30 @@ export interface Project {
   created_at: string;
 }
 
+export interface ConfiguredLayer {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  default_environment_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConfiguredLayerPlugin {
+  configured_layer_id: string;
+  plugin_id: string;
+  order: number;
+}
+
+export interface ProjectConfiguredLayer {
+  project_id: string;
+  configured_layer_id: string;
+  platforms: string[];
+  applied_at: string;
+}
+
+/** @deprecated Use ProjectConfiguredLayer */
 export interface ProjectLayer {
   project_id: string;
   layer_id: string;

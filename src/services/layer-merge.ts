@@ -42,20 +42,20 @@ function mergeClaudeConfig(
 }
 
 /**
- * Merge multiple layers in order; later layers override earlier ones for
- * resources (by type:name), plugin pins (by ref), and Claude config.
+ * Merge multiple design plugins by id in order; later plugins override earlier
+ * ones for resources (by type:name), plugin pins (by ref), and Claude config.
  */
-export function mergeLayers(layerNames: string[]): MergedLayerContent {
+export function mergePlugins(pluginIds: string[]): MergedLayerContent {
   const layers: Layer[] = [];
   const resourceOrder: string[] = [];
   const resourceByKey = new Map<string, Resource>();
   const pluginPins = new Map<string, { ref: string; version_constraint: string }>();
   let claude: ClaudeLayerConfig | undefined;
 
-  for (const name of layerNames) {
-    const layer = getPlugin(name);
+  for (const pluginId of pluginIds) {
+    const layer = getPlugin(pluginId);
     if (!layer) {
-      throw new Error(`Layer not found: ${name}`);
+      throw new Error(`Plugin not found: ${pluginId}`);
     }
     layers.push(layer);
 
@@ -87,4 +87,20 @@ export function mergeLayers(layerNames: string[]): MergedLayerContent {
     claude,
     pluginPins: [...pluginPins.values()],
   };
+}
+
+/**
+ * Merge multiple plugin selectors in order (name, id, or name@version).
+ * @deprecated Prefer mergeConfiguredLayers for project apply.
+ */
+export function mergeLayers(layerNames: string[]): MergedLayerContent {
+  const pluginIds: string[] = [];
+  for (const name of layerNames) {
+    const layer = getPlugin(name);
+    if (!layer) {
+      throw new Error(`Layer not found: ${name}`);
+    }
+    pluginIds.push(layer.id);
+  }
+  return mergePlugins(pluginIds);
 }

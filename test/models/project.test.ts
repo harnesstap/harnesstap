@@ -42,17 +42,22 @@ describe("project model", () => {
         local_path: "/tmp/repo",
       });
       const layer = layerModel.createLayer({ name: "starter" });
+      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
+      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+        name: "starter-stack",
+        pluginIds: [layer.id],
+      });
 
-      projectModel.applyLayerToProject({
+      projectModel.applyConfiguredLayerToProject({
         project_id: project.id,
-        layer_id: layer.id,
+        configured_layer_id: configuredLayer.id,
         platforms: ["claude-code", "cursor"],
       });
 
-      expect(projectModel.getProjectLayers(project.id)).toEqual([
+      expect(projectModel.getProjectConfiguredLayers(project.id)).toEqual([
         expect.objectContaining({
           project_id: project.id,
-          layer_id: layer.id,
+          configured_layer_id: configuredLayer.id,
           platforms: ["claude-code", "cursor"],
         }),
       ]);

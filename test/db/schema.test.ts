@@ -25,7 +25,9 @@ describe("initializeSchema", () => {
           "project_harnesses",
           "plugin_native_pins",
           "project_plugin_state",
-          "project_layers",
+          "configured_layer_plugins",
+          "configured_layers",
+          "project_configured_layers",
           "plugin_resources",
           "plugins",
           "projects",
@@ -40,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(10);
+      expect(versionRow.version).toBe(11);
 
       const layerColumns = context.connection
         .getDb()
@@ -112,7 +114,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 10 }]);
+      expect(versionRows).toEqual([{ version: 11 }]);
     } finally {
       await context.cleanup();
     }
@@ -308,7 +310,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(10);
+      expect(versionRow.version).toBe(11);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -456,12 +458,16 @@ describe("initializeSchema", () => {
 
       const projectLayer = db
         .prepare(
-          "SELECT project_id, layer_id FROM project_layers WHERE project_id = 'project-1'",
+          `SELECT pcl.project_id, clp.plugin_id
+           FROM project_configured_layers pcl
+           INNER JOIN configured_layer_plugins clp
+             ON clp.configured_layer_id = pcl.configured_layer_id
+           WHERE pcl.project_id = 'project-1'`,
         )
-        .get() as { project_id: string; layer_id: string } | undefined;
+        .get() as { project_id: string; plugin_id: string } | undefined;
       expect(projectLayer).toEqual({
         project_id: 'project-1',
-        layer_id: 'layer-1',
+        plugin_id: 'layer-1',
       });
 
       const snapshot = db
@@ -712,7 +718,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(10);
+      expect(versionRow.version).toBe(11);
     } finally {
       await context.cleanup();
     }
@@ -759,7 +765,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(10);
+      expect(versionRow.version).toBe(11);
     } finally {
       await context.cleanup();
     }
@@ -826,7 +832,100 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(10);
+      expect(versionRow.version).toBe(11);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 11 creates configured layers and migrates project_layers", async () => {
+    const context = await createTestContext("schema-migration-11");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+
+      db.exec(`
+        CREATE TABLE projects (
+          id TEXT PRIMARY KEY,
+          git_origin TEXT NOT NULL DEFAULT '',
+          local_id TEXT NOT NULL DEFAULT '',
+          name TEXT NOT NULL DEFAULT '',
+          local_path TEXT NOT NULL DEFAULT '',
+          tracked_at TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE plugins (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          source_path TEXT NOT NULL DEFAULT '',
+          source_hash TEXT NOT NULL DEFAULT '',
+          source_present INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name, version)
+        );
+        CREATE TABLE project_layers (
+          project_id TEXT NOT NULL,
+          layer_id TEXT NOT NULL,
+          platforms TEXT NOT NULL DEFAULT '[]',
+          applied_at TEXT NOT NULL,
+          PRIMARY KEY (project_id, layer_id)
+        );
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (10);
+      `);
+
+      db.prepare(
+        `INSERT INTO projects (id, git_origin, name, local_path, created_at)
+         VALUES ('proj-1', 'git@github.com:acme/app.git', 'app', '/tmp/app', ?)`,
+      ).run(now);
+      db.prepare(
+        `INSERT INTO plugins (id, name, version, description, tags, claude_config, needs_config, created_at, updated_at)
+         VALUES ('plug-1', 'team-stack', '2.0.0', '', '[]', '{}', '[]', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO project_layers (project_id, layer_id, platforms, applied_at)
+         VALUES ('proj-1', 'plug-1', '["claude-code"]', ?)`,
+      ).run(now);
+
+      context.schema.initializeSchema(db);
+
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all() as Array<{ name: string }>;
+      const names = tables.map((table) => table.name);
+      expect(names).toContain("configured_layers");
+      expect(names).toContain("project_configured_layers");
+      expect(names).not.toContain("project_layers");
+
+      const link = db
+        .prepare(
+          `SELECT pcl.configured_layer_id, cl.name, cl.version
+           FROM project_configured_layers pcl
+           INNER JOIN configured_layers cl ON cl.id = pcl.configured_layer_id
+           WHERE pcl.project_id = 'proj-1'`,
+        )
+        .get() as { configured_layer_id: string; name: string; version: string };
+      expect(link.name).toBe("team-stack");
+      expect(link.version).toBe("2.0.0");
+
+      const pluginLink = db
+        .prepare(
+          "SELECT plugin_id FROM configured_layer_plugins WHERE configured_layer_id = ?",
+        )
+        .get(link.configured_layer_id) as { plugin_id: string };
+      expect(pluginLink.plugin_id).toBe("plug-1");
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(11);
     } finally {
       await context.cleanup();
     }
