@@ -1,4 +1,3 @@
-import { ulid } from "ulid";
 import type { SqliteDatabase } from "./types.js";
 
 const SCHEMA_VERSION = 12;
