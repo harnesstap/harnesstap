@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -206,7 +206,109 @@ const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_imported_snapshot_installs_installed_at
       ON imported_snapshot_installs(installed_at DESC);
   `,
+
 };
+
+/** Migration 8: layers → plugins (design-time component bundle). */
+function applyMigration8(db: SqliteDatabase): void {
+  // project_layers.layer_id still references plugin id until configured layers (migration 10).
+  const renames: Array<[string, string]> = [
+    ["layers", "plugins"],
+    ["layer_resources", "plugin_resources"],
+    ["layer_dependencies", "plugin_dependencies"],
+    ["layer_plugins", "plugin_native_pins"],
+  ];
+  for (const [from, to] of renames) {
+    const exists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(from);
+    if (exists) {
+      db.exec(`ALTER TABLE ${from} RENAME TO ${to}`);
+    }
+  }
+
+  // Bun/SQLite may leave child FKs pointing at the old `layers` name after RENAME.
+  rebuildPluginChildForeignKeys(db);
+}
+
+function rebuildPluginChildForeignKeys(db: SqliteDatabase): void {
+  const hasPlugins = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugins'")
+    .get();
+  if (!hasPlugins) return;
+
+  const rebuilds: Array<{ table: string; ddl: string }> = [
+    {
+      table: "plugin_resources",
+      ddl: `
+        CREATE TABLE plugin_resources_new (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, resource_id)
+        );
+        INSERT INTO plugin_resources_new SELECT * FROM plugin_resources;
+        DROP TABLE plugin_resources;
+        ALTER TABLE plugin_resources_new RENAME TO plugin_resources;
+      `,
+    },
+    {
+      table: "plugin_dependencies",
+      ddl: `
+        CREATE TABLE plugin_dependencies_new (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          dependency_name TEXT NOT NULL,
+          version_constraint TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, dependency_name)
+        );
+        INSERT INTO plugin_dependencies_new SELECT * FROM plugin_dependencies;
+        DROP TABLE plugin_dependencies;
+        ALTER TABLE plugin_dependencies_new RENAME TO plugin_dependencies;
+      `,
+    },
+    {
+      table: "plugin_native_pins",
+      ddl: `
+        CREATE TABLE plugin_native_pins_new (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          ref TEXT NOT NULL,
+          version_constraint TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          embed_on_export INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, ref)
+        );
+        INSERT INTO plugin_native_pins_new SELECT * FROM plugin_native_pins;
+        DROP TABLE plugin_native_pins;
+        ALTER TABLE plugin_native_pins_new RENAME TO plugin_native_pins;
+      `,
+    },
+    {
+      table: "project_layers",
+      ddl: `
+        CREATE TABLE project_layers_new (
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          platforms TEXT NOT NULL DEFAULT '[]',
+          applied_at TEXT NOT NULL,
+          PRIMARY KEY (project_id, layer_id)
+        );
+        INSERT INTO project_layers_new SELECT * FROM project_layers;
+        DROP TABLE project_layers;
+        ALTER TABLE project_layers_new RENAME TO project_layers;
+      `,
+    },
+  ];
+
+  for (const { table, ddl } of rebuilds) {
+    const exists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(table);
+    if (exists) {
+      db.exec(ddl);
+    }
+  }
+}
 
 export function initializeSchema(db: SqliteDatabase): void {
   const currentVersion = getSchemaVersion(db);
@@ -217,7 +319,7 @@ export function initializeSchema(db: SqliteDatabase): void {
   // copy, DROP old, RENAME). SQLite fires ON DELETE CASCADE on child tables even
   // for DROP TABLE when foreign_keys=ON, so we must toggle it outside the
   // transaction and restore it afterward.
-  const needsFkToggle = currentVersion < 5 || currentVersion < 6;
+  const needsFkToggle = currentVersion < 5 || currentVersion < 6 || currentVersion < 8;
   if (needsFkToggle) {
     db.exec("PRAGMA foreign_keys = OFF");
   }
@@ -225,6 +327,10 @@ export function initializeSchema(db: SqliteDatabase): void {
   try {
     db.transaction(() => {
       for (let v = currentVersion + 1; v <= SCHEMA_VERSION; v++) {
+        if (v === 8) {
+          applyMigration8(db);
+          continue;
+        }
         const migration = MIGRATIONS[v];
         if (migration) {
           db.exec(migration);
