@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { runCli } from "../helpers/cli.ts";
+import { createTestContext } from "../helpers/db.ts";
 
 describe("CLI help and command organization", () => {
   it("shows grouped command help without throwing when no subcommand is provided", async () => {
@@ -111,14 +112,13 @@ describe("CLI help and command organization", () => {
   });
 
   it("disables color for non-help commands when --no-color is used", async () => {
-    // Force colors to be enabled so we can test --no-color actually disables them
+    const context = await createTestContext("cli-help-no-color");
     const originalForceColor = process.env.FORCE_COLOR;
     process.env.FORCE_COLOR = "1";
-    
+
     try {
       await runCli(["init"]);
       const result = await runCli(["--no-color", "harness", "list"]);
-      // ANSI escape codes start with ESC [ (character code 27 followed by [)
       const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
       expect(result.stdout).not.toMatch(ansiEscapeRegex);
     } finally {
@@ -127,6 +127,7 @@ describe("CLI help and command organization", () => {
       } else {
         process.env.FORCE_COLOR = originalForceColor;
       }
+      await context.cleanup();
     }
   });
 

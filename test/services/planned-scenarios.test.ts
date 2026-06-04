@@ -130,13 +130,13 @@ describe("planned scenarios services", () => {
     const context = await createInitializedTestContext("doctor-plugin-meta");
     try {
       const layerModel = await import("../../src/models/layer.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const { runLayerDoctor } = await import(
         "../../src/services/layer-doctor.ts"
       );
 
       const layer = layerModel.createLayer({ name: "bad-plugin-meta" });
-      pluginModel.addPluginToLayer(layer.id, "formatter", "not-semver");
+      pluginPins.addPluginToLayer(layer.id, "formatter", "not-semver");
 
       const report = runLayerDoctor({
         nameOrId: "bad-plugin-meta",

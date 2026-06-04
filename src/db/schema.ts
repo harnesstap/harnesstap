@@ -287,6 +287,15 @@ const MIGRATIONS: Record<number, string> = {
 
 };
 
+function ensurePluginsTableRenamed(db: SqliteDatabase): void {
+  const hasPlugins = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugins'")
+    .get();
+  if (!hasPlugins) {
+    applyMigration8(db);
+  }
+}
+
 /** Migration 8: layers → plugins (design-time component bundle). */
 function applyMigration8(db: SqliteDatabase): void {
   // project_layers.layer_id still references plugin id until configured layers (migration 11).
@@ -481,6 +490,9 @@ export function initializeSchema(db: SqliteDatabase): void {
         if (v === 8) {
           applyMigration8(db);
           continue;
+        }
+        if (v >= 9) {
+          ensurePluginsTableRenamed(db);
         }
         if (v === 11) {
           applyMigration11(db);

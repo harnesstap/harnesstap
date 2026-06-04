@@ -114,7 +114,7 @@ describe("CLI layer plugin pins", () => {
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "embed-layer"]);
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const layerModel = await import("../../src/models/layer.ts");
 
       const result = await runCli([
@@ -132,7 +132,7 @@ describe("CLI layer plugin pins", () => {
       expect(result.exitCode ?? 0).toBe(0);
       const layer = layerModel.getLayer("embed-layer");
       if (!layer) throw new Error("Expected layer to exist");
-      expect(pluginModel.listLayerPlugins(layer.id)).toEqual(
+      expect(pluginPins.listLayerPlugins(layer.id)).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             ref: "tools@hub",
