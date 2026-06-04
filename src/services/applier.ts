@@ -17,6 +17,10 @@ import type {
   SerializeOptions,
 } from "../types.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
+import {
+  type EnvironmentFragment,
+  mergeResolvedEnvironmentIntoResources,
+} from "./environment-cascade.js";
 
 export interface ApplyResult {
   platformId: string;
@@ -51,6 +55,7 @@ export interface MaterializeFilesOptions {
 
 export interface GenerateFilesOptions extends SerializeOptions {
   claudeConfig?: ClaudeLayerConfig;
+  resolvedEnvironment?: EnvironmentFragment;
 }
 
 export interface GlobalApplyOptions extends GenerateFilesOptions, MaterializeFilesOptions {
@@ -159,10 +164,13 @@ export async function generateFiles(
 
   const results: ApplyResult[] = [];
   const target = options.target ?? "project";
+  const serializedResources = options.resolvedEnvironment
+    ? mergeResolvedEnvironmentIntoResources(resources, options.resolvedEnvironment)
+    : resources;
 
   for (const pid of platforms) {
     const serializer = getPlatformSerializer(pid);
-    let files = await serializer.serialize(resources, projectRoot, { target });
+    let files = await serializer.serialize(serializedResources, projectRoot, { target });
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudeLayerExtensions(files, claudeConfig, projectRoot);
     }
