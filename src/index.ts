@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { PACKAGE_VERSION } from "./version.js";
 import { getDb, closeDb, getDbPath } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { ui } from "./ui/index.js";
@@ -365,7 +366,7 @@ program
   .description(
     "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
   )
-  .version("0.1.0", "-V, --harnessdeck-version")
+  .version(PACKAGE_VERSION, "-V, --harnessdeck-version")
   .option("-v, --verbose", "Show verbose error output")
   .option("--no-color", "Disable color output")
   .option("--no-interactive", "Disable interactive prompts")
