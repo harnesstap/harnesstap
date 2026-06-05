@@ -28,7 +28,7 @@ Key options:
 - `--aliases <slugs>` — comma-separated alias harnesses
 - `--format <mode>` — `human` or `json`
 
-## project (`p`, `pj`)
+## project (`p`)
 
 Manage project scanning, apply state, snapshots, drift, and sync.
 
