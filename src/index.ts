@@ -3159,7 +3159,6 @@ const projectCmd = configureCommandGroup(
   program
     .command("project")
     .alias("p")
-    .alias("pj")
     .description("Manage project scanning, apply state, and snapshots"),
 );
 
