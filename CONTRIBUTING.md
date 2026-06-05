@@ -81,19 +81,38 @@ bun run dev
 
 ## Workflow
 
-### Develop and publish
+### Changelog entries
 
-If you are preparing a release, keep the development workflow on Bun and use the npm registry only for distribution.
+We use [Changie](https://changie.dev/) for semver and `CHANGELOG.md`. Do not edit `CHANGELOG.md` by hand; your changes will be overwritten on release.
+
+Install Changie on your machine (see the [installation guide](https://changie.dev/guide/installation/)), then for each user-facing pull request:
 
 ```bash
-bun install
-bun run test:run
-bun run lint
-bun run build
-npm publish
+changie new
+git add .changes/unreleased/
 ```
 
-The package runs `bun run build` in `prepublishOnly`, so the distribution build is refreshed before publish.
+Commit the generated fragment with your PR.
+
+**Package version vs preset version:** `package.json` semver is the npm CLI release only. Preset, plugin, and bundle versions inside HarnessDeck are unrelated.
+
+**Pre-1.0 semver:** While the package is `0.x.y`, breaking changes bump the minor version and compatible changes bump the patch version, per [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for initial development (`0.y.z`).
+
+### Release (maintainers)
+
+1. Merge pending PRs that include `.changes/unreleased/` fragments.
+2. Run the **Generate Release PR** workflow (`changie-release-pr.yml`) from the Actions tab.
+3. Review and merge the release PR (updates `CHANGELOG.md` and `package.json`).
+4. **Tag release** runs on `main` when `CHANGELOG.md` changes and pushes `vX.Y.Z` if that tag does not exist yet.
+5. Pushing the tag runs **Release** (`release.yml`): preflight, `npm publish`, and a GitHub release whose body comes from `.changes/vX.Y.Z.md`.
+
+npm publish runs only in CI on tag push. Configure the `NPM_TOKEN` repository secret (npm automation token with publish access).
+
+Local verification before a release:
+
+```bash
+bun run preflight
+```
 
 ### Project Structure Notes
 
