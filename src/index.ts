@@ -23,27 +23,31 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile, exportPreset } from "./services/exporter.js";
+import { exportToFile, importFromFile, exportLayer } from "./services/exporter.js";
 import {
   listResources,
   deleteResource,
   resolveResource,
 } from "./models/resource.js";
 import {
-  createPreset,
-  getPreset,
-  listPresets,
-  deletePreset,
-  getPresetResources,
-  listPresetDependencies,
-} from "./models/preset.js";
+  createPlugin,
+  getPlugin,
+  listPlugins as listDesignPlugins,
+  deletePlugin,
+  getPluginResources,
+  listPluginDependencies,
+} from "./models/plugin-component.js";
 import {
   upsertProject,
   getProject,
   getProjectByOrigin,
-  applyPresetToProject,
-  getProjectPresets,
+  applyConfiguredLayerToProject,
+  getProjectConfiguredLayers,
 } from "./models/project.js";
+import {
+  ensureImplicitConfiguredLayer,
+  resolveConfiguredLayerSelector,
+} from "./models/configured-layer.js";
 import {
   createSnapshot,
   listSnapshots,
@@ -53,12 +57,12 @@ import {
   getAllPlatforms,
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
-import { seedBuiltInPresets } from "./services/seed-presets.js";
+import { seedBuiltInPlugins } from "./services/seed-plugins.js";
 import { basename, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
   ImportedSnapshot,
-  Preset,
+  Layer,
   Resource,
   ResourceType,
   SnapshotState,
@@ -70,15 +74,15 @@ import {
 } from "./services/claude-plugin-inventory.js";
 import {
   checkPlugins,
-  listPlugins,
+  listPlugins as listInstalledPlugins,
   refreshPluginSources,
   updatePlugins,
 } from "./services/plugin-lifecycle.js";
 import {
   getProjectPluginState,
-  listPresetPlugins,
   upsertProjectPluginState,
 } from "./models/plugin.js";
+import { listLayerPlugins } from "./models/plugin-pins.js";
 import type { PluginScope } from "./plugins/types.js";
 import {
   getHarnessPreference,
@@ -93,27 +97,29 @@ import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudP
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
-import { diffPresets } from "./services/preset-diff.js";
-import { listPresetDoctorChecks, runPresetDoctor } from "./services/preset-doctor.js";
-import { mergePresets } from "./services/preset-merge.js";
-import { createPresetFromProject } from "./services/preset-from-project.js";
-import { isPresetUrl, fetchPresetBundleToTempFile, isBundleFilePath, writePresetBundleToTempFile } from "./services/preset-source.js";
+import { diffLayers } from "./services/layer-diff.js";
+import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
+import { mergePlugins } from "./services/layer-merge.js";
+import { mergeConfiguredLayers } from "./services/configured-layer-merge.js";
+import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
+import { createLayerFromProject } from "./services/layer-from-project.js";
+import { isLayerUrl, fetchLayerBundleToTempFile, isBundleFilePath, writeLayerBundleToTempFile } from "./services/layer-source.js";
 import { syncProject } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
-  addPresetAttachment,
-  PRESET_ATTACHMENT_TYPES,
-  removePresetAttachment,
-} from "./services/preset-attachments.js";
+  addLayerAttachment,
+  LAYER_ATTACHMENT_TYPES,
+  removeLayerAttachment,
+} from "./services/layer-attachments.js";
 import {
   exportMigrationState,
   importMigrationState,
 } from "./services/migrate.js";
 import { createProgress } from "./ui/progress.js";
 import { promptForChoice, promptForSearchableChoice, promptForValue, shouldUseWizard } from "./services/wizards/shared.js";
-import { runPresetAddWizard } from "./services/wizards/preset-add.js";
-import { runPresetDeleteWizard } from "./services/wizards/preset-delete.js";
-import { runPresetFromProjectWizard } from "./services/wizards/preset-from-project.js";
+import { runLayerAddWizard } from "./services/wizards/layer-add.js";
+import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
+import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
 import type { PersistedPluginSourceResults } from "./services/scanner.js";
@@ -183,15 +189,15 @@ function findContextCommand(argv: string[]): Command | null {
   return currentCommand !== program ? currentCommand : null;
 }
 
-async function resolvePresetMutationTarget(input: {
-  presetName?: string;
+async function resolveLayerMutationTarget(input: {
+  layerName?: string;
   interactive?: boolean;
   noInteractive?: boolean;
   format?: string;
   message: string;
 }): Promise<string | undefined> {
-  if (input.presetName) {
-    return input.presetName;
+  if (input.layerName) {
+    return input.layerName;
   }
 
   const shouldPrompt = shouldUseWizard({
@@ -205,16 +211,16 @@ async function resolvePresetMutationTarget(input: {
     return undefined;
   }
 
-  const presets = listPresets();
-  if (presets.length === 0) {
+  const layers = listDesignPlugins();
+  if (layers.length === 0) {
     return undefined;
   }
 
   return promptForChoice({
     message: input.message,
-    choices: presets.map((preset) => ({
-      name: formatPresetLabel(preset),
-      value: formatPresetLabel(preset),
+    choices: layers.map((layer) => ({
+      name: formatLayerLabel(layer),
+      value: formatLayerLabel(layer),
     })),
   });
 }
@@ -242,8 +248,8 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
   return summary.join(", ");
 }
 
-function formatPresetLabel(preset: Pick<Preset, "name" | "version">): string {
-  return `${preset.name}@${preset.version}`;
+function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
+  return `${layer.name}@${layer.version}`;
 }
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
@@ -349,7 +355,7 @@ function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(preset|resource|project|plugin|cloud|migrate|harness)'/i.test(candidate.message);
+    && /too many arguments for '(layer|resource|project|plugin|cloud|migrate|harness)'/i.test(candidate.message);
 }
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
@@ -555,7 +561,7 @@ async function handleScanCommand(
   }
 
   try {
-    const pluginSummary = await listPlugins({
+    const pluginSummary = await listInstalledPlugins({
       projectRoot,
       homeRoot: resolveHomeRoot(),
       platformIds: parsePlatformFilter(opts.platform),
@@ -605,32 +611,47 @@ async function handleScanCommand(
   }
 }
 
-async function resolveApplyPresets(
-  presetNames: [string, ...string[]],
+async function resolveApplyLayers(
+  layerNames: [string, ...string[]],
   projectRoot: string,
 ): Promise<{
-  presets: ReturnType<typeof getPreset>[];
+  layers: ReturnType<typeof getPlugin>[];
   resources: Resource[];
-  claude?: import("./types.js").ClaudePresetConfig;
-  primaryPresetId: string;
+  claude?: import("./types.js").ClaudeLayerConfig;
+  configuredLayerIds: string[];
+  primaryConfiguredLayerId: string;
 }> {
+  function resolveConfiguredLayerIds(
+    selectors: string[],
+  ): string[] {
+    return selectors.map((selector) => {
+      const configuredLayer = resolveConfiguredLayerSelector(selector);
+      if (!configuredLayer) {
+        throw new Error(`Layer not found: ${selector}`);
+      }
+      return configuredLayer.id;
+    });
+  }
+
   function importedBundleToApplyResult(imported: ReturnType<typeof importFromFile>) {
-    const presets = imported.presets.map((entry) => entry.preset);
-    const primaryPreset = presets[presets.length - 1];
-    if (!primaryPreset) {
-      throw new Error("Bundle contains no presets.");
+    const layers = imported.layers.map((entry) => entry.layer);
+    const primaryLayer = layers[layers.length - 1];
+    if (!primaryLayer) {
+      throw new Error("Bundle contains no layers.");
     }
-    const merged = mergePresets(presets.map((preset) => preset.id));
+    const merged = mergePlugins(layers.map((layer) => layer.id));
+    const configuredLayer = ensureImplicitConfiguredLayer(primaryLayer.id);
     return {
-      presets,
+      layers: merged.layers,
       resources: merged.resources,
       claude: merged.claude,
-      primaryPresetId: primaryPreset.id,
+      configuredLayerIds: [configuredLayer.id],
+      primaryConfiguredLayerId: configuredLayer.id,
     };
   }
 
-  if (presetNames.length === 1 && isPresetUrl(presetNames[0])) {
-    const tempFile = await fetchPresetBundleToTempFile(presetNames[0]);
+  if (layerNames.length === 1 && isLayerUrl(layerNames[0])) {
+    const tempFile = await fetchLayerBundleToTempFile(layerNames[0]);
     return importedBundleToApplyResult(
       importFromFile(tempFile, {
         embeddedTargetDir: projectRoot,
@@ -638,38 +659,28 @@ async function resolveApplyPresets(
     );
   }
 
-  if (presetNames.length === 1 && isBundleFilePath(presetNames[0])) {
+  if (layerNames.length === 1 && isBundleFilePath(layerNames[0])) {
     return importedBundleToApplyResult(
-      importFromFile(presetNames[0], {
+      importFromFile(layerNames[0], {
         embeddedTargetDir: projectRoot,
       }),
     );
   }
 
-  if (presetNames.length > 1) {
-    const merged = mergePresets(presetNames);
-    return {
-      presets: merged.presets,
-      resources: merged.resources,
-      claude: merged.claude,
-      primaryPresetId: merged.presets[merged.presets.length - 1]?.id ?? "",
-    };
-  }
-
-  const preset = getPreset(presetNames[0]);
-  if (!preset) {
-    throw new Error(`Preset not found: ${presetNames[0]}`);
-  }
+  const configuredLayerIds = resolveConfiguredLayerIds(layerNames);
+  const merged = mergeConfiguredLayers(configuredLayerIds);
   return {
-    presets: [preset],
-    resources: getPresetResources(preset.id),
-    claude: preset.claude,
-    primaryPresetId: preset.id,
+    layers: merged.layers,
+    resources: merged.resources,
+    claude: merged.claude,
+    configuredLayerIds,
+    primaryConfiguredLayerId:
+      configuredLayerIds[configuredLayerIds.length - 1] ?? "",
   };
 }
 
 async function handleApplyCommand(
-  presetNames: [string, ...string[]] | [],
+  layerNames: [string, ...string[]] | [],
   opts: {
     project: string;
     platform?: string;
@@ -684,20 +695,20 @@ async function handleApplyCommand(
   const db = getDb();
   initializeSchema(db);
 
-   const resolvedPresetNames = presetNames.length > 0
-    ? presetNames
+   const resolvedLayerNames = layerNames.length > 0
+    ? layerNames
     : await (shouldUseWizard({
         interactive: opts.interactive,
         noInteractive: opts.noInteractive,
         format: parseOutputFormat(opts.format),
         missingRequiredArgs: true,
       })
-        ? runProjectApplyWizard().then((presetName) => [presetName] as [string])
+        ? runProjectApplyWizard().then((layerName) => [layerName] as [string])
         : Promise.resolve([] as []));
 
-  if (resolvedPresetNames.length === 0) {
+  if (resolvedLayerNames.length === 0) {
     process.exitCode = 1;
-    ui.danger("Provide at least one preset name, bundle path, or URL.");
+    ui.danger("Provide at least one layer name, bundle path, or URL.");
     return;
   }
 
@@ -710,10 +721,10 @@ async function handleApplyCommand(
   }
 
   const projectRoot = resolve(opts.project);
-  let applyBundle: Awaited<ReturnType<typeof resolveApplyPresets>>;
+  let applyBundle: Awaited<ReturnType<typeof resolveApplyLayers>>;
   try {
-    applyBundle = await resolveApplyPresets(
-      resolvedPresetNames as [string, ...string[]],
+    applyBundle = await resolveApplyLayers(
+      resolvedLayerNames as [string, ...string[]],
       projectRoot,
     );
   } catch (err) {
@@ -721,9 +732,9 @@ async function handleApplyCommand(
     return;
   }
 
-  const primaryPreset = applyBundle.presets[applyBundle.presets.length - 1];
-  if (!primaryPreset) {
-    ui.danger("No preset resolved for apply");
+  const primaryLayer = applyBundle.layers[applyBundle.layers.length - 1];
+  if (!primaryLayer) {
+    ui.danger("No layer resolved for apply");
     return;
   }
 
@@ -737,11 +748,15 @@ async function handleApplyCommand(
   }
 
   const { resources, claude } = applyBundle;
+  const resolvedEnvironment = resolveEnvironmentCascadeForApply({
+    configuredLayerIds: applyBundle.configuredLayerIds,
+    projectRoot,
+  });
   const mergedPluginPins = (() => {
     const pins = new Map<string, { ref: string; version_constraint: string }>();
-    for (const preset of applyBundle.presets) {
-      if (!preset) continue;
-      for (const plugin of listPresetPlugins(preset.id)) {
+    for (const layer of applyBundle.layers) {
+      if (!layer) continue;
+      for (const plugin of listLayerPlugins(layer.id)) {
         pins.set(plugin.ref, {
           ref: plugin.ref,
           version_constraint: plugin.version_constraint,
@@ -754,7 +769,7 @@ async function handleApplyCommand(
     resources,
     platforms,
     projectRoot,
-    claude,
+    { claudeConfig: claude, resolvedEnvironment },
   );
 
   // Strict plugin validation must happen BEFORE any files are written.
@@ -786,7 +801,7 @@ async function handleApplyCommand(
     });
 
     const snapshotState: SnapshotState = {
-      presets: applyBundle.presets.filter((p): p is NonNullable<typeof p> => p != null),
+      layers: applyBundle.layers.filter((p): p is NonNullable<typeof p> => p != null),
       resources,
       platform_files: Object.fromEntries(
         generated.map((result) => [
@@ -798,15 +813,15 @@ async function handleApplyCommand(
     createSnapshot({
       project_id: project.id,
         label:
-        resolvedPresetNames.length > 1
-          ? `Before applying: ${resolvedPresetNames.join(" + ")}`
-          : `Before applying: ${primaryPreset.name}`,
+        resolvedLayerNames.length > 1
+          ? `Before applying: ${resolvedLayerNames.join(" + ")}`
+          : `Before applying: ${primaryLayer.name}`,
       state: snapshotState,
     });
 
-    applyPresetToProject({
+    applyConfiguredLayerToProject({
       project_id: project.id,
-      preset_id: applyBundle.primaryPresetId,
+      configured_layer_id: applyBundle.primaryConfiguredLayerId,
       platforms,
     });
   }
@@ -815,8 +830,8 @@ async function handleApplyCommand(
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
       printJson({
-        preset: primaryPreset.name,
-        presets: resolvedPresetNames,
+        layer: primaryLayer.name,
+        layers: resolvedLayerNames,
         project_root: projectRoot,
         platforms: generated.map((result) => ({
           platform: result.platformId,
@@ -954,45 +969,45 @@ function handleRevertCommand(snapshotId?: string): void {
   );
 }
 
-function handlePresetExportCommand(
-  presetSelector: string,
+function handleLayerExportCommand(
+  layerSelector: string,
   opts: { file?: string; embedPlugins?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
-  const presetNames = presetSelector
+  const layerNames = layerSelector
     .split(",")
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
-  if (presetNames.length === 0) {
-    ui.danger("Provide at least one preset name or ID to export.");
+  if (layerNames.length === 0) {
+    ui.danger("Provide at least one layer name or ID to export.");
     return;
   }
-  const [firstPresetName] = presetNames;
-  if (!firstPresetName) {
-    ui.danger("Provide at least one preset name or ID to export.");
+  const [firstLayerName] = layerNames;
+  if (!firstLayerName) {
+    ui.danger("Provide at least one layer name or ID to export.");
     return;
   }
-  const filePath = opts.file ?? `${firstPresetName}.harnessdeck.jsonc`;
-  const exportSelector = presetNames.length === 1 ? firstPresetName : presetNames;
+  const filePath = opts.file ?? `${firstLayerName}.harnessdeck.jsonc`;
+  const exportSelector = layerNames.length === 1 ? firstLayerName : layerNames;
   exportToFile(exportSelector, filePath, {
     embedPlugins: opts.embedPlugins,
   });
   ui.success(
-    `Exported preset ${ui.theme.accent(presetNames.join(", "))} ${ui.icons.hint} ${filePath}`,
+    `Exported layer ${ui.theme.accent(layerNames.join(", "))} ${ui.icons.hint} ${filePath}`,
   );
 }
 
-function handlePresetImportCommand(file: string): void {
+function handleLayerImportCommand(file: string): void {
   const db = getDb();
   initializeSchema(db);
-  const { preset, resources } = importFromFile(file);
+  const { layer, resources } = importFromFile(file);
   ui.success(
-    `Imported preset ${ui.theme.accent(preset.name)} ${ui.icons.bullet} ${formatCount(resources.length, "resource")}`,
+    `Imported layer ${ui.theme.accent(layer.name)} ${ui.icons.bullet} ${formatCount(resources.length, "resource")}`,
   );
 }
 
-async function resolveCloudClientForPresetCommand(profileName?: string) {
+async function resolveCloudClientForLayerCommand(profileName?: string) {
   const profileInfo = await getCloudProfile(profileName);
   const { profile } = profileInfo;
   if (!profile || !profile.cloudBaseUrl) return undefined;
@@ -1054,10 +1069,10 @@ function normalizeRemoteLibrarySelector(
   };
 }
 
-async function handlePresetSearchCommand(query: string, opts: { profile?: string; format?: string }) {
+async function handleLayerSearchCommand(query: string, opts: { profile?: string; format?: string }) {
   const format = parseOutputFormat(opts.format);
   try {
-    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    const client = await resolveCloudClientForLayerCommand(opts.profile);
     if (!client) {
       if (format === "json") printJson([]);
       else ui.dim("No cloud profile configured.");
@@ -1082,7 +1097,7 @@ async function handlePresetSearchCommand(query: string, opts: { profile?: string
   }
 }
 
-async function handlePresetInstallCommand(
+async function handleLayerInstallCommand(
   selector: string | undefined,
   opts: { as?: string; org?: string; version?: string; profile?: string; format?: string; interactive?: boolean; noInteractive?: boolean }
 ) {
@@ -1100,24 +1115,24 @@ async function handlePresetInstallCommand(
 
     if (!canPrompt) {
       process.exitCode = 1;
-      ui.danger("error: selector is required in non-interactive mode. Use: preset add org/library[@version]");
+      ui.danger("error: selector is required in non-interactive mode. Use: layer add org/library[@version]");
       return;
     }
 
     // Launch interactive search
     try {
-      const client = await resolveCloudClientForPresetCommand(opts.profile);
+      const client = await resolveCloudClientForLayerCommand(opts.profile);
       if (!client) {
         process.exitCode = 1;
         ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
         return;
       }
 
-      // Search for all presets to show in picker
+      // Search for all layers to show in picker
       const results = await client.searchLibraries("");
       if (!results || results.length === 0) {
         process.exitCode = 1;
-        ui.danger("No remote presets found.");
+        ui.danger("No remote layers found.");
         return;
       }
 
@@ -1127,7 +1142,7 @@ async function handlePresetInstallCommand(
       }));
 
       const selected = await promptForSearchableChoice({
-        message: "Select a preset to install",
+        message: "Select a layer to install",
         choices,
       });
 
@@ -1148,16 +1163,16 @@ async function handlePresetInstallCommand(
     return;
   }
   const localName = opts.as ?? parsed.library_slug;
-  const existing = getPreset(localName);
+  const existing = getPlugin(localName);
   if (existing && !opts.as) {
     process.exitCode = 1;
-    ui.danger(`Preset name already exists: ${localName}. Use --as to install under a different name.`);
+    ui.danger(`Layer name already exists: ${localName}. Use --as to install under a different name.`);
     return;
   }
 
   // Download the bundle via cloud client
   try {
-    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    const client = await resolveCloudClientForLayerCommand(opts.profile);
     if (!client) {
       process.exitCode = 1;
       ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
@@ -1165,31 +1180,31 @@ async function handlePresetInstallCommand(
     }
     const id = `${parsed.org_slug}/${parsed.library_slug}`;
     const downloaded = await client.downloadLibraryBundle(id, parsed.version);
-    const tempPath = writePresetBundleToTempFile(downloaded.body);
-    const imported = importFromFile(tempPath, { presetNameOverride: opts.as });
+    const tempPath = writeLayerBundleToTempFile(downloaded.body);
+    const imported = importFromFile(tempPath, { layerNameOverride: opts.as });
     if (parseOutputFormat(opts.format) === "json") {
-      printJson({ preset_name: imported.preset.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: downloaded.version });
+      printJson({ layer_name: imported.layer.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: downloaded.version });
       return;
     }
-    ui.success(`Installed preset ${imported.preset.name} from ${parsed.org_slug}/${parsed.library_slug}`);
+    ui.success(`Installed layer ${imported.layer.name} from ${parsed.org_slug}/${parsed.library_slug}`);
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
-async function handlePresetPublishCommand(presetName: string, opts: { org?: string; profile?: string; format?: string }) {
+async function handleLayerPublishCommand(layerName: string, opts: { org?: string; profile?: string; format?: string }) {
   const db = getDb();
   initializeSchema(db);
-  const preset = getPreset(presetName);
-  if (!preset) {
+  const layer = getPlugin(layerName);
+  if (!layer) {
     process.exitCode = 1;
-    ui.danger(`Preset not found: ${presetName}`);
+    ui.danger(`Layer not found: ${layerName}`);
     return;
   }
 
   try {
-    const client = await resolveCloudClientForPresetCommand(opts.profile);
+    const client = await resolveCloudClientForLayerCommand(opts.profile);
     if (!client) {
       process.exitCode = 1;
       ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
@@ -1202,7 +1217,7 @@ async function handlePresetPublishCommand(presetName: string, opts: { org?: stri
       const orgs = await client.listOrgs();
       if (orgs.length === 0) {
         process.exitCode = 1;
-        ui.danger("No organizations found. You must belong to at least one organization to publish presets.");
+        ui.danger("No organizations found. You must belong to at least one organization to publish layers.");
         return;
       } else if (orgs.length === 1) {
         // Auto-select the only org
@@ -1249,21 +1264,21 @@ async function handlePresetPublishCommand(presetName: string, opts: { org?: stri
     }
 
     // build bundle using exporter
-    const bundle = exportPreset(preset.id);
+    const bundle = exportLayer(layer.id);
     const bundleJson = JSON.stringify(bundle);
 
-    const resp = await client.publishPresetBundle({ preset_name: preset.name, org_slug: orgSlug }, bundleJson);
+    const resp = await client.publishLayerBundle({ layer_name: layer.name, org_slug: orgSlug }, bundleJson);
     if (parseOutputFormat(opts.format) === "json") {
       printJson(resp);
       return;
     }
-    ui.success(`Published preset ${preset.name} to ${orgSlug}`);
+    ui.success(`Published layer ${layer.name} to ${orgSlug}`);
   } catch (err) {
     process.exitCode = 1;
     const errorMsg = err instanceof Error ? err.message : String(err);
     // Enhance error message for common cases
     if (errorMsg.includes("409")) {
-      ui.danger(`Library slug "${preset.name}" already exists in organization. Choose a different preset name or delete the existing library.`);
+      ui.danger(`Library slug "${layer.name}" already exists in organization. Choose a different layer name or delete the existing library.`);
     } else {
       ui.danger(errorMsg);
     }
@@ -1298,32 +1313,32 @@ function handleHarnessListCommand(
   });
 }
 
-function handlePresetShowCommand(
+function handleLayerShowCommand(
   name: string,
   opts: { format?: string; showId?: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const preset = getPreset(name);
-  if (!preset) {
-    ui.danger(`Preset not found: ${name}`);
+  const layer = getPlugin(name);
+  if (!layer) {
+    ui.danger(`Layer not found: ${name}`);
     return;
   }
-  const resources = getPresetResources(preset.id);
-  const plugins = listPresetPlugins(preset.id);
-  const dependencies = listPresetDependencies(preset.id);
+  const resources = getPluginResources(layer.id);
+  const plugins = listLayerPlugins(layer.id);
+  const dependencies = listPluginDependencies(layer.id);
 
   if (format === "json") {
     printJson({
-      id: preset.id,
-      name: preset.name,
-      version: preset.version,
-      description: preset.description,
-      tags: preset.tags,
-      ...(preset.claude ? { claude: preset.claude } : {}),
-      created_at: preset.created_at,
-      updated_at: preset.updated_at,
+      id: layer.id,
+      name: layer.name,
+      version: layer.version,
+      description: layer.description,
+      tags: layer.tags,
+      ...(layer.claude ? { claude: layer.claude } : {}),
+      created_at: layer.created_at,
+      updated_at: layer.updated_at,
       resources,
       plugins,
       dependencies,
@@ -1332,14 +1347,14 @@ function handlePresetShowCommand(
   }
 
   ui.panel({
-    title: ["PRESET", formatPresetLabel(preset)],
+    title: ["LAYER", formatLayerLabel(layer)],
     rows: [
-      ["Description", preset.description || "—"],
-      ["Tags", preset.tags.length > 0 ? preset.tags.join(", ") : "—"],
-      ["ID", ui.format.shortenId(preset.id)],
+      ["Description", layer.description || "—"],
+      ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+      ["ID", ui.format.shortenId(layer.id)],
       ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
       ["Plugins", plugins.length === 0 ? "(none pinned)" : `${plugins.length}`],
-      ["Updated", ui.format.formatRelativeTime(preset.updated_at)],
+      ["Updated", ui.format.formatRelativeTime(layer.updated_at)],
     ],
   });
 
@@ -1351,7 +1366,7 @@ function handlePresetShowCommand(
       { key: "name", header: "NAME", width: 26 },
     ],
     rows: resources,
-    empty: "No resources in this preset.",
+    empty: "No resources in this layer.",
   });
 
   if (dependencies.length > 0) {
@@ -1628,7 +1643,7 @@ async function handlePluginInstalledListCommand(
   opts: { platform?: string; format?: string },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const result = await listPlugins(pluginLifecycleBase(path, opts));
+  const result = await listInstalledPlugins(pluginLifecycleBase(path, opts));
   if (format === "json") {
     printJson(result);
     return;
@@ -1838,7 +1853,7 @@ async function handleProjectStatusCommand(
 
   const normalizedOrigin = normalizeGitUrl(gitOrigin);
   const project = getProjectByOrigin(normalizedOrigin);
-  const presets = project ? getProjectPresets(project.id) : [];
+  const layers = project ? getProjectConfiguredLayers(project.id) : [];
   const snapshots = project ? listSnapshots(project.id) : [];
 
   if (format === "json") {
@@ -1852,7 +1867,7 @@ async function handleProjectStatusCommand(
       platforms: detected,
     };
     if (project) {
-      payload.applied_presets = presets.length;
+      payload.applied_layers = layers.length;
       payload.snapshots = snapshots.length;
     }
     if (detected.includes("claude-code")) {
@@ -1872,7 +1887,7 @@ async function handleProjectStatusCommand(
 
   let pluginsLine = "(none detected)";
   try {
-    const plugins = await listPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
+    const plugins = await listInstalledPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
     if (plugins.installs.length > 0) {
       const check = await checkPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
       pluginsLine = `${plugins.installs.length} installed (${check.summary.outdated} outdated)`;
@@ -1894,7 +1909,7 @@ async function handleProjectStatusCommand(
     ["Platforms", detected.join(", ") || "(none detected)"],
   ];
   if (project) {
-    rows.push(["Applied presets", `${presets.length}`]);
+    rows.push(["Applied layers", `${layers.length}`]);
     rows.push(["Snapshots", `${snapshots.length}`]);
   }
   rows.push(["Plugins", pluginsLine]);
@@ -1912,7 +1927,7 @@ async function handleInitCommand(opts: {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const seeded = seedBuiltInPresets();
+  const seeded = seedBuiltInPlugins();
   const homeDefaults = await scanAndPersistHomeDefaults();
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
@@ -1944,7 +1959,7 @@ async function handleInitCommand(opts: {
 
   if (format === "json") {
     printJson({
-      built_in_presets: {
+      built_in_layers: {
         seeded,
         status: seeded > 0 ? "seeded" : "already_up_to_date",
       },
@@ -1976,8 +1991,8 @@ async function handleInitCommand(opts: {
     { key: "Database", value: getDbPath() },
     ...(seeded > 0
       ? [{
-          key: "Built-in Presets",
-          value: `seeded ${formatCount(seeded, "built-in preset")}`,
+          key: "Built-in Layers",
+          value: `seeded ${formatCount(seeded, "built-in layer")}`,
         }]
       : []),
   ]);
@@ -2198,7 +2213,7 @@ function handleProjectDriftCommand(opts: {
   process.exitCode = 1;
 }
 
-function handlePresetDiffCommand(
+function handleLayerDiffCommand(
   left: string,
   right: string,
   opts: { format?: string },
@@ -2207,7 +2222,7 @@ function handlePresetDiffCommand(
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   try {
-    const report = diffPresets(left, right);
+    const report = diffLayers(left, right);
     if (format === "json") {
       printJson(report);
       return;
@@ -2240,7 +2255,7 @@ function handlePresetDiffCommand(
   }
 }
 
-function handlePresetDoctorCommand(
+function handleLayerDoctorCommand(
   name: string | undefined,
   opts: { check?: string[]; format?: string; listChecks?: boolean },
 ): void {
@@ -2249,7 +2264,7 @@ function handlePresetDoctorCommand(
   const format = parseOutputFormat(opts.format);
   try {
     if (opts.listChecks) {
-      const checks = listPresetDoctorChecks().map((check) => ({
+      const checks = listLayerDoctorChecks().map((check) => ({
         id: check.id,
         description: check.description,
       }));
@@ -2271,10 +2286,10 @@ function handlePresetDoctorCommand(
     }
 
     if (!name) {
-      throw new Error("Preset name or ID is required unless --list-checks is used.");
+      throw new Error("Layer name or ID is required unless --list-checks is used.");
     }
 
-    const report = runPresetDoctor({
+    const report = runLayerDoctor({
       nameOrId: name,
       checkIds: opts.check,
     });
@@ -2286,7 +2301,7 @@ function handlePresetDoctorCommand(
     }
 
     // Human format: show all checks with pass/fail markers
-    const allChecks = listPresetDoctorChecks().filter((check) => 
+    const allChecks = listLayerDoctorChecks().filter((check) => 
       opts.check?.length ? opts.check.includes(check.id) : true
     );
 
@@ -2331,7 +2346,7 @@ function handlePresetDoctorCommand(
         { key: "message", header: "MESSAGE", width: 44 },
       ],
       rows,
-      summary: report.valid ? `${report.preset}: valid` : `${report.preset}: invalid`,
+      summary: report.valid ? `${report.layer}: valid` : `${report.layer}: invalid`,
     });
     if (!report.valid) {
       process.exitCode = 1;
@@ -2342,7 +2357,7 @@ function handlePresetDoctorCommand(
   }
 }
 
-async function handlePresetFromProjectCommand(
+async function handleLayerFromProjectCommand(
   name: string | undefined,
   opts: {
     project: string;
@@ -2362,7 +2377,7 @@ async function handlePresetFromProjectCommand(
       format: parseOutputFormat(opts.format),
       missingRequiredArgs: true,
     })
-      ? runPresetFromProjectWizard()
+      ? runLayerFromProjectWizard()
       : Promise.resolve(undefined));
 
     if (!resolvedName) {
@@ -2374,15 +2389,15 @@ async function handlePresetFromProjectCommand(
     const projectRoot = resolve(opts.project);
 
     // First, preview what would happen
-    const { previewPresetFromProject } = await import("./services/preset-from-project.js");
-    const preview = await previewPresetFromProject({
+    const { previewLayerFromProject } = await import("./services/layer-from-project.js");
+    const preview = await previewLayerFromProject({
       name: resolvedName,
       projectRoot,
       platform: opts.platform,
     });
 
-    // If preset exists and has conflicts, prompt for resolution
-    if (preview.presetExists && (preview.conflicts.length > 0 || preview.newResources.length > 0)) {
+    // If layer exists and has conflicts, prompt for resolution
+    if (preview.layerExists && (preview.conflicts.length > 0 || preview.newResources.length > 0)) {
       const canPrompt = shouldUseWizard({
         interactive: true, // Conflicts require interactive resolution
         noInteractive: opts.noInteractive,
@@ -2399,12 +2414,12 @@ async function handlePresetFromProjectCommand(
         if (preview.newResources.length > 0) {
           parts.push(`${preview.newResources.length} new resource(s)`);
         }
-        ui.danger(`Preset "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
+        ui.danger(`Layer "${resolvedName}" already exists with ${parts.join(" and ")}. Use --interactive to resolve conflicts.`);
         return;
       }
 
       // Show preview
-      ui.info(`\nPreset "${resolvedName}" already exists.`);
+      ui.info(`\nLayer "${resolvedName}" already exists.`);
       if (preview.conflicts.length > 0) {
         ui.info(`Conflicts: ${preview.conflicts.length} resource(s) would be overwritten`);
       }
@@ -2429,11 +2444,11 @@ async function handlePresetFromProjectCommand(
 
       if (action === "rename") {
         const newName = await promptForValue({
-          message: "Enter new preset name",
+          message: "Enter new layer name",
           default: `${resolvedName}-copy`,
         });
 
-        const result = await createPresetFromProject({
+        const result = await createLayerFromProject({
           name: newName,
           description: opts.description,
           projectRoot,
@@ -2441,13 +2456,13 @@ async function handlePresetFromProjectCommand(
         });
 
         ui.success(
-          `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
+          `Created layer ${ui.theme.accent(result.layer.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
         );
         return;
       }
 
       if (action === "overwrite") {
-        const result = await createPresetFromProject({
+        const result = await createLayerFromProject({
           name: resolvedName,
           description: opts.description,
           projectRoot,
@@ -2456,14 +2471,14 @@ async function handlePresetFromProjectCommand(
         });
 
         ui.success(
-          `Updated preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
+          `Updated layer ${ui.theme.accent(result.layer.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
         );
         return;
       }
     }
 
-    // No conflicts or preset doesn't exist - proceed normally
-    const result = await createPresetFromProject({
+    // No conflicts or layer doesn't exist - proceed normally
+    const result = await createLayerFromProject({
       name: resolvedName,
       description: opts.description,
       projectRoot,
@@ -2471,7 +2486,7 @@ async function handlePresetFromProjectCommand(
     });
 
     ui.success(
-      `Created preset ${ui.theme.accent(result.preset.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
+      `Created layer ${ui.theme.accent(result.layer.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "resource")}`,
     );
   } catch (err) {
     process.exitCode = 1;
@@ -2546,7 +2561,7 @@ function handleMigrateExportCommand(
       printJson({ ...manifest, output: file });
       return;
     }
-    ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.preset_count} presets`);
+    ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.layer_count} layers`);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
   }
@@ -2566,7 +2581,7 @@ function handleMigrateImportCommand(
       return;
     }
     ui.success(
-      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.presets_imported, "preset")}`,
+      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}`,
     );
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
@@ -2637,21 +2652,21 @@ program
     await handleInitCommand(opts);
   });
 
-// ── preset ──────────────────────────────────────────────────────────────
+// ── layer ──────────────────────────────────────────────────────────────
 
-const presetCmd = configureCommandGroup(
+const layerCmd = configureCommandGroup(
   program
-    .command("preset")
-    .alias("p")
-    .description("Manage presets (named bundles of resources that can be applied to a project)"),
+    .command("layer")
+    .alias("l")
+    .description("Manage layers (named bundles of resources that can be applied to a project)"),
 );
 
-presetCmd
+layerCmd
   .command("create")
-  .argument("<name>", "Preset name")
-  .option("-d, --description <text>", "Preset description")
+  .argument("<name>", "Layer name")
+  .option("-d, --description <text>", "Layer description")
   .option("--tags <tags>", "Comma-separated tags")
-  .option("--version <semver>", "Preset version (semver)", "1.0.0")
+  .option("--version <semver>", "Layer version (semver)", "1.0.0")
   .action(
     (
       name: string,
@@ -2660,17 +2675,17 @@ presetCmd
       const db = getDb();
       initializeSchema(db);
       const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
-      const preset = createPreset({
+      const layer = createPlugin({
         name,
         version: opts.version,
         description: opts.description,
         tags,
       });
-      ui.success(`Created preset ${ui.theme.accent(formatPresetLabel(preset))}`);
+      ui.success(`Created layer ${ui.theme.accent(formatLayerLabel(layer))}`);
     },
   );
 
-presetCmd
+layerCmd
   .command("list")
   .alias("ls")
   .option("--format <mode>", "Output format: human or json", "human")
@@ -2679,9 +2694,9 @@ presetCmd
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const presets = listPresets();
+    const layers = listDesignPlugins();
     if (format === "json") {
-      printJson(presets);
+      printJson(layers);
       return;
     }
     ui.table.print({
@@ -2691,87 +2706,87 @@ presetCmd
         { key: "version", header: "VERSION", width: 12 },
         { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
       ],
-      rows: presets,
-      summary: `${presets.length} presets ${ui.icons.bullet} run \`${formatCommand("preset show <name>")}\` for details`,
-      empty: "No presets found.",
+      rows: layers,
+      summary: `${layers.length} layers ${ui.icons.bullet} run \`${formatCommand("layer show <name>")}\` for details`,
+      empty: "No layers found.",
     });
   });
 
-presetCmd
+layerCmd
   .command("show")
-  .argument("[name]", "Preset name or ID")
+  .argument("[name]", "Layer name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
-  .description("Show preset details, resources, and plugin pins")
+  .description("Show layer details, resources, and plugin pins")
   .action(async (name: string | undefined, opts: { format?: string; showId?: boolean; interactive?: boolean; noInteractive?: boolean }) => {
-    const resolvedName = name ?? await resolvePresetMutationTarget({
-      presetName: name,
+    const resolvedName = name ?? await resolveLayerMutationTarget({
+      layerName: name,
       interactive: opts.interactive,
       noInteractive: opts.noInteractive,
       format: opts.format,
-      message: "Which preset do you want to show?",
+      message: "Which layer do you want to show?",
     });
     if (!resolvedName) {
       process.exitCode = 1;
       ui.danger(
-        listPresets().length > 0
+        listDesignPlugins().length > 0
           ? "error: missing required argument 'name'"
-          : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+          : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
       );
       return;
     }
-    handlePresetShowCommand(resolvedName, opts);
+    handleLayerShowCommand(resolvedName, opts);
   });
 
-presetCmd
+layerCmd
   .command("attach")
-  .argument("[preset]", "Preset name or ID")
+  .argument("[layer]", "Layer name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
-  .option("--version <constraint>", "Version constraint for plugin or preset dependency")
+  .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--version <constraint>", "Version constraint for plugin or layer dependency")
   .option("--embed", "Embed plugin files on export (plugin attachments only)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Attach a resource, plugin, or dependency to a preset")
-  .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .description("Attach a resource, plugin, or dependency to a layer")
+  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const presetTarget = await resolvePresetMutationTarget({
-        presetName,
+      const layerTarget = await resolveLayerMutationTarget({
+        layerName,
         interactive: opts.interactive,
         noInteractive: opts.noInteractive,
         format: opts.format,
-        message: "Which preset do you want to update?",
+        message: "Which layer do you want to update?",
       });
-      if (!presetTarget) {
+      if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listPresets().length > 0
-            ? "error: missing required argument 'preset'"
-            : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+          listDesignPlugins().length > 0
+            ? "error: missing required argument 'layer'"
+            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const preset = getPreset(presetTarget);
-      if (!preset) {
+      const layer = getPlugin(layerTarget);
+      if (!layer) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetTarget}`);
+        ui.danger(`Layer not found: ${layerTarget}`);
         return;
       }
 
-      const wizardValues = await runPresetAddWizard({
+      const wizardValues = await runLayerAddWizard({
         selector,
         type: opts.type,
         version: opts.version,
         embed: opts.embed,
-        presetName: preset.name,
+        layerName: layer.name,
         shouldPrompt: shouldUseWizard({
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !presetName || !selector || !opts.type,
+          missingRequiredArgs: !layerName || !selector || !opts.type,
         }),
       });
 
@@ -2779,8 +2794,8 @@ presetCmd
         throw new Error(`error: missing required argument 'selector'`);
       }
 
-      ui.success(ui.theme.accent(addPresetAttachment({
-        preset,
+      ui.success(ui.theme.accent(addLayerAttachment({
+        layer,
         selector: wizardValues.selector,
         type: wizardValues.type,
         version: wizardValues.version,
@@ -2792,51 +2807,51 @@ presetCmd
     }
   });
 
-presetCmd
+layerCmd
   .command("detach")
-  .argument("[preset]", "Preset name or ID")
+  .argument("[layer]", "Layer name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type: ${PRESET_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Remove a resource, plugin, or dependency from a preset")
-  .action(async (presetName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .description("Remove a resource, plugin, or dependency from a layer")
+  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const presetTarget = await resolvePresetMutationTarget({
-        presetName,
+      const layerTarget = await resolveLayerMutationTarget({
+        layerName,
         interactive: opts.interactive,
         noInteractive: opts.noInteractive,
         format: opts.format,
-        message: "Which preset do you want to update?",
+        message: "Which layer do you want to update?",
       });
-      if (!presetTarget) {
+      if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listPresets().length > 0
-            ? "error: missing required argument 'preset'"
-            : `No presets found. Create one with \`${formatCommand("preset create <name>")}\` first.`,
+          listDesignPlugins().length > 0
+            ? "error: missing required argument 'layer'"
+            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const preset = getPreset(presetTarget);
-      if (!preset) {
+      const layer = getPlugin(layerTarget);
+      if (!layer) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${presetTarget}`);
+        ui.danger(`Layer not found: ${layerTarget}`);
         return;
       }
 
-      const wizardValues = await runPresetAddWizard({
+      const wizardValues = await runLayerAddWizard({
         selector,
         type: opts.type,
-        presetName: preset.name,
+        layerName: layer.name,
         shouldPrompt: shouldUseWizard({
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !presetName || !selector || !opts.type,
+          missingRequiredArgs: !layerName || !selector || !opts.type,
         }),
       });
 
@@ -2844,12 +2859,12 @@ presetCmd
         throw new Error(`error: missing required argument 'selector'`);
       }
 
-      const result = removePresetAttachment({
-        preset,
+      const result = removeLayerAttachment({
+        layer,
         selector: wizardValues.selector,
         type: wizardValues.type,
       });
-      if (!result.removed && wizardValues.type === "preset-dependency") {
+      if (!result.removed && wizardValues.type === "layer-dependency") {
         process.exitCode = 1;
         ui.danger(result.message);
         return;
@@ -2861,9 +2876,9 @@ presetCmd
     }
   });
 
-presetCmd
+layerCmd
   .command("delete")
-  .argument("[name]", "Preset name, name@version selector, or ID")
+  .argument("[name]", "Layer name, name@version selector, or ID")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
   .action(async (name: string | undefined, opts: { interactive?: boolean; noInteractive?: boolean; format?: string }) => {
@@ -2876,102 +2891,102 @@ presetCmd
         format: parseOutputFormat(opts.format),
         missingRequiredArgs: true,
       })
-        ? runPresetDeleteWizard()
+        ? runLayerDeleteWizard()
         : Promise.resolve(undefined));
 
       if (!resolvedName) {
-        throw new Error("Preset name is required");
+        throw new Error("Layer name is required");
       }
 
-      const preset = getPreset(resolvedName);
-      if (!preset) {
+      const layer = getPlugin(resolvedName);
+      if (!layer) {
         process.exitCode = 1;
-        ui.danger(`Preset not found: ${resolvedName}`);
+        ui.danger(`Layer not found: ${resolvedName}`);
         return;
       }
-      if (!deletePreset(preset.id)) {
-        throw new Error(`Failed to delete preset ${formatPresetLabel(preset)}`);
+      if (!deletePlugin(layer.id)) {
+        throw new Error(`Failed to delete layer ${formatLayerLabel(layer)}`);
       }
-      ui.success(`Deleted preset ${ui.theme.accent(formatPresetLabel(preset))}`);
+      ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
 
-presetCmd
+layerCmd
   .command("export")
-  .argument("<preset>", "Preset name/ID, or comma-separated preset list")
+  .argument("<layer>", "Layer name/ID, or comma-separated layer list")
   .option("-f, --file <path>", "Output file path")
   .option(
     "--embed-plugins",
     "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
   )
-  .description("Export a preset as a shareable JSON bundle")
-  .action(handlePresetExportCommand);
+  .description("Export a layer as a shareable JSON bundle")
+  .action(handleLayerExportCommand);
 
-presetCmd
+layerCmd
   .command("import")
   .argument("<file>", "JSON bundle file to import")
-  .description("Import a preset from a JSON bundle file")
-  .action(handlePresetImportCommand);
+  .description("Import a layer from a JSON bundle file")
+  .action(handleLayerImportCommand);
 
-presetCmd
+layerCmd
   .command("search")
-  .argument("<query>", "Search query for presets on the cloud catalog")
+  .argument("<query>", "Search query for layers on the cloud catalog")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Search remote preset libraries")
-  .action(handlePresetSearchCommand);
+  .description("Search remote layer libraries")
+  .action(handleLayerSearchCommand);
 
-presetCmd
+layerCmd
   .command("add")
   .argument("[selector]", "Remote library selector: org/library[@version] or library[@version] with --org")
-  .option("--as <name>", "Add under a different local preset name")
+  .option("--as <name>", "Add under a different local layer name")
   .option("--org <slug>", "Organization slug (when selector omits org)")
   .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Add a preset from the remote catalog into the local DB")
-  .action(handlePresetInstallCommand);
+  .description("Add a layer from the remote catalog into the local DB")
+  .action(handleLayerInstallCommand);
 
-presetCmd
+layerCmd
   .command("publish")
-  .argument("<preset>", "Local preset name to publish")
+  .argument("<layer>", "Local layer name to publish")
   .option("--org <slug>", "Organization slug to publish under")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Publish a local preset to the cloud catalog")
-  .action(handlePresetPublishCommand);
+  .description("Publish a local layer to the cloud catalog")
+  .action(handleLayerPublishCommand);
 
-presetCmd
+layerCmd
   .command("diff")
-  .argument("<left>", "Preset name or bundle file")
-  .argument("<right>", "Preset name or bundle file")
+  .argument("<left>", "Layer name or bundle file")
+  .argument("<right>", "Layer name or bundle file")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Diff two presets or a preset and a bundle file")
-  .action(handlePresetDiffCommand);
+  .description("Diff two layers or a layer and a bundle file")
+  .action(handleLayerDiffCommand);
 
-presetCmd
+layerCmd
   .command("doctor")
-  .argument("[name]", "Preset name or ID")
+  .argument("[name]", "Layer name or ID")
   .option("--check <name>", "Run only the named check", (value, previous: string[] = []) => [...previous, value], [])
   .option("--list-checks", "List available checks")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Run doctor checks against a preset")
-  .action(handlePresetDoctorCommand);
+  .description("Run doctor checks against a layer")
+  .action(handleLayerDoctorCommand);
 
-presetCmd
+layerCmd
   .command("from-project")
-  .argument("[name]", "New preset name")
+  .argument("[name]", "New layer name")
   .option("--project <path>", "Project directory", ".")
-  .option("-d, --description <text>", "Preset description")
+  .option("-d, --description <text>", "Layer description")
   .option("-p, --platform <slug>", "Scan only a specific platform")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Scan current folder and create a preset from its resources")
-  .action(handlePresetFromProjectCommand);
+  .description("Scan current folder and create a layer from its resources")
+  .action(handleLayerFromProjectCommand);
 
 // ── migrate ─────────────────────────────────────────────────────────────
 
@@ -2984,9 +2999,9 @@ const migrateCmd = configureCommandGroup(
 migrateCmd
   .command("export")
   .argument("<file>", "Output archive path (.tar.gz or .json)")
-  .option("--include-plugins", "Embed plugin trees in preset bundles")
+  .option("--include-plugins", "Embed plugin trees in layer bundles")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Export all presets, harness preferences, and config")
+  .description("Export all layers, harness preferences, and config")
   .action(handleMigrateExportCommand);
 
 migrateCmd
@@ -3142,6 +3157,7 @@ resourceCmd
 const projectCmd = configureCommandGroup(
   program
     .command("project")
+    .alias("p")
     .alias("pj")
     .description("Manage project scanning, apply state, and snapshots"),
 );
@@ -3164,8 +3180,8 @@ projectCmd
 projectCmd
   .command("apply")
   .argument(
-    "[presets...]",
-    "Preset name(s), bundle path, or URL (multiple presets are merged in order)",
+    "[layers...]",
+    "Layer name(s), bundle path, or URL (multiple layers are merged in order)",
   )
   .option("--project <path>", "Project directory", ".")
   .option("--platform <slugs>", "Comma-separated platform slugs")
@@ -3174,14 +3190,14 @@ projectCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option(
     "--ignore-plugin-versions",
-    "Skip validating preset Claude plugin pins against installed versions",
+    "Skip validating layer Claude plugin pins against installed versions",
   )
   .option(
     "--strict-plugin-versions",
     "Fail apply (exit 2) if any pinned plugin violates its version constraint",
   )
   .description(
-    "Apply one or more presets (or a bundle URL) to a project, serializing for each platform",
+    "Apply one or more layers (or a bundle URL) to a project, serializing for each platform",
   )
   .action(handleApplyCommand);
 

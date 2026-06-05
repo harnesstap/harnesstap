@@ -13,7 +13,7 @@ Typical commands:
 harnessdeck init
 harnessdeck init --main claude-code --aliases cursor,codex
 harnessdeck platform list
-harnessdeck preset list
+harnessdeck layer list
 ```
 
 What this gives you:
@@ -21,7 +21,7 @@ What this gives you:
 - a local SQLite database under `~/.harnessdeck/harnessdeck.db`
 - an optional settings file at `~/.harnessdeck/config.json` (e.g. plugin
   refresh cadence — see Scenario 19)
-- built-in starter presets seeded into the database
+- built-in starter layers seeded into the database
 - imported resources from supported home-directory harness folders when
   present (`~/.claude/`, `~/.codex/`, …)
 - a quick view of which harnesses the current release knows how to handle

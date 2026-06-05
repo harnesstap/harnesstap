@@ -13,5 +13,5 @@ harnessdeck migrate import ./harnessdeck-state.tar.gz
 
 ## Common
 
-Use these when starting or adopting a repository, applying a preset, or when
+Use these when starting or adopting a repository, applying a layer, or when
 one repo needs different harness defaults than your machine-wide setup.

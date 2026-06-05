@@ -29,30 +29,35 @@ describe("project model", () => {
     }
   });
 
-  it("records applied presets with platforms", async () => {
-    const context = await createInitializedTestContext("project-presets");
+  it("records applied layers with platforms", async () => {
+    const context = await createInitializedTestContext("project-layers");
 
     try {
       const projectModel = await import("../../src/models/project.ts");
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
 
       const project = projectModel.createProject({
         git_origin: "git@github.com:acme/repo.git",
         name: "acme/repo",
         local_path: "/tmp/repo",
       });
-      const preset = presetModel.createPreset({ name: "starter" });
+      const layer = layerModel.createLayer({ name: "starter" });
+      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
+      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+        name: "starter-stack",
+        pluginIds: [layer.id],
+      });
 
-      projectModel.applyPresetToProject({
+      projectModel.applyConfiguredLayerToProject({
         project_id: project.id,
-        preset_id: preset.id,
+        configured_layer_id: configuredLayer.id,
         platforms: ["claude-code", "cursor"],
       });
 
-      expect(projectModel.getProjectPresets(project.id)).toEqual([
+      expect(projectModel.getProjectConfiguredLayers(project.id)).toEqual([
         expect.objectContaining({
           project_id: project.id,
-          preset_id: preset.id,
+          configured_layer_id: configuredLayer.id,
           platforms: ["claude-code", "cursor"],
         }),
       ]);

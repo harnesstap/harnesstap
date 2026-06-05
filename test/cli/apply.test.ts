@@ -56,11 +56,11 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-apply.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
-      const preset = presetModel.createPreset({ name: "applied" });
+      const layer = layerModel.createLayer({ name: "applied" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -68,7 +68,7 @@ describe("CLI apply", () => {
           content: "# Applied instructions",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const dryRun = await runCli([
         "project",
@@ -111,7 +111,7 @@ describe("CLI apply", () => {
     }
   });
 
-  it("warns on stderr for preset plugin constraint mismatch without failing", async () => {
+  it("warns on stderr for layer plugin constraint mismatch without failing", async () => {
     const context = await createTestContext("cli-apply-plugins-warn");
 
     try {
@@ -119,12 +119,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugins.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
-      const preset = presetModel.createPreset({ name: "with-plugins" });
-      pluginModel.addPluginToPreset(preset.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const layer = layerModel.createLayer({ name: "with-plugins" });
+      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -132,7 +132,7 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
         "project",
@@ -161,12 +161,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-strict.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
-      const preset = presetModel.createPreset({ name: "strict-plugins" });
-      pluginModel.addPluginToPreset(preset.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const layer = layerModel.createLayer({ name: "strict-plugins" });
+      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -174,7 +174,7 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
         "project",
@@ -204,12 +204,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-ignore.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
-      const preset = presetModel.createPreset({ name: "ignore-plugins" });
-      pluginModel.addPluginToPreset(preset.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const layer = layerModel.createLayer({ name: "ignore-plugins" });
+      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -217,7 +217,7 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
         "project",
@@ -245,13 +245,13 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-conflict.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
-      const preset = presetModel.createPreset({ name: "conflict-plugins" });
-      pluginModel.addPluginToPreset(
-        preset.id,
+      const layer = layerModel.createLayer({ name: "conflict-plugins" });
+      pluginPins.addPluginToLayer(
+        layer.id,
         "formatter@acme-marketplace",
         ">=2.1.0 <3.0.0",
       );
@@ -262,7 +262,7 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
         "project",
@@ -292,10 +292,10 @@ describe("CLI apply", () => {
     try {
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const preset = presetModel.createPreset({ name: "non-git-apply" });
+      const layer = layerModel.createLayer({ name: "non-git-apply" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -303,7 +303,7 @@ describe("CLI apply", () => {
           content: "# Non-git",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
         "project",
@@ -323,7 +323,7 @@ describe("CLI apply", () => {
     }
   });
 
-  it("reuses imported presets when reapplying the same bundle path", async () => {
+  it("reuses imported layers when reapplying the same bundle path", async () => {
     const context = await createTestContext("cli-apply-bundle-reuse");
 
     try {
@@ -336,7 +336,7 @@ describe("CLI apply", () => {
         `{
   "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
-  "preset": {
+  "layer": {
     "name": "bundle-reuse",
     "version": "1.0.0",
     "description": "",
@@ -379,17 +379,17 @@ describe("CLI apply", () => {
       expect(firstApply.exitCode).toBeUndefined();
       expect(secondApply.exitCode).toBeUndefined();
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const presets = presetModel
-        .listPresets()
-        .filter((preset) => preset.name === "bundle-reuse" && preset.version === "1.0.0");
-      expect(presets).toHaveLength(1);
+      const layerModel = await import("../../src/models/layer.ts");
+      const layers = layerModel
+        .listLayers()
+        .filter((layer) => layer.name === "bundle-reuse" && layer.version === "1.0.0");
+      expect(layers).toHaveLength(1);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("validates merged plugin pins from earlier presets in strict mode", async () => {
+  it("validates merged plugin pins from earlier layers in strict mode", async () => {
     const context = await createTestContext("cli-apply-plugins-merged-strict");
 
     try {
@@ -397,12 +397,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-merged-strict.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
-      const base = presetModel.createPreset({ name: "base-plugins" });
-      pluginModel.addPluginToPreset(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const base = layerModel.createLayer({ name: "base-plugins" });
+      pluginPins.addPluginToLayer(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       const baseResource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -410,9 +410,9 @@ describe("CLI apply", () => {
           content: "# Base",
         }),
       );
-      presetModel.addResourceToPreset(base.id, baseResource.id);
+      layerModel.addResourceToLayer(base.id, baseResource.id);
 
-      const overlay = presetModel.createPreset({ name: "overlay-no-plugins" });
+      const overlay = layerModel.createLayer({ name: "overlay-no-plugins" });
       const overlayResource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -420,7 +420,7 @@ describe("CLI apply", () => {
           content: "# Overlay",
         }),
       );
-      presetModel.addResourceToPreset(overlay.id, overlayResource.id);
+      layerModel.addResourceToLayer(overlay.id, overlayResource.id);
 
       const applyResult = await runCli([
         "project",

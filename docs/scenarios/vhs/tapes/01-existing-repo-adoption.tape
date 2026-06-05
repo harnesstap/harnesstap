@@ -14,7 +14,7 @@ Type "harnessdeck resource list"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck preset list"
+Type "harnessdeck layer list"
 Enter
 Sleep 3000ms
 

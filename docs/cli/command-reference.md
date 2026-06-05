@@ -28,14 +28,14 @@ Key options:
 - `--aliases <slugs>` — comma-separated alias harnesses
 - `--format <mode>` — `human` or `json`
 
-## project
+## project (`p`, `pj`)
 
 Manage project scanning, apply state, snapshots, drift, and sync.
 
 ### Commands
 
 - `project scan [path]` — import resources from a project tree
-- `project apply <preset...>` — apply one or more presets, bundle paths, or bundle URLs
+- `project apply <layer...>` — apply one or more layers, bundle paths, or bundle URLs
 - `project drift [path]` — compare the working tree against the latest apply/sync snapshot
 - `project sync [path]` — sync alias harness outputs from the main harness state
 - `project history --project <path>` — list snapshots for a tracked project
@@ -60,39 +60,39 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 - `project apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
 - `project revert` requires a snapshot ID from `project history`.
 
-## preset (`p`)
+## layer (`l`)
 
 Manage reusable bundles of resources and plugin pins.
 
 ### Commands
 
-- `preset create <name>`
-- `preset list`
-- `preset show <name>`
-- `preset attach [preset] [selector] --type <type>`
-- `preset detach [preset] [selector] --type <type>`
-- `preset delete [name]`
-- `preset export <preset>`
-- `preset import <file>`
-- `preset search <query>`
-- `preset add [selector]`
-- `preset publish <preset>`
-- `preset diff <left> <right>`
-- `preset doctor [name]`
-- `preset from-project [name] --project <path>`
+- `layer create <name>`
+- `layer list`
+- `layer show <name>`
+- `layer attach [layer] [selector] --type <type>`
+- `layer detach [layer] [selector] --type <type>`
+- `layer delete [name]`
+- `layer export <layer>`
+- `layer import <file>`
+- `layer search <query>`
+- `layer add [selector]`
+- `layer publish <layer>`
+- `layer diff <left> <right>`
+- `layer doctor [name]`
+- `layer from-project [name] --project <path>`
 
 ### Important options
 
-- `preset list --show-id`
-- `preset show --format json`
-- `preset attach --type <resource|skill|instruction|plugin|preset-dependency>`
-- `preset attach --version <constraint>`
-- `preset export --embed-plugins`
-- `preset add --as <name>`
-- `preset add --org <slug>`
-- `preset add --version <constraint>`
-- `preset search --profile <name>`
-- `preset publish --profile <name>`
+- `layer list --show-id`
+- `layer show --format json`
+- `layer attach --type <resource|skill|instruction|plugin|layer-dependency>`
+- `layer attach --version <constraint>`
+- `layer export --embed-plugins`
+- `layer add --as <name>`
+- `layer add --org <slug>`
+- `layer add --version <constraint>`
+- `layer search --profile <name>`
+- `layer publish --profile <name>`
 
 ## resource (`r`)
 

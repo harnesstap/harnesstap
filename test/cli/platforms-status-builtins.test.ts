@@ -6,15 +6,15 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
-describe("CLI platforms, status, and built-in presets", () => {
-  it("lists harnesses and applies built-in presets", async () => {
+describe("CLI platforms, status, and built-in layers", () => {
+  it("lists harnesses and applies built-in layers", async () => {
     const context = await createTestContext("cli-builtins");
 
     try {
       await runCli(["init"]);
 
       const platforms = await runCli(["harness", "list"]);
-      const templates = await runCli(["preset", "list"]);
+      const templates = await runCli(["layer", "list"]);
       const applied = await runCli([
         "project",
         "apply",
@@ -45,16 +45,16 @@ describe("CLI platforms, status, and built-in presets", () => {
     } satisfies Partial<CommanderError>);
   });
 
-  it("reports project status for tracked presets and snapshots", async () => {
+  it("reports project status for tracked layers and snapshots", async () => {
     const context = await createTestContext("cli-status");
 
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-status.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const preset = presetModel.createPreset({ name: "tracked" });
+      const layer = layerModel.createLayer({ name: "tracked" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -62,7 +62,7 @@ describe("CLI platforms, status, and built-in presets", () => {
           content: "# Tracked instructions",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       await runCli([
         "project",
@@ -76,7 +76,7 @@ describe("CLI platforms, status, and built-in presets", () => {
 
       const status = await runCli(["project", "status", context.projectDir]);
       expect(status.stdout).toContain("Platforms");
-      expect(status.stdout).toContain("Applied presets");
+      expect(status.stdout).toContain("Applied layers");
       expect(status.stdout).toContain("Snapshots");
     } finally {
       await context.cleanup();

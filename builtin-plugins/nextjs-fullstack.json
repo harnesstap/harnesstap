@@ -1,0 +1,49 @@
+{
+  "$schema": "urn:harnessdeck:bundle:v1",
+  "version": 1,
+  "layer": {
+    "name": "nextjs-fullstack",
+    "description": "Next.js 15 fullstack app with TypeScript, Tailwind, Prisma, and Vitest",
+    "tags": ["nextjs", "typescript", "react", "tailwind", "prisma"],
+    "is_template": true
+  },
+  "resources": [
+    {
+      "type": "instruction",
+      "name": "project-context",
+      "description": "Core project context and conventions",
+      "content": "# Next.js Fullstack App\n\n## Tech Stack\n- Next.js 15 (App Router)\n- TypeScript 5.x (strict mode)\n- Tailwind CSS 4\n- Prisma ORM with PostgreSQL\n- Vitest for testing\n- pnpm as package manager\n\n## Commands\n- `pnpm dev` — Start dev server\n- `pnpm build` — Production build\n- `pnpm test` — Run tests with Vitest\n- `pnpm lint` — ESLint + Prettier check\n- `pnpm db:migrate` — Run Prisma migrations\n- `pnpm db:seed` — Seed development data\n\n## Architecture\n- `src/app/` — Next.js App Router pages and layouts\n- `src/components/ui/` — Shared UI primitives (shadcn/ui)\n- `src/components/features/` — Feature-specific components\n- `src/lib/` — Utilities, types, and shared logic\n- `src/server/` — Server-only code (API routes, DB queries)\n\n## Conventions\n- Use named exports, not default exports\n- Components use PascalCase filenames\n- Utilities use camelCase filenames\n- All database queries go through `src/server/db/`\n- Use `cn()` from `@/lib/utils` for conditional classNames\n- Prefer server components; add `use client` only when needed\n\n## Rules\n- NEVER modify migration files after they've been committed\n- Always use server actions instead of API routes for mutations\n- Do not add new dependencies without asking first\n- Keep components under 200 lines\n- All user-facing strings must use the i18n system",
+      "metadata": {}
+    },
+    {
+      "type": "rule",
+      "name": "react-components",
+      "description": "React component standards",
+      "content": "# React Component Standards\n\n- Use functional components with explicit TypeScript props interface\n- Destructure props in the function signature\n- Use CSS Modules or Tailwind utility classes, never inline styles\n- Include aria-labels for interactive elements\n- Keep components under 150 lines — split into sub-components\n- Prefer composition over prop drilling\n- Co-locate tests: `Component.test.tsx` next to `Component.tsx`",
+      "metadata": {
+        "globs": ["src/components/**/*.tsx", "src/app/**/*.tsx"],
+        "always_apply": false
+      }
+    },
+    {
+      "type": "rule",
+      "name": "api-routes",
+      "description": "API route patterns",
+      "content": "# API Route Standards\n\n- Validate all inputs with Zod schemas\n- Return consistent response shape: `{ success, data?, error? }`\n- Include rate limiting on write endpoints\n- Log all errors with structured context (requestId, userId, endpoint)\n- Never expose internal error details to clients\n- Use proper HTTP status codes",
+      "metadata": {
+        "globs": ["src/app/api/**/*.ts"],
+        "always_apply": false
+      }
+    },
+    {
+      "type": "rule",
+      "name": "database",
+      "description": "Database and ORM conventions",
+      "content": "# Database Rules\n\n- All schema changes go through Prisma migrations\n- Use transactions for multi-table writes\n- Add indexes for columns used in WHERE clauses and JOINs\n- Implement soft deletes (deletedAt column) for user-facing data\n- Table names: plural snake_case\n- Column names: snake_case",
+      "metadata": {
+        "globs": ["src/server/db/**/*.ts", "prisma/**/*"],
+        "always_apply": false
+      }
+    }
+  ]
+}

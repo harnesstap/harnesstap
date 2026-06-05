@@ -12,14 +12,14 @@ Manual workflow with current commands:
 ```bash
 # On the old machine
 mkdir -p ./bundles
-for p in $(harnessdeck preset list --format json | jq -r '.[].name'); do
-  harnessdeck preset export "$p" --file "./bundles/$p.harnessdeck.json" --embed-plugins
+for p in $(harnessdeck layer list --format json | jq -r '.[].name'); do
+  harnessdeck layer export "$p" --file "./bundles/$p.harnessdeck.json" --embed-plugins
 done
 
 # Copy ./bundles/ to the new machine, then:
 harnessdeck init
 for f in ./bundles/*.harnessdeck.json; do
-  harnessdeck preset import "$f"
+  harnessdeck layer import "$f"
 done
 harnessdeck harness set --main claude-code --aliases cursor,codex   # restore selection
 ```

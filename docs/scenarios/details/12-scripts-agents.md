@@ -14,7 +14,7 @@ Typical commands:
 harnessdeck init --format json
 harnessdeck platform list --format json
 harnessdeck resource list --format json
-harnessdeck preset show my-setup --format json
+harnessdeck layer show my-setup --format json
 harnessdeck project history --project . --format json
 harnessdeck project apply my-setup --project . --dry-run --format json
 ```

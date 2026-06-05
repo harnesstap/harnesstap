@@ -14,7 +14,7 @@ harnessdeck resource list --type skill
 harnessdeck resource list --type instruction --search legacy
 harnessdeck resource show <id>
 harnessdeck resource delete <id>
-harnessdeck preset delete <stale-preset-name>
+harnessdeck layer delete <stale-layer-name>
 ```
 
 Valid `--type` values: `instruction`, `skill`, `rule`, `mcp_server`,

@@ -52,7 +52,7 @@ describe("HarnessDeck features SVG", () => {
       "Other CLIs",
       "Scan",
       "SQLite library",
-      "Reusable presets",
+      "Reusable layers",
       "Apply & sync",
       "Snapshots",
       "Drift detection",

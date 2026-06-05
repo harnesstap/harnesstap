@@ -17,8 +17,8 @@ function firstPrompt(input: unknown): CapturedPrompt {
 }
 
 describe("wizard prompts", () => {
-  it("uses list prompts for preset add resource flows", async () => {
-    const context = await createInitializedTestContext("wizard-preset-add-prompts");
+  it("uses list prompts for layer add resource flows", async () => {
+    const context = await createInitializedTestContext("wizard-layer-add-prompts");
     const promptCalls: CapturedPrompt[] = [];
     let selectedResourceId = "";
     const promptSpy = spyOn(inquirer, "prompt").mockImplementation(
@@ -43,8 +43,8 @@ describe("wizard prompts", () => {
       );
       selectedResourceId = resource.id;
 
-      const { runPresetAddWizard } = await import("../../src/services/wizards/preset-add.ts");
-      const result = await runPresetAddWizard({ shouldPrompt: true });
+      const { runLayerAddWizard } = await import("../../src/services/wizards/layer-add.ts");
+      const result = await runLayerAddWizard({ shouldPrompt: true });
 
       expect(result).toEqual({
         type: "skill",
@@ -69,7 +69,7 @@ describe("wizard prompts", () => {
   });
 
   it("prompts for plugin selector, version, and embed confirmation", async () => {
-    const context = await createInitializedTestContext("wizard-preset-add-plugin-prompts");
+    const context = await createInitializedTestContext("wizard-layer-add-plugin-prompts");
     const promptCalls: CapturedPrompt[] = [];
     const promptSpy = spyOn(inquirer, "prompt").mockImplementation(
       async (questions) => {
@@ -90,8 +90,8 @@ describe("wizard prompts", () => {
     );
 
     try {
-      const { runPresetAddWizard } = await import("../../src/services/wizards/preset-add.ts");
-      const result = await runPresetAddWizard({ shouldPrompt: true });
+      const { runLayerAddWizard } = await import("../../src/services/wizards/layer-add.ts");
+      const result = await runLayerAddWizard({ shouldPrompt: true });
 
       expect(result).toEqual({
         type: "plugin",
@@ -111,8 +111,8 @@ describe("wizard prompts", () => {
     }
   });
 
-  it("uses a list prompt when deleting presets interactively", async () => {
-    const context = await createInitializedTestContext("wizard-preset-delete-prompts");
+  it("uses a list prompt when deleting layers interactively", async () => {
+    const context = await createInitializedTestContext("wizard-layer-delete-prompts");
     const promptCalls: CapturedPrompt[] = [];
     const promptSpy = spyOn(inquirer, "prompt").mockImplementation(async (questions) => {
       promptCalls.push(firstPrompt(questions));
@@ -120,11 +120,11 @@ describe("wizard prompts", () => {
     });
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
-      presetModel.createPreset({ name: "team" });
+      const layerModel = await import("../../src/models/layer.ts");
+      layerModel.createLayer({ name: "team" });
 
-      const { runPresetDeleteWizard } = await import("../../src/services/wizards/preset-delete.ts");
-      const result = await runPresetDeleteWizard();
+      const { runLayerDeleteWizard } = await import("../../src/services/wizards/layer-delete.ts");
+      const result = await runLayerDeleteWizard();
 
       expect(result).toBe("team@1.0.0");
       expect(promptCalls[0]?.type).toBe("list");
@@ -161,22 +161,22 @@ describe("wizard prompts", () => {
     }
   });
 
-  it("uses a list prompt when project apply needs a preset choice", async () => {
+  it("uses a list prompt when project apply needs a layer choice", async () => {
     const context = await createInitializedTestContext("wizard-project-apply-prompts");
     const promptCalls: CapturedPrompt[] = [];
     const promptSpy = spyOn(inquirer, "prompt").mockImplementation(async (questions) => {
       promptCalls.push(firstPrompt(questions));
-      return { value: "apply-preset" };
+      return { value: "apply-layer" };
     });
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
-      presetModel.createPreset({ name: "apply-preset" });
+      const layerModel = await import("../../src/models/layer.ts");
+      layerModel.createLayer({ name: "apply-layer" });
 
       const { runProjectApplyWizard } = await import("../../src/services/wizards/project-apply.ts");
       const result = await runProjectApplyWizard();
 
-      expect(result).toBe("apply-preset");
+      expect(result).toBe("apply-layer");
       expect(promptCalls[0]?.type).toBe("list");
     } finally {
       promptSpy.mockRestore();

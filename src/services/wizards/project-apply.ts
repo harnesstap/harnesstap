@@ -1,19 +1,19 @@
-import { listPresets } from "../../models/preset.js";
+import { listPlugins } from "../../models/plugin-component.js";
 import { promptForChoice, promptForValue } from "./shared.js";
 
 export async function runProjectApplyWizard(): Promise<string> {
-  const presets = listPresets();
-  if (presets.length > 0) {
+  const layers = listPlugins();
+  if (layers.length > 0) {
     return promptForChoice({
-      message: "Which preset should be applied?",
-      choices: presets.map((preset) => ({
-        name: `${preset.name}@${preset.version}`,
-        value: preset.name,
+      message: "Which layer should be applied?",
+      choices: layers.map((layer) => ({
+        name: `${layer.name}@${layer.version}`,
+        value: layer.name,
       })),
     });
   }
 
   return promptForValue({
-    message: "Preset name, bundle path, or URL",
+    message: "Layer name, bundle path, or URL",
   });
 }

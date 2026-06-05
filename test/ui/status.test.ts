@@ -9,10 +9,10 @@ describe("ui status", () => {
   });
 
   it("renders verdicts with icons and optional hints", () => {
-    expect(renderSuccess('Preset "team" is valid.')).toContain("✓");
+    expect(renderSuccess('Layer "team" is valid.')).toContain("✓");
     expect(
-      renderDanger("Preset not found: team", {
-        hint: "Run `harnessdeck preset list` to see available presets.",
+      renderDanger("Layer not found: team", {
+        hint: "Run `harnessdeck layer list` to see available layers.",
       }),
     ).toContain("→");
   });
