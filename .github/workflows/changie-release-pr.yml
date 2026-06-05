@@ -1,0 +1,57 @@
+name: Generate Release PR
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Batch changes
+        uses: miniscruff/changie-action@v3
+        with:
+          version: latest
+          args: batch auto
+
+      - name: Merge changes
+        uses: miniscruff/changie-action@v3
+        with:
+          version: latest
+          args: merge
+
+      - name: Get the latest version
+        id: latest
+        uses: miniscruff/changie-action@v3
+        with:
+          version: latest
+          args: latest
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bump package.json version
+        run: |
+          LATEST_VERSION="${{ steps.latest.outputs.output }}"
+          VERSION="${LATEST_VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          title: Release ${{ steps.latest.outputs.output }}
+          branch: release/${{ steps.latest.outputs.output }}
+          commit-message: Release ${{ steps.latest.outputs.output }}
+          body: |
+            Release ${{ steps.latest.outputs.output }}.
+
+            After merge, the [Tag release](https://github.com/bqbooster/harnessdeck/actions/workflows/tag-release.yml) workflow will push the Git tag; that tag triggers npm publish and the GitHub release.
