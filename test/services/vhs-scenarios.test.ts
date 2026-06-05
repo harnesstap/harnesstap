@@ -147,7 +147,7 @@ describe("VHS scenario manifest", () => {
     // Tape contains the visible commands from the approved story
     expect(tape).toContain('Type "harnessdeck project scan ."');
     expect(tape).toContain('Type "harnessdeck resource list"');
-    expect(tape).toContain('Type "harnessdeck preset list"');
+    expect(tape).toContain('Type "harnessdeck layer list"');
     expect(tape).toContain('Type "harnessdeck project apply nextjs-fullstack --project . --platform codex"');
     expect(tape).toContain('Type "harnessdeck project status ."');
 
@@ -170,8 +170,8 @@ describe("VHS scenario manifest", () => {
     const staleDetailPaths = [
       "docs/scenarios/details/01-bootstrap-machine.md",
       "docs/scenarios/details/04-scan-import-repo.md",
-      "docs/scenarios/details/07-preview-apply-preset.md",
-      "docs/scenarios/details/11-builtin-preset.md",
+      "docs/scenarios/details/07-preview-apply-layer.md",
+      "docs/scenarios/details/11-builtin-layer.md",
       "docs/scenarios/details/21-detect-drift.md",
       "docs/scenarios/details/27-project-sync.md",
     ];
@@ -197,12 +197,12 @@ describe("VHS scenario manifest", () => {
 
     expect(readme).toContain("Agent harness configuration toolkit");
     expect(readme).toContain("hd harness list");
-    expect(readme).toContain("hd preset doctor");
-    expect(readme).toContain("hd preset attach my-setup research-helper --type skill");
-    expect(readme).toContain("hd preset attach my-setup formatter@my-marketplace --type plugin");
+    expect(readme).toContain("hd layer doctor");
+    expect(readme).toContain("hd layer attach my-setup research-helper --type skill");
+    expect(readme).toContain("hd layer attach my-setup formatter@my-marketplace --type plugin");
     expect(readme).not.toContain("hd platform list");
-    expect(readme).not.toContain("hd preset validate");
-    expect(readme).not.toContain("hd preset add-plugin");
+    expect(readme).not.toContain("hd layer validate");
+    expect(readme).not.toContain("hd layer add-plugin");
     expect(readme).toContain("```mermaid");
   });
 
@@ -212,13 +212,13 @@ describe("VHS scenario manifest", () => {
 
     expect(spec).toContain("Agent harness configuration toolkit");
     expect(spec).toContain("harnessdeck harness list");
-    expect(spec).toContain("harnessdeck preset doctor");
-    expect(spec).toContain("harnessdeck preset attach <preset> <selector>");
-    expect(spec).toContain("harnessdeck preset detach <preset> <selector>");
+    expect(spec).toContain("harnessdeck layer doctor");
+    expect(spec).toContain("harnessdeck layer attach <layer> <selector>");
+    expect(spec).toContain("harnessdeck layer detach <layer> <selector>");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
     expect(spec).not.toContain("harnessdeck platform list");
-    expect(spec).not.toContain("harnessdeck preset validate");
+    expect(spec).not.toContain("harnessdeck layer validate");
   });
 
   it("new GIF artifact exists on disk", () => {
@@ -230,8 +230,8 @@ describe("VHS scenario manifest", () => {
     const obsoleteGifs = [
       "docs/scenarios/vhs/output/01-bootstrap-machine.gif",
       "docs/scenarios/vhs/output/04-scan-import-repo.gif",
-      "docs/scenarios/vhs/output/07-preview-apply-preset.gif",
-      "docs/scenarios/vhs/output/11-builtin-preset.gif",
+      "docs/scenarios/vhs/output/07-preview-apply-layer.gif",
+      "docs/scenarios/vhs/output/11-builtin-layer.gif",
       "docs/scenarios/vhs/output/21-detect-drift.gif",
       "docs/scenarios/vhs/output/27-project-sync.gif",
     ];

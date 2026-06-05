@@ -1,4 +1,4 @@
-import { listPresetPlugins } from "../models/plugin.js";
+import { listLayerPlugins } from "../models/plugin-pins.js";
 import type { ProjectPluginInventory } from "./claude-plugin-inventory.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 
@@ -37,14 +37,14 @@ function validatePluginConstraintPins(
 }
 
 /**
- * Validates preset Claude plugin pins against the merged effective inventory.
+ * Validates layer Claude plugin pins against the merged effective inventory.
  * Only compares rows whose `ref` appears in `inventory.effective`.
  */
-export function validatePresetPluginConstraints(
-  presetId: string,
+export function validateLayerPluginConstraints(
+  layerId: string,
   inventory: ProjectPluginInventory,
 ): PluginValidationIssue[] {
-  return validatePluginConstraintPins(listPresetPlugins(presetId), inventory);
+  return validatePluginConstraintPins(listLayerPlugins(layerId), inventory);
 }
 
 export function validatePluginPinsAgainstInventory(

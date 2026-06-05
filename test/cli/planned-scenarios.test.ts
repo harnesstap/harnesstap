@@ -6,32 +6,32 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI planned scenarios", () => {
-  it("runs preset doctor, diff, and from-project", async () => {
+  it("runs layer doctor, diff, and from-project", async () => {
     const context = await createTestContext("cli-planned");
     try {
       await runCli(["init"]);
       mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
       writeFileSync(
         join(context.projectDir, "CLAUDE.md"),
-        "# CLI preset from project\n",
+        "# CLI layer from project\n",
         "utf-8",
       );
 
       const fromProject = await runCli([
-        "preset",
+        "layer",
         "from-project",
         "cli-inferred",
         "--project",
         context.projectDir,
       ]);
-      expect(fromProject.stdout).toContain("✓ Created preset");
+      expect(fromProject.stdout).toContain("✓ Created layer");
       expect(fromProject.stdout).toContain("cli-inferred");
       // Verify proper pluralization (1 resource, not 1 resources)
       expect(fromProject.stdout).toMatch(/\d+ resources?/);
       expect(fromProject.stdout).not.toContain("1 resources");
 
       const doctor = await runCli([
-        "preset",
+        "layer",
         "doctor",
         "cli-inferred",
         "--format",
@@ -39,9 +39,9 @@ describe("CLI planned scenarios", () => {
       ]);
       expect(doctor.stdout).toContain('"results"');
 
-      await runCli(["preset", "create", "other"]);
+      await runCli(["layer", "create", "other"]);
       const diff = await runCli([
-        "preset",
+        "layer",
         "diff",
         "cli-inferred",
         "other",
@@ -54,41 +54,41 @@ describe("CLI planned scenarios", () => {
     }
   });
 
-  it("auto-prompts preset from-project on a TTY when the preset name is missing", async () => {
+  it("auto-prompts layer from-project on a TTY when the layer name is missing", async () => {
     const context = await createTestContext("cli-from-project-wizard");
     try {
       await runCli(["init"]);
       mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
       writeFileSync(
         join(context.projectDir, "CLAUDE.md"),
-        "# CLI preset from project\n",
+        "# CLI layer from project\n",
         "utf-8",
       );
 
       const result = await runCli([
-        "preset",
+        "layer",
         "from-project",
         "--project",
         context.projectDir,
       ], {
         isTTY: true,
-        promptResponses: [{ value: "wizard-preset" }],
+        promptResponses: [{ value: "wizard-layer" }],
       });
 
       expect(result.exitCode ?? 0).toBe(0);
-      expect(result.stdout).toContain("wizard-preset");
+      expect(result.stdout).toContain("wizard-layer");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("keeps preset from-project non-interactive when json or CI suppress prompting", async () => {
+  it("keeps layer from-project non-interactive when json or CI suppress prompting", async () => {
     const context = await createTestContext("cli-from-project-wizard-suppressed");
     try {
       await runCli(["init"]);
 
       const jsonSuppressed = await runCli([
-        "preset",
+        "layer",
         "from-project",
         "--project",
         context.projectDir,
@@ -100,7 +100,7 @@ describe("CLI planned scenarios", () => {
       expect(jsonSuppressed.exitCode).toBe(1);
 
       const ciSuppressed = await runCli([
-        "preset",
+        "layer",
         "from-project",
         "--project",
         context.projectDir,
@@ -114,7 +114,7 @@ describe("CLI planned scenarios", () => {
     }
   });
 
-  it("preset from-project excludes ignored resources", async () => {
+  it("layer from-project excludes ignored resources", async () => {
     const context = await createTestContext("cli-from-project-ignore");
     try {
       await runCli(["init"]);
@@ -128,7 +128,7 @@ describe("CLI planned scenarios", () => {
       );
 
       const result = await runCli([
-        "preset",
+        "layer",
         "from-project",
         "cli-inferred",
         "--project",
@@ -137,11 +137,11 @@ describe("CLI planned scenarios", () => {
 
       expect(result.stdout).toContain("cli-inferred");
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const preset = presetModel.getPreset("cli-inferred");
-      if (!preset) throw new Error("Expected cli-inferred preset");
+      const layerModel = await import("../../src/models/layer.ts");
+      const layer = layerModel.getLayer("cli-inferred");
+      if (!layer) throw new Error("Expected cli-inferred layer");
 
-      const resources = presetModel.getPresetResources(preset.id);
+      const resources = layerModel.getLayerResources(layer.id);
       expect(resources.some((resource) => resource.source === "AGENTS.md")).toBe(
         false,
       );
@@ -167,10 +167,10 @@ describe("CLI planned scenarios", () => {
       );
       mkdirSync(join(context.projectDir, ".cursor"), { recursive: true });
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
-      const preset = presetModel.createPreset({ name: "sync-preset" });
+      const layer = layerModel.createLayer({ name: "sync-layer" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -178,7 +178,7 @@ describe("CLI planned scenarios", () => {
           content: "# Main harness\n",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       await runCli([
         "harness",
@@ -195,7 +195,7 @@ describe("CLI planned scenarios", () => {
       await runCli([
         "project",
         "apply",
-        "sync-preset",
+        "sync-layer",
         "--project",
         context.projectDir,
         "--platform",
@@ -271,16 +271,16 @@ describe("CLI planned scenarios", () => {
     }
   });
 
-  it("auto-prompts project apply on a TTY when presets are missing", async () => {
+  it("auto-prompts project apply on a TTY when layers are missing", async () => {
     const context = await createTestContext("cli-project-apply-wizard");
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/apply-wizard.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
-      const preset = presetModel.createPreset({ name: "apply-preset" });
+      const layer = layerModel.createLayer({ name: "apply-layer" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -288,7 +288,7 @@ describe("CLI planned scenarios", () => {
           content: "# Apply wizard\n",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const result = await runCli([
         "project",
@@ -299,7 +299,7 @@ describe("CLI planned scenarios", () => {
         "claude-code",
       ], {
         isTTY: true,
-        promptResponses: [{ value: "apply-preset" }],
+        promptResponses: [{ value: "apply-layer" }],
       });
 
       expect(result.exitCode ?? 0).toBe(0);
@@ -385,7 +385,7 @@ describe("CLI planned scenarios", () => {
     const context = await createTestContext("cli-migrate");
     try {
       await runCli(["init"]);
-      await runCli(["preset", "create", "m1"]);
+      await runCli(["layer", "create", "m1"]);
       const out = join(context.rootDir, "migrate.json");
       const result = await runCli([
         "migrate",
@@ -395,7 +395,7 @@ describe("CLI planned scenarios", () => {
         "json",
       ]);
       const output = result.stdout || result.stderr;
-      expect(output).toMatch(/preset_count/);
+      expect(output).toMatch(/layer_count/);
     } finally {
       await context.cleanup();
     }

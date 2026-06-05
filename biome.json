@@ -13,7 +13,7 @@
       "package.json",
       "tsconfig.json",
       "tsup.config.ts",
-      "builtin-presets/**/*.json",
+      "builtin-plugins/**/*.json",
       "!dist",
       "!docs"
     ]

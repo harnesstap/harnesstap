@@ -1,4 +1,4 @@
-# Scenario 21: Detect drift between project files and the last applied preset
+# Scenario 21: Detect drift between project files and the last applied layer
 
 **Frequency: Occasional** · **Status: Shipped**
 

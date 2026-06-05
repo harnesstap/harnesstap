@@ -10,7 +10,7 @@ import { makeResourceInput } from "../helpers/resources.ts";
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
 describe("CLI output format", () => {
-  it("emits JSON for preset, status, history, harness, init, and apply dry-run commands", async () => {
+  it("emits JSON for layer, status, history, harness, init, and apply dry-run commands", async () => {
     const context = await createTestContext("cli-output-format");
     try {
       await runCli(["init"]);
@@ -23,17 +23,17 @@ describe("CLI output format", () => {
       expect(JSON.parse(initResult.stdout)).toEqual(
         expect.objectContaining({
           database_path: expect.any(String),
-          built_in_presets: expect.anything(),
+          built_in_layers: expect.anything(),
         }),
       );
 
-      const presetList = await runCli(["preset", "list", "--format", "json"]);
-      expect(Array.isArray(JSON.parse(presetList.stdout))).toBe(true);
+      const layerList = await runCli(["layer", "list", "--format", "json"]);
+      expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
 
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-output.git");
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const preset = presetModel.createPreset({ name: "dry-run-preset" });
+      const layer = layerModel.createLayer({ name: "dry-run-layer" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -41,12 +41,12 @@ describe("CLI output format", () => {
           content: "# Dry run",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const dryRun = await runCli([
         "project",
         "apply",
-        "dry-run-preset",
+        "dry-run-layer",
         "--project",
         context.projectDir,
         "--platform",
@@ -57,7 +57,7 @@ describe("CLI output format", () => {
       ]);
       expect(JSON.parse(dryRun.stdout)).toEqual(
         expect.objectContaining({
-          preset: "dry-run-preset",
+          layer: "dry-run-layer",
           project_root: expect.any(String),
           platforms: expect.any(Array),
         }),
@@ -66,7 +66,7 @@ describe("CLI output format", () => {
       await runCli([
         "project",
         "apply",
-        "dry-run-preset",
+        "dry-run-layer",
         "--project",
         context.projectDir,
         "--platform",
@@ -145,7 +145,7 @@ describe("CLI output format", () => {
               JSON.stringify({
                 $schema: "urn:harnessdeck:bundle:v1",
                 version: 1,
-                preset: { name: "remote-lib" },
+                layer: { name: "remote-lib" },
                 resources: [],
               }),
           } as Response;
@@ -156,13 +156,13 @@ describe("CLI output format", () => {
             json: async () => [{ slug: "acme", name: "Acme Corp" }],
           } as Response;
         }
-        if (url.endsWith("/presets/publish")) {
+        if (url.endsWith("/layers/publish")) {
           return {
             ok: true,
             json: async () => ({
               id: "pub-1",
               version: "1.0.0",
-              url: "https://mock/presets/pub-1",
+              url: "https://mock/layers/pub-1",
             }),
           } as Response;
         }
@@ -175,7 +175,7 @@ describe("CLI output format", () => {
 
       try {
         const search = await runCli([
-          "preset",
+          "layer",
           "search",
           "x",
           "--profile",
@@ -186,7 +186,7 @@ describe("CLI output format", () => {
         expect(Array.isArray(JSON.parse(search.stdout))).toBe(true);
 
         const install = await runCli([
-          "preset",
+          "layer",
           "add",
           "acme/lib@1.0",
           "--as",
@@ -198,21 +198,21 @@ describe("CLI output format", () => {
         ]);
         expect(JSON.parse(install.stdout)).toEqual(
           expect.objectContaining({
-            preset_name: expect.any(String),
+            layer_name: expect.any(String),
             org_slug: expect.any(String),
             library_slug: expect.any(String),
             version: expect.anything(),
           }),
         );
 
-        const publishPreset = presetModel.createPreset({ name: "pub1" });
+        const publishLayer = layerModel.createLayer({ name: "pub1" });
         const publishResource = resourceModel.createResource(
           makeResourceInput({ name: "x", content: "#" }),
         );
-        presetModel.addResourceToPreset(publishPreset.id, publishResource.id);
+        layerModel.addResourceToLayer(publishLayer.id, publishResource.id);
 
         const publish = await runCli([
-          "preset",
+          "layer",
           "publish",
           "pub1",
           "--profile",

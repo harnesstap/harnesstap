@@ -13,13 +13,13 @@ describe("CLI history and revert", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-history.git");
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
       const git = await import("../../src/services/git.ts");
 
-      const preset = presetModel.createPreset({ name: "history-preset" });
+      const layer = layerModel.createLayer({ name: "history-layer" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -27,12 +27,12 @@ describe("CLI history and revert", () => {
           content: "# Original instructions",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       await runCli([
         "project",
         "apply",
-        "history-preset",
+        "history-layer",
         "--project",
         context.projectDir,
         "--platform",
@@ -47,7 +47,7 @@ describe("CLI history and revert", () => {
         "--project",
         context.projectDir,
       ]);
-      expect(history.stdout).toContain("Before applying: history-preset");
+      expect(history.stdout).toContain("Before applying: history-layer");
       expect(history.stdout).toContain("WHEN");
       expect(history.stdout).toContain("ID");
       expect(history.stdout).toContain("LABEL");
@@ -86,13 +86,13 @@ describe("CLI history and revert", () => {
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-history.git");
       await runCli(["init"]);
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
       const git = await import("../../src/services/git.ts");
 
-      const preset = presetModel.createPreset({ name: "history-preset" });
+      const layer = layerModel.createLayer({ name: "history-layer" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -100,11 +100,11 @@ describe("CLI history and revert", () => {
           content: "# Original instructions",
         }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
       await runCli([
         "project",
         "apply",
-        "history-preset",
+        "history-layer",
         "--project",
         context.projectDir,
         "--platform",

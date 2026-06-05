@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 12;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -23,7 +23,7 @@ const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
     CREATE INDEX IF NOT EXISTS idx_resources_name ON resources(name);
 
-    CREATE TABLE IF NOT EXISTS presets (
+    CREATE TABLE IF NOT EXISTS layers (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL UNIQUE,
       description TEXT NOT NULL DEFAULT '',
@@ -33,11 +33,11 @@ const MIGRATIONS: Record<number, string> = {
       updated_at  TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS preset_resources (
-      preset_id   TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS layer_resources (
+      layer_id   TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
       "order"     INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (preset_id, resource_id)
+      PRIMARY KEY (layer_id, resource_id)
     );
 
     CREATE TABLE IF NOT EXISTS projects (
@@ -48,12 +48,12 @@ const MIGRATIONS: Record<number, string> = {
       created_at  TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS project_presets (
+    CREATE TABLE IF NOT EXISTS project_layers (
       project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-      preset_id   TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+      layer_id   TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       platforms   TEXT NOT NULL DEFAULT '[]',
       applied_at  TEXT NOT NULL,
-      PRIMARY KEY (project_id, preset_id)
+      PRIMARY KEY (project_id, layer_id)
     );
 
     CREATE TABLE IF NOT EXISTS snapshots (
@@ -91,7 +91,7 @@ const MIGRATIONS: Record<number, string> = {
   `,
 
   3: `
-    ALTER TABLE presets ADD COLUMN claude_config TEXT NOT NULL DEFAULT '{}';
+    ALTER TABLE layers ADD COLUMN claude_config TEXT NOT NULL DEFAULT '{}';
   `,
 
   4: `
@@ -104,18 +104,18 @@ const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (project_id, harness)
     );
 
-    CREATE TABLE IF NOT EXISTS preset_plugins (
-      preset_id            TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS layer_plugins (
+      layer_id            TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       ref                  TEXT NOT NULL,
       version_constraint   TEXT NOT NULL,
       "order"              INTEGER NOT NULL DEFAULT 0,
       embed_on_export      INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (preset_id, ref)
+      PRIMARY KEY (layer_id, ref)
     );
   `,
 
   5: `
-    CREATE TABLE presets_new (
+    CREATE TABLE layers_new (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL,
       version     TEXT NOT NULL DEFAULT '1.0.0',
@@ -127,26 +127,26 @@ const MIGRATIONS: Record<number, string> = {
       UNIQUE(name, version)
     );
 
-    INSERT INTO presets_new (id, name, version, description, tags, claude_config, created_at, updated_at)
-      SELECT id, name, '1.0.0', description, tags, claude_config, created_at, updated_at FROM presets;
+    INSERT INTO layers_new (id, name, version, description, tags, claude_config, created_at, updated_at)
+      SELECT id, name, '1.0.0', description, tags, claude_config, created_at, updated_at FROM layers;
 
-    DROP TABLE presets;
+    DROP TABLE layers;
 
-    ALTER TABLE presets_new RENAME TO presets;
+    ALTER TABLE layers_new RENAME TO layers;
 
-    CREATE TABLE IF NOT EXISTS preset_dependencies (
-      preset_id           TEXT NOT NULL REFERENCES presets(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS layer_dependencies (
+      layer_id           TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
       dependency_name     TEXT NOT NULL,
       version_constraint  TEXT NOT NULL,
       "order"             INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (preset_id, dependency_name)
+      PRIMARY KEY (layer_id, dependency_name)
     );
   `,
 
   6: `
-    ALTER TABLE presets ADD COLUMN source_path TEXT NOT NULL DEFAULT '';
-    ALTER TABLE presets ADD COLUMN source_hash TEXT NOT NULL DEFAULT '';
-    ALTER TABLE presets ADD COLUMN source_present INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE layers ADD COLUMN source_path TEXT NOT NULL DEFAULT '';
+    ALTER TABLE layers ADD COLUMN source_hash TEXT NOT NULL DEFAULT '';
+    ALTER TABLE layers ADD COLUMN source_present INTEGER NOT NULL DEFAULT 1;
 
     CREATE TABLE projects_new (
       id          TEXT PRIMARY KEY,
@@ -180,6 +180,83 @@ const MIGRATIONS: Record<number, string> = {
     CREATE UNIQUE INDEX idx_projects_local_id ON projects(local_id) WHERE local_id != '';
   `,
 
+  9: `
+    ALTER TABLE plugins ADD COLUMN needs_config TEXT NOT NULL DEFAULT '[]';
+  `,
+
+  10: `
+    CREATE TABLE environments (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(name)
+    );
+
+    CREATE TABLE environment_resources (
+      environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+      resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (environment_id, resource_id)
+    );
+
+    CREATE TABLE environment_secret_refs (
+      environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+      key TEXT NOT NULL,
+      provider TEXT NOT NULL CHECK(provider IN ('keychain','env','file')),
+      ref TEXT NOT NULL,
+      PRIMARY KEY (environment_id, key)
+    );
+  `,
+
+  12: `
+    CREATE TABLE decks (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      root_path TEXT NOT NULL DEFAULT '',
+      active_environment_id TEXT REFERENCES environments(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(name)
+    );
+
+    CREATE TABLE deck_configured_layers (
+      deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      configured_layer_id TEXT NOT NULL REFERENCES configured_layers(id) ON DELETE CASCADE,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (deck_id, configured_layer_id)
+    );
+  `,
+
+  11: `
+    CREATE TABLE configured_layers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      version TEXT NOT NULL DEFAULT '1.0.0',
+      description TEXT NOT NULL DEFAULT '',
+      default_environment_id TEXT REFERENCES environments(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(name, version)
+    );
+
+    CREATE TABLE configured_layer_plugins (
+      configured_layer_id TEXT NOT NULL REFERENCES configured_layers(id) ON DELETE CASCADE,
+      plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (configured_layer_id, plugin_id)
+    );
+
+    CREATE TABLE project_configured_layers (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      configured_layer_id TEXT NOT NULL REFERENCES configured_layers(id) ON DELETE CASCADE,
+      platforms TEXT NOT NULL DEFAULT '[]',
+      applied_at TEXT NOT NULL,
+      PRIMARY KEY (project_id, configured_layer_id)
+    );
+  `,
+
   7: `
     CREATE TABLE IF NOT EXISTS imported_snapshots (
       id              TEXT PRIMARY KEY,
@@ -206,7 +283,191 @@ const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_imported_snapshot_installs_installed_at
       ON imported_snapshot_installs(installed_at DESC);
   `,
+
 };
+
+function ensurePluginsTableRenamed(db: SqliteDatabase): void {
+  const hasPlugins = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugins'")
+    .get();
+  if (!hasPlugins) {
+    applyMigration8(db);
+  }
+}
+
+/** Migration 8: layers → plugins (design-time component bundle). */
+function applyMigration8(db: SqliteDatabase): void {
+  // project_layers.layer_id still references plugin id until configured layers (migration 11).
+  const renames: Array<[string, string]> = [
+    ["layers", "plugins"],
+    ["layer_resources", "plugin_resources"],
+    ["layer_dependencies", "plugin_dependencies"],
+    ["layer_plugins", "plugin_native_pins"],
+  ];
+  for (const [from, to] of renames) {
+    const exists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(from);
+    if (exists) {
+      db.exec(`ALTER TABLE ${from} RENAME TO ${to}`);
+    }
+  }
+
+  // Bun/SQLite may leave child FKs pointing at the old `layers` name after RENAME.
+  rebuildPluginChildForeignKeys(db);
+}
+
+function rebuildPluginChildForeignKeys(db: SqliteDatabase): void {
+  const hasPlugins = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugins'")
+    .get();
+  if (!hasPlugins) return;
+
+  const rebuilds: Array<{ table: string; ddl: string }> = [
+    {
+      table: "plugin_resources",
+      ddl: `
+        CREATE TABLE plugin_resources_new (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, resource_id)
+        );
+        INSERT INTO plugin_resources_new SELECT * FROM plugin_resources;
+        DROP TABLE plugin_resources;
+        ALTER TABLE plugin_resources_new RENAME TO plugin_resources;
+      `,
+    },
+    {
+      table: "plugin_dependencies",
+      ddl: `
+        CREATE TABLE plugin_dependencies_new (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          dependency_name TEXT NOT NULL,
+          version_constraint TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, dependency_name)
+        );
+        INSERT INTO plugin_dependencies_new SELECT * FROM plugin_dependencies;
+        DROP TABLE plugin_dependencies;
+        ALTER TABLE plugin_dependencies_new RENAME TO plugin_dependencies;
+      `,
+    },
+    {
+      table: "plugin_native_pins",
+      ddl: `
+        CREATE TABLE plugin_native_pins_new (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          ref TEXT NOT NULL,
+          version_constraint TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          embed_on_export INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, ref)
+        );
+        INSERT INTO plugin_native_pins_new SELECT * FROM plugin_native_pins;
+        DROP TABLE plugin_native_pins;
+        ALTER TABLE plugin_native_pins_new RENAME TO plugin_native_pins;
+      `,
+    },
+    {
+      table: "project_layers",
+      ddl: `
+        CREATE TABLE project_layers_new (
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          platforms TEXT NOT NULL DEFAULT '[]',
+          applied_at TEXT NOT NULL,
+          PRIMARY KEY (project_id, layer_id)
+        );
+        INSERT INTO project_layers_new SELECT * FROM project_layers;
+        DROP TABLE project_layers;
+        ALTER TABLE project_layers_new RENAME TO project_layers;
+      `,
+    },
+  ];
+
+  for (const { table, ddl } of rebuilds) {
+    const exists = db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(table);
+    if (exists) {
+      db.exec(ddl);
+    }
+  }
+}
+
+/** Migration 11: configured layers; repoint project attachment from project_layers. */
+function applyMigration11(db: SqliteDatabase): void {
+  const migration = MIGRATIONS[11];
+  if (migration) {
+    db.exec(migration);
+  }
+
+  const hasProjectLayers = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'project_layers'")
+    .get();
+  if (!hasProjectLayers) return;
+
+  const pluginToConfiguredLayer = new Map<string, string>();
+  const projectLayers = db
+    .prepare("SELECT project_id, layer_id, platforms, applied_at FROM project_layers")
+    .all() as Array<{
+      project_id: string;
+      layer_id: string;
+      platforms: string;
+      applied_at: string;
+    }>;
+
+  for (const row of projectLayers) {
+    if (!pluginToConfiguredLayer.has(row.layer_id)) {
+      const plugin = db
+        .prepare("SELECT id, name, version, description, created_at, updated_at FROM plugins WHERE id = ?")
+        .get(row.layer_id) as
+        | {
+            id: string;
+            name: string;
+            version: string;
+            description: string;
+            created_at: string;
+            updated_at: string;
+          }
+        | undefined;
+      if (!plugin) continue;
+
+      const configuredLayerId = `legacy-wrap:${plugin.id}`;
+      db.prepare(
+        `INSERT OR IGNORE INTO configured_layers
+         (id, name, version, description, default_environment_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+      ).run(
+        configuredLayerId,
+        plugin.name,
+        plugin.version,
+        plugin.description,
+        plugin.created_at,
+        plugin.updated_at,
+      );
+      db.prepare(
+        `INSERT OR IGNORE INTO configured_layer_plugins
+         (configured_layer_id, plugin_id, "order")
+         VALUES (?, ?, 0)`,
+      ).run(configuredLayerId, plugin.id);
+      pluginToConfiguredLayer.set(row.layer_id, configuredLayerId);
+    }
+  }
+
+  for (const row of projectLayers) {
+    const configuredLayerId = pluginToConfiguredLayer.get(row.layer_id);
+    if (!configuredLayerId) continue;
+    db.prepare(
+      `INSERT OR REPLACE INTO project_configured_layers
+       (project_id, configured_layer_id, platforms, applied_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(row.project_id, configuredLayerId, row.platforms, row.applied_at);
+  }
+
+  db.exec("DROP TABLE project_layers");
+}
 
 export function initializeSchema(db: SqliteDatabase): void {
   const currentVersion = getSchemaVersion(db);
@@ -217,7 +478,7 @@ export function initializeSchema(db: SqliteDatabase): void {
   // copy, DROP old, RENAME). SQLite fires ON DELETE CASCADE on child tables even
   // for DROP TABLE when foreign_keys=ON, so we must toggle it outside the
   // transaction and restore it afterward.
-  const needsFkToggle = currentVersion < 5 || currentVersion < 6;
+  const needsFkToggle = currentVersion < 5 || currentVersion < 6 || currentVersion < 8 || currentVersion < 11;
   if (needsFkToggle) {
     db.exec("PRAGMA foreign_keys = OFF");
   }
@@ -225,6 +486,17 @@ export function initializeSchema(db: SqliteDatabase): void {
   try {
     db.transaction(() => {
       for (let v = currentVersion + 1; v <= SCHEMA_VERSION; v++) {
+        if (v === 8) {
+          applyMigration8(db);
+          continue;
+        }
+        if (v >= 9) {
+          ensurePluginsTableRenamed(db);
+        }
+        if (v === 11) {
+          applyMigration11(db);
+          continue;
+        }
         const migration = MIGRATIONS[v];
         if (migration) {
           db.exec(migration);

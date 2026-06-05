@@ -6,27 +6,27 @@ import { createTempDir, writeTextFile } from "../helpers/fs.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("exporter services", () => {
-  it("exports a preset bundle without internal fields", async () => {
+  it("exports a layer bundle without internal fields", async () => {
     const context = await createInitializedTestContext("export-bundle");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "bundle" });
+      const layer = layerModel.createLayer({ name: "bundle" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", description: "Shared skill" }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const bundle = exporter.exportPreset(preset.id);
+      const bundle = exporter.exportLayer(layer.id);
 
       expect(bundle.$schema).toBe("urn:harnessdeck:bundle:v1");
       expect(bundle.version).toBe(1);
       expect(bundle.plugins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
-      expect(bundle.preset.name).toBe("bundle");
+      expect(bundle.layer.name).toBe("bundle");
       expect(bundle.resources[0]).toEqual(
         expect.not.objectContaining({ id: expect.anything(), source: expect.anything() }),
       );
@@ -39,18 +39,18 @@ describe("exporter services", () => {
     const exportContext = await createInitializedTestContext("export-import-export");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "bundle" });
+      const layer = layerModel.createLayer({ name: "bundle" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", description: "Shared skill" }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const bundlePath = `${exportContext.projectDir}/bundle.json`;
-      exporter.exportToFile(preset.id, bundlePath);
+      exporter.exportToFile(layer.id, bundlePath);
 
       expect(existsSync(bundlePath)).toBe(true);
       expect(JSON.parse(readFileSync(bundlePath, "utf-8"))).toEqual(
@@ -63,7 +63,7 @@ describe("exporter services", () => {
         const importedExporter = await import("../../src/services/exporter.ts");
         const imported = importedExporter.importFromFile(bundlePath);
 
-        expect(imported.preset.name).toBe("bundle");
+        expect(imported.layer.name).toBe("bundle");
         expect(imported.resources).toHaveLength(1);
         expect(imported.resources[0]?.source).toBe(`import:${bundlePath}`);
       } finally {
@@ -78,12 +78,12 @@ describe("exporter services", () => {
     const exportContext = await createInitializedTestContext("export-jsonc-comment-block");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "commented-export" });
+      const layer = layerModel.createLayer({ name: "commented-export" });
       const bundlePath = join(exportContext.projectDir, "commented-export.jsonc");
-      exporter.exportToFile(preset.id, bundlePath);
+      exporter.exportToFile(layer.id, bundlePath);
 
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw.startsWith("/*\n")).toBe(true);
@@ -102,14 +102,14 @@ describe("exporter services", () => {
     }
   });
 
-  it("throws when exporting a non-existent preset", async () => {
+  it("throws when exporting a non-existent layer", async () => {
     const context = await createInitializedTestContext("export-not-found");
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
 
-      expect(() => exporter.exportPreset("non-existent-preset")).toThrow(
-        "Preset not found: non-existent-preset",
+      expect(() => exporter.exportLayer("non-existent-layer")).toThrow(
+        "Layer not found: non-existent-layer",
       );
     } finally {
       await context.cleanup();
@@ -128,7 +128,7 @@ describe("exporter services", () => {
         writeTextFile(bundlePath, JSON.stringify({
           $schema: "urn:harnessdeck:bundle:v1",
           version: 99,
-          preset: { name: "bad-version", description: "", tags: [] },
+          layer: { name: "bad-version", description: "", tags: [] },
           resources: [],
         }));
 
@@ -177,7 +177,7 @@ describe("exporter services", () => {
           `{
   "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
-  "preset": {
+  "layer": {
     "name": "truncated-bundle",
     "description": "broken",
     "tags": []
@@ -209,7 +209,7 @@ describe("exporter services", () => {
   // comment before schema
   "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
-  "preset": {
+  "layer": {
     "name": "jsonc-bundle",
     "version": "1.2.3",
     "description": "JSONC bundle",
@@ -230,8 +230,8 @@ describe("exporter services", () => {
         );
 
         const imported = exporter.importFromFile(bundlePath);
-        expect(imported.preset.name).toBe("jsonc-bundle");
-        expect(imported.preset.version).toBe("1.2.3");
+        expect(imported.layer.name).toBe("jsonc-bundle");
+        expect(imported.layer.version).toBe("1.2.3");
         expect(imported.resources).toHaveLength(1);
         expect(imported.resources[0]?.name).toBe("shared");
       } finally {
@@ -246,14 +246,14 @@ describe("exporter services", () => {
     const context = await createInitializedTestContext("export-bundle-plugins");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "plugs" });
-      pluginModel.addPluginToPreset(preset.id, "fmt@acme-marketplace", ">=2");
+      const layer = layerModel.createLayer({ name: "plugs" });
+      pluginPins.addPluginToLayer(layer.id, "fmt@acme-marketplace", ">=2");
 
-      const bundle = exporter.exportPreset(preset.id);
+      const bundle = exporter.exportLayer(layer.id);
       expect(bundle.version).toBe(1);
       expect(bundle.plugins).toEqual([
         { ref: "fmt@acme-marketplace", version_constraint: ">=2" },
@@ -281,14 +281,14 @@ describe("exporter services", () => {
       );
       writeTextFile(join(demoRoot, "README.md"), "hello");
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "local-plug" });
-      pluginModel.addPluginToPreset(preset.id, "./plugins/demo", "1.x");
+      const layer = layerModel.createLayer({ name: "local-plug" });
+      pluginPins.addPluginToLayer(layer.id, "./plugins/demo", "1.x");
 
-      const bundle = exporter.exportPreset(preset.id, {
+      const bundle = exporter.exportLayer(layer.id, {
         projectRoot: context.projectDir,
       });
       expect(bundle.plugins).toHaveLength(0);
@@ -328,14 +328,14 @@ describe("exporter services", () => {
         }),
       );
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "mkt-plug" });
-      pluginModel.addPluginToPreset(preset.id, "fmt@acme-marketplace", "2.x");
+      const layer = layerModel.createLayer({ name: "mkt-plug" });
+      pluginPins.addPluginToLayer(layer.id, "fmt@acme-marketplace", "2.x");
 
-      const bundle = exporter.exportPreset(preset.id, {
+      const bundle = exporter.exportLayer(layer.id, {
         embedPlugins: true,
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
@@ -345,26 +345,26 @@ describe("exporter services", () => {
       expect(bundle.embedded_plugins[0]?.ref).toBe("fmt@acme-marketplace");
 
       const bundlePath = join(context.projectDir, "embedded.json");
-      exporter.exportToFile(preset.id, bundlePath, {
+      exporter.exportToFile(layer.id, bundlePath, {
         embedPlugins: true,
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
       });
 
-      presetModel.deletePreset(preset.id);
+      layerModel.deleteLayer(layer.id);
       const unpack = join(context.projectDir, "unpacked-plugins");
       mkdirSync(unpack, { recursive: true });
 
       const imported = exporter.importFromFile(bundlePath, {
         embeddedTargetDir: unpack,
       });
-      const pluginModelFresh = await import("../../src/models/plugin.ts");
-      const presetModelFresh = await import("../../src/models/preset.ts");
+      const pluginModelFresh = await import("../../src/models/plugin-pins.ts");
+      const layerModelFresh = await import("../../src/models/layer.ts");
 
-      const restored = presetModelFresh.getPreset(imported.preset.name);
-      if (!restored) throw new Error("expected imported preset");
+      const restored = layerModelFresh.getLayer(imported.layer.name);
+      if (!restored) throw new Error("expected imported layer");
 
-      const rows = pluginModelFresh.listPresetPlugins(restored.id);
+      const rows = pluginModelFresh.listLayerPlugins(restored.id);
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         ref: "fmt@acme-marketplace",
@@ -380,7 +380,7 @@ describe("exporter services", () => {
         ),
       ).toBe(true);
 
-      const bundleAgain = exporter.exportPreset(restored.id, {
+      const bundleAgain = exporter.exportLayer(restored.id, {
         homeRoot: "",
         projectRoot: context.projectDir,
       });
@@ -393,26 +393,26 @@ describe("exporter services", () => {
     }
   });
 
-  it("bundle preset.version round-trips through export/import", async () => {
+  it("bundle layer.version round-trips through export/import", async () => {
     const exportContext = await createInitializedTestContext("export-version-rt");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "versioned", version: "2.3.1" });
+      const layer = layerModel.createLayer({ name: "versioned", version: "2.3.1" });
 
-      const bundle = exporter.exportPreset(preset.id);
-      expect(bundle.preset.version).toBe("2.3.1");
+      const bundle = exporter.exportLayer(layer.id);
+      expect(bundle.layer.version).toBe("2.3.1");
 
       const bundlePath = `${exportContext.projectDir}/versioned.json`;
-      exporter.exportToFile(preset.id, bundlePath);
+      exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-version-rt");
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
         const imported = importedExporter.importFromFile(bundlePath);
-        expect(imported.preset.version).toBe("2.3.1");
+        expect(imported.layer.version).toBe("2.3.1");
       } finally {
         await importContext.cleanup();
       }
@@ -421,34 +421,34 @@ describe("exporter services", () => {
     }
   });
 
-  it("bundle preset.dependencies round-trips through export/import", async () => {
+  it("bundle layer.dependencies round-trips through export/import", async () => {
     const exportContext = await createInitializedTestContext("export-deps-rt");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "with-deps" });
-      presetModel.addDependencyToPreset(preset.id, "base-preset", "^1.0.0");
-      presetModel.addDependencyToPreset(preset.id, "extra-preset", ">=2.0.0");
+      const layer = layerModel.createLayer({ name: "with-deps" });
+      layerModel.addDependencyToLayer(layer.id, "base-layer", "^1.0.0");
+      layerModel.addDependencyToLayer(layer.id, "extra-layer", ">=2.0.0");
 
-      const bundle = exporter.exportPreset(preset.id);
+      const bundle = exporter.exportLayer(layer.id);
       expect(bundle.dependencies).toEqual([
-        { dependency_name: "base-preset", version_constraint: "^1.0.0", order: 0 },
-        { dependency_name: "extra-preset", version_constraint: ">=2.0.0", order: 1 },
+        { dependency_name: "base-layer", version_constraint: "^1.0.0", order: 0 },
+        { dependency_name: "extra-layer", version_constraint: ">=2.0.0", order: 1 },
       ]);
 
       const bundlePath = `${exportContext.projectDir}/with-deps.json`;
-      exporter.exportToFile(preset.id, bundlePath);
+      exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-deps-rt");
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
         const imported = importedExporter.importFromFile(bundlePath);
-        const importedDeps = presetModel.listPresetDependencies(imported.preset.id);
+        const importedDeps = layerModel.listLayerDependencies(imported.layer.id);
         expect(importedDeps.map((d) => ({ name: d.dependency_name, vc: d.version_constraint }))).toEqual([
-          { name: "base-preset", vc: "^1.0.0" },
-          { name: "extra-preset", vc: ">=2.0.0" },
+          { name: "base-layer", vc: "^1.0.0" },
+          { name: "extra-layer", vc: ">=2.0.0" },
         ]);
       } finally {
         await importContext.cleanup();
@@ -462,25 +462,25 @@ describe("exporter services", () => {
     const exportContext = await createInitializedTestContext("export-multi");
 
     try {
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const preset = presetModel.createPreset({ name: "multi" });
+      const layer = layerModel.createLayer({ name: "multi" });
       const r1 = resourceModel.createResource(makeResourceInput({ name: "skill-a" }));
       const r2 = resourceModel.createResource(makeResourceInput({ type: "rule", name: "rule-b" }));
       const r3 = resourceModel.createResource(makeResourceInput({ type: "agent", name: "agent-c" }));
-      presetModel.addResourceToPreset(preset.id, r1.id);
-      presetModel.addResourceToPreset(preset.id, r2.id);
-      presetModel.addResourceToPreset(preset.id, r3.id);
+      layerModel.addResourceToLayer(layer.id, r1.id);
+      layerModel.addResourceToLayer(layer.id, r2.id);
+      layerModel.addResourceToLayer(layer.id, r3.id);
 
       const bundlePath = join(exportContext.projectDir, "multi.json");
-      exporter.exportToFile(preset.id, bundlePath);
+      exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-multi");
       try {
         const imported = exporter.importFromFile(bundlePath);
-        expect(imported.preset.name).toBe("multi");
+        expect(imported.layer.name).toBe("multi");
         expect(imported.resources).toHaveLength(3);
         expect(imported.resources.map((r) => r.name)).toEqual(["skill-a", "rule-b", "agent-c"]);
         expect(imported.resources[0]?.type).toBe("skill");
@@ -506,20 +506,20 @@ describe("exporter services", () => {
         JSON.stringify({
           $schema: "urn:harnessdeck:bundle:v1",
           version: 1,
-          preset: { name: "orig-name", description: "", tags: [] },
+          layer: { name: "orig-name", description: "", tags: [] },
           resources: [],
         }),
       );
 
-      const imported = exporter.importFromFile(bundlePath, { presetNameOverride: "override-name" });
-      expect(imported.preset.name).toBe("override-name");
+      const imported = exporter.importFromFile(bundlePath, { layerNameOverride: "override-name" });
+      expect(imported.layer.name).toBe("override-name");
     } finally {
       await exportContext.cleanup();
     }
   });
 
-  it("exports and imports a multi-preset bundle with shared embedded plugins", async () => {
-    const exportContext = await createInitializedTestContext("export-multi-preset");
+  it("exports and imports a multi-layer bundle with shared embedded plugins", async () => {
+    const exportContext = await createInitializedTestContext("export-multi-layer");
 
     try {
       const pluginRoot = join(exportContext.projectDir, "plugins/shared-plugin");
@@ -530,27 +530,27 @@ describe("exporter services", () => {
       );
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const alpha = presetModel.createPreset({ name: "alpha", version: "1.0.0" });
-      const beta = presetModel.createPreset({ name: "beta", version: "2.0.0" });
+      const alpha = layerModel.createLayer({ name: "alpha", version: "1.0.0" });
+      const beta = layerModel.createLayer({ name: "beta", version: "2.0.0" });
       const alphaResource = resourceModel.createResource(makeResourceInput({ name: "alpha-skill" }));
       const betaResource = resourceModel.createResource(makeResourceInput({ name: "beta-skill" }));
-      presetModel.addResourceToPreset(alpha.id, alphaResource.id);
-      presetModel.addResourceToPreset(beta.id, betaResource.id);
-      pluginModel.addPluginToPreset(alpha.id, "./plugins/shared-plugin", "^1.0.0");
-      pluginModel.addPluginToPreset(beta.id, "./plugins/shared-plugin", "^1.0.0");
+      layerModel.addResourceToLayer(alpha.id, alphaResource.id);
+      layerModel.addResourceToLayer(beta.id, betaResource.id);
+      pluginPins.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginPins.addPluginToLayer(beta.id, "./plugins/shared-plugin", "^1.0.0");
 
-      const bundle = exporter.exportPreset([alpha.id, beta.id], {
+      const bundle = exporter.exportLayer([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
       });
 
-      expect(bundle.presets).toHaveLength(2);
-      expect(bundle.presets?.map((preset) => preset.name)).toEqual(["alpha", "beta"]);
-      expect(bundle.presets?.[0]).toEqual(
+      expect(bundle.layers).toHaveLength(2);
+      expect(bundle.layers?.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
+      expect(bundle.layers?.[0]).toEqual(
         expect.objectContaining({
           name: "alpha",
           version: "1.0.0",
@@ -558,7 +558,7 @@ describe("exporter services", () => {
           plugins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
         }),
       );
-      expect(bundle.presets?.[0]).not.toHaveProperty("preset");
+      expect(bundle.layers?.[0]).not.toHaveProperty("layer");
       expect(bundle.embedded_plugins).toHaveLength(1);
 
       const bundlePath = join(exportContext.projectDir, "multi-bundle.jsonc");
@@ -566,33 +566,33 @@ describe("exporter services", () => {
         projectRoot: exportContext.projectDir,
       });
 
-      const importContext = await createInitializedTestContext("import-multi-preset");
+      const importContext = await createInitializedTestContext("import-multi-layer");
 
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
-        const importedPresetModel = await import("../../src/models/preset.ts");
-        const importedPluginModel = await import("../../src/models/plugin.ts");
+        const importedLayerModel = await import("../../src/models/layer.ts");
+        const importedPluginModel = await import("../../src/models/plugin-pins.ts");
 
         const imported = importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
         });
 
-        expect(imported.presets).toHaveLength(2);
-        expect(imported.presets.map((entry) => entry.preset.name)).toEqual(["alpha", "beta"]);
+        expect(imported.layers).toHaveLength(2);
+        expect(imported.layers.map((entry) => entry.layer.name)).toEqual(["alpha", "beta"]);
 
-        const importedAlpha = importedPresetModel.getPreset("alpha");
-        const importedBeta = importedPresetModel.getPreset("beta");
+        const importedAlpha = importedLayerModel.getLayer("alpha");
+        const importedBeta = importedLayerModel.getLayer("beta");
         expect(importedAlpha).toBeDefined();
         expect(importedBeta).toBeDefined();
 
         if (!importedAlpha || !importedBeta) {
-          throw new Error("expected imported presets");
+          throw new Error("expected imported layers");
         }
 
-        expect(importedPluginModel.listPresetPlugins(importedAlpha.id)).toEqual([
+        expect(importedPluginModel.listLayerPlugins(importedAlpha.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
-        expect(importedPluginModel.listPresetPlugins(importedBeta.id)).toEqual([
+        expect(importedPluginModel.listLayerPlugins(importedBeta.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
       } finally {
@@ -603,8 +603,8 @@ describe("exporter services", () => {
     }
   });
 
-  it("imports multi-preset bundles without attaching embedded plugins to unrelated presets", async () => {
-    const exportContext = await createInitializedTestContext("export-multi-preset-selective-plugin");
+  it("imports multi-layer bundles without attaching embedded plugins to unrelated layers", async () => {
+    const exportContext = await createInitializedTestContext("export-multi-layer-selective-plugin");
 
     try {
       const pluginRoot = join(exportContext.projectDir, "plugins/shared-plugin");
@@ -615,25 +615,25 @@ describe("exporter services", () => {
       );
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const alpha = presetModel.createPreset({ name: "alpha-only-plugin", version: "1.0.0" });
-      const beta = presetModel.createPreset({ name: "beta-no-plugin", version: "1.0.0" });
-      pluginModel.addPluginToPreset(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      const alpha = layerModel.createLayer({ name: "alpha-only-plugin", version: "1.0.0" });
+      const beta = layerModel.createLayer({ name: "beta-no-plugin", version: "1.0.0" });
+      pluginPins.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
 
-      const bundle = exporter.exportPreset([alpha.id, beta.id], {
+      const bundle = exporter.exportLayer([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
       });
 
-      expect(bundle.presets).toHaveLength(2);
+      expect(bundle.layers).toHaveLength(2);
       expect(bundle.embedded_plugins).toHaveLength(1);
-      expect(bundle.presets?.[0]?.plugins).toEqual([
+      expect(bundle.layers?.[0]?.plugins).toEqual([
         { ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" },
       ]);
-      expect(bundle.presets?.[1]?.plugins).toEqual([]);
-      expect(bundle.presets?.[0]).toEqual(
+      expect(bundle.layers?.[1]?.plugins).toEqual([]);
+      expect(bundle.layers?.[0]).toEqual(
         expect.objectContaining({
           name: "alpha-only-plugin",
           version: "1.0.0",
@@ -641,7 +641,7 @@ describe("exporter services", () => {
           plugins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
         }),
       );
-      expect(bundle.presets?.[1]).toEqual(
+      expect(bundle.layers?.[1]).toEqual(
         expect.objectContaining({
           name: "beta-no-plugin",
           version: "1.0.0",
@@ -649,34 +649,34 @@ describe("exporter services", () => {
           plugins: [],
         }),
       );
-      expect(bundle.presets?.[0]).not.toHaveProperty("preset");
+      expect(bundle.layers?.[0]).not.toHaveProperty("layer");
 
       const bundlePath = join(exportContext.projectDir, "selective-multi.jsonc");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });
 
-      const importContext = await createInitializedTestContext("import-multi-preset-selective-plugin");
+      const importContext = await createInitializedTestContext("import-multi-layer-selective-plugin");
 
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
-        const importedPresetModel = await import("../../src/models/preset.ts");
-        const importedPluginModel = await import("../../src/models/plugin.ts");
+        const importedLayerModel = await import("../../src/models/layer.ts");
+        const importedPluginModel = await import("../../src/models/plugin-pins.ts");
 
         importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
         });
 
-        const importedAlpha = importedPresetModel.getPreset("alpha-only-plugin");
-        const importedBeta = importedPresetModel.getPreset("beta-no-plugin");
+        const importedAlpha = importedLayerModel.getLayer("alpha-only-plugin");
+        const importedBeta = importedLayerModel.getLayer("beta-no-plugin");
         if (!importedAlpha || !importedBeta) {
-          throw new Error("expected imported presets");
+          throw new Error("expected imported layers");
         }
 
-        expect(importedPluginModel.listPresetPlugins(importedAlpha.id)).toEqual([
+        expect(importedPluginModel.listLayerPlugins(importedAlpha.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
-        expect(importedPluginModel.listPresetPlugins(importedBeta.id)).toEqual([]);
+        expect(importedPluginModel.listLayerPlugins(importedBeta.id)).toEqual([]);
       } finally {
         await importContext.cleanup();
       }
@@ -685,7 +685,7 @@ describe("exporter services", () => {
     }
   });
 
-  it("preserves per-preset embedded plugin version constraints when refs are shared", async () => {
+  it("preserves per-layer embedded plugin version constraints when refs are shared", async () => {
     const exportContext = await createInitializedTestContext("export-shared-ref-different-constraints");
 
     try {
@@ -696,25 +696,25 @@ describe("exporter services", () => {
         JSON.stringify({ version: "1.0.0", name: "shared-plugin" }),
       );
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
-      const alpha = presetModel.createPreset({ name: "alpha-shared-ref", version: "1.0.0" });
-      const beta = presetModel.createPreset({ name: "beta-shared-ref", version: "1.0.0" });
-      pluginModel.addPluginToPreset(alpha.id, "./plugins/shared-plugin", "^1.0.0");
-      pluginModel.addPluginToPreset(beta.id, "./plugins/shared-plugin", "^2.0.0");
+      const alpha = layerModel.createLayer({ name: "alpha-shared-ref", version: "1.0.0" });
+      const beta = layerModel.createLayer({ name: "beta-shared-ref", version: "1.0.0" });
+      pluginPins.addPluginToLayer(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      pluginPins.addPluginToLayer(beta.id, "./plugins/shared-plugin", "^2.0.0");
 
-      const bundle = exporter.exportPreset([alpha.id, beta.id], {
+      const bundle = exporter.exportLayer([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
       });
 
       expect(bundle.embedded_plugins).toHaveLength(2);
-      expect(bundle.presets?.[0]?.plugins).toContainEqual({
+      expect(bundle.layers?.[0]?.plugins).toContainEqual({
         ref: "./plugins/shared-plugin",
         version_constraint: "^1.0.0",
       });
-      expect(bundle.presets?.[1]?.plugins).toContainEqual({
+      expect(bundle.layers?.[1]?.plugins).toContainEqual({
         ref: "./plugins/shared-plugin",
         version_constraint: "^2.0.0",
       });
@@ -727,23 +727,23 @@ describe("exporter services", () => {
       const importContext = await createInitializedTestContext("import-shared-ref-different-constraints");
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
-        const importedPresetModel = await import("../../src/models/preset.ts");
-        const importedPluginModel = await import("../../src/models/plugin.ts");
+        const importedLayerModel = await import("../../src/models/layer.ts");
+        const importedPluginModel = await import("../../src/models/plugin-pins.ts");
 
         importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
         });
 
-        const importedAlpha = importedPresetModel.getPreset("alpha-shared-ref");
-        const importedBeta = importedPresetModel.getPreset("beta-shared-ref");
+        const importedAlpha = importedLayerModel.getLayer("alpha-shared-ref");
+        const importedBeta = importedLayerModel.getLayer("beta-shared-ref");
         if (!importedAlpha || !importedBeta) {
-          throw new Error("expected imported presets");
+          throw new Error("expected imported layers");
         }
 
-        expect(importedPluginModel.listPresetPlugins(importedAlpha.id)).toEqual([
+        expect(importedPluginModel.listLayerPlugins(importedAlpha.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
-        expect(importedPluginModel.listPresetPlugins(importedBeta.id)).toEqual([
+        expect(importedPluginModel.listLayerPlugins(importedBeta.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^2.0.0" }),
         ]);
       } finally {

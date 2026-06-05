@@ -3,7 +3,7 @@ import { renderKv } from "../../src/ui/kv.ts";
 
 describe("ui kv", () => {
   it("pads the key to 20 characters by default", () => {
-    const output = renderKv("Name", "my-preset");
+    const output = renderKv("Name", "my-layer");
     // "Name" is 4 chars; padded to 20 = 4 + 16 trailing spaces
     expect(output).toContain(`Name${" ".repeat(16)}`);
   });

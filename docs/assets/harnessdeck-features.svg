@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title" aria-describedby="desc">
   <title id="title">HarnessDeck feature map</title>
-  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, reusable presets, apply and sync, snapshots, drift detection, plugin governance, cloud sharing, and migration export features.</desc>
+  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, reusable layers, apply and sync, snapshots, drift detection, plugin governance, cloud sharing, and migration export features.</desc>
   <defs>
     <radialGradient id="bg" cx="50%" cy="28%" r="88%">
       <stop offset="0%" stop-color="#24316d"/>
@@ -72,7 +72,7 @@
   <g filter="url(#softShadow)">
     <rect class="panel" x="170" y="172" width="1260" height="160" rx="34"/>
     <text x="220" y="226" class="sectionTitle">Agent harnesses</text>
-    <text x="220" y="254" class="sectionCopy">One preset can target every environment without scattering configuration across separate diagrams.</text>
+    <text x="220" y="254" class="sectionCopy">One layer can target every environment without scattering configuration across separate diagrams.</text>
 
     <g>
       <rect x="216" y="274" width="176" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
@@ -106,7 +106,7 @@
     <circle cx="548" cy="446" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
     <path d="M532 446 H564 M548 430 V462" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
     <text x="606" y="440" class="hubTitle">HarnessDeck</text>
-    <text x="606" y="468" class="hubCopy">scan - normalize - preset - apply - sync</text>
+    <text x="606" y="468" class="hubCopy">scan - normalize - layer - apply - sync</text>
   </g>
 
   <g filter="url(#softShadow)">
@@ -133,7 +133,7 @@
       <rect class="card" width="300" height="156" rx="26"/>
       <circle class="iconCircle" cx="54" cy="48" r="24"/>
       <path d="M42 40 h24 M42 49 h24 M42 58 h16" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
-      <text x="92" y="52" class="label">Reusable presets</text>
+      <text x="92" y="52" class="label">Reusable layers</text>
       <text x="28" y="96" class="small">Bundle skills, rules, commands,</text>
       <text x="28" y="120" class="small">dependencies, and version pins.</text>
     </g>
@@ -143,7 +143,7 @@
       <circle class="iconCircle" cx="54" cy="48" r="24"/>
       <path d="M41 48 h26 M54 39 l13 9 -13 9" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       <text x="92" y="52" class="label">Apply &amp; sync</text>
-      <text x="28" y="96" class="small">Materialize one preset into</text>
+      <text x="28" y="96" class="small">Materialize one layer into</text>
       <text x="28" y="120" class="small">platform-specific files.</text>
     </g>
 
@@ -184,7 +184,7 @@
       <path d="M54 30 v44 M32 52 h44" stroke="#74fbff" stroke-width="2.8" stroke-linecap="round" opacity="0.45"/>
       <text x="92" y="52" class="label">Cloud sharing</text>
       <text x="28" y="96" class="small">Search, add, publish</text>
-      <text x="28" y="120" class="small">team-ready presets.</text>
+      <text x="28" y="120" class="small">team-ready layers.</text>
     </g>
 
     <g transform="translate(420 904)">
@@ -201,6 +201,6 @@
 
   <g transform="translate(500 514)">
     <rect width="600" height="34" rx="17" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="300" y="22" class="tiny" text-anchor="middle">portable JSON bundles - built-in starter presets - preset doctor - diffs</text>
+    <text x="300" y="22" class="tiny" text-anchor="middle">portable JSON bundles - built-in starter layers - layer doctor - diffs</text>
   </g>
 </svg>

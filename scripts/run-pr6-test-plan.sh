@@ -81,11 +81,11 @@ console.log("ok update summary", JSON.stringify(d.summary));
 ' || fail "plugin update --all"
 pass "plugin update --all runs (summary returned)"
 
-echo "=== 4. preset add-plugin + export/import round-trip ==="
-"${CLI[@]}" preset create team-setup >/dev/null
-"${CLI[@]}" preset add-plugin team-setup formatter@acme-marketplace --version ">=2.0.0 <3.0.0" >/dev/null
+echo "=== 4. layer add-plugin + export/import round-trip ==="
+"${CLI[@]}" layer create team-setup >/dev/null
+"${CLI[@]}" layer add-plugin team-setup formatter@acme-marketplace --version ">=2.0.0 <3.0.0" >/dev/null
 BUNDLE="$WORKDIR/team.harnessdeck.json"
-"${CLI[@]}" preset export team-setup --file "$BUNDLE" >/dev/null
+"${CLI[@]}" layer export team-setup --file "$BUNDLE" >/dev/null
 bun -e "
 const raw = await Bun.file(process.argv[1]).json();
 if (raw.version !== 1 || raw.$schema !== 'urn:harnessdeck:bundle:v1') throw new Error('expected bundle v1');
@@ -96,11 +96,11 @@ console.log('ok bundle pin');
 
 HD_HOME2="$(mktemp -d "${TMPDIR:-/tmp}/hd-test-plan-import-XXXX")"
 HARNESSDECK_HOME="$HD_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" init >/dev/null
-IMPORT_OUT="$(HARNESSDECK_HOME="$HD_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" preset import "$BUNDLE" 2>&1)"
+IMPORT_OUT="$(HARNESSDECK_HOME="$HD_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" layer import "$BUNDLE" 2>&1)"
 echo "$IMPORT_OUT"
-echo "$IMPORT_OUT" | grep -q 'team-setup' || fail "import preset"
+echo "$IMPORT_OUT" | grep -q 'team-setup' || fail "import layer"
 rm -rf "$HD_HOME2"
-pass "preset add-plugin + export/import round-trip"
+pass "layer add-plugin + export/import round-trip"
 
 echo "=== 5. project apply warn vs --strict-plugin-versions ==="
 APPLY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/hd-apply-XXXX")"
@@ -121,20 +121,20 @@ git commit -q -m "init"
 echo "# Ctx" >"$APPLY_DIR/CLAUDE.md"
 HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" init >/dev/null
 HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" scan "$APPLY_DIR" >/dev/null
-HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" preset create mismatch-preset >/dev/null
-HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" preset add-plugin mismatch-preset formatter@acme-marketplace --version ">=2.1.0 <3.0.0" >/dev/null
+HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" layer create mismatch-layer >/dev/null
+HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" layer add-plugin mismatch-layer formatter@acme-marketplace --version ">=2.1.0 <3.0.0" >/dev/null
 RESOURCE_ID="$(HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" resource list 2>/dev/null | grep "claude-instructions" | awk "{print \$2}")"
 [[ -n "$RESOURCE_ID" ]] || fail "claude-instructions resource id not found"
-HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" preset add mismatch-preset "$RESOURCE_ID" >/dev/null
+HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" layer add mismatch-layer "$RESOURCE_ID" >/dev/null
 
-WARN_OUT="$(HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" project apply mismatch-preset --project "$APPLY_DIR" --platform claude-code 2>&1 || true)"
+WARN_OUT="$(HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" project apply mismatch-layer --project "$APPLY_DIR" --platform claude-code 2>&1 || true)"
 echo "$WARN_OUT"
 echo "$WARN_OUT" | grep -q "Plugin version mismatch" || fail "apply warn stderr"
 echo "$WARN_OUT" | grep -qE "requires >=2\.1\.0|effective is" || fail "apply warn shows version detail"
 pass "project apply warns on mismatch (default)"
 
 set +e
-STRICT_OUT="$(HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" project apply mismatch-preset --project "$APPLY_DIR" --platform claude-code --strict-plugin-versions 2>&1)"
+STRICT_OUT="$(HARNESSDECK_HOME="$HD_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" project apply mismatch-layer --project "$APPLY_DIR" --platform claude-code --strict-plugin-versions 2>&1)"
 STRICT_EXIT=$?
 set -e
 STRICT_OUT="${STRICT_OUT}"$'\n'"EXIT:${STRICT_EXIT}"

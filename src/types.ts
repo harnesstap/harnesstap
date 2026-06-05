@@ -99,7 +99,7 @@ export interface ClaudeMarketplaceEntry {
   autoUpdate?: boolean;
 }
 
-/** Plugin reference in a preset (plugin-name@marketplace-name). */
+/** Plugin reference in a layer (plugin-name@marketplace-name). */
 export interface ClaudePluginEntry {
   id: string;
   enabled?: boolean;
@@ -107,32 +107,60 @@ export interface ClaudePluginEntry {
   version?: string;
 }
 
-/** Claude Code plugin marketplace configuration carried by a preset. */
-export interface ClaudePresetConfig {
+/** Claude Code plugin marketplace configuration carried by a layer. */
+export interface ClaudeLayerConfig {
   marketplaces?: Record<string, ClaudeMarketplaceEntry>;
   plugins?: ClaudePluginEntry[];
 }
 
-export interface Preset {
+export interface Plugin {
   id: string;
   name: string;
   version: string;
   description: string;
   tags: string[];
-  claude?: ClaudePresetConfig;
+  claude?: ClaudeLayerConfig;
+  /** Config contract keys this plugin requires from an environment. */
+  needs?: string[];
 
   created_at: string;
   updated_at: string;
 }
 
-export interface PresetResource {
-  preset_id: string;
+/** @deprecated Use Plugin */
+export type Layer = Plugin;
+
+export type EnvironmentSecretProvider = "keychain" | "env" | "file";
+
+export interface Environment {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnvironmentResource {
+  environment_id: string;
   resource_id: string;
   order: number;
 }
 
-export interface PresetDependency {
-  preset_id: string;
+export interface EnvironmentSecretRef {
+  environment_id: string;
+  key: string;
+  provider: EnvironmentSecretProvider;
+  ref: string;
+}
+
+export interface LayerResource {
+  layer_id: string;
+  resource_id: string;
+  order: number;
+}
+
+export interface LayerDependency {
+  layer_id: string;
   dependency_name: string;
   version_constraint: string;
   order: number;
@@ -146,9 +174,85 @@ export interface Project {
   created_at: string;
 }
 
-export interface ProjectPreset {
+export interface ConfiguredLayer {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  default_environment_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConfiguredLayerPlugin {
+  configured_layer_id: string;
+  plugin_id: string;
+  order: number;
+}
+
+export interface ProjectConfiguredLayer {
   project_id: string;
-  preset_id: string;
+  configured_layer_id: string;
+  platforms: string[];
+  applied_at: string;
+}
+
+export interface Deck {
+  id: string;
+  name: string;
+  root_path: string;
+  active_environment_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeckConfiguredLayer {
+  deck_id: string;
+  configured_layer_id: string;
+  order: number;
+}
+
+export const DECK_SCHEMA = "urn:harnessdeck:deck:v1" as const;
+export const DECK_JSON_VERSION = 1 as const;
+
+export interface DeckJsonLayerPluginRef {
+  name: string;
+  version: string;
+}
+
+export interface DeckJsonLayer {
+  name: string;
+  version: string;
+  plugins: DeckJsonLayerPluginRef[];
+  environment?: string;
+}
+
+export type DeckJsonSecretProvider = "keychain" | "env";
+
+export interface DeckJsonEnvironmentSecretRef {
+  provider: DeckJsonSecretProvider;
+  ref: string;
+}
+
+export interface DeckJsonEnvironment {
+  name: string;
+  values: Record<string, string>;
+  secret_refs?: Record<string, DeckJsonEnvironmentSecretRef>;
+}
+
+export interface DeckJson {
+  $schema: typeof DECK_SCHEMA;
+  version: typeof DECK_JSON_VERSION;
+  name: string;
+  layers: DeckJsonLayer[];
+  environments: DeckJsonEnvironment[];
+  active_environment?: string;
+}
+
+/** @deprecated Use ProjectConfiguredLayer */
+export interface ProjectLayer {
+  project_id: string;
+  layer_id: string;
   platforms: string[];
   applied_at: string;
 }
@@ -169,7 +273,7 @@ export interface ProjectHarnessConfig extends HarnessSelection {
 }
 
 export interface SnapshotState {
-  presets: Preset[];
+  layers: Layer[];
   resources: Resource[];
   platform_files: Record<string, Record<string, string>>;
 }
@@ -272,58 +376,58 @@ export interface PlatformDefinition {
 export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
 export const BUNDLE_VERSION = 1 as const;
 
-export type ExportBundlePreset = Omit<Preset, "id" | "created_at" | "updated_at">;
+export type ExportBundleLayer = Omit<Layer, "id" | "created_at" | "updated_at">;
 
 export type ExportBundleResource = Omit<
   Resource,
   "id" | "created_at" | "updated_at" | "source"
 >;
 
-export type ExportBundleDependency = Omit<PresetDependency, "preset_id">;
+export type ExportBundleDependency = Omit<LayerDependency, "layer_id">;
 
-export interface ExportBundlePresetEntry extends ExportBundlePreset {
+export interface ExportBundleLayerEntry extends ExportBundleLayer {
   name: string;
   version: string;
   description: string;
   tags: string[];
   resources: ExportBundleResource[];
-  /** Claude Code marketplace and plugin configuration for this preset. */
-  claude?: ClaudePresetConfig;
-  /** Preset plugin pins (marketplace refs, not inlined in the bundle file). */
-  plugins: ExportBundlePresetPluginPin[];
-  /** Embedded plugin refs used by this preset; payload lives at bundle root. */
+  /** Claude Code marketplace and plugin configuration for this layer. */
+  claude?: ClaudeLayerConfig;
+  /** Layer plugin pins (marketplace refs, not inlined in the bundle file). */
+  plugins: ExportBundleLayerPluginPin[];
+  /** Embedded plugin refs used by this layer; payload lives at bundle root. */
   embedded_plugin_refs?: string[];
-  /** Preset composition dependencies (name + version constraint). */
+  /** Layer composition dependencies (name + version constraint). */
   dependencies?: ExportBundleDependency[];
 }
 
 export interface LegacyExportBundle {
   $schema: typeof BUNDLE_SCHEMA;
   version: typeof BUNDLE_VERSION;
-  preset: ExportBundlePreset;
+  layer: ExportBundleLayer;
   resources: ExportBundleResource[];
-  /** Claude Code marketplace and plugin configuration for this preset. */
-  claude?: ClaudePresetConfig;
-  /** Preset plugin pins (marketplace refs, not inlined in the bundle file). */
-  plugins: ExportBundlePresetPluginPin[];
-  /** Preset composition dependencies (name + version constraint). */
+  /** Claude Code marketplace and plugin configuration for this layer. */
+  claude?: ClaudeLayerConfig;
+  /** Layer plugin pins (marketplace refs, not inlined in the bundle file). */
+  plugins: ExportBundleLayerPluginPin[];
+  /** Layer composition dependencies (name + version constraint). */
   dependencies?: ExportBundleDependency[];
   /** Plugin trees inlined in the bundle file. */
   embedded_plugins: ExportBundleEmbeddedPlugin[];
 }
 
-export interface MultiPresetExportBundle {
+export interface MultiLayerExportBundle {
   $schema: typeof BUNDLE_SCHEMA;
   version: typeof BUNDLE_VERSION;
-  presets: ExportBundlePresetEntry[];
-  /** Plugin trees inlined in the bundle file and shared by bundle presets. */
+  layers: ExportBundleLayerEntry[];
+  /** Plugin trees inlined in the bundle file and shared by bundle layers. */
   embedded_plugins: ExportBundleEmbeddedPlugin[];
 }
 
-export type ExportBundle = LegacyExportBundle | MultiPresetExportBundle;
+export type ExportBundle = LegacyExportBundle | MultiLayerExportBundle;
 
 /** Plugin pin carried in bundles (non-embedded). */
-export interface ExportBundlePresetPluginPin {
+export interface ExportBundleLayerPluginPin {
   ref: string;
   version_constraint: string;
 }

@@ -8,31 +8,31 @@ import { writeTextFile } from "../helpers/fs.ts";
 import { initGitRepo } from "../helpers/git.ts";
 
 describe("CLI export and import", () => {
-  it("exports and imports a preset bundle across isolated homes", async () => {
+  it("exports and imports a layer bundle across isolated homes", async () => {
     const exportContext = await createTestContext("cli-export");
 
     try {
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
+      const layerModel = await import("../../src/models/layer.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
-      const preset = presetModel.createPreset({ name: "bundle-preset" });
+      const layer = layerModel.createLayer({ name: "bundle-layer" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", content: "# Shared" }),
       );
-      presetModel.addResourceToPreset(preset.id, resource.id);
+      layerModel.addResourceToLayer(layer.id, resource.id);
 
       const bundlePath = `${exportContext.projectDir}/bundle.json`;
       const exportResult = await runCli([
-        "preset",
+        "layer",
         "export",
-        "bundle-preset",
+        "bundle-layer",
         "--file",
         bundlePath,
       ]);
 
-      expect(exportResult.stdout).toContain("Exported preset");
+      expect(exportResult.stdout).toContain("Exported layer");
       expect(exportResult.stdout).toContain(bundlePath);
       expect(existsSync(bundlePath)).toBe(true);
 
@@ -46,11 +46,11 @@ describe("CLI export and import", () => {
 
       try {
         await runCli(["init"]);
-        const importResult = await runCli(["preset", "import", bundlePath]);
-        const importedPresetModel = await import("../../src/models/preset.ts");
+        const importResult = await runCli(["layer", "import", bundlePath]);
+        const importedLayerModel = await import("../../src/models/layer.ts");
 
-        expect(importResult.stdout).toContain("Imported preset");
-        expect(importedPresetModel.getPreset("bundle-preset")).toBeDefined();
+        expect(importResult.stdout).toContain("Imported layer");
+        expect(importedLayerModel.getLayer("bundle-layer")).toBeDefined();
       } finally {
         await importContext.cleanup();
       }
@@ -59,7 +59,7 @@ describe("CLI export and import", () => {
     }
   });
 
-  it("preset export --embed-plugins inlines a resolvable Claude marketplace plugin", async () => {
+  it("layer export --embed-plugins inlines a resolvable Claude marketplace plugin", async () => {
     const context = await createTestContext("cli-export-embed");
 
     try {
@@ -89,15 +89,15 @@ describe("CLI export and import", () => {
         }),
       );
 
-      const presetModel = await import("../../src/models/preset.ts");
-      const pluginModel = await import("../../src/models/plugin.ts");
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
 
-      const preset = presetModel.createPreset({ name: "embed-flag" });
-      pluginModel.addPluginToPreset(preset.id, "fmt-cli@acme-marketplace", "2.x");
+      const layer = layerModel.createLayer({ name: "embed-flag" });
+      pluginPins.addPluginToLayer(layer.id, "fmt-cli@acme-marketplace", "2.x");
 
       const bundlePath = join(context.projectDir, "embedded-cli.json");
       const exportResult = await runCli([
-        "preset",
+        "layer",
         "export",
         "embed-flag",
         "--embed-plugins",
@@ -119,25 +119,25 @@ describe("CLI export and import", () => {
     }
   });
 
-  it("exports a preset bundle to a .jsonc path", async () => {
+  it("exports a layer bundle to a .jsonc path", async () => {
     const context = await createTestContext("cli-export-jsonc");
 
     try {
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
-      presetModel.createPreset({ name: "jsonc-export" });
+      const layerModel = await import("../../src/models/layer.ts");
+      layerModel.createLayer({ name: "jsonc-export" });
 
       const bundlePath = join(context.projectDir, "bundle.jsonc");
       const exportResult = await runCli([
-        "preset",
+        "layer",
         "export",
         "jsonc-export",
         "--file",
         bundlePath,
       ]);
 
-      expect(exportResult.stdout).toContain("Exported preset");
+      expect(exportResult.stdout).toContain("Exported layer");
       expect(existsSync(bundlePath)).toBe(true);
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw.startsWith("/*\n")).toBe(true);
@@ -159,7 +159,7 @@ describe("CLI export and import", () => {
         `{
   "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
-  "preset": {
+  "layer": {
     "name": "commented-import",
     "version": "1.0.0",
     "description": "Imported from JSONC",
@@ -172,48 +172,48 @@ describe("CLI export and import", () => {
 }`,
       );
 
-      const importResult = await runCli(["preset", "import", bundlePath]);
-      const presetModel = await import("../../src/models/preset.ts");
+      const importResult = await runCli(["layer", "import", bundlePath]);
+      const layerModel = await import("../../src/models/layer.ts");
 
-      expect(importResult.stdout).toContain("Imported preset");
-      expect(presetModel.getPreset("commented-import")).toBeDefined();
+      expect(importResult.stdout).toContain("Imported layer");
+      expect(layerModel.getLayer("commented-import")).toBeDefined();
     } finally {
       await context.cleanup();
     }
   });
 
-  it("exports multiple presets into a multi-preset bundle from the CLI", async () => {
-    const context = await createTestContext("cli-export-multi-preset");
+  it("exports multiple layers into a multi-layer bundle from the CLI", async () => {
+    const context = await createTestContext("cli-export-multi-layer");
 
     try {
       await runCli(["init"]);
 
-      const presetModel = await import("../../src/models/preset.ts");
-      presetModel.createPreset({ name: "alpha" });
-      presetModel.createPreset({ name: "beta" });
+      const layerModel = await import("../../src/models/layer.ts");
+      layerModel.createLayer({ name: "alpha" });
+      layerModel.createLayer({ name: "beta" });
 
       const bundlePath = join(context.projectDir, "multi-export.jsonc");
       const exportResult = await runCli([
-        "preset",
+        "layer",
         "export",
         "alpha,beta",
         "--file",
         bundlePath,
       ]);
 
-      expect(exportResult.stdout).toContain("Exported preset");
+      expect(exportResult.stdout).toContain("Exported layer");
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw).toContain('"presets"');
+      expect(raw).toContain('"layers"');
 
       const parsed = await import("../../src/services/exporter.ts");
       const bundle = parsed.inspectBundleFile(bundlePath);
-      expect(bundle.presets.map((preset) => preset.name)).toEqual(["alpha", "beta"]);
+      expect(bundle.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("applies every preset from a multi-preset bundle path in declaration order", async () => {
+  it("applies every layer from a multi-layer bundle path in declaration order", async () => {
     const context = await createTestContext("cli-apply-multi-bundle");
 
     try {
@@ -226,7 +226,7 @@ describe("CLI export and import", () => {
         `{
   "$schema": "urn:harnessdeck:bundle:v1",
   "version": 1,
-  "presets": [
+  "layers": [
     {
       "name": "alpha-imported",
       "version": "1.0.0",
@@ -277,9 +277,9 @@ describe("CLI export and import", () => {
       expect(applyResult.exitCode).toBeUndefined();
       expect(readFileSync(join(context.projectDir, "AGENTS.md"), "utf-8")).toBe("# Beta");
 
-      const presetModel = await import("../../src/models/preset.ts");
-      expect(presetModel.getPreset("alpha-imported")).toBeDefined();
-      expect(presetModel.getPreset("beta-imported")).toBeDefined();
+      const layerModel = await import("../../src/models/layer.ts");
+      expect(layerModel.getLayer("alpha-imported")).toBeDefined();
+      expect(layerModel.getLayer("beta-imported")).toBeDefined();
     } finally {
       await context.cleanup();
     }
