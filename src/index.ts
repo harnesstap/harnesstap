@@ -424,7 +424,7 @@ program
       
       const lines = [
         "",
-        ui.theme.primary(resolveInvocationName()),
+        `${ui.theme.primary(resolveInvocationName())} ${ui.theme.muted(`v${PACKAGE_VERSION}`)}`,
         "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
         "",
         ui.theme.heading("USAGE"),

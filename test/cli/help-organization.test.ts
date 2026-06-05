@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import packageJson from "../../package.json";
 import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 
@@ -81,7 +82,17 @@ describe("CLI help and command organization", () => {
   it("renders top-level help with hd when invoked as hd", async () => {
     const result = await runCli(["--help"], { commandName: "hd" });
     expect(result.stdout).toContain("hd");
+    expect(result.stdout).toContain(`v${packageJson.version}`);
     expect(result.stdout).toContain("hd [options] [command]");
+  });
+
+  it("shows the CLI version in top-level help", async () => {
+    const help = await runCli(["--help"]);
+    const noArgs = await runCli([]);
+
+    for (const result of [help, noArgs]) {
+      expect(result.stdout).toContain(`v${packageJson.version}`);
+    }
   });
 
   it("disables color in help output when --no-color is used", async () => {
