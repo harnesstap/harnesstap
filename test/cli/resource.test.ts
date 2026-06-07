@@ -197,6 +197,49 @@ describe("CLI resource", () => {
     }
   });
 
+  it("resource show prefers unnamespaced match for bare selector", async () => {
+    const context = await createTestContext("cli-resource-prefer-unnamespaced");
+
+    try {
+      await runCli(["init"]);
+      const resourceModel = await import("../../src/models/resource.ts");
+
+      resourceModel.upsertResource(
+        {
+          type: "skill",
+          name: "brainstorming",
+          namespace: "cursor-team-kit",
+          description: "",
+          content: "# Namespaced",
+          metadata: {},
+          source: "test",
+          origin_kind: "marketplace_link",
+          origin_ref: "brainstorming@cursor-team-kit",
+        },
+        { policy: "overwrite" },
+      );
+      resourceModel.upsertResource(
+        {
+          type: "skill",
+          name: "brainstorming",
+          namespace: "",
+          description: "",
+          content: "# Default",
+          metadata: {},
+          source: "test",
+          origin_kind: "manual",
+          origin_ref: "",
+        },
+        { policy: "overwrite" },
+      );
+
+      const show = await runCli(["resource", "show", "brainstorming"]);
+      expect(show.stdout).toContain("# Default");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("resource ambiguity table hides IDs by default and reveals them with --show-id", async () => {
     const context = await createTestContext("cli-resource-ambiguous-show-id");
 
