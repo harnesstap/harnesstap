@@ -428,7 +428,7 @@ export function listResources(filters?: {
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const rows = db
-    .prepare(`SELECT * FROM resources ${where} ORDER BY created_at DESC`)
+    .prepare(`SELECT * FROM resources ${where} ORDER BY updated_at DESC`)
     .all(...params) as ResourceRow[];
 
   return rows.map(mapResourceRow);

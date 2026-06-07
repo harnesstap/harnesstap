@@ -3,6 +3,7 @@ import inquirer from "inquirer";
 import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
 import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
+import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
 
 export interface CliResult {
   stdout: string;
@@ -97,6 +98,28 @@ mock.module("@inquirer/search", () => ({
 
 mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
   promptForSearchableMultiSelect: searchableMultiSelectMock,
+}));
+
+const resourceListWizardMock = mock(async (
+  ...args: Parameters<typeof RunResourceListWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/resource-list.ts?actual"
+    );
+    return actualWizard.runResourceListWizard(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value !== "string") {
+    throw new Error(
+      "Resource list wizard responses must resolve to a string query in runCli test harness",
+    );
+  }
+  return value.length > 0 ? value : undefined;
+});
+
+mock.module("../../src/services/wizards/resource-list.js", () => ({
+  runResourceListWizard: resourceListWizardMock,
 }));
 
 function stringifyArgs(args: unknown[]): string {

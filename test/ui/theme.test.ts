@@ -127,5 +127,25 @@ describe("ui theme", () => {
       expect(theme.danger).toBeDefined();
       expect(theme.badge).toBeDefined();
     });
+
+    it("styles known resource types with distinct colors", async () => {
+      const chalkModule = await import("chalk");
+      const originalLevel = chalkModule.default.level;
+      chalkModule.default.level = 3;
+      try {
+        const { styleResourceType } = await import("../../src/ui/theme.ts");
+        const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
+        expect(styleResourceType("skill")).toMatch(ansiEscapeRegex);
+        expect(styleResourceType("rule")).toMatch(ansiEscapeRegex);
+        expect(styleResourceType("skill")).not.toBe(styleResourceType("rule"));
+      } finally {
+        chalkModule.default.level = originalLevel;
+      }
+    });
+
+    it("falls back to muted styling for unknown resource types", async () => {
+      const { styleResourceType, theme } = await import("../../src/ui/theme.ts");
+      expect(styleResourceType("unknown_type")).toBe(theme.muted("unknown_type"));
+    });
   });
 });

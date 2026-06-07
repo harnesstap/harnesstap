@@ -58,4 +58,30 @@ describe("ui table", () => {
     const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
     expect(output).not.toMatch(ansiEscapeRegex);
   });
+
+  it("applies column styles for resource types", async () => {
+    const chalkModule = await import("chalk");
+    const originalLevel = chalkModule.default.level;
+    chalkModule.default.level = 3;
+    try {
+      const { styleResourceType } = await import("../../src/ui/theme.ts");
+      const output = renderTable({
+        columns: [
+          {
+            key: "type",
+            header: "TYPE",
+            width: 10,
+            style: (value) => styleResourceType(value),
+          },
+        ],
+        rows: [{ type: "skill" }, { type: "rule" }],
+      });
+      const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
+      expect(output).toMatch(ansiEscapeRegex);
+      expect(output).toContain("skill");
+      expect(output).toContain("rule");
+    } finally {
+      chalkModule.default.level = originalLevel;
+    }
+  });
 });
