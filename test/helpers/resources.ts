@@ -1,4 +1,9 @@
-import type { Resource, ResourceMetadata, ResourceType } from "../../src/types.ts";
+import type {
+  OriginKind,
+  Resource,
+  ResourceMetadata,
+  ResourceType,
+} from "../../src/types.ts";
 
 export function makeResourceInput(
   overrides: Partial<{
@@ -8,6 +13,11 @@ export function makeResourceInput(
     content: string;
     metadata: ResourceMetadata;
     source: string;
+    namespace: string;
+    origin_kind: OriginKind;
+    origin_ref: string;
+    content_hash: string;
+    content_blob_ref: string;
   }> = {},
 ) {
   return {
@@ -17,6 +27,11 @@ export function makeResourceInput(
     content: "# Alpha\n",
     metadata: {} as ResourceMetadata,
     source: "manual",
+    namespace: "",
+    origin_kind: "manual" as OriginKind,
+    origin_ref: "",
+    content_hash: "",
+    content_blob_ref: "",
     ...overrides,
   };
 }

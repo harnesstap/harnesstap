@@ -15,6 +15,14 @@ export const RESOURCE_TYPES = [
 
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
 
+export const ORIGIN_KINDS = [
+  "local_snapshot",
+  "marketplace_link",
+  "manual",
+] as const;
+
+export type OriginKind = (typeof ORIGIN_KINDS)[number];
+
 // ── Type-specific metadata shapes ───────────────────────────────────────
 
 export interface RuleMetadata {
@@ -82,6 +90,11 @@ export interface Resource {
   content: string;
   metadata: ResourceMetadata;
   source: string;
+  namespace: string;
+  origin_kind: OriginKind;
+  origin_ref: string;
+  content_hash: string;
+  content_blob_ref: string;
   created_at: string;
   updated_at: string;
 }
