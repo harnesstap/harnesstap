@@ -15,6 +15,14 @@ export const RESOURCE_TYPES = [
 
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
 
+export const ORIGIN_KINDS = [
+  "local_snapshot",
+  "marketplace_link",
+  "manual",
+] as const;
+
+export type OriginKind = (typeof ORIGIN_KINDS)[number];
+
 // ── Type-specific metadata shapes ───────────────────────────────────────
 
 export interface RuleMetadata {
@@ -82,9 +90,25 @@ export interface Resource {
   content: string;
   metadata: ResourceMetadata;
   source: string;
+  namespace: string;
+  origin_kind: OriginKind;
+  origin_ref: string;
+  content_hash: string;
+  content_blob_ref: string;
   created_at: string;
   updated_at: string;
 }
+
+export type ResourceCreateInput = Pick<
+  Resource,
+  "type" | "name" | "description" | "content" | "metadata" | "source"
+> &
+  Partial<
+    Pick<
+      Resource,
+      "namespace" | "origin_kind" | "origin_ref" | "content_hash" | "content_blob_ref"
+    >
+  >;
 
 /** Claude Code marketplace source (extraKnownMarketplaces entry). */
 export interface ClaudeMarketplaceSource {
@@ -330,7 +354,7 @@ export interface PluginSourceScanResult {
   plugin_name: string;
   plugin_version?: string;
   metadata: ImportedSnapshotMetadata;
-  resources: Array<Omit<Resource, "id" | "created_at" | "updated_at">>;
+  resources: ResourceCreateInput[];
 }
 
 // ── Platform definitions ────────────────────────────────────────────────
@@ -459,10 +483,10 @@ export interface PlatformSerializer {
   readonly platformId: string;
 
   /** Scan a project directory and return discovered resources. */
-  scan(projectRoot: string): Promise<Resource[]>;
+  scan(projectRoot: string): Promise<ResourceCreateInput[]>;
 
   /** Scan platform defaults from the user home directory when supported. */
-  scanGlobal?(homeRoot: string): Promise<Resource[]>;
+  scanGlobal?(homeRoot: string): Promise<ResourceCreateInput[]>;
 
   /** Serialize canonical resources into platform-specific files. */
   serialize(

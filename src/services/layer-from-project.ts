@@ -5,7 +5,7 @@ import {
   getPluginResources,
   deletePlugin,
 } from "../models/plugin-component.js";
-import { scanAndPersist } from "./scanner.js";
+import { scanProject, scanAndPersist } from "./scanner.js";
 import type { Layer, Resource } from "../types.js";
 
 export interface LayerFromProjectResult {
@@ -38,24 +38,26 @@ export async function previewLayerFromProject(input: {
   platform?: string;
 }): Promise<LayerFromProjectPreview> {
   const existingLayer = getPlugin(input.name);
-  const scannedResources = await scanAndPersist(input.projectRoot, input.platform);
-  
+  const scanResults = await scanProject(input.projectRoot, input.platform);
+  const scannedResources = scanResults.flatMap((result) => result.resources);
+
   if (!existingLayer) {
     return {
       layerExists: false,
-      newResources: scannedResources,
+      newResources: scannedResources as Resource[],
       conflicts: [],
       totalImports: scannedResources.length,
     };
   }
 
-  // Check for conflicts
   const existingResources = getPluginResources(existingLayer.id);
   const conflicts: ConflictInfo[] = [];
   const newResources: Resource[] = [];
 
   for (const scanned of scannedResources) {
-    const existing = existingResources.find(r => r.name === scanned.name && r.type === scanned.type);
+    const existing = existingResources.find(
+      (resource) => resource.name === scanned.name && resource.type === scanned.type,
+    );
     if (existing && existing.content !== scanned.content) {
       conflicts.push({
         existingResource: existing,
@@ -63,7 +65,7 @@ export async function previewLayerFromProject(input: {
         newDescription: scanned.description,
       });
     } else if (!existing) {
-      newResources.push(scanned);
+      newResources.push(scanned as Resource);
     }
   }
 
@@ -88,19 +90,24 @@ export async function createLayerFromProject(input: {
   conflictStrategy?: "overwrite" | "skip";
 }): Promise<LayerFromProjectResult> {
   const existing = getPlugin(input.name);
-  
+
   if (existing && input.conflictStrategy !== "overwrite") {
     throw new Error(`Layer already exists: ${input.name}`);
   }
 
-  const resources = await scanAndPersist(input.projectRoot, input.platform);
-  
+  const namespace =
+    existing && input.conflictStrategy === "overwrite" ? "" : input.name;
+  const resources = await scanAndPersist(input.projectRoot, input.platform, {
+    conflictPolicy: input.conflictStrategy === "skip" ? "skip" : "overwrite",
+    originRef: input.projectRoot,
+    namespace,
+  });
+
   let layer: Layer;
   if (existing && input.conflictStrategy === "overwrite") {
-    // Delete and recreate layer to avoid complex update logic
     const oldDescription = existing.description;
     deletePlugin(existing.id);
-    
+
     layer = createPlugin({
       name: input.name,
       description: input.description ?? oldDescription,
@@ -110,7 +117,6 @@ export async function createLayerFromProject(input: {
       addResourceToPlugin(layer.id, resource.id);
     }
   } else {
-    // Create new layer
     layer = createPlugin({
       name: input.name,
       description: input.description ?? `Inferred from ${input.projectRoot}`,

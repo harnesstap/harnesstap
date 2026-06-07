@@ -2,12 +2,12 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import type {
+  ResourceCreateInput,
   AgentMetadata,
   ImportedResourceProvenance,
   ImportedSourceKind,
   ImportedSnapshotMetadata,
   PluginSourceScanResult,
-  Resource,
   RuleMetadata,
 } from "../types.js";
 
@@ -39,7 +39,7 @@ interface ValidatedMarketplaceManifest {
   plugins: ValidatedMarketplacePluginEntry[];
 }
 
-type ResourceInput = Omit<Resource, "id" | "created_at" | "updated_at">;
+type ResourceInput = ResourceCreateInput;
 type PluginSourceRootKind = Exclude<ImportedSourceKind, "marketplace">;
 
 function normalizePath(path: string): string {

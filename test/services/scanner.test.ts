@@ -40,6 +40,54 @@ describe("scanner services", () => {
     }
   });
 
+  it("persistScanResults reports conflict when existing hash differs", async () => {
+    const context = await createInitializedTestContext("scanner-conflict");
+
+    try {
+      const resourceModel = await import("../../src/models/resource.ts");
+      const scanner = await import("../../src/services/scanner.ts");
+
+      resourceModel.upsertResource(
+        {
+          type: "skill",
+          name: "a",
+          namespace: "",
+          description: "",
+          content: "old",
+          metadata: {},
+          source: "test",
+          origin_kind: "local_snapshot",
+          origin_ref: context.projectDir,
+        },
+        { policy: "overwrite" },
+      );
+
+      const results = [
+        {
+          platformId: "cursor",
+          resources: [
+            {
+              type: "skill" as const,
+              name: "a",
+              description: "",
+              content: "new",
+              metadata: {},
+              source: "test",
+            },
+          ],
+        },
+      ];
+
+      const out = scanner.persistScanResults(results, {
+        conflictPolicy: "fail",
+        originRef: context.projectDir,
+      });
+      expect(out.conflicts).toHaveLength(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("deduplicates resources by type and name when persisting", async () => {
     const context = await createInitializedTestContext("scanner-persist");
 
@@ -236,11 +284,13 @@ describe("scanner services", () => {
         expect.arrayContaining(["skill", "agent", "rule"]),
       );
       expect(importedSnapshotModel.listImportedSnapshots()).toHaveLength(1);
-      expect(
-        resourceModel
-          .listResources()
-          .find((resource) => resource.name === "team")?.metadata,
-      ).toMatchObject({
+      const team = resourceModel.listResources().find((resource) => resource.name === "team");
+      expect(team).toMatchObject({
+        namespace: "cursor-team-kit",
+        origin_kind: "marketplace_link",
+        origin_ref: "cursor-team-kit@cursor-team-kit",
+      });
+      expect(team?.metadata).toMatchObject({
         imported_from: {
           source_label: "cursor-team-kit",
           relative_path: "skills/team/SKILL.md",

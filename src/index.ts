@@ -11,6 +11,7 @@ import {
 import {
   scanProject,
   persistScanResults,
+  applyScanConflicts,
   detectPlatforms,
   detectHomePlatforms,
   isPluginSourcePath,
@@ -18,6 +19,8 @@ import {
   scanAndPersistHomeDefaults,
   persistClaudePluginInventoryForProject,
 } from "./services/scanner.js";
+import { syncLinkedResources } from "./services/resource-sync.js";
+import type { ImportConflictPolicy } from "./models/resource.js";
 import {
   applyImportedSnapshotToGlobal,
   generateFiles,
@@ -446,9 +449,51 @@ program
     },
   });
 
+function resolveScanConflictPolicy(opts: {
+  overwrite?: boolean;
+  skipExisting?: boolean;
+  noInteractive?: boolean;
+}): ImportConflictPolicy {
+  if (opts.overwrite) return "overwrite";
+  if (opts.skipExisting) return "skip";
+  if (opts.noInteractive || !process.stdin.isTTY || !process.stdout.isTTY) {
+    return "fail";
+  }
+  return "prompt";
+}
+
+async function promptScanConflicts(
+  conflicts: Awaited<ReturnType<typeof persistScanResults>>["conflicts"],
+): Promise<"overwrite" | "skip" | "cancel"> {
+  if (conflicts.length === 0) return "skip";
+  ui.warn(`${conflicts.length} resource(s) differ from the library snapshot.`);
+  for (const conflict of conflicts) {
+    ui.dim(
+      `  ${conflict.incoming.type}:${conflict.incoming.name} (${conflict.platformId})`,
+    );
+  }
+  return promptForChoice({
+    message: "How should HarnessDeck handle these conflicts?",
+    choices: [
+      { name: "Overwrite library copies", value: "overwrite" as const },
+      { name: "Keep existing library copies", value: "skip" as const },
+      { name: "Cancel scan", value: "cancel" as const },
+    ],
+  });
+}
+
 async function handleScanCommand(
   path: string,
-  opts: { platform?: string; dryRun?: boolean; global?: boolean; harness?: string },
+  opts: {
+    platform?: string;
+    dryRun?: boolean;
+    global?: boolean;
+    harness?: string;
+    overwrite?: boolean;
+    skipExisting?: boolean;
+    namespace?: string;
+    noInteractive?: boolean;
+  },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
@@ -550,8 +595,30 @@ async function handleScanCommand(
 
   const spin = createProgress("Scanning…");
   const results = await scanProject(projectRoot, opts.platform);
-  const persisted = persistScanResults(results);
+  const conflictPolicy = resolveScanConflictPolicy(opts);
+  let persisted = persistScanResults(results, {
+    conflictPolicy,
+    namespace: opts.namespace ?? "",
+    originRef: projectRoot,
+  });
   spin.stop();
+
+  if (persisted.conflicts.length > 0 && conflictPolicy === "prompt") {
+    const resolution = await promptScanConflicts(persisted.conflicts);
+    if (resolution === "cancel") {
+      throw new Error("Scan cancelled due to resource conflicts.");
+    }
+    const resolved = applyScanConflicts(persisted.conflicts, resolution);
+    persisted = {
+      ...persisted,
+      resources: [...persisted.resources, ...resolved],
+      conflicts: [],
+    };
+  } else if (persisted.conflicts.length > 0) {
+    throw new Error(
+      `${persisted.conflicts.length} resource conflict(s). Use --overwrite or --skip-existing.`,
+    );
+  }
 
   for (const result of results) {
     const importedCount = persisted.importedCounts.get(result.platformId) ?? 0;
@@ -3037,7 +3104,15 @@ resourceCmd
       ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
       return;
     }
-    const resources = listResources({ type, search: opts.search });
+    const listed = listResources({ type, search: opts.search });
+    const hasNamespace = listed.some((resource) => (resource.namespace ?? "").length > 0);
+    const resources = listed.map((resource) => ({
+      ...resource,
+      namespace: resource.namespace ?? "",
+      display_name: resource.namespace
+        ? `${resource.name}@${resource.namespace}`
+        : resource.name,
+    }));
     if (format === "json") {
       printJson(resources);
       return;
@@ -3046,7 +3121,10 @@ resourceCmd
       columns: [
         ...makeIdColumn(Boolean(opts.showId)),
         { key: "type", header: "TYPE", width: 14 },
-        { key: "name", header: "NAME", width: 28 },
+        { key: "display_name", header: "NAME", width: 28 },
+        ...(hasNamespace
+          ? [{ key: "namespace", header: "NAMESPACE", width: 20 } as const]
+          : []),
         { key: "updated_at", header: "UPDATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
       ],
       rows: resources,
@@ -3095,20 +3173,56 @@ resourceCmd
       return;
     }
     const r = result.resource;
+    const panelRows: Array<[string, string]> = [
+      ["Type", r.type],
+      ["Name", r.name],
+      ["Description", r.description || "—"],
+      ["Source", r.source],
+      ["Origin", `${r.origin_kind}${r.origin_ref ? ` (${r.origin_ref})` : ""}`],
+      ["Content hash", r.content_hash || "—"],
+      ["ID", r.id],
+      ["Created", r.created_at],
+      ["Metadata", JSON.stringify(r.metadata)],
+    ];
+    if (r.namespace) {
+      panelRows.splice(2, 0, ["Namespace", r.namespace]);
+    }
     ui.panel({
-      title: ["RESOURCE", r.name],
-      rows: [
-        ["Type", r.type],
-        ["Name", r.name],
-        ["Description", r.description || "—"],
-        ["Source", r.source],
-        ["ID", r.id],
-        ["Created", r.created_at],
-        ["Metadata", JSON.stringify(r.metadata)],
-      ],
+      title: ["RESOURCE", r.namespace ? `${r.name}@${r.namespace}` : r.name],
+      rows: panelRows,
     });
     ui.subheader("CONTENT");
     console.log(r.content);
+  });
+
+resourceCmd
+  .command("sync")
+  .argument("[selector]", "Linked resource selector (optional)")
+  .option("--overwrite", "Overwrite cached definitions when install tree differs")
+  .option("--dry-run", "Report linked resources without writing changes")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Refresh marketplace-linked resource definitions from installed plugin trees")
+  .action(async (selector: string | undefined, opts: { overwrite?: boolean; dryRun?: boolean; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const result = await syncLinkedResources({
+      selector,
+      policy: opts.overwrite ? "overwrite" : "skip",
+      dryRun: opts.dryRun,
+    });
+
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+
+    ui.success(
+      `Checked ${result.checked} linked resource(s) ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.stale.length} stale`,
+    );
+    for (const entry of result.stale) {
+      ui.warn(`${entry.resource.type}:${entry.resource.name} — ${entry.reason}`);
+    }
   });
 
 resourceCmd
@@ -3172,6 +3286,9 @@ projectCmd
     "--harness <slugs>",
     "Comma-separated harness slugs to target for --global plugin installs",
   )
+  .option("--overwrite", "Overwrite library resources when scan content differs")
+  .option("--skip-existing", "Keep existing library resources when scan content differs")
+  .option("--namespace <name>", "Namespace for imported project resources")
   .description(
     "Scan a project directory or plugin source and import configurations into the database",
   )

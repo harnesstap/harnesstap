@@ -3,6 +3,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import type {
   PlatformDefinition,
+  ResourceCreateInput,
   Resource,
   SerializedFile,
   McpServerMetadata,
@@ -40,8 +41,8 @@ export class OpenCodeSerializer extends BaseSerializer {
     this.platform = p;
   }
 
-  async scan(projectRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // 1. Instructions: AGENTS.md
     const agentsMd = this.readFile(join(projectRoot, "AGENTS.md"));
@@ -119,11 +120,11 @@ export class OpenCodeSerializer extends BaseSerializer {
       }
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // Global skills
     resources.push(
@@ -198,7 +199,7 @@ export class OpenCodeSerializer extends BaseSerializer {
       }
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
   async serialize(

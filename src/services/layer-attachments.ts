@@ -73,7 +73,7 @@ function assertNoEmbed(_type: LayerAttachmentType, embed: boolean | undefined): 
 }
 
 function resolveTypedResource(selector: string, type: ResourceType) {
-  const resourceResult = resolveResource(selector);
+  const resourceResult = resolveResource(selector, { mode: "compose" });
   if (resourceResult.status === "not_found") {
     throw new Error(`Resource not found: ${selector}`);
   }

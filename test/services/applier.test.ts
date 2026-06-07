@@ -599,6 +599,7 @@ describe("applier services", () => {
       const skillA = resources.createResource({
         type: "skill",
         name: "research",
+        namespace: "plugin-a",
         description: "Research helper",
         content: "# Research A",
         metadata: {},
@@ -615,6 +616,7 @@ describe("applier services", () => {
       const skillB = resources.createResource({
         type: "skill",
         name: "research",
+        namespace: "plugin-b",
         description: "Research helper",
         content: "# Research B",
         metadata: {},

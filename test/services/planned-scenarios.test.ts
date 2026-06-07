@@ -29,6 +29,7 @@ describe("planned scenarios services", () => {
         makeResourceInput({
           type: "instruction",
           name: "project-context",
+          namespace: "drift-test",
           content: "# Original\n",
         }),
       );
@@ -86,20 +87,19 @@ describe("planned scenarios services", () => {
       const a = layerModel.createLayer({ name: "base" });
       const b = layerModel.createLayer({ name: "fork" });
       const r1 = resourceModel.createResource(
-        makeResourceInput({ type: "instruction", name: "ctx", content: "a" }),
+        makeResourceInput({ type: "instruction", name: "ctx", namespace: "base", content: "a" }),
       );
       const r2 = resourceModel.createResource(
-        makeResourceInput({ type: "instruction", name: "ctx", content: "b" }),
+        makeResourceInput({ type: "instruction", name: "ctx", namespace: "fork", content: "b" }),
       );
       layerModel.addResourceToLayer(a.id, r1.id);
       layerModel.addResourceToLayer(b.id, r2.id);
 
       const report = diffLayers("base", "fork");
-      expect(report.changes.some((c) => c.key === "instruction:ctx")).toBe(true);
-      // renderer fields: change.kind, change.change used by renderChangeList
-      const modifiedCtx = report.changes.find((c) => c.key === "instruction:ctx");
-      expect(modifiedCtx?.kind).toBe("resource");
-      expect(modifiedCtx?.change).toBe("modified");
+      expect(report.changes.some((c) => c.key === "instruction:ctx@fork")).toBe(true);
+      const forkCtx = report.changes.find((c) => c.key === "instruction:ctx@fork");
+      expect(forkCtx?.kind).toBe("resource");
+      expect(forkCtx?.change).toBe("added");
     } finally {
       await context.cleanup();
     }

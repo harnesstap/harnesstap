@@ -1,6 +1,8 @@
 import type { SqliteDatabase } from "./types.js";
+import { hashResourceBody } from "../services/resource-hash.js";
+import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -227,6 +229,15 @@ const MIGRATIONS: Record<number, string> = {
       "order" INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (deck_id, configured_layer_id)
     );
+  `,
+
+  13: `
+    ALTER TABLE resources ADD COLUMN namespace TEXT NOT NULL DEFAULT '';
+    ALTER TABLE resources ADD COLUMN origin_kind TEXT NOT NULL DEFAULT 'manual'
+      CHECK(origin_kind IN ('local_snapshot','marketplace_link','manual'));
+    ALTER TABLE resources ADD COLUMN origin_ref TEXT NOT NULL DEFAULT '';
+    ALTER TABLE resources ADD COLUMN content_hash TEXT NOT NULL DEFAULT '';
+    ALTER TABLE resources ADD COLUMN content_blob_ref TEXT NOT NULL DEFAULT '';
   `,
 
   11: `
@@ -469,6 +480,138 @@ function applyMigration11(db: SqliteDatabase): void {
   db.exec("DROP TABLE project_layers");
 }
 
+/** Migration 13: resource identity columns, dedup, hash backfill, unique index. */
+function applyMigration13(db: SqliteDatabase): void {
+  const hasResources = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'resources'")
+    .get();
+  if (!hasResources) return;
+
+  const migration = MIGRATIONS[13];
+  if (migration) {
+    db.exec(migration);
+  }
+
+  const duplicateGroups = db
+    .prepare(
+      `SELECT type, name, COUNT(*) AS cnt
+       FROM resources
+       WHERE namespace = ''
+       GROUP BY type, name
+       HAVING cnt > 1`,
+    )
+    .all() as Array<{ type: string; name: string; cnt: number }>;
+
+  for (const group of duplicateGroups) {
+    const rows = db
+      .prepare(
+        `SELECT id, updated_at
+         FROM resources
+         WHERE type = ? AND name = ? AND namespace = ''
+         ORDER BY updated_at DESC`,
+      )
+      .all(group.type, group.name) as Array<{ id: string; updated_at: string }>;
+
+    const [winner, ...losers] = rows;
+    if (!winner) continue;
+
+    for (const loser of losers) {
+      rewriteResourceForeignKeys(db, winner.id, loser.id);
+      db.prepare("DELETE FROM resources WHERE id = ?").run(loser.id);
+    }
+  }
+
+  const resourcesNeedingHash = db
+    .prepare(
+      `SELECT id, type, content, metadata
+       FROM resources
+       WHERE content_hash = ''`,
+    )
+    .all() as Array<{
+      id: string;
+      type: string;
+      content: string;
+      metadata: string;
+    }>;
+
+  for (const row of resourcesNeedingHash) {
+    const metadata = JSON.parse(row.metadata) as ResourceMetadata;
+    const contentHash = hashResourceBody({
+      type: row.type as ResourceType,
+      content: row.content,
+      metadata,
+    });
+    db.prepare("UPDATE resources SET content_hash = ? WHERE id = ?").run(
+      contentHash,
+      row.id,
+    );
+  }
+
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_type_name_namespace
+      ON resources(type, name, namespace);
+  `);
+}
+
+function rewriteResourceForeignKeys(
+  db: SqliteDatabase,
+  winnerId: string,
+  loserId: string,
+): void {
+  const hasPluginResources = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugin_resources'")
+    .get();
+  if (hasPluginResources) {
+    const pluginLinks = db
+      .prepare("SELECT layer_id FROM plugin_resources WHERE resource_id = ?")
+      .all(loserId) as Array<{ layer_id: string }>;
+
+    for (const link of pluginLinks) {
+      const winnerLinked = db
+        .prepare("SELECT 1 FROM plugin_resources WHERE layer_id = ? AND resource_id = ?")
+        .get(link.layer_id, winnerId);
+
+      if (winnerLinked) {
+        db.prepare("DELETE FROM plugin_resources WHERE layer_id = ? AND resource_id = ?").run(
+          link.layer_id,
+          loserId,
+        );
+      } else {
+        db.prepare(
+          "UPDATE plugin_resources SET resource_id = ? WHERE layer_id = ? AND resource_id = ?",
+        ).run(winnerId, link.layer_id, loserId);
+      }
+    }
+  }
+
+  const hasEnvironmentResources = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'environment_resources'")
+    .get();
+  if (hasEnvironmentResources) {
+    const environmentLinks = db
+      .prepare("SELECT environment_id FROM environment_resources WHERE resource_id = ?")
+      .all(loserId) as Array<{ environment_id: string }>;
+
+    for (const link of environmentLinks) {
+      const winnerLinked = db
+        .prepare(
+          "SELECT 1 FROM environment_resources WHERE environment_id = ? AND resource_id = ?",
+        )
+        .get(link.environment_id, winnerId);
+
+      if (winnerLinked) {
+        db.prepare(
+          "DELETE FROM environment_resources WHERE environment_id = ? AND resource_id = ?",
+        ).run(link.environment_id, loserId);
+      } else {
+        db.prepare(
+          "UPDATE environment_resources SET resource_id = ? WHERE environment_id = ? AND resource_id = ?",
+        ).run(winnerId, link.environment_id, loserId);
+      }
+    }
+  }
+}
+
 export function initializeSchema(db: SqliteDatabase): void {
   const currentVersion = getSchemaVersion(db);
 
@@ -495,6 +638,10 @@ export function initializeSchema(db: SqliteDatabase): void {
         }
         if (v === 11) {
           applyMigration11(db);
+          continue;
+        }
+        if (v === 13) {
+          applyMigration13(db);
           continue;
         }
         const migration = MIGRATIONS[v];
