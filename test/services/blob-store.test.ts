@@ -12,7 +12,7 @@ describe("blob-store", () => {
 
   it("writes and reads content-addressed blob", () => {
     root = mkdtempSync(join(tmpdir(), "hd-blob-"));
-    const hash = "sha256:" + "a".repeat(64);
+    const hash = `sha256:${"a".repeat(64)}`;
     writeBlob(root, hash, "body");
     expect(readBlob(root, hash)).toBe("body");
   });

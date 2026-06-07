@@ -10,6 +10,7 @@ import {
   type ImportConflictPolicy,
   type ResourceCreateInput,
   type UpsertResourceInput,
+  type UpsertResult,
 } from "../models/resource.js";
 import {
   createImportedSnapshot,
@@ -307,7 +308,7 @@ export function persistScanResults(
       if (seen.has(key)) continue;
       seen.add(key);
 
-      let upsertResult;
+      let upsertResult: UpsertResult;
       try {
         upsertResult = upsertResource(incoming, {
           policy: conflictPolicy === "prompt" ? "fail" : conflictPolicy,
