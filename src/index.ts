@@ -132,8 +132,15 @@ import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import { runResourceListWizard } from "./services/wizards/resource-list.js";
 import type { PersistedPluginSourceResults } from "./services/scanner.js";
 import type { Column } from "./ui/table.js";
+import {
+  renderFlatResourceListTable,
+  renderGroupedResourceListTables,
+  sortResourcesByUpdatedAt,
+  toResourceListRows,
+} from "./ui/resource-list-render.js";
 
 const program = new Command();
 
@@ -271,6 +278,120 @@ function makeIdColumn(showId: boolean, width = 12): Column[] {
         transform: (value: string) => ui.format.shortenId(String(value)),
       }]
     : [];
+}
+
+function makeResourceTypeColumn(width = 14): Column {
+  return {
+    key: "type",
+    header: "TYPE",
+    width,
+    style: (value) => ui.theme.resourceType(value),
+  };
+}
+
+function resolveResourceListType(
+  positionalType?: string,
+  flagType?: string,
+): ResourceType | undefined | "invalid" | "conflict" {
+  if (positionalType && flagType && positionalType !== flagType) {
+    return "conflict";
+  }
+  const type = positionalType ?? flagType;
+  if (!type) {
+    return undefined;
+  }
+  if (!RESOURCE_TYPES.includes(type as ResourceType)) {
+    return "invalid";
+  }
+  return type as ResourceType;
+}
+
+function shouldUseInteractiveResourceList(input: {
+  noInteractive?: boolean;
+  format?: string;
+  search?: string;
+}): boolean {
+  if (input.search) {
+    return false;
+  }
+
+  return shouldUseWizard({
+    interactive: true,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+}
+
+async function handleResourceListCommand(
+  positionalType: string | undefined,
+  opts: {
+    type?: string;
+    search?: string;
+    format?: string;
+    showId?: boolean;
+    noInteractive?: boolean;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const resolvedType = resolveResourceListType(positionalType, opts.type);
+  if (resolvedType === "conflict") {
+    ui.danger(`Conflicting type filters: ${positionalType} and ${opts.type}`);
+    return;
+  }
+  if (resolvedType === "invalid") {
+    ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+    return;
+  }
+
+  let search = opts.search;
+  if (shouldUseInteractiveResourceList(opts)) {
+    try {
+      search = await runResourceListWizard({
+        type: resolvedType,
+        search: opts.search,
+        showId: Boolean(opts.showId),
+      });
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        process.exitCode = 1;
+        return;
+      }
+      throw error;
+    }
+  }
+
+  const listed = listResources({ type: resolvedType, search });
+  const sortedResources = sortResourcesByUpdatedAt(toResourceListRows(listed));
+
+  if (format === "json") {
+    printJson(sortedResources);
+    return;
+  }
+
+  if (sortedResources.length === 0) {
+    console.log(
+      `No resources found.\n  → Run \`${formatCommand("project scan")}\` to import some.`,
+    );
+    return;
+  }
+
+  if (resolvedType) {
+    console.log(
+      renderFlatResourceListTable(sortedResources, {
+        showId: Boolean(opts.showId),
+      }),
+    );
+    return;
+  }
+
+  console.log(
+    renderGroupedResourceListTables(sortedResources, {
+      showId: Boolean(opts.showId),
+    }),
+  );
 }
 
 function homeFolderLabel(discoveredPaths: string[]): string {
@@ -1436,7 +1557,7 @@ function handleLayerShowCommand(
   ui.table.print({
     columns: [
       ...makeIdColumn(Boolean(opts.showId)),
-      { key: "type", header: "TYPE", width: 14 },
+      makeResourceTypeColumn(),
       { key: "name", header: "NAME", width: 26 },
     ],
     rows: resources,
@@ -3107,46 +3228,27 @@ const resourceCmd = configureCommandGroup(
 resourceCmd
   .command("list")
   .alias("ls")
+  .argument("[type]", `Filter by resource type (${RESOURCE_TYPES.join(", ")})`)
   .option("-t, --type <type>", "Filter by resource type")
-  .option("-s, --search <query>", "Search by name or description")
+  .option("-s, --search <query>", "Search by name or description (skips interactive filter)")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in human-readable tables")
-  .action((opts: { type?: string; search?: string; format?: string; showId?: boolean }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const type = opts.type as ResourceType | undefined;
-    if (type && !RESOURCE_TYPES.includes(type)) {
-      ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
-      return;
+  .action(async (
+    type: string | undefined,
+    opts: {
+      type?: string;
+      search?: string;
+      format?: string;
+      showId?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
+    try {
+      await handleResourceListCommand(type, opts);
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
     }
-    const listed = listResources({ type, search: opts.search });
-    const hasNamespace = listed.some((resource) => (resource.namespace ?? "").length > 0);
-    const resources = listed.map((resource) => ({
-      ...resource,
-      namespace: resource.namespace ?? "",
-      display_name: resource.namespace
-        ? `${resource.name}@${resource.namespace}`
-        : resource.name,
-    }));
-    if (format === "json") {
-      printJson(resources);
-      return;
-    }
-    ui.table.print({
-      columns: [
-        ...makeIdColumn(Boolean(opts.showId)),
-        { key: "type", header: "TYPE", width: 14 },
-        { key: "display_name", header: "NAME", width: 28 },
-        ...(hasNamespace
-          ? [{ key: "namespace", header: "NAMESPACE", width: 20 } as const]
-          : []),
-        { key: "updated_at", header: "UPDATED", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
-      ],
-      rows: resources,
-      summary: resources.length === 0 ? undefined : `${resources.length} resources`,
-      empty: `No resources found.\n  → Run \`${formatCommand("project scan")}\` to import some.`,
-    });
   });
 
 resourceCmd
@@ -3180,7 +3282,7 @@ resourceCmd
       ui.table.print({
         columns: [
           ...makeIdColumn(Boolean(opts.showId)),
-          { key: "type", header: "TYPE", width: 14 },
+          makeResourceTypeColumn(),
           { key: "name", header: "NAME", width: 26 },
         ],
         rows: result.matches,

@@ -92,13 +92,115 @@ describe("CLI resource", () => {
     }
   });
 
-  it("renders resource list as a shared table with updated timestamps", async () => {
+  it("renders resource list grouped by type with updated timestamps", async () => {
     const context = await createTestContext("cli-resource-list-table");
     try {
       await runCli(["init"]);
       const result = await runCli(["resource", "list"]);
-      expect(result.stdout).toContain("TYPE");
+      expect(result.stdout).toContain("instruction (");
+      expect(result.stdout).toContain("rule (");
       expect(result.stdout).toContain("UPDATED");
+      expect(result.stdout).not.toMatch(/\|\s+TYPE\s+\|/);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("filters resource list by positional type argument", async () => {
+    const context = await createTestContext("cli-resource-list-positional-type");
+    try {
+      await runCli(["init"]);
+      const all = await runCli(["resource", "list"]);
+      const rules = await runCli(["resource", "list", "rule"]);
+
+      expect(all.stdout).toContain("instruction (");
+      expect(rules.stdout).toContain("api-design");
+      expect(rules.stdout).not.toContain("project-context");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("filters resource list by --type flag", async () => {
+    const context = await createTestContext("cli-resource-list-type-flag");
+    try {
+      await runCli(["init"]);
+      const rules = await runCli(["resource", "list", "--type", "rule"]);
+
+      expect(rules.stdout).toContain("api-design");
+      expect(rules.stdout).not.toContain("project-context");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("uses interactive search on TTY and applies the filter to list output", async () => {
+    const context = await createTestContext("cli-resource-list-interactive");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["resource", "list"], {
+        isTTY: true,
+        promptResponses: [{ value: "api-design" }],
+      });
+
+      expect(result.stdout).toContain("api-design");
+      expect(result.stdout).not.toContain("api-routes");
+      expect(result.stdout).not.toContain("project-context");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("skips interactive search when --search is provided", async () => {
+    const context = await createTestContext("cli-resource-list-static-search");
+    try {
+      await runCli(["init"]);
+
+      const result = await runCli(["resource", "list", "--search", "api-design"], {
+        isTTY: true,
+      });
+
+      expect(result.stdout).toContain("api-design");
+      expect(result.stdout).not.toContain("api-routes");
+      expect(result.stdout).not.toContain("project-context");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("orders resource list rows by updated_at descending within each type", async () => {
+    const context = await createTestContext("cli-resource-list-updated-order");
+    try {
+      await runCli(["init"]);
+
+      const resourceModel = await import("../../src/models/resource.ts");
+      const older = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "older-skill",
+          description: "Older skill",
+          content: "# Older",
+        }),
+      );
+      const newer = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "newer-skill",
+          description: "Newer skill",
+          content: "# Newer",
+        }),
+      );
+      resourceModel.updateResource(older.id, { description: "Touched older skill" });
+
+      const result = await runCli(["resource", "list", "skill"]);
+      const olderIndex = result.stdout.indexOf("older-skill");
+      const newerIndex = result.stdout.indexOf("newer-skill");
+
+      expect(olderIndex).toBeGreaterThan(-1);
+      expect(newerIndex).toBeGreaterThan(-1);
+      expect(olderIndex).toBeLessThan(newerIndex);
+      expect(result.stdout).not.toMatch(/\|\s+TYPE\s+\|/);
     } finally {
       await context.cleanup();
     }
