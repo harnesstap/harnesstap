@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
+import { hashResourceBody } from "../../src/services/resource-hash.ts";
 
 describe("initializeSchema", () => {
   it("creates the expected tables and schema version", async () => {
@@ -44,7 +45,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
 
       const layerColumns = context.connection
         .getDb()
@@ -116,7 +117,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 12 }]);
+      expect(versionRows).toEqual([{ version: 13 }]);
     } finally {
       await context.cleanup();
     }
@@ -312,7 +313,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -720,7 +721,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
     } finally {
       await context.cleanup();
     }
@@ -767,7 +768,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
     } finally {
       await context.cleanup();
     }
@@ -834,7 +835,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
     } finally {
       await context.cleanup();
     }
@@ -927,7 +928,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
     } finally {
       await context.cleanup();
     }
@@ -1004,7 +1005,165 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(12);
+      expect(versionRow.version).toBe(13);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migration 13 adds resource identity columns, dedupes duplicates, and backfills content_hash", async () => {
+    const context = await createTestContext("schema-migration-13");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+      const older = new Date(Date.now() - 60_000).toISOString();
+
+      db.exec(`
+        CREATE TABLE resources (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          content TEXT NOT NULL DEFAULT '',
+          metadata TEXT NOT NULL DEFAULT '{}',
+          source TEXT NOT NULL DEFAULT 'manual',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE plugins (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          source_path TEXT NOT NULL DEFAULT '',
+          source_hash TEXT NOT NULL DEFAULT '',
+          source_present INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name, version)
+        );
+        CREATE TABLE plugin_resources (
+          layer_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+          resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (layer_id, resource_id)
+        );
+        CREATE TABLE environments (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(name)
+        );
+        CREATE TABLE environment_resources (
+          environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+          resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (environment_id, resource_id)
+        );
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (12);
+      `);
+
+      db.prepare(
+        `INSERT INTO plugins (id, name, version, description, tags, claude_config, needs_config, created_at, updated_at)
+         VALUES ('plug-1', 'team-stack', '1.0.0', '', '[]', '{}', '[]', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO environments (id, name, description, created_at, updated_at)
+         VALUES ('env-1', 'prod', '', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
+         VALUES ('r-old', 'skill', 'dup-skill', '', 'older body', '{}', 'manual', ?, ?)`,
+      ).run(older, older);
+      db.prepare(
+        `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
+         VALUES ('r-new', 'skill', 'dup-skill', '', 'newer body', '{}', 'manual', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO plugin_resources (layer_id, resource_id, "order") VALUES ('plug-1', 'r-old', 0)`,
+      ).run();
+      db.prepare(
+        `INSERT INTO environment_resources (environment_id, resource_id, "order") VALUES ('env-1', 'r-old', 0)`,
+      ).run();
+
+      context.schema.initializeSchema(db);
+
+      const resourceColumns = db
+        .prepare("PRAGMA table_info(resources)")
+        .all() as Array<{ name: string }>;
+      expect(resourceColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining([
+          "namespace",
+          "origin_kind",
+          "origin_ref",
+          "content_hash",
+          "content_blob_ref",
+        ]),
+      );
+
+      const indexes = db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'resources'",
+        )
+        .all() as Array<{ name: string }>;
+      expect(indexes.map((index) => index.name)).toContain(
+        "idx_resources_type_name_namespace",
+      );
+
+      const survivors = db
+        .prepare("SELECT id FROM resources WHERE name = 'dup-skill'")
+        .all() as Array<{ id: string }>;
+      expect(survivors).toEqual([{ id: "r-new" }]);
+
+      const pluginLink = db
+        .prepare("SELECT resource_id FROM plugin_resources WHERE layer_id = 'plug-1'")
+        .get() as { resource_id: string };
+      expect(pluginLink.resource_id).toBe("r-new");
+
+      const environmentLink = db
+        .prepare(
+          "SELECT resource_id FROM environment_resources WHERE environment_id = 'env-1'",
+        )
+        .get() as { resource_id: string };
+      expect(environmentLink.resource_id).toBe("r-new");
+
+      const winner = db
+        .prepare(
+          "SELECT namespace, origin_kind, origin_ref, content_hash, content_blob_ref, content, metadata, type FROM resources WHERE id = 'r-new'",
+        )
+        .get() as {
+          namespace: string;
+          origin_kind: string;
+          origin_ref: string;
+          content_hash: string;
+          content_blob_ref: string;
+          content: string;
+          metadata: string;
+          type: string;
+        };
+      expect(winner.namespace).toBe("");
+      expect(winner.origin_kind).toBe("manual");
+      expect(winner.origin_ref).toBe("");
+      expect(winner.content_blob_ref).toBe("");
+      expect(winner.content_hash).toBe(
+        hashResourceBody({
+          type: "skill",
+          content: winner.content,
+          metadata: JSON.parse(winner.metadata),
+        }),
+      );
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(13);
     } finally {
       await context.cleanup();
     }

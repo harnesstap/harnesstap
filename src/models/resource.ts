@@ -1,6 +1,11 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
-import type { Resource, ResourceType, ResourceMetadata } from "../types.js";
+import type {
+  Resource,
+  ResourceType,
+  ResourceMetadata,
+  OriginKind,
+} from "../types.js";
 
 interface ResourceRow {
   id: string;
@@ -10,6 +15,11 @@ interface ResourceRow {
   content: string;
   metadata: string;
   source: string;
+  namespace?: string;
+  origin_kind?: string;
+  origin_ref?: string;
+  content_hash?: string;
+  content_blob_ref?: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +34,11 @@ function rowToResource(row: ResourceRow): Resource {
     ...row,
     type: row.type as ResourceType,
     metadata: JSON.parse(row.metadata) as ResourceMetadata,
+    namespace: row.namespace ?? "",
+    origin_kind: (row.origin_kind ?? "manual") as OriginKind,
+    origin_ref: row.origin_ref ?? "",
+    content_hash: row.content_hash ?? "",
+    content_blob_ref: row.content_blob_ref ?? "",
   };
 }
 
