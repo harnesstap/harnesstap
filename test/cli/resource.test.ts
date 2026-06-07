@@ -131,6 +131,87 @@ describe("CLI resource", () => {
     }
   });
 
+  it("resource delete passes --search into the wizard filter", async () => {
+    const context = await createTestContext("cli-resource-delete-search");
+
+    try {
+      await runCli(["init"]);
+
+      const resourceModel = await import("../../src/models/resource.ts");
+      const instruction = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "copilot-cli-instructions",
+          content: "# Copilot",
+        }),
+      );
+      resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "team",
+          content: "# Team",
+        }),
+      );
+
+      const deleteResult = await runCli(
+        ["resource", "delete", "--search", "copilot"],
+        {
+          isTTY: true,
+          promptResponses: [{ value: [instruction.id] }],
+        },
+      );
+
+      expect(deleteResult.stdout).toContain('"copilot-cli-instructions"');
+      expect(resourceModel.getResource(instruction.id)).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resource delete prompts for searchable multi-select on TTY and deletes selected resources", async () => {
+    const context = await createTestContext("cli-resource-delete-multi-select");
+
+    try {
+      await runCli(["init"]);
+
+      const resourceModel = await import("../../src/models/resource.ts");
+      const keep = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "keep-me",
+          content: "# Keep",
+        }),
+      );
+      const deleteA = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "delete-a",
+          content: "# Delete A",
+        }),
+      );
+      const deleteB = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "delete-b",
+          content: "# Delete B",
+        }),
+      );
+
+      const deleteResult = await runCli(["resource", "delete"], {
+        isTTY: true,
+        promptResponses: [{ value: [deleteA.id, deleteB.id] }],
+      });
+
+      expect(deleteResult.stdout).toContain('"delete-a"');
+      expect(deleteResult.stdout).toContain('"delete-b"');
+      expect(resourceModel.getResource(deleteA.id)).toBeUndefined();
+      expect(resourceModel.getResource(deleteB.id)).toBeUndefined();
+      expect(resourceModel.getResource(keep.id)?.name).toBe("keep-me");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("emits JSON for resource list and show", async () => {
     const context = await createTestContext("cli-resource-json");
     try {

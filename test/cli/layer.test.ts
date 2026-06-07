@@ -347,6 +347,32 @@ describe("CLI layer", () => {
     }
   });
 
+  it("layer delete prompts for searchable multi-select on TTY and deletes selected layers", async () => {
+    const context = await createTestContext("cli-layer-delete-multi-select");
+    try {
+      await runCli(["init"]);
+      const layerModel = await import("../../src/models/layer.ts");
+
+      await runCli(["layer", "create", "keep-layer"]);
+      await runCli(["layer", "create", "delete-a", "--version", "1.0.0"]);
+      await runCli(["layer", "create", "delete-b", "--version", "2.0.0"]);
+
+      const result = await runCli(["layer", "delete"], {
+        isTTY: true,
+        promptResponses: [{ value: ["delete-a@1.0.0", "delete-b@2.0.0"] }],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("delete-a@1.0.0");
+      expect(result.stdout).toContain("delete-b@2.0.0");
+      expect(layerModel.getLayer("delete-a@1.0.0")).toBeUndefined();
+      expect(layerModel.getLayer("delete-b@2.0.0")).toBeUndefined();
+      expect(layerModel.getLayer("keep-layer@1.0.0")?.name).toBe("keep-layer");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("creates, shows, associates, removes, and deletes layers", async () => {
     const context = await createTestContext("cli-layer");
 

@@ -52,4 +52,25 @@ describe("searchable multi-select prompt", () => {
 
     await expect(answer).resolves.toEqual(["cursor"]);
   });
+
+  it("starts with an initial query filter when provided", async () => {
+    const { answer, events } = await render(
+      promptForSearchableMultiSelect,
+      {
+        message: "Select resources to delete",
+        initialQuery: "copilot",
+        choices: [
+          { name: "Claude Code", value: "claude-code" },
+          { name: "Copilot CLI", value: "copilot-cli" },
+          { name: "Codex", value: "codex" },
+        ],
+      },
+      { clearPromptOnDone: true },
+    );
+
+    events.keypress("space");
+    events.keypress("enter");
+
+    await expect(answer).resolves.toEqual(["copilot-cli"]);
+  });
 });

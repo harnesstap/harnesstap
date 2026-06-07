@@ -8,6 +8,22 @@ export interface WizardTriggerInput {
   missingRequiredArgs: boolean;
 }
 
+export function isPromptCancellationError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (
+    error.name === "ExitPromptError"
+    || error.name === "CancelPromptError"
+    || error.name === "AbortPromptError"
+  ) {
+    return true;
+  }
+
+  return /force closed the prompt/i.test(error.message);
+}
+
 export function shouldUseWizard(input: WizardTriggerInput): boolean {
   const noInteractive =
     input.noInteractive ?? process.argv.includes("--no-interactive");
