@@ -578,6 +578,7 @@ describe("CLI layer", () => {
         makeResourceInput({
           type: "instruction",
           name: "shared-doc",
+          namespace: "dup-a",
           content: "# Shared A",
         }),
       );
@@ -585,6 +586,7 @@ describe("CLI layer", () => {
         makeResourceInput({
           type: "instruction",
           name: "shared-doc",
+          namespace: "dup-b",
           content: "# Shared B",
         }),
       );
@@ -651,10 +653,20 @@ describe("CLI layer", () => {
       await runCli(["init"]);
       const resourceModel = await import("../../src/models/resource.ts");
       const first = resourceModel.createResource(
-        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared A" }),
+        makeResourceInput({
+          type: "skill",
+          name: "shared-skill",
+          namespace: "team-a",
+          content: "# Shared A",
+        }),
       );
       const second = resourceModel.createResource(
-        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared B" }),
+        makeResourceInput({
+          type: "skill",
+          name: "shared-skill",
+          namespace: "team-b",
+          content: "# Shared B",
+        }),
       );
       await runCli(["layer", "create", "team"]);
 
@@ -686,10 +698,20 @@ describe("CLI layer", () => {
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "team" });
       const first = resourceModel.createResource(
-        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared A" }),
+        makeResourceInput({
+          type: "skill",
+          name: "shared-skill",
+          namespace: "team-a",
+          content: "# Shared A",
+        }),
       );
       const second = resourceModel.createResource(
-        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared B" }),
+        makeResourceInput({
+          type: "skill",
+          name: "shared-skill",
+          namespace: "team-b",
+          content: "# Shared B",
+        }),
       );
       layerModel.addResourceToLayer(layer.id, first.id);
       layerModel.addResourceToLayer(layer.id, second.id);

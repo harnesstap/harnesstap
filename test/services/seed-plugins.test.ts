@@ -66,7 +66,7 @@ describe("seed plugins service", () => {
       const nextjs = layerModel.getLayer("nextjs-fullstack");
       expect(nextjs).toBeDefined();
       expect(nextjs?.description).toContain("Next.js");
-      expect(resourceModel.listResources({ source: "builtin:" })).toHaveLength(6);
+      expect(resourceModel.listResources({ source: "builtin:" })).toHaveLength(5);
     } finally {
       await context.cleanup();
     }

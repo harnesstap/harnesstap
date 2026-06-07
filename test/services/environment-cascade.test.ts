@@ -106,6 +106,7 @@ describe("environment cascade", () => {
         createResource({
           type: "env_var",
           name: "PD_REGION",
+          namespace: "staging",
           description: "",
           content: "",
           metadata: { key: "PD_REGION", value: "staging" },
@@ -118,6 +119,7 @@ describe("environment cascade", () => {
         createResource({
           type: "env_var",
           name: "PD_REGION",
+          namespace: "prod",
           description: "",
           content: "",
           metadata: { key: "PD_REGION", value: "prod" },

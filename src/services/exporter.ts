@@ -17,7 +17,10 @@ import {
 } from "../models/plugin-component.js";
 import { listLayerPlugins, addPluginToLayer } from "../models/plugin-pins.js";
 import type { LayerPluginRow } from "../models/plugin-pins.js";
-import { createResource } from "../models/resource.js";
+import {
+  normalizeResourceInput,
+  upsertResource,
+} from "../models/resource.js";
 import {
   addConfiguredLayerToDeck,
   createDeck,
@@ -284,6 +287,11 @@ function collectBundlePayload(
       description: r.description,
       content: r.content,
       metadata: r.metadata,
+      namespace: r.namespace,
+      origin_kind: r.origin_kind,
+      origin_ref: r.origin_ref,
+      content_hash: r.content_hash,
+      content_blob_ref: r.content_blob_ref,
     })),
     plugins: pins,
     ...(embeddedRoots.length > 0
@@ -643,15 +651,23 @@ function importDeckEnvironment(
   });
 
   for (const [key, value] of Object.entries(environment.values)) {
-    const resource = createResource({
-      type: "env_var",
-      name: key,
-      description: "",
-      content: "",
-      metadata: { key, value },
-      source: opts?.resourceSource ?? "import:deck.json",
-    });
-    addResourceToEnvironment(created.id, resource);
+    const upserted = upsertResource(
+      normalizeResourceInput({
+        type: "env_var",
+        name: key,
+        namespace: created.name,
+        description: "",
+        content: "",
+        metadata: { key, value },
+        source: opts?.resourceSource ?? "import:deck.json",
+        origin_ref: `environment:${created.id}`,
+      }),
+      { policy: "overwrite" },
+    );
+    if (upserted.action === "skipped") {
+      throw new Error(`Failed to import env var resource: ${key}`);
+    }
+    addResourceToEnvironment(created.id, upserted.resource);
   }
 
   for (const [key, secretRef] of Object.entries(environment.secret_refs ?? {})) {
@@ -917,16 +933,25 @@ function importLayerFromBundleParsed(
 
   const resources: Resource[] = [];
   for (const r of bundle.resources) {
-    const resource = createResource({
-      type: r.type,
-      name: r.name,
-      description: r.description,
-      content: r.content,
-      metadata: r.metadata,
-      source: opts?.resourceSource ?? `import:${filePath}`,
-    });
-    addResourceToPlugin(layer.id, resource.id);
-    resources.push(resource);
+    const upserted = upsertResource(
+      normalizeResourceInput({
+        type: r.type,
+        name: r.name,
+        description: r.description,
+        content: r.content,
+        metadata: r.metadata,
+        source: opts?.resourceSource ?? `import:${filePath}`,
+        namespace: r.namespace,
+        origin_kind: r.origin_kind,
+        origin_ref: r.origin_ref,
+      }),
+      { policy: "overwrite" },
+    );
+    if (upserted.action === "skipped") {
+      throw new Error(`Failed to import resource: ${r.type}:${r.name}`);
+    }
+    addResourceToPlugin(layer.id, upserted.resource.id);
+    resources.push(upserted.resource);
   }
 
   const layerId = layer.id;

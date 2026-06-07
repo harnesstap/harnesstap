@@ -2,9 +2,16 @@ import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
-import { createResource } from "../models/resource.js";
-import { deleteResource } from "../models/resource.js";
-import { listResources } from "../models/resource.js";
+import {
+  deleteResource,
+  listResources,
+  normalizeResourceInput,
+  upsertResource,
+  type ImportConflictPolicy,
+  type ResourceCreateInput,
+  type UpsertResourceInput,
+  type UpsertResult,
+} from "../models/resource.js";
 import {
   createImportedSnapshot,
 } from "../models/imported-snapshot.js";
@@ -96,16 +103,32 @@ export function isPluginSourcePath(sourcePath: string): boolean {
 
 export interface ScanResult {
   platformId: string;
-  resources: Omit<Resource, "id" | "created_at" | "updated_at">[];
+  resources: ResourceCreateInput[];
 }
 
 export interface HomeScanResult extends ScanResult {
   discoveredPaths: string[];
 }
 
+export interface ScanConflict {
+  platformId: string;
+  existing: Resource;
+  incoming: UpsertResourceInput;
+}
+
+export interface PersistScanOptions {
+  conflictPolicy?: ImportConflictPolicy;
+  namespace?: string;
+  originRef?: string;
+}
+
 export interface PersistedScanResults {
+  /** Newly created or updated resources from this import run. */
   resources: Resource[];
+  /** All resources matching the scan batch, including unchanged rows. */
+  resolved: Resource[];
   importedCounts: Map<string, number>;
+  conflicts: ScanConflict[];
 }
 
 export interface PersistedPluginSourceResults {
@@ -173,8 +196,33 @@ export async function scanHomeDefaults(
   return results;
 }
 
-function resourceDedupKey(resource: Pick<Resource, "type" | "name">): string {
-  return `${resource.type}:${resource.name}`;
+function resourceDedupKey(
+  resource: Pick<Resource, "type" | "name" | "namespace">,
+): string {
+  return `${resource.type}:${resource.name}:${resource.namespace ?? ""}`;
+}
+
+function pluginImportIdentity(result: {
+  source_kind: string;
+  source_label: string;
+  plugin_name: string;
+  metadata: Record<string, unknown>;
+}): {
+  namespace: string;
+  origin_kind: "marketplace_link";
+  origin_ref: string;
+} {
+  const marketplaceName = String(
+    result.metadata.marketplace_name ?? result.source_label ?? result.plugin_name,
+  );
+  return {
+    namespace: result.plugin_name,
+    origin_kind: "marketplace_link",
+    origin_ref:
+      result.source_kind === "marketplace"
+        ? `${result.plugin_name}@${marketplaceName}`
+        : `${result.plugin_name}@${result.plugin_name}`,
+  };
 }
 
 function canonicalInstructionNameForSource(source: string): string | undefined {
@@ -237,30 +285,72 @@ function cleanupSharedInstructionDuplicates(resources: Resource[]): void {
 
 export function persistScanResults(
   results: ScanResult[],
-  options?: { skipExistingDuplicates?: boolean },
+  options?: PersistScanOptions,
 ): PersistedScanResults {
   const seen = new Set<string>();
   const persisted: Resource[] = [];
+  const resolved: Resource[] = [];
   const importedCounts = new Map<string, number>();
-  const existing = options?.skipExistingDuplicates
-    ? new Set(listResources().map((resource) => resourceDedupKey(resource)))
-    : undefined;
+  const conflicts: ScanConflict[] = [];
+  const conflictPolicy = options?.conflictPolicy ?? "skip";
+  const namespace = options?.namespace ?? "";
+  const originRef = options?.originRef ?? "";
 
   for (const result of results) {
     for (const r of result.resources) {
-      const key = resourceDedupKey(r);
-      if (seen.has(key) || existing?.has(key)) continue;
+      const incoming = normalizeResourceInput({
+        ...r,
+        namespace,
+        origin_kind: "local_snapshot",
+        origin_ref: originRef || r.source,
+      });
+      const key = resourceDedupKey({ ...incoming, namespace });
+      if (seen.has(key)) continue;
       seen.add(key);
 
-      const saved = createResource({
-        type: r.type,
-        name: r.name,
-        description: r.description,
-        content: r.content,
-        metadata: r.metadata,
-        source: r.source,
-      });
-      persisted.push(saved);
+      let upsertResult: UpsertResult;
+      try {
+        upsertResult = upsertResource(incoming, {
+          policy: conflictPolicy === "prompt" ? "fail" : conflictPolicy,
+        });
+      } catch {
+        const existing = listResources().find(
+          (resource) =>
+            resource.type === incoming.type &&
+            resource.name === incoming.name &&
+            resource.namespace === namespace,
+        );
+        if (existing) {
+          conflicts.push({ platformId: result.platformId, existing, incoming });
+          continue;
+        }
+        throw new Error(
+          `Resource conflict: ${incoming.type}:${incoming.name}${namespace ? `@${namespace}` : ""}`,
+        );
+      }
+
+      const savedResource =
+        upsertResult.action === "skipped"
+          ? upsertResult.existing
+          : upsertResult.resource;
+      resolved.push(savedResource);
+
+      if (upsertResult.action === "skipped") {
+        if (conflictPolicy === "prompt" || conflictPolicy === "fail") {
+          conflicts.push({
+            platformId: result.platformId,
+            existing: upsertResult.existing,
+            incoming,
+          });
+        }
+        continue;
+      }
+
+      if (upsertResult.action === "unchanged") {
+        continue;
+      }
+
+      persisted.push(savedResource);
       importedCounts.set(
         result.platformId,
         (importedCounts.get(result.platformId) ?? 0) + 1,
@@ -270,7 +360,26 @@ export function persistScanResults(
 
   cleanupSharedInstructionDuplicates(persisted);
 
-  return { resources: persisted, importedCounts };
+  return { resources: persisted, resolved, importedCounts, conflicts };
+}
+
+export function applyScanConflicts(
+  conflicts: ScanConflict[],
+  resolution: "overwrite" | "skip",
+): Resource[] {
+  const updated: Resource[] = [];
+  for (const conflict of conflicts) {
+    const result = upsertResource(conflict.incoming, {
+      policy: resolution === "overwrite" ? "overwrite" : "skip",
+    });
+    if (result.action === "created" || result.action === "updated") {
+      updated.push(result.resource);
+    }
+    if (result.action === "unchanged") {
+      updated.push(result.resource);
+    }
+  }
+  return updated;
 }
 
 /**
@@ -280,9 +389,13 @@ export function persistScanResults(
 export async function scanAndPersist(
   projectRoot: string,
   platformFilter?: string,
+  options?: PersistScanOptions,
 ): Promise<Resource[]> {
   const results = await scanProject(projectRoot, platformFilter);
-  return persistScanResults(results).resources;
+  return persistScanResults(results, {
+    ...options,
+    originRef: options?.originRef ?? projectRoot,
+  }).resolved;
 }
 
 export async function scanAndPersistPluginSource(
@@ -296,15 +409,21 @@ export async function scanAndPersistPluginSource(
   for (const result of imports) {
     const resourceIds: string[] = [];
 
+    const identity = pluginImportIdentity(result);
+
     for (const resource of result.resources) {
-      const saved = createResource({
-        type: resource.type,
-        name: resource.name,
-        description: resource.description,
-        content: resource.content,
-        metadata: resource.metadata,
-        source: resource.source,
-      });
+      const upserted = upsertResource(
+        normalizeResourceInput({
+          ...resource,
+          ...identity,
+        }),
+        { policy: "overwrite" },
+      );
+
+      const saved =
+        upserted.action === "skipped"
+          ? upserted.existing
+          : upserted.resource;
 
       resourceIds.push(saved.id);
       if (!returnedResourceIds.has(saved.id)) {
@@ -366,7 +485,8 @@ export async function scanAndPersistHomeDefaults(
   const detected = detectHomePlatforms(homeRoot);
   const results = await scanHomeDefaults(platformFilter, homeRoot);
   const persisted = persistScanResults(results, {
-    skipExistingDuplicates: true,
+    conflictPolicy: "skip",
+    originRef: homeRoot,
   });
 
   return {

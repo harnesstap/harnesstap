@@ -1,6 +1,20 @@
-import { getDb } from "../db/connection.js";
+import { getDb, getHarnessdeckDir } from "../db/connection.js";
 import { ulid } from "ulid";
-import type { Resource, ResourceType, ResourceMetadata } from "../types.js";
+import type {
+  Resource,
+  ResourceCreateInput,
+  ResourceType,
+  ResourceMetadata,
+  OriginKind,
+} from "../types.js";
+import { writeBlob } from "../services/blob-store.js";
+
+export type { ResourceCreateInput };
+import { hashResourceBody } from "../services/resource-hash.js";
+import { parseResourceSelector } from "../services/resource-selector.js";
+
+const INLINE_CONTENT_THRESHOLD = 4096;
+const ULID_PATTERN = /^[0-9A-Z]{26}$/;
 
 interface ResourceRow {
   id: string;
@@ -10,6 +24,11 @@ interface ResourceRow {
   content: string;
   metadata: string;
   source: string;
+  namespace?: string;
+  origin_kind?: string;
+  origin_ref?: string;
+  content_hash?: string;
+  content_blob_ref?: string;
   created_at: string;
   updated_at: string;
 }
@@ -19,74 +38,363 @@ export type ResourceLookupResult =
   | { status: "not_found" }
   | { status: "ambiguous"; matches: Resource[] };
 
-function rowToResource(row: ResourceRow): Resource {
+export type ResourceResolveMode = "display" | "compose";
+
+export type ImportConflictPolicy = "prompt" | "skip" | "overwrite" | "fail";
+
+export interface UpsertResourceInput {
+  type: ResourceType;
+  name: string;
+  namespace?: string;
+  description: string;
+  content: string;
+  metadata: ResourceMetadata;
+  source: string;
+  origin_kind: OriginKind;
+  origin_ref?: string;
+}
+
+export function normalizeResourceInput(input: ResourceCreateInput): UpsertResourceInput {
+  return {
+    type: input.type,
+    name: input.name,
+    namespace: input.namespace ?? "",
+    description: input.description,
+    content: input.content,
+    metadata: input.metadata,
+    source: input.source,
+    origin_kind: input.origin_kind ?? "manual",
+    origin_ref: input.origin_ref ?? "",
+  };
+}
+
+export function formatResourceSelector(
+  resource: Pick<Resource, "type" | "name" | "namespace">,
+  options?: { includeType?: boolean },
+): string {
+  const namePart = resource.namespace
+    ? `${resource.name}@${resource.namespace}`
+    : resource.name;
+  if (options?.includeType) {
+    return `${resource.type}:${namePart}`;
+  }
+  return namePart;
+}
+
+export type UpsertResult =
+  | { action: "created"; resource: Resource }
+  | { action: "unchanged"; resource: Resource }
+  | { action: "updated"; resource: Resource }
+  | { action: "skipped"; existing: Resource };
+
+export interface UpsertOptions {
+  policy?: ImportConflictPolicy;
+  harnessdeckDir?: string;
+}
+
+export function mapResourceRow(row: ResourceRow): Resource {
   return {
     ...row,
     type: row.type as ResourceType,
     metadata: JSON.parse(row.metadata) as ResourceMetadata,
+    namespace: row.namespace ?? "",
+    origin_kind: (row.origin_kind ?? "manual") as OriginKind,
+    origin_ref: row.origin_ref ?? "",
+    content_hash: row.content_hash ?? "",
+    content_blob_ref: row.content_blob_ref ?? "",
   };
 }
 
-export function resolveResource(nameOrId: string): ResourceLookupResult {
+function isUlid(selector: string): boolean {
+  return ULID_PATTERN.test(selector);
+}
+
+function findResourceById(id: string): Resource | undefined {
   const db = getDb();
-  const row = db.prepare("SELECT * FROM resources WHERE id = ?").get(nameOrId) as
+  const row = db.prepare("SELECT * FROM resources WHERE id = ?").get(id) as
     | ResourceRow
     | undefined;
+  return row ? mapResourceRow(row) : undefined;
+}
 
-  if (row) {
-    return { status: "found", resource: rowToResource(row) };
+export function findResourceByKey(
+  type: ResourceType,
+  name: string,
+  namespace: string,
+): Resource | undefined {
+  return findExistingResource(type, name, namespace);
+}
+
+function findResourcesBySelector(parsed: {
+  type?: ResourceType;
+  name: string;
+  namespace: string;
+}): Resource[] {
+  const db = getDb();
+  const conditions = ["name = ?"];
+  const params: unknown[] = [parsed.name];
+
+  if (parsed.type) {
+    conditions.push("type = ?");
+    params.push(parsed.type);
+  }
+  if (parsed.namespace) {
+    conditions.push("namespace = ?");
+    params.push(parsed.namespace);
   }
 
-  const nameRows = db
-    .prepare("SELECT * FROM resources WHERE name = ? ORDER BY created_at DESC")
-    .all(nameOrId) as ResourceRow[];
+  const rows = db
+    .prepare(`SELECT * FROM resources WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC`)
+    .all(...params) as ResourceRow[];
 
-  if (nameRows.length === 0) {
+  return rows.map(mapResourceRow);
+}
+
+function resolveFromMatches(
+  matches: Resource[],
+  mode: ResourceResolveMode,
+): ResourceLookupResult {
+  if (matches.length === 0) {
     return { status: "not_found" };
   }
+  if (matches.length === 1) {
+    const [match] = matches;
+    return match ? { status: "found", resource: match } : { status: "not_found" };
+  }
 
-  if (nameRows.length > 1) {
+  if (mode === "display") {
+    const unnamespaced = matches.filter((match) => match.namespace === "");
+    if (unnamespaced.length === 1) {
+      const [match] = unnamespaced;
+      return match ? { status: "found", resource: match } : { status: "ambiguous", matches };
+    }
+  }
+
+  return { status: "ambiguous", matches };
+}
+
+export function resolveResource(
+  selector: string,
+  options?: { mode?: ResourceResolveMode },
+): ResourceLookupResult {
+  const mode = options?.mode ?? "display";
+
+  if (isUlid(selector)) {
+    const byId = findResourceById(selector);
+    if (byId) {
+      return { status: "found", resource: byId };
+    }
+  }
+
+  const parsed = parseResourceSelector(selector);
+
+  if (parsed.namespace) {
+    const matches = findResourcesBySelector(parsed);
+    return resolveFromMatches(matches, mode);
+  }
+
+  const matches = findResourcesBySelector(parsed);
+  if (mode === "compose" && matches.length > 1) {
+    return { status: "ambiguous", matches };
+  }
+  return resolveFromMatches(matches, mode);
+}
+
+function contentBlobRef(contentHash: string): string {
+  const hex = contentHash.replace(/^sha256:/, "");
+  return `blobs/sha256/${hex.slice(0, 2)}/${hex}`;
+}
+
+function persistContent(
+  harnessdeckDir: string,
+  contentHash: string,
+  content: string,
+): { inlineContent: string; contentBlobRef: string } {
+  writeBlob(harnessdeckDir, contentHash, content);
+  const blobRef = contentBlobRef(contentHash);
+  if (content.length <= INLINE_CONTENT_THRESHOLD) {
+    return { inlineContent: content, contentBlobRef: blobRef };
+  }
+  return { inlineContent: "", contentBlobRef: blobRef };
+}
+
+function findExistingResource(
+  type: ResourceType,
+  name: string,
+  namespace: string,
+): Resource | undefined {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT * FROM resources WHERE type = ? AND name = ? AND namespace = ?")
+    .get(type, name, namespace) as ResourceRow | undefined;
+  return row ? mapResourceRow(row) : undefined;
+}
+
+function resolveConflictPolicy(policy: ImportConflictPolicy): "overwrite" | "skip" | "fail" {
+  if (policy === "overwrite") return "overwrite";
+  if (policy === "skip") return "skip";
+  if (policy === "fail" || policy === "prompt") return "fail";
+  return "fail";
+}
+
+export function upsertResource(
+  input: UpsertResourceInput,
+  options: UpsertOptions = {},
+): UpsertResult {
+  const db = getDb();
+  const harnessdeckDir = options.harnessdeckDir ?? getHarnessdeckDir();
+  const namespace = input.namespace ?? "";
+  const originRef = input.origin_ref ?? "";
+  const contentHash = hashResourceBody({
+    type: input.type,
+    content: input.content,
+    metadata: input.metadata,
+  });
+  const existing = findExistingResource(input.type, input.name, namespace);
+
+  if (!existing) {
+    const now = new Date().toISOString();
+    const id = ulid();
+    const { inlineContent, contentBlobRef: blobRef } = persistContent(
+      harnessdeckDir,
+      contentHash,
+      input.content,
+    );
+
+    db.prepare(
+      `INSERT INTO resources (
+        id, type, name, description, content, metadata, source,
+        namespace, origin_kind, origin_ref, content_hash, content_blob_ref,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      input.type,
+      input.name,
+      input.description,
+      inlineContent,
+      JSON.stringify(input.metadata),
+      input.source,
+      namespace,
+      input.origin_kind,
+      originRef,
+      contentHash,
+      blobRef,
+      now,
+      now,
+    );
+
     return {
-      status: "ambiguous",
-      matches: nameRows.map(rowToResource),
+      action: "created",
+      resource: {
+        id,
+        type: input.type,
+        name: input.name,
+        description: input.description,
+        content: input.content,
+        metadata: input.metadata,
+        source: input.source,
+        namespace,
+        origin_kind: input.origin_kind,
+        origin_ref: originRef,
+        content_hash: contentHash,
+        content_blob_ref: blobRef,
+        created_at: now,
+        updated_at: now,
+      },
     };
   }
 
-  const [nameRow] = nameRows;
-  if (!nameRow) {
-    return { status: "not_found" };
+  if (existing.content_hash === contentHash) {
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE resources SET origin_ref = ?, updated_at = ? WHERE id = ?`,
+    ).run(originRef || existing.origin_ref, now, existing.id);
+    return {
+      action: "unchanged",
+      resource: {
+        ...existing,
+        origin_ref: originRef || existing.origin_ref,
+        updated_at: now,
+      },
+    };
   }
 
-  return { status: "found", resource: rowToResource(nameRow) };
-}
+  const policy = options.policy ?? "skip";
+  const decision = resolveConflictPolicy(policy);
 
-export function createResource(
-  input: Omit<Resource, "id" | "created_at" | "updated_at">,
-): Resource {
-  const db = getDb();
+  if (decision === "skip") {
+    return { action: "skipped", existing };
+  }
+  if (decision === "fail") {
+    throw new Error(
+      `Resource conflict: ${input.type}:${input.name}${namespace ? `@${namespace}` : ""} exists with different content`,
+    );
+  }
+
   const now = new Date().toISOString();
-  const id = ulid();
-
-  db.prepare(
-    `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    input.type,
-    input.name,
-    input.description,
+  const { inlineContent, contentBlobRef: blobRef } = persistContent(
+    harnessdeckDir,
+    contentHash,
     input.content,
-    JSON.stringify(input.metadata),
-    input.source,
-    now,
-    now,
   );
 
-  return { ...input, id, created_at: now, updated_at: now };
+  db.prepare(
+    `UPDATE resources SET
+      description = ?, content = ?, metadata = ?, source = ?,
+      origin_kind = ?, origin_ref = ?, content_hash = ?, content_blob_ref = ?,
+      updated_at = ?
+     WHERE id = ?`,
+  ).run(
+    input.description,
+    inlineContent,
+    JSON.stringify(input.metadata),
+    input.source,
+    input.origin_kind,
+    originRef,
+    contentHash,
+    blobRef,
+    now,
+    existing.id,
+  );
+
+  return {
+    action: "updated",
+    resource: {
+      ...existing,
+      description: input.description,
+      content: input.content,
+      metadata: input.metadata,
+      source: input.source,
+      origin_kind: input.origin_kind,
+      origin_ref: originRef,
+      content_hash: contentHash,
+      content_blob_ref: blobRef,
+      updated_at: now,
+    },
+  };
 }
 
-export function getResource(nameOrId: string): Resource | undefined {
-  const result = resolveResource(nameOrId);
+export function createResource(input: ResourceCreateInput): Resource {
+  const result = upsertResource(normalizeResourceInput(input), { policy: "overwrite" });
+
+  if (result.action === "skipped") {
+    throw new Error(
+      `Resource already exists: ${formatResourceSelector(
+        { type: input.type, name: input.name, namespace: input.namespace ?? "" },
+        { includeType: true },
+      )}`,
+    );
+  }
+
+  return result.resource;
+}
+
+export function getResource(
+  nameOrId: string,
+  options?: { mode?: ResourceResolveMode },
+): Resource | undefined {
+  const result = resolveResource(nameOrId, options);
   return result.status === "found" ? result.resource : undefined;
 }
 
@@ -99,6 +407,7 @@ export function getResourcesByIds(resourceIds: string[]): Resource[] {
 export function listResources(filters?: {
   type?: ResourceType;
   search?: string;
+  origin_kind?: OriginKind;
 }): Resource[] {
   const db = getDb();
   const conditions: string[] = [];
@@ -107,6 +416,10 @@ export function listResources(filters?: {
   if (filters?.type) {
     conditions.push("type = ?");
     params.push(filters.type);
+  }
+  if (filters?.origin_kind) {
+    conditions.push("origin_kind = ?");
+    params.push(filters.origin_kind);
   }
   if (filters?.search) {
     conditions.push("(name LIKE ? OR description LIKE ?)");
@@ -118,7 +431,22 @@ export function listResources(filters?: {
     .prepare(`SELECT * FROM resources ${where} ORDER BY created_at DESC`)
     .all(...params) as ResourceRow[];
 
-  return rows.map(rowToResource);
+  return rows.map(mapResourceRow);
+}
+
+export function listLinkedResources(selector?: string): Resource[] {
+  const linked = listResources({ origin_kind: "marketplace_link" });
+  if (!selector) {
+    return linked;
+  }
+  const result = resolveResource(selector, { mode: "compose" });
+  if (result.status === "found") {
+    return result.resource.origin_kind === "marketplace_link" ? [result.resource] : [];
+  }
+  if (result.status === "ambiguous") {
+    return result.matches.filter((resource) => resource.origin_kind === "marketplace_link");
+  }
+  return [];
 }
 
 export function updateResource(
