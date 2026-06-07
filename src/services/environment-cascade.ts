@@ -302,6 +302,11 @@ export function fragmentToEnvironmentResources(
     content: "",
     metadata: { key, value } satisfies EnvVarMetadata,
     source: "environment-cascade",
+    namespace: "",
+    origin_kind: "manual" as const,
+    origin_ref: "",
+    content_hash: "",
+    content_blob_ref: "",
     created_at: now,
     updated_at: now,
   }));

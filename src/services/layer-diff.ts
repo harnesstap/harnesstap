@@ -29,7 +29,10 @@ interface LayerView {
   dependenciesJson: string;
 }
 
-function resourceKey(resource: Pick<Resource, "type" | "name">): string {
+function resourceKey(resource: Pick<Resource, "type" | "name" | "namespace">): string {
+  if (resource.namespace) {
+    return `${resource.type}:${resource.name}@${resource.namespace}`;
+  }
   return `${resource.type}:${resource.name}`;
 }
 
@@ -61,6 +64,11 @@ function loadLayerView(nameOrPath: string): LayerView {
         content: r.content,
         metadata: r.metadata,
         source: `bundle:${nameOrPath}`,
+        namespace: r.namespace ?? "",
+        origin_kind: r.origin_kind ?? "manual",
+        origin_ref: r.origin_ref ?? "",
+        content_hash: r.content_hash ?? "",
+        content_blob_ref: r.content_blob_ref ?? "",
         created_at: "",
         updated_at: "",
       },

@@ -65,6 +65,7 @@ describe("CLI apply", () => {
         makeResourceInput({
           type: "instruction",
           name: "project-context",
+          namespace: "applied",
           content: "# Applied instructions",
         }),
       );

@@ -2,11 +2,14 @@ import { getDb, getHarnessdeckDir } from "../db/connection.js";
 import { ulid } from "ulid";
 import type {
   Resource,
+  ResourceCreateInput,
   ResourceType,
   ResourceMetadata,
   OriginKind,
 } from "../types.js";
 import { writeBlob } from "../services/blob-store.js";
+
+export type { ResourceCreateInput };
 import { hashResourceBody } from "../services/resource-hash.js";
 import { parseResourceSelector } from "../services/resource-selector.js";
 
@@ -51,6 +54,33 @@ export interface UpsertResourceInput {
   origin_ref?: string;
 }
 
+export function normalizeResourceInput(input: ResourceCreateInput): UpsertResourceInput {
+  return {
+    type: input.type,
+    name: input.name,
+    namespace: input.namespace ?? "",
+    description: input.description,
+    content: input.content,
+    metadata: input.metadata,
+    source: input.source,
+    origin_kind: input.origin_kind ?? "manual",
+    origin_ref: input.origin_ref ?? "",
+  };
+}
+
+export function formatResourceSelector(
+  resource: Pick<Resource, "type" | "name" | "namespace">,
+  options?: { includeType?: boolean },
+): string {
+  const namePart = resource.namespace
+    ? `${resource.name}@${resource.namespace}`
+    : resource.name;
+  if (options?.includeType) {
+    return `${resource.type}:${namePart}`;
+  }
+  return namePart;
+}
+
 export type UpsertResult =
   | { action: "created"; resource: Resource }
   | { action: "unchanged"; resource: Resource }
@@ -62,7 +92,7 @@ export interface UpsertOptions {
   harnessdeckDir?: string;
 }
 
-function rowToResource(row: ResourceRow): Resource {
+export function mapResourceRow(row: ResourceRow): Resource {
   return {
     ...row,
     type: row.type as ResourceType,
@@ -84,7 +114,15 @@ function findResourceById(id: string): Resource | undefined {
   const row = db.prepare("SELECT * FROM resources WHERE id = ?").get(id) as
     | ResourceRow
     | undefined;
-  return row ? rowToResource(row) : undefined;
+  return row ? mapResourceRow(row) : undefined;
+}
+
+export function findResourceByKey(
+  type: ResourceType,
+  name: string,
+  namespace: string,
+): Resource | undefined {
+  return findExistingResource(type, name, namespace);
 }
 
 function findResourcesBySelector(parsed: {
@@ -109,7 +147,7 @@ function findResourcesBySelector(parsed: {
     .prepare(`SELECT * FROM resources WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC`)
     .all(...params) as ResourceRow[];
 
-  return rows.map(rowToResource);
+  return rows.map(mapResourceRow);
 }
 
 function resolveFromMatches(
@@ -189,7 +227,7 @@ function findExistingResource(
   const row = db
     .prepare("SELECT * FROM resources WHERE type = ? AND name = ? AND namespace = ?")
     .get(type, name, namespace) as ResourceRow | undefined;
-  return row ? rowToResource(row) : undefined;
+  return row ? mapResourceRow(row) : undefined;
 }
 
 function resolveConflictPolicy(policy: ImportConflictPolicy): "overwrite" | "skip" | "fail" {
@@ -337,32 +375,19 @@ export function upsertResource(
   };
 }
 
-export function createResource(
-  input: Omit<Resource, "id" | "created_at" | "updated_at">,
-): Resource {
-  const result = upsertResource(
-    {
-      type: input.type,
-      name: input.name,
-      namespace: input.namespace ?? "",
-      description: input.description,
-      content: input.content,
-      metadata: input.metadata,
-      source: input.source,
-      origin_kind: input.origin_kind ?? "manual",
-      origin_ref: input.origin_ref ?? "",
-    },
-    { policy: "overwrite" },
-  );
+export function createResource(input: ResourceCreateInput): Resource {
+  const result = upsertResource(normalizeResourceInput(input), { policy: "overwrite" });
 
   if (result.action === "skipped") {
-    throw new Error(`Resource already exists: ${input.type}:${input.name}`);
-  }
-  if (result.action === "unchanged" || result.action === "created" || result.action === "updated") {
-    return result.resource;
+    throw new Error(
+      `Resource already exists: ${formatResourceSelector(
+        { type: input.type, name: input.name, namespace: input.namespace ?? "" },
+        { includeType: true },
+      )}`,
+    );
   }
 
-  throw new Error(`Failed to create resource: ${input.type}:${input.name}`);
+  return result.resource;
 }
 
 export function getResource(
@@ -406,7 +431,7 @@ export function listResources(filters?: {
     .prepare(`SELECT * FROM resources ${where} ORDER BY created_at DESC`)
     .all(...params) as ResourceRow[];
 
-  return rows.map(rowToResource);
+  return rows.map(mapResourceRow);
 }
 
 export function listLinkedResources(selector?: string): Resource[] {

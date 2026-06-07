@@ -4,6 +4,7 @@ import matter from "gray-matter";
 import type {
   PlatformSerializer,
   Resource,
+  ResourceCreateInput,
   ResourceMetadata,
   SerializedFile,
   PlatformDefinition,
@@ -21,8 +22,8 @@ export abstract class BaseSerializer implements PlatformSerializer {
   abstract readonly platformId: string;
   abstract readonly platform: PlatformDefinition;
 
-  abstract scan(projectRoot: string): Promise<Resource[]>;
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
+  abstract scan(projectRoot: string): Promise<ResourceCreateInput[]>;
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
     return this.scan(homeRoot);
   }
 
@@ -155,14 +156,14 @@ export abstract class BaseSerializer implements PlatformSerializer {
     source: string,
     metadata: ResourceMetadata = {},
     description = "",
-  ): Omit<Resource, "id" | "created_at" | "updated_at"> {
+  ): ResourceCreateInput {
     return { type, name, description, content, metadata, source };
   }
 
   protected scanSkillsDir(
     projectRoot: string,
     skillsDir: string,
-  ): Omit<Resource, "id" | "created_at" | "updated_at">[] {
+  ): ResourceCreateInput[] {
     const fullPath = join(projectRoot, skillsDir);
     return this.scanSkillsDirAt(fullPath, skillsDir.replace(/\/$/, ""));
   }
@@ -170,10 +171,10 @@ export abstract class BaseSerializer implements PlatformSerializer {
   protected scanSkillsDirAt(
     fullPath: string,
     sourcePrefix: string,
-  ): Omit<Resource, "id" | "created_at" | "updated_at">[] {
+  ): ResourceCreateInput[] {
     if (!this.isDirectory(fullPath)) return [];
 
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+    const resources: ResourceCreateInput[] = [];
 
     for (const entry of this.listDir(fullPath)) {
       const entryPath = join(fullPath, entry);

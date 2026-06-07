@@ -3,6 +3,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import type {
   PlatformDefinition,
+  ResourceCreateInput,
   Resource,
   SerializedFile,
   RuleMetadata,
@@ -65,8 +66,8 @@ export class GenericAgentsSerializer extends BaseSerializer {
     this.platform = p;
   }
 
-  private scanRulesAt(fullPath: string, displayPath: string): Resource[] {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  private scanRulesAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
     if (displayPath.endsWith("/")) {
       for (const file of this.listDir(fullPath)) {
         if (!file.endsWith(".md") && !file.endsWith(".mdc")) continue;
@@ -103,11 +104,11 @@ export class GenericAgentsSerializer extends BaseSerializer {
         );
       }
     }
-    return resources as Resource[];
+    return resources;
   }
 
-  private scanAgentsAt(fullPath: string, displayPath: string): Resource[] {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  private scanAgentsAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
     if (displayPath.endsWith("/")) {
       for (const file of this.listDir(fullPath)) {
         if (!file.endsWith(".md")) continue;
@@ -127,11 +128,11 @@ export class GenericAgentsSerializer extends BaseSerializer {
         );
       }
     }
-    return resources as Resource[];
+    return resources;
   }
 
-  private scanHooksAt(fullPath: string, displayPath: string): Resource[] {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  private scanHooksAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
     const content = this.readFile(fullPath);
     if (content) {
       try {
@@ -157,11 +158,11 @@ export class GenericAgentsSerializer extends BaseSerializer {
         // skip invalid json
       }
     }
-    return resources as Resource[];
+    return resources;
   }
 
-  private scanMcpAt(fullPath: string, displayPath: string): Resource[] {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  private scanMcpAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
     const content = this.readFile(fullPath);
     if (content) {
       try {
@@ -184,11 +185,11 @@ export class GenericAgentsSerializer extends BaseSerializer {
         // skip invalid json
       }
     }
-    return resources as Resource[];
+    return resources;
   }
 
-  async scan(projectRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // Instructions
     const instructionPath = this.platform.projectPaths.instructions;
@@ -242,11 +243,11 @@ export class GenericAgentsSerializer extends BaseSerializer {
       resources.push(...this.scanMcpAt(join(projectRoot, mcpPath), mcpPath));
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     const instructionPath = this.platform.globalPaths.instructions;
     if (instructionPath) {
@@ -312,7 +313,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
       );
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
   async serialize(

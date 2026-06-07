@@ -152,6 +152,11 @@ export async function syncProject(
   const resources = mainScan.resources.map((r) => ({
     ...r,
     id: `sync:${r.type}:${r.name}`,
+    namespace: r.namespace ?? "",
+    origin_kind: r.origin_kind ?? "manual",
+    origin_ref: r.origin_ref ?? "",
+    content_hash: r.content_hash ?? "",
+    content_blob_ref: r.content_blob_ref ?? "",
     created_at: "",
     updated_at: "",
   }));

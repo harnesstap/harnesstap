@@ -175,6 +175,7 @@ describe("CLI planned scenarios", () => {
         makeResourceInput({
           type: "instruction",
           name: "project-context",
+          namespace: "sync-layer",
           content: "# Main harness\n",
         }),
       );

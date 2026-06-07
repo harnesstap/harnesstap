@@ -4,6 +4,7 @@ import { getPlatform } from "./registry.js";
 import type {
   PlatformDefinition,
   Resource,
+  ResourceCreateInput,
   SerializedFile,
   RuleMetadata,
   SerializeOptions,
@@ -20,8 +21,8 @@ export class CursorSerializer extends BaseSerializer {
     this.platform = p;
   }
 
-  async scan(projectRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // 1. Legacy .cursorrules
     const legacyContent = this.readFile(join(projectRoot, ".cursorrules"));
@@ -98,11 +99,11 @@ export class CursorSerializer extends BaseSerializer {
     // 4. Skills
     resources.push(...this.scanSkillsDir(projectRoot, ".agents/skills"));
 
-    return resources as Resource[];
+    return resources;
   }
 
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     const rulesDir = join(homeRoot, ".cursor", "rules");
     for (const file of this.listDir(rulesDir)) {
@@ -157,7 +158,7 @@ export class CursorSerializer extends BaseSerializer {
       ),
     );
 
-    return resources as Resource[];
+    return resources;
   }
 
   async serialize(

@@ -1,12 +1,11 @@
 import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
+import { mapResourceRow } from "./resource.js";
 import type {
   Environment,
   EnvironmentSecretRef,
   EnvironmentSecretProvider,
   Resource,
-  ResourceMetadata,
-  ResourceType,
 } from "../types.js";
 
 interface EnvironmentRow {
@@ -25,6 +24,11 @@ interface ResourceRow {
   content: string;
   metadata: string;
   source: string;
+  namespace?: string;
+  origin_kind?: string;
+  origin_ref?: string;
+  content_hash?: string;
+  content_blob_ref?: string;
   created_at: string;
   updated_at: string;
   order: number;
@@ -138,17 +142,7 @@ export function getEnvironmentResources(environmentId: string): Resource[] {
     )
     .all(environmentId) as ResourceRow[];
 
-  return rows.map((row) => ({
-    id: row.id,
-    type: row.type as ResourceType,
-    name: row.name,
-    description: row.description,
-    content: row.content,
-    metadata: JSON.parse(row.metadata) as ResourceMetadata,
-    source: row.source,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }));
+  return rows.map(mapResourceRow);
 }
 
 export function addSecretRefToEnvironment(

@@ -3,6 +3,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import type {
   PlatformDefinition,
+  ResourceCreateInput,
   Resource,
   SerializedFile,
   SerializeOptions,
@@ -19,8 +20,8 @@ export class CodexSerializer extends BaseSerializer {
     this.platform = p;
   }
 
-  async scan(projectRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // 1. AGENTS.md
     const agentsMd = this.readFile(join(projectRoot, "AGENTS.md"));
@@ -52,11 +53,11 @@ export class CodexSerializer extends BaseSerializer {
 
     // TODO: Parse .codex/config.toml for MCP servers, permissions, model config
 
-    return resources as Resource[];
+    return resources;
   }
 
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     const instructionsPath = join(homeRoot, ".codex", "AGENTS.md");
     const instructions = this.readFile(instructionsPath);
@@ -89,7 +90,7 @@ export class CodexSerializer extends BaseSerializer {
       );
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
   async serialize(

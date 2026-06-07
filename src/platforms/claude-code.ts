@@ -4,6 +4,7 @@ import { getPlatform } from "./registry.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
+  ResourceCreateInput,
   Resource,
   SerializedFile,
   RuleMetadata,
@@ -25,8 +26,8 @@ export class ClaudeCodeSerializer extends BaseSerializer {
 
   // ── Scan ────────────────────────────────────────────────────────────
 
-  async scan(projectRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // 1. Instructions: CLAUDE.md or .claude/CLAUDE.md
     for (const path of ["CLAUDE.md", ".claude/CLAUDE.md"]) {
@@ -177,11 +178,11 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     }
 
     // Cast through the model layer (add ids + timestamps on import)
-    return resources as Resource[];
+    return resources;
   }
 
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     const instructionsPath = join(homeRoot, ".claude", "CLAUDE.md");
     const instructionsContent = this.readFile(instructionsPath);
@@ -304,7 +305,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       );
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
   // ── Serialize ───────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import type {
   PlatformDefinition,
+  ResourceCreateInput,
   Resource,
   SerializedFile,
   McpServerMetadata,
@@ -41,8 +42,8 @@ export class CopilotSerializer extends BaseSerializer {
 
   readonly platform: PlatformDefinition;
 
-  async scan(projectRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // 1. Instructions
     if (this.platform.projectPaths.instructions) {
@@ -105,11 +106,11 @@ export class CopilotSerializer extends BaseSerializer {
       }
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
-  async scanGlobal(homeRoot: string): Promise<Resource[]> {
-    const resources: Omit<Resource, "id" | "created_at" | "updated_at">[] = [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
 
     // Global skills
     if (this.platform.globalPaths.skills) {
@@ -157,7 +158,7 @@ export class CopilotSerializer extends BaseSerializer {
       }
     }
 
-    return resources as Resource[];
+    return resources;
   }
 
   async serialize(
