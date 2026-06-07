@@ -43,7 +43,7 @@ flowchart TB
 
 The CLI uses a small set of concepts consistently across commands.
 
-- `resource`: a single canonical item (instruction, skill, rule, MCP server, permission, hook, agent, command, env var, model config). Resources are classified as **plugin-side** (*what*) or **environment-side** (*how*).
+- `resource`: a single canonical item stored in SQLite with optional **namespace** and **origin** metadata. Plugin-side types: instruction, skill, rule, MCP server, hook, agent, command. Environment-side types: env var, model config, **permission** (permissions are *how* values, not plugin-side resources).
 - `plugin`: an ordered bundle of plugin-side resources, optional Claude marketplace/plugin config, native plugin pins, and a `needs` config contract. This is what the earlier `layer` noun meant before the deck model (see [Migration](#migration-from-the-layer-only-model)).
 - `environment`: a named, swappable bundle of how-values (env vars, model config, permissions) plus secret references. Non-secret values can travel in a deck; secrets are referenced, not embedded.
 - `configured layer` (often called **layer** in user-facing copy): a binding of one or more plugins with an optional default environment — a configured capability such as "backend on-call."
@@ -71,6 +71,36 @@ The CLI uses a small set of concepts consistently across commands.
 | `instruction`, `skill`, `rule`, `mcp_server`, `hook`, `agent`, `command` | `env_var`, `model_config`, `permission` |
 
 An `mcp_server` **definition** lives on the plugin; tokens and URLs are contract keys (`needs`) filled by an environment.
+
+### Settings umbrella (UX)
+
+**Settings** is the user-facing umbrella for runtime configuration — there is no separate `settings` table:
+
+```
+settings ≡ environments (env_var, model_config, permission)
+         + environment_secret_refs
+         + harness_preferences / project_harnesses
+         + ~/.harnessdeck/config.jsonc
+```
+
+Use `hd environment …` for named how-bundles today.
+
+### Resource identity and selectors
+
+Resources are uniquely keyed by `(type, name, namespace)` where `namespace=''` means unnamespaced.
+
+Selector grammar:
+
+```
+selector ::= [ type ":" ] name [ "@" namespace ]
+```
+
+Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `01J…` (ULID id).
+
+- **Display** commands (`resource show`, `resource delete`): bare names prefer the unnamespaced row when present; otherwise list ambiguous matches.
+- **Compose** commands (`layer attach`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
+
+Imported bodies are content-addressed under `~/.harnessdeck/blobs/sha256/…` with `content_hash` stored on the row.
 
 ### Environment cascade
 
@@ -179,15 +209,16 @@ Until the CLI group ships, use the library APIs (`setDeckActiveEnvironment`, env
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck resource list` | Lists canonical resources, optionally filtered by type or search query. |
-| `harnessdeck resource show` | Prints the full stored resource, including metadata and content. |
-| `harnessdeck resource delete` | Deletes a resource by ID. |
+| `harnessdeck resource list` | Lists canonical resources; shows `name@namespace` when namespace is non-empty. |
+| `harnessdeck resource show` | Prints the full stored resource (supports selector grammar). |
+| `harnessdeck resource sync [selector]` | Refreshes `marketplace_link` rows from installed plugin trees. |
+| `harnessdeck resource delete` | Deletes a resource by selector or ID. |
 
 ### `project` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck project scan [path]` | Detects supported harnesses in a project, imports discovered resources, persists Claude plugin inventory when possible, and registers the project when a git origin exists. |
+| `harnessdeck project scan [path]` | Detects supported harnesses in a project, imports discovered resources via hash-aware upsert (`origin_kind=local_snapshot`), prompts on TTY when content differs, and supports `--overwrite`, `--skip-existing`, and `--namespace`. Persists Claude plugin inventory when possible; registers the project when a git origin exists. |
 | `harnessdeck project apply <layers...>` | Applies one or more **configured layer** selectors (or legacy plugin/bundle selectors during deprecation), a local bundle file, or a bundle URL; resolves environment cascade; serializes files for each selected/detected platform; snapshots tracked projects before writing. |
 | `harnessdeck project drift` | Compares the current project files against the latest apply/sync snapshot. |
 | `harnessdeck project sync [path]` | Re-materializes alias harness outputs from the on-disk main harness reference, using symlinks when possible and copies otherwise. |

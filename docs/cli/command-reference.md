@@ -34,7 +34,7 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 
 ### Commands
 
-- `project scan [path]` — import resources from a project tree
+- `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
 - `project apply <layer...>` — apply one or more layers, bundle paths, or bundle URLs
 - `project drift [path]` — compare the working tree against the latest apply/sync snapshot
 - `project sync [path]` — sync alias harness outputs from the main harness state
@@ -44,6 +44,9 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 
 ### Important options
 
+- `project scan --overwrite` — replace library rows when scan content differs
+- `project scan --skip-existing` — keep existing rows when scan content differs
+- `project scan --namespace <name>` — namespace for imported project resources
 - `project apply --project <path>` — explicit target directory
 - `project apply --platform <slugs>` — comma-separated harness slugs
 - `project apply --dry-run` — show planned file writes only
@@ -101,7 +104,8 @@ Manage individual imported resources such as instructions, skills, rules, or age
 ### Commands
 
 - `resource list`
-- `resource show <resource>`
+- `resource show <selector>` — `name`, `type:name`, or `name@namespace`
+- `resource sync [selector]` — refresh `marketplace_link` cached definitions
 - `resource delete [resource]`
 
 ### Important options
@@ -111,6 +115,9 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource list --show-id`
 - `resource show --format json`
 - `resource show --show-id`
+- `resource sync --overwrite`
+- `resource sync --dry-run`
+- `layer attach` selectors accept `type:name@namespace` for compose-safe resolution
 
 ## harness (`h`)
 
