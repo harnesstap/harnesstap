@@ -1,7 +1,13 @@
-import { describe, expect, it, spyOn } from "bun:test";
+import { describe, expect, it, mock, spyOn } from "bun:test";
 import inquirer from "inquirer";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+
+const searchableMultiSelectMock = mock(() => Promise.resolve([] as string[]));
+
+mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
+  promptForSearchableMultiSelect: searchableMultiSelectMock,
+}));
 
 interface CapturedPrompt {
   type?: unknown;
@@ -111,37 +117,75 @@ describe("wizard prompts", () => {
     }
   });
 
-  it("uses a list prompt when deleting layers interactively", async () => {
+  it("uses a searchable multi-select prompt when deleting layers interactively", async () => {
     const context = await createInitializedTestContext("wizard-layer-delete-prompts");
-    const promptCalls: CapturedPrompt[] = [];
-    const promptSpy = spyOn(inquirer, "prompt").mockImplementation(async (questions) => {
-      promptCalls.push(firstPrompt(questions));
-      return { value: "team@1.0.0" };
-    });
+    searchableMultiSelectMock.mockReset();
+    searchableMultiSelectMock.mockResolvedValueOnce(["team@1.0.0", "baseline@2.0.0"]);
 
     try {
       const layerModel = await import("../../src/models/layer.ts");
       layerModel.createLayer({ name: "team" });
+      layerModel.createLayer({ name: "baseline", version: "2.0.0" });
 
       const { runLayerDeleteWizard } = await import("../../src/services/wizards/layer-delete.ts");
       const result = await runLayerDeleteWizard();
 
-      expect(result).toBe("team@1.0.0");
-      expect(promptCalls[0]?.type).toBe("list");
+      expect(result).toEqual(["team@1.0.0", "baseline@2.0.0"]);
+      expect(searchableMultiSelectMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Which layers do you want to delete?",
+          choices: expect.arrayContaining([
+            { name: "team@1.0.0", value: "team@1.0.0", description: "" },
+            { name: "baseline@2.0.0", value: "baseline@2.0.0", description: "" },
+          ]),
+          pageSize: 10,
+          loop: false,
+        }),
+      );
     } finally {
-      promptSpy.mockRestore();
       await context.cleanup();
     }
   });
 
-  it("uses a list prompt when deleting resources interactively", async () => {
+  it("shows namespace in resource delete choice labels when present", async () => {
+    const context = await createInitializedTestContext("wizard-resource-delete-namespace");
+    searchableMultiSelectMock.mockReset();
+    searchableMultiSelectMock.mockResolvedValueOnce([]);
+
+    try {
+      const resourceModel = await import("../../src/models/resource.ts");
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "skill",
+          name: "brainstorming",
+          namespace: "cursor-team-kit",
+          content: "# Brainstorming",
+        }),
+      );
+
+      const { runResourceDeleteWizard } = await import("../../src/services/wizards/resource-delete.ts");
+      await runResourceDeleteWizard();
+
+      expect(searchableMultiSelectMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          choices: [
+            {
+              name: "skill brainstorming@cursor-team-kit",
+              value: resource.id,
+              description: resource.description,
+            },
+          ],
+        }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("uses a searchable multi-select prompt when deleting resources interactively", async () => {
     const context = await createInitializedTestContext("wizard-resource-delete-prompts");
-    const promptCalls: CapturedPrompt[] = [];
+    searchableMultiSelectMock.mockReset();
     let selectedResourceId = "";
-    const promptSpy = spyOn(inquirer, "prompt").mockImplementation(async (questions) => {
-      promptCalls.push(firstPrompt(questions));
-      return { value: selectedResourceId };
-    });
 
     try {
       const resourceModel = await import("../../src/models/resource.ts");
@@ -149,14 +193,27 @@ describe("wizard prompts", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
       selectedResourceId = resource.id;
+      searchableMultiSelectMock.mockResolvedValueOnce([selectedResourceId]);
 
       const { runResourceDeleteWizard } = await import("../../src/services/wizards/resource-delete.ts");
       const result = await runResourceDeleteWizard();
 
-      expect(result).toBe(resource.id);
-      expect(promptCalls[0]?.type).toBe("list");
+      expect(result).toEqual([resource.id]);
+      expect(searchableMultiSelectMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Which resources do you want to delete?",
+          choices: [
+            {
+              name: "skill shared-skill",
+              value: resource.id,
+              description: resource.description,
+            },
+          ],
+          pageSize: 10,
+          loop: false,
+        }),
+      );
     } finally {
-      promptSpy.mockRestore();
       await context.cleanup();
     }
   });

@@ -27,6 +27,7 @@ type PromptConfig<T extends string> = {
   message: string;
   choices: SearchableChoice<T>[];
   default?: T[];
+  initialQuery?: string;
   pageSize?: number;
   loop?: boolean;
 };
@@ -73,7 +74,7 @@ function matchesQuery<T extends string>(
     return true;
   }
 
-  return `${choice.name} ${choice.value}`
+  return `${choice.name} ${choice.value} ${choice.description ?? ""}`
     .toLowerCase()
     .includes(normalizedQuery);
 }
@@ -102,7 +103,7 @@ export const promptForSearchableMultiSelect: (
   const [items, setItems] = useState(() =>
     normalizeChoices(config.choices, new Set(config.default ?? [])),
   );
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
 
   const visibleEntries = items

@@ -1,19 +1,42 @@
 import { listResources } from "../../models/resource.js";
-import { promptForChoice, promptForValue } from "./shared.js";
+import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
+import { promptForValue } from "./shared.js";
 
-export async function runResourceDeleteWizard(): Promise<string> {
-  const resources = listResources();
+function formatResourceDeleteChoice(resource: {
+  type: string;
+  name: string;
+  namespace?: string | null;
+  id: string;
+}): string {
+  const displayName = resource.namespace
+    ? `${resource.name}@${resource.namespace}`
+    : resource.name;
+  return `${resource.type} ${displayName}`;
+}
+
+export async function runResourceDeleteWizard(input?: {
+  search?: string;
+}): Promise<string[]> {
+  const resources = listResources(
+    input?.search ? { search: input.search } : undefined,
+  );
   if (resources.length > 0) {
-    return promptForChoice({
-      message: "Which resource do you want to delete?",
+    return promptForSearchableMultiSelect({
+      message: "Which resources do you want to delete?",
+      initialQuery: input?.search,
       choices: resources.map((resource) => ({
-        name: `${resource.type} ${resource.name} (${resource.id})`,
+        name: formatResourceDeleteChoice(resource),
         value: resource.id,
+        description: resource.description,
       })),
+      pageSize: 10,
+      loop: false,
     });
   }
 
-  return promptForValue({
+  const selector = await promptForValue({
     message: "Resource name or ID to delete",
+    default: input?.search,
   });
+  return selector.length > 0 ? [selector] : [];
 }

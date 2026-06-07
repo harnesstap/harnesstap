@@ -120,7 +120,13 @@ import {
   importMigrationState,
 } from "./services/migrate.js";
 import { createProgress } from "./ui/progress.js";
-import { promptForChoice, promptForSearchableChoice, promptForValue, shouldUseWizard } from "./services/wizards/shared.js";
+import {
+  isPromptCancellationError,
+  promptForChoice,
+  promptForSearchableChoice,
+  promptForValue,
+  shouldUseWizard,
+} from "./services/wizards/shared.js";
 import { runLayerAddWizard } from "./services/wizards/layer-add.js";
 import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
@@ -2947,35 +2953,45 @@ layerCmd
 layerCmd
   .command("delete")
   .argument("[name]", "Layer name, name@version selector, or ID")
+  .option("-s, --search <query>", "Filter layers in the delete wizard")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (name: string | undefined, opts: { interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .action(async (name: string | undefined, opts: { search?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
-      const resolvedName = name ?? await (shouldUseWizard({
+      const useWizard = shouldUseWizard({
         interactive: opts.interactive,
         noInteractive: opts.noInteractive,
         format: parseOutputFormat(opts.format),
         missingRequiredArgs: true,
-      })
-        ? runLayerDeleteWizard()
-        : Promise.resolve(undefined));
+      });
+      const selectors = name
+        ? [name]
+        : useWizard
+          ? await runLayerDeleteWizard({ search: opts.search })
+          : [];
 
-      if (!resolvedName) {
-        throw new Error("Layer name is required");
+      if (selectors.length === 0) {
+        throw new Error(
+          !name && useWizard
+            ? "No layers selected for deletion"
+            : "Layer name is required",
+        );
       }
 
-      const layer = getPlugin(resolvedName);
-      if (!layer) {
-        process.exitCode = 1;
-        ui.danger(`Layer not found: ${resolvedName}`);
-        return;
+      for (const resolvedName of selectors) {
+        const layer = getPlugin(resolvedName);
+        if (!layer) {
+          process.exitCode = 1;
+          ui.danger(`Layer not found: ${resolvedName}`);
+          return;
+        }
+        if (!deletePlugin(layer.id)) {
+          throw new Error(`Failed to delete layer ${formatLayerLabel(layer)}`);
+        }
+        ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
       }
-      if (!deletePlugin(layer.id)) {
-        throw new Error(`Failed to delete layer ${formatLayerLabel(layer)}`);
-      }
-      ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
@@ -3228,42 +3244,52 @@ resourceCmd
 resourceCmd
   .command("delete")
   .argument("[resource]", "Resource name or ID")
+  .option("-s, --search <query>", "Filter resources in the delete wizard")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (resource: string | undefined, opts: { interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .action(async (resource: string | undefined, opts: { search?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
-    const resolvedResource = resource ?? await (shouldUseWizard({
+    const useWizard = shouldUseWizard({
       interactive: opts.interactive,
       noInteractive: opts.noInteractive,
       format: parseOutputFormat(opts.format),
       missingRequiredArgs: true,
-    })
-      ? runResourceDeleteWizard()
-      : Promise.resolve(undefined));
+    });
+    const selectors = resource
+      ? [resource]
+      : useWizard
+        ? await runResourceDeleteWizard({ search: opts.search })
+        : [];
 
-    if (!resolvedResource) {
+    if (selectors.length === 0) {
       process.exitCode = 1;
-      ui.danger("Resource name is required");
+      ui.danger(
+        !resource && useWizard
+          ? "No resources selected for deletion"
+          : "Resource name is required",
+      );
       return;
     }
 
-    const result = resolveResource(resolvedResource);
-    if (result.status === "not_found") {
-      ui.danger(`Resource not found: ${resolvedResource}`);
-      return;
-    }
-    if (result.status === "ambiguous") {
-      ui.danger(`Ambiguous resource name: ${resolvedResource}`);
-      for (const match of result.matches) {
-        ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+    for (const resolvedResource of selectors) {
+      const result = resolveResource(resolvedResource);
+      if (result.status === "not_found") {
+        ui.danger(`Resource not found: ${resolvedResource}`);
+        return;
       }
-      return;
-    }
-    if (deleteResource(result.resource.id)) {
-      ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
-    } else {
-      ui.danger(`Resource not found: ${resolvedResource}`);
+      if (result.status === "ambiguous") {
+        ui.danger(`Ambiguous resource name: ${resolvedResource}`);
+        for (const match of result.matches) {
+          ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+        }
+        return;
+      }
+      if (deleteResource(result.resource.id)) {
+        ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
+      } else {
+        ui.danger(`Resource not found: ${resolvedResource}`);
+      }
     }
   });
 
@@ -3688,6 +3714,10 @@ export async function runHarnessdeckCli(
   try {
     await program.parseAsync(argv);
   } catch (error) {
+    if (isPromptCancellationError(error)) {
+      return;
+    }
+
     const code =
       error && typeof error === "object" && "code" in error
         ? String((error as { code: unknown }).code)
@@ -3721,10 +3751,14 @@ if (import.meta.main) {
   try {
     await runHarnessdeckCli();
   } catch (error) {
-    process.exitCode =
-      error && typeof error === "object" && "exitCode" in error
-        ? Number((error as { exitCode?: unknown }).exitCode) || 1
-        : 1;
-    renderCliError(error);
+    if (isPromptCancellationError(error)) {
+      process.exitCode = 0;
+    } else {
+      process.exitCode =
+        error && typeof error === "object" && "exitCode" in error
+          ? Number((error as { exitCode?: unknown }).exitCode) || 1
+          : 1;
+      renderCliError(error);
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { ExitPromptError } from "@inquirer/core";
 import inquirer from "inquirer";
 import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
@@ -28,8 +29,15 @@ function shiftPromptResponse(): Record<string, unknown> {
   return next;
 }
 
+function throwIfPromptCancelled(response: Record<string, unknown>): void {
+  if (response.__promptCancel === true) {
+    throw new ExitPromptError("User force closed the prompt with SIGINT");
+  }
+}
+
 function shiftSinglePromptValue(): unknown {
   const next = shiftPromptResponse();
+  throwIfPromptCancelled(next);
   const values = Object.values(next);
   if (values.length !== 1) {
     throw new Error(
@@ -43,7 +51,9 @@ const promptMock = mock(async (...args: Parameters<typeof inquirer.prompt>) => {
   if (!runCliHarnessActive) {
     return inquirer.prompt(...args);
   }
-  return shiftPromptResponse();
+  const next = shiftPromptResponse();
+  throwIfPromptCancelled(next);
+  return next;
 });
 const searchPromptMock = mock(async (...args: Parameters<typeof search>) => {
   if (!runCliHarnessActive) {
