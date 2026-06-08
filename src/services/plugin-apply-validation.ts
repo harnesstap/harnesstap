@@ -10,7 +10,7 @@ export interface PluginValidationIssue {
   message: string;
 }
 
-interface PluginConstraintPin {
+export interface PluginConstraintPin {
   ref: string;
   version_constraint: string;
 }

@@ -10,7 +10,10 @@ import {
   type ImportConflictPolicy,
 } from "../models/resource.js";
 import type { PluginResourceMetadata, Resource } from "../types.js";
-import { scanPluginSource } from "./plugin-source-import.js";
+import {
+  readPluginVersionFromInstallRoot,
+  scanPluginSource,
+} from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./composition-resource.js";
 
@@ -102,10 +105,39 @@ export async function syncPluginResource(
     return { checked: 1, updated, stale, unchanged, skipped };
   }
 
-  const imports = await scanPluginSource(installRoot);
-  const scan = imports[0];
+  let scan: Awaited<ReturnType<typeof scanPluginSource>>[number] | undefined;
+  try {
+    const imports = await scanPluginSource(installRoot);
+    scan = imports[0];
+  } catch {
+    scan = undefined;
+  }
+
   if (!scan) {
-    stale.push({ resource: pluginResource, reason: "plugin tree is empty" });
+    const manifestVersion = readPluginVersionFromInstallRoot(installRoot);
+    if (!manifestVersion) {
+      stale.push({ resource: pluginResource, reason: "plugin tree is empty" });
+      return { checked: 1, updated, stale, unchanged, skipped };
+    }
+
+    if (!options.dryRun) {
+      const metadata: PluginResourceMetadata = {
+        ...(pluginResource.metadata as PluginResourceMetadata),
+        resolved_version: manifestVersion,
+        sync_status: "synced",
+        manifests: {
+          ...(pluginResource.metadata as PluginResourceMetadata).manifests,
+        },
+      };
+      const db = getDb();
+      db.prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?").run(
+        JSON.stringify(metadata),
+        new Date().toISOString(),
+        pluginResource.id,
+      );
+      updated.push({ ...pluginResource, metadata });
+    }
+
     return { checked: 1, updated, stale, unchanged, skipped };
   }
 

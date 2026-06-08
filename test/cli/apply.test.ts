@@ -70,6 +70,43 @@ function seedClaudePluginMismatchFixture(homeDir: string, projectDir: string): v
 }
 
 describe("CLI apply", () => {
+  it("uses configured global harness targets when --harness is omitted", async () => {
+    const context = await createTestContext("cli-apply-default-harness");
+
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-default-harness.git");
+      await runCli(["init", "--main", "claude-code", "--aliases", "codex"]);
+
+      const layerModel = await import("../../src/models/layer.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const layer = layerModel.createLayer({ name: "default-harness-layer" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "project-context",
+          content: "# Default harness apply\n",
+        }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "default-harness-layer",
+        "--project",
+        context.projectDir,
+      ]);
+
+      expect(applyResult.exitCode ?? 0).toBe(0);
+      expect(applyResult.stdout).toContain("claude-code");
+      expect(applyResult.stdout).toContain("codex");
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
+      expect(existsSync(`${context.projectDir}/AGENTS.md`)).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("supports dry-run output and writes files plus snapshot state", async () => {
     const context = await createTestContext("cli-apply");
 
@@ -128,6 +165,62 @@ describe("CLI apply", () => {
         throw new Error("Expected applied project to be tracked");
       }
       expect(snapshotModel.listSnapshots(project.id)).toHaveLength(2);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("auto-syncs plugins missing resolved_version before apply", async () => {
+    const context = await createTestContext("cli-apply-plugins-auto-sync");
+
+    try {
+      mkdirSync(
+        join(context.homeDir, ".claude/plugins/cache/acme-marketplace/formatter/.claude-plugin"),
+        { recursive: true },
+      );
+      writeFileSync(
+        join(
+          context.homeDir,
+          ".claude/plugins/cache/acme-marketplace/formatter/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({
+          name: "formatter",
+          version: "1.9.0",
+          description: "Formatter plugin test stub",
+        }),
+        "utf-8",
+      );
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-auto-sync.git");
+      await runCli(["init"]);
+
+      const layerModel = await import("../../src/models/layer.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
+
+      const layer = layerModel.createLayer({ name: "auto-sync-plugins" });
+      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", "1.9.0");
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "ctx",
+          content: "# Ctx",
+        }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "auto-sync-plugins",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+      ]);
+
+      expect(applyResult.stderr).not.toContain("has no resolved version");
+      expect(applyResult.stderr).not.toContain("Plugin version mismatch:");
+      expect(applyResult.exitCode ?? 0).toBe(0);
     } finally {
       await context.cleanup();
     }
