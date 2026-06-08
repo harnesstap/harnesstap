@@ -1,4 +1,4 @@
-import type { CatalogLibrary, CatalogListOptions, CatalogListResult } from "./catalog-types.js";
+import type { CatalogListOptions, CatalogListResult } from "./catalog-types.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
   const params = new URLSearchParams();

@@ -115,8 +115,8 @@ export async function listLibrariesInScope(
 
   const orgScopedLibraries: CatalogLibrary[] = [];
   const selectorsOnly = (scopedOptions.selectors ?? []).filter((selector) => {
-    const [orgSlug] = selector.split("/");
-    return !scopedOptions.orgs?.includes(orgSlug);
+    const orgSlug = selector.split("/")[0];
+    return !orgSlug || !scopedOptions.orgs?.includes(orgSlug);
   });
 
   if ((scopedOptions.orgs ?? []).length > 0) {

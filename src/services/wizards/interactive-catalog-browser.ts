@@ -133,8 +133,7 @@ export const promptForInteractiveCatalogBrowser: (
 
   useKeypress((key) => {
     if (isEscapeKey(key)) {
-      done(new ExitPromptError("Catalog browse cancelled."));
-      return;
+      throw new ExitPromptError("Catalog browse cancelled.");
     }
 
     if (isEnterKey(key)) {

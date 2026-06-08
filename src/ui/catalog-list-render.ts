@@ -74,5 +74,9 @@ export function renderCatalogListTable(
     return theme.muted("No matching libraries.");
   }
 
-  return renderTable(rows, makeColumns(Boolean(opts.selectedSelector)));
+  return renderTable({
+    columns: makeColumns(Boolean(opts.selectedSelector)),
+    rows,
+    summary: `${rows.length} libraries`,
+  });
 }
