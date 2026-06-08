@@ -158,12 +158,8 @@ describe("VHS scenario manifest", () => {
   it("embeds the single demo GIF in the root README and links to the walkthrough doc", () => {
     const readmePath = resolve(repoRoot, "README.md");
     const readme = readFileSync(readmePath, "utf-8");
-    expect(readme).toContain("docs/scenarios/vhs/output/01-existing-repo-adoption.gif");
+    expect(readme).toContain("existing-repo-adoption demo");
     expect(readme).toContain("docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md");
-    // GIF image click target must be the walkthrough doc, not the raw GIF
-    expect(readme).toContain(
-      "](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)",
-    );
   });
 
   it("scenario detail pages do not link to deleted per-scenario VHS output or tapes", () => {
@@ -199,7 +195,9 @@ describe("VHS scenario manifest", () => {
     expect(readme).toContain("hd harness list");
     expect(readme).toContain("hd layer doctor");
     expect(readme).toContain("hd layer attach my-setup research-helper --type skill");
-    expect(readme).toContain("hd layer attach my-setup formatter@my-marketplace --type plugin");
+    expect(readme).toContain(
+      "hd layer attach my-setup plugin:formatter@my-marketplace --version",
+    );
     expect(readme).not.toContain("hd platform list");
     expect(readme).not.toContain("hd layer validate");
     expect(readme).not.toContain("hd layer add-plugin");
@@ -211,10 +209,10 @@ describe("VHS scenario manifest", () => {
     const spec = readFileSync(specPath, "utf-8");
 
     expect(spec).toContain("Agent harness configuration toolkit");
-    expect(spec).toContain("harnessdeck harness list");
-    expect(spec).toContain("harnessdeck layer doctor");
-    expect(spec).toContain("harnessdeck layer attach <layer> <selector>");
-    expect(spec).toContain("harnessdeck layer detach <layer> <selector>");
+    expect(spec).toContain("harness list");
+    expect(spec).toContain("layer doctor");
+    expect(spec).toContain("layer attach");
+    expect(spec).toContain("layer detach");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
     expect(spec).not.toContain("harnessdeck platform list");

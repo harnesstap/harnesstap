@@ -1,4 +1,5 @@
 import { getDb } from "../db/connection.js";
+import { resolve } from "node:path";
 import { ulid } from "ulid";
 import type { Deck, DeckConfiguredLayer } from "../types.js";
 
@@ -68,6 +69,11 @@ export function listDecks(): Deck[] {
     .prepare("SELECT * FROM decks ORDER BY name")
     .all() as DeckRow[];
   return rows.map(rowToDeck);
+}
+
+export function getDeckByRootPath(rootPath: string): Deck | undefined {
+  const resolvedRootPath = resolve(rootPath);
+  return listDecks().find((deck) => resolve(deck.root_path) === resolvedRootPath);
 }
 
 export function deleteDeck(deckId: string): boolean {

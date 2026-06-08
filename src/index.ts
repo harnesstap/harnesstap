@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { PACKAGE_VERSION } from "./version.js";
-import { getDb, closeDb, getDbPath } from "./db/connection.js";
+import { getDb, closeDb, getDbPath, getHarnessdeckDir } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { ui } from "./ui/index.js";
 import {
@@ -44,14 +44,17 @@ import {
 import {
   upsertProject,
   getProject,
+  getProjectByLocalPath,
   getProjectByOrigin,
   applyConfiguredLayerToProject,
   getProjectConfiguredLayers,
 } from "./models/project.js";
 import {
+  getConfiguredLayer,
   ensureImplicitConfiguredLayer,
   resolveConfiguredLayerSelector,
 } from "./models/configured-layer.js";
+import { getEnvironment } from "./models/environment.js";
 import {
   createSnapshot,
   listSnapshots,
@@ -62,11 +65,13 @@ import {
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
 import { seedBuiltInPlugins } from "./services/seed-plugins.js";
-import { basename, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
   ImportedSnapshot,
   Layer,
+  PermissionMetadata,
   Resource,
   ResourceType,
   SnapshotState,
@@ -93,6 +98,31 @@ import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.j
 import { mergePlugins } from "./services/layer-merge.js";
 import { mergeConfiguredLayers } from "./services/configured-layer-merge.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
+import {
+  createEnvironmentCommand,
+  deleteEnvironmentCommand,
+  environmentActivePayload,
+  environmentResolvePayload,
+  listEnvironmentsCommand,
+  setEnvironmentModelConfigCommand,
+  setEnvironmentPermissionCommand,
+  setEnvironmentSecretCommand,
+  setEnvironmentVarCommand,
+  setLayerEnvironmentCommand,
+  showEnvironmentCommand,
+  unsetEnvironmentModelConfigCommand,
+  unsetEnvironmentPermissionCommand,
+  unsetEnvironmentSecretCommand,
+  unsetEnvironmentVarCommand,
+  unsetLayerEnvironmentCommand,
+  useEnvironmentForProjectCommand,
+  useEnvironmentPayload,
+} from "./services/environment-commands.js";
+import { captureOrRefreshEnvironment } from "./services/environment-capture.js";
+import {
+  exportEnvironmentJsonc,
+  importEnvironmentJsonc,
+} from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { isLayerUrl, fetchLayerBundleToTempFile, isBundleFilePath, writeLayerBundleToTempFile } from "./services/layer-source.js";
 import { syncProject } from "./services/project-sync.js";
@@ -506,7 +536,7 @@ function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|project|plugin|cloud|migrate|harness)'/i.test(candidate.message);
+    && /too many arguments for '(layer|resource|project|plugin|cloud|migrate|harness|environment)'/i.test(candidate.message);
 }
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
@@ -1508,6 +1538,19 @@ function handleLayerShowCommand(
   const plugins = listLayerPlugins(layer.id);
   const pluginPins = listAttachedPluginPins(layer.id);
   const dependencies = listPluginDependencies(layer.id);
+  const configuredLayer = (() => {
+    if (/^[0-9A-Z]{26}$/.test(name)) {
+      return getConfiguredLayer(name);
+    }
+    const atIdx = name.lastIndexOf("@");
+    if (atIdx > 0) {
+      return resolveConfiguredLayerSelector(name);
+    }
+    return resolveConfiguredLayerSelector(`${layer.name}@${layer.version}`);
+  })();
+  const configuredLayerDefaultEnvironment = configuredLayer?.default_environment_id
+    ? getEnvironment(configuredLayer.default_environment_id)
+    : undefined;
 
   if (format === "json") {
     printJson({
@@ -1522,6 +1565,18 @@ function handleLayerShowCommand(
       resources,
       plugins,
       dependencies,
+      ...(configuredLayer
+        ? {
+            configured_layer: {
+              id: configuredLayer.id,
+              name: configuredLayer.name,
+              version: configuredLayer.version,
+              default_environment: configuredLayerDefaultEnvironment?.name
+                ?? configuredLayer.default_environment_id
+                ?? null,
+            },
+          }
+        : {}),
     });
     return;
   }
@@ -1533,6 +1588,14 @@ function handleLayerShowCommand(
       ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
       ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
       ["Plugins", plugins.length === 0 ? "(none pinned)" : `${plugins.length}`],
+      ...(configuredLayer
+        ? [[
+            "Default environment",
+            configuredLayerDefaultEnvironment?.name
+              ?? configuredLayer.default_environment_id
+              ?? "—",
+          ]] as [string, string][]
+        : []),
       ["Updated", ui.format.formatRelativeTimeWithAbsolute(layer.updated_at)],
     ],
   });
@@ -1590,6 +1653,148 @@ function parseHarnessAliases(aliases?: string): string[] | undefined {
     ?.split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function parseVarAssignment(raw: string): { key: string; value: string } {
+  const idx = raw.indexOf("=");
+  if (idx <= 0) {
+    throw new Error(`Invalid --var entry "${raw}". Expected KEY=VALUE.`);
+  }
+  return {
+    key: raw.slice(0, idx),
+    value: raw.slice(idx + 1),
+  };
+}
+
+function parsePermissionPattern(
+  raw: string,
+): { action: PermissionMetadata["action"]; pattern: string } {
+  const idx = raw.indexOf(":");
+  if (idx <= 0 || idx >= raw.length - 1) {
+    throw new Error(`Invalid permission "${raw}". Expected action:pattern.`);
+  }
+  const action = raw.slice(0, idx) as PermissionMetadata["action"];
+  if (!["allow", "deny", "ask"].includes(action)) {
+    throw new Error(`Invalid permission action "${action}". Use allow, deny, or ask.`);
+  }
+  return {
+    action,
+    pattern: raw.slice(idx + 1),
+  };
+}
+
+function parsePermissionUnsetSelector(
+  raw: string,
+): { action?: PermissionMetadata["action"]; pattern?: string; name?: string } {
+  try {
+    const parsed = parsePermissionPattern(raw);
+    return parsed;
+  } catch {
+    return { name: raw };
+  }
+}
+
+function renderEnvironmentShowHuman(payload: ReturnType<typeof showEnvironmentCommand>): void {
+  ui.panel({
+    title: ["ENVIRONMENT", payload.environment.name],
+    rows: [
+      ["Description", payload.environment.description || "—"],
+      ["Env vars", `${Object.keys(payload.values.env_vars).length}`],
+      ["Model configs", `${payload.values.model_configs.length}`],
+      ["Permissions", `${payload.values.permissions.length}`],
+      ["Secret refs", `${Object.keys(payload.secret_refs).length}`],
+    ],
+  });
+
+  if (Object.keys(payload.values.env_vars).length > 0) {
+    ui.subheader("ENV VARS");
+    ui.table.print({
+      columns: [
+        { key: "key", header: "KEY", width: 28 },
+        { key: "value", header: "VALUE", width: 60 },
+      ],
+      rows: Object.entries(payload.values.env_vars).map(([key, value]) => ({ key, value })),
+    });
+  }
+
+  if (payload.values.model_configs.length > 0) {
+    ui.subheader("MODEL CONFIGS");
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 24 },
+        { key: "model", header: "MODEL", width: 28 },
+        { key: "provider", header: "PROVIDER", width: 20 },
+      ],
+      rows: payload.values.model_configs.map((entry) => ({
+        ...entry,
+        provider: entry.provider ?? "—",
+      })),
+    });
+  }
+
+  if (payload.values.permissions.length > 0) {
+    ui.subheader("PERMISSIONS");
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 30 },
+        { key: "action", header: "ACTION", width: 10 },
+        { key: "pattern", header: "PATTERN", width: 38 },
+      ],
+      rows: payload.values.permissions,
+    });
+  }
+
+  if (Object.keys(payload.secret_refs).length > 0) {
+    ui.subheader("SECRET REFS");
+    ui.table.print({
+      columns: [
+        { key: "key", header: "KEY", width: 24 },
+        { key: "provider", header: "PROVIDER", width: 12 },
+        { key: "ref", header: "REF", width: 40 },
+      ],
+      rows: Object.entries(payload.secret_refs).map(([key, value]) => ({
+        key,
+        provider: value.provider,
+        ref: value.ref,
+      })),
+    });
+  }
+}
+
+function writeHomeActiveEnvironment(name: string): string {
+  const home = getHarnessdeckDir();
+  mkdirSync(home, { recursive: true });
+  const filePath = join(home, "active-environment.json");
+  writeFileSync(filePath, `${JSON.stringify({ name }, null, 2)}\n`, "utf-8");
+  return filePath;
+}
+
+function resolveConfiguredLayersForCascade(
+  projectRoot: string,
+  selectors?: string[],
+): string[] {
+  if (selectors && selectors.length > 0) {
+    return selectors.map((selector) => {
+      const configuredLayer = resolveConfiguredLayerSelector(selector);
+      if (!configuredLayer) {
+        throw new Error(`Configured layer not found: ${selector}`);
+      }
+      return configuredLayer.id;
+    });
+  }
+  const project = getProjectByLocalPath(projectRoot);
+  if (!project) {
+    throw new Error(`No tracked project found at ${projectRoot}; pass --layers explicitly`);
+  }
+  const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
+    (row) => row.configured_layer_id,
+  );
+  if (configuredLayerIds.length === 0) {
+    throw new Error(
+      `Project ${projectRoot} has no applied configured layers; pass --layers explicitly`,
+    );
+  }
+  return configuredLayerIds;
 }
 
 function uniqueHarnessTargets(harnesses: string[]): string[] {
@@ -1702,6 +1907,14 @@ async function handleProjectStatusCommand(
   const projectRoot = resolve(path);
   const gitOrigin = getGitOrigin(projectRoot);
   const detected = detectPlatforms(projectRoot);
+  const projectByPath = getProjectByLocalPath(projectRoot);
+  const configuredLayerIds = projectByPath
+    ? getProjectConfiguredLayers(projectByPath.id).map((row) => row.configured_layer_id)
+    : [];
+  const environmentCascade = environmentActivePayload({
+    projectRoot,
+    configuredLayerIds,
+  });
 
   if (!gitOrigin) {
     if (format === "json") {
@@ -1709,6 +1922,7 @@ async function handleProjectStatusCommand(
         project_root: projectRoot,
         git_origin: null,
         platforms: detected,
+        environment_cascade: environmentCascade,
       });
       return;
     }
@@ -1718,9 +1932,13 @@ async function handleProjectStatusCommand(
         ["Root", projectRoot],
         ["Git origin", "(none)"],
         ["Platforms", detected.join(", ") || "(none detected)"],
+        ["Environment vars", `${Object.keys(environmentCascade.resolved.vars).length}`],
+        ["Environment secrets", `${Object.keys(environmentCascade.resolved.secretRefs).length}`],
         ["Plugin refs", "use `hd resource sync` on library plugin resources"],
       ],
     });
+    ui.subheader("ENVIRONMENT CASCADE");
+    ui.info(JSON.stringify(environmentCascade, null, 2));
     return;
   }
 
@@ -1734,6 +1952,7 @@ async function handleProjectStatusCommand(
       project_root: projectRoot,
       git_origin: normalizedOrigin,
       platforms: detected,
+      environment_cascade: environmentCascade,
     };
     if (project) {
       payload.applied_layers = layers.length;
@@ -1752,9 +1971,135 @@ async function handleProjectStatusCommand(
     rows.push(["Applied layers", `${layers.length}`]);
     rows.push(["Snapshots", `${snapshots.length}`]);
   }
+  rows.push(["Environment vars", `${Object.keys(environmentCascade.resolved.vars).length}`]);
+  rows.push([
+    "Environment secrets",
+    `${Object.keys(environmentCascade.resolved.secretRefs).length}`,
+  ]);
   rows.push(["Plugin refs", "sync library resources with `hd resource sync`"]);
 
   ui.panel({ title: ["PROJECT"], rows });
+  ui.subheader("ENVIRONMENT CASCADE");
+  ui.info(JSON.stringify(environmentCascade, null, 2));
+}
+
+function printEnvironmentMutationResult(
+  payload: ReturnType<typeof showEnvironmentCommand>,
+  format: "human" | "json",
+): void {
+  if (format === "json") {
+    printJson(payload);
+    return;
+  }
+  renderEnvironmentShowHuman(payload);
+}
+
+async function handleEnvironmentCaptureCommand(
+  mode: "capture" | "refresh",
+  name: string,
+  opts: {
+    project: string;
+    layers?: string[];
+    includePermissions?: boolean;
+    dryRun?: boolean;
+    strict?: boolean;
+    format?: string;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const projectRoot = resolve(opts.project);
+  const result = await captureOrRefreshEnvironment({
+    mode,
+    environmentName: name,
+    projectRoot,
+    layerSelectors: opts.layers,
+    includePermissions: opts.includePermissions,
+    dryRun: opts.dryRun,
+    strict: opts.strict,
+  });
+
+  if (format === "json") {
+    printJson(result);
+  } else {
+    ui.panel({
+      title: ["ENVIRONMENT", `${mode} ${name}`],
+      rows: [
+        ["Project", projectRoot],
+        ["Main harness", result.main_harness],
+        ["Configured layers", `${result.configured_layer_ids.length}`],
+        ["Persisted", result.persisted ? "yes" : "no"],
+        ["Missing keys", `${result.missing_keys.length}`],
+      ],
+    });
+    if (result.missing_keys.length > 0) {
+      ui.subheader("MISSING KEYS");
+      for (const missing of result.missing_keys) {
+        const sources = missing.sources.length > 0 ? missing.sources.join(", ") : "unknown";
+        ui.warn(`${missing.key} (${sources})`);
+      }
+    }
+  }
+
+  if (result.strict_failed) {
+    process.exitCode = 1;
+    if (format === "human") {
+      ui.danger("Strict mode failed: missing required environment keys.");
+    }
+  }
+}
+
+async function handleEnvironmentUseCommand(
+  name: string,
+  opts: { project?: string; reapply?: boolean; format?: string },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const projectRoot = opts.project ? resolve(opts.project) : undefined;
+
+  if (projectRoot) {
+    const payload = useEnvironmentForProjectCommand(name, projectRoot);
+    if (format === "json") {
+      printJson(payload);
+    } else if (payload.deck_tracked) {
+      ui.success(
+        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot}`,
+      );
+    } else {
+      ui.success(
+        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot} ${ui.icons.bullet} wrote ${payload.deck_file}`,
+      );
+    }
+
+    if (opts.reapply) {
+      const project = getProjectByLocalPath(projectRoot);
+      if (!project) {
+        ui.warn(`Reapply skipped: no tracked project at ${projectRoot}.`);
+        return;
+      }
+      const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
+        (row) => row.configured_layer_id,
+      );
+      if (configuredLayerIds.length === 0) {
+        ui.warn(`Reapply skipped: no configured layers recorded for ${projectRoot}.`);
+        return;
+      }
+      await handleApplyCommand(configuredLayerIds as [string, ...string[]], {
+        project: projectRoot,
+      });
+    }
+    return;
+  }
+
+  const payload = useEnvironmentPayload(name);
+  const filePath = writeHomeActiveEnvironment(payload.environment_name);
+  if (format === "json") {
+    printJson({ ...payload, written: filePath });
+    return;
+  }
+  ui.success(`Set active home environment ${ui.theme.accent(payload.environment_name)}`);
 }
 
 async function handleInitCommand(opts: {
@@ -2843,6 +3188,400 @@ layerCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Scan current folder and create a layer from its resources")
   .action(handleLayerFromProjectCommand);
+
+layerCmd
+  .command("set-environment")
+  .argument("<layer>", "Configured layer name or ID")
+  .argument("<environment>", "Environment name or ID")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Set default environment for a configured layer")
+  .action((layer: string, environment: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const result = setLayerEnvironmentCommand(layer, environment);
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    ui.success(`Set default environment on ${ui.theme.accent(layer)}`);
+  });
+
+layerCmd
+  .command("unset-environment")
+  .argument("<layer>", "Configured layer name or ID")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Clear default environment from a configured layer")
+  .action((layer: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const result = unsetLayerEnvironmentCommand(layer);
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    ui.success(`Cleared default environment on ${ui.theme.accent(layer)}`);
+  });
+
+// ── environment ──────────────────────────────────────────────────────────
+
+const environmentCmd = configureCommandGroup(
+  program
+    .command("environment")
+    .alias("e")
+    .description("Manage reusable environments and project environment cascade"),
+);
+
+environmentCmd
+  .command("create")
+  .argument("<name>", "Environment name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const created = createEnvironmentCommand({ name });
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(created);
+      return;
+    }
+    ui.success(`Created environment ${ui.theme.accent(created.name)}`);
+  });
+
+environmentCmd
+  .command("list")
+  .alias("ls")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const environments = listEnvironmentsCommand();
+    if (format === "json") {
+      printJson(environments);
+      return;
+    }
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 24 },
+        { key: "value_count", header: "VALUES", width: 8 },
+        { key: "secret_ref_count", header: "SECRETS", width: 8 },
+        { key: "reference_count", header: "REFS", width: 8 },
+      ],
+      rows: environments.map((entry) => ({
+        name: entry.environment.name,
+        value_count: entry.value_count,
+        secret_ref_count: entry.secret_ref_count,
+        reference_count: entry.reference_count,
+      })),
+      empty: "No environments found.",
+    });
+  });
+
+environmentCmd
+  .command("show")
+  .argument("<name>", "Environment name or ID")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const payload = showEnvironmentCommand(name);
+    const format = parseOutputFormat(opts.format);
+    printEnvironmentMutationResult(payload, format);
+  });
+
+environmentCmd
+  .command("delete")
+  .argument("<name>", "Environment name or ID")
+  .option("--force", "Delete even if references exist")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { force?: boolean; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const result = deleteEnvironmentCommand(name, { force: opts.force });
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    ui.success(`Deleted environment ${ui.theme.accent(name)}`);
+  });
+
+environmentCmd
+  .command("set")
+  .argument("<name>", "Environment name or ID")
+  .option("--var <keyValue>", "Set env var KEY=VALUE", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--model <name>", "Set default model name")
+  .option("--provider <provider>", "Provider for --model")
+  .option("--permission <actionPattern>", "Set permission action:pattern", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { var?: string[]; model?: string; provider?: string; permission?: string[]; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    let lastPayload: ReturnType<typeof showEnvironmentCommand> | undefined;
+    for (const entry of opts.var ?? []) {
+      const parsed = parseVarAssignment(entry);
+      lastPayload = setEnvironmentVarCommand(name, parsed.key, parsed.value);
+    }
+    if (opts.model) {
+      lastPayload = setEnvironmentModelConfigCommand(name, {
+        model: opts.model,
+        ...(opts.provider ? { provider: opts.provider } : {}),
+      });
+    }
+    for (const entry of opts.permission ?? []) {
+      const parsed = parsePermissionPattern(entry);
+      lastPayload = setEnvironmentPermissionCommand(name, parsed);
+    }
+    const payload = lastPayload ?? showEnvironmentCommand(name);
+    const format = parseOutputFormat(opts.format);
+    printEnvironmentMutationResult(payload, format);
+  });
+
+environmentCmd
+  .command("unset")
+  .argument("<name>", "Environment name or ID")
+  .option("--var <key>", "Unset env var key", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--model [name]", "Unset model config (default when omitted)")
+  .option("--permission <selector>", "Unset permission action:pattern or name", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { var?: string[]; model?: string | boolean; permission?: string[]; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    let lastPayload: ReturnType<typeof showEnvironmentCommand> | undefined;
+    for (const key of opts.var ?? []) {
+      lastPayload = unsetEnvironmentVarCommand(name, key);
+    }
+    if (opts.model !== undefined) {
+      const modelName =
+        typeof opts.model === "string" && opts.model.length > 0
+          ? opts.model
+          : "default";
+      lastPayload = unsetEnvironmentModelConfigCommand(name, modelName);
+    }
+    for (const entry of opts.permission ?? []) {
+      lastPayload = unsetEnvironmentPermissionCommand(
+        name,
+        parsePermissionUnsetSelector(entry),
+      );
+    }
+    const payload = lastPayload ?? showEnvironmentCommand(name);
+    const format = parseOutputFormat(opts.format);
+    printEnvironmentMutationResult(payload, format);
+  });
+
+const environmentSecretCmd = configureCommandGroup(
+  environmentCmd
+    .command("secret")
+    .description("Manage environment secret references"),
+);
+
+environmentSecretCmd
+  .command("set")
+  .argument("<name>", "Environment name or ID")
+  .argument("<key>", "Secret key")
+  .requiredOption("--provider <provider>", "Secret provider keychain|env|file")
+  .requiredOption("--ref <value>", "Reference value for provider")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, key: string, opts: { provider: "keychain" | "env" | "file"; ref: string; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const payload = setEnvironmentSecretCommand(name, {
+      key,
+      provider: opts.provider,
+      ref: opts.ref,
+    });
+    const format = parseOutputFormat(opts.format);
+    printEnvironmentMutationResult(payload, format);
+  });
+
+environmentSecretCmd
+  .command("unset")
+  .argument("<name>", "Environment name or ID")
+  .argument("<key>", "Secret key")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, key: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const payload = unsetEnvironmentSecretCommand(name, key);
+    const format = parseOutputFormat(opts.format);
+    printEnvironmentMutationResult(payload, format);
+  });
+
+environmentCmd
+  .command("capture")
+  .argument("<name>", "Environment name")
+  .requiredOption("--project <path>", "Project directory")
+  .option("--layers <layers...>", "Configured layer selectors")
+  .option("--include-permissions", "Capture scanned permission resources")
+  .option("--dry-run", "Preview capture without persisting")
+  .option("--strict", "Fail when required keys are missing")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (
+    name: string,
+    opts: {
+      project: string;
+      layers?: string[];
+      includePermissions?: boolean;
+      dryRun?: boolean;
+      strict?: boolean;
+      format?: string;
+    },
+  ) => {
+    await handleEnvironmentCaptureCommand("capture", name, opts);
+  });
+
+environmentCmd
+  .command("refresh")
+  .argument("<name>", "Environment name")
+  .requiredOption("--project <path>", "Project directory")
+  .option("--layers <layers...>", "Configured layer selectors")
+  .option("--include-permissions", "Capture scanned permission resources")
+  .option("--dry-run", "Preview refresh without persisting")
+  .option("--strict", "Fail when required keys are missing")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (
+    name: string,
+    opts: {
+      project: string;
+      layers?: string[];
+      includePermissions?: boolean;
+      dryRun?: boolean;
+      strict?: boolean;
+      format?: string;
+    },
+  ) => {
+    await handleEnvironmentCaptureCommand("refresh", name, opts);
+  });
+
+environmentCmd
+  .command("use")
+  .argument("<name>", "Environment name or ID")
+  .option("--project <path>", "Project directory")
+  .option("--reapply", "Reapply last configured project layers after switching")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (name: string, opts: { project?: string; reapply?: boolean; format?: string }) => {
+    await handleEnvironmentUseCommand(name, opts);
+  });
+
+environmentCmd
+  .command("active")
+  .option("--project <path>", "Project directory")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { project?: string; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const projectRoot = opts.project ? resolve(opts.project) : undefined;
+    const configuredLayerIds = (() => {
+      if (!projectRoot) return [] as string[];
+      const project = getProjectByLocalPath(projectRoot);
+      if (!project) return [] as string[];
+      return getProjectConfiguredLayers(project.id).map(
+        (row) => row.configured_layer_id,
+      );
+    })();
+    const payload = environmentActivePayload({
+      ...(projectRoot ? { projectRoot } : {}),
+      configuredLayerIds,
+    });
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+    ui.panel({
+      title: ["ENVIRONMENT", "active"],
+      rows: [
+        ["Project", projectRoot ?? "(none)"],
+        ["Resolved vars", `${Object.keys(payload.resolved.vars).length}`],
+        ["Resolved secrets", `${Object.keys(payload.resolved.secretRefs).length}`],
+      ],
+    });
+    ui.info(JSON.stringify(payload, null, 2));
+  });
+
+environmentCmd
+  .command("resolve")
+  .requiredOption("--project <path>", "Project directory")
+  .option("--layers <layers...>", "Configured layer selectors")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { project: string; layers?: string[]; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const projectRoot = resolve(opts.project);
+    const configuredLayerIds = resolveConfiguredLayersForCascade(
+      projectRoot,
+      opts.layers,
+    );
+    const payload = environmentResolvePayload({
+      projectRoot,
+      configuredLayerIds,
+    });
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+    ui.panel({
+      title: ["ENVIRONMENT", "resolve"],
+      rows: [
+        ["Project", projectRoot],
+        ["Layer defaults", `${payload.layer_defaults.length}`],
+        ["Resolved vars", `${Object.keys(payload.resolved.vars).length}`],
+        ["Resolved secrets", `${Object.keys(payload.resolved.secretRefs).length}`],
+      ],
+    });
+    ui.info(JSON.stringify(payload, null, 2));
+  });
+
+environmentCmd
+  .command("import")
+  .argument("<file>", "Environment JSON/JSONC file")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((file: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const raw = readFileSync(resolve(file), "utf-8");
+    const result = importEnvironmentJsonc(raw);
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    ui.success(
+      `Imported environment ${ui.theme.accent(result.environment.name)} ${ui.icons.bullet} ${result.imported_keys.length} vars`,
+    );
+  });
+
+environmentCmd
+  .command("export")
+  .argument("<name>", "Environment name or ID")
+  .argument("[file]", "Output file path")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, file: string | undefined, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const payload = exportEnvironmentJsonc(name);
+    if (file) {
+      const outPath = resolve(file);
+      writeFileSync(outPath, payload.jsonc, "utf-8");
+      if (format === "json") {
+        printJson({ environment: payload.environment, file: outPath });
+        return;
+      }
+      ui.success(
+        `Exported environment ${ui.theme.accent(payload.environment.name)} ${ui.icons.hint} ${outPath}`,
+      );
+      return;
+    }
+    if (format === "json") {
+      printJson(payload.environment);
+      return;
+    }
+    console.log(payload.jsonc);
+  });
 
 // ── migrate ─────────────────────────────────────────────────────────────
 
