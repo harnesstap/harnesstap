@@ -132,6 +132,7 @@ import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
 import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
 import type { PersistedPluginSourceResults } from "./services/scanner.js";
 import type { Column } from "./ui/table.js";
@@ -323,6 +324,16 @@ function shouldUseInteractiveResourceList(input: {
   });
 }
 
+function resourceListRenderOptions(opts: {
+  showId?: boolean;
+  all?: boolean;
+}): { showId: boolean; showAll: boolean } {
+  return {
+    showId: Boolean(opts.showId),
+    showAll: Boolean(opts.all),
+  };
+}
+
 async function handleResourceListCommand(
   positionalType: string | undefined,
   opts: {
@@ -330,6 +341,7 @@ async function handleResourceListCommand(
     search?: string;
     format?: string;
     showId?: boolean;
+    all?: boolean;
     noInteractive?: boolean;
   },
 ): Promise<void> {
@@ -349,11 +361,12 @@ async function handleResourceListCommand(
   let search = opts.search;
   if (shouldUseInteractiveResourceList(opts)) {
     try {
-      search = await runResourceListWizard({
+      const wizardResult = await runResourceListWizard({
         type: resolvedType,
         search: opts.search,
-        showId: Boolean(opts.showId),
+        ...resourceListRenderOptions(opts),
       });
+      search = wizardResult?.search ?? opts.search;
     } catch (error) {
       if (isPromptCancellationError(error)) {
         process.exitCode = 1;
@@ -378,20 +391,14 @@ async function handleResourceListCommand(
     return;
   }
 
+  const renderOpts = resourceListRenderOptions(opts);
+
   if (resolvedType) {
-    console.log(
-      renderFlatResourceListTable(sortedResources, {
-        showId: Boolean(opts.showId),
-      }),
-    );
+    console.log(renderFlatResourceListTable(sortedResources, renderOpts));
     return;
   }
 
-  console.log(
-    renderGroupedResourceListTables(sortedResources, {
-      showId: Boolean(opts.showId),
-    }),
-  );
+  console.log(renderGroupedResourceListTables(sortedResources, renderOpts));
 }
 
 function homeFolderLabel(discoveredPaths: string[]): string {
@@ -3233,6 +3240,7 @@ resourceCmd
   .option("-s, --search <query>", "Search by name or description (skips interactive filter)")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in human-readable tables")
+  .option("--all", "Show all resources per type (default: first 10 per type)")
   .action(async (
     type: string | undefined,
     opts: {
@@ -3240,6 +3248,7 @@ resourceCmd
       search?: string;
       format?: string;
       showId?: boolean;
+      all?: boolean;
       noInteractive?: boolean;
     },
   ) => {
@@ -3290,27 +3299,7 @@ resourceCmd
       process.exitCode = 1;
       return;
     }
-    const r = result.resource;
-    const panelRows: Array<[string, string]> = [
-      ["Type", r.type],
-      ["Name", r.name],
-      ["Description", r.description || "—"],
-      ["Source", r.source],
-      ["Origin", `${r.origin_kind}${r.origin_ref ? ` (${r.origin_ref})` : ""}`],
-      ["Content hash", r.content_hash || "—"],
-      ["ID", r.id],
-      ["Created", r.created_at],
-      ["Metadata", JSON.stringify(r.metadata)],
-    ];
-    if (r.namespace) {
-      panelRows.splice(2, 0, ["Namespace", r.namespace]);
-    }
-    ui.panel({
-      title: ["RESOURCE", r.namespace ? `${r.name}@${r.namespace}` : r.name],
-      rows: panelRows,
-    });
-    ui.subheader("CONTENT");
-    console.log(r.content);
+    printResourceShow(result.resource);
   });
 
 resourceCmd
