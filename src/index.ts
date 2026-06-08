@@ -108,6 +108,7 @@ import {
   renderLayerSearchResults,
 } from "./services/layer-catalog.js";
 import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
+import { syncPluginPinsForApply } from "./services/plugin-apply-sync.js";
 import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
@@ -907,11 +908,13 @@ async function handleApplyCommand(
   layerNames: [string, ...string[]] | [],
   opts: {
     project: string;
+    harness?: string;
     platform?: string;
     dryRun?: boolean;
     format?: string;
     ignorePluginVersions?: boolean;
     strictPluginVersions?: boolean;
+    syncPlugins?: boolean;
     interactive?: boolean;
     noInteractive?: boolean;
   },
@@ -962,12 +965,27 @@ async function handleApplyCommand(
     return;
   }
 
-  const platforms = opts.platform
-    ? opts.platform.split(",")
-    : detectPlatforms(projectRoot);
+  if (opts.harness && opts.platform) {
+    process.exitCode = 1;
+    ui.danger("Choose either --harness or --platform, not both.");
+    return;
+  }
+
+  let platforms: string[];
+  try {
+    platforms = resolveApplyHarnessTargets(
+      projectRoot,
+      opts.harness ?? opts.platform,
+    );
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+    return;
+  }
 
   if (platforms.length === 0) {
-    ui.warn("No platforms detected. Use --platform to specify.");
+    ui.warn(
+      "No harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
+    );
     return;
   }
 
@@ -989,6 +1007,14 @@ async function handleApplyCommand(
     }
     return [...pins.values()];
   })();
+
+  if (!opts.ignorePluginVersions && mergedPluginPins.length > 0) {
+    await syncPluginPinsForApply({
+      pins: mergedPluginPins,
+      syncAll: opts.syncPlugins,
+    });
+  }
+
   const generated = await generateFiles(
     resources,
     platforms,
@@ -1874,6 +1900,44 @@ async function preflightImportedGlobalInstall(
       );
     }
   }
+}
+
+function resolveApplyHarnessTargets(
+  projectRoot: string,
+  harnessOption?: string,
+): string[] {
+  const explicitTargets = uniqueHarnessTargets(
+    parsePlatformFilter(harnessOption) ?? [],
+  );
+  if (explicitTargets.length > 0) {
+    assertSupportedHarnessTargets(explicitTargets);
+    return explicitTargets;
+  }
+
+  const projectByPath = getProjectByLocalPath(projectRoot);
+  const projectConfig = projectByPath
+    ? getProjectHarnessConfig(projectByPath.id)
+    : undefined;
+  if (projectConfig) {
+    const preferredTargets = uniqueHarnessTargets([
+      projectConfig.main_harness,
+      ...projectConfig.alias_harnesses,
+    ]);
+    assertSupportedHarnessTargets(preferredTargets);
+    return preferredTargets;
+  }
+
+  const preference = getHarnessPreference();
+  if (preference) {
+    const preferredTargets = uniqueHarnessTargets([
+      preference.main_harness,
+      ...preference.alias_harnesses,
+    ]);
+    assertSupportedHarnessTargets(preferredTargets);
+    return preferredTargets;
+  }
+
+  return uniqueHarnessTargets(detectPlatforms(projectRoot));
 }
 
 function resolveScanGlobalHarnessTargets(
@@ -3914,7 +3978,11 @@ projectCmd
     "Layer name(s), bundle path, or URL (multiple layers are merged in order)",
   )
   .option("--project <path>", "Project directory", ".")
-  .option("--platform <slugs>", "Comma-separated platform slugs")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to project or global harness preference)",
+  )
+  .option("--platform <slugs>", "Alias for --harness")
   .option("--dry-run", "Show what would be written")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
@@ -3926,8 +3994,12 @@ projectCmd
     "--strict-plugin-versions",
     "Fail apply (exit 2) if any pinned plugin violates its version constraint",
   )
+  .option(
+    "--sync-plugins",
+    "Refresh all pinned plugin resources from install trees before apply (unresolved plugins are synced by default)",
+  )
   .description(
-    "Apply one or more layers (or a bundle URL) to a project, serializing for each platform",
+    "Apply one or more layers (or a bundle URL) to a project, serializing for each harness",
   )
   .action(handleApplyCommand);
 

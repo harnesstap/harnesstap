@@ -212,6 +212,16 @@ function resolvePluginRoot(sourcePath: string): {
   throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
 }
 
+export function readPluginVersionFromInstallRoot(
+  installRoot: string,
+): string | undefined {
+  try {
+    return resolvePluginRoot(installRoot).manifest.version;
+  } catch {
+    return undefined;
+  }
+}
+
 function buildProvenance(input: {
   importedAt: string;
   relativePath: string;
