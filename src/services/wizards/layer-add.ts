@@ -1,6 +1,8 @@
 import { listPlugins } from "../../models/plugin-component.js";
 import { listResources } from "../../models/resource.js";
-import { RESOURCE_TYPES } from "../../types.js";
+import { LISTABLE_RESOURCE_TYPES, MATERIAL_RESOURCE_TYPES } from "../../types.js";
+import { parseResourceSelector } from "../resource-selector.js";
+import type { ResourceType } from "../../types.js";
 import {
   promptForChoice,
   promptForConfirmation,
@@ -15,50 +17,25 @@ export interface LayerAddWizardResult {
   embed?: boolean;
 }
 
-type LayerAddKind = "resource" | "plugin" | "layer-dependency";
-
-function getDefaultKind(
-  type: string | undefined,
-  selector: string | undefined,
-): LayerAddKind {
-  if (type === "plugin" || type === "layer-dependency") {
-    return type;
-  }
-  if (selector?.includes("@")) {
-    return "plugin";
-  }
-  return "resource";
-}
-
-function getDefaultType(type: string | undefined): string {
-  if (type && RESOURCE_TYPES.includes(type as (typeof RESOURCE_TYPES)[number])) {
-    return type;
-  }
-  return "skill";
-}
-
-function getDefaultSelector(type: string | undefined): string | undefined {
-  if (!type || type === "plugin" || type === "layer-dependency") {
-    return undefined;
-  }
-
-  return listResources({ type: type as never })[0]?.id;
-}
-
-function getDependencyChoices(currentLayerName: string | undefined) {
+function getLayerChoices(currentLayerName: string | undefined) {
   return listPlugins()
     .filter((layer) => layer.name !== currentLayerName)
     .map((layer) => ({
       name: `${layer.name}@${layer.version}`,
-      value: `${layer.name}@${layer.version}`,
+      value: `layer:${layer.name}`,
     }));
 }
 
 function getResourceChoices(type: string) {
-  return listResources({ type: type as never }).map((resource) => ({
-    name: resource.name,
-    value: resource.id,
-  }));
+  return listResources({ type: type as never }).map((resource) => {
+    const label = resource.namespace
+      ? `${resource.name}@${resource.namespace}`
+      : resource.name;
+    return {
+      name: label,
+      value: `${type}:${label}`,
+    };
+  });
 }
 
 export async function runLayerAddWizard(input: {
@@ -69,104 +46,126 @@ export async function runLayerAddWizard(input: {
   layerName?: string;
   shouldPrompt: boolean;
 }): Promise<LayerAddWizardResult> {
-  const kind = await resolveOrPrompt<LayerAddKind>({
-    value:
-      input.type === "plugin" || input.type === "layer-dependency"
-        ? input.type
-        : input.type
-          ? "resource"
-          : undefined,
+  const selector = await resolveOrPrompt({
+    value: input.selector,
     shouldPrompt: input.shouldPrompt,
-    prompt: async () =>
-      promptForChoice({
+    prompt: async () => {
+      const kind = await promptForChoice({
         message: input.layerName
           ? `What do you want to add to "${input.layerName}"?`
           : "What do you want to add?",
         choices: [
           { name: "Resource", value: "resource" },
-          { name: "Plugin", value: "plugin" },
-          { name: "Dependency on another layer", value: "layer-dependency" },
+          { name: "Plugin reference", value: "plugin" },
+          { name: "Layer reference", value: "layer" },
         ],
-        default: getDefaultKind(input.type, input.selector),
-      }),
-  });
+        default: input.selector?.startsWith("plugin:")
+          ? "plugin"
+          : input.selector?.startsWith("layer:")
+            ? "layer"
+            : "resource",
+      });
 
-  const type = await resolveOrPrompt({
-    value: input.type ?? (kind === "plugin" || kind === "layer-dependency" ? kind : undefined),
-    shouldPrompt: input.shouldPrompt,
-    prompt: async () =>
-      kind === "resource"
-        ? promptForChoice({
-            message: "Which resource type?",
-            choices: RESOURCE_TYPES.map((resourceType) => ({
-              name: resourceType,
-              value: resourceType,
-            })),
-            default: getDefaultType(input.type),
-          })
-        : Promise.resolve(kind),
-  });
-
-  const selector = await resolveOrPrompt({
-    value: input.selector,
-    shouldPrompt: input.shouldPrompt,
-    prompt: async () => {
-      if (type === "plugin") {
-        return promptForValue({
-          message: "Plugin reference",
+      if (kind === "plugin") {
+        const raw = await promptForValue({
+          message: "Plugin selector (e.g. posthog@cursor-team-kit)",
+          default: input.selector,
         });
+        return raw.startsWith("plugin:") ? raw : `plugin:${raw}`;
       }
 
-      if (type === "layer-dependency") {
-        const dependencyChoices = getDependencyChoices(input.layerName);
-        if (dependencyChoices.length > 0) {
-          return promptForChoice({
-            message: "Which layer should this depend on?",
-            choices: dependencyChoices,
+      if (kind === "layer") {
+        const choices = getLayerChoices(input.layerName);
+        if (choices.length === 0) {
+          return promptForValue({
+            message: "Layer name",
           });
         }
-        return promptForValue({
-          message: "Dependency layer name",
+        return promptForChoice({
+          message: "Which layer?",
+          choices,
         });
       }
 
-      const resourceChoices = getResourceChoices(type ?? getDefaultType(input.type));
-      if (resourceChoices.length > 0) {
+      const type = await promptForChoice({
+        message: "Which resource type?",
+        choices: LISTABLE_RESOURCE_TYPES.map((type) => ({
+          name: type,
+          value: type,
+        })),
+        default: input.type ?? "skill",
+      });
+
+      const choices = getResourceChoices(type);
+      if (choices.length > 0) {
         return promptForChoice({
-          message: `Which ${type} should be attached?`,
-          choices: resourceChoices,
-          default: getDefaultSelector(type),
+          message: `Which ${type}?`,
+          choices,
         });
       }
 
       return promptForValue({
-        message: "Resource name or ID",
+        message: `${type} selector`,
       });
     },
   });
 
+  if (!selector) {
+    return {};
+  }
+
+  const attachmentType =
+    input.type === "layer-dependency"
+      ? "layer"
+      : input.type === "plugin"
+        ? "plugin"
+        : input.type;
+
+  const isMaterialType =
+    attachmentType &&
+    (MATERIAL_RESOURCE_TYPES as readonly string[]).includes(attachmentType as ResourceType);
+
+  const normalizedSelector = selector.includes(":")
+    ? selector.replace(/^layer-dependency:/, "layer:")
+    : attachmentType && !isMaterialType
+      ? `${attachmentType}:${selector}`
+      : selector;
+
+  const parsedSelector = parseResourceSelector(normalizedSelector);
+  const isPlugin =
+    normalizedSelector.startsWith("plugin:") || attachmentType === "plugin";
+  const isLayer =
+    normalizedSelector.startsWith("layer:") || attachmentType === "layer";
+
   const version = await resolveOrPrompt({
     value: input.version,
     shouldPrompt:
-      input.shouldPrompt && (type === "plugin" || type === "layer-dependency"),
+      input.shouldPrompt && (isPlugin || isLayer) && !input.version,
     prompt: async () =>
       promptForValue({
-        message: type === "plugin"
-          ? "Plugin version constraint"
-          : "Dependency version constraint",
-        default: "^1.0.0",
+        message: "Version constraint (leave empty for latest)",
+        default: "",
       }),
   });
 
-  const embed = await resolveOrPrompt({
-    value: input.embed,
-    shouldPrompt: input.shouldPrompt && type === "plugin",
-    prompt: async () =>
-      promptForConfirmation({
-        message: "Embed plugin files on export?",
-        default: false,
-      }),
-  });
+  let embed = input.embed;
+  if (isPlugin && input.shouldPrompt && embed === undefined) {
+    embed = await promptForConfirmation({
+      message: "Embed plugin on export?",
+      default: false,
+    });
+  }
 
-  return { selector, type, version, embed };
+  return {
+    selector: normalizedSelector.startsWith("plugin:") && !normalizedSelector.includes("@")
+      ? normalizedSelector
+      : isPlugin && !normalizedSelector.startsWith("plugin:")
+        ? `plugin:${normalizedSelector}`
+        : isLayer && !normalizedSelector.startsWith("layer:")
+          ? `layer:${normalizedSelector}`
+          : normalizedSelector,
+    type: isPlugin ? "plugin" : isLayer ? "layer" : parsedSelector.type ?? attachmentType,
+    version: version || undefined,
+    embed,
+  };
 }

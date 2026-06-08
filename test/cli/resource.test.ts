@@ -25,9 +25,13 @@ describe("CLI resource", () => {
 
       expect(resourceList.stdout).toContain("shared-skill");
       expect(resourceShow.stdout).toContain("RESOURCE");
-      expect(resourceShow.stdout).toContain(resource.id);
+      expect(resourceShow.stdout).not.toContain(resource.id);
+      expect(resourceShow.stdout).toContain("Updated");
       expect(resourceShow.stdout).toContain("CONTENT");
       expect(resourceShow.stdout).toContain("# Shared");
+
+      const resourceShowAllFields = await runCli(["resource", "show", resource.id, "--all-fields"]);
+      expect(resourceShowAllFields.stdout).toContain(resource.id);
 
       const deleteResult = await runCli(["resource", "delete", resource.id]);
       expect(deleteResult.stdout).toContain("✓ Deleted");

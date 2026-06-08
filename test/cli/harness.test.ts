@@ -70,7 +70,7 @@ describe("CLI harness", () => {
       const result = await runCli(["project", "status", context.projectDir]);
       expect(result.stdout).toContain("PROJECT");
       expect(result.stdout).toContain("Platforms");
-      expect(result.stdout).toContain("Plugins");
+      expect(result.stdout).toContain("Plugin refs");
     } finally {
       await context.cleanup();
     }

@@ -43,7 +43,7 @@ describe("wizard prompts", () => {
         if (promptCalls.length === 2) {
           return { value: "skill" };
         }
-        return { value: selectedResourceId };
+        return { value: "skill:shared-skill" };
       },
     );
 
@@ -59,18 +59,18 @@ describe("wizard prompts", () => {
 
       expect(result).toEqual({
         type: "skill",
-        selector: resource.id,
+        selector: "skill:shared-skill",
         version: undefined,
       });
       expect(promptCalls).toHaveLength(3);
       expect(promptCalls[0]?.type).toBe("list");
       expect(promptCalls[1]?.type).toBe("list");
       expect(promptCalls[2]?.type).toBe("list");
-      expect(promptCalls[2]?.message).toBe("Which skill should be attached?");
+      expect(promptCalls[2]?.message).toBe("Which skill?");
       expect(promptCalls[2]?.choices).toEqual([
         {
           name: "shared-skill",
-          value: resource.id,
+          value: "skill:shared-skill",
         },
       ]);
     } finally {
@@ -106,7 +106,7 @@ describe("wizard prompts", () => {
 
       expect(result).toEqual({
         type: "plugin",
-        selector: "formatter@marketplace",
+        selector: "plugin:formatter@marketplace",
         version: "^1.0.0",
         embed: true,
       });

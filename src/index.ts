@@ -17,7 +17,6 @@ import {
   isPluginSourcePath,
   scanAndPersistPluginSource,
   scanAndPersistHomeDefaults,
-  persistClaudePluginInventoryForProject,
 } from "./services/scanner.js";
 import { syncLinkedResources } from "./services/resource-sync.js";
 import type { ImportConflictPolicy } from "./models/resource.js";
@@ -40,6 +39,7 @@ import {
   deletePlugin,
   getPluginResources,
   listPluginDependencies,
+  parsePluginSelector,
 } from "./models/plugin-component.js";
 import {
   upsertProject,
@@ -72,22 +72,9 @@ import type {
   SnapshotState,
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
-import {
-  declaringScopesForClaudePlugin,
-  scanClaudePluginInventory,
-} from "./services/claude-plugin-inventory.js";
-import {
-  checkPlugins,
-  listPlugins as listInstalledPlugins,
-  refreshPluginSources,
-  updatePlugins,
-} from "./services/plugin-lifecycle.js";
-import {
-  getProjectPluginState,
-  upsertProjectPluginState,
-} from "./models/plugin.js";
 import { listLayerPlugins } from "./models/plugin-pins.js";
-import type { PluginScope } from "./plugins/types.js";
+import { listAttachedPluginPins } from "./services/composition-resource.js";
+import type { PluginResourceMetadata } from "./types.js";
 import {
   getHarnessPreference,
   setHarnessPreference,
@@ -114,6 +101,7 @@ import {
   addLayerAttachment,
   LAYER_ATTACHMENT_TYPES,
   removeLayerAttachment,
+  validateLayerAttachmentType,
 } from "./services/layer-attachments.js";
 import {
   exportMigrationState,
@@ -268,6 +256,31 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
 
 function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
   return `${layer.name}@${layer.version}`;
+}
+
+function dependencyLayerName(dependencyName: string): string {
+  const parsed = parsePluginSelector(dependencyName);
+  if (parsed.kind === "id") return dependencyName;
+  return parsed.name;
+}
+
+function resolveDependencyLayerVersion(
+  dependencyName: string,
+  versionConstraint: string,
+): string {
+  const name = dependencyLayerName(dependencyName);
+  const resolved = getPlugin(`${name}@${versionConstraint}`);
+  return resolved?.version ?? "—";
+}
+
+function formatLayerDependencyRows(
+  dependencies: Array<{ dependency_name: string; version_constraint: string }>,
+): Array<{ name: string; version: string; constraint: string }> {
+  return dependencies.map((dep) => ({
+    name: dependencyLayerName(dep.dependency_name),
+    version: resolveDependencyLayerVersion(dep.dependency_name, dep.version_constraint),
+    constraint: dep.version_constraint,
+  }));
 }
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
@@ -709,8 +722,6 @@ async function handleScanCommand(
     ui.warn("No coding CLI configurations detected in this directory.");
     return;
   }
-  const scannedPlatformIds = opts.platform ? [opts.platform] : detected;
-
   if (opts.dryRun) {
     const results = await scanProject(projectRoot, opts.platform);
     for (const result of results) {
@@ -762,26 +773,6 @@ async function handleScanCommand(
     }
   }
 
-  try {
-    const pluginSummary = await listInstalledPlugins({
-      projectRoot,
-      homeRoot: resolveHomeRoot(),
-      platformIds: parsePlatformFilter(opts.platform),
-    });
-    if (pluginSummary.installs.length > 0) {
-      const check = await checkPlugins({
-        projectRoot,
-        homeRoot: resolveHomeRoot(),
-        platformIds: parsePlatformFilter(opts.platform),
-      });
-      ui.hint(
-        `${formatCount(pluginSummary.installs.length, "plugin")} installed (${formatCount(check.summary.outdated, "outdated")})`,
-      );
-    }
-  } catch {
-    // Plugin scan is best-effort during project scan
-  }
-
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
     return;
@@ -789,28 +780,13 @@ async function handleScanCommand(
 
   const normalized = normalizeGitUrl(gitOrigin);
   const name = projectNameFromUrl(gitOrigin);
-  const registered = upsertProject({
+  upsertProject({
     git_origin: normalized,
     name,
     local_path: projectRoot,
   });
   ui.success(`Project registered: ${name} (${normalized})`);
 
-  try {
-    const inventorySummary = await persistClaudePluginInventoryForProject({
-      projectRoot,
-      projectId: registered.id,
-      scannedPlatformIds,
-      homeRoot: resolveHomeRoot(),
-    });
-    if (inventorySummary) {
-      ui.hint(
-        `claude-code plugins: ${inventorySummary.committed_count} committed, ${inventorySummary.effective_count} effective`,
-      );
-    }
-  } catch {
-    // plugin inventory persistence is best-effort during project scan
-  }
 }
 
 async function resolveApplyLayers(
@@ -981,8 +957,7 @@ async function handleApplyCommand(
     !opts.ignorePluginVersions &&
     mergedPluginPins.length > 0
   ) {
-    const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
-    const issues = validatePluginPinsAgainstInventory(mergedPluginPins, inventory);
+    const issues = validatePluginPinsAgainstInventory(mergedPluginPins);
     if (issues.length > 0) {
       for (const issue of issues) {
         console.warn(ui.theme.warn(issue.message));
@@ -1073,8 +1048,7 @@ async function handleApplyCommand(
     !opts.strictPluginVersions &&
     mergedPluginPins.length > 0
   ) {
-    const inventory = await refreshClaudePluginInventoryForCli(projectRoot);
-    const issues = validatePluginPinsAgainstInventory(mergedPluginPins, inventory);
+    const issues = validatePluginPinsAgainstInventory(mergedPluginPins);
     for (const issue of issues) {
       console.warn(ui.theme.warn(issue.message));
     }
@@ -1527,8 +1501,12 @@ function handleLayerShowCommand(
     ui.danger(`Layer not found: ${name}`);
     return;
   }
-  const resources = getPluginResources(layer.id);
+  const allResources = getPluginResources(layer.id);
+  const resources = allResources.filter(
+    (resource) => resource.type !== "plugin" && resource.type !== "layer",
+  );
   const plugins = listLayerPlugins(layer.id);
+  const pluginPins = listAttachedPluginPins(layer.id);
   const dependencies = listPluginDependencies(layer.id);
 
   if (format === "json") {
@@ -1553,10 +1531,9 @@ function handleLayerShowCommand(
     rows: [
       ["Description", layer.description || "—"],
       ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
-      ["ID", ui.format.shortenId(layer.id)],
       ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
       ["Plugins", plugins.length === 0 ? "(none pinned)" : `${plugins.length}`],
-      ["Updated", ui.format.formatRelativeTime(layer.updated_at)],
+      ["Updated", ui.format.formatRelativeTimeWithAbsolute(layer.updated_at)],
     ],
   });
 
@@ -1572,34 +1549,40 @@ function handleLayerShowCommand(
   });
 
   if (dependencies.length > 0) {
-    ui.subheader("DEPENDENCIES");
+    ui.subheader("LAYER DEPENDENCIES");
     ui.table.print({
       columns: [
-        { key: "dependency_name", header: "NAME", width: 26 },
-        { key: "version_constraint", header: "CONSTRAINT", width: 20 },
+        { key: "name", header: "NAME", width: 22 },
+        { key: "version", header: "VERSION", width: 12 },
+        { key: "constraint", header: "CONSTRAINT", width: 20 },
       ],
-      rows: dependencies,
+      rows: formatLayerDependencyRows(dependencies),
     });
   }
   if (plugins.length > 0) {
     ui.subheader("PLUGINS");
     ui.table.print({
       columns: [
-        { key: "ref", header: "REF", width: 36 },
-        { key: "version_constraint", header: "CONSTRAINT", width: 20 },
+        { key: "ref", header: "REF", width: 28 },
+        { key: "version", header: "VERSION", width: 12 },
+        { key: "constraint", header: "CONSTRAINT", width: 20 },
+        { key: "sync", header: "SYNC", width: 14 },
       ],
-      rows: plugins,
+      rows: pluginPins.map((pin) => {
+        const metadata = pin.resource.metadata as PluginResourceMetadata;
+        return {
+          ref: pin.ref,
+          version: metadata.resolved_version ?? "—",
+          constraint: pin.version_constraint || "latest",
+          sync: metadata.sync_status ?? "never_synced",
+        };
+      }),
     });
   }
 }
 
 function parsePlatformFilter(platform?: string): string[] | undefined {
   return platform?.split(",").map((p) => p.trim()).filter(Boolean);
-}
-
-function parseScopeFilter(scope?: string): PluginScope[] | undefined {
-  if (!scope) return undefined;
-  return scope.split(",").map((s) => s.trim()) as PluginScope[];
 }
 
 function parseHarnessAliases(aliases?: string): string[] | undefined {
@@ -1709,318 +1692,6 @@ function resolveScanGlobalHarnessTargets(
   );
 }
 
-function pluginLifecycleBase(path: string, opts: { platform?: string }) {
-  return {
-    projectRoot: resolve(path),
-    homeRoot: resolveHomeRoot(),
-    platformIds: parsePlatformFilter(opts.platform),
-  };
-}
-
-async function refreshClaudePluginInventoryForCli(
-  path: string,
-): Promise<ReturnType<typeof scanClaudePluginInventory>> {
-  const db = getDb();
-  initializeSchema(db);
-  const projectRoot = resolve(path);
-  const homeRoot = resolveHomeRoot();
-  const inventory = await scanClaudePluginInventory({ projectRoot, homeRoot });
-
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (gitOrigin) {
-    const normalized = normalizeGitUrl(gitOrigin);
-    const project = upsertProject({
-      git_origin: normalized,
-      name: projectNameFromUrl(gitOrigin),
-      local_path: projectRoot,
-    });
-    upsertProjectPluginState(project.id, inventory);
-  }
-
-  return inventory;
-}
-
-function sortByRef(installs: { ref: string }[]): void {
-  installs.sort((a, b) => a.ref.localeCompare(b.ref));
-}
-
-async function handlePluginInventoryListCommand(
-  path: string,
-  opts: { format?: string },
-): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  const inventory = await refreshClaudePluginInventoryForCli(path);
-
-  if (format === "json") {
-    printJson({
-      scanned_at: inventory.scanned_at,
-      committed: inventory.committed,
-      effective: inventory.effective,
-    });
-    return;
-  }
-
-  const committed = [...inventory.committed];
-  const effective = [...inventory.effective];
-  sortByRef(committed);
-  sortByRef(effective);
-
-  ui.subheader("COMMITTED");
-  ui.table.print({
-    columns: [
-      { key: "ref", header: "REF", width: 42 },
-      { key: "version", header: "VERSION", width: 14 },
-      { key: "enabled", header: "ENABLED", width: 8, transform: (v) => (v === "true" ? "yes" : "no") },
-    ],
-    rows: committed,
-    empty: "(none)",
-  });
-
-  ui.subheader("EFFECTIVE");
-  ui.table.print({
-    columns: [
-      { key: "ref", header: "REF", width: 42 },
-      { key: "version", header: "VERSION", width: 14 },
-      { key: "enabled", header: "ENABLED", width: 8, transform: (v) => (v === "true" ? "yes" : "no") },
-      { key: "scope", header: "SCOPE", width: 12 },
-    ],
-    rows: effective,
-    empty: "(none)",
-  });
-}
-
-async function handlePluginInventoryShowCommand(
-  ref: string,
-  path: string,
-  opts: { format?: string },
-): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(path);
-  const homeRoot = resolveHomeRoot();
-  const inventory = await refreshClaudePluginInventoryForCli(path);
-  const install = inventory.effective.find((row) => row.ref === ref) ?? null;
-  const declaredScopes = declaringScopesForClaudePlugin(ref, {
-    projectRoot,
-    homeRoot,
-  });
-
-  const entries =
-    install == null
-      ? []
-      : [{ ...install, declared_by_scopes: declaredScopes }];
-
-  if (format === "json") {
-    printJson({ ref, entries });
-    return;
-  }
-
-  if (install == null) {
-    ui.panel({
-      title: ["PLUGIN", ref],
-      rows: [
-        ["Ref", ref],
-        ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
-        ["Effective install", ui.theme.warn("(not found in merged inventory)")],
-      ],
-    });
-    return;
-  }
-
-  ui.panel({
-    title: ["PLUGIN", ref],
-    rows: [
-      ["Ref", ref],
-      ["Declared by scopes", declaredScopes.length > 0 ? declaredScopes.join(", ") : "(none)"],
-      ["Platform", install.platformId],
-      ["Version", install.version],
-      ["Enabled", install.enabled ? "yes" : "no"],
-      ["Scope", install.scope],
-      ...(install.installPath ? [["Path", install.installPath] as [string, string]] : []),
-    ],
-  });
-}
-
-async function handlePluginInstalledListCommand(
-  path: string,
-  opts: { platform?: string; format?: string },
-): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  const result = await listInstalledPlugins(pluginLifecycleBase(path, opts));
-  if (format === "json") {
-    printJson(result);
-    return;
-  }
-  const rows = result.installs.map((install) => ({
-    platform: install.platformId,
-    ref: install.ref,
-    version: install.version,
-    scope: install.scope,
-  }));
-  ui.table.print({
-    columns: [
-      { key: "platform", header: "PLATFORM", width: 14 },
-      { key: "ref", header: "REF", width: 36 },
-      { key: "version", header: "VERSION", width: 14 },
-      { key: "scope", header: "SCOPE", width: 10 },
-    ],
-    rows,
-    summary: rows.length === 0 ? undefined : `${rows.length} plugins`,
-    empty: "No plugins found.",
-  });
-  if (result.unsupported_platforms.length > 0) {
-    ui.dim(`Unsupported platforms: ${result.unsupported_platforms.join(", ")}`);
-  }
-}
-
-async function handlePluginCheckCommand(
-  path: string,
-  opts: { platform?: string; scope?: string; refresh?: boolean; format?: string },
-): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-
-  // When --refresh is requested in human mode, use spinner + verdict instead of table.
-  if (opts.refresh && format === "human") {
-    const spin = createProgress("Checking plugins…");
-    const report = await checkPlugins({
-      ...pluginLifecycleBase(path, opts),
-      scopes: parseScopeFilter(opts.scope),
-      forceRefresh: true,
-    });
-    const outdated = report.summary.outdated;
-    const verdictMsg = `Refreshed ${formatCount(report.refreshed_sources.length, "source")} ${ui.icons.bullet} ${report.summary.current} current, ${outdated} outdated`;
-    if (outdated > 0) {
-      spin.fail(verdictMsg);
-    } else {
-      spin.succeed(verdictMsg);
-    }
-    for (const source of report.refreshed_sources) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${source}`));
-    }
-    if (outdated > 0) process.exitCode = 1;
-    return;
-  }
-
-  const report = await checkPlugins({
-    ...pluginLifecycleBase(path, opts),
-    scopes: parseScopeFilter(opts.scope),
-    forceRefresh: opts.refresh ?? false,
-  });
-  if (format === "json") {
-    printJson(report);
-    if (report.summary.outdated > 0) process.exitCode = 1;
-    return;
-  }
-  const rows = report.results.map((row) => ({
-    status: row.status,
-    platform: row.platformId,
-    ref: row.ref,
-    version: row.version,
-    latest: row.status === "outdated" && row.latestVersion ? row.latestVersion : row.version,
-    scope: row.scope,
-  }));
-  ui.table.print({
-    columns: [
-      {
-        key: "status",
-        header: "STATUS",
-        width: 10,
-        style: (value) =>
-          value === "outdated"
-            ? ui.theme.warn(value)
-            : value === "current"
-              ? ui.theme.success(value)
-              : ui.theme.muted(value),
-      },
-      { key: "platform", header: "PLATFORM", width: 14, style: (value) => ui.theme.muted(value) },
-      { key: "ref", header: "REF", width: 28 },
-      { key: "version", header: "VERSION", width: 12 },
-      { key: "latest", header: "LATEST", width: 12 },
-      { key: "scope", header: "SCOPE", width: 10 },
-    ],
-    rows,
-    summary: `${rows.length} plugins ${ui.icons.bullet} ${report.summary.current} current ${ui.icons.bullet} ${report.summary.outdated} outdated ${ui.icons.bullet} ${report.summary.unknown} unknown`,
-    empty: "No plugins found.",
-  });
-  if (report.unsupported_platforms.length > 0) {
-    ui.dim(`Unsupported platforms: ${report.unsupported_platforms.join(", ")}`);
-  }
-  if (report.summary.outdated > 0) process.exitCode = 1;
-}
-
-async function handlePluginUpdateCommand(
-  ref: string | undefined,
-  opts: {
-    platform?: string;
-    scope?: string;
-    all?: boolean;
-    yes?: boolean;
-    format?: string;
-  },
-): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  if (format === "json") {
-    const report = await updatePlugins({
-      ...pluginLifecycleBase(".", opts),
-      ref,
-      all: opts.all,
-      yes: opts.yes,
-      scopes: parseScopeFilter(opts.scope),
-    });
-    printJson(report);
-    if (report.summary.failed > 0) process.exitCode = 1;
-    return;
-  }
-
-  const spin = createProgress("Updating plugins…");
-  const report = await updatePlugins({
-    ...pluginLifecycleBase(".", opts),
-    ref,
-    all: opts.all,
-    yes: opts.yes,
-    scopes: parseScopeFilter(opts.scope),
-  });
-
-  if (report.results.length === 0) {
-    spin.stop();
-    ui.info("No plugins to update.");
-  } else {
-    const updatedCount = report.summary.updated;
-    const failedCount = report.summary.failed;
-    const verdictMsg =
-      failedCount > 0
-        ? `${formatCount(updatedCount, "plugin")} updated, ${formatCount(failedCount, "failed")}`
-        : `${formatCount(updatedCount, "plugin")} updated`;
-    if (failedCount > 0) {
-      spin.fail(verdictMsg);
-    } else {
-      spin.succeed(verdictMsg);
-    }
-    for (const row of report.results) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${row.ref}: ${row.status} — ${row.message}`));
-    }
-  }
-  if (report.summary.failed > 0) process.exitCode = 1;
-}
-
-async function handlePluginRefreshCommand(
-  opts: { platform?: string; format?: string },
-): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  if (format === "human") {
-    const spin = createProgress("Refreshing plugin sources…");
-    const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
-    spin.succeed(
-      `Refreshed ${formatCount(result.refreshed_sources.length, "source")}`,
-    );
-    for (const source of result.refreshed_sources) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${source}`));
-    }
-    return;
-  }
-  const result = await refreshPluginSources(pluginLifecycleBase(".", opts));
-  printJson(result);
-}
-
 async function handleProjectStatusCommand(
   path: string,
   opts: { format?: string },
@@ -2047,7 +1718,7 @@ async function handleProjectStatusCommand(
         ["Root", projectRoot],
         ["Git origin", "(none)"],
         ["Platforms", detected.join(", ") || "(none detected)"],
-        ["Plugins", "(not tracked — no git origin)"],
+        ["Plugin refs", "use `hd resource sync` on library plugin resources"],
       ],
     });
     return;
@@ -2059,10 +1730,6 @@ async function handleProjectStatusCommand(
   const snapshots = project ? listSnapshots(project.id) : [];
 
   if (format === "json") {
-    const inventory =
-      project && detected.includes("claude-code")
-        ? getProjectPluginState(project.id)
-        : null;
     const payload: Record<string, unknown> = {
       project_root: projectRoot,
       git_origin: normalizedOrigin,
@@ -2072,37 +1739,8 @@ async function handleProjectStatusCommand(
       payload.applied_layers = layers.length;
       payload.snapshots = snapshots.length;
     }
-    if (detected.includes("claude-code")) {
-      payload.claude_code = {
-        plugins: inventory
-          ? {
-              scanned_at: inventory.scanned_at,
-              committed_count: inventory.committed.length,
-              effective_count: inventory.effective.length,
-            }
-          : null,
-      };
-    }
     printJson(payload);
     return;
-  }
-
-  let pluginsLine = "(none detected)";
-  try {
-    const plugins = await listInstalledPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
-    if (plugins.installs.length > 0) {
-      const check = await checkPlugins({ projectRoot, homeRoot: resolveHomeRoot() });
-      pluginsLine = `${plugins.installs.length} installed (${check.summary.outdated} outdated)`;
-    }
-  } catch {
-    // best-effort
-  }
-
-  if (detected.includes("claude-code") && project) {
-    const inventory = getProjectPluginState(project.id);
-    if (inventory) {
-      pluginsLine = `${inventory.committed.length} committed, ${inventory.effective.length} effective`;
-    }
   }
 
   const rows: [string, string][] = [
@@ -2114,7 +1752,7 @@ async function handleProjectStatusCommand(
     rows.push(["Applied layers", `${layers.length}`]);
     rows.push(["Snapshots", `${snapshots.length}`]);
   }
-  rows.push(["Plugins", pluginsLine]);
+  rows.push(["Plugin refs", "sync library resources with `hd resource sync`"]);
 
   ui.panel({ title: ["PROJECT"], rows });
 }
@@ -2944,13 +2582,14 @@ layerCmd
   .command("attach")
   .argument("[layer]", "Layer name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
-  .option("--version <constraint>", "Version constraint for plugin or layer dependency")
-  .option("--embed", "Embed plugin files on export (plugin attachments only)")
+  .option("--type <type>", `Attachment type when selector omits prefix: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--version <constraint>", "Version constraint for plugin or layer attachments")
+  .option("--embed", "Mark plugin resource as embed-on-export")
+  .option("--sync", "Sync plugin resource immediately after attach (default: lazy)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Attach a resource, plugin, or dependency to a layer")
-  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+  .description("Attach a resource, plugin, or layer reference to a layer")
+  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; sync?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
@@ -2978,9 +2617,11 @@ layerCmd
         return;
       }
 
+      const attachmentType = validateLayerAttachmentType(opts.type);
+
       const wizardValues = await runLayerAddWizard({
         selector,
-        type: opts.type,
+        type: attachmentType,
         version: opts.version,
         embed: opts.embed,
         layerName: layer.name,
@@ -2988,7 +2629,7 @@ layerCmd
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !layerName || !selector || !opts.type,
+          missingRequiredArgs: !layerName || !selector,
         }),
       });
 
@@ -2996,12 +2637,13 @@ layerCmd
         throw new Error(`error: missing required argument 'selector'`);
       }
 
-      ui.success(ui.theme.accent(addLayerAttachment({
+      ui.success(ui.theme.accent(await addLayerAttachment({
         layer,
         selector: wizardValues.selector,
         type: wizardValues.type,
         version: wizardValues.version,
         embed: wizardValues.embed ?? opts.embed,
+        sync: opts.sync,
       })));
     } catch (err) {
       process.exitCode = 1;
@@ -3016,7 +2658,7 @@ layerCmd
   .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Remove a resource, plugin, or dependency from a layer")
+  .description("Remove a resource, plugin, or layer reference from a layer")
   .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -3045,15 +2687,17 @@ layerCmd
         return;
       }
 
+      const attachmentType = validateLayerAttachmentType(opts.type);
+
       const wizardValues = await runLayerAddWizard({
         selector,
-        type: opts.type,
+        type: attachmentType,
         layerName: layer.name,
         shouldPrompt: shouldUseWizard({
           interactive: opts.interactive,
           noInteractive: opts.noInteractive,
           format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !layerName || !selector || !opts.type,
+          missingRequiredArgs: !layerName || !selector,
         }),
       });
 
@@ -3064,9 +2708,9 @@ layerCmd
       const result = removeLayerAttachment({
         layer,
         selector: wizardValues.selector,
-        type: wizardValues.type,
+        type: wizardValues.type ?? attachmentType,
       });
-      if (!result.removed && wizardValues.type === "layer-dependency") {
+      if (!result.removed && attachmentType === "layer") {
         process.exitCode = 1;
         ui.danger(result.message);
         return;
@@ -3265,7 +2909,8 @@ resourceCmd
   .argument("<resource>", "Resource name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
-  .action((resource: string, opts: { format?: string; showId?: boolean }) => {
+  .option("--all-fields", "Show all resource metadata fields")
+  .action((resource: string, opts: { format?: string; showId?: boolean; allFields?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
@@ -3299,23 +2944,33 @@ resourceCmd
       process.exitCode = 1;
       return;
     }
-    printResourceShow(result.resource);
+    printResourceShow(result.resource, { showAllFields: Boolean(opts.allFields) });
   });
 
 resourceCmd
   .command("sync")
   .argument("[selector]", "Linked resource selector (optional)")
   .option("--overwrite", "Overwrite cached definitions when install tree differs")
+  .option("--on-conflict <policy>", "Conflict policy: overwrite, ignore, or fail", "fail")
+  .option("--force", "Sync pinned resources")
   .option("--dry-run", "Report linked resources without writing changes")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Refresh marketplace-linked resource definitions from installed plugin trees")
-  .action(async (selector: string | undefined, opts: { overwrite?: boolean; dryRun?: boolean; format?: string }) => {
+  .description("Sync plugin resources and marketplace-linked definitions from install trees")
+  .action(async (selector: string | undefined, opts: { overwrite?: boolean; onConflict?: string; force?: boolean; dryRun?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
+    const onConflict = opts.onConflict as "overwrite" | "ignore" | "fail" | undefined;
+    if (onConflict && !["overwrite", "ignore", "fail"].includes(onConflict)) {
+      process.exitCode = 1;
+      ui.danger("Invalid --on-conflict. Use overwrite, ignore, or fail.");
+      return;
+    }
     const result = await syncLinkedResources({
       selector,
       policy: opts.overwrite ? "overwrite" : "skip",
+      onConflict: onConflict ?? (opts.overwrite ? "overwrite" : "fail"),
+      force: opts.force,
       dryRun: opts.dryRun,
     });
 
@@ -3325,7 +2980,7 @@ resourceCmd
     }
 
     ui.success(
-      `Checked ${result.checked} linked resource(s) ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.stale.length} stale`,
+      `Checked ${result.checked} resource(s) ${ui.icons.bullet} ${result.updated.length} updated, ${result.unchanged.length} unchanged, ${result.skipped.length} skipped, ${result.stale.length} stale`,
     );
     for (const entry of result.stale) {
       ui.warn(`${entry.resource.type}:${entry.resource.name} — ${entry.reason}`);
@@ -3536,72 +3191,6 @@ harnessProjectCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Show project-scoped harness preferences")
   .action(handleHarnessProjectStatusCommand);
-
-// ── plugin ──────────────────────────────────────────────────────────────
-
-const pluginCmd = configureCommandGroup(
-  program
-    .command("plugin")
-    .description("Plugin inventory and lifecycle"),
-);
-
-pluginCmd
-  .command("list")
-  .alias("ls")
-  .argument("[path]", "Project directory", ".")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description(
-    "List Claude Code plugin inventory (project-committed vs merged effective)",
-  )
-  .action(handlePluginInventoryListCommand);
-
-pluginCmd
-  .command("show")
-  .argument("<ref>", "Plugin ref (e.g. formatter@acme-marketplace)")
-  .argument("[path]", "Project directory", ".")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description(
-    "Show merged effective install and settings scopes that declare this ref",
-  )
-  .action(handlePluginInventoryShowCommand);
-
-pluginCmd
-  .command("installed")
-  .argument("[path]", "Project directory", ".")
-  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description(
-    "List plugins as reported by providers (lifecycle / check-update tooling)",
-  )
-  .action(handlePluginInstalledListCommand);
-
-pluginCmd
-  .command("check")
-  .argument("[path]", "Project directory", ".")
-  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
-  .option("--scope <scopes>", "Comma-separated scopes: user,project,local,managed")
-  .option("--refresh", "Force refresh marketplace/git metadata before check")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Check for outdated plugins")
-  .action(handlePluginCheckCommand);
-
-pluginCmd
-  .command("update")
-  .argument("[ref]", "Plugin ref (e.g. superpowers@claude-plugins-official)")
-  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
-  .option("--scope <scopes>", "Comma-separated scopes")
-  .option("--all", "Update all outdated plugins")
-  .option("--yes", "Confirm managed-scope updates")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Update one or more plugins")
-  .action(handlePluginUpdateCommand);
-
-pluginCmd
-  .command("refresh")
-  .option("-p, --platform <slugs>", "Comma-separated platform slugs")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Force refresh plugin source metadata")
-  .action(handlePluginRefreshCommand);
 
 // ── cleanup ─────────────────────────────────────────────────────────────
 

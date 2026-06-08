@@ -9,6 +9,17 @@ export function shortenId(value: string): string {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+export function formatAbsoluteTime(
+  value: string | number | Date,
+  options?: { includeTime?: boolean },
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (options?.includeTime) {
+    return date.toISOString().slice(0, 19).replace("T", " ");
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 export function formatRelativeTime(value: string | number | Date): string {
   const date = value instanceof Date ? value : new Date(value);
   const diffMs = Date.now() - date.getTime();
@@ -20,7 +31,14 @@ export function formatRelativeTime(value: string | number | Date): string {
   if (diffMs < hour) return `${Math.floor(diffMs / minute)} minutes ago`;
   if (diffMs < day) return `${Math.floor(diffMs / hour)} hours ago`;
   if (diffMs <= 30 * day) return `${Math.floor(diffMs / day)} days ago`;
-  return date.toISOString().slice(0, 10);
+  return formatAbsoluteTime(date);
+}
+
+export function formatRelativeTimeWithAbsolute(value: string | number | Date): string {
+  const relative = formatRelativeTime(value);
+  const absolute = formatAbsoluteTime(value, { includeTime: true });
+  if (relative === absolute) return relative;
+  return `${relative} (${absolute})`;
 }
 
 export function formatCount(count: number, singular: string, plural = `${singular}s`): string {

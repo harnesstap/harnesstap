@@ -1,6 +1,6 @@
 // ── Resource types (superset of all platform features) ──────────────────
 
-export const RESOURCE_TYPES = [
+export const MATERIAL_RESOURCE_TYPES = [
   "instruction",
   "skill",
   "rule",
@@ -13,6 +13,22 @@ export const RESOURCE_TYPES = [
   "model_config",
 ] as const;
 
+export const COMPOSITION_RESOURCE_TYPES = ["plugin", "layer"] as const;
+
+export const RESOURCE_TYPES = [
+  ...MATERIAL_RESOURCE_TYPES,
+  ...COMPOSITION_RESOURCE_TYPES,
+] as const;
+
+/** Resource types shown in default `hd resource list` (excludes layer composition refs). */
+export const LISTABLE_RESOURCE_TYPES = [
+  ...MATERIAL_RESOURCE_TYPES,
+  "plugin",
+] as const;
+
+export type MaterialResourceType = (typeof MATERIAL_RESOURCE_TYPES)[number];
+export type CompositionResourceType = (typeof COMPOSITION_RESOURCE_TYPES)[number];
+export type ListableResourceType = (typeof LISTABLE_RESOURCE_TYPES)[number];
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
 
 export const ORIGIN_KINDS = [
@@ -69,6 +85,25 @@ export interface ModelConfigMetadata {
   provider?: string;
 }
 
+export interface PluginResourceMetadata {
+  source_kind?: "marketplace" | "local" | "git";
+  marketplace_name?: string;
+  version_constraint?: string;
+  resolved_version?: string;
+  sync_status?: "synced" | "stale" | "pinned" | "never_synced";
+  portable?: "reference" | "embed";
+  manifests?: {
+    claude?: Record<string, unknown>;
+    cursor?: Record<string, unknown>;
+  };
+}
+
+export interface LayerResourceMetadata {
+  version_constraint?: string;
+  resolved_version?: string;
+  resolved_layer_id?: string;
+}
+
 export type ResourceMetadata =
   | RuleMetadata
   | SkillMetadata
@@ -78,6 +113,8 @@ export type ResourceMetadata =
   | AgentMetadata
   | EnvVarMetadata
   | ModelConfigMetadata
+  | PluginResourceMetadata
+  | LayerResourceMetadata
   | Record<string, unknown>;
 
 // ── Core entities ───────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { listLayerPlugins } from "../models/plugin-pins.js";
-import type { ProjectPluginInventory } from "./claude-plugin-inventory.js";
+import { findPluginResourceByPin } from "./composition-resource.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
+import type { PluginResourceMetadata } from "../types.js";
 
 export interface PluginValidationIssue {
   ref: string;
@@ -16,40 +17,49 @@ interface PluginConstraintPin {
 
 function validatePluginConstraintPins(
   rows: PluginConstraintPin[],
-  inventory: ProjectPluginInventory,
 ): PluginValidationIssue[] {
-  const effectiveByRef = new Map(inventory.effective.map((p) => [p.ref, p]));
   const issues: PluginValidationIssue[] = [];
 
   for (const row of rows) {
-    const installed = effectiveByRef.get(row.ref);
-    if (!installed) continue;
-    if (satisfiesConstraint(row.version_constraint, installed.version)) continue;
+    if (!row.version_constraint) {
+      continue;
+    }
+
+    const resource = findPluginResourceByPin(row.ref, row.version_constraint);
+    const metadata = (resource?.metadata ?? {}) as PluginResourceMetadata;
+    const resolved = metadata.resolved_version;
+
+    if (!resolved) {
+      issues.push({
+        ref: row.ref,
+        constraint: row.version_constraint,
+        installed: "never_synced",
+        message: `Plugin ${row.ref} has no resolved version. Run: harnessdeck resource sync plugin:${row.ref}`,
+      });
+      continue;
+    }
+
+    if (satisfiesConstraint(row.version_constraint, resolved)) {
+      continue;
+    }
+
     issues.push({
       ref: row.ref,
       constraint: row.version_constraint,
-      installed: installed.version,
-      message: `Plugin version mismatch: ${row.ref} requires ${row.version_constraint}, effective is ${installed.version}. Run: claude plugin update ${row.ref}`,
+      installed: resolved,
+      message: `Plugin version mismatch: ${row.ref} requires ${row.version_constraint}, library has ${resolved}. Run: harnessdeck resource sync plugin:${row.ref}`,
     });
   }
 
   return issues;
 }
 
-/**
- * Validates layer Claude plugin pins against the merged effective inventory.
- * Only compares rows whose `ref` appears in `inventory.effective`.
- */
-export function validateLayerPluginConstraints(
-  layerId: string,
-  inventory: ProjectPluginInventory,
-): PluginValidationIssue[] {
-  return validatePluginConstraintPins(listLayerPlugins(layerId), inventory);
+export function validateLayerPluginConstraints(layerId: string): PluginValidationIssue[] {
+  return validatePluginConstraintPins(listLayerPlugins(layerId));
 }
 
 export function validatePluginPinsAgainstInventory(
   pins: PluginConstraintPin[],
-  inventory: ProjectPluginInventory,
 ): PluginValidationIssue[] {
-  return validatePluginConstraintPins(pins, inventory);
+  return validatePluginConstraintPins(pins);
 }

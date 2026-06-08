@@ -5,6 +5,27 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { findPluginResourceByPin } from "../../src/services/composition-resource.ts";
+import { getDb } from "../../src/db/connection.ts";
+
+function setPluginResolvedVersion(
+  ref: string,
+  resolvedVersion: string,
+  versionConstraint?: string,
+): void {
+  const plugin = findPluginResourceByPin(ref, versionConstraint);
+  if (!plugin) {
+    throw new Error(`Plugin resource not found: ${ref}`);
+  }
+  const metadata = {
+    ...(plugin.metadata as Record<string, unknown>),
+    resolved_version: resolvedVersion,
+    sync_status: "synced",
+  };
+  getDb()
+    .prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?")
+    .run(JSON.stringify(metadata), new Date().toISOString(), plugin.id);
+}
 
 function seedClaudePluginMismatchFixture(homeDir: string, projectDir: string): void {
   mkdirSync(join(homeDir, ".claude/plugins/CACHE/formatter/.claude-plugin"), {
@@ -126,6 +147,7 @@ describe("CLI apply", () => {
 
       const layer = layerModel.createLayer({ name: "with-plugins" });
       pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -168,6 +190,7 @@ describe("CLI apply", () => {
 
       const layer = layerModel.createLayer({ name: "strict-plugins" });
       pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -404,6 +427,7 @@ describe("CLI apply", () => {
 
       const base = layerModel.createLayer({ name: "base-plugins" });
       pluginPins.addPluginToLayer(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const baseResource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",

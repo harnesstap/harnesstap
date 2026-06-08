@@ -60,6 +60,9 @@ export function mergePlugins(pluginIds: string[]): MergedLayerContent {
     layers.push(layer);
 
     for (const resource of getPluginResources(layer.id)) {
+      if (resource.type === "plugin" || resource.type === "layer") {
+        continue;
+      }
       const key = resourceKey(resource);
       if (!resourceByKey.has(key)) {
         resourceOrder.push(key);

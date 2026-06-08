@@ -9,7 +9,6 @@ describe("CLI help and command organization", () => {
       ["layer"],
       ["resource"],
       ["project"],
-      ["plugin"],
       ["cloud"],
       ["migrate"],
       ["harness"],
@@ -116,10 +115,9 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("documents plugin update --all in command help", async () => {
-    const pluginHelp = await runCli(["plugin", "update", "--help"]);
-    expect(pluginHelp.stdout).toContain("--all");
-    expect(pluginHelp.stdout).toContain("Update all outdated plugins");
+  it("documents resource sync --on-conflict in command help", async () => {
+    const syncHelp = await runCli(["resource", "sync", "--help"]);
+    expect(syncHelp.stdout).toContain("--on-conflict");
   });
 
   it("disables color for non-help commands when --no-color is used", async () => {

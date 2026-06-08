@@ -16,6 +16,7 @@ import {
   addDependencyToPlugin,
 } from "../models/plugin-component.js";
 import { listLayerPlugins, addPluginToLayer } from "../models/plugin-pins.js";
+import { isCompositionResourceType } from "./composition-resource.js";
 import type { LayerPluginRow } from "../models/plugin-pins.js";
 import {
   normalizeResourceInput,
@@ -281,18 +282,20 @@ function collectBundlePayload(
     description: layer.description,
     tags: layer.tags,
     ...(layer.claude ? { claude: layer.claude } : {}),
-    resources: resources.map((r) => ({
-      type: r.type,
-      name: r.name,
-      description: r.description,
-      content: r.content,
-      metadata: r.metadata,
-      namespace: r.namespace,
-      origin_kind: r.origin_kind,
-      origin_ref: r.origin_ref,
-      content_hash: r.content_hash,
-      content_blob_ref: r.content_blob_ref,
-    })),
+    resources: resources
+      .filter((r) => !isCompositionResourceType(r.type))
+      .map((r) => ({
+        type: r.type,
+        name: r.name,
+        description: r.description,
+        content: r.content,
+        metadata: r.metadata,
+        namespace: r.namespace,
+        origin_kind: r.origin_kind,
+        origin_ref: r.origin_ref,
+        content_hash: r.content_hash,
+        content_blob_ref: r.content_blob_ref,
+      })),
     plugins: pins,
     ...(embeddedRoots.length > 0
       ? { embedded_plugin_refs: embeddedRoots.map((plugin) => plugin.ref) }
@@ -933,6 +936,9 @@ function importLayerFromBundleParsed(
 
   const resources: Resource[] = [];
   for (const r of bundle.resources) {
+    if (isCompositionResourceType(r.type)) {
+      continue;
+    }
     const upserted = upsertResource(
       normalizeResourceInput({
         type: r.type,
