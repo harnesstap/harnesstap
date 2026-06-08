@@ -1,27 +1,26 @@
 # Harnessdeck CLI specification
 
-This document describes the intended behavior of `harnessdeck`.
+This document is the authoritative specification for `harnessdeck` / `hd`.
 
 ## Product summary
 
 `harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It collects agent configuration into canonical local resources, groups **what** resources into **plugins**, binds plugins and default **environments** into **configured layers**, curates those layers into portable **decks**, and syncs the resolved setup into project directories across supported agent harnesses.
 
-An **agent harness** is the complete infrastructure that wraps around an LLM and makes it a functional agent. In practice, that includes things like skills, MCP servers, hooks, plugins, rules, agent manifests, commands, and harness-specific configuration files.
+An **agent harness** is the complete infrastructure that wraps around an LLM and makes it a functional agent. In practice, that includes skills, MCP servers, hooks, plugins, rules, agent manifests, commands, and harness-specific configuration files.
 
 The product currently supports these main workflows:
 
 - Initialize local state, seed built-in layers, discover supported home-directory defaults, and choose global harness preferences.
-- Scan an existing repository and import agent configuration into a local database.
-- Group imported resources into versioned layers.
+- Scan an existing repository (or plugin source) and import agent configuration into a local database.
+- Group imported resources into versioned design plugins and configured layers.
 - Diff, doctor, export, import, publish, search, install, or derive layers from a project scan.
-- Record layer dependencies and Claude plugin version pins alongside layer resources.
-- Apply one or more layers, a local bundle file, or a bundle URL to a project.
-- Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
+- Compose layers by attaching material resources, `plugin` references, and `layer` dependencies through one attachment model.
+- Apply one or more configured layers, a local bundle file, or a bundle URL to a project.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
-- Export or import a machine-migration archive of local plugins, configured layers, harness preferences, and config.
+- Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
+- Export or import a machine-transfer archive of local plugins, configured layers, harness preferences, and config.
+- Authenticate with HarnessDeck Cloud and search, install, or publish layer bundles.
 - Resolve **environment** values with a home → layer default → deck-active cascade on `project apply`.
-
-Design reference: [docs/superpowers/specs/2026-06-03-deck-model-and-transportable-format-design.md](docs/superpowers/specs/2026-06-03-deck-model-and-transportable-format-design.md).
 
 ## Core concepts
 
@@ -43,34 +42,38 @@ flowchart TB
 
 The CLI uses a small set of concepts consistently across commands.
 
-- `resource`: a single canonical item stored in SQLite with optional **namespace** and **origin** metadata. Plugin-side types: instruction, skill, rule, MCP server, hook, agent, command. Environment-side types: env var, model config, **permission** (permissions are *how* values, not plugin-side resources).
-- `plugin`: an ordered bundle of plugin-side resources, optional Claude marketplace/plugin config, native plugin pins, and a `needs` config contract. This is what the earlier `layer` noun meant before the deck model (see [Migration](#migration-from-the-layer-only-model)).
+- `resource`: a single canonical item stored in SQLite with optional **namespace** and **origin** metadata. Plugin-side types: instruction, skill, rule, MCP server, hook, agent, command. Environment-side types: env var, model config, **permission** (permissions are *how* values, not plugin-side resources). Composition types: `plugin`, `layer`.
+- `plugin` (design-time): an ordered bundle of plugin-side resources, optional Claude marketplace/plugin config, composition attachments (`plugin` and `layer` resource refs), and a `needs` config contract. The `layer` command group manages these bundles in the CLI.
 - `environment`: a named, swappable bundle of how-values (env vars, model config, permissions) plus secret references. Non-secret values can travel in a deck; secrets are referenced, not embedded.
-- `configured layer` (often called **layer** in user-facing copy): a binding of one or more plugins with an optional default environment — a configured capability such as "backend on-call."
+- `configured layer`: a binding of one or more design plugins with an optional default environment — a configured capability such as "backend on-call." This is what `project apply` targets when applying layer selectors.
 - `deck`: a curated bundle of configured layers and environments, importable as a git repo and described by `.harnessdeck/deck.json`.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
-- `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses should use symlinks when the file layout allows it, and generated copies otherwise.
-- `project`: a git-backed repository tracked by normalized git origin.
+- `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
+- `project`: a git-backed directory tracked by HarnessDeck, keyed by normalized `origin` when available.
 - `snapshot`: a saved copy of files generated during layer application or project sync.
 
-### Naming map (avoid three different "plugins")
+### Naming map (three kinds of "plugin" / "layer")
 
-| Concept | CLI / docs today | SQLite (after deck migrations) |
+| Concept | CLI | SQLite |
 | --- | --- | --- |
-| Design **plugin** (resource bundle + Claude config) | `hd layer …` (deprecated alias) | `plugins`, `plugin_resources`, … |
-| **Plugin pin** (marketplace/local reference) | `layer attach plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + `plugin_resources` |
-| **Layer dependency** (composition ref) | `layer attach layer:name` or `--type layer` | `resources` (`type=layer`) + `plugin_resources` |
-| **Configured layer** | `project apply <layer>` (target) | `configured_layers`, `configured_layer_plugins` |
-| **Deck** | `hd deck …` (companion CLI spec; services exist) | `decks`, `deck_configured_layers` |
+| Design **plugin** (resource bundle + Claude config) | `hd layer …` | `plugins`, `plugin_resources`, … |
+| **`plugin` resource** (marketplace/local reference) | `layer attach plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + `plugin_resources` |
+| **`layer` resource** (composition ref) | `layer attach layer:name` or `--type layer` | `resources` (`type=layer`) + `plugin_resources` |
+| **Configured layer** | `project apply <layer>` | `configured_layers`, `configured_layer_plugins` |
+| **Deck** | library APIs + `.harnessdeck/deck.json` | `decks`, `deck_configured_layers` |
+
+Plugin freshness and composition use `resource sync`, `layer doctor`, and `project apply` plugin-version flags.
 
 ### Resource classification
 
-| Plugin (*what*) | Environment (*how*) |
-| --- | --- |
-| `instruction`, `skill`, `rule`, `mcp_server`, `hook`, `agent`, `command` | `env_var`, `model_config`, `permission` |
+| Plugin (*what*) | Environment (*how*) | Composition |
+| --- | --- | --- |
+| `instruction`, `skill`, `rule`, `mcp_server`, `hook`, `agent`, `command` | `env_var`, `model_config`, `permission` | `plugin`, `layer` |
 
 An `mcp_server` **definition** lives on the plugin; tokens and URLs are contract keys (`needs`) filled by an environment.
+
+`layer` composition resources are hidden from default `resource list`; `plugin` resources are listed.
 
 ### Settings umbrella (UX)
 
@@ -83,7 +86,7 @@ settings ≡ environments (env_var, model_config, permission)
          + ~/.harnessdeck/config.jsonc
 ```
 
-Use `hd environment …` for named how-bundles today.
+Environments are managed through the library schema and deck transport.
 
 ### Resource identity and selectors
 
@@ -95,12 +98,38 @@ Selector grammar:
 selector ::= [ type ":" ] name [ "@" namespace ]
 ```
 
-Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `01J…` (ULID id).
+Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `plugin:posthog@cursor-team-kit`, `layer:backend-oncall`, `01J…` (ULID id).
 
 - **Display** commands (`resource show`, `resource delete`): bare names prefer the unnamespaced row when present; otherwise list ambiguous matches.
 - **Compose** commands (`layer attach`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
 
 Imported bodies are content-addressed under `~/.harnessdeck/blobs/sha256/…` with `content_hash` stored on the row.
+
+### Unified composition model
+
+A design plugin is an ordered list of attachments on a `layer`:
+
+| Attachment | `resource list` | Attach example | Refresh |
+| --- | --- | --- | --- |
+| Material (`skill`, …) | yes | `layer attach L skill:foo@ns` | via `resource sync` when `origin_kind=marketplace_link` |
+| `plugin` | yes | `layer attach L plugin:posthog@cursor-team-kit` | `resource sync plugin:posthog@cursor-team-kit` |
+| `layer` | no | `layer attach L layer:backend-oncall@^1.0` | resolves to a library layer version |
+
+**Lazy plugin attach:** `layer attach plugin:…` links only. Sync is explicit via `resource sync`, `layer attach --sync`, or `project apply --sync-plugins`.
+
+**Plugin resource metadata** (harness-agnostic):
+
+```ts
+interface PluginResourceMetadata {
+  source_kind: "marketplace" | "local" | "git";
+  marketplace_name?: string;
+  version_constraint?: string;   // absent = floating latest
+  resolved_version?: string;     // set by last successful sync
+  sync_status?: "synced" | "stale" | "pinned" | "never_synced";
+  portable?: "reference" | "embed";
+  manifests?: { claude?: Record<string, unknown>; cursor?: Record<string, unknown> };
+}
+```
 
 ### Environment cascade
 
@@ -112,7 +141,7 @@ home environment  ◂  configured-layer default environment  ◂  deck active en
 
 On `project apply`, HarnessDeck merges environment fragments into plugin-side serialization so env vars and model config override matching `type:name` resources. Home environments may be stored under `~/.harnessdeck/environments/<name>.json` (JSONC).
 
-Flagship workflow (companion CLI): `hd deck use staging` — same plugins and layers loaded; only the active environment and materialized how-values change.
+Switching deck active environment re-materializes how-values without reloading plugins — for example, moving from staging to prod while keeping the same layer stack.
 
 ### Hybrid deck repo layout
 
@@ -137,176 +166,219 @@ my-deck/
 | Without HarnessDeck | `claude plugin install` and direct reads of `AGENTS.md` / `.cursor/rules/` |
 | With HarnessDeck | Environment swap, cascade, cross-harness materialization, drift detection |
 
-## Migration from the layer-only model
+## Invocation and global options
 
-The codebase already renamed `preset → layer`. The deck model adds a second shift:
+The package publishes two binaries (`harnessdeck` and `hd`) pointing at the same entrypoint. Help text, usage lines, and follow-up hints use whichever name launched the process.
 
-| Before | After |
+Global options:
+
+| Flag | Behavior |
 | --- | --- |
-| `layer` = resource bundle + `claude` config | **`plugin`** |
-| env/model values only as loose resources | **`environment`** (named, swappable) |
-| *(none)* | **`configured layer`** = plugin(s) + optional default environment |
-| `urn:harnessdeck:bundle:v1` single-layer export | **`deck`** repo + `deck.json`; bundle v1 **still imports** via adapter |
+| `-V, --harnessdeck-version` | Print CLI version |
+| `-v, --verbose` | Show stack traces on errors |
+| `--no-color` | Disable ANSI colors (also respects `NO_COLOR`) |
+| `--no-interactive` | Disable interactive prompts |
+| `-h, --help` | Show help (`--help --all` includes hidden aliases) |
 
-**CLI:** `hd layer` remains as a **deprecated alias** for design-plugin operations (`create`, `export`, `import`, …) for one release. New noun groups (`hd plugin` for component bundles when the companion CLI lands, `hd environment`, `hd layer` for configured layers, `hd deck`) are specified in a companion CLI spec. **`hd plugin`** today still means Claude plugin **lifecycle** (installed/check/update) — do not conflate with design plugins.
+### Noun shorthand aliases
 
-**Bundles:** `hd layer export` / `import` and `project apply` on a `.harnessdeck.json` file continue to use `urn:harnessdeck:bundle:v1`. Importers treat a v1 bundle as one design plugin plus an implicit single-plugin configured layer.
+| Full noun | Alias |
+| --- | --- |
+| `layer` | `l` |
+| `resource` | `r` |
+| `project` | `p` |
+| `harness` | `h` |
+| `cloud` | `c` |
 
 ## Command surface
 
-The visible CLI groups commands by noun. Hidden top-level aliases such as `harnessdeck apply` or `harnessdeck export` still exist for compatibility, but the current surface is the grouped form below.
+Commands are grouped by noun. For flag-level detail see [docs/cli/command-reference.md](docs/cli/command-reference.md).
 
 ### Top-level commands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in plugins (via `builtin-layers/` JSON), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
-| `harnessdeck layer ...` | **Deprecated alias** for design-**plugin** CRUD, bundle export/import, catalog, diff, and doctor. Prefer future `hd plugin` / `hd layer` split per companion CLI spec. |
-| `harnessdeck deck ...` | *(Planned — companion CLI spec.)* Deck init, import/export, active environment, materialize, and doctor. Services exist; commands not wired yet (see [Deck commands](#deck-commands-planned)). |
-| `harnessdeck migrate ...` | Exports or imports a machine-migration archive containing layer bundles plus local HarnessDeck preferences and config. |
-| `harnessdeck resource ...` | Lists, shows, or deletes canonical resources stored in SQLite. |
+| `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in plugins, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
+| `harnessdeck layer ...` | Plugin bundle CRUD, composition attach/detach, bundle export/import, cloud catalog, diff, and doctor. |
+| `harnessdeck migrate ...` | Exports or imports a machine-transfer archive. |
+| `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnessdeck project ...` | Scans projects, applies layers, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
-| `harnessdeck harness list` | Lists registered harness targets. |
-| `harnessdeck harness ...` | Manages global and project-scoped main/alias harness preferences. |
-| `harnessdeck resource sync …` | Refreshes marketplace-linked resources and syncs plugin composition resources from install roots. Replaces the removed `hd plugin` inventory commands. |
-| `harnessdeck cloud ...` | Authenticates with Harness cloud and manages local cloud profiles. |
+| `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
+| `harnessdeck cloud ...` | Authenticates with HarnessDeck Cloud and manages local cloud profiles. |
 
-### Deck commands (planned)
-
-These commands are defined for the companion CLI spec. Implementations call `deck-materializer` and `deck-doctor` services when wired:
-
-| Command | Intended behavior |
-| --- | --- |
-| `hd deck init` | Scaffold a deck repo with `.harnessdeck/deck.json` and starter layout. |
-| `hd deck import <path>` | Load `deck.json` into the local library (plugins, environments, configured layers, deck record). |
-| `hd deck export` | Write or refresh `.harnessdeck/deck.json` from the local deck entity. |
-| `hd deck use <environment>` | Set the deck active environment and re-materialize how-values (cascade payoff). |
-| `hd deck materialize [path]` | Generate `.claude-plugin/`, per-plugin manifests, native harness files, and environment files from canonical `deck.json`. |
-| `hd deck doctor [path]` | Compare generated marketplace/native files to a fresh materialization of `deck.json`; report drift without printing secrets. |
-
-Until the CLI group ships, use the library APIs (`setDeckActiveEnvironment`, environment cascade on `project apply`, and future materializer/doctor modules) directly or via tests.
-
-### `layer` subcommands (design plugins — deprecated noun)
+### `layer` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck layer create` | Creates a **design plugin** with optional description and tags. |
-| `harnessdeck layer list` | Lists locally stored design plugins. |
-| `harnessdeck layer show` | Shows plugin metadata, resources, dependencies, and native plugin pins. |
-| `harnessdeck layer attach <layer> <selector>` | Adds a composition attachment: material resources (`skill:foo` or `--type skill`), plugin references (`plugin:posthog@marketplace` or `--type plugin`), or layer references (`layer:baseline` or `--type layer`). Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
-| `harnessdeck layer detach <layer> <selector>` | Removes a typed attachment from a layer. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
-| `harnessdeck layer delete` | Deletes a layer by selector. |
-| `harnessdeck layer export` | Writes a portable JSON bundle for one design plugin (`urn:harnessdeck:bundle:v1`), with optional embedded Claude plugin trees. |
-| `harnessdeck layer import` | Imports a bundle v1 file into the local database (plugin + implicit configured layer). |
-| `harnessdeck layer search` | Searches the remote layer catalog through the configured cloud profile. |
-| `harnessdeck layer add [selector]` | Downloads a remote layer bundle and imports it into the local database. Accepts the canonical `org/library[@version]` selector, and on TTY launches interactive remote search when no selector is provided. |
-| `harnessdeck layer publish` | Publishes a local layer to the remote catalog. |
-| `harnessdeck layer diff` | Compares two local layers, or a layer and a bundle file, across metadata, resources, dependencies, and plugin pins. |
-| `harnessdeck layer doctor` | Diagnoses a layer for duplicate resources, empty content, malformed plugin metadata, and related issues. |
-| `harnessdeck layer from-project` | Scans a project and creates a layer from the imported resources. |
+| `layer create` | Creates a design plugin with optional description, tags, and version. |
+| `layer list` | Lists design plugins (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
+| `layer show` | Shows plugin metadata, resources, dependencies, and composition attachments. |
+| `layer attach` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
+| `layer detach` | Removes a typed attachment. |
+| `layer delete` | Deletes a layer by selector. |
+| `layer export` | Writes a portable JSONC bundle (`urn:harnessdeck:bundle:v1`). |
+| `layer import` | Imports a bundle v1 file into the local database. |
+| `layer search` | Searches the remote layer catalog through the configured cloud profile. |
+| `layer add` | Downloads a remote layer bundle and imports it (`org/library[@version]`). Interactive remote search on TTY when no selector is provided. |
+| `layer publish` | Publishes a local layer to the remote catalog. |
+| `layer diff` | Compares two local layers, or a layer and a bundle file. |
+| `layer doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
+| `layer from-project` | Scans a project and creates a layer from imported resources. |
 
 ### `resource` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck resource list` | Lists canonical resources; shows `name@namespace` when namespace is non-empty. |
-| `harnessdeck resource show` | Prints the full stored resource (supports selector grammar). |
-| `harnessdeck resource sync [selector]` | Refreshes `marketplace_link` rows from installed plugin trees. |
-| `harnessdeck resource delete` | Deletes a resource by selector or ID. |
+| `resource list` | Lists canonical resources; shows `name@namespace` when namespace is non-empty. Hides `type=layer` composition refs by default; use `--all` to disable per-type caps. |
+| `resource show` | Prints the full stored resource (supports selector grammar). |
+| `resource sync` | Refreshes `plugin` resources and `marketplace_link` children from install roots. Supports `--on-conflict`, `--prune`, `--force`, `--dry-run`. |
+| `resource delete` | Deletes a resource by selector or ID. |
 
 ### `project` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck project scan [path]` | Detects supported harnesses in a project, imports discovered resources via hash-aware upsert (`origin_kind=local_snapshot`), prompts on TTY when content differs, and supports `--overwrite`, `--skip-existing`, and `--namespace`. Persists Claude plugin inventory when possible; registers the project when a git origin exists. |
-| `harnessdeck project apply <layers...>` | Applies one or more **configured layer** selectors (or legacy plugin/bundle selectors during deprecation), a local bundle file, or a bundle URL; resolves environment cascade; serializes files for each selected/detected platform; snapshots tracked projects before writing. |
-| `harnessdeck project drift` | Compares the current project files against the latest apply/sync snapshot. |
-| `harnessdeck project sync [path]` | Re-materializes alias harness outputs from the on-disk main harness reference, using symlinks when possible and copies otherwise. |
-| `harnessdeck project history` | Lists stored snapshots for a tracked project. |
-| `harnessdeck project revert [snapshot-id]` | Restores files captured in a saved snapshot. |
-| `harnessdeck project status [path]` | Shows detected harnesses, tracked layers, snapshots, and configured harness preferences for a project. |
+| `project scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnessdeckignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
+| `project apply` | Applies configured-layer selectors, bundle paths, or bundle URLs; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
+| `project drift` | Compares working tree against the latest apply/sync snapshot. |
+| `project sync` | Re-materializes alias harness outputs from the main harness reference. |
+| `project history` | Lists stored snapshots (requires git-backed project). |
+| `project revert` | Restores files from a snapshot. |
+| `project status` | Shows harnesses, applied layers, snapshots, and harness preferences. |
 
 ### `harness` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck harness set` | Sets global main/alias harness preferences, either from flags or an interactive prompt. |
-| `harnessdeck harness status` | Shows the current global harness preference record. |
-| `harnessdeck harness project set` | Sets project-scoped main/alias harness preferences and materialization strategy. |
-| `harnessdeck harness project status` | Shows the project-scoped harness preference record. |
-
-### `plugin` subcommands
-
-| Command | Current behavior |
-| --- | --- |
-| `harnessdeck plugin list [path]` | Lists Claude Code plugin inventory: committed project plugins separately from the merged effective plugin set. |
-| `harnessdeck plugin show <ref> [path]` | Shows one plugin ref, including effective install details and the settings scopes that declare it. |
-| `harnessdeck plugin installed [path]` | Lists plugins as reported by lifecycle providers. |
-| `harnessdeck plugin check [path]` | Reports outdated plugins, refreshing remote metadata when the cache is stale or `--refresh` is set. |
-| `harnessdeck plugin update [ref]` | Updates one or more plugins via the provider-specific lifecycle tooling. |
-| `harnessdeck plugin refresh` | Forces refresh of plugin marketplace/git metadata. |
+| `harness list` | Lists registered harness targets (`--supported` filters to natively serialized harnesses). |
+| `harness set` | Sets global main/alias harness preferences (flags or interactive). |
+| `harness status` | Shows the global harness preference record. |
+| `harness project set` | Sets project-scoped main/alias harness preferences and materialization strategy. |
+| `harness project status` | Shows project-scoped harness preferences. |
 
 ### `cloud` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck cloud login [profile]` | Performs device authentication and saves a named local cloud profile. |
-| `harnessdeck cloud whoami` | Shows information about the authenticated user/profile. |
-| `harnessdeck cloud orgs` | Lists organizations and can switch the active organization for a profile. |
-| `harnessdeck cloud logout` | Removes a local cloud profile. |
+| `cloud login [profile]` | Device authentication; saves a named local cloud profile. |
+| `cloud whoami` | Shows authenticated user/profile context. |
+| `cloud orgs` | Lists organizations; `--switch` updates the active org. |
+| `cloud logout` | Removes a local cloud profile. |
+
+Remote library workflows live on **`layer`**, not `cloud`:
+
+- `layer search` — remote discovery
+- `layer add` — remote fetch + local import (distinct from `layer import` on a local file)
+- `layer publish` — export bundle + upload to cloud
+
+`project apply` applies already-resolved local inputs; fetch remote layers with `layer add` first.
 
 ### `migrate` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `harnessdeck migrate export <file>` | Exports local layers as bundle files together with global harness preferences and config. |
-| `harnessdeck migrate import <file>` | Imports a migration archive produced by `migrate export`. |
+| `migrate export <file>` | Exports local layers as bundle files plus harness preferences and config. |
+| `migrate import <file>` | Imports a machine-transfer archive. |
 
-**Plugin check/update** behavior and rollout are documented in [docs/superpowers/plans/2026-05-19-plugin-check-update.md](docs/superpowers/plans/2026-05-19-plugin-check-update.md). Inventory and bundle format are specified in [docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md](docs/superpowers/specs/2026-05-19-claude-plugin-inventory-design.md).
+## CLI UX contract
 
-## Initialization and harness selection
+Human-readable output is the default. Automation uses explicit flags — output shape never changes based on TTY detection alone.
 
-`harnessdeck init` is the first-run configuration flow and establishes the default HarnessDeck home directory state for the local installation.
+### Output modes
 
-The init flow works in this order:
+Structured read/report commands support:
 
-1. Initialize the local database.
-2. Seed the built-in starter layers.
-3. Discover supported harness configuration already present in the user's home directory and import what it finds.
-4. Choose the **main harness** for future imports, layer application, and sync operations.
-5. Choose any additional supported harnesses.
-6. Mark those additional harnesses as **alias harnesses** and prefer symlinked materialization whenever the file layout and filesystem support it.
+- `--format human` (default)
+- `--format json`
 
-The CLI should allow the main harness to be selected even if that harness was not the one first discovered on disk. The important invariant is that every later sync operation has a single reference harness and a defined set of secondary outputs.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `cloud whoami|orgs`, `layer doctor`, `migrate export|import`.
 
-After init, users can update the global record with `harnessdeck harness set` or add project-specific overrides with `harnessdeck harness project set`. Both surfaces support interactive prompting as well as explicit flags.
+Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
+
+### Selector rules
+
+- **Layers / design plugins:** name, `name@version`, or ULID.
+- **Resources:** `name`, `type:name`, `type:name@namespace`, or ULID.
+- **Snapshots:** full snapshot IDs in `project history`; `project revert` accepts the same ID.
+
+Ambiguous selectors are errors. Human mode lists candidates; JSON mode returns a structured ambiguity payload. The CLI never silently picks the first match.
+
+### Reusable identifiers
+
+When human output supports follow-up commands, it includes canonical identifiers:
+
+- `resource list --show-id` prints full resource IDs (hidden by default in list tables).
+- `layer show` prints resource IDs in the resources sub-table when `--show-id` is set.
+- `project history` prints full snapshot IDs.
+
+### Error handling
+
+| Situation | Behavior |
+| --- | --- |
+| Not found | Clear message, non-zero exit |
+| Ambiguous selector | Non-zero exit; candidates in human or JSON mode |
+| Invalid option | Explicit validation error, non-zero exit |
+| Plugin version mismatch on apply (default) | Warning; apply continues |
+| Plugin version mismatch with `--strict-plugin-versions` | Exit `2` |
+| `--strict-plugin-versions` and `--ignore-plugin-versions` together | Error |
 
 ## Wizard mode
 
-Several noun-grouped commands support wizard mode for interactive use, including `layer add`, `layer show`, `layer delete`, `layer from-project`, `project apply`, and `resource delete`.
+Several commands support wizard mode for interactive use: `layer add`, `layer show`, `layer delete`, `layer attach`, `layer detach`, `layer from-project`, `project apply`, `resource delete`, `init`, `harness set`, and `harness project set`.
 
 Wizard mode triggers when all of these are true:
 
-1. The process is attached to a TTY.
-2. CI is not enabled.
-3. `HARNESSDECK_NO_INTERACTIVE` is not set to `1`.
+1. stdin and stdout are TTYs.
+2. `CI` is not `"true"`.
+3. `HARNESSDECK_NO_INTERACTIVE` is not `"1"`.
 4. `--no-interactive` is not present.
-5. The command is not using `--format json`.
+5. `--format json` is not requested.
 6. The command was invoked with `--interactive`, or required positional input is missing.
 
 When those conditions are not met, the CLI stays in explicit flag-and-argument mode.
 
+## Human output
+
+The CLI renders human mode through `src/ui/` primitives (`table`, `panel`, `diff`, `status`, `progress`). Design goals:
+
+- One visual language across commands (semantic colors, `✓` / `⚠` / `✗` verdicts, boxed tables).
+- List tables use uppercase muted headers and optional summary footers.
+- Diff and drift output color rows by change kind (`+` / `−` / `~`).
+- Spinners for long operations (`project scan`, `project apply`, `project sync`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
+- `--no-color` and `NO_COLOR` disable styling; box-drawing degrades to ASCII when not a TTY.
+
+JSON output is unchanged by the visual layer.
+
+## Initialization and harness selection
+
+`harnessdeck init` is the explicit first-run flow. It:
+
+1. Initializes the local database.
+2. Seeds built-in starter plugins from `builtin-plugins/`.
+3. Discovers supported harness configuration in the user's home directory and imports findings.
+4. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
+
+The main harness may differ from the first harness discovered on disk. Every later sync operation uses one reference harness and a defined set of alias outputs.
+
+After init, update preferences with `harness set` or `harness project set` (flags or interactive prompts).
+
 ## Storage and state
 
-`harnessdeck` stores persistent operational state in SQLite.
+Persistent operational state lives in SQLite at `~/.harnessdeck/harnessdeck.db` (override with `HARNESSDECK_HOME`). The CLI creates the directory on demand and opens the database with WAL mode and foreign keys enabled.
 
-### Database location
+### Configuration files
 
-The database lives at `~/.harnessdeck/harnessdeck.db`. The CLI creates the directory on demand and opens the database through `better-sqlite3` with WAL mode and foreign keys enabled.
+| Path | Purpose |
+| --- | --- |
+| `~/.harnessdeck/config.jsonc` | User settings (JSONC comments allowed) |
+| `~/.harnessdeck/cloud-profiles.json` | HarnessDeck Cloud profiles and tokens |
+| `~/.harnessdeck/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
+| `~/.harnessdeck/environments/<name>.json` | Named environment fragments (JSONC) |
+| `~/.harnessdeck/blobs/sha256/…` | Content-addressed resource bodies |
 
-Optional user settings live at `~/.harnessdeck/config.json`:
+Example `config.jsonc`:
 
-```json
+```jsonc
 {
   "plugins": {
     "refreshMaxAgeHours": 24
@@ -314,132 +386,73 @@ Optional user settings live at `~/.harnessdeck/config.json`:
 }
 ```
 
-Plugin metadata refresh timestamps are stored in `~/.harnessdeck/plugin-refresh-cache.json`. By default, `plugin check` compares local state only; sources older than `refreshMaxAgeHours` are refreshed automatically, and `--refresh` forces a refresh.
+Edit `config.jsonc` directly to tune settings such as plugin refresh age.
 
-Named Harness cloud profiles are stored outside SQLite in `~/.harnessdeck/cloud-profiles.json`.
+### Schema (logical tables)
 
-### Schema
-
-The schema should include these logical tables:
-
-- `resources`: canonical configuration items.
-- `plugins`: design-time plugin bundles (formerly `layers`).
-- `plugin_resources`, `plugin_dependencies`, `plugin_native_pins`: plugin composition and Claude pin metadata.
-- `environments`, `environment_resources`, `environment_secret_refs`: named how-value bundles and secret references.
-- `configured_layers`, `configured_layer_plugins`: configured capabilities (plugin binding + optional default environment).
-- `decks`, `deck_configured_layers`: deck metadata, root path, and layer membership.
-- `projects`: tracked repositories keyed by normalized git origin.
-- `project_configured_layers`: which configured layers have been applied to which projects.
-- `harness_preferences`: the global main/alias harness record.
-- `project_harnesses`: the main harness, alias harnesses, and materialization strategy for each tracked project.
-- `project_plugin_state`: persisted committed/effective Claude plugin inventory per tracked project.
-- `snapshots`: saved generated output captured before sync writes files.
-- `schema_version`: migration tracking (current version includes migrations 8–12 for the deck model).
+- `resources` — canonical configuration items (including `plugin` and `layer` composition types).
+- `plugins` — design-time plugin bundles.
+- `plugin_resources` — ordered attachments on a design plugin.
+- `environments`, `environment_resources`, `environment_secret_refs` — named how-value bundles.
+- `configured_layers`, `configured_layer_plugins` — configured capabilities.
+- `decks`, `deck_configured_layers` — deck metadata and membership.
+- `projects` — tracked directories (`git_origin` and/or `local_id`).
+- `project_configured_layers` — applied configured layers per project.
+- `harness_preferences`, `project_harnesses` — main/alias harness records.
+- `snapshots` — saved generated output before sync writes.
+- `schema_version` — schema version tracking.
 
 ### Project tracking
 
-Project tracking is git-oriented. During `project scan`, `project apply`, and `project sync`, `harnessdeck` reads the repository's `origin` remote, normalizes it, and uses that value as the project identity. The last known local path is stored for convenience, but the git origin is the durable key.
+Project identity uses a normalized git `origin` remote. `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
+
+During `project scan`, `project apply`, and `project sync`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
 
 ### Snapshot behavior
 
-Snapshots are created during `harnessdeck project apply` and `harnessdeck project sync` when the target directory has a git origin. A snapshot stores the generated file map for the main harness and every alias harness that was materialized for that sync. `harnessdeck project revert` restores those stored files directly to the project path. `harnessdeck project drift` compares the latest stored snapshot against the current on-disk files.
+Snapshots are created during `project apply` and `project sync` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `project revert` restores those files. `project drift` compares the latest snapshot to the working tree.
 
 ## Canonical model
 
-The canonical model is broader than any single harness format, but it remains small and deterministic.
-
 ### Resource types
 
-`harnessdeck` supports these resource types:
+`instruction`, `skill`, `rule`, `mcp_server`, `permission`, `hook`, `agent`, `command`, `env_var`, `model_config`, `plugin`, `layer`.
 
-- `instruction`
-- `skill`
-- `rule`
-- `mcp_server`
-- `permission`
-- `hook`
-- `agent`
-- `command`
-- `env_var`
-- `model_config`
+Metadata varies by type. See [Unified composition model](#unified-composition-model).
 
-Metadata is stored as JSON and varies by resource type.
+### Design plugin model
 
-### Plugin model (design-time component bundle)
+A design plugin has unique `(name, version)`, description, tags, optional Claude config, ordered plugin-side resources, composition attachments, and optional `needs` contract keys. Resource order is preserved during serialization.
 
-A plugin has a unique `(name, version)`, description, tag list, optional Claude marketplace/plugin config, ordered plugin-side resources, optional native plugin pins, optional dependency metadata, and optional `needs` config contract keys. Resource order is preserved during serialization.
-
-CLI selectors on the deprecated `layer` noun refer to a plugin by ULID, bare name (highest version wins), or `name@constraint`.
+CLI selectors: ULID, bare name (highest version wins), or `name@version`.
 
 ### Environment model
 
-An environment has a unique `name`, description, ordered environment-side resources, and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in the deck transport format.
+An environment has a unique `name`, description, ordered environment-side resources, and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in deck transport.
 
 ### Configured layer model
 
-A configured layer has `(name, version)`, description, an ordered list of plugin IDs, and an optional `default_environment_id`. This is the unit `project apply` targets when using configured-layer selectors. Multiple plugins merge their what-resources; the default environment contributes how-resources at lower precedence than the cascade.
+A configured layer has `(name, version)`, description, an ordered list of plugin IDs, and an optional `default_environment_id`. Multiple plugins merge their what-resources; the default environment contributes how-resources at lower cascade precedence.
 
 ### Deck model
 
-A deck record has a `name`, optional `root_path` to a materialized repo, optional `active_environment_id`, and ordered configured-layer membership. The on-disk source of truth is `.harnessdeck/deck.json` (`urn:harnessdeck:deck:v1`).
-
-`project apply` serializes merged plugin resources plus cascade-resolved environment values into the requested or detected platforms; alias harnesses remain derived outputs.
+A deck record has a `name`, optional `root_path`, optional `active_environment_id`, and ordered configured-layer membership. On-disk source of truth: `.harnessdeck/deck.json` (`urn:harnessdeck:deck:v1`).
 
 ## Agent harness model
 
-Harness support is split between a registry and serializers. The registry declares capability flags and default project and global paths. Serializers implement scan, canonicalization, aliasing rules, and write behavior.
+Harness support splits between a registry and serializers. The registry declares capability flags and default project/global paths. Serializers implement scan, canonicalization, aliasing rules, and write behavior.
 
 ### Native serializers
 
-`harnessdeck` has dedicated serializers for these harnesses:
-
-- `claude-code`
-- `codex`
-- `cursor`
-
-These serializers read and write harness-specific files such as `CLAUDE.md`, `.claude/skills/`, `.cursor/rules/`, `AGENTS.md`, `.codex/config.toml`, and related directories.
+Dedicated serializers exist for `claude-code`, `codex`, and `cursor`.
 
 ### Generic serializer
 
-All other registered harnesses may use the generic serializer. It relies on the registry's declared paths to scan and materialize instruction and skill layouts rather than implementing a fully native parser for each harness.
+Other registered harnesses use the generic serializer with registry-declared paths.
 
 ### Registered harnesses
 
-The registry currently contains 31 harness IDs:
-
-- `claude-code`
-- `codex`
-- `cursor`
-- `warp`
-- `opencode`
-- `github-copilot`
-- `copilot-cli`
-- `windsurf`
-- `amp`
-- `cline`
-- `continue`
-- `goose`
-- `roo`
-- `gemini-cli`
-- `kilo`
-- `augment`
-- `firebender`
-- `trae`
-- `junie`
-- `zencoder`
-- `openhands`
-- `deepagents`
-- `qwen-code`
-- `crush`
-- `droid`
-- `codebuddy`
-- `mux`
-- `kode`
-- `command-code`
-- `cortex`
-- `neovate`
-
-`harnessdeck harness list` is the executable source of truth for this list. The hidden `platforms` alias remains for compatibility, but `harness list` is the visible command surface. `harnessdeck harness status` and `harnessdeck harness project status` are the source of truth for the user's configured main and alias harness selection.
+`harness list` is the executable source of truth (31 harness IDs at time of writing). `harness status` and `harness project status` report configured main and alias harness selection.
 
 ## Scan, apply, import, and sync behavior
 
@@ -447,47 +460,59 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 ### Scan
 
-`harnessdeck project scan` detects harnesses by checking whether any declared project path exists in the target directory. It then asks the relevant serializer to read resources. The persistence layer deduplicates resources by `type:name` within a single scan run before inserting them.
+`project scan` detects harnesses by declared project paths, reads resources through serializers, and deduplicates within a run before upserting into SQLite (`origin_kind=local_snapshot`).
 
-When one supported harness already exists in a project, that harness becomes the default main harness for the project. This preserves the existing project as the initial source of truth instead of forcing an immediate conversion.
+**Shared instruction canonicalization:** when multiple AGENTS-based platforms share one `AGENTS.md`, the scanner imports a single canonical instruction instead of per-platform `*-instructions` synthetic names. Rescans remove stale synthetic duplicates when content matches.
+
+**`.harnessdeckignore`:** gitignore-style patterns at the project root exclude paths from project scan and `layer from-project`. Applies to project-derived flows only (not home-default discovery during `init`).
+
+**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
+
+When one supported harness already exists in a project, it becomes the default main harness for that project.
 
 ### Apply
 
-`harnessdeck project apply` accepts one or more configured-layer selectors (or deprecated plugin/bundle selectors), a local bundle file, or a bundle URL. When multiple layers are provided, later layers override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs. Environment cascade merges home, per-layer defaults, and deck-active fragments before serialization.
+`project apply` accepts configured-layer selectors, bundle files, or bundle URLs. Later layers override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs. Environment cascade merges home, per-layer defaults, and deck-active fragments before serialization.
 
-The command serializes resources for the requested or detected platforms and, when the target has a git origin, updates tracked project metadata and stores a snapshot so later drift/revert/sync operations have a reference point.
+`layer` composition resources expand depth-first with cycle detection.
 
-If no `--platform` list is passed, `project apply` uses platform detection from the target directory. If no platforms can be detected, the command warns and does not write files.
+Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
+
+If no `--platform` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
 
 ### Project sync
 
-`harnessdeck project sync` materializes the main harness and every configured alias harness for the project.
-
-The sync rules are:
-
-1. Use the project's main harness as the single reference representation.
-2. Generate or refresh all configured alias harness outputs from that reference.
-3. Use symlinks for alias harnesses when the target file layout is compatible and the filesystem supports symlinks.
-4. Fall back to generated copies when symlinks are not possible.
-5. Snapshot all generated files before overwriting them.
-
-`harnessdeck project sync` also supports an option to force shifting the project's reference harness from the currently detected existing harness to the main harness configured by the user. This is the escape hatch for teams that start from one harness but want the project to converge on another long-term reference.
+`project sync` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing.
 
 ### Project drift
 
-`harnessdeck project drift` loads the latest snapshot for a tracked project and reports generated files that were added, modified, or deleted relative to that snapshot.
+`project drift` loads the latest snapshot and reports added, modified, or deleted generated files.
 
-### Transport formats
+### `resource sync`
 
-#### Bundle v1 (supported; legacy transport)
+For `type=plugin` resources:
 
-Layer export and import use a JSON bundle format with schema identifier `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains exactly one **plugin** definition (still labeled `layer` in JSON), a flat list of resources, native plugin pins (`plugins[]`), optional inlined plugin trees (`embedded_plugins[]`), and optional dependency metadata (`dependencies[]`). Bundles may include a top-level `claude` object. Older hand-written bundles without `plugins`, `embedded_plugins`, or `dependencies` import as empty arrays.
+1. Resolve marketplace or local install path.
+2. Fetch or re-scan via `plugin-source-import`.
+3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`).
+4. Diff and upsert child resources in the plugin namespace.
+5. On conflict, prompt on TTY or honor `--on-conflict overwrite|ignore|fail` (default `fail` when non-interactive).
+
+Orphans are removed only with `--prune`.
+
+## Transport formats
+
+### Bundle v1
+
+Layer export/import uses JSONC with schema `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains one design plugin (labeled `layer` in JSON), a flat `resources[]` list (including `plugin` and `layer` composition resources), optional `plugins[]` / `embedded_plugins[]`, optional `dependencies[]`, and optional top-level `claude` object. Missing optional arrays import as empty.
 
 Internal database IDs, timestamps, and `source` fields are not exported. Import creates a design plugin, an implicit single-plugin configured layer, and associated resources.
 
-#### Deck v1 (canonical repo format)
+Default export path: `<name>.harnessdeck.jsonc`.
 
-`urn:harnessdeck:deck:v1` describes a deck in `.harnessdeck/deck.json`:
+### Deck v1 (canonical repo format)
+
+`urn:harnessdeck:deck:v1` in `.harnessdeck/deck.json`:
 
 ```json
 {
@@ -510,29 +535,35 @@ Internal database IDs, timestamps, and `source` fields are not exported. Import 
 }
 ```
 
-Non-secret environment values may also be written under `.harnessdeck/environments/<name>.json`. `hd deck materialize` and `hd deck doctor` (when wired) keep generated Claude marketplace files aligned with this canonical file.
+Non-secret environment values may also live under `.harnessdeck/environments/<name>.json`. Library services materialize and doctor generated marketplace/native files against canonical `deck.json`.
 
-### Migration archives
+### Machine transfer archives
 
-`harnessdeck migrate export` writes either a `.json` file or a tar.gz archive containing a manifest, exported layer bundles, the global harness preference record, and `config.json`. `harnessdeck migrate import` restores those artifacts on another machine.
+`migrate export` writes JSON or tar.gz containing a manifest, exported layer bundles, the global harness preference record, and config. `migrate import` restores them. Archives do not include tracked project records, snapshots, or cloud profiles.
 
-Migration archives do not include tracked project records, snapshots, or cloud profiles.
+## HarnessDeck Cloud
 
-## Cloud catalog and profiles
+Authentication stores named profiles in `~/.harnessdeck/cloud-profiles.json`.
 
-Harness cloud authentication stores named profiles in `~/.harnessdeck/cloud-profiles.json`.
+- `cloud login` performs device authentication.
+- `cloud whoami`, `cloud orgs`, and `cloud logout` manage profiles and active org context.
+- `layer search`, `layer add`, and `layer publish` use the selected cloud profile.
 
-- `harnessdeck cloud login` performs device authentication and saves a local profile.
-- `harnessdeck cloud whoami`, `cloud orgs`, and `cloud logout` inspect, switch, or remove those local profiles.
-- `harnessdeck layer search`, `layer add`, and `layer publish` use the selected cloud profile to interact with the remote layer catalog.
+Local integration behavior:
+
+- Token refresh before remote calls; re-login guidance on refresh failure.
+- No silent profile/org switching during other commands.
+- `layer add` fails on local name conflict instead of overwriting.
+
+## Terminal demos (VHS)
+
+Executable terminal demos supplement written scenarios in `docs/scenarios/`. Sources live under `docs/scenarios/vhs/tapes/`; rendered GIFs under `docs/scenarios/vhs/output/`. Regenerate with `bun run docs:vhs` (`scripts/generate-vhs-scenarios.sh`). Demos run against isolated fixture workspaces — not contributor home directories. VHS is not part of `bun run preflight`.
+
+The primary walkthrough is a single adoption story (`init` → `project scan` → `resource list` → `layer list` → `project apply` → `project status`) embedded from the root README.
 
 ## Build, test, and release workflow
 
-The project uses Bun for local dependency management, CI, and build execution. The package is still intended for distribution through the npm registry.
-
-### Development commands
-
-Use these commands while working on the repository:
+The project uses Bun for local dependency management, CI, and builds. Distribution is through the npm registry.
 
 ```bash
 bun install
@@ -542,27 +573,12 @@ bun run test:run
 bun run build
 ```
 
-### Build output
-
-`tsup` builds the CLI from `src/index.ts` into `dist/` as a Node 20 ESM CLI with declaration files and a `#!/usr/bin/env node` banner.
-
-### Publish flow
-
-The package publishes to the npm registry. The package metadata should run `bun run build` before `npm publish`.
+`tsup` builds the CLI from `src/index.ts` into `dist/` as a Node 20 ESM CLI with declaration files and a `#!/usr/bin/env node` banner. `prepublishOnly` runs `bun run build`.
 
 ## Known gaps and non-goals
 
-This section captures the biggest constraints in the current direction.
-
-- Only a subset of registered harnesses will have fully native serializers at first.
-- Generic harness support may remain path-driven and intentionally shallow.
-- Sync writes files directly and does not yet provide interactive conflict resolution.
-- Bundle v1 export/import still operates on one design plugin at a time; full `deck.json` repo import/export and `hd deck` CLI groups are companion-spec work.
-- `hd deck materialize` and `hd deck doctor` are specified but not yet exposed on the CLI.
-- Configured-layer and plugin dependency metadata is stored and exported, but `project apply` does not yet expand dependency graphs automatically.
-- Secret resolution in v1 supports `keychain` and `env` providers; `file` provider and deck-doctor missing-secret reporting are follow-ups.
-- Plugin lifecycle (`plugin check|update|refresh`) delegates to harness-native tooling; harnessdeck does not host its own plugin registry or install flow.
-
-## Near-term direction
-
-Ship the companion CLI surface (`hd deck`, `hd environment`, renamed design-plugin nouns), deck repo materialization and doctor, and `deck.json` round-trip import. Continue richer per-harness serializers and stronger sync semantics for teams that want one canonical agent harness while supporting many downstream harness targets.
+- Only a subset of registered harnesses have fully native serializers; generic harness support remains path-driven.
+- Sync writes files directly; no interactive conflict resolution on apply.
+- Bundle export/import operates on one design plugin at a time; full deck-repo round-trip is library-only today.
+- Secret resolution supports `keychain` and `env` providers; `file` provider support is incomplete.
+- HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
