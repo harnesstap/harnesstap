@@ -9,7 +9,7 @@ const DEFAULTS: HarnessdeckSettings = {
   plugins: { refreshMaxAgeHours: 24 },
 };
 
-function parseJsonc(content: string): unknown {
+export function parseJsonc(content: string): unknown {
   let normalized = "";
   let inString = false;
   let stringQuote = '"';

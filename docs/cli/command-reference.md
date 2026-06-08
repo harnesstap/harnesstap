@@ -12,6 +12,17 @@ Available on `harnessdeck` / `hd`:
 - `--no-interactive` — disable interactive prompts
 - `-h, --help` — show help
 
+### Noun shorthand aliases
+
+| Full noun | Alias |
+| --- | --- |
+| `layer` | `l` |
+| `resource` | `r` |
+| `project` | `p` |
+| `harness` | `h` |
+| `environment` | `e` |
+| `cloud` | `c` |
+
 ## init
 
 Initialize local HarnessDeck state.
@@ -36,7 +47,7 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 ### Commands
 
 - `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `project apply <layer...>` — apply one or more layers, bundle paths, or bundle URLs
+- `project apply <layer...>` — apply one or more configured layers, bundle paths, or bundle URLs
 - `project drift [path]` — compare the working tree against the latest apply/sync snapshot
 - `project sync [path]` — sync alias harness outputs from the main harness state
 - `project history --project <path>` — list snapshots for a tracked project
@@ -58,6 +69,7 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 - `project apply --format json`
 - `project apply --strict-plugin-versions` — fail with exit code `2` on plugin pin mismatch
 - `project apply --ignore-plugin-versions` — skip plugin pin validation entirely
+- `project apply --sync-plugins` — refresh stale plugin resources before materialize
 - `project drift --format json` — exits `1` when drift exists
 - `project sync --dry-run` — preview alias sync writes
 - `project sync --force-shift-reference <slug>` — set the project main harness before syncing
@@ -72,10 +84,13 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 - `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
 - `project apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
 - `project revert` requires a snapshot ID from `project history`.
+- `project apply` resolves environment values through the cascade: home environment ◂ configured-layer default ◂ deck active environment (last wins).
 
 ## layer (`l`)
 
-Manage reusable bundles of resources and plugin pins.
+Manage design plugins (resource bundles), composition attachments, portable bundle export/import, and HarnessDeck Cloud catalog workflows.
+
+Remote library discovery, install, and publish live on **`layer`**, not `cloud`. Use `cloud` only for authentication and org context.
 
 ### Commands
 
@@ -86,13 +101,20 @@ Manage reusable bundles of resources and plugin pins.
 - `layer detach [layer] [selector] --type <type>`
 - `layer delete [name]`
 - `layer export <layer>`
-- `layer import <file>`
-- `layer search <query>`
-- `layer add [selector]`
-- `layer publish <layer>`
+- `layer import <file>` — import a local bundle file (`urn:harnessdeck:bundle:v1`)
+- `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
+- `layer add [selector]` — download a remote layer bundle and import it (`org/library[@version]`); interactive browse on TTY when selector is omitted
+- `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL
+- `layer catalog connect org <slug>` — opt into another org's public libraries
+- `layer catalog disconnect org <slug>`
+- `layer catalog connect library <org>/<slug>` — opt into a single public library
+- `layer catalog disconnect library <org>/<slug>`
+- `layer publish <layer>` — export bundle and upload to HarnessDeck Cloud
 - `layer diff <left> <right>`
-- `layer doctor [name]` — validate a layer without writing to disk (replaces the removed `layer validate`)
+- `layer doctor [name]` — validate a layer without writing to disk
 - `layer from-project [name] --project <path>`
+- `layer set-environment <layer> <environment>` — bind a default environment to the configured layer that `project apply` resolves
+- `layer unset-environment <layer>` — clear the configured layer default environment
 
 ### Important options
 
@@ -117,8 +139,12 @@ Manage reusable bundles of resources and plugin pins.
 - `layer add --as <name>`
 - `layer add --org <slug>`
 - `layer add --version <constraint>`
+- `layer add --base-url <url>`
 - `layer search --profile <name>`
+- `layer search --base-url <url>`
 - `layer publish --profile <name>`
+
+`layer add` and `layer search` work without `cloud login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer add` fails on local name conflict instead of overwriting. Fetch remote layers with `layer add` before `project apply`.
 
 ## resource (`r`)
 
@@ -127,7 +153,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 ### Commands
 
 - `resource list`
-- `resource show <selector>` — `name`, `type:name`, or `name@namespace`
+- `resource show <selector>` — `name`, `type:name`, `type:name@namespace`, or ULID
 - `resource sync [selector]` — refresh `marketplace_link` definitions and sync plugin resources from install roots
 - `resource delete [resource]`
 
@@ -143,10 +169,47 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource sync --on-conflict <overwrite|ignore|fail>` — default `fail`
 - `resource sync --force`
 - `resource sync --dry-run`
+- `resource sync --prune` — remove orphaned child resources after sync
 - `resource list` shows material resources plus `plugin` resources; `layer` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
 - `layer attach` selectors accept `type:name@namespace` for compose-safe resolution
 - There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, and `project apply --strict-plugin-versions` for plugin workflows
+
+## environment (`e`)
+
+Manage named environment bundles (env vars, model config, permissions, and secret references) and active-environment pointers.
+
+Environment values are the runtime *how* configuration that plugins satisfy through `needs[]` contracts and MCP env keys. They are distinct from toolkit configuration (`harness_preferences`, `config.jsonc`).
+
+### Commands
+
+- `environment create <name>`
+- `environment list`
+- `environment show <name>`
+- `environment delete <name>`
+- `environment set <name>` — upsert values (`--var`, `--model`, `--permission`)
+- `environment unset <name>`
+- `environment secret set <name>` / `environment secret unset <name>`
+- `environment import <file>` / `environment export <name>`
+- `environment use <name>` — set home or deck active environment; `--reapply` opt-in re-runs last applied layers
+- `environment active` — show active environment and cascade preview
+- `environment resolve` — dry-run merged environment values per cascade tier
+- `environment capture <name>` — create an environment from scoped project capture
+- `environment refresh <name>` — update an existing environment from scoped project capture
+
+### Important options
+
+- `environment list --format json`
+- `environment show --format json`
+- `environment active --format json`
+- `environment resolve --format json`
+- `environment capture --project <path>` — required
+- `environment capture --layers <selectors>` — default: project's last-applied configured layers
+- `environment capture --strict` — exit non-zero when required keys are missing
+- `environment capture --include-permissions`
+- `environment capture --dry-run --format json`
+- `environment use --project <path>` — deck-scoped active environment
+- `environment use --reapply`
 
 ## harness (`h`)
 
@@ -187,6 +250,8 @@ Manage HarnessDeck Cloud authentication and profile-local account state.
 - `cloud orgs --switch <slug>`
 - `cloud logout --profile <name>`
 
+Token refresh runs before remote calls. The CLI does not silently switch profiles or organizations during other commands.
+
 ## migrate
 
 Move full HarnessDeck state between machines.
@@ -201,3 +266,5 @@ Move full HarnessDeck state between machines.
 - `migrate export --include-plugins`
 - `migrate export --format json`
 - `migrate import --format json`
+
+Archives include exported layer bundles, harness preferences, and config. They do not include tracked project records, snapshots, or cloud profiles.
