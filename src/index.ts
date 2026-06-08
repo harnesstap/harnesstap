@@ -2063,13 +2063,13 @@ async function handleEnvironmentUseCommand(
     const payload = useEnvironmentForProjectCommand(name, projectRoot);
     if (format === "json") {
       printJson(payload);
-    } else if (payload.updated) {
+    } else if (payload.deck_tracked) {
       ui.success(
         `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot}`,
       );
     } else {
-      ui.warn(
-        `Project ${projectRoot} is not tracked yet; environment resolved but not persisted.`,
+      ui.success(
+        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot} ${ui.icons.bullet} wrote ${payload.deck_file}`,
       );
     }
 

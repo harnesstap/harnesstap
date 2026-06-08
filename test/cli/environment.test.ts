@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
@@ -344,6 +344,38 @@ describe("CLI environment", () => {
           }),
         }),
       );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("writes deck active environment for untracked project roots", async () => {
+    const context = await createTestContext("cli-environment-use-untracked");
+    try {
+      await runCli(["init"]);
+      await runCli(["environment", "create", "deck-env"]);
+
+      const useResult = await runCli([
+        "environment",
+        "use",
+        "deck-env",
+        "--project",
+        context.projectDir,
+        "--format",
+        "json",
+      ]);
+      expect(JSON.parse(useResult.stdout)).toEqual(
+        expect.objectContaining({
+          environment_name: "deck-env",
+          deck_tracked: false,
+          updated: true,
+        }),
+      );
+
+      const deckJson = JSON.parse(
+        readFileSync(join(context.projectDir, ".harnessdeck", "deck.json"), "utf-8"),
+      ) as { active_environment?: string };
+      expect(deckJson.active_environment).toBe("deck-env");
     } finally {
       await context.cleanup();
     }

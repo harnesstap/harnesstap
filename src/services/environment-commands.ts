@@ -20,9 +20,13 @@ import {
   unsetConfiguredLayerDefaultEnvironment,
 } from "../models/configured-layer.js";
 import { setDeckActiveEnvironment } from "../models/deck.js";
+import { DECK_JSON_VERSION, DECK_SCHEMA } from "../types.js";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { loadDeckActiveEnvironmentFragment, loadHomeEnvironmentFragment, resolveEnvironmentCascade, loadLayerDefaultFragments } from "./environment-cascade.js";
 import { resolveConfiguredLayerOrThrow, resolveDeckByProjectRoot, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import type {
+  DeckJson,
   EnvVarMetadata,
   Environment,
   EnvironmentSecretProvider,
@@ -265,15 +269,39 @@ export function useEnvironmentForProjectCommand(
   environment_id: string;
   environment_name: string;
   deck_id?: string;
+  deck_file: string;
+  deck_tracked: boolean;
   updated: boolean;
 } {
   const environment = resolveEnvironmentOrThrow(selector);
+  const deckDir = join(projectRoot, ".harnessdeck");
+  mkdirSync(deckDir, { recursive: true });
+  const deckFile = join(deckDir, "deck.json");
+  const parsedDeckJson = existsSync(deckFile)
+    ? JSON.parse(readFileSync(deckFile, "utf-8")) as Partial<DeckJson>
+    : undefined;
+  const deckJson: DeckJson = {
+    $schema: DECK_SCHEMA,
+    version: DECK_JSON_VERSION,
+    name: parsedDeckJson?.name && parsedDeckJson.name.length > 0
+      ? parsedDeckJson.name
+      : basename(projectRoot),
+    layers: Array.isArray(parsedDeckJson?.layers) ? parsedDeckJson.layers : [],
+    environments: Array.isArray(parsedDeckJson?.environments)
+      ? parsedDeckJson.environments
+      : [],
+    active_environment: environment.name,
+  };
+  writeFileSync(deckFile, `${JSON.stringify(deckJson, null, 2)}\n`, "utf-8");
+
   const deck = resolveDeckByProjectRoot(projectRoot);
   if (!deck) {
     return {
       environment_id: environment.id,
       environment_name: environment.name,
-      updated: false,
+      deck_file: deckFile,
+      deck_tracked: false,
+      updated: true,
     };
   }
   setDeckActiveEnvironment(deck.id, environment.id);
@@ -281,6 +309,8 @@ export function useEnvironmentForProjectCommand(
     environment_id: environment.id,
     environment_name: environment.name,
     deck_id: deck.id,
+    deck_file: deckFile,
+    deck_tracked: true,
     updated: true,
   };
 }
