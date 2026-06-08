@@ -1,4 +1,5 @@
 import { getDb } from "../db/connection.js";
+import { resolve } from "node:path";
 import { ulid } from "ulid";
 import type { Project, ProjectConfiguredLayer } from "../types.js";
 
@@ -54,6 +55,11 @@ export function upsertProject(input: {
 export function listProjects(): Project[] {
   const db = getDb();
   return db.prepare("SELECT * FROM projects ORDER BY name").all() as Project[];
+}
+
+export function getProjectByLocalPath(localPath: string): Project | undefined {
+  const normalized = resolve(localPath);
+  return listProjects().find((project) => resolve(project.local_path) === normalized);
 }
 
 export function applyConfiguredLayerToProject(input: {
