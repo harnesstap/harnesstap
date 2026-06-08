@@ -169,6 +169,37 @@ describe("CLI resource", () => {
     }
   });
 
+  it("shows only the first 10 resources per type unless --all is passed", async () => {
+    const context = await createTestContext("cli-resource-list-limit");
+    try {
+      await runCli(["init"]);
+
+      const resourceModel = await import("../../src/models/resource.ts");
+      for (let index = 0; index < 12; index += 1) {
+        resourceModel.createResource(
+          makeResourceInput({
+            type: "skill",
+            name: `extra-skill-${index + 1}`,
+            description: `Extra skill ${index + 1}`,
+            content: `# Extra ${index + 1}`,
+          }),
+        );
+      }
+
+      const limited = await runCli(["resource", "list", "skill", "--no-interactive"]);
+      const full = await runCli(["resource", "list", "skill", "--all", "--no-interactive"]);
+      const limitedRows = (limited.stdout.match(/\|\s+extra-skill-/g) ?? []).length;
+      const fullRows = (full.stdout.match(/\|\s+extra-skill-/g) ?? []).length;
+
+      expect(limitedRows).toBe(10);
+      expect(fullRows).toBe(12);
+      expect(limited.stdout).toContain("… and 2 more resources");
+      expect(full.stdout).not.toContain("… and");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("orders resource list rows by updated_at descending within each type", async () => {
     const context = await createTestContext("cli-resource-list-updated-order");
     try {

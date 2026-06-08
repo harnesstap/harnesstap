@@ -6,27 +6,35 @@ import {
 } from "../../ui/resource-list-render.js";
 import { promptForInteractiveResourceList } from "./interactive-resource-list.js";
 
+export type ResourceListWizardResult = {
+  search?: string;
+};
+
 export async function runResourceListWizard(input?: {
   type?: ResourceType;
   search?: string;
   showId?: boolean;
-}): Promise<string | undefined> {
+  showAll?: boolean;
+}): Promise<ResourceListWizardResult | undefined> {
   const resources = sortResourcesByUpdatedAt(
     toResourceListRows(
       listResources(input?.type ? { type: input.type } : undefined),
     ),
   );
   if (resources.length === 0) {
-    return input?.search;
+    return input?.search ? { search: input.search } : undefined;
   }
 
-  const query = await promptForInteractiveResourceList({
+  const result = await promptForInteractiveResourceList({
     message: "Filter resources",
     resources,
     typeFilter: input?.type,
     showId: input?.showId,
+    showAll: input?.showAll,
     initialQuery: input?.search,
   });
 
-  return query.length > 0 ? query : undefined;
+  return {
+    search: result.query.length > 0 ? result.query : undefined,
+  };
 }

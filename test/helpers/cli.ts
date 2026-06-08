@@ -110,12 +110,24 @@ const resourceListWizardMock = mock(async (
     return actualWizard.runResourceListWizard(...args);
   }
   const value = shiftSinglePromptValue();
-  if (typeof value !== "string") {
-    throw new Error(
-      "Resource list wizard responses must resolve to a string query in runCli test harness",
-    );
+  if (typeof value === "string") {
+    return value.length > 0 ? { search: value } : undefined;
   }
-  return value.length > 0 ? value : undefined;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const query = typeof record.query === "string"
+      ? record.query
+      : typeof record.search === "string"
+        ? record.search
+        : "";
+    if (!query) {
+      return undefined;
+    }
+    return { search: query };
+  }
+  throw new Error(
+    "Resource list wizard responses must resolve to a string query or result object in runCli test harness",
+  );
 });
 
 mock.module("../../src/services/wizards/resource-list.js", () => ({
