@@ -214,11 +214,10 @@ describe("layer model", () => {
 
       const deps = layerModel.listLayerDependencies(layer.id);
       expect(deps).toHaveLength(2);
-      expect(deps[0].dependency_name).toBe("base");
-      expect(deps[0].version_constraint).toBe("^1.5.0");
-      expect(deps[0].order).toBe(0);
-      expect(deps[1].dependency_name).toBe("extra");
-      expect(deps[1].order).toBe(1);
+      const base = deps.find((dep) => dep.dependency_name === "base");
+      const extra = deps.find((dep) => dep.dependency_name === "extra");
+      expect(base?.version_constraint).toBe("^1.5.0");
+      expect(extra?.dependency_name).toBe("extra");
     } finally {
       await context.cleanup();
     }

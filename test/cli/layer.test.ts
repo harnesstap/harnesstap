@@ -771,10 +771,10 @@ describe("CLI layer", () => {
       const result = await runCli(["layer", "attach", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("--type is required");
-      expect(result.stderr).toContain("instruction");
-      expect(result.stderr).toContain("plugin");
-      expect(result.stderr).toContain("layer-dependency");
+      expect(result.stderr).toContain("type prefix");
+      expect(result.stderr).toContain("skill:");
+      expect(result.stderr).toContain("plugin:");
+      expect(result.stderr).toContain("layer:");
     } finally {
       await context.cleanup();
     }
@@ -795,7 +795,7 @@ describe("CLI layer", () => {
         promptResponses: [
           { value: "resource" },
           { value: "skill" },
-          { value: resource.id },
+          { value: `skill:${resource.id}` },
         ],
       });
 
@@ -824,7 +824,7 @@ describe("CLI layer", () => {
           { value: "team@1.0.0" },
           { value: "resource" },
           { value: "skill" },
-          { value: resource.id },
+          { value: `skill:${resource.id}` },
         ],
       });
 
@@ -900,10 +900,10 @@ describe("CLI layer", () => {
       const result = await runCli(["layer", "detach", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("--type is required");
-      expect(result.stderr).toContain("instruction");
-      expect(result.stderr).toContain("plugin");
-      expect(result.stderr).toContain("layer-dependency");
+      expect(result.stderr).toContain("type prefix");
+      expect(result.stderr).toContain("skill:");
+      expect(result.stderr).toContain("plugin:");
+      expect(result.stderr).toContain("layer:");
     } finally {
       await context.cleanup();
     }
@@ -982,7 +982,7 @@ describe("CLI layer", () => {
         "^1.0.0",
       ]);
       expect(versionResult.exitCode).toBe(1);
-      expect(versionResult.stderr).toContain("--version is only supported for --type plugin and --type layer-dependency");
+      expect(versionResult.stderr).toContain("--version is only supported for plugin and layer attachments");
 
       const embedResult = await runCli([
         "layer",
@@ -994,7 +994,7 @@ describe("CLI layer", () => {
         "--embed",
       ]);
       expect(embedResult.exitCode).toBe(1);
-      expect(embedResult.stderr).toContain("--embed is only supported for --type plugin");
+      expect(embedResult.stderr).toContain("--embed is only supported for plugin attachments");
     } finally {
       await context.cleanup();
     }
@@ -1019,7 +1019,7 @@ describe("CLI layer", () => {
       ]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("--embed is only supported for --type plugin");
+      expect(result.stderr).toContain("--embed is only supported for plugin attachments");
     } finally {
       await context.cleanup();
     }
@@ -1041,7 +1041,7 @@ describe("CLI layer", () => {
         "--version",
         "^2.1.0",
       ]);
-      expect(addResult.stdout).toContain("✓ Pinned");
+      expect(addResult.stdout).toContain("✓ Attached plugin");
       expect(addResult.stdout).toContain("formatter@marketplace");
       expect(addResult.stdout).toContain("^2.1.0");
       expect(addResult.stdout).toContain("plugin-test");
@@ -1054,7 +1054,7 @@ describe("CLI layer", () => {
         "--type",
         "plugin",
       ]);
-      expect(removeResult.stdout).toContain("✓ Removed plugin pin");
+      expect(removeResult.stdout).toContain("✓ Removed plugin");
       expect(removeResult.stdout).toContain("formatter@marketplace");
       expect(removeResult.stdout).toContain("plugin-test");
     } finally {

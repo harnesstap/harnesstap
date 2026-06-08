@@ -2,6 +2,11 @@ import { getDb } from "../db/connection.js";
 import { ulid } from "ulid";
 import semver from "semver";
 import { mapResourceRow } from "./resource.js";
+import {
+  ensureLayerResource,
+  listAttachedLayerRefs,
+} from "../services/composition-resource.js";
+// listAttachedLayerRefs used by removeDependencyFromPlugin
 import type {
   Plugin,
   LayerDependency,
@@ -297,47 +302,35 @@ export function getPluginResources(pluginId: string): Resource[] {
   return rows.map(mapResourceRow);
 }
 
-// ── Dependency CRUD ──────────────────────────────────────────────────────
-
-interface PluginDependencyRow {
-  layer_id: string;
-  dependency_name: string;
-  version_constraint: string;
-  order: number;
-}
+// ── Layer composition refs (layer resources) ─────────────────────────────
 
 export function addDependencyToPlugin(
   pluginId: string,
   dependencyName: string,
   versionConstraint: string,
 ): void {
-  const db = getDb();
-  const maxOrder = db
-    .prepare(
-      'SELECT COALESCE(MAX("order"), -1) as max_order FROM plugin_dependencies WHERE layer_id = ?',
-    )
-    .get(pluginId) as { max_order: number };
+  for (const ref of listAttachedLayerRefs(pluginId)) {
+    if (ref.dependency_name === dependencyName) {
+      removeResourceFromPlugin(pluginId, ref.resource.id);
+    }
+  }
 
-  db.prepare(
-    `INSERT INTO plugin_dependencies (layer_id, dependency_name, version_constraint, "order")
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(layer_id, dependency_name) DO UPDATE SET version_constraint = excluded.version_constraint`,
-  ).run(pluginId, dependencyName, versionConstraint, maxOrder.max_order + 1);
+  const constraint =
+    versionConstraint === "latest" || versionConstraint === "*"
+      ? undefined
+      : versionConstraint;
+  const resource = ensureLayerResource(`layer:${dependencyName}`, {
+    versionConstraint: constraint,
+  });
+  addResourceToPlugin(pluginId, resource.id);
 }
 
 export function listPluginDependencies(pluginId: string): LayerDependency[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT * FROM plugin_dependencies WHERE layer_id = ? ORDER BY "order"`,
-    )
-    .all(pluginId) as PluginDependencyRow[];
-
-  return rows.map((row) => ({
-    layer_id: row.layer_id,
-    dependency_name: row.dependency_name,
-    version_constraint: row.version_constraint,
-    order: row.order,
+  return listAttachedLayerRefs(pluginId).map((ref, index) => ({
+    layer_id: pluginId,
+    dependency_name: ref.dependency_name,
+    version_constraint: ref.version_constraint,
+    order: index,
   }));
 }
 
@@ -345,9 +338,14 @@ export function removeDependencyFromPlugin(
   pluginId: string,
   dependencyName: string,
 ): boolean {
-  const db = getDb();
-  const result = db.prepare(
-    "DELETE FROM plugin_dependencies WHERE layer_id = ? AND dependency_name = ?",
-  ).run(pluginId, dependencyName);
-  return result.changes > 0;
+  const attached = listAttachedLayerRefs(pluginId).filter(
+    (ref) => ref.dependency_name === dependencyName,
+  );
+  if (attached.length === 0) {
+    return false;
+  }
+  for (const ref of attached) {
+    removeResourceFromPlugin(pluginId, ref.resource.id);
+  }
+  return true;
 }

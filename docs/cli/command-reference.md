@@ -88,8 +88,10 @@ Manage reusable bundles of resources and plugin pins.
 
 - `layer list --show-id`
 - `layer show --format json`
-- `layer attach --type <resource|skill|instruction|plugin|layer-dependency>`
-- `layer attach --version <constraint>`
+- `layer attach --type <resource|skill|instruction|plugin|layer>` (`layer-dependency` is a deprecated alias for `layer`)
+- `layer attach --version <constraint>` — plugin or layer references only
+- `layer attach --sync` — sync a plugin resource immediately after attach (default: lazy)
+- `layer attach --embed` — mark plugin resource as embed-on-export
 - `layer export --embed-plugins`
 - `layer add --as <name>`
 - `layer add --org <slug>`
@@ -105,7 +107,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 
 - `resource list`
 - `resource show <selector>` — `name`, `type:name`, or `name@namespace`
-- `resource sync [selector]` — refresh `marketplace_link` cached definitions
+- `resource sync [selector]` — refresh `marketplace_link` definitions and sync plugin resources from install roots
 - `resource delete [resource]`
 
 ### Important options
@@ -115,8 +117,12 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource list --show-id`
 - `resource show --format json`
 - `resource show --show-id`
+- `resource show --all-fields`
 - `resource sync --overwrite`
+- `resource sync --on-conflict <overwrite|ignore|copy|cancel>`
+- `resource sync --force`
 - `resource sync --dry-run`
+- `resource list` shows material resources plus `plugin` pins; `layer` composition refs are hidden by default
 - `layer attach` selectors accept `type:name@namespace` for compose-safe resolution
 
 ## harness (`h`)
@@ -138,34 +144,6 @@ Manage global harness preferences and git-backed project overrides.
 - `harness project set --project <path>`
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`
-
-## plugin
-
-Manage plugin inventory, provider discovery, refresh, update, and reporting.
-
-### Commands
-
-- `plugin list [path]`
-- `plugin show <ref> [path]`
-- `plugin installed [path]`
-- `plugin check [path]`
-- `plugin update [ref]`
-- `plugin refresh`
-
-### Important options
-
-- `plugin installed --platform <slugs>`
-- `plugin check --platform <slugs>`
-- `plugin check --scope <scopes>`
-- `plugin check --refresh`
-- `plugin update --all`
-- `plugin update --yes`
-- `plugin refresh --format json`
-
-### Exit code notes
-
-- `plugin check` exits `1` when outdated plugins are found.
-- `plugin update` exits `1` when any requested plugin update fails.
 
 ## cloud (`c`)
 

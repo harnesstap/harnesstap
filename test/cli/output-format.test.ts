@@ -229,56 +229,23 @@ describe("CLI output format", () => {
     }
   });
 
-  it("plugin installed and plugin check preserve JSON output after table migration", async () => {
-    const harnessdeckHome = mkdtempSync(join(tmpdir(), "hd-of-plugin-"));
-    const previousHarnessdeckHome = process.env.HARNESSDECK_HOME;
-    const previousHome = process.env.HOME;
-    process.env.HARNESSDECK_HOME = harnessdeckHome;
-    process.env.HOME = fixtureHome;
+  it("resource sync preserves JSON output shape", async () => {
+    const context = await createTestContext("cli-of-resource-sync");
     try {
-      const installed = await runCli([
-        "plugin",
-        "installed",
-        "--platform",
-        "claude-code",
-        "--format",
-        "json",
-      ]);
-      const parsedInstalled = JSON.parse(installed.stdout) as {
-        installs: { ref: string; platformId: string }[];
+      await runCli(["init"]);
+      const sync = await runCli(["resource", "sync", "--format", "json"]);
+      const parsed = JSON.parse(sync.stdout) as {
+        checked: number;
+        updated: unknown[];
+        stale: unknown[];
+        unchanged: unknown[];
+        skipped: unknown[];
       };
-      expect(Array.isArray(parsedInstalled.installs)).toBe(true);
-      expect(
-        parsedInstalled.installs.some((install) => install.ref === "demo@demo-market"),
-      ).toBe(true);
-
-      const check = await runCli([
-        "plugin",
-        "check",
-        "--platform",
-        "claude-code",
-        "--format",
-        "json",
-      ]);
-      const parsedCheck = JSON.parse(check.stdout) as {
-        summary: { outdated: number; current: number; unknown: number };
-        results: { ref: string; status: string }[];
-      };
-      expect(typeof parsedCheck.summary.outdated).toBe("number");
-      expect(typeof parsedCheck.summary.current).toBe("number");
-      expect(Array.isArray(parsedCheck.results)).toBe(true);
+      expect(typeof parsed.checked).toBe("number");
+      expect(Array.isArray(parsed.updated)).toBe(true);
+      expect(Array.isArray(parsed.skipped)).toBe(true);
     } finally {
-      if (previousHarnessdeckHome === undefined) {
-        delete process.env.HARNESSDECK_HOME;
-      } else {
-        process.env.HARNESSDECK_HOME = previousHarnessdeckHome;
-      }
-      if (previousHome === undefined) {
-        delete process.env.HOME;
-      } else {
-        process.env.HOME = previousHome;
-      }
-      rmSync(harnessdeckHome, { recursive: true, force: true });
+      await context.cleanup();
     }
   });
 });

@@ -17,7 +17,7 @@ The product currently supports these main workflows:
 - Record layer dependencies and Claude plugin version pins alongside layer resources.
 - Apply one or more layers, a local bundle file, or a bundle URL to a project.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
-- Inspect plugin inventory and run supported plugin lifecycle commands.
+- Sync plugin composition resources from marketplace or local install roots via `resource sync`.
 - Export or import a machine-migration archive of local plugins, configured layers, harness preferences, and config.
 - Resolve **environment** values with a home → layer default → deck-active cascade on `project apply`.
 
@@ -59,8 +59,8 @@ The CLI uses a small set of concepts consistently across commands.
 | Concept | CLI / docs today | SQLite (after deck migrations) |
 | --- | --- | --- |
 | Design **plugin** (resource bundle + Claude config) | `hd layer …` (deprecated alias) | `plugins`, `plugin_resources`, … |
-| **Native plugin pin** on a design plugin | `layer attach --type plugin` | `plugin_native_pins` |
-| **Harness plugin lifecycle** (install/update inventory) | `hd plugin …` | `project_plugin_state`, `src/plugins/*` |
+| **Plugin pin** (marketplace/local reference) | `layer attach plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + `plugin_resources` |
+| **Layer dependency** (composition ref) | `layer attach layer:name` or `--type layer` | `resources` (`type=layer`) + `plugin_resources` |
 | **Configured layer** | `project apply <layer>` (target) | `configured_layers`, `configured_layer_plugins` |
 | **Deck** | `hd deck …` (companion CLI spec; services exist) | `decks`, `deck_configured_layers` |
 
@@ -168,7 +168,7 @@ The visible CLI groups commands by noun. Hidden top-level aliases such as `harne
 | `harnessdeck project ...` | Scans projects, applies layers, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
 | `harnessdeck harness list` | Lists registered harness targets. |
 | `harnessdeck harness ...` | Manages global and project-scoped main/alias harness preferences. |
-| `harnessdeck plugin ...` | Shows Claude plugin **lifecycle** inventory and runs installed/check/update/refresh. Not the design-plugin bundle noun. |
+| `harnessdeck resource sync …` | Refreshes marketplace-linked resources and syncs plugin composition resources from install roots. Replaces the removed `hd plugin` inventory commands. |
 | `harnessdeck cloud ...` | Authenticates with Harness cloud and manages local cloud profiles. |
 
 ### Deck commands (planned)
@@ -193,7 +193,7 @@ Until the CLI group ships, use the library APIs (`setDeckActiveEnvironment`, env
 | `harnessdeck layer create` | Creates a **design plugin** with optional description and tags. |
 | `harnessdeck layer list` | Lists locally stored design plugins. |
 | `harnessdeck layer show` | Shows plugin metadata, resources, dependencies, and native plugin pins. |
-| `harnessdeck layer attach <layer> <selector>` | Adds a typed attachment to a layer. Use `--type skill` or another resource type for canonical resources, `--type plugin --version <range>` for Claude plugin pins, and `--type dependency --version <range>` for layer dependencies. |
+| `harnessdeck layer attach <layer> <selector>` | Adds a composition attachment: material resources (`skill:foo` or `--type skill`), plugin references (`plugin:posthog@marketplace` or `--type plugin`), or layer references (`layer:baseline` or `--type layer`). Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `harnessdeck layer detach <layer> <selector>` | Removes a typed attachment from a layer. Use `--type` to distinguish resources, plugin pins, and dependency metadata. |
 | `harnessdeck layer delete` | Deletes a layer by selector. |
 | `harnessdeck layer export` | Writes a portable JSON bundle for one design plugin (`urn:harnessdeck:bundle:v1`), with optional embedded Claude plugin trees. |

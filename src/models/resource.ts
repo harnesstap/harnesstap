@@ -6,7 +6,9 @@ import type {
   ResourceType,
   ResourceMetadata,
   OriginKind,
+  ListableResourceType,
 } from "../types.js";
+import { LISTABLE_RESOURCE_TYPES } from "../types.js";
 import { writeBlob } from "../services/blob-store.js";
 
 export type { ResourceCreateInput };
@@ -187,6 +189,16 @@ export function resolveResource(
   }
 
   const parsed = parseResourceSelector(selector);
+
+  if (isUlid(parsed.name)) {
+    const byId = findResourceById(parsed.name);
+    if (byId) {
+      if (!parsed.type || byId.type === parsed.type) {
+        return { status: "found", resource: byId };
+      }
+      return { status: "not_found" };
+    }
+  }
 
   if (parsed.namespace) {
     const matches = findResourcesBySelector(parsed);
@@ -405,9 +417,10 @@ export function getResourcesByIds(resourceIds: string[]): Resource[] {
 }
 
 export function listResources(filters?: {
-  type?: ResourceType;
+  type?: ResourceType | ListableResourceType;
   search?: string;
   origin_kind?: OriginKind;
+  includeComposition?: boolean;
 }): Resource[] {
   const db = getDb();
   const conditions: string[] = [];
@@ -416,6 +429,10 @@ export function listResources(filters?: {
   if (filters?.type) {
     conditions.push("type = ?");
     params.push(filters.type);
+  } else if (!filters?.includeComposition) {
+    const listable = LISTABLE_RESOURCE_TYPES as readonly string[];
+    conditions.push(`type IN (${listable.map(() => "?").join(", ")})`);
+    params.push(...listable);
   }
   if (filters?.origin_kind) {
     conditions.push("origin_kind = ?");

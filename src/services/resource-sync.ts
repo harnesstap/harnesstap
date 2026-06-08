@@ -1,19 +1,25 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { getDb } from "../db/connection.js";
 import {
   listLinkedResources,
+  listResources,
   normalizeResourceInput,
+  resolveResource,
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
-import type { Resource } from "../types.js";
+import type { PluginResourceMetadata, Resource } from "../types.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { formatPluginRef } from "./composition-resource.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
   policy?: ImportConflictPolicy;
+  onConflict?: "overwrite" | "ignore" | "fail";
   dryRun?: boolean;
+  force?: boolean;
   homeRoot?: string;
   claudePluginsRoot?: string;
 }
@@ -23,6 +29,7 @@ export interface SyncLinkedResourcesResult {
   updated: Resource[];
   stale: Array<{ resource: Resource; reason: string }>;
   unchanged: Resource[];
+  skipped: Resource[];
 }
 
 function defaultClaudePluginsRoot(homeRoot: string): string {
@@ -42,27 +49,180 @@ function resolveInstallRoot(
     join(claudePluginsRoot, "cache", plugin, plugin),
     join(claudePluginsRoot, marketplace ?? plugin, plugin),
     join(homeRoot, ".cursor", "plugins", plugin),
+    join(homeRoot, ".cursor", "plugins", "cache", marketplace ?? plugin, plugin),
   ];
+
+  if (originRef.startsWith("./") || originRef.startsWith("../")) {
+    candidates.unshift(join(process.cwd(), originRef));
+  }
 
   return candidates.find((candidate) => existsSync(candidate));
 }
 
-export async function syncLinkedResources(
+function isPinned(resource: Resource): boolean {
+  const metadata = resource.metadata as { sync_status?: string };
+  return metadata.sync_status === "pinned";
+}
+
+function resolveConflictPolicy(
+  options: SyncLinkedResourcesOptions,
+): "overwrite" | "ignore" | "fail" {
+  if (options.onConflict) {
+    return options.onConflict;
+  }
+  if (options.policy === "skip") {
+    return "ignore";
+  }
+  if (options.policy === "overwrite") {
+    return "overwrite";
+  }
+  return "fail";
+}
+
+export async function syncPluginResource(
+  pluginResource: Resource,
   options: SyncLinkedResourcesOptions = {},
 ): Promise<SyncLinkedResourcesResult> {
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const claudePluginsRoot =
     options.claudePluginsRoot ?? defaultClaudePluginsRoot(homeRoot);
-  const policy = options.policy ?? "overwrite";
-  const targets = listLinkedResources(options.selector);
+  const conflictPolicy = resolveConflictPolicy(options);
   const updated: Resource[] = [];
   const stale: SyncLinkedResourcesResult["stale"] = [];
   const unchanged: Resource[] = [];
+  const skipped: Resource[] = [];
 
-  for (const resource of targets) {
+  const originRef = pluginResource.origin_ref || formatPluginRef(pluginResource);
+  const installRoot = resolveInstallRoot(originRef, homeRoot, claudePluginsRoot);
+  if (!installRoot) {
+    stale.push({
+      resource: pluginResource,
+      reason: "install path not found; install plugin via harness or sync after marketplace fetch",
+    });
+    return { checked: 1, updated, stale, unchanged, skipped };
+  }
+
+  const imports = await scanPluginSource(installRoot);
+  const scan = imports[0];
+  if (!scan) {
+    stale.push({ resource: pluginResource, reason: "plugin tree is empty" });
+    return { checked: 1, updated, stale, unchanged, skipped };
+  }
+
+  if (!options.dryRun) {
+    const metadata: PluginResourceMetadata = {
+      ...(pluginResource.metadata as PluginResourceMetadata),
+      resolved_version: scan.plugin_version,
+      sync_status: "synced",
+      manifests: {
+        ...(pluginResource.metadata as PluginResourceMetadata).manifests,
+      },
+    };
+    const db = getDb();
+    db.prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?").run(
+      JSON.stringify(metadata),
+      new Date().toISOString(),
+      pluginResource.id,
+    );
+  }
+
+  let checked = 1;
+  for (const candidate of scan.resources) {
+    checked += 1;
+    const namespace = pluginResource.name;
+    const existing = listResources({
+      type: candidate.type,
+      includeComposition: true,
+    }).find(
+      (row) =>
+        row.name === candidate.name &&
+        row.namespace === namespace &&
+        row.origin_ref === originRef,
+    );
+
+    if (existing && isPinned(existing) && !options.force) {
+      skipped.push(existing);
+      continue;
+    }
+
+    if (options.dryRun) {
+      continue;
+    }
+
+    const policy: ImportConflictPolicy =
+      conflictPolicy === "overwrite"
+        ? "overwrite"
+        : conflictPolicy === "ignore"
+          ? "skip"
+          : "fail";
+
+    const result = upsertResource(
+      normalizeResourceInput({
+        ...candidate,
+        namespace,
+        origin_kind: "marketplace_link",
+        origin_ref: originRef,
+      }),
+      { policy },
+    );
+
+    if (result.action === "updated" || result.action === "created") {
+      updated.push(result.resource);
+    } else if (result.action === "unchanged") {
+      unchanged.push(result.resource);
+    } else if (result.action === "skipped") {
+      skipped.push(result.existing);
+    }
+  }
+
+  return { checked, updated, stale, unchanged, skipped };
+}
+
+export async function syncLinkedResources(
+  options: SyncLinkedResourcesOptions = {},
+): Promise<SyncLinkedResourcesResult> {
+  if (options.selector) {
+    const resolved = resolveResource(options.selector, { mode: "compose" });
+    if (resolved.status === "found" && resolved.resource.type === "plugin") {
+      return syncPluginResource(resolved.resource, options);
+    }
+  }
+
+  const pluginTargets = options.selector
+    ? []
+    : listResources({ type: "plugin", includeComposition: true });
+
+  const linkedTargets = listLinkedResources(options.selector).filter(
+    (resource) => resource.type !== "plugin",
+  );
+
+  const aggregated: SyncLinkedResourcesResult = {
+    checked: 0,
+    updated: [],
+    stale: [],
+    unchanged: [],
+    skipped: [],
+  };
+
+  for (const pluginResource of pluginTargets) {
+    const result = await syncPluginResource(pluginResource, options);
+    aggregated.checked += result.checked;
+    aggregated.updated.push(...result.updated);
+    aggregated.stale.push(...result.stale);
+    aggregated.unchanged.push(...result.unchanged);
+    aggregated.skipped.push(...result.skipped);
+  }
+
+  const homeRoot = options.homeRoot ?? resolveHomeRoot();
+  const claudePluginsRoot =
+    options.claudePluginsRoot ?? defaultClaudePluginsRoot(homeRoot);
+  const policy = options.policy ?? "overwrite";
+
+  for (const resource of linkedTargets) {
+    aggregated.checked += 1;
     const installRoot = resolveInstallRoot(resource.origin_ref, homeRoot, claudePluginsRoot);
     if (!installRoot) {
-      stale.push({ resource, reason: "install path not found" });
+      aggregated.stale.push({ resource, reason: "install path not found" });
       continue;
     }
 
@@ -72,7 +232,12 @@ export async function syncLinkedResources(
       .find((candidate) => candidate.type === resource.type && candidate.name === resource.name);
 
     if (!match) {
-      stale.push({ resource, reason: "resource missing from install tree" });
+      aggregated.stale.push({ resource, reason: "resource missing from install tree" });
+      continue;
+    }
+
+    if (isPinned(resource) && !options.force) {
+      aggregated.skipped.push(resource);
       continue;
     }
 
@@ -91,16 +256,13 @@ export async function syncLinkedResources(
     );
 
     if (result.action === "updated" || result.action === "created") {
-      updated.push(result.resource);
+      aggregated.updated.push(result.resource);
     } else if (result.action === "unchanged") {
-      unchanged.push(result.resource);
+      aggregated.unchanged.push(result.resource);
+    } else if (result.action === "skipped") {
+      aggregated.skipped.push(result.existing);
     }
   }
 
-  return {
-    checked: targets.length,
-    updated,
-    stale,
-    unchanged,
-  };
+  return aggregated;
 }

@@ -2,7 +2,7 @@ import type { SqliteDatabase } from "./types.js";
 import { hashResourceBody } from "../services/resource-hash.js";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -238,6 +238,49 @@ const MIGRATIONS: Record<number, string> = {
     ALTER TABLE resources ADD COLUMN origin_ref TEXT NOT NULL DEFAULT '';
     ALTER TABLE resources ADD COLUMN content_hash TEXT NOT NULL DEFAULT '';
     ALTER TABLE resources ADD COLUMN content_blob_ref TEXT NOT NULL DEFAULT '';
+  `,
+
+  14: `
+    CREATE TABLE resources_new (
+      id          TEXT PRIMARY KEY,
+      type        TEXT NOT NULL CHECK(type IN (
+        'instruction','skill','rule','mcp_server','permission',
+        'hook','agent','command','env_var','model_config',
+        'plugin','layer'
+      )),
+      name        TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      content     TEXT NOT NULL DEFAULT '',
+      metadata    TEXT NOT NULL DEFAULT '{}',
+      source      TEXT NOT NULL DEFAULT 'manual',
+      namespace   TEXT NOT NULL DEFAULT '',
+      origin_kind TEXT NOT NULL DEFAULT 'manual'
+        CHECK(origin_kind IN ('local_snapshot','marketplace_link','manual')),
+      origin_ref  TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '',
+      content_blob_ref TEXT NOT NULL DEFAULT '',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    );
+
+    INSERT INTO resources_new (
+      id, type, name, description, content, metadata, source,
+      namespace, origin_kind, origin_ref, content_hash, content_blob_ref,
+      created_at, updated_at
+    )
+    SELECT
+      id, type, name, description, content, metadata, source,
+      namespace, origin_kind, origin_ref, content_hash, content_blob_ref,
+      created_at, updated_at
+    FROM resources;
+
+    DROP TABLE resources;
+    ALTER TABLE resources_new RENAME TO resources;
+
+    CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
+    CREATE INDEX IF NOT EXISTS idx_resources_name ON resources(name);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_type_name_namespace
+      ON resources(type, name, namespace);
   `,
 
   11: `
@@ -480,6 +523,239 @@ function applyMigration11(db: SqliteDatabase): void {
   db.exec("DROP TABLE project_layers");
 }
 
+function parsePluginRefForMigration(ref: string): {
+  name: string;
+  namespace: string;
+  origin_ref: string;
+} {
+  const trimmed = ref.trim();
+  if (trimmed.startsWith("./") || trimmed.startsWith("../")) {
+    const name = trimmed.split("/").filter(Boolean).pop() ?? trimmed;
+    return { name, namespace: "", origin_ref: trimmed };
+  }
+  const at = trimmed.lastIndexOf("@");
+  if (at === -1) {
+    return { name: trimmed, namespace: "", origin_ref: trimmed };
+  }
+  return {
+    name: trimmed.slice(0, at),
+    namespace: trimmed.slice(at + 1),
+    origin_ref: trimmed,
+  };
+}
+
+function migrationPluginMetadata(
+  versionConstraint: string,
+  embedOnExport: number,
+): string {
+  const metadata: Record<string, unknown> = {
+    source_kind: "marketplace",
+    sync_status: "never_synced",
+    portable: embedOnExport !== 0 ? "embed" : "reference",
+  };
+  if (
+    versionConstraint &&
+    versionConstraint !== "latest" &&
+    versionConstraint !== "*"
+  ) {
+    metadata.version_constraint = versionConstraint;
+  }
+  return JSON.stringify(metadata);
+}
+
+function migrationLayerMetadata(versionConstraint: string): string {
+  const metadata: Record<string, unknown> = {};
+  if (
+    versionConstraint &&
+    versionConstraint !== "latest" &&
+    versionConstraint !== "*"
+  ) {
+    metadata.version_constraint = versionConstraint;
+  }
+  return JSON.stringify(metadata);
+}
+
+function ensureCompositionResourceOnMigration(
+  db: SqliteDatabase,
+  input: {
+    type: "plugin" | "layer";
+    name: string;
+    namespace: string;
+    origin_ref: string;
+    metadata: string;
+    now: string;
+  },
+): string {
+  const existing = db
+    .prepare(
+      "SELECT id FROM resources WHERE type = ? AND name = ? AND namespace = ?",
+    )
+    .get(input.type, input.name, input.namespace) as { id: string } | undefined;
+  if (existing) {
+    return existing.id;
+  }
+
+  const id = `migrate:${input.type}:${input.name}:${input.namespace}`;
+  const contentHash = hashResourceBody({
+    type: input.type,
+    content: "{}",
+    metadata: JSON.parse(input.metadata) as ResourceMetadata,
+  });
+
+  db.prepare(
+    `INSERT INTO resources (
+      id, type, name, description, content, metadata, source,
+      namespace, origin_kind, origin_ref, content_hash, content_blob_ref,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    input.type,
+    input.name,
+    input.type === "plugin"
+      ? `Plugin reference: ${input.origin_ref}`
+      : `Layer reference: ${input.name}`,
+    "{}",
+    input.metadata,
+    `migration:${input.type}`,
+    input.namespace,
+    input.type === "plugin" && input.namespace ? "marketplace_link" : "manual",
+    input.origin_ref,
+    contentHash,
+    "",
+    input.now,
+    input.now,
+  );
+
+  return id;
+}
+
+/** Migration 14: composition resources; migrate pins/deps; drop legacy tables. */
+function applyMigration14(db: SqliteDatabase): void {
+  const hasResources = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'resources'")
+    .get();
+  const migration = MIGRATIONS[14];
+  if (migration && hasResources) {
+    db.exec(migration);
+  } else if (!hasResources) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS resources (
+        id          TEXT PRIMARY KEY,
+        type        TEXT NOT NULL CHECK(type IN (
+          'instruction','skill','rule','mcp_server','permission',
+          'hook','agent','command','env_var','model_config',
+          'plugin','layer'
+        )),
+        name        TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        content     TEXT NOT NULL DEFAULT '',
+        metadata    TEXT NOT NULL DEFAULT '{}',
+        source      TEXT NOT NULL DEFAULT 'manual',
+        namespace   TEXT NOT NULL DEFAULT '',
+        origin_kind TEXT NOT NULL DEFAULT 'manual'
+          CHECK(origin_kind IN ('local_snapshot','marketplace_link','manual')),
+        origin_ref  TEXT NOT NULL DEFAULT '',
+        content_hash TEXT NOT NULL DEFAULT '',
+        content_blob_ref TEXT NOT NULL DEFAULT '',
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
+      CREATE INDEX IF NOT EXISTS idx_resources_name ON resources(name);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_type_name_namespace
+        ON resources(type, name, namespace);
+    `);
+  }
+
+  const now = new Date().toISOString();
+
+  const hasNativePins = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugin_native_pins'",
+    )
+    .get();
+  if (hasNativePins) {
+    const pins = db
+      .prepare(
+        `SELECT layer_id, ref, version_constraint, "order", embed_on_export
+         FROM plugin_native_pins ORDER BY "order"`,
+      )
+      .all() as Array<{
+        layer_id: string;
+        ref: string;
+        version_constraint: string;
+        order: number;
+        embed_on_export: number;
+      }>;
+
+    for (const pin of pins) {
+      const identity = parsePluginRefForMigration(pin.ref);
+      const resourceId = ensureCompositionResourceOnMigration(db, {
+        type: "plugin",
+        name: identity.name,
+        namespace: identity.namespace,
+        origin_ref: identity.origin_ref,
+        metadata: migrationPluginMetadata(
+          pin.version_constraint,
+          pin.embed_on_export,
+        ),
+        now,
+      });
+
+      db.prepare(
+        `INSERT OR IGNORE INTO plugin_resources (layer_id, resource_id, "order")
+         VALUES (?, ?, ?)`,
+      ).run(pin.layer_id, resourceId, pin.order);
+    }
+
+    db.exec("DROP TABLE plugin_native_pins");
+  }
+
+  const hasDependencies = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugin_dependencies'",
+    )
+    .get();
+  if (hasDependencies) {
+    const deps = db
+      .prepare(
+        `SELECT layer_id, dependency_name, version_constraint, "order"
+         FROM plugin_dependencies ORDER BY "order"`,
+      )
+      .all() as Array<{
+        layer_id: string;
+        dependency_name: string;
+        version_constraint: string;
+        order: number;
+      }>;
+
+    for (const dep of deps) {
+      const constraint =
+        dep.version_constraint === "latest" || dep.version_constraint === "*"
+          ? ""
+          : dep.version_constraint;
+      const resourceId = ensureCompositionResourceOnMigration(db, {
+        type: "layer",
+        name: dep.dependency_name,
+        namespace: constraint,
+        origin_ref: dep.dependency_name,
+        metadata: migrationLayerMetadata(dep.version_constraint),
+        now,
+      });
+
+      db.prepare(
+        `INSERT OR IGNORE INTO plugin_resources (layer_id, resource_id, "order")
+         VALUES (?, ?, ?)`,
+      ).run(dep.layer_id, resourceId, dep.order);
+    }
+
+    db.exec("DROP TABLE plugin_dependencies");
+  }
+
+  db.exec("DROP TABLE IF EXISTS project_plugin_state");
+}
+
 /** Migration 13: resource identity columns, dedup, hash backfill, unique index. */
 function applyMigration13(db: SqliteDatabase): void {
   const hasResources = db
@@ -621,7 +897,12 @@ export function initializeSchema(db: SqliteDatabase): void {
   // copy, DROP old, RENAME). SQLite fires ON DELETE CASCADE on child tables even
   // for DROP TABLE when foreign_keys=ON, so we must toggle it outside the
   // transaction and restore it afterward.
-  const needsFkToggle = currentVersion < 5 || currentVersion < 6 || currentVersion < 8 || currentVersion < 11;
+  const needsFkToggle =
+    currentVersion < 5 ||
+    currentVersion < 6 ||
+    currentVersion < 8 ||
+    currentVersion < 11 ||
+    currentVersion < 14;
   if (needsFkToggle) {
     db.exec("PRAGMA foreign_keys = OFF");
   }
@@ -642,6 +923,10 @@ export function initializeSchema(db: SqliteDatabase): void {
         }
         if (v === 13) {
           applyMigration13(db);
+          continue;
+        }
+        if (v === 14) {
+          applyMigration14(db);
           continue;
         }
         const migration = MIGRATIONS[v];

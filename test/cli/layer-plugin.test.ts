@@ -85,8 +85,8 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("requires --version for layer attach --type plugin", async () => {
-    const context = await createTestContext("cli-layer-plugin-version-required");
+  it("allows lazy layer attach --type plugin without --version", async () => {
+    const context = await createTestContext("cli-layer-plugin-lazy");
 
     try {
       await runCli(["init"]);
@@ -101,8 +101,8 @@ describe("CLI layer plugin pins", () => {
         "plugin",
       ]);
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("--version is required for --type plugin");
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("Attached plugin tools@hub");
     } finally {
       await context.cleanup();
     }

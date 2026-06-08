@@ -22,10 +22,7 @@ describe("initializeSchema", () => {
           "environment_resources",
           "environment_secret_refs",
           "environments",
-          "plugin_dependencies",
           "project_harnesses",
-          "plugin_native_pins",
-          "project_plugin_state",
           "configured_layer_plugins",
           "configured_layers",
           "deck_configured_layers",
@@ -45,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
 
       const layerColumns = context.connection
         .getDb()
@@ -117,14 +114,14 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 13 }]);
+      expect(versionRows).toEqual([{ version: 14 }]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("migration 4 creates project_plugin_state and plugin_native_pins (was layer_plugins)", async () => {
-    const context = await createTestContext("schema-migration-4");
+  it("migration 14 migrates composition resources and drops legacy plugin tables", async () => {
+    const context = await createTestContext("schema-migration-14");
 
     try {
       context.schema.initializeSchema(context.connection.getDb());
@@ -137,8 +134,15 @@ describe("initializeSchema", () => {
         .all() as Array<{ name: string }>;
 
       const names = tables.map((t) => t.name);
-      expect(names).toContain("project_plugin_state");
-      expect(names).toContain("plugin_native_pins");
+      expect(names).not.toContain("project_plugin_state");
+      expect(names).not.toContain("plugin_native_pins");
+      expect(names).not.toContain("plugin_dependencies");
+
+      const versionRow = context.connection
+        .getDb()
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }
@@ -154,8 +158,6 @@ describe("initializeSchema", () => {
       const tables = db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all() as Array<{ name: string }>;
-      expect(tables.map((t) => t.name)).toContain("plugin_dependencies");
-
       // plugins table should have a version column
       const cols = db
         .prepare("PRAGMA table_info(plugins)")
@@ -295,25 +297,35 @@ describe("initializeSchema", () => {
       expect(layer?.version).toBe("1.0.0");
       expect(layer?.description).toBe("a layer");
 
-      // FK-linked rows survived
-      const prRow = db
-        .prepare("SELECT * FROM plugin_resources WHERE layer_id = 'p1'")
-        .get() as { resource_id: string } | undefined;
-      expect(prRow).toBeDefined();
-      expect(prRow?.resource_id).toBe("r1");
+      const pluginResource = db
+        .prepare(
+          "SELECT id, metadata FROM resources WHERE type = 'plugin' AND name = 'plugin' AND namespace = 'marketplace'",
+        )
+        .get() as { id: string; metadata: string } | undefined;
+      expect(pluginResource).toBeDefined();
 
-      const ppRow = db
-        .prepare("SELECT * FROM plugin_native_pins WHERE layer_id = 'p1'")
-        .get() as { ref: string; version_constraint: string } | undefined;
-      expect(ppRow).toBeDefined();
-      expect(ppRow?.ref).toBe("plugin@marketplace");
-      expect(ppRow?.version_constraint).toBe("^1.0");
+      // FK-linked rows survived (instruction + migrated plugin pin)
+      const prRows = db
+        .prepare("SELECT resource_id FROM plugin_resources WHERE layer_id = 'p1' ORDER BY resource_id")
+        .all() as Array<{ resource_id: string }>;
+      expect(prRows.map((row) => row.resource_id)).toEqual(
+        expect.arrayContaining(["r1", pluginResource!.id]),
+      );
+      const pluginLink = db
+        .prepare(
+          "SELECT resource_id FROM plugin_resources WHERE layer_id = 'p1' AND resource_id = ?",
+        )
+        .get(pluginResource?.id) as { resource_id: string } | undefined;
+      expect(pluginLink?.resource_id).toBe(pluginResource?.id);
+      expect(JSON.parse(pluginResource?.metadata ?? "{}").version_constraint).toBe(
+        "^1.0",
+      );
 
       // Schema version bumped
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(plugins)")
@@ -490,15 +502,13 @@ describe("initializeSchema", () => {
         main_harness: 'claude-code',
       });
 
-      const pluginState = db
-        .prepare(
-          "SELECT project_id, harness FROM project_plugin_state WHERE project_id = 'project-1'",
-        )
-        .get() as { project_id: string; harness: string } | undefined;
-      expect(pluginState).toEqual({
-        project_id: 'project-1',
-        harness: 'claude-code',
-      });
+      expect(
+        db
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'project_plugin_state'",
+          )
+          .get(),
+      ).toBeUndefined();
     } finally {
       await context.cleanup();
     }
@@ -721,7 +731,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }
@@ -768,7 +778,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }
@@ -835,7 +845,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }
@@ -928,7 +938,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }
@@ -1005,7 +1015,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }
@@ -1163,7 +1173,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(13);
+      expect(versionRow.version).toBe(14);
     } finally {
       await context.cleanup();
     }

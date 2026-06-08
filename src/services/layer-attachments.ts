@@ -3,22 +3,48 @@ import {
   removeResourceFromPlugin,
   syncClaudeLayerPluginsAfterAdd,
   syncClaudeLayerPluginsAfterRemove,
-  addDependencyToPlugin,
-  removeDependencyFromPlugin,
 } from "../models/plugin-component.js";
-import { addPluginToLayer, removePluginFromLayer } from "../models/plugin-pins.js";
 import { resolveResource } from "../models/resource.js";
+import { parseResourceSelector } from "./resource-selector.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import {
+  ensureLayerResource,
+  ensurePluginResource,
+  formatPluginRef,
+  listAttachedPluginPins,
+  resolveAttachmentType,
+} from "./composition-resource.js";
+import { syncPluginResource } from "./resource-sync.js";
 import type { Layer, ResourceType } from "../types.js";
-import { RESOURCE_TYPES } from "../types.js";
+import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 
 export const LAYER_ATTACHMENT_TYPES = [
-  ...RESOURCE_TYPES,
+  ...MATERIAL_RESOURCE_TYPES,
   "plugin",
+  "layer",
+] as const;
+
+const LAYER_ATTACHMENT_TYPE_ALIASES = [
+  ...LAYER_ATTACHMENT_TYPES,
   "layer-dependency",
 ] as const;
 
 export type LayerAttachmentType = (typeof LAYER_ATTACHMENT_TYPES)[number];
+
+export function validateLayerAttachmentType(type: string | undefined): string | undefined {
+  if (!type) {
+    return undefined;
+  }
+  if (type === "layer-dependency") {
+    return "layer";
+  }
+  if (!(LAYER_ATTACHMENT_TYPES as readonly string[]).includes(type)) {
+    throw new Error(
+      `Invalid --type. Valid: ${LAYER_ATTACHMENT_TYPE_ALIASES.join(", ")}`,
+    );
+  }
+  return type;
+}
 
 interface AddLayerAttachmentInput {
   layer: Layer;
@@ -26,6 +52,7 @@ interface AddLayerAttachmentInput {
   type?: string;
   version?: string;
   embed?: boolean;
+  sync?: boolean;
 }
 
 interface RemoveLayerAttachmentInput {
@@ -44,34 +71,6 @@ function formatAmbiguousResourceMessage(
   ].join("\n");
 }
 
-function formatTypeRequirement(): string {
-  return `--type is required (one of: ${LAYER_ATTACHMENT_TYPES.join(", ")})`;
-}
-
-function parseAttachmentType(type: string | undefined): LayerAttachmentType {
-  if (!type) {
-    throw new Error(formatTypeRequirement());
-  }
-
-  if (!LAYER_ATTACHMENT_TYPES.includes(type as LayerAttachmentType)) {
-    throw new Error(`Invalid --type. Valid: ${LAYER_ATTACHMENT_TYPES.join(", ")}`);
-  }
-
-  return type as LayerAttachmentType;
-}
-
-function assertNoVersion(_type: ResourceType, version: string | undefined): void {
-  if (version) {
-    throw new Error("--version is only supported for --type plugin and --type layer-dependency");
-  }
-}
-
-function assertNoEmbed(_type: LayerAttachmentType, embed: boolean | undefined): void {
-  if (embed) {
-    throw new Error("--embed is only supported for --type plugin");
-  }
-}
-
 function resolveTypedResource(selector: string, type: ResourceType) {
   const resourceResult = resolveResource(selector, { mode: "compose" });
   if (resourceResult.status === "not_found") {
@@ -88,67 +87,142 @@ function resolveTypedResource(selector: string, type: ResourceType) {
   return resourceResult.resource;
 }
 
-export function addLayerAttachment(input: AddLayerAttachmentInput): string {
-  const type = parseAttachmentType(input.type);
-
-  if (RESOURCE_TYPES.includes(type as ResourceType)) {
-    assertNoVersion(type as ResourceType, input.version);
-    assertNoEmbed(type, input.embed);
-    const resource = resolveTypedResource(input.selector, type as ResourceType);
-    addResourceToPlugin(input.layer.id, resource.id);
-    return `Added ${resource.type} "${resource.name}" to layer ${input.layer.name}`;
+function normalizeLegacyType(type: string | undefined): string | undefined {
+  if (type === "layer-dependency") {
+    return "layer";
   }
+  return type;
+}
 
+function normalizeAttachmentSelector(selector: string, explicitType?: string): string {
+  if (selector.includes(":")) {
+    return selector.replace(/^layer-dependency:/, "layer:");
+  }
+  const type = normalizeLegacyType(explicitType);
   if (type === "plugin") {
-    if (!input.version) {
-      throw new Error("--version is required for --type plugin");
+    return `plugin:${selector}`;
+  }
+  if (type === "layer") {
+    return `layer:${selector}`;
+  }
+  if (
+    type &&
+    (MATERIAL_RESOURCE_TYPES as readonly string[]).includes(type as ResourceType)
+  ) {
+    return selector;
+  }
+  if (type) {
+    return `${type}:${selector}`;
+  }
+  return selector;
+}
+
+export async function addLayerAttachment(input: AddLayerAttachmentInput): Promise<string> {
+  const explicitType = normalizeLegacyType(input.type);
+  const selector = normalizeAttachmentSelector(input.selector, explicitType);
+  const attachmentType = resolveAttachmentType(selector, explicitType);
+
+  if (attachmentType === "plugin") {
+    if (input.version) {
+      parseVersionConstraint(input.version);
     }
-    parseVersionConstraint(input.version);
-    addPluginToLayer(input.layer.id, input.selector, input.version, {
-      embedOnExport: Boolean(input.embed),
+    const resource = ensurePluginResource(selector, {
+      versionConstraint: input.version,
+      portable: input.embed ? "embed" : undefined,
     });
-    syncClaudeLayerPluginsAfterAdd(input.layer, input.selector, input.version);
-    return `Pinned ${input.selector} (${input.version}) on layer ${input.layer.name}`;
+    addResourceToPlugin(input.layer.id, resource.id);
+    const ref = formatPluginRef(resource);
+    if (input.version) {
+      syncClaudeLayerPluginsAfterAdd(input.layer, ref, input.version);
+    }
+    if (input.sync) {
+      await syncPluginResource(resource, { policy: "overwrite" });
+    }
+    const versionLabel = input.version ? ` (${input.version})` : "";
+    return `Attached plugin ${ref}${versionLabel} to layer ${input.layer.name}`;
   }
 
-  if (!input.version) {
-    throw new Error("--version is required for --type layer-dependency");
+  if (attachmentType === "layer") {
+    if (input.embed) {
+      throw new Error("--embed is only supported for plugin attachments");
+    }
+    if (input.version) {
+      parseVersionConstraint(input.version);
+    }
+    const resource = ensureLayerResource(selector, {
+      versionConstraint: input.version,
+    });
+    addResourceToPlugin(input.layer.id, resource.id);
+    const versionLabel = input.version ? ` (${input.version})` : "";
+    return `Attached layer ${resource.name}${versionLabel} to layer ${input.layer.name}`;
   }
-  assertNoEmbed(type, input.embed);
-  parseVersionConstraint(input.version);
-  addDependencyToPlugin(input.layer.id, input.selector, input.version);
-  return `Added dependency ${input.selector} (${input.version}) to layer ${input.layer.name}@${input.layer.version}`;
+
+  if (input.version) {
+    throw new Error("--version is only supported for plugin and layer attachments");
+  }
+  if (input.embed) {
+    throw new Error("--embed is only supported for plugin attachments");
+  }
+  if (input.sync) {
+    throw new Error("--sync is only supported for plugin attachments");
+  }
+
+  const resource = resolveTypedResource(selector, attachmentType);
+  addResourceToPlugin(input.layer.id, resource.id);
+  return `Added ${resource.type} "${resource.name}" to layer ${input.layer.name}`;
 }
 
 export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
   message: string;
   removed: boolean;
 } {
-  const type = parseAttachmentType(input.type);
+  const explicitType = normalizeLegacyType(input.type);
+  const selector = normalizeAttachmentSelector(input.selector, explicitType);
+  const attachmentType = resolveAttachmentType(selector, explicitType);
 
-  if (RESOURCE_TYPES.includes(type as ResourceType)) {
-    const resource = resolveTypedResource(input.selector, type as ResourceType);
-    removeResourceFromPlugin(input.layer.id, resource.id);
+  if (attachmentType === "plugin") {
+    const parsed = parseResourceSelector(selector);
+    const ref = parsed.namespace ? `${parsed.name}@${parsed.namespace}` : parsed.name;
+    const pin = listAttachedPluginPins(input.layer.id).find((entry) => entry.ref === ref);
+    if (!pin) {
+      throw new Error(`Plugin pin not found: ${ref}`);
+    }
+    removeResourceFromPlugin(input.layer.id, pin.resource.id);
+    syncClaudeLayerPluginsAfterRemove(input.layer, pin.ref);
     return {
       removed: true,
-      message: `Removed ${resource.type} "${resource.name}" from layer ${input.layer.name}`,
+      message: `Removed plugin ${pin.ref} from layer ${input.layer.name}`,
     };
   }
 
-  if (type === "plugin") {
-    removePluginFromLayer(input.layer.id, input.selector);
-    syncClaudeLayerPluginsAfterRemove(input.layer, input.selector);
+  if (attachmentType === "layer") {
+    const resourceResult = resolveResource(selector, { mode: "compose" });
+    if (resourceResult.status === "not_found") {
+      const depName = parseResourceSelector(selector).name;
+      return {
+        removed: false,
+        message: `Layer dependency "${depName}" not found on layer ${input.layer.name}`,
+      };
+    }
+    if (resourceResult.status === "ambiguous") {
+      throw new Error(formatAmbiguousResourceMessage(selector, resourceResult.matches));
+    }
+    if (resourceResult.resource.type !== "layer") {
+      throw new Error(
+        `Type mismatch: selector "${selector}" resolved to ${resourceResult.resource.type}, expected layer`,
+      );
+    }
+    removeResourceFromPlugin(input.layer.id, resourceResult.resource.id);
     return {
       removed: true,
-      message: `Removed plugin pin ${input.selector} from layer ${input.layer.name}`,
+      message: `Removed layer ${resourceResult.resource.name} from layer ${input.layer.name}`,
     };
   }
 
-  const removed = removeDependencyFromPlugin(input.layer.id, input.selector);
+  const resource = resolveTypedResource(selector, attachmentType);
+  removeResourceFromPlugin(input.layer.id, resource.id);
   return {
-    removed,
-    message: removed
-      ? `Removed dependency ${input.selector} from layer ${input.layer.name}@${input.layer.version}`
-      : `Dependency "${input.selector}" not found on layer ${input.layer.name}@${input.layer.version}`,
+    removed: true,
+    message: `Removed ${resource.type} "${resource.name}" from layer ${input.layer.name}`,
   };
 }

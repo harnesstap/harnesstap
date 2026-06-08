@@ -15,8 +15,6 @@ import {
 import {
   createImportedSnapshot,
 } from "../models/imported-snapshot.js";
-import { upsertProjectPluginState } from "../models/plugin.js";
-import { scanClaudePluginInventory } from "./claude-plugin-inventory.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -447,31 +445,14 @@ export async function scanAndPersistPluginSource(
   return { imports, resources, snapshots };
 }
 
-/** Persist Claude Code plugin inventory for a registered project after a scan including that platform. */
-export async function persistClaudePluginInventoryForProject(opts: {
+/** @deprecated Plugin inventory is declared via composition `plugin` resources and `resource sync`. */
+export async function persistClaudePluginInventoryForProject(_opts: {
   projectRoot: string;
   projectId: string;
   scannedPlatformIds: readonly string[];
   homeRoot?: string;
-}): Promise<{
-  scanned_at: string;
-  committed_count: number;
-  effective_count: number;
-} | null> {
-  if (!opts.scannedPlatformIds.includes("claude-code")) {
-    return null;
-  }
-  const root = opts.homeRoot ?? resolveHomeRoot();
-  const inventory = await scanClaudePluginInventory({
-    projectRoot: opts.projectRoot,
-    homeRoot: root,
-  });
-  upsertProjectPluginState(opts.projectId, inventory);
-  return {
-    scanned_at: inventory.scanned_at,
-    committed_count: inventory.committed.length,
-    effective_count: inventory.effective.length,
-  };
+}): Promise<null> {
+  return null;
 }
 
 export async function scanAndPersistHomeDefaults(
