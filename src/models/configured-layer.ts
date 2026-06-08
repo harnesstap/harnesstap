@@ -107,6 +107,28 @@ export function listConfiguredLayers(): ConfiguredLayer[] {
   return rows.map(rowToConfiguredLayer);
 }
 
+export function setConfiguredLayerDefaultEnvironment(
+  configuredLayerId: string,
+  environmentId: string | null,
+): boolean {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `UPDATE configured_layers
+       SET default_environment_id = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(environmentId, now, configuredLayerId);
+  return result.changes > 0;
+}
+
+export function unsetConfiguredLayerDefaultEnvironment(
+  configuredLayerId: string,
+): boolean {
+  return setConfiguredLayerDefaultEnvironment(configuredLayerId, null);
+}
+
 export function listConfiguredLayerPlugins(
   configuredLayerId: string,
 ): ConfiguredLayerPlugin[] {

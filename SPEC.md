@@ -20,7 +20,7 @@ The product currently supports these main workflows:
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Export or import a machine-transfer archive of local plugins, configured layers, harness preferences, and config.
 - Authenticate with HarnessDeck Cloud and search, install, or publish layer bundles.
-- Resolve **environment** values with a home → layer default → deck-active cascade on `project apply`.
+- Create, capture, and refresh **environments**; bind default environments to configured layers; switch home or deck active environment; resolve the home → layer default → deck-active cascade on `project apply`.
 
 ## Core concepts
 
@@ -44,7 +44,7 @@ The CLI uses a small set of concepts consistently across commands.
 
 - `resource`: a single canonical item stored in SQLite with optional **namespace** and **origin** metadata. Plugin-side types: instruction, skill, rule, MCP server, hook, agent, command. Environment-side types: env var, model config, **permission** (permissions are *how* values, not plugin-side resources). Composition types: `plugin`, `layer`.
 - `plugin` (design-time): an ordered bundle of plugin-side resources, optional Claude marketplace/plugin config, composition attachments (`plugin` and `layer` resource refs), and a `needs` config contract. The `layer` command group manages these bundles in the CLI.
-- `environment`: a named, swappable bundle of how-values (env vars, model config, permissions) plus secret references. Non-secret values can travel in a deck; secrets are referenced, not embedded.
+- `environment`: a named, swappable bundle of **environment values** (env vars, model config, permissions) plus secret references. Non-secret values can travel in a deck; secrets are referenced, not embedded.
 - `configured layer`: a binding of one or more design plugins with an optional default environment — a configured capability such as "backend on-call." This is what `project apply` targets when applying layer selectors.
 - `deck`: a curated bundle of configured layers and environments, importable as a git repo and described by `.harnessdeck/deck.json`.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
@@ -75,18 +75,22 @@ An `mcp_server` **definition** lives on the plugin; tokens and URLs are contract
 
 `layer` composition resources are hidden from default `resource list`; `plugin` resources are listed.
 
-### Settings umbrella (UX)
+### Environment values
 
-**Settings** is the user-facing umbrella for runtime configuration — there is no separate `settings` table:
+An **environment** is a named bundle of **environment values** — the runtime *how* configuration that plugins may depend on:
 
-```
-settings ≡ environments (env_var, model_config, permission)
-         + environment_secret_refs
-         + harness_preferences / project_harnesses
-         + ~/.harnessdeck/config.jsonc
-```
+| Kind | Storage |
+| --- | --- |
+| `env_var` | Non-secret key/value pairs |
+| `model_config` | Model and provider selection |
+| `permission` | Allow/deny/ask patterns |
+| Secret reference | `environment_secret_refs` (`keychain`, `env`, `file`) — never the secret value |
 
-Environments are managed through the library schema and deck transport.
+Plugins declare requirements via `needs[]`; MCP server definitions declare env keys in `mcp_server.env`. Environments satisfy those requirements.
+
+**Toolkit configuration** (`harness_preferences`, `project_harnesses`, `~/.harnessdeck/config.jsonc`) controls HarnessDeck behavior and harness selection. It is not an environment.
+
+See [Environment capture](#environment-capture) for creating or refreshing environments from project state.
 
 ### Resource identity and selectors
 
@@ -188,6 +192,7 @@ Global options:
 | `resource` | `r` |
 | `project` | `p` |
 | `harness` | `h` |
+| `environment` | `e` |
 | `cloud` | `c` |
 
 ## Command surface
@@ -204,6 +209,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnessdeck project ...` | Scans projects, applies layers, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
 | `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
+| `harnessdeck environment ...` | Creates and manages environments, environment values, secret refs, active-environment pointers, scoped capture/refresh, and cascade preview. |
 | `harnessdeck cloud ...` | Authenticates with HarnessDeck Cloud and manages local cloud profiles. |
 
 ### `layer` subcommands
@@ -212,7 +218,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `layer create` | Creates a design plugin with optional description, tags, and version. |
 | `layer list` | Lists design plugins (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
-| `layer show` | Shows plugin metadata, resources, dependencies, and composition attachments. |
+| `layer show` | Shows plugin metadata, resources, dependencies, composition attachments, and configured-layer default environment when set. |
 | `layer attach` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer detach` | Removes a typed attachment. |
 | `layer delete` | Deletes a layer by selector. |
@@ -224,6 +230,26 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer diff` | Compares two local layers, or a layer and a bundle file. |
 | `layer doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
 | `layer from-project` | Scans a project and creates a layer from imported resources. |
+| `layer set-environment` | Sets the default environment on the configured layer that `project apply` resolves for the given selector. |
+| `layer unset-environment` | Clears the configured layer default environment. |
+
+### `environment` subcommands
+
+| Command | Behavior |
+| --- | --- |
+| `environment create` | Creates an empty environment. |
+| `environment list` | Lists environments with value counts and layer bindings. |
+| `environment show` | Shows environment values, secret refs, and reverse references. |
+| `environment delete` | Deletes an environment when unreferenced (or with `--force`). |
+| `environment set` | Upserts environment values (`--var`, `--model`, `--permission`). |
+| `environment unset` | Removes environment values. |
+| `environment secret set` / `secret unset` | Manages secret references. |
+| `environment import` / `export` | Reads or writes deck environment JSONC transport. |
+| `environment use` | Sets the home or deck active environment pointer; `--reapply` opt-in re-runs last applied layers. |
+| `environment active` | Shows active environment and cascade preview. |
+| `environment resolve` | Dry-run merged environment values per cascade tier. |
+| `environment capture` | Creates an environment from scoped project capture (see [Environment capture](#environment-capture)). |
+| `environment refresh` | Updates an existing environment from scoped project capture. |
 
 ### `resource` subcommands
 
@@ -291,12 +317,13 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `cloud whoami|orgs`, `layer doctor`, `migrate export|import`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `cloud whoami|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
 ### Selector rules
 
+- **Environments:** name or ULID.
 - **Layers / design plugins:** name, `name@version`, or ULID.
 - **Resources:** `name`, `type:name`, `type:name@namespace`, or ULID.
 - **Snapshots:** full snapshot IDs in `project history`; `project revert` accepts the same ID.
@@ -324,7 +351,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ## Wizard mode
 
-Several commands support wizard mode for interactive use: `layer add`, `layer show`, `layer delete`, `layer attach`, `layer detach`, `layer from-project`, `project apply`, `resource delete`, `init`, `harness set`, and `harness project set`.
+Several commands support wizard mode for interactive use: `layer add`, `layer show`, `layer delete`, `layer attach`, `layer detach`, `layer from-project`, `layer set-environment`, `project apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
 
 Wizard mode triggers when all of these are true:
 
@@ -370,7 +397,7 @@ Persistent operational state lives in SQLite at `~/.harnessdeck/harnessdeck.db` 
 
 | Path | Purpose |
 | --- | --- |
-| `~/.harnessdeck/config.jsonc` | User settings (JSONC comments allowed) |
+| `~/.harnessdeck/config.jsonc` | Toolkit configuration (JSONC comments allowed) |
 | `~/.harnessdeck/cloud-profiles.json` | HarnessDeck Cloud profiles and tokens |
 | `~/.harnessdeck/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
 | `~/.harnessdeck/environments/<name>.json` | Named environment fragments (JSONC) |
@@ -386,7 +413,7 @@ Example `config.jsonc`:
 }
 ```
 
-Edit `config.jsonc` directly to tune settings such as plugin refresh age.
+Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 
 ### Schema (logical tables)
 
@@ -428,11 +455,27 @@ CLI selectors: ULID, bare name (highest version wins), or `name@version`.
 
 ### Environment model
 
-An environment has a unique `name`, description, ordered environment-side resources, and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in deck transport.
+An environment has a unique `name`, description, ordered **environment values** (`env_var`, `model_config`, `permission` resources linked via `environment_resources`), and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in deck transport.
+
+### Environment capture
+
+**Environment capture** creates or refreshes an environment from the current state of a project. It is distinct from **apply snapshots** stored during `project apply` / `project sync`.
+
+`environment capture` and `environment refresh` store only environment values **required by the layer stack in scope** — not the full machine environment:
+
+1. Resolve scope: `--project` (required), `--layers` (default: project's last-applied configured layers).
+2. Compute requirements from plugin `needs[]`, MCP `env` keys, and (by default) agent model metadata in the merged stack.
+3. Read values from project harness files first, then matching library rows, then `process.env[key]` for missing keys only.
+4. Store non-secrets as `env_var` / `model_config` environment values; store likely secrets as secret references (`provider: env`), never literal secret values.
+5. Missing required keys: warn and continue by default; `--strict` exits non-zero.
+
+Permissions are captured only with `--include-permissions`.
+
+Design detail: [docs/superpowers/specs/2026-06-07-environment-commands-design.md](docs/superpowers/specs/2026-06-07-environment-commands-design.md).
 
 ### Configured layer model
 
-A configured layer has `(name, version)`, description, an ordered list of plugin IDs, and an optional `default_environment_id`. Multiple plugins merge their what-resources; the default environment contributes how-resources at lower cascade precedence.
+A configured layer has `(name, version)`, description, an ordered list of plugin IDs, and an optional `default_environment_id`. Multiple plugins merge their what-resources; the default environment contributes environment values at lower cascade precedence.
 
 ### Deck model
 
@@ -577,6 +620,7 @@ bun run build
 
 ## Known gaps and non-goals
 
+- `environment` commands are specified but not yet implemented in the CLI (library schema and cascade exist today).
 - Only a subset of registered harnesses have fully native serializers; generic harness support remains path-driven.
 - Sync writes files directly; no interactive conflict resolution on apply.
 - Bundle export/import operates on one design plugin at a time; full deck-repo round-trip is library-only today.
