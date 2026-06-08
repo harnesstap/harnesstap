@@ -1,6 +1,8 @@
 # Plugin Lifecycle Design (Inventory, Check, Update)
 
-> Supersedes the update/install non-goals in [Claude plugin inventory design](./2026-05-19-claude-plugin-inventory-design.md). Inventory and preset pinning from that doc remain in scope; this doc adds cross-platform check/update and refresh policy.
+**Status:** Superseded (2026-06-07). See [unified composition resources design](./2026-06-07-unified-composition-resources-design.md).
+
+> Previously superseded the update/install non-goals in [Claude plugin inventory design](./2026-05-19-claude-plugin-inventory-design.md). Replaced by `hd resource sync` and composition `plugin` resources.
 
 ## Problem
 

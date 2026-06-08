@@ -1,8 +1,10 @@
 # Claude Plugin Inventory and Preset Versioning Design
 
-**Status:** Approved (2026-05-19). Implementation plan: [2026-05-19-claude-plugin-inventory.md](../plans/2026-05-19-claude-plugin-inventory.md).
+**Status:** Superseded (2026-06-07). See [unified composition resources design](./2026-06-07-unified-composition-resources-design.md).
 
-> **Check/update across platforms:** See [plugin lifecycle design](./2026-05-19-plugin-lifecycle-design.md). This doc covers inventory, committed vs effective, and preset versioning.
+**Was:** Approved (2026-05-19). Implementation plan: [2026-05-19-claude-plugin-inventory.md](../plans/2026-05-19-claude-plugin-inventory.md).
+
+> **Check/update across platforms:** See [plugin lifecycle design](./2026-05-19-plugin-lifecycle-design.md) (also superseded). This doc covered inventory, committed vs effective, and preset versioning.
 
 ## Problem
 
