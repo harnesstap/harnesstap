@@ -12,15 +12,14 @@ Typical commands:
 ```bash
 harnessdeck init
 harnessdeck init --main claude-code --aliases cursor,codex
-harnessdeck platform list
+harnessdeck harness list
 harnessdeck layer list
 ```
 
 What this gives you:
 
 - a local SQLite database under `~/.harnessdeck/harnessdeck.db`
-- an optional settings file at `~/.harnessdeck/config.json` (e.g. plugin
-  refresh cadence — see Scenario 19)
+- an optional settings file at `~/.harnessdeck/config.json`
 - built-in starter layers seeded into the database
 - imported resources from supported home-directory harness folders when
   present (`~/.claude/`, `~/.codex/`, …)

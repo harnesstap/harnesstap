@@ -1,35 +1,37 @@
-# Scenario 8: Audit plugin inventory and lifecycle
+# Scenario 8: Audit plugin resources and layer pins
 
 **Frequency: Occasional** · **Status: Shipped**
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when you want to understand whether installed plugins match the
-setup you expect, or when you want to update stale plugin installs.
+Use this when you want to understand which plugin resources are in the local
+library, which plugin pins a layer carries, and whether installed plugin trees
+are still in sync with HarnessDeck.
 
-There are two distinct surfaces, often confused:
+There are two related surfaces:
 
-**Inventory** — Claude Code only, project-scoped:
-
-```bash
-harnessdeck plugin list .                              # committed vs effective
-harnessdeck plugin show formatter@team-marketplace .   # which scope declares it
-```
-
-- **Committed** plugins are those declared in the project's
-  `.claude/settings.json` (what your team commits).
-- **Effective** plugins are the merged result of user, project, and local
-  settings — what Claude actually loads.
-
-**Lifecycle** — provider-driven, multi-harness (Claude Code and Cursor today):
+**Library plugin resources** — what HarnessDeck knows about installed plugins:
 
 ```bash
-harnessdeck plugin installed                # what providers report
-harnessdeck plugin check                    # exit 1 if any outdated
-harnessdeck plugin update --all --yes       # update everything outdated
-harnessdeck plugin refresh                  # force re-fetch metadata
+harnessdeck resource list --type plugin
+harnessdeck resource show formatter@team-marketplace
+harnessdeck resource sync --dry-run
+harnessdeck resource sync formatter@team-marketplace --overwrite
 ```
 
-Use **inventory** when chasing *"why is this plugin loaded?"* and
-**lifecycle** when chasing *"is this plugin up to date?"*. See Scenario 18
-for a focused debug flow when the two surfaces disagree.
+`resource sync` refreshes marketplace-linked plugin resources from install
+trees under `~/.claude/plugins`, `~/.cursor/plugins`, and similar locations.
+Stale rows are reported when the install path cannot be resolved.
+
+**Layer pins** — what a layer expects at apply time:
+
+```bash
+harnessdeck layer show my-setup
+harnessdeck layer doctor my-setup --check plugin-metadata
+harnessdeck project apply my-setup --project . --dry-run --strict-plugin-versions
+```
+
+Use **library sync** when chasing *"is this plugin resource up to date?"* and
+**layer pins + apply validation** when chasing *"does this project satisfy the
+layer's plugin constraints?"*. See Scenario 18 for debugging when committed
+project settings and effective Claude plugin loads disagree.

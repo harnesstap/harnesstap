@@ -1,28 +1,24 @@
-# Scenario 19: Refresh stale plugin metadata
+# Scenario 19: Sync plugin resources from install trees
 
 **Frequency: Occasional** · **Status: Shipped**
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when a plugin marketplace or git source has new versions you cannot
-see yet because HarnessDeck cached metadata.
+Use this when plugin install trees on disk have changed and HarnessDeck's
+library copies are stale or missing resolved versions.
 
 Typical commands:
 
 ```bash
-harnessdeck plugin refresh
-harnessdeck plugin check --refresh
+harnessdeck resource sync --dry-run
+harnessdeck resource sync --overwrite
+harnessdeck resource sync formatter@team-marketplace --overwrite --force
 ```
 
-Configure refresh cadence in `~/.harnessdeck/config.json`:
+`resource sync` walks marketplace-linked `plugin` resources and linked child
+resources, re-importing from install paths under `~/.claude/plugins`,
+`~/.cursor/plugins`, and similar locations. Rows marked stale usually mean the
+plugin is not installed locally yet.
 
-```json
-{
-  "plugins": {
-    "refreshMaxAgeHours": 24
-  }
-}
-```
-
-Without `--refresh`, HarnessDeck uses cached metadata unless it is older than
-`refreshMaxAgeHours`.
+For layer-level validation of plugin refs and version constraints, use
+`harnessdeck layer doctor my-setup --check plugin-metadata`.
