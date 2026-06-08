@@ -91,6 +91,23 @@ import { resolveHarnessSelection } from "./services/harness-config.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
+import {
+  downloadCatalogBundle,
+  listLibrariesInScope,
+} from "./services/catalog-client.js";
+import {
+  formatCatalogScopeLabel,
+  resolveCatalogScope,
+} from "./config/catalog.js";
+import {
+  handleLayerCatalogConnectLibraryCommand,
+  handleLayerCatalogConnectOrgCommand,
+  handleLayerCatalogDisconnectLibraryCommand,
+  handleLayerCatalogDisconnectOrgCommand,
+  handleLayerCatalogListCommand,
+  renderLayerSearchResults,
+} from "./services/layer-catalog.js";
+import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
 import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
@@ -141,7 +158,6 @@ import { createProgress } from "./ui/progress.js";
 import {
   isPromptCancellationError,
   promptForChoice,
-  promptForSearchableChoice,
   promptForValue,
   shouldUseWizard,
 } from "./services/wizards/shared.js";
@@ -1275,29 +1291,22 @@ function normalizeRemoteLibrarySelector(
   };
 }
 
-async function handleLayerSearchCommand(query: string, opts: { profile?: string; format?: string }) {
+async function handleLayerSearchCommand(
+  query: string,
+  opts: { profile?: string; format?: string; baseUrl?: string },
+) {
   const format = parseOutputFormat(opts.format);
   try {
-    const client = await resolveCloudClientForLayerCommand(opts.profile);
-    if (!client) {
-      if (format === "json") printJson([]);
-      else ui.dim("No cloud profile configured.");
-      return;
-    }
-
-    const results = await client.searchLibraries(query);
+    const results = await listLibrariesInScope(
+      { q: query, limit: 25, sort: "updated" },
+      { profile: opts.profile, baseUrl: opts.baseUrl },
+    );
     if (format === "json") {
       printJson(results);
       return;
     }
 
-    if (!results || results.length === 0) {
-      ui.dim("No remote results.");
-      return;
-    }
-    for (const r of results) {
-      ui.info(`${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`);
-    }
+    renderLayerSearchResults(results);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
   }
@@ -1305,12 +1314,21 @@ async function handleLayerSearchCommand(query: string, opts: { profile?: string;
 
 async function handleLayerInstallCommand(
   selector: string | undefined,
-  opts: { as?: string; org?: string; version?: string; profile?: string; format?: string; interactive?: boolean; noInteractive?: boolean }
+  opts: {
+    as?: string;
+    org?: string;
+    version?: string;
+    profile?: string;
+    baseUrl?: string;
+    format?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  },
 ) {
   const db = getDb();
   initializeSchema(db);
+  const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
 
-  // If selector is missing, check if we can prompt for it
   if (!selector) {
     const canPrompt = shouldUseWizard({
       interactive: opts.interactive,
@@ -1325,36 +1343,25 @@ async function handleLayerInstallCommand(
       return;
     }
 
-    // Launch interactive search
     try {
-      const client = await resolveCloudClientForLayerCommand(opts.profile);
-      if (!client) {
-        process.exitCode = 1;
-        ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
-        return;
-      }
-
-      // Search for all layers to show in picker
-      const results = await client.searchLibraries("");
-      if (!results || results.length === 0) {
-        process.exitCode = 1;
-        ui.danger("No remote layers found.");
-        return;
-      }
-
-      const choices = results.map((r: Record<string, unknown>) => ({
-        name: `${r.org_slug}/${r.library_slug} — ${r.name ?? r.id}`,
-        value: `${r.org_slug}/${r.library_slug}`,
-      }));
-
-      const selected = await promptForSearchableChoice({
+      const selected = await runInteractiveCatalogBrowser({
         message: "Select a layer to install",
-        choices,
+        scopeLabel: formatCatalogScopeLabel(scope),
+        listLibraries: ({ q, limit }) =>
+          listLibrariesInScope(
+            { q, limit, sort: "updated" },
+            { profile: opts.profile, baseUrl: opts.baseUrl },
+          ),
       });
-
-      selector = selected;
+      selector = `${selected.orgSlug}/${selected.slug}`;
+      if (!opts.version && selected.version) {
+        opts = { ...opts, version: selected.version };
+      }
     } catch (err) {
       process.exitCode = 1;
+      if (isPromptCancellationError(err)) {
+        return;
+      }
       ui.danger(err instanceof Error ? err.message : String(err));
       return;
     }
@@ -1368,6 +1375,7 @@ async function handleLayerInstallCommand(
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
+
   const localName = opts.as ?? parsed.library_slug;
   const existing = getPlugin(localName);
   if (existing && !opts.as) {
@@ -1376,20 +1384,23 @@ async function handleLayerInstallCommand(
     return;
   }
 
-  // Download the bundle via cloud client
   try {
-    const client = await resolveCloudClientForLayerCommand(opts.profile);
-    if (!client) {
-      process.exitCode = 1;
-      ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
-      return;
-    }
-    const id = `${parsed.org_slug}/${parsed.library_slug}`;
-    const downloaded = await client.downloadLibraryBundle(id, parsed.version);
+    const downloaded = await downloadCatalogBundle({
+      orgSlug: parsed.org_slug,
+      librarySlug: parsed.library_slug,
+      version: parsed.version,
+      profile: opts.profile,
+      baseUrl: opts.baseUrl,
+    });
     const tempPath = writeLayerBundleToTempFile(downloaded.body);
     const imported = importFromFile(tempPath, { layerNameOverride: opts.as });
     if (parseOutputFormat(opts.format) === "json") {
-      printJson({ layer_name: imported.layer.name, org_slug: parsed.org_slug, library_slug: parsed.library_slug, version: downloaded.version });
+      printJson({
+        layer_name: imported.layer.name,
+        org_slug: parsed.org_slug,
+        library_slug: parsed.library_slug,
+        version: downloaded.version,
+      });
       return;
     }
     ui.success(`Installed layer ${imported.layer.name} from ${parsed.org_slug}/${parsed.library_slug}`);
@@ -3136,9 +3147,99 @@ layerCmd
   .command("search")
   .argument("<query>", "Search query for layers on the cloud catalog")
   .option("--profile <name>", "Cloud profile to use")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Search remote layer libraries")
   .action(handleLayerSearchCommand);
+
+const layerCatalogCmd = layerCmd
+  .command("catalog")
+  .description("Manage connected remote catalog sources");
+
+layerCatalogCmd
+  .command("list")
+  .alias("ls")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show default and connected catalog sources")
+  .action(async (opts: { baseUrl?: string; format?: string }) => {
+    try {
+      await handleLayerCatalogListCommand({
+        baseUrl: opts.baseUrl,
+        format: parseOutputFormat(opts.format),
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+layerCatalogCmd
+  .command("connect")
+  .argument("<target>", "org <slug> or library <org/library>")
+  .argument("[value]", "Organization slug or org/library selector")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .description("Connect an org or individual public library to the local catalog scope")
+  .action(async (target: string, value: string | undefined, opts: { baseUrl?: string }) => {
+    try {
+      if (target === "org") {
+        if (!value) {
+          process.exitCode = 1;
+          ui.danger("error: missing required argument 'slug' for org connect");
+          return;
+        }
+        await handleLayerCatalogConnectOrgCommand(value, opts);
+        return;
+      }
+      if (target === "library") {
+        if (!value) {
+          process.exitCode = 1;
+          ui.danger("error: missing required argument 'org/library' for library connect");
+          return;
+        }
+        await handleLayerCatalogConnectLibraryCommand(value, opts);
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger("error: target must be 'org' or 'library'");
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+layerCatalogCmd
+  .command("disconnect")
+  .argument("<target>", "org <slug> or library <org/library>")
+  .argument("[value]", "Organization slug or org/library selector")
+  .description("Disconnect a connected org or library from the local catalog scope")
+  .action(async (target: string, value: string | undefined) => {
+    try {
+      if (target === "org") {
+        if (!value) {
+          process.exitCode = 1;
+          ui.danger("error: missing required argument 'slug' for org disconnect");
+          return;
+        }
+        await handleLayerCatalogDisconnectOrgCommand(value);
+        return;
+      }
+      if (target === "library") {
+        if (!value) {
+          process.exitCode = 1;
+          ui.danger("error: missing required argument 'org/library' for library disconnect");
+          return;
+        }
+        await handleLayerCatalogDisconnectLibraryCommand(value);
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger("error: target must be 'org' or 'library'");
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
 
 layerCmd
   .command("add")
@@ -3147,6 +3248,7 @@ layerCmd
   .option("--org <slug>", "Organization slug (when selector omits org)")
   .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Add a layer from the remote catalog into the local DB")
