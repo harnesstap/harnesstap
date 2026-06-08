@@ -121,57 +121,11 @@ describe("CLI output format", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = (globalThis as { fetch?: typeof fetch }).fetch;
-      (globalThis as { fetch?: typeof fetch }).fetch = async (
-        input: RequestInfo | URL,
-      ) => {
-        const url = String(input);
-        if (url.startsWith("https://mock/libraries/search")) {
-          return {
-            ok: true,
-            json: async () => [],
-          } as Response;
-        }
-        if (/\/libraries\/.+\/meta$/.test(url)) {
-          return {
-            ok: true,
-            json: async () => ({ latest_version: "1.0" }),
-          } as Response;
-        }
-        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
-          return {
-            ok: true,
-            text: async () =>
-              JSON.stringify({
-                $schema: "urn:harnessdeck:bundle:v1",
-                version: 1,
-                layer: { name: "remote-lib" },
-                resources: [],
-              }),
-          } as Response;
-        }
-        if (url.endsWith("/orgs")) {
-          return {
-            ok: true,
-            json: async () => [{ slug: "acme", name: "Acme Corp" }],
-          } as Response;
-        }
-        if (url.endsWith("/layers/publish")) {
-          return {
-            ok: true,
-            json: async () => ({
-              id: "pub-1",
-              version: "1.0.0",
-              url: "https://mock/layers/pub-1",
-            }),
-          } as Response;
-        }
-        return {
-          ok: false,
-          status: 404,
-          text: async () => "not found",
-        } as Response;
-      };
+      const { createCatalogFetchMock } = await import("../helpers/catalog-fetch.ts");
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        libraries: [],
+      });
 
       try {
         const search = await runCli([
@@ -180,6 +134,8 @@ describe("CLI output format", () => {
           "x",
           "--profile",
           "test",
+          "--base-url",
+          "https://mock",
           "--format",
           "json",
         ]);
@@ -188,11 +144,13 @@ describe("CLI output format", () => {
         const install = await runCli([
           "layer",
           "add",
-          "acme/lib@1.0",
+          "harnessdeck-cloud/lib@1.0",
           "--as",
           "lib-local",
           "--profile",
           "test",
+          "--base-url",
+          "https://mock",
           "--format",
           "json",
         ]);
@@ -222,7 +180,7 @@ describe("CLI output format", () => {
         ]);
         expect(JSON.parse(publish.stdout)).toBeDefined();
       } finally {
-        (globalThis as { fetch?: typeof fetch }).fetch = originalFetch;
+        restoreFetch();
       }
     } finally {
       await context.cleanup();

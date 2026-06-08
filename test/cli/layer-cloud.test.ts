@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
+import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
@@ -21,55 +22,50 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        // token refresh (safety)
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.startsWith("https://mock/libraries/search")) {
-          return {
-            ok: true,
-            json: async () => ([{ id: "acme/team", org_slug: "acme", library_slug: "team", name: "team" }]),
-          };
-        }
-        if (/\/libraries\/.+\/meta$/.test(url)) {
-          return { ok: true, json: async () => ({ latest_version: "1.0" }) };
-        }
-        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
-          const bundle = JSON.stringify({
-            $schema: "urn:harnessdeck:bundle:v1",
-            version: 1,
-            layer: { name: "remote-team", description: "from cloud", tags: [] },
-            resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
-          });
-          return { ok: true, text: async () => bundle };
-        }
-        if (url.endsWith("/layers/publish")) {
-          return { ok: true, json: async () => ({ id: "pub-1", version: "1.2.3", url: "https://mock/layers/pub-1" }) };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        libraries: [{
+          orgSlug: "harnessdeck-cloud",
+          slug: "team",
+          name: "Team Layer",
+          summary: "Team layer",
+          latestVersion: "1.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: [],
+          visibility: "public",
+        }],
+      });
 
       // layer search should emit JSON when requested and return remote results
-      const search = await runCli(["layer", "search", "team", "--profile", "test", "--format", "json"]);
+      const search = await runCli([
+        "layer",
+        "search",
+        "team",
+        "--profile",
+        "test",
+        "--base-url",
+        "https://mock",
+        "--format",
+        "json",
+      ]);
       const searchJson = JSON.parse(search.stdout);
       expect(Array.isArray(searchJson)).toBe(true);
-      expect(searchJson[0]).toEqual(expect.objectContaining({ org_slug: "acme", library_slug: "team" }));
+      expect(searchJson[0]).toEqual(expect.objectContaining({
+        orgSlug: "harnessdeck-cloud",
+        slug: "team",
+      }));
 
       // add (remote install) from a remote selector; use --as to pick local name
       const add = await runCli([
         "layer",
         "add",
-        "acme/team@1.0",
+        "harnessdeck-cloud/team@1.0",
         "--as",
         "team-cloud",
         "--profile",
         "test",
+        "--base-url",
+        "https://mock",
         "--format",
         "json",
       ]);
@@ -77,7 +73,7 @@ describe("CLI cloud layer workflows", () => {
       expect(addPayload).toEqual(
         expect.objectContaining({
           layer_name: "team-cloud",
-          org_slug: "acme",
+          org_slug: "harnessdeck-cloud",
           library_slug: "team",
           version: "1.0",
         }),
@@ -142,7 +138,7 @@ describe("CLI cloud layer workflows", () => {
       const conflict = await runCli(["layer", "add", "org/conflict@1.0"]);
       expect(conflict.stderr).toContain("Layer name already exists");
 
-      globalThis.fetch = originalFetch;
+      restoreFetch();
     } finally {
       await context.cleanup();
     }
@@ -163,36 +159,7 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (/\/libraries\/.+\/meta$/.test(url)) {
-          // Return different latest versions for different libraries
-          if (url.includes("other-org/other-lib")) {
-            return { ok: true, json: async () => ({ latest_version: "1.5.0" }) };
-          }
-          if (url.includes("team/combined-lib")) {
-            return { ok: true, json: async () => ({ latest_version: "2.1.0" }) };
-          }
-          return { ok: true, json: async () => ({ latest_version: "2.5.1" }) };
-        }
-        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
-          const bundle = JSON.stringify({
-            $schema: "urn:harnessdeck:bundle:v1",
-            version: 1,
-            layer: { name: "remote-lib", description: "from cloud", tags: [] },
-            resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
-          });
-          return { ok: true, text: async () => bundle };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
 
       // Test --org helper fills missing org
       const withOrg = await runCli([
@@ -200,24 +167,36 @@ describe("CLI cloud layer workflows", () => {
         "add",
         "my-library",
         "--org",
-        "acme",
+        "harnessdeck-cloud",
         "--as",
         "installed-with-org",
         "--profile",
         "test",
+        "--base-url",
+        "https://mock",
         "--format",
         "json",
       ]);
       const withOrgPayload = JSON.parse(withOrg.stdout);
       expect(withOrgPayload).toEqual(
         expect.objectContaining({
-          org_slug: "acme",
+          org_slug: "harnessdeck-cloud",
           library_slug: "my-library",
-          version: "2.5.1",
+          version: "latest",
         }),
       );
 
       // Test --version helper fills missing version
+      await runCli([
+        "layer",
+        "catalog",
+        "connect",
+        "org",
+        "other-org",
+        "--base-url",
+        "https://mock",
+      ]);
+
       const withVersion = await runCli([
         "layer",
         "add",
@@ -228,6 +207,8 @@ describe("CLI cloud layer workflows", () => {
         "installed-with-version",
         "--profile",
         "test",
+        "--base-url",
+        "https://mock",
         "--format",
         "json",
       ]);
@@ -255,13 +236,15 @@ describe("CLI cloud layer workflows", () => {
         "add",
         "combined-lib",
         "--org",
-        "team",
+        "harnessdeck-cloud",
         "--version",
         "~2.0.0",
         "--as",
         "installed-with-both",
         "--profile",
         "test",
+        "--base-url",
+        "https://mock",
         "--format",
         "json",
       ]);
@@ -277,13 +260,13 @@ describe("CLI cloud layer workflows", () => {
       const withBothPayload = JSON.parse(withBoth.stdout);
       expect(withBothPayload).toEqual(
         expect.objectContaining({
-          org_slug: "team",
+          org_slug: "harnessdeck-cloud",
           library_slug: "combined-lib",
           version: "~2.0.0", // version passed as-is to cloud
         }),
       );
 
-      globalThis.fetch = originalFetch;
+      restoreFetch();
     } finally {
       await context.cleanup();
     }
@@ -381,52 +364,20 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.startsWith("https://mock/libraries/search")) {
-          return {
-            ok: true,
-            json: async () => ([
-              { id: "acme/team", org_slug: "acme", library_slug: "team", name: "Team Layer" },
-              { id: "acme/dev", org_slug: "acme", library_slug: "dev", name: "Dev Layer" },
-            ]),
-          };
-        }
-        if (/\/libraries\/.+\/meta$/.test(url)) {
-          return { ok: true, json: async () => ({ latest_version: "1.0" }) };
-        }
-        if (/\/libraries\/.+\/bundle\/.+$/.test(url)) {
-          const bundle = JSON.stringify({
-            $schema: "urn:harnessdeck:bundle:v1",
-            version: 1,
-            layer: { name: "remote-team", description: "from cloud", tags: [] },
-            resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
-          });
-          return { ok: true, text: async () => bundle };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
 
-      // Simulate TTY environment with interactive search choice
       const result = await runCli(
-        ["layer", "add", "--profile", "test"],
-        { 
+        ["layer", "add", "--profile", "test", "--base-url", "https://mock"],
+        {
           isTTY: true,
-          promptResponses: [{ choice: "acme/team" }]
-        }
+          promptResponses: [{ choice: "harnessdeck-cloud/team" }],
+        },
       );
 
       expect(result.stdout).toContain("Installed layer");
       expect(result.stdout).toContain("team");
 
-      globalThis.fetch = originalFetch;
+      restoreFetch();
     } finally {
       await context.cleanup();
     }
@@ -714,6 +665,64 @@ describe("CLI cloud layer workflows", () => {
       expect(result.stderr).toContain("already exists");
 
       globalThis.fetch = originalFetch;
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer add installs a public default-catalog library without a cloud profile", async () => {
+    const context = await createTestContext("cli-layer-add-anonymous");
+    try {
+      await runCli(["init"]);
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://harnessdeck.kayrnt.fr" });
+
+      const result = await runCli([
+        "layer",
+        "add",
+        "harnessdeck-cloud/team@1.0",
+        "--as",
+        "oss-team",
+        "--format",
+        "json",
+      ]);
+
+      expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
+      expect(JSON.parse(result.stdout)).toEqual(
+        expect.objectContaining({
+          layer_name: "oss-team",
+          org_slug: "harnessdeck-cloud",
+          library_slug: "team",
+        }),
+      );
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer catalog connect org expands the saved catalog scope", async () => {
+    const context = await createTestContext("cli-layer-catalog-connect-org");
+    try {
+      await runCli(["init"]);
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
+
+      const connect = await runCli([
+        "layer",
+        "catalog",
+        "connect",
+        "org",
+        "acme",
+        "--base-url",
+        "https://mock",
+      ]);
+      expect(connect.stdout).toContain("Connected catalog org");
+
+      const list = await runCli(["layer", "catalog", "list", "--format", "json"]);
+      const payload = JSON.parse(list.stdout);
+      expect(payload.connectedOrgs).toEqual(["acme"]);
+
+      restoreFetch();
     } finally {
       await context.cleanup();
     }

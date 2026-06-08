@@ -4,6 +4,7 @@ import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
 import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
+import type { runInteractiveCatalogBrowser as RunInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.js";
 
 export interface CliResult {
   stdout: string;
@@ -132,6 +133,39 @@ const resourceListWizardMock = mock(async (
 
 mock.module("../../src/services/wizards/resource-list.js", () => ({
   runResourceListWizard: resourceListWizardMock,
+}));
+
+const interactiveCatalogBrowserMock = mock(async (
+  ...args: Parameters<typeof RunInteractiveCatalogBrowser>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/interactive-catalog-browser.ts?actual"
+    );
+    return actualWizard.runInteractiveCatalogBrowser(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value === "string") {
+    const [orgSlug, slug] = value.split("/");
+    return { orgSlug, slug, version: "1.0.0" };
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.orgSlug === "string" && typeof record.slug === "string") {
+      return {
+        orgSlug: record.orgSlug,
+        slug: record.slug,
+        version: typeof record.version === "string" ? record.version : "1.0.0",
+      };
+    }
+  }
+  throw new Error(
+    "Interactive catalog browser responses must resolve to org/library string or selection object",
+  );
+});
+
+mock.module("../../src/services/wizards/interactive-catalog-browser.js", () => ({
+  runInteractiveCatalogBrowser: interactiveCatalogBrowserMock,
 }));
 
 function stringifyArgs(args: unknown[]): string {
