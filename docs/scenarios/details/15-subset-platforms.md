@@ -17,10 +17,3 @@ harnessdeck project apply my-setup --project . --platform claude-code,codex
 The `--platform` flag also lets you migrate one harness at a time: apply only
 the new target first, verify the result, then add the remaining harnesses on
 a follow-up run.
-
----
-
-## Occasional
-
-Reach for these during initial setup, when curating layers, when sharing
-baselines, or when integrating HarnessDeck into tooling.

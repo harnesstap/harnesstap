@@ -2,8 +2,18 @@
 
 This document reflects the **current shipped CLI**.
 
-Two corrections matter up front:
+A few CLI renames matter up front:
 
+- `harnessdeck harness list` replaced the removed `platform list` command
+  ([Scenario 20](./details/20-inspect-platforms.md)).
+- Plugin workflows no longer use a top-level `plugin` command group. Use
+  `resource sync`, `layer show`, `layer doctor`, and
+  `project apply --strict-plugin-versions` instead ([Scenarios 8](./details/08-audit-plugins.md), [16](./details/16-ci-enforcement.md), [18](./details/18-plugin-merge-conflict.md), [19](./details/19-refresh-plugin-metadata.md)).
+- `harnessdeck layer doctor` replaced the removed `layer validate` command
+  ([Scenario 23](./details/23-validate-layer.md)).
+- `harnessdeck layer attach` adds local resources or plugin pins to a layer;
+  `harnessdeck layer add` installs a layer from the remote catalog
+  ([Scenario 5](./details/05-build-layer-from-resources.md)).
 - `harnessdeck init` initializes `~/.harnessdeck`, seeds built-in layers,
   imports supported home-directory defaults, and can choose the default main
   harness (plus alias harnesses) during init. [Scenario 2](./details/02-default-harness-aliases.md) is for changing that
@@ -41,22 +51,22 @@ after HarnessDeck is set up — not how important it is the first time.
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
 | [5](./details/05-build-layer-from-resources.md)  | Build a reusable layer from imported resources     | Occasional | Shipped |
-| [8](./details/08-audit-plugins.md)  | Audit plugin inventory and lifecycle                | Occasional | Shipped |
+| [8](./details/08-audit-plugins.md)  | Audit plugin resources and layer pins               | Occasional | Shipped |
 | [10](./details/10-export-import-layer.md) | Export or import a layer bundle                    | Occasional | Shipped |
 | [12](./details/12-scripts-agents.md) | Drive HarnessDeck from scripts or agents            | Occasional | Shipped |
 | [13](./details/13-materialization-strategy.md) | Choose a materialization strategy (symlink vs copy) | Occasional | Shipped |
 | [16](./details/16-ci-enforcement.md) | Enforce layer and plugin state in CI               | Occasional | Shipped |
-| [19](./details/19-refresh-plugin-metadata.md) | Refresh stale plugin metadata                       | Occasional | Shipped |
+| [19](./details/19-refresh-plugin-metadata.md) | Sync plugin resources from install trees            | Occasional | Shipped |
 | [20](./details/20-inspect-platforms.md) | Inspect supported platforms before targeting        | Occasional | Shipped |
 | [21](./details/21-detect-drift.md) | Detect drift between project and last applied layer | Occasional | Shipped |
 | [22](./details/22-diff-layers.md) | Diff two layers                                    | Occasional | Shipped |
-| [23](./details/23-validate-layer.md) | Validate a layer without writing                   | Occasional | Shipped |
+| [23](./details/23-validate-layer.md) | Doctor-check a layer without writing               | Occasional | Shipped |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL                  | Occasional | Shipped |
 | [6](./details/06-plugin-constraints.md)  | Add plugin constraints to a layer                  | Rare       | Shipped |
 | [9](./details/09-history-revert.md)  | Review history and recover from a bad apply         | Rare       | Shipped |
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB           | Rare       | Shipped |
 | [17](./details/17-migrate-state.md) | Migrate HarnessDeck state to a new machine          | Rare       | Shipped (manual) |
-| [18](./details/18-plugin-merge-conflict.md) | Debug a Claude plugin merge conflict                | Rare       | Shipped |
+| [18](./details/18-plugin-merge-conflict.md) | Debug committed vs effective Claude plugin settings | Rare       | Shipped |
 | [28](./details/28-machine-migration.md) | One-command machine migration                       | Rare       | Shipped |
 
 **Status legend**
@@ -95,16 +105,16 @@ baselines, or when integrating HarnessDeck into tooling.
 | [1](./details/01-bootstrap-machine.md) | Bootstrap HarnessDeck on a machine and discover existing defaults |
 | [2](./details/02-default-harness-aliases.md) | Choose a default main harness and alias harnesses |
 | [5](./details/05-build-layer-from-resources.md) | Build a reusable layer from imported resources |
-| [8](./details/08-audit-plugins.md) | Audit plugin inventory and lifecycle |
+| [8](./details/08-audit-plugins.md) | Audit plugin resources and layer pins |
 | [10](./details/10-export-import-layer.md) | Export or import a layer as a portable bundle |
 | [12](./details/12-scripts-agents.md) | Drive HarnessDeck from scripts or other agents |
 | [13](./details/13-materialization-strategy.md) | Choose a materialization strategy (symlink vs copy) |
 | [16](./details/16-ci-enforcement.md) | Enforce layer and plugin state in CI |
-| [19](./details/19-refresh-plugin-metadata.md) | Refresh stale plugin metadata |
+| [19](./details/19-refresh-plugin-metadata.md) | Sync plugin resources from install trees |
 | [20](./details/20-inspect-platforms.md) | Inspect supported platforms before targeting |
 | [21](./details/21-detect-drift.md) | Detect drift between project files and the last applied layer |
 | [22](./details/22-diff-layers.md) | Diff two layers (or a layer vs an imported bundle) |
-| [23](./details/23-validate-layer.md) | Validate a layer without writing to disk |
+| [23](./details/23-validate-layer.md) | Doctor-check a layer without writing to disk |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL |
 
 ---
@@ -120,5 +130,5 @@ when maintaining the local DB after a lot of activity.
 | [9](./details/09-history-revert.md) | Review project state, history, and recover from a bad apply |
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB |
 | [17](./details/17-migrate-state.md) | Migrate HarnessDeck state to a new machine (manual workflow) |
-| [18](./details/18-plugin-merge-conflict.md) | Debug a Claude plugin merge conflict (committed vs effective) |
+| [18](./details/18-plugin-merge-conflict.md) | Debug committed vs effective Claude plugin settings |
 | [28](./details/28-machine-migration.md) | One-command machine migration (export/import archive) |

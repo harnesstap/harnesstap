@@ -16,6 +16,6 @@ harnessdeck harness status
 
 Notes:
 
-- `harnessdeck platform list` is the source of truth for valid harness IDs.
+- `harnessdeck harness list` is the source of truth for valid harness IDs.
 - `--interactive` is available, but the non-interactive flag path is the main
   automation-friendly workflow.

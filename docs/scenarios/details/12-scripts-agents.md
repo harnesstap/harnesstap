@@ -12,18 +12,20 @@ Typical commands:
 
 ```bash
 harnessdeck init --format json
-harnessdeck platform list --format json
+harnessdeck harness list --format json
 harnessdeck resource list --format json
 harnessdeck layer show my-setup --format json
+harnessdeck layer doctor my-setup --format json
 harnessdeck project history --project . --format json
 harnessdeck project apply my-setup --project . --dry-run --format json
+harnessdeck resource sync --format json --dry-run
 ```
 
 **Exit codes worth scripting against**:
 
-- `harnessdeck plugin check` returns **exit code 1** when any plugin is
-  outdated.
-- `harnessdeck plugin update` returns **exit code 1** when any update fails.
+- `harnessdeck layer doctor` returns **exit code 1** when any doctor check
+  reports an error severity finding.
+- `harnessdeck project drift` returns **exit code 1** when drift exists.
 - `harnessdeck project apply --strict-plugin-versions` returns **exit code 2**
   when a pinned plugin's installed version violates its constraint.
 

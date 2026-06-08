@@ -4,14 +4,12 @@
 
 [← Back to scenarios index](../scenarios.md)
 
+Use this when moving HarnessDeck state to a new machine in one archive that
+includes layers, harness preferences, and config.
+
 ```bash
 harnessdeck migrate export ./harnessdeck-state.tar.gz --include-plugins
 harnessdeck migrate import ./harnessdeck-state.tar.gz
 ```
 
----
-
-## Common
-
-Use these when starting or adopting a repository, applying a layer, or when
-one repo needs different harness defaults than your machine-wide setup.
+For a manual layer-by-layer export workflow, see [Scenario 17](./17-migrate-state.md).
