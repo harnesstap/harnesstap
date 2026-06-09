@@ -17,7 +17,10 @@ import type {
   PluginCheckResult,
   PluginContext,
   PluginInstall,
+  PluginInstallOptions,
+  PluginInstallResult,
   PluginProvider,
+  PluginScope,
   PluginUpdateOptions,
   PluginUpdateResult,
 } from "../types.js";
@@ -73,15 +76,19 @@ export class ClaudeCodePluginProvider implements PluginProvider {
     inventory: true,
     check: true,
     update: true,
+    install: true,
     updateMethod: "native-cli" as const,
+    installMethod: "native-cli" as const,
   };
 
   constructor(private readonly deps: ClaudeCodeProviderDeps = {}) {}
 
-  private runClaude(args: string[]): CommandResult {
+  private runClaude(args: string[], ctx?: PluginContext): CommandResult {
     const run = this.deps.runCommand ?? defaultRunCommand;
     const binary = this.deps.claudeBinary ?? "claude";
-    return run(binary, ["plugin", ...args]);
+    return run(binary, ["plugin", ...args], {
+      cwd: ctx?.projectRoot,
+    });
   }
 
   async list(ctx: PluginContext): Promise<PluginInstall[]> {
@@ -106,7 +113,7 @@ export class ClaudeCodePluginProvider implements PluginProvider {
 
     for (const key of toRefresh) {
       const marketplace = key.replace("claude:marketplace:", "");
-      const result = this.runClaude(["marketplace", "update", marketplace]);
+      const result = this.runClaude(["marketplace", "update", marketplace], ctx);
       if (result.exitCode === 0) {
         Object.assign(
           opts.refreshCache,
@@ -170,7 +177,7 @@ export class ClaudeCodePluginProvider implements PluginProvider {
         continue;
       }
       const args = ["update", install.ref, "--scope", install.scope];
-      const result = this.runClaude(args);
+      const result = this.runClaude(args, ctx);
       if (result.exitCode === 0) {
         results.push({
           ref: install.ref,
@@ -192,5 +199,59 @@ export class ClaudeCodePluginProvider implements PluginProvider {
       }
     }
     return results;
+  }
+
+  async install(
+    ctx: PluginContext,
+    opts: PluginInstallOptions,
+  ): Promise<PluginInstallResult> {
+    const scope: PluginScope = opts.scope ?? "user";
+    const existing = loadInstalled(ctx.homeRoot).find(
+      (install) => install.ref === opts.ref && install.scope === scope,
+    );
+    if (existing) {
+      return {
+        ref: opts.ref,
+        platformId: this.platformId,
+        scope,
+        status: "already_installed",
+        install: existing,
+        message: `Already installed (${scope})`,
+      };
+    }
+
+    const args = ["install", opts.ref, "--scope", scope];
+    const result = this.runClaude(args, ctx);
+    if (result.exitCode !== 0) {
+      return {
+        ref: opts.ref,
+        platformId: this.platformId,
+        scope,
+        status: "failed",
+        message: result.stderr.trim() || result.stdout.trim() || "claude plugin install failed",
+      };
+    }
+
+    const install = loadInstalled(ctx.homeRoot).find(
+      (row) => row.ref === opts.ref && row.scope === scope,
+    );
+    if (!install) {
+      return {
+        ref: opts.ref,
+        platformId: this.platformId,
+        scope,
+        status: "failed",
+        message: "Install command succeeded but plugin was not registered in installed_plugins.json",
+      };
+    }
+
+    return {
+      ref: opts.ref,
+      platformId: this.platformId,
+      scope,
+      status: "installed",
+      install,
+      message: result.stdout.trim() || "Installed via claude plugin",
+    };
   }
 }

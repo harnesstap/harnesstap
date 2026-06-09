@@ -40,4 +40,49 @@ describe("ClaudeCodePluginProvider", () => {
     expect(demo?.status).toBe("outdated");
     expect(demo?.latestVersion).toBe("2.0.0");
   });
+
+  it("installs plugins via claude plugin install", async () => {
+    const calls: string[][] = [];
+    const provider = new ClaudeCodePluginProvider({
+      runCommand: (_command, args) => {
+        calls.push(args);
+        return { stdout: "Installed", stderr: "", exitCode: 0 };
+      },
+    });
+
+    const result = await provider.install(
+      {
+        projectRoot: "/tmp/project",
+        homeRoot: fixtureHome,
+        harnessdeckDir: "/tmp/hd",
+      },
+      { ref: "new-plugin@demo-market", scope: "project" },
+    );
+
+    expect(calls).toEqual([
+      ["plugin", "install", "new-plugin@demo-market", "--scope", "project"],
+    ]);
+    expect(result.status).toBe("failed");
+    expect(result.message).toContain("installed_plugins.json");
+  });
+
+  it("reports already installed plugins for matching scope", async () => {
+    const provider = new ClaudeCodePluginProvider({
+      runCommand: () => {
+        throw new Error("should not invoke claude when already installed");
+      },
+    });
+
+    const result = await provider.install(
+      {
+        projectRoot: "/tmp/project",
+        homeRoot: fixtureHome,
+        harnessdeckDir: "/tmp/hd",
+      },
+      { ref: "formatter@acme-marketplace", scope: "project" },
+    );
+
+    expect(result.status).toBe("already_installed");
+    expect(result.install?.version).toBe("1.2.3");
+  });
 });

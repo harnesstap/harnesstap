@@ -1,5 +1,5 @@
-import { resolveHomeRoot } from "../utils/home-root.js";
 import { resolve } from "node:path";
+import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadSettings } from "../config/settings.js";
 import { getHarnessdeckDir } from "../db/connection.js";
 import {
@@ -14,9 +14,11 @@ import type {
   PluginCheckResult,
   PluginContext,
   PluginInstall,
+  PluginInstallResult,
   PluginScope,
   PluginUpdateResult,
 } from "../plugins/types.js";
+import { installPluginPins, type InstallPluginPinResult } from "./plugin-install.js";
 export interface PluginLifecycleOptions {
   projectRoot?: string;
   homeRoot?: string;
@@ -177,3 +179,25 @@ export async function refreshPluginSources(
   const report = await checkPlugins({ ...opts, forceRefresh: true });
   return { refreshed_sources: report.refreshed_sources };
 }
+
+export async function installPlugins(
+  opts: PluginLifecycleOptions & {
+    refs: string[];
+    scope?: PluginScope;
+    installPlatformId?: string;
+  },
+): Promise<{ results: InstallPluginPinResult[] }> {
+  const pins = opts.refs.map((ref) => ({
+    ref,
+    version_constraint: "*",
+  }));
+  const results = await installPluginPins(pins, {
+    homeRoot: opts.homeRoot,
+    projectRoot: resolve(opts.projectRoot ?? "."),
+    scope: opts.scope ?? "user",
+    installPlatformId: opts.installPlatformId,
+  });
+  return { results };
+}
+
+export type { PluginInstallResult };

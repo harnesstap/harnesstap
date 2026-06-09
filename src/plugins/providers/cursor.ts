@@ -15,6 +15,8 @@ import type {
   PluginCheckResult,
   PluginContext,
   PluginInstall,
+  PluginInstallOptions,
+  PluginInstallResult,
   PluginProvider,
   PluginUpdateOptions,
   PluginUpdateResult,
@@ -87,7 +89,9 @@ export class CursorPluginProvider implements PluginProvider {
     inventory: true,
     check: true,
     update: true,
+    install: false,
     updateMethod: "git" as const,
+    installMethod: "unsupported" as const,
   };
 
   constructor(private readonly deps: CursorProviderDeps = {}) {}
@@ -240,5 +244,19 @@ export class CursorPluginProvider implements PluginProvider {
       });
     }
     return results;
+  }
+
+  async install(
+    _ctx: PluginContext,
+    opts: PluginInstallOptions,
+  ): Promise<PluginInstallResult> {
+    return {
+      ref: opts.ref,
+      platformId: this.platformId,
+      scope: opts.scope ?? "user",
+      status: "unsupported",
+      message:
+        "Cursor plugins are installed from the IDE marketplace; HarnessDeck materializes skills from Claude install trees on apply",
+    };
   }
 }

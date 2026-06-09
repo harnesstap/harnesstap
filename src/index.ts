@@ -108,8 +108,16 @@ import {
   renderLayerSearchResults,
 } from "./services/layer-catalog.js";
 import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
-import { syncPluginPinsForApply } from "./services/plugin-apply-sync.js";
+import {
+  syncPluginPinsForApply,
+  type SyncPluginPinsForApplyResult,
+} from "./services/plugin-apply-sync.js";
 import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
+import {
+  countPluginMaterialResources,
+  expandPluginMaterialResources,
+} from "./services/plugin-materialize.js";
+import { resolvePluginInstallScope } from "./services/plugin-install.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
@@ -904,6 +912,48 @@ async function resolveApplyLayers(
   };
 }
 
+function printPluginApplySummary(
+  sync: SyncPluginPinsForApplyResult,
+  extraMaterializedCount: number,
+): void {
+  if (
+    sync.installs.length === 0 &&
+    sync.unresolvedPins.length === 0 &&
+    sync.syncedResourceCount === 0 &&
+    extraMaterializedCount === 0
+  ) {
+    return;
+  }
+
+  console.log(ui.theme.muted("Plugins"));
+  for (const install of sync.installs) {
+    const icon =
+      install.status === "failed" ? ui.icons.warn : ui.icons.success;
+    const statusLabel =
+      install.status === "already_installed" ? "already installed" : install.status;
+    console.log(
+      `  ${icon} ${install.ref} (${install.platformId}, ${install.scope}) ${ui.icons.bullet} ${statusLabel}`,
+    );
+    if (install.status === "failed" && install.message) {
+      console.log(ui.theme.muted(`    ${install.message}`));
+    }
+  }
+  if (sync.syncedResourceCount > 0) {
+    console.log(
+      ui.theme.muted(
+        `  ${ui.icons.bullet} synced ${formatCount(sync.syncedResourceCount, "linked resource")}`,
+      ),
+    );
+  }
+  if (extraMaterializedCount > 0) {
+    console.log(
+      ui.theme.muted(
+        `  ${ui.icons.bullet} ${formatCount(extraMaterializedCount, "plugin resource")} for harness materialization`,
+      ),
+    );
+  }
+}
+
 async function handleApplyCommand(
   layerNames: [string, ...string[]] | [],
   opts: {
@@ -1008,15 +1058,39 @@ async function handleApplyCommand(
     return [...pins.values()];
   })();
 
-  if (!opts.ignorePluginVersions && mergedPluginPins.length > 0) {
-    await syncPluginPinsForApply({
+  let pluginSync: SyncPluginPinsForApplyResult | undefined;
+  if (!opts.ignorePluginVersions && mergedPluginPins.length > 0 && !opts.dryRun) {
+    pluginSync = await syncPluginPinsForApply({
       pins: mergedPluginPins,
       syncAll: opts.syncPlugins,
+      projectRoot,
+      scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
+      ignoreMissingInstall: opts.ignorePluginVersions,
     });
+
+    const extraMaterialized = countPluginMaterialResources(mergedPluginPins, resources);
+    printPluginApplySummary(pluginSync, extraMaterialized);
+
+    if (pluginSync.unresolvedPins.length > 0) {
+      for (const ref of pluginSync.unresolvedPins) {
+        console.warn(
+          ui.theme.warn(
+            `Plugin ${ref} is not installed locally. Run: harnessdeck resource sync plugin:${ref}`,
+          ),
+        );
+      }
+      if (opts.strictPluginVersions) {
+        ui.danger("Plugin install failed — apply aborted");
+        process.exitCode = 2;
+        return;
+      }
+    }
   }
 
+  const applyResources = expandPluginMaterialResources(mergedPluginPins, resources);
+
   const generated = await generateFiles(
-    resources,
+    applyResources,
     platforms,
     projectRoot,
     { claudeConfig: claude, resolvedEnvironment },
@@ -1051,7 +1125,7 @@ async function handleApplyCommand(
 
     const snapshotState: SnapshotState = {
       layers: applyBundle.layers.filter((p): p is NonNullable<typeof p> => p != null),
-      resources,
+      resources: applyResources,
       platform_files: Object.fromEntries(
         generated.map((result) => [
           result.platformId,
