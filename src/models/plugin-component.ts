@@ -74,16 +74,18 @@ export function syncClaudeLayerPluginsAfterAdd(
   ref: string,
   versionConstraint: string,
 ): void {
-  if (!plugin.claude) return;
-  const plugins = [...(plugin.claude.plugins ?? [])];
+  const plugins = [...(plugin.claude?.plugins ?? [])];
   const idx = plugins.findIndex((p) => p.id === ref);
-  const entry = { id: ref, version: versionConstraint };
+  const entry = { id: ref, version: versionConstraint, enabled: true as const };
   if (idx >= 0) {
     plugins[idx] = { ...plugins[idx], ...entry };
   } else {
     plugins.push(entry);
   }
-  writePluginClaudeConfig(plugin.id, { ...plugin.claude, plugins });
+  writePluginClaudeConfig(plugin.id, {
+    ...(plugin.claude ?? {}),
+    plugins,
+  });
 }
 
 export function syncClaudeLayerPluginsAfterRemove(

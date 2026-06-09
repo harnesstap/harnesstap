@@ -70,6 +70,19 @@ export function resolveInstalledRecordPath(
     : join(claudePluginsDir(homeRoot), record.installPath);
 }
 
+export function getInstalledPluginInstallPath(
+  homeRoot: string,
+  ref: string,
+): string | null {
+  const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
+  const file = readJsonFile<InstalledPluginsFile>(path);
+  const record = file?.plugins?.[ref]?.[0];
+  if (!record?.installPath) {
+    return null;
+  }
+  return resolveInstalledRecordPath(homeRoot, record);
+}
+
 export function loadInstalled(homeRoot: string): PluginInstall[] {
   const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
   const file = readJsonFile<InstalledPluginsFile>(path);

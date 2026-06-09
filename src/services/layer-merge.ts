@@ -1,5 +1,6 @@
 import { getPlugin, getPluginResources } from "../models/plugin-component.js";
 import { listLayerPlugins } from "../models/plugin-pins.js";
+import { claudeConfigFromPluginPins } from "./claude-plugin-pins.js";
 import type {
   ClaudePluginEntry,
   ClaudeLayerConfig,
@@ -84,11 +85,14 @@ export function mergePlugins(pluginIds: string[]): MergedLayerContent {
     .map((key) => resourceByKey.get(key))
     .filter((r): r is Resource => r !== undefined);
 
+  const mergedPins = [...pluginPins.values()];
+  claude = mergeClaudeConfig(claude, claudeConfigFromPluginPins(mergedPins));
+
   return {
     layers,
     resources,
     claude,
-    pluginPins: [...pluginPins.values()],
+    pluginPins: mergedPins,
   };
 }
 
