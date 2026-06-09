@@ -57,11 +57,28 @@ export interface PluginUpdateOptions {
   yes: boolean;
 }
 
+export interface PluginInstallOptions {
+  ref: string;
+  scope?: PluginScope;
+  version?: string;
+}
+
+export interface PluginInstallResult {
+  ref: string;
+  platformId: string;
+  scope: PluginScope;
+  status: "installed" | "already_installed" | "failed" | "unsupported";
+  install?: PluginInstall;
+  message: string;
+}
+
 export interface PluginProviderCapabilities {
   inventory: boolean;
   check: boolean;
   update: boolean;
+  install: boolean;
   updateMethod: PluginUpdateMethod;
+  installMethod: PluginUpdateMethod;
 }
 
 export interface PluginProvider {
@@ -76,4 +93,8 @@ export interface PluginProvider {
     ctx: PluginContext,
     opts: PluginUpdateOptions,
   ): Promise<PluginUpdateResult[]>;
+  install(
+    ctx: PluginContext,
+    opts: PluginInstallOptions,
+  ): Promise<PluginInstallResult>;
 }

@@ -4,10 +4,10 @@ import {
   findPluginResourceByPin,
 } from "./composition-resource.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import { installPluginPins, type InstallPluginPinResult } from "./plugin-install.js";
 import { syncPluginResource } from "./resource-sync.js";
 import type { PluginConstraintPin } from "./plugin-apply-validation.js";
-import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
-import { defaultRunCommand } from "../plugins/run-command.js";
+import type { PluginScope } from "../plugins/types.js";
 import type { PluginResourceMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
@@ -16,14 +16,17 @@ export interface SyncPluginPinsForApplyOptions {
   /** When true, refresh every pinned plugin (--sync-plugins). */
   syncAll?: boolean;
   homeRoot?: string;
+  projectRoot: string;
+  scope?: PluginScope;
+  installPlatformId?: string;
+  /** When true, stamp exact constraints without a local install tree. */
+  ignoreMissingInstall?: boolean;
 }
 
-function ensureClaudePluginInstalled(ref: string, homeRoot: string): void {
-  if (getInstalledPluginInstallPath(homeRoot, ref)) {
-    return;
-  }
-
-  defaultRunCommand("claude", ["plugin", "install", ref, "--scope", "user"]);
+export interface SyncPluginPinsForApplyResult {
+  installs: InstallPluginPinResult[];
+  syncedResourceCount: number;
+  unresolvedPins: string[];
 }
 
 function stampResolvedVersionFromExactConstraint(
@@ -54,8 +57,20 @@ function stampResolvedVersionFromExactConstraint(
 
 export async function syncPluginPinsForApply(
   options: SyncPluginPinsForApplyOptions,
-): Promise<void> {
+): Promise<SyncPluginPinsForApplyResult> {
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
+  const scope = options.scope ?? "user";
+  const pinsToInstall = options.pins.filter((pin) => pin.version_constraint);
+
+  const installs = await installPluginPins(pinsToInstall, {
+    homeRoot,
+    projectRoot: options.projectRoot,
+    scope,
+    installPlatformId: options.installPlatformId,
+  });
+
+  let syncedResourceCount = 0;
+  const unresolvedPins: string[] = [];
 
   for (const pin of options.pins) {
     if (!pin.version_constraint) {
@@ -78,19 +93,27 @@ export async function syncPluginPinsForApply(
       continue;
     }
 
-    ensureClaudePluginInstalled(pin.ref, homeRoot);
-
-    await syncPluginResource(resource, {
+    const syncResult = await syncPluginResource(resource, {
       policy: "overwrite",
       onConflict: "overwrite",
       homeRoot,
     });
+    syncedResourceCount += syncResult.updated.length;
 
     resource =
       findPluginResourceByPin(pin.ref, pin.version_constraint) ?? resource;
     const syncedMetadata = (resource.metadata ?? {}) as PluginResourceMetadata;
-    if (!syncedMetadata.resolved_version) {
-      stampResolvedVersionFromExactConstraint(resource, pin.version_constraint);
+    if (syncedMetadata.resolved_version) {
+      continue;
     }
+
+    if (options.ignoreMissingInstall) {
+      stampResolvedVersionFromExactConstraint(resource, pin.version_constraint);
+      continue;
+    }
+
+    unresolvedPins.push(pin.ref);
   }
+
+  return { installs, syncedResourceCount, unresolvedPins };
 }
