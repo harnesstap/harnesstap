@@ -2,11 +2,10 @@ import { readdirSync, statSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import {
   claudePluginsDir,
+  getInstalledPluginInstallPath,
   parsePluginRef,
   readJsonFile,
   readManifestVersion,
-  resolveInstalledRecordPath,
-  type InstalledPluginsFile,
 } from "../plugins/claude-installed.js";
 import type { PluginInstall, PluginScope } from "../plugins/types.js";
 
@@ -85,20 +84,12 @@ function collectInRepoPluginDirs(projectRoot: string): Map<string, string> {
   return byManifestName;
 }
 
-function getInstalledPathForRef(homeRoot: string, ref: string): string | null {
-  const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
-  const file = readJsonFile<InstalledPluginsFile>(path);
-  const record = file?.plugins?.[ref]?.[0];
-  if (!record?.installPath) return null;
-  return resolveInstalledRecordPath(homeRoot, record);
-}
-
 function resolveInstallPath(
   homeRoot: string,
   ref: string,
   inRepoByName: Map<string, string>,
 ): string | null {
-  const fromInstalled = getInstalledPathForRef(homeRoot, ref);
+  const fromInstalled = getInstalledPluginInstallPath(homeRoot, ref);
   if (fromInstalled) return fromInstalled;
   const { name } = parsePluginRef(ref);
   return inRepoByName.get(name) ?? null;

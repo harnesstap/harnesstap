@@ -170,6 +170,84 @@ describe("CLI apply", () => {
     }
   });
 
+  it("writes Claude plugin settings for plugin-only layers", async () => {
+    const context = await createTestContext("cli-apply-plugin-only");
+
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugin-only.git");
+      await runCli(["init"]);
+
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
+
+      const layer = layerModel.createLayer({ name: "foundation-only" });
+      pluginPins.addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
+      pluginPins.addPluginToLayer(layer.id, "context7@anthropics", "1.0.0");
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "foundation-only",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+      ]);
+
+      expect(applyResult.exitCode ?? 0).toBe(0);
+      expect(applyResult.stdout).toContain("wrote 1 file");
+      expect(applyResult.stdout).toContain(".claude/settings.json");
+      const settingsPath = join(context.projectDir, ".claude/settings.json");
+      expect(existsSync(settingsPath)).toBe(true);
+      const settings = JSON.parse(
+        await Bun.file(settingsPath).text(),
+      ) as { enabledPlugins: Record<string, boolean> };
+      expect(settings.enabledPlugins["superpowers@obra"]).toBe(true);
+      expect(settings.enabledPlugins["context7@anthropics"]).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resolves exact plugin pins from layer constraints when plugins are not installed locally", async () => {
+    const context = await createTestContext("cli-apply-plugins-exact-pin");
+
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-exact-pin.git");
+      await runCli(["init"]);
+
+      const layerModel = await import("../../src/models/layer.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
+
+      const layer = layerModel.createLayer({ name: "catalog-like" });
+      pluginPins.addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
+      const resource = resourceModel.createResource(
+        makeResourceInput({
+          type: "instruction",
+          name: "ctx",
+          content: "# Ctx",
+        }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "catalog-like",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+      ]);
+
+      expect(applyResult.stderr).not.toContain("has no resolved version");
+      expect(applyResult.exitCode ?? 0).toBe(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("auto-syncs plugins missing resolved_version before apply", async () => {
     const context = await createTestContext("cli-apply-plugins-auto-sync");
 
