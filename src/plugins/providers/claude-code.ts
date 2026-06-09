@@ -8,6 +8,12 @@ import {
   type InstalledPluginsFile,
 } from "../claude-installed.js";
 import {
+  findInstalledRefForCatalogPin,
+  marketplaceIsConfigured,
+  resolveCatalogPluginMarketplaceBootstrap,
+  resolveClaudeInstallRefCandidates,
+} from "../claude-plugin-ref.js";
+import {
   defaultRunCommand,
   type CommandResult,
   type RunCommand,
@@ -89,6 +95,19 @@ export class ClaudeCodePluginProvider implements PluginProvider {
     return run(binary, ["plugin", ...args], {
       cwd: ctx?.projectRoot,
     });
+  }
+
+  private ensureMarketplace(ctx: PluginContext, marketplace: string, repo: string): void {
+    if (marketplaceIsConfigured(ctx.homeRoot, marketplace)) {
+      return;
+    }
+    this.runClaude(["marketplace", "add", repo], ctx);
+  }
+
+  private bootstrapMarketplacesForRef(ctx: PluginContext, catalogRef: string): void {
+    for (const marketplace of resolveCatalogPluginMarketplaceBootstrap(catalogRef) ?? []) {
+      this.ensureMarketplace(ctx, marketplace.name, marketplace.repo);
+    }
   }
 
   async list(ctx: PluginContext): Promise<PluginInstall[]> {
@@ -206,42 +225,66 @@ export class ClaudeCodePluginProvider implements PluginProvider {
     opts: PluginInstallOptions,
   ): Promise<PluginInstallResult> {
     const scope: PluginScope = opts.scope ?? "user";
-    const existing = loadInstalled(ctx.homeRoot).find(
-      (install) => install.ref === opts.ref && install.scope === scope,
-    );
-    if (existing) {
+    const candidates = resolveClaudeInstallRefCandidates(opts.ref, ctx.homeRoot);
+
+    const installedRef = findInstalledRefForCatalogPin(opts.ref, ctx.homeRoot, scope);
+    if (installedRef) {
+      const install = loadInstalled(ctx.homeRoot).find(
+        (row) => row.ref === installedRef && row.scope === scope,
+      );
       return {
         ref: opts.ref,
         platformId: this.platformId,
         scope,
         status: "already_installed",
-        install: existing,
-        message: `Already installed (${scope})`,
+        install,
+        message:
+          installedRef === opts.ref
+            ? `Already installed (${scope})`
+            : `Already installed as ${installedRef} (${scope})`,
       };
     }
 
-    const args = ["install", opts.ref, "--scope", scope];
-    const result = this.runClaude(args, ctx);
-    if (result.exitCode !== 0) {
+    this.bootstrapMarketplacesForRef(ctx, opts.ref);
+
+    let lastMessage = "claude plugin install failed";
+    for (const candidate of candidates) {
+      const { marketplace } = parsePluginRef(candidate);
+      if (marketplace) {
+        this.runClaude(["marketplace", "update", marketplace], ctx);
+      }
+
+      const args = ["install", candidate, "--scope", scope];
+      const result = this.runClaude(args, ctx);
+      if (result.exitCode !== 0) {
+        lastMessage = result.stderr.trim() || result.stdout.trim() || lastMessage;
+        continue;
+      }
+
+      const install = loadInstalled(ctx.homeRoot).find(
+        (row) => row.ref === candidate && row.scope === scope,
+      );
+      if (!install) {
+        return {
+          ref: opts.ref,
+          platformId: this.platformId,
+          scope,
+          status: "failed",
+          message:
+            "Install command succeeded but plugin was not registered in installed_plugins.json",
+        };
+      }
+
       return {
         ref: opts.ref,
         platformId: this.platformId,
         scope,
-        status: "failed",
-        message: result.stderr.trim() || result.stdout.trim() || "claude plugin install failed",
-      };
-    }
-
-    const install = loadInstalled(ctx.homeRoot).find(
-      (row) => row.ref === opts.ref && row.scope === scope,
-    );
-    if (!install) {
-      return {
-        ref: opts.ref,
-        platformId: this.platformId,
-        scope,
-        status: "failed",
-        message: "Install command succeeded but plugin was not registered in installed_plugins.json",
+        status: "installed",
+        install,
+        message:
+          candidate === opts.ref
+            ? result.stdout.trim() || "Installed via claude plugin"
+            : `Installed as ${candidate}`,
       };
     }
 
@@ -249,9 +292,8 @@ export class ClaudeCodePluginProvider implements PluginProvider {
       ref: opts.ref,
       platformId: this.platformId,
       scope,
-      status: "installed",
-      install,
-      message: result.stdout.trim() || "Installed via claude plugin",
+      status: "failed",
+      message: lastMessage,
     };
   }
 }

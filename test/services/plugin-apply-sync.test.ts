@@ -84,12 +84,34 @@ describe("syncPluginPinsForApply", () => {
       const layer = createLayer({ name: "catalog-layer" });
       addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
 
+      const failingRun: RunCommand = () => ({
+        stdout: "",
+        stderr: "claude not found",
+        exitCode: 1,
+      });
+      const { ClaudeCodePluginProvider } = await import(
+        "../../src/plugins/providers/claude-code.ts"
+      );
+      const { getPluginProvider } = await import("../../src/plugins/registry.ts");
+      const provider = getPluginProvider("claude-code");
+      const originalInstall = provider?.install.bind(provider);
+      if (!provider || !originalInstall) {
+        throw new Error("Expected claude-code plugin provider");
+      }
+      provider.install = async (ctx, opts) =>
+        new ClaudeCodePluginProvider({
+          runCommand: failingRun,
+          claudeBinary: "claude",
+        }).install(ctx, opts);
+
       const result = await syncPluginPinsForApply({
         pins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
         ignoreMissingInstall: true,
       });
+
+      provider.install = originalInstall;
 
       const synced = findPluginResourceByPin("superpowers@obra", "5.1.0");
       expect((synced?.metadata as { resolved_version?: string }).resolved_version).toBe(

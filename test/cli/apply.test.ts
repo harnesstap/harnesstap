@@ -192,6 +192,7 @@ describe("CLI apply", () => {
         context.projectDir,
         "--platform",
         "claude-code",
+        "--ignore-plugin-versions",
       ]);
 
       expect(applyResult.exitCode ?? 0).toBe(0);
@@ -202,8 +203,8 @@ describe("CLI apply", () => {
       const settings = JSON.parse(
         await Bun.file(settingsPath).text(),
       ) as { enabledPlugins: Record<string, boolean> };
-      expect(settings.enabledPlugins["superpowers@obra"]).toBe(true);
-      expect(settings.enabledPlugins["context7@anthropics"]).toBe(true);
+      expect(settings.enabledPlugins["superpowers@claude-plugins-official"]).toBe(true);
+      expect(settings.enabledPlugins["context7@claude-plugins-official"]).toBe(true);
     } finally {
       await context.cleanup();
     }

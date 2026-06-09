@@ -67,6 +67,11 @@ export function resolvePluginInstallScope(
   return hasGitOrigin ? "project" : resolveDefaultPluginInstallScope(projectRoot);
 }
 
+export interface InstallPluginPinsProgress {
+  onInstallStart?: (ref: string) => void;
+  onInstallComplete?: (result: InstallPluginPinResult) => void;
+}
+
 export async function installPluginPins(
   pins: PluginConstraintPin[],
   options: {
@@ -74,6 +79,7 @@ export async function installPluginPins(
     projectRoot: string;
     scope: PluginScope;
     installPlatformId?: string;
+    progress?: InstallPluginPinsProgress;
   },
 ): Promise<InstallPluginPinResult[]> {
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
@@ -83,15 +89,16 @@ export async function installPluginPins(
     if (!pin.version_constraint) {
       continue;
     }
-    results.push(
-      await installPluginPinAsync({
-        ref: pin.ref,
-        scope: options.scope,
-        installPlatformId: options.installPlatformId,
-        homeRoot,
-        projectRoot: options.projectRoot,
-      }),
-    );
+    options.progress?.onInstallStart?.(pin.ref);
+    const result = await installPluginPinAsync({
+      ref: pin.ref,
+      scope: options.scope,
+      installPlatformId: options.installPlatformId,
+      homeRoot,
+      projectRoot: options.projectRoot,
+    });
+    options.progress?.onInstallComplete?.(result);
+    results.push(result);
   }
 
   return results;

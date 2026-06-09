@@ -4,12 +4,21 @@ import {
   findPluginResourceByPin,
 } from "./composition-resource.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
-import { installPluginPins, type InstallPluginPinResult } from "./plugin-install.js";
+import {
+  installPluginPins,
+  type InstallPluginPinResult,
+  type InstallPluginPinsProgress,
+} from "./plugin-install.js";
 import { syncPluginResource } from "./resource-sync.js";
 import type { PluginConstraintPin } from "./plugin-apply-validation.js";
 import type { PluginScope } from "../plugins/types.js";
 import type { PluginResourceMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+
+export interface SyncPluginPinsForApplyProgress extends InstallPluginPinsProgress {
+  onSyncStart?: (ref: string) => void;
+  onSyncComplete?: (ref: string) => void;
+}
 
 export interface SyncPluginPinsForApplyOptions {
   pins: PluginConstraintPin[];
@@ -21,6 +30,7 @@ export interface SyncPluginPinsForApplyOptions {
   installPlatformId?: string;
   /** When true, stamp exact constraints without a local install tree. */
   ignoreMissingInstall?: boolean;
+  progress?: SyncPluginPinsForApplyProgress;
 }
 
 export interface SyncPluginPinsForApplyResult {
@@ -67,6 +77,7 @@ export async function syncPluginPinsForApply(
     projectRoot: options.projectRoot,
     scope,
     installPlatformId: options.installPlatformId,
+    progress: options.progress,
   });
 
   let syncedResourceCount = 0;
@@ -93,12 +104,14 @@ export async function syncPluginPinsForApply(
       continue;
     }
 
+    options.progress?.onSyncStart?.(pin.ref);
     const syncResult = await syncPluginResource(resource, {
       policy: "overwrite",
       onConflict: "overwrite",
       homeRoot,
     });
     syncedResourceCount += syncResult.updated.length;
+    options.progress?.onSyncComplete?.(pin.ref);
 
     resource =
       findPluginResourceByPin(pin.ref, pin.version_constraint) ?? resource;

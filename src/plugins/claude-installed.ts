@@ -73,14 +73,24 @@ export function resolveInstalledRecordPath(
 export function getInstalledPluginInstallPath(
   homeRoot: string,
   ref: string,
+  candidateRefs?: string[],
 ): string | null {
   const path = join(claudePluginsDir(homeRoot), "installed_plugins.json");
   const file = readJsonFile<InstalledPluginsFile>(path);
-  const record = file?.plugins?.[ref]?.[0];
-  if (!record?.installPath) {
+  if (!file?.plugins) {
     return null;
   }
-  return resolveInstalledRecordPath(homeRoot, record);
+
+  const refs = candidateRefs?.length ? candidateRefs : [ref];
+  for (const candidate of refs) {
+    const record = file.plugins[candidate]?.[0];
+    if (!record?.installPath) {
+      continue;
+    }
+    return resolveInstalledRecordPath(homeRoot, record);
+  }
+
+  return null;
 }
 
 export function loadInstalled(homeRoot: string): PluginInstall[] {
