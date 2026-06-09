@@ -19,8 +19,8 @@ describe("mergePlugins", () => {
 
       expect(merged.resources).toHaveLength(0);
       expect(merged.claude?.plugins).toEqual([
-        { id: "superpowers@obra", version: "5.1.0", enabled: true },
-        { id: "context7@anthropics", version: "1.0.0", enabled: true },
+        { id: "superpowers@claude-plugins-official", version: "5.1.0", enabled: true },
+        { id: "context7@claude-plugins-official", version: "1.0.0", enabled: true },
       ]);
     } finally {
       await context.cleanup();
@@ -52,7 +52,7 @@ describe("mergePlugins", () => {
       expect(merged.resources).toHaveLength(1);
       expect(merged.claude?.plugins).toEqual([
         { id: "legacy@market", enabled: false },
-        { id: "superpowers@obra", version: "5.1.0", enabled: true },
+        { id: "superpowers@claude-plugins-official", version: "5.1.0", enabled: true },
       ]);
     } finally {
       await context.cleanup();

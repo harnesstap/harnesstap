@@ -5,6 +5,7 @@ export interface ProgressHandle {
   succeed: (message: string) => void;
   fail: (message: string) => void;
   stop: () => void;
+  update: (message: string) => void;
 }
 
 /**
@@ -38,6 +39,11 @@ export function createProgress(message: string): ProgressHandle {
     stop() {
       spinner?.stop();
       spinner = null;
+    },
+    update(message: string) {
+      if (spinner) {
+        spinner.text = message;
+      }
     },
   };
 }

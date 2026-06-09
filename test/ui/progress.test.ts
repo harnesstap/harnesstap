@@ -43,6 +43,12 @@ describe("ui progress", () => {
     expect(lines.some((l) => l.includes("work done"))).toBe(true);
   });
 
+  it("createProgress handle update is a no-op in non-TTY mode", async () => {
+    const { createProgress } = await import("../../src/ui/progress.ts");
+    const handle = createProgress("doing work");
+    expect(() => handle.update("still working")).not.toThrow();
+  });
+
   it("createProgress handle emits failure verdict in non-TTY mode", async () => {
     const { createProgress } = await import("../../src/ui/progress.ts");
     const lines: string[] = [];

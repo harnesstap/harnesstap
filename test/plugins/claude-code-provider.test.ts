@@ -59,9 +59,39 @@ describe("ClaudeCodePluginProvider", () => {
       { ref: "new-plugin@demo-market", scope: "project" },
     );
 
-    expect(calls).toEqual([
-      ["plugin", "install", "new-plugin@demo-market", "--scope", "project"],
-    ]);
+    expect(calls.some((args) => args[1] === "install" && args[2] === "new-plugin@demo-market")).toBe(
+      true,
+    );
+    expect(result.status).toBe("failed");
+    expect(result.message).toContain("installed_plugins.json");
+  });
+
+  it("installs catalog pins via resolved marketplace refs", async () => {
+    const calls: string[][] = [];
+    const provider = new ClaudeCodePluginProvider({
+      runCommand: (_command, args) => {
+        calls.push(args);
+        if (args[0] === "marketplace") {
+          return { stdout: "", stderr: "", exitCode: 0 };
+        }
+        if (args[1] === "install" && args[2] === "context7@claude-plugins-official") {
+          return { stdout: "Installed", stderr: "", exitCode: 0 };
+        }
+        return { stdout: "", stderr: "not found", exitCode: 1 };
+      },
+    });
+
+    const result = await provider.install(
+      {
+        projectRoot: "/tmp/project",
+        homeRoot: fixtureHome,
+        harnessdeckDir: "/tmp/hd",
+      },
+      { ref: "context7@anthropics", scope: "project" },
+    );
+
+    const installCalls = calls.filter((args) => args[0] === "plugin" && args[1] === "install");
+    expect(installCalls[0]?.[2]).toBe("context7@claude-plugins-official");
     expect(result.status).toBe("failed");
     expect(result.message).toContain("installed_plugins.json");
   });

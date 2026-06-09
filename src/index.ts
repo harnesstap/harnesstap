@@ -117,7 +117,8 @@ import {
   countPluginMaterialResources,
   expandPluginMaterialResources,
 } from "./services/plugin-materialize.js";
-import { resolvePluginInstallScope } from "./services/plugin-install.js";
+import { resolvePluginInstallScope, type InstallPluginPinResult } from "./services/plugin-install.js";
+import { resolveClaudeEnabledPluginRef } from "./plugins/claude-plugin-ref.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
@@ -163,7 +164,7 @@ import {
   exportMigrationState,
   importMigrationState,
 } from "./services/migrate.js";
-import { createProgress } from "./ui/progress.js";
+import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
   isPromptCancellationError,
   promptForChoice,
@@ -912,32 +913,28 @@ async function resolveApplyLayers(
   };
 }
 
-function printPluginApplySummary(
+function formatPluginInstallLine(install: InstallPluginPinResult): string {
+  const icon = install.status === "failed" ? ui.icons.warn : ui.icons.success;
+  const statusLabel =
+    install.status === "already_installed" ? "already installed" : install.status;
+  return `  ${icon} ${install.ref} (${install.platformId}, ${install.scope}) ${ui.icons.bullet} ${statusLabel}`;
+}
+
+function printPluginInstallLine(install: InstallPluginPinResult): void {
+  console.log(formatPluginInstallLine(install));
+  if (install.status === "failed" && install.message) {
+    console.log(ui.theme.muted(`    ${install.message}`));
+  }
+}
+
+function printPluginApplyPostSyncSummary(
   sync: SyncPluginPinsForApplyResult,
   extraMaterializedCount: number,
 ): void {
-  if (
-    sync.installs.length === 0 &&
-    sync.unresolvedPins.length === 0 &&
-    sync.syncedResourceCount === 0 &&
-    extraMaterializedCount === 0
-  ) {
+  if (sync.syncedResourceCount === 0 && extraMaterializedCount === 0) {
     return;
   }
 
-  console.log(ui.theme.muted("Plugins"));
-  for (const install of sync.installs) {
-    const icon =
-      install.status === "failed" ? ui.icons.warn : ui.icons.success;
-    const statusLabel =
-      install.status === "already_installed" ? "already installed" : install.status;
-    console.log(
-      `  ${icon} ${install.ref} (${install.platformId}, ${install.scope}) ${ui.icons.bullet} ${statusLabel}`,
-    );
-    if (install.status === "failed" && install.message) {
-      console.log(ui.theme.muted(`    ${install.message}`));
-    }
-  }
   if (sync.syncedResourceCount > 0) {
     console.log(
       ui.theme.muted(
@@ -999,15 +996,19 @@ async function handleApplyCommand(
 
   const projectRoot = resolve(opts.project);
   let applyBundle: Awaited<ReturnType<typeof resolveApplyLayers>>;
+  const layerLabel = resolvedLayerNames.join(" + ");
+  const resolveSpin = createProgress(`Resolving ${layerLabel}…`);
   try {
     applyBundle = await resolveApplyLayers(
       resolvedLayerNames as [string, ...string[]],
       projectRoot,
     );
   } catch (err) {
+    resolveSpin.stop();
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
+  resolveSpin.stop();
 
   const primaryLayer = applyBundle.layers[applyBundle.layers.length - 1];
   if (!primaryLayer) {
@@ -1060,16 +1061,39 @@ async function handleApplyCommand(
 
   let pluginSync: SyncPluginPinsForApplyResult | undefined;
   if (!opts.ignorePluginVersions && mergedPluginPins.length > 0 && !opts.dryRun) {
+    console.log(ui.theme.muted("Plugins"));
+    let pluginProgress: ProgressHandle | null = null;
+
     pluginSync = await syncPluginPinsForApply({
       pins: mergedPluginPins,
       syncAll: opts.syncPlugins,
       projectRoot,
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
       ignoreMissingInstall: opts.ignorePluginVersions,
+      progress: {
+        onInstallStart: (ref) => {
+          pluginProgress?.stop();
+          pluginProgress = createProgress(`Installing ${ref}…`);
+        },
+        onInstallComplete: (install) => {
+          pluginProgress?.stop();
+          pluginProgress = null;
+          printPluginInstallLine(install);
+        },
+        onSyncStart: (ref) => {
+          pluginProgress?.stop();
+          pluginProgress = createProgress(`Syncing ${ref}…`);
+        },
+        onSyncComplete: () => {
+          pluginProgress?.stop();
+          pluginProgress = null;
+        },
+      },
     });
+    pluginProgress?.stop();
 
     const extraMaterialized = countPluginMaterialResources(mergedPluginPins, resources);
-    printPluginApplySummary(pluginSync, extraMaterialized);
+    printPluginApplyPostSyncSummary(pluginSync, extraMaterialized);
 
     if (pluginSync.unresolvedPins.length > 0) {
       for (const ref of pluginSync.unresolvedPins) {
@@ -1089,12 +1113,30 @@ async function handleApplyCommand(
 
   const applyResources = expandPluginMaterialResources(mergedPluginPins, resources);
 
-  const generated = await generateFiles(
-    applyResources,
-    platforms,
-    projectRoot,
-    { claudeConfig: claude, resolvedEnvironment },
-  );
+  const homeRoot = resolveHomeRoot();
+  const resolvedClaude =
+    claude?.plugins && claude.plugins.length > 0
+      ? {
+          ...claude,
+          plugins: claude.plugins.map((plugin) => ({
+            ...plugin,
+            id: resolveClaudeEnabledPluginRef(plugin.id, homeRoot),
+          })),
+        }
+      : claude;
+
+  const generateSpin = createProgress("Generating harness files…");
+  let generated: Awaited<ReturnType<typeof generateFiles>>;
+  try {
+    generated = await generateFiles(
+      applyResources,
+      platforms,
+      projectRoot,
+      { claudeConfig: resolvedClaude, resolvedEnvironment },
+    );
+  } finally {
+    generateSpin.stop();
+  }
 
   // Strict plugin validation must happen BEFORE any files are written.
   if (

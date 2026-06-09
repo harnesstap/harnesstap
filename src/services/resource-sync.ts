@@ -15,6 +15,7 @@ import {
   scanPluginSource,
 } from "./plugin-source-import.js";
 import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
+import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./composition-resource.js";
 
@@ -48,9 +49,22 @@ function resolveInstallRoot(
   const [plugin, marketplace] = originRef.split("@");
   if (!plugin) return undefined;
 
-  const installedPath = getInstalledPluginInstallPath(homeRoot, originRef);
+  const installRefCandidates = resolveClaudeInstallRefCandidates(originRef, homeRoot);
+  const installedPath = getInstalledPluginInstallPath(
+    homeRoot,
+    originRef,
+    installRefCandidates,
+  );
+  const cacheCandidates = installRefCandidates.flatMap((ref) => {
+    const [, resolvedMarketplace] = ref.split("@");
+    if (!resolvedMarketplace) {
+      return [];
+    }
+    return [join(claudePluginsRoot, "cache", resolvedMarketplace, plugin)];
+  });
   const candidates = [
     ...(installedPath ? [installedPath] : []),
+    ...cacheCandidates,
     join(claudePluginsRoot, "cache", marketplace ?? plugin, plugin),
     join(claudePluginsRoot, "CACHE", plugin),
     join(claudePluginsRoot, "cache", plugin, plugin),
