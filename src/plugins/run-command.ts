@@ -6,12 +6,21 @@ export interface CommandResult {
   exitCode: number;
 }
 
-export type RunCommand = (command: string, args: string[]) => CommandResult;
+export interface RunCommandOptions {
+  cwd?: string;
+}
 
-export const defaultRunCommand: RunCommand = (command, args) => {
+export type RunCommand = (
+  command: string,
+  args: string[],
+  options?: RunCommandOptions,
+) => CommandResult;
+
+export const defaultRunCommand: RunCommand = (command, args, options) => {
   const result = spawnSync(command, args, {
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
+    cwd: options?.cwd,
   });
   return {
     stdout: result.stdout?.toString() ?? "",

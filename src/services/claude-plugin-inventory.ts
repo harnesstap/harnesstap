@@ -1,7 +1,6 @@
 import { readdirSync, statSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import {
-  claudePluginsDir,
   getInstalledPluginInstallPath,
   parsePluginRef,
   readJsonFile,

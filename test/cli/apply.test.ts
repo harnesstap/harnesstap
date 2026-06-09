@@ -239,10 +239,48 @@ describe("CLI apply", () => {
         context.projectDir,
         "--platform",
         "claude-code",
+        "--ignore-plugin-versions",
       ]);
 
       expect(applyResult.stderr).not.toContain("has no resolved version");
       expect(applyResult.exitCode ?? 0).toBe(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("materializes synced plugin skills to alias harness outputs", async () => {
+    const context = await createTestContext("cli-apply-plugin-materialize");
+    const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
+
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugin-materialize.git");
+      await runCli(["init", "--main", "claude-code", "--aliases", "cursor"]);
+
+      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const { cpSync } = await import("node:fs");
+
+      cpSync(join(fixtureHome, ".claude"), join(context.homeDir, ".claude"), {
+        recursive: true,
+      });
+
+      const layer = layerModel.createLayer({ name: "plugin-skills" });
+      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+
+      const applyResult = await runCli([
+        "project",
+        "apply",
+        "plugin-skills",
+        "--project",
+        context.projectDir,
+      ]);
+
+      expect(applyResult.exitCode ?? 0).toBe(0);
+      expect(applyResult.stdout).toContain("cursor");
+      expect(
+        existsSync(join(context.projectDir, ".cursor", "rules", "format-code.mdc")),
+      ).toBe(true);
     } finally {
       await context.cleanup();
     }
@@ -256,6 +294,9 @@ describe("CLI apply", () => {
         join(context.homeDir, ".claude/plugins/cache/acme-marketplace/formatter/.claude-plugin"),
         { recursive: true },
       );
+      mkdirSync(join(context.homeDir, ".claude/plugins/CACHE/formatter/.claude-plugin"), {
+        recursive: true,
+      });
       writeFileSync(
         join(
           context.homeDir,
@@ -265,6 +306,31 @@ describe("CLI apply", () => {
           name: "formatter",
           version: "1.9.0",
           description: "Formatter plugin test stub",
+        }),
+        "utf-8",
+      );
+      writeFileSync(
+        join(context.homeDir, ".claude/plugins/CACHE/formatter/.claude-plugin/plugin.json"),
+        JSON.stringify({
+          name: "formatter",
+          version: "1.9.0",
+          description: "Formatter plugin test stub",
+        }),
+        "utf-8",
+      );
+      writeFileSync(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "formatter@acme-marketplace": [
+              {
+                scope: "project",
+                installPath: "CACHE/formatter",
+                version: "1.9.0",
+              },
+            ],
+          },
         }),
         "utf-8",
       );
