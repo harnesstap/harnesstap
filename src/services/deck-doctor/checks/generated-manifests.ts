@@ -52,6 +52,8 @@ function buildMaterializeInput(context: DeckDoctorContext): MaterializeDeckRepoI
         id: name,
         name,
         version,
+        org_slug: "",
+        catalog_slug: "",
         description: manifest?.description ?? "",
         tags: manifest?.keywords ?? [],
         created_at: "1970-01-01T00:00:00.000Z",

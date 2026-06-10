@@ -1,113 +1,28 @@
-import { getPlugin, getPluginResources } from "../models/plugin-component.js";
-import { listLayerPlugins } from "../models/plugin-pins.js";
-import { claudeConfigFromPluginPins } from "./claude-plugin-pins.js";
-import type {
-  ClaudePluginEntry,
-  ClaudeLayerConfig,
-  Layer,
-  Resource,
-} from "../types.js";
+import { getLayer, mergeLayersById } from "../models/layer-model.js";
+import type { MergedLayerContent } from "../models/layer-model.js";
 
-export interface MergedLayerContent {
-  layers: Layer[];
-  resources: Resource[];
-  claude?: ClaudeLayerConfig;
-  pluginPins: Array<{ ref: string; version_constraint: string }>;
-}
-
-function resourceKey(resource: Pick<Resource, "type" | "name">): string {
-  return `${resource.type}:${resource.name}`;
-}
-
-function mergeClaudeConfig(
-  base: ClaudeLayerConfig | undefined,
-  next: ClaudeLayerConfig | undefined,
-): ClaudeLayerConfig | undefined {
-  if (!base && !next) return undefined;
-  const marketplaces = {
-    ...(base?.marketplaces ?? {}),
-    ...(next?.marketplaces ?? {}),
-  };
-  const pluginMap = new Map<string, ClaudePluginEntry>();
-  for (const p of base?.plugins ?? []) {
-    pluginMap.set(p.id, p);
-  }
-  for (const p of next?.plugins ?? []) {
-    pluginMap.set(p.id, p);
-  }
-  const plugins = [...pluginMap.values()];
-  return {
-    ...(Object.keys(marketplaces).length > 0 ? { marketplaces } : {}),
-    ...(plugins.length > 0 ? { plugins } : {}),
-  };
-}
+export type { MergedLayerContent } from "../models/layer-model.js";
 
 /**
- * Merge multiple design plugins by id in order; later plugins override earlier
- * ones for resources (by type:name), plugin pins (by ref), and Claude config.
+ * Merge multiple design layers by id in order.
+ * @deprecated Prefer mergeLayersForApply for project apply.
  */
 export function mergePlugins(pluginIds: string[]): MergedLayerContent {
-  const layers: Layer[] = [];
-  const resourceOrder: string[] = [];
-  const resourceByKey = new Map<string, Resource>();
-  const pluginPins = new Map<string, { ref: string; version_constraint: string }>();
-  let claude: ClaudeLayerConfig | undefined;
-
-  for (const pluginId of pluginIds) {
-    const layer = getPlugin(pluginId);
-    if (!layer) {
-      throw new Error(`Plugin not found: ${pluginId}`);
-    }
-    layers.push(layer);
-
-    for (const resource of getPluginResources(layer.id)) {
-      if (resource.type === "plugin" || resource.type === "layer") {
-        continue;
-      }
-      const key = resourceKey(resource);
-      if (!resourceByKey.has(key)) {
-        resourceOrder.push(key);
-      }
-      resourceByKey.set(key, resource);
-    }
-
-    for (const pin of listLayerPlugins(layer.id)) {
-      pluginPins.set(pin.ref, {
-        ref: pin.ref,
-        version_constraint: pin.version_constraint,
-      });
-    }
-
-    claude = mergeClaudeConfig(claude, layer.claude);
-  }
-
-  const resources = resourceOrder
-    .map((key) => resourceByKey.get(key))
-    .filter((r): r is Resource => r !== undefined);
-
-  const mergedPins = [...pluginPins.values()];
-  claude = mergeClaudeConfig(claude, claudeConfigFromPluginPins(mergedPins));
-
-  return {
-    layers,
-    resources,
-    claude,
-    pluginPins: mergedPins,
-  };
+  return mergeLayersById(pluginIds);
 }
 
 /**
- * Merge multiple plugin selectors in order (name, id, or name@version).
- * @deprecated Prefer mergeConfiguredLayers for project apply.
+ * Merge multiple layer selectors in order (name, id, or name@version).
+ * @deprecated Prefer mergeLayersForApply for project apply.
  */
 export function mergeLayers(layerNames: string[]): MergedLayerContent {
-  const pluginIds: string[] = [];
+  const layerIds: string[] = [];
   for (const name of layerNames) {
-    const layer = getPlugin(name);
+    const layer = getLayer(name);
     if (!layer) {
       throw new Error(`Layer not found: ${name}`);
     }
-    pluginIds.push(layer.id);
+    layerIds.push(layer.id);
   }
-  return mergePlugins(pluginIds);
+  return mergeLayersById(layerIds);
 }

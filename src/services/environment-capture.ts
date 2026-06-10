@@ -1,4 +1,4 @@
-import { listConfiguredLayerPlugins, resolveConfiguredLayerSelector } from "../models/configured-layer.js";
+import { resolveConfiguredLayerSelector } from "../models/configured-layer.js";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -116,10 +116,7 @@ function resolveScopedConfiguredLayerIds(
 }
 
 function resolveScopedPluginIds(configuredLayerIds: string[]): string[] {
-  const rootPluginIds = configuredLayerIds.flatMap((configuredLayerId) =>
-    listConfiguredLayerPlugins(configuredLayerId).map((row) => row.plugin_id),
-  );
-  const graph = resolveLayerGraph(rootPluginIds);
+  const graph = resolveLayerGraph(configuredLayerIds);
   return unique(graph.resolved.map((layer) => layer.id));
 }
 

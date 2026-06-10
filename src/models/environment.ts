@@ -337,7 +337,7 @@ export function listEnvironmentReferences(
   const configuredLayerRows = db
     .prepare(
       `SELECT id, name
-       FROM configured_layers
+       FROM layers
        WHERE default_environment_id = ?
        ORDER BY name`,
     )

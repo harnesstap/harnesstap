@@ -726,11 +726,9 @@ bun run build
 ## Known gaps and non-goals
 
 - `environment` commands are specified but not yet implemented in the CLI (environment schema and cascade exist today).
-- **Layer storage unification** — composition still lives on `plugins` + `plugin_resources`; apply targets may use `configured_layers`. Target: single `layers` table with `org_slug`, `catalog_slug`, and `layer_resources`.
-- **Published identity** — local layers have no `org` / `catalog` columns yet; Cloud publish uses `org/library` wire format instead of `org/catalog/name`.
-- **Catalog entity in Cloud** — catalogs are a spec concept and CLI scope; HarnessDeck Cloud stores `layer_libraries` per org (migration to explicit catalogs planned).
 - Only a subset of registered harnesses have fully native serializers; generic harness support remains path-driven.
 - Sync writes files directly; no interactive conflict resolution on apply.
 - Bundle export/import operates on one layer body at a time; full deck-repo round-trip is Cloud/catalog workflows today.
 - Secret resolution supports `keychain` and `env` providers; `file` provider support is incomplete.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
+- **Deck.json transport** — layer entries may still embed legacy `plugins[]` arrays; target shape references layers by selector only (see Phase 4.4 in layer model plan).

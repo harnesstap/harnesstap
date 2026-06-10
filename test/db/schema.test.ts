@@ -23,13 +23,11 @@ describe("initializeSchema", () => {
           "environment_secret_refs",
           "environments",
           "project_harnesses",
-          "configured_layer_plugins",
-          "configured_layers",
-          "deck_configured_layers",
+          "deck_layers",
           "decks",
-          "project_configured_layers",
-          "plugin_resources",
-          "plugins",
+          "layer_resources",
+          "layers",
+          "project_layers",
           "projects",
           "resources",
           "schema_version",
@@ -42,24 +40,20 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
 
       const layerColumns = context.connection
         .getDb()
-        .prepare("PRAGMA table_info(plugins)")
+        .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
-          "source_path",
-          "source_hash",
-          "source_present",
+          "org_slug",
+          "catalog_slug",
+          "default_environment_id",
+          "needs_config",
         ]),
       );
-
-      const sourcePresentColumn = layerColumns.find(
-        (column) => column.name === "source_present",
-      );
-      expect(sourcePresentColumn?.dflt_value).toBe("1");
 
       const projectColumns = context.connection
         .getDb()
@@ -114,7 +108,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 14 }]);
+      expect(versionRows).toEqual([{ version: 15 }]);
     } finally {
       await context.cleanup();
     }
@@ -142,7 +136,7 @@ describe("initializeSchema", () => {
         .getDb()
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
@@ -158,33 +152,39 @@ describe("initializeSchema", () => {
       const tables = db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all() as Array<{ name: string }>;
-      // plugins table should have a version column
+      // layers table should have a version column
       const cols = db
-        .prepare("PRAGMA table_info(plugins)")
+        .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       const versionCol = cols.find((c) => c.name === "version");
       expect(versionCol).toBeDefined();
       expect(versionCol?.dflt_value).toBe("'1.0.0'");
 
-      // (name, version) uniqueness: same name+version must conflict
+      // (org_slug, catalog_slug, name, version) uniqueness: same local key must conflict
       const now = new Date().toISOString();
       db.prepare(
-        `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
-         VALUES ('id1', 'foo', '1.0.0', '', '[]', '{}', ?, ?)`,
+        `INSERT INTO layers (
+          id, name, version, org_slug, catalog_slug, description, tags,
+          claude_config, needs_config, created_at, updated_at
+        ) VALUES ('id1', 'foo', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
       ).run(now, now);
 
       expect(() =>
         db.prepare(
-          `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
-           VALUES ('id2', 'foo', '1.0.0', '', '[]', '{}', ?, ?)`,
+          `INSERT INTO layers (
+            id, name, version, org_slug, catalog_slug, description, tags,
+            claude_config, needs_config, created_at, updated_at
+          ) VALUES ('id2', 'foo', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
         ).run(now, now),
       ).toThrow();
 
       // different version with same name should succeed
       expect(() =>
         db.prepare(
-          `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
-           VALUES ('id3', 'foo', '2.0.0', '', '[]', '{}', ?, ?)`,
+          `INSERT INTO layers (
+            id, name, version, org_slug, catalog_slug, description, tags,
+            claude_config, needs_config, created_at, updated_at
+          ) VALUES ('id3', 'foo', '2.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
         ).run(now, now),
       ).not.toThrow();
     } finally {
@@ -204,21 +204,23 @@ describe("initializeSchema", () => {
 
       const now = new Date().toISOString();
 
-      // Insert a plugin and a resource, then link them via plugin_resources
+      // Insert a layer and a resource, then link them via layer_resources
       db.prepare(
-        `INSERT INTO plugins (id, name, version, description, tags, claude_config, created_at, updated_at)
-         VALUES ('p1', 'test-layer', '1.0.0', '', '[]', '{}', ?, ?)`,
+        `INSERT INTO layers (
+          id, name, version, org_slug, catalog_slug, description, tags,
+          claude_config, needs_config, created_at, updated_at
+        ) VALUES ('p1', 'test-layer', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
       ).run(now, now);
       db.prepare(
         `INSERT INTO resources (id, type, name, description, content, metadata, source, created_at, updated_at)
          VALUES ('r1', 'instruction', 'my-instruction', '', '', '{}', 'manual', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO plugin_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
+        `INSERT INTO layer_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
       ).run();
 
       const row = db
-        .prepare("SELECT * FROM plugin_resources WHERE layer_id = 'p1'")
+        .prepare("SELECT * FROM layer_resources WHERE layer_id = 'p1'")
         .get() as { layer_id: string } | undefined;
       expect(row?.layer_id).toBe("p1");
     } finally {
@@ -291,7 +293,7 @@ describe("initializeSchema", () => {
 
       // Plugin row carries version '1.0.0' and original fields intact
       const layer = db
-        .prepare("SELECT * FROM plugins WHERE id = 'p1'")
+        .prepare("SELECT * FROM layers WHERE id = 'p1'")
         .get() as { name: string; version: string; description: string } | undefined;
       expect(layer?.name).toBe("my-layer");
       expect(layer?.version).toBe("1.0.0");
@@ -306,14 +308,14 @@ describe("initializeSchema", () => {
 
       // FK-linked rows survived (instruction + migrated plugin pin)
       const prRows = db
-        .prepare("SELECT resource_id FROM plugin_resources WHERE layer_id = 'p1' ORDER BY resource_id")
+        .prepare("SELECT resource_id FROM layer_resources WHERE layer_id = 'p1' ORDER BY resource_id")
         .all() as Array<{ resource_id: string }>;
       expect(prRows.map((row) => row.resource_id)).toEqual(
         expect.arrayContaining(["r1", pluginResource!.id]),
       );
       const pluginLink = db
         .prepare(
-          "SELECT resource_id FROM plugin_resources WHERE layer_id = 'p1' AND resource_id = ?",
+          "SELECT resource_id FROM layer_resources WHERE layer_id = 'p1' AND resource_id = ?",
         )
         .get(pluginResource?.id) as { resource_id: string } | undefined;
       expect(pluginLink?.resource_id).toBe(pluginResource?.id);
@@ -325,16 +327,16 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
 
       const layerColumns = db
-        .prepare("PRAGMA table_info(plugins)")
+        .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
-          "source_path",
-          "source_hash",
-          "source_present",
+          "org_slug",
+          "catalog_slug",
+          "default_environment_id",
         ]),
       );
 
@@ -473,16 +475,14 @@ describe("initializeSchema", () => {
 
       const projectLayer = db
         .prepare(
-          `SELECT pcl.project_id, clp.plugin_id
-           FROM project_configured_layers pcl
-           INNER JOIN configured_layer_plugins clp
-             ON clp.configured_layer_id = pcl.configured_layer_id
-           WHERE pcl.project_id = 'project-1'`,
+          `SELECT pl.project_id, pl.layer_id
+           FROM project_layers pl
+           WHERE pl.project_id = 'project-1'`,
         )
-        .get() as { project_id: string; plugin_id: string } | undefined;
+        .get() as { project_id: string; layer_id: string } | undefined;
       expect(projectLayer).toEqual({
         project_id: 'project-1',
-        plugin_id: 'layer-1',
+        layer_id: 'legacy-wrap:layer-1',
       });
 
       const snapshot = db
@@ -713,25 +713,25 @@ describe("initializeSchema", () => {
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all() as Array<{ name: string }>;
       const names = tables.map((table) => table.name);
-      expect(names).toContain("plugins");
-      expect(names).not.toContain("layers");
-      expect(names).toContain("plugin_resources");
-      expect(names).not.toContain("layer_resources");
+      expect(names).toContain("layers");
+      expect(names).not.toContain("plugins");
+      expect(names).toContain("layer_resources");
+      expect(names).not.toContain("plugin_resources");
 
       const row = db
-        .prepare("SELECT name FROM plugins WHERE id = ?")
+        .prepare("SELECT name FROM layers WHERE id = ?")
         .get("p1") as { name: string } | undefined;
       expect(row).toEqual({ name: "team-stack" });
 
       const link = db
-        .prepare("SELECT layer_id FROM plugin_resources WHERE layer_id = 'p1'")
+        .prepare("SELECT layer_id FROM layer_resources WHERE layer_id = 'p1'")
         .get() as { layer_id: string } | undefined;
       expect(link?.layer_id).toBe("p1");
 
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
@@ -771,14 +771,14 @@ describe("initializeSchema", () => {
       context.schema.initializeSchema(db);
 
       const row = db
-        .prepare("SELECT needs_config FROM plugins WHERE id = 'p-needs'")
+        .prepare("SELECT needs_config FROM layers WHERE id = 'p-needs'")
         .get() as { needs_config: string };
       expect(row.needs_config).toBe("[]");
 
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
@@ -845,7 +845,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
@@ -913,32 +913,26 @@ describe("initializeSchema", () => {
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .all() as Array<{ name: string }>;
       const names = tables.map((table) => table.name);
-      expect(names).toContain("configured_layers");
-      expect(names).toContain("project_configured_layers");
-      expect(names).not.toContain("project_layers");
+      expect(names).toContain("layers");
+      expect(names).toContain("project_layers");
+      expect(names).not.toContain("project_configured_layers");
 
       const link = db
         .prepare(
-          `SELECT pcl.configured_layer_id, cl.name, cl.version
-           FROM project_configured_layers pcl
-           INNER JOIN configured_layers cl ON cl.id = pcl.configured_layer_id
-           WHERE pcl.project_id = 'proj-1'`,
+          `SELECT pl.layer_id, l.name, l.version
+           FROM project_layers pl
+           INNER JOIN layers l ON l.id = pl.layer_id
+           WHERE pl.project_id = 'proj-1'`,
         )
-        .get() as { configured_layer_id: string; name: string; version: string };
+        .get() as { layer_id: string; name: string; version: string };
       expect(link.name).toBe("team-stack");
       expect(link.version).toBe("2.0.0");
-
-      const pluginLink = db
-        .prepare(
-          "SELECT plugin_id FROM configured_layer_plugins WHERE configured_layer_id = ?",
-        )
-        .get(link.configured_layer_id) as { plugin_id: string };
-      expect(pluginLink.plugin_id).toBe("plug-1");
+      expect(link.layer_id).toBe("legacy-wrap:plug-1");
 
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
@@ -981,22 +975,24 @@ describe("initializeSchema", () => {
         .all() as Array<{ name: string }>;
       const names = tables.map((table) => table.name);
       expect(names).toContain("decks");
-      expect(names).toContain("deck_configured_layers");
+      expect(names).toContain("deck_layers");
 
       db.prepare(
         `INSERT INTO environments (id, name, description, created_at, updated_at)
          VALUES ('env-prod', 'prod', '', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO configured_layers (id, name, version, description, created_at, updated_at)
-         VALUES ('cl-1', 'oncall', '1.0.0', '', ?, ?)`,
+        `INSERT INTO layers (
+          id, name, version, org_slug, catalog_slug, description, tags,
+          claude_config, needs_config, created_at, updated_at
+        ) VALUES ('cl-1', 'oncall', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
       ).run(now, now);
       db.prepare(
         `INSERT INTO decks (id, name, root_path, active_environment_id, created_at, updated_at)
          VALUES ('deck-1', 'my-deck', '/tmp/my-deck', 'env-prod', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO deck_configured_layers (deck_id, configured_layer_id, "order")
+        `INSERT INTO deck_layers (deck_id, layer_id, "order")
          VALUES ('deck-1', 'cl-1', 0)`,
       ).run();
 
@@ -1007,15 +1003,15 @@ describe("initializeSchema", () => {
 
       const link = db
         .prepare(
-          "SELECT configured_layer_id FROM deck_configured_layers WHERE deck_id = 'deck-1'",
+          "SELECT layer_id FROM deck_layers WHERE deck_id = 'deck-1'",
         )
-        .get() as { configured_layer_id: string };
-      expect(link.configured_layer_id).toBe("cl-1");
+        .get() as { layer_id: string };
+      expect(link.layer_id).toBe("cl-1");
 
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
@@ -1133,7 +1129,7 @@ describe("initializeSchema", () => {
       expect(survivors).toEqual([{ id: "r-new" }]);
 
       const pluginLink = db
-        .prepare("SELECT resource_id FROM plugin_resources WHERE layer_id = 'plug-1'")
+        .prepare("SELECT resource_id FROM layer_resources WHERE layer_id = 'plug-1'")
         .get() as { resource_id: string };
       expect(pluginLink.resource_id).toBe("r-new");
 
@@ -1173,7 +1169,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(14);
+      expect(versionRow.version).toBe(15);
     } finally {
       await context.cleanup();
     }
