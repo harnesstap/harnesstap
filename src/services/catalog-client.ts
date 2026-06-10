@@ -5,7 +5,16 @@ import {
   resolveCatalogScope,
   type CatalogScope,
 } from "../config/catalog.js";
-import type { CatalogLibrary, CatalogListOptions, CatalogListResult } from "./catalog-types.js";
+import {
+  normalizeCatalogLibrary,
+  type CatalogLibrary,
+  type CatalogListOptions,
+  type CatalogListResult,
+} from "./catalog-types.js";
+import {
+  formatPublishedSelector,
+  parseLayerSelector,
+} from "./layer-selector.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
 
 function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): CatalogListOptions {
@@ -16,11 +25,15 @@ function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): Cat
   };
 }
 
+function catalogLibraryKey(library: CatalogLibrary): string {
+  return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
+}
+
 function dedupeCatalogLibraries(libraries: CatalogLibrary[]): CatalogLibrary[] {
   const byKey = new Map<string, CatalogLibrary>();
   const visibilityRank = { organization: 3, shared: 2, public: 1 } as const;
   for (const library of libraries) {
-    const key = `${library.orgSlug}/${library.slug}`;
+    const key = catalogLibraryKey(library);
     const existing = byKey.get(key);
     if (!existing || visibilityRank[library.visibility] > visibilityRank[existing.visibility]) {
       byKey.set(key, library);
@@ -38,6 +51,8 @@ function sortCatalogLibraries(
     sorted.sort((left, right) => {
       const byOrg = left.orgSlug.localeCompare(right.orgSlug);
       if (byOrg !== 0) return byOrg;
+      const byCatalog = left.catalogSlug.localeCompare(right.catalogSlug);
+      if (byCatalog !== 0) return byCatalog;
       return left.name.localeCompare(right.name);
     });
     return sorted;
@@ -49,9 +64,18 @@ function sortCatalogLibraries(
     if (rightTime !== leftTime) return rightTime - leftTime;
     const byOrg = left.orgSlug.localeCompare(right.orgSlug);
     if (byOrg !== 0) return byOrg;
+    const byCatalog = left.catalogSlug.localeCompare(right.catalogSlug);
+    if (byCatalog !== 0) return byCatalog;
     return left.name.localeCompare(right.name);
   });
   return sorted;
+}
+
+function normalizeListResult(result: CatalogListResult): CatalogListResult {
+  return {
+    ...result,
+    libraries: result.libraries.map((library) => normalizeCatalogLibrary(library)),
+  };
 }
 
 async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: string) {
@@ -62,6 +86,7 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
       const params = new URLSearchParams();
       if (options.q?.trim()) params.set("q", options.q.trim());
       if (options.tag?.trim()) params.set("tag", options.tag.trim());
+      if (options.catalog?.trim()) params.set("catalog", options.catalog.trim());
       if (options.limit != null) params.set("limit", String(options.limit));
       if (options.cursor) params.set("cursor", options.cursor);
       if (options.sort) params.set("sort", options.sort);
@@ -76,7 +101,8 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
       if (!response.ok) {
         throw new Error(`Failed to list catalog libraries: ${response.status}`);
       }
-      return await response.json() as CatalogListResult;
+      const result = await response.json() as CatalogListResult;
+      return normalizeListResult(result);
     },
   };
 }
@@ -115,8 +141,11 @@ export async function listLibrariesInScope(
 
   const orgScopedLibraries: CatalogLibrary[] = [];
   const selectorsOnly = (scopedOptions.selectors ?? []).filter((selector) => {
-    const orgSlug = selector.split("/")[0];
-    return !orgSlug || !scopedOptions.orgs?.includes(orgSlug);
+    const parsed = parseLayerSelector(selector);
+    if (parsed.scope !== "published") {
+      return true;
+    }
+    return !scopedOptions.orgs?.includes(parsed.org);
   });
 
   if ((scopedOptions.orgs ?? []).length > 0) {
@@ -145,19 +174,29 @@ export async function listLibrariesInScope(
 
 export async function downloadCatalogBundle(input: {
   orgSlug: string;
+  catalogSlug?: string;
   librarySlug: string;
   version?: string;
   profile?: string;
   baseUrl?: string;
 }): Promise<{ version: string; body: string }> {
+  const catalogSlug = input.catalogSlug ?? "default";
   const access = await resolveCatalogAccess({
     profile: input.profile,
     baseUrl: input.baseUrl,
   });
   const version = input.version ?? "latest";
-  const selector = `${input.orgSlug}/${input.librarySlug}`;
+  const selector = formatPublishedSelector({
+    org: input.orgSlug,
+    catalog: catalogSlug,
+    name: input.librarySlug,
+  });
   const inScope = isSelectorInCatalogScope(
-    { orgSlug: input.orgSlug, librarySlug: input.librarySlug },
+    {
+      orgSlug: input.orgSlug,
+      catalogSlug,
+      librarySlug: input.librarySlug,
+    },
     access.scope,
   );
 
@@ -169,7 +208,9 @@ export async function downloadCatalogBundle(input: {
   const accessToken = profileInfo.profile?.accessToken;
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
-    const url = `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.librarySlug)}/versions/${encodedVersion}/bundle`;
+    const url = catalogSlug === "default"
+      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.librarySlug)}/versions/${encodedVersion}/bundle`
+      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.librarySlug)}/versions/${encodedVersion}/bundle`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -187,7 +228,12 @@ export async function downloadCatalogBundle(input: {
     throw new Error(formatOutOfScopeMessage(selector));
   }
 
-  return access.publicClient.downloadBundle(input.orgSlug, input.librarySlug, version);
+  return access.publicClient.downloadBundle(
+    input.orgSlug,
+    input.librarySlug,
+    version,
+    catalogSlug,
+  );
 }
 
 export async function validatePublicOrgHasLibraries(orgSlug: string, baseUrl?: string): Promise<boolean> {
@@ -202,7 +248,13 @@ export async function validatePublicLibraryExists(
 ): Promise<boolean> {
   const client = createPublicCatalogClient(resolveCatalogScope({ baseUrl }).cloudBaseUrl);
   const result = await client.listLibraries({ selectors: [selector], limit: 1 });
-  return result.libraries.some(
-    (library) => `${library.orgSlug}/${library.slug}` === selector,
+  const parsed = parseLayerSelector(selector);
+  if (parsed.scope !== "published") {
+    return false;
+  }
+  return result.libraries.some((library) =>
+    library.orgSlug === parsed.org
+    && library.catalogSlug === parsed.catalog
+    && library.slug === parsed.name,
   );
 }
