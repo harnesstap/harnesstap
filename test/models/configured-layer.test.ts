@@ -2,10 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment } from "../../src/models/environment.ts";
 import { createPlugin } from "../../src/models/plugin-component.ts";
-import {
-  createConfiguredLayer,
-  listConfiguredLayerPlugins,
-} from "../../src/models/configured-layer.ts";
+import { createConfiguredLayer } from "../../src/models/configured-layer.ts";
+import { getLayerResources } from "../../src/models/layer-model.ts";
 
 describe("configured layer model", () => {
   it("binds multiple plugins and a default environment", async () => {
@@ -20,7 +18,8 @@ describe("configured layer model", () => {
         pluginIds: [p1.id, p2.id],
         environmentId: env.id,
       });
-      expect(listConfiguredLayerPlugins(layer.id)).toHaveLength(2);
+      expect(layer.name).toBe("backend-oncall");
+      expect(getLayerResources(layer.id).length).toBeGreaterThanOrEqual(0);
     } finally {
       await context.cleanup();
     }

@@ -174,22 +174,24 @@ export interface ClaudeLayerConfig {
   plugins?: ClaudePluginEntry[];
 }
 
-export interface Plugin {
+export interface Layer {
   id: string;
   name: string;
   version: string;
+  org_slug: string;
+  catalog_slug: string;
   description: string;
   tags: string[];
   claude?: ClaudeLayerConfig;
-  /** Config contract keys this plugin requires from an environment. */
+  /** Config contract keys this layer requires from an environment. */
   needs?: string[];
-
+  default_environment_id?: string;
   created_at: string;
   updated_at: string;
 }
 
-/** @deprecated Use Plugin */
-export type Layer = Plugin;
+/** @deprecated Use Layer */
+export type Plugin = Layer;
 
 export type EnvironmentSecretProvider = "keychain" | "env" | "file";
 
@@ -235,15 +237,8 @@ export interface Project {
   created_at: string;
 }
 
-export interface ConfiguredLayer {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  default_environment_id?: string;
-  created_at: string;
-  updated_at: string;
-}
+/** @deprecated Use Layer */
+export type ConfiguredLayer = Layer;
 
 export interface ConfiguredLayerPlugin {
   configured_layer_id: string;
@@ -437,7 +432,10 @@ export interface PlatformDefinition {
 export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
 export const BUNDLE_VERSION = 1 as const;
 
-export type ExportBundleLayer = Omit<Layer, "id" | "created_at" | "updated_at">;
+export type ExportBundleLayer = Omit<
+  Layer,
+  "id" | "created_at" | "updated_at" | "org_slug" | "catalog_slug" | "default_environment_id"
+>;
 
 export type ExportBundleResource = Omit<
   Resource,

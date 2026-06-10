@@ -127,7 +127,8 @@ import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergePlugins } from "./services/layer-merge.js";
-import { mergeConfiguredLayers } from "./services/configured-layer-merge.js";
+import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
+import { updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -1496,6 +1497,11 @@ async function handleLayerInstallCommand(
     });
     const tempPath = writeLayerBundleToTempFile(downloaded.body);
     const imported = importFromFile(tempPath, { layerNameOverride: opts.as });
+    updateLayerPublishedIdentity(imported.layer.id, {
+      org_slug: parsed.org_slug,
+      catalog_slug: parsed.catalog_slug,
+      version: downloaded.version,
+    });
     if (parseOutputFormat(opts.format) === "json") {
       printJson({
         layer_name: imported.layer.name,
@@ -1600,6 +1606,11 @@ async function handleLayerPublishCommand(
       { layer_name: layer.name, org_slug: orgSlug, catalog_slug: catalogSlug },
       bundleJson,
     );
+    updateLayerPublishedIdentity(layer.id, {
+      org_slug: orgSlug,
+      catalog_slug: catalogSlug,
+      version: typeof resp.version === "string" ? resp.version : undefined,
+    });
     if (parseOutputFormat(opts.format) === "json") {
       printJson(resp);
       return;

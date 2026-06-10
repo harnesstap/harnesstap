@@ -32,7 +32,6 @@ import {
 import {
   createConfiguredLayer,
   getConfiguredLayer,
-  listConfiguredLayerPlugins,
 } from "../models/configured-layer.js";
 import {
   addResourceToEnvironment,
@@ -564,12 +563,9 @@ export function exportDeckToDeckJson(deckId: string): DeckJson {
     const configuredLayer = getConfiguredLayer(link.configured_layer_id);
     if (!configuredLayer) continue;
 
-    const pluginRefs: DeckJsonLayerPluginRef[] = [];
-    for (const binding of listConfiguredLayerPlugins(configuredLayer.id)) {
-      const plugin = getPlugin(binding.plugin_id);
-      if (!plugin) continue;
-      pluginRefs.push({ name: plugin.name, version: plugin.version });
-    }
+    const pluginRefs: DeckJsonLayerPluginRef[] = [
+      { name: configuredLayer.name, version: configuredLayer.version },
+    ];
 
     const layerEnvironment = rememberEnvironment(
       configuredLayer.default_environment_id,
@@ -861,6 +857,8 @@ export function exportLayer(
         id: "",
         name: payload.name,
         version: payload.version,
+        org_slug: "",
+        catalog_slug: "",
         description: payload.description,
         tags: payload.tags,
         ...(payload.claude ? { claude: payload.claude } : {}),
