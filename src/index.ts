@@ -1066,7 +1066,7 @@ async function handleApplyCommand(
   let pluginSync: SyncPluginPinsForApplyResult | undefined;
   if (!opts.ignorePluginVersions && mergedPluginPins.length > 0 && !opts.dryRun) {
     console.log(ui.theme.muted("Plugins"));
-    let pluginProgress: ProgressHandle | null = null;
+    const pluginProgressState: { current: ProgressHandle | null } = { current: null };
 
     pluginSync = await syncPluginPinsForApply({
       pins: mergedPluginPins,
@@ -1076,25 +1076,25 @@ async function handleApplyCommand(
       ignoreMissingInstall: opts.ignorePluginVersions,
       progress: {
         onInstallStart: (ref) => {
-          pluginProgress?.stop();
-          pluginProgress = createProgress(`Installing ${ref}…`);
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = createProgress(`Installing ${ref}…`);
         },
         onInstallComplete: (install) => {
-          pluginProgress?.stop();
-          pluginProgress = null;
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
           printPluginInstallLine(install);
         },
         onSyncStart: (ref) => {
-          pluginProgress?.stop();
-          pluginProgress = createProgress(`Syncing ${ref}…`);
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
         },
         onSyncComplete: () => {
-          pluginProgress?.stop();
-          pluginProgress = null;
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
         },
       },
     });
-    pluginProgress?.stop();
+    pluginProgressState.current?.stop();
 
     const extraMaterialized = countPluginMaterialResources(mergedPluginPins, resources);
     printPluginApplyPostSyncSummary(pluginSync, extraMaterialized);
