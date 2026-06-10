@@ -136,7 +136,7 @@ describe("exporter deck adapters", () => {
 
       try {
         pluginModel.createPlugin({
-          name: "pagerduty",
+          name: "backend-oncall",
           version: "1.0.0",
           needs: ["PD_TOKEN"],
         });

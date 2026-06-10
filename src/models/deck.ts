@@ -93,46 +93,53 @@ export function setDeckActiveEnvironment(
   ).run(environmentId, now, deckId);
 }
 
-export function addConfiguredLayerToDeck(
-  deckId: string,
-  configuredLayerId: string,
-): void {
+export function addLayerToDeck(deckId: string, layerId: string): void {
   const db = getDb();
   const maxOrder = db
     .prepare(
-      'SELECT COALESCE(MAX("order"), -1) as max_order FROM deck_configured_layers WHERE deck_id = ?',
+      'SELECT COALESCE(MAX("order"), -1) as max_order FROM deck_layers WHERE deck_id = ?',
     )
     .get(deckId) as { max_order: number };
 
   db.prepare(
-    `INSERT OR IGNORE INTO deck_configured_layers (deck_id, configured_layer_id, "order")
+    `INSERT OR IGNORE INTO deck_layers (deck_id, layer_id, "order")
      VALUES (?, ?, ?)`,
-  ).run(deckId, configuredLayerId, maxOrder.max_order + 1);
+  ).run(deckId, layerId, maxOrder.max_order + 1);
 }
 
-export function removeConfiguredLayerFromDeck(
-  deckId: string,
-  configuredLayerId: string,
-): boolean {
+/** @deprecated Use addLayerToDeck */
+export const addConfiguredLayerToDeck = addLayerToDeck;
+
+export function removeLayerFromDeck(deckId: string, layerId: string): boolean {
   const db = getDb();
   const result = db
-    .prepare(
-      "DELETE FROM deck_configured_layers WHERE deck_id = ? AND configured_layer_id = ?",
-    )
-    .run(deckId, configuredLayerId);
+    .prepare("DELETE FROM deck_layers WHERE deck_id = ? AND layer_id = ?")
+    .run(deckId, layerId);
   return result.changes > 0;
 }
 
-export function listDeckConfiguredLayers(
+/** @deprecated Use removeLayerFromDeck */
+export const removeConfiguredLayerFromDeck = removeLayerFromDeck;
+
+export function listDeckLayers(
   deckId: string,
-): DeckConfiguredLayer[] {
+): Array<{ deck_id: string; layer_id: string; order: number }> {
   const db = getDb();
   return db
     .prepare(
-      `SELECT deck_id, configured_layer_id, "order" as "order"
-       FROM deck_configured_layers
+      `SELECT deck_id, layer_id, "order" as "order"
+       FROM deck_layers
        WHERE deck_id = ?
        ORDER BY "order"`,
     )
-    .all(deckId) as DeckConfiguredLayer[];
+    .all(deckId) as Array<{ deck_id: string; layer_id: string; order: number }>;
+}
+
+/** @deprecated Use listDeckLayers */
+export function listDeckConfiguredLayers(deckId: string): DeckConfiguredLayer[] {
+  return listDeckLayers(deckId).map((row) => ({
+    deck_id: row.deck_id,
+    configured_layer_id: row.layer_id,
+    order: row.order,
+  }));
 }

@@ -1,8 +1,9 @@
 import type { SqliteDatabase } from "./types.js";
+import { migrateToUnifiedLayers } from "./migrate-to-unified-layers.js";
 import { hashResourceBody } from "../services/resource-hash.js";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -834,27 +835,36 @@ function rewriteResourceForeignKeys(
   winnerId: string,
   loserId: string,
 ): void {
-  const hasPluginResources = db
-    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugin_resources'")
-    .get();
-  if (hasPluginResources) {
-    const pluginLinks = db
-      .prepare("SELECT layer_id FROM plugin_resources WHERE resource_id = ?")
+  const layerResourceTable = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('layer_resources', 'plugin_resources')",
+    )
+    .all() as Array<{ name: string }>;
+  const layerResourceName = layerResourceTable.some((t) => t.name === "layer_resources")
+    ? "layer_resources"
+    : layerResourceTable.some((t) => t.name === "plugin_resources")
+      ? "plugin_resources"
+      : null;
+  if (layerResourceName) {
+    const layerIdColumn = layerResourceName === "plugin_resources" ? "layer_id" : "layer_id";
+    const layerLinks = db
+      .prepare(`SELECT ${layerIdColumn} as layer_id FROM ${layerResourceName} WHERE resource_id = ?`)
       .all(loserId) as Array<{ layer_id: string }>;
 
-    for (const link of pluginLinks) {
+    for (const link of layerLinks) {
       const winnerLinked = db
-        .prepare("SELECT 1 FROM plugin_resources WHERE layer_id = ? AND resource_id = ?")
+        .prepare(
+          `SELECT 1 FROM ${layerResourceName} WHERE ${layerIdColumn} = ? AND resource_id = ?`,
+        )
         .get(link.layer_id, winnerId);
 
       if (winnerLinked) {
-        db.prepare("DELETE FROM plugin_resources WHERE layer_id = ? AND resource_id = ?").run(
-          link.layer_id,
-          loserId,
-        );
+        db.prepare(
+          `DELETE FROM ${layerResourceName} WHERE ${layerIdColumn} = ? AND resource_id = ?`,
+        ).run(link.layer_id, loserId);
       } else {
         db.prepare(
-          "UPDATE plugin_resources SET resource_id = ? WHERE layer_id = ? AND resource_id = ?",
+          `UPDATE ${layerResourceName} SET resource_id = ? WHERE ${layerIdColumn} = ? AND resource_id = ?`,
         ).run(winnerId, link.layer_id, loserId);
       }
     }
@@ -902,7 +912,8 @@ export function initializeSchema(db: SqliteDatabase): void {
     currentVersion < 6 ||
     currentVersion < 8 ||
     currentVersion < 11 ||
-    currentVersion < 14;
+    currentVersion < 14 ||
+    currentVersion < 15;
   if (needsFkToggle) {
     db.exec("PRAGMA foreign_keys = OFF");
   }
@@ -927,6 +938,10 @@ export function initializeSchema(db: SqliteDatabase): void {
         }
         if (v === 14) {
           applyMigration14(db);
+          continue;
+        }
+        if (v === 15) {
+          migrateToUnifiedLayers(db);
           continue;
         }
         const migration = MIGRATIONS[v];
