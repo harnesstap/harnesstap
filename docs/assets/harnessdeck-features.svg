@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title" aria-describedby="desc">
   <title id="title">HarnessDeck feature map</title>
-  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, reusable layers, apply and sync, snapshots, drift detection, plugin governance, cloud sharing, and migration export features.</desc>
+  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins and layers, portable decks, apply and sync, snapshots, drift detection, plugin pins, cloud sharing, and machine migration.</desc>
   <defs>
     <radialGradient id="bg" cx="50%" cy="28%" r="88%">
       <stop offset="0%" stop-color="#24316d"/>
@@ -46,12 +46,12 @@
       .subtitle { fill: #bfd0ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 24px; font-weight: 520; }
       .sectionTitle { fill: #f7fbff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 28px; font-weight: 800; }
       .sectionCopy { fill: #b8c9ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: 520; }
-      .chipText { fill: #edf6ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 760; text-anchor: middle; dominant-baseline: middle; }
+      .chipText { fill: #edf6ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: 760; text-anchor: middle; dominant-baseline: middle; }
       .hubTitle { fill: #ffffff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 36px; font-weight: 860; letter-spacing: -0.8px; }
       .hubCopy { fill: #d7e4ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 560; }
-      .label { fill: #f7fbff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 24px; font-weight: 800; }
-      .small { fill: #b9c8ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: 520; }
-      .tiny { fill: #d7e3ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 15px; font-weight: 650; letter-spacing: 0.2px; }
+      .label { fill: #f7fbff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 21px; font-weight: 800; }
+      .small { fill: #b9c8ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 520; }
+      .tiny { fill: #d7e3ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 650; letter-spacing: 0.2px; }
       .card { fill: url(#card); stroke: #7a8dff; stroke-opacity: 0.32; stroke-width: 1.4; }
       .panel { fill: url(#panel); stroke: #7a8dff; stroke-opacity: 0.24; stroke-width: 1.4; }
       .iconCircle { fill: #101835; stroke: url(#accent); stroke-width: 2; }
@@ -70,137 +70,140 @@
   <text x="800" y="130" class="subtitle" text-anchor="middle">One control plane for every coding agent harness</text>
 
   <g filter="url(#softShadow)">
-    <rect class="panel" x="170" y="172" width="1260" height="160" rx="34"/>
-    <text x="220" y="226" class="sectionTitle">Agent harnesses</text>
-    <text x="220" y="254" class="sectionCopy">One layer can target every environment without scattering configuration across separate diagrams.</text>
+    <rect class="panel" x="122" y="172" width="1356" height="160" rx="34"/>
+    <text x="172" y="226" class="sectionTitle">Agent harnesses</text>
+    <text x="172" y="254" class="sectionCopy">Apply plugins, layers, and decks to every target without scattering configuration.</text>
 
     <g>
-      <rect x="216" y="274" width="176" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
-      <text x="304" y="296" class="chipText">Claude Code</text>
+      <rect x="172" y="274" width="168" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
+      <text x="256" y="296" class="chipText">Claude Code</text>
 
-      <rect x="414" y="274" width="138" height="42" rx="21" fill="#101835" stroke="#9f7aea" stroke-opacity="0.52"/>
-      <text x="483" y="296" class="chipText">Cursor</text>
+      <rect x="380" y="274" width="124" height="42" rx="21" fill="#101835" stroke="#9f7aea" stroke-opacity="0.52"/>
+      <text x="442" y="296" class="chipText">Cursor</text>
 
-      <rect x="574" y="274" width="132" height="42" rx="21" fill="#101835" stroke="#ff6bcb" stroke-opacity="0.52"/>
-      <text x="640" y="296" class="chipText">Codex</text>
+      <rect x="544" y="274" width="118" height="42" rx="21" fill="#101835" stroke="#ff6bcb" stroke-opacity="0.52"/>
+      <text x="603" y="296" class="chipText">Codex</text>
 
-      <rect x="728" y="274" width="210" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
-      <text x="833" y="296" class="chipText">GitHub Copilot</text>
+      <rect x="702" y="274" width="196" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
+      <text x="800" y="296" class="chipText">GitHub Copilot</text>
 
-      <rect x="960" y="274" width="156" height="42" rx="21" fill="#101835" stroke="#9f7aea" stroke-opacity="0.52"/>
-      <text x="1038" y="296" class="chipText">Other CLIs</text>
+      <rect x="938" y="274" width="142" height="42" rx="21" fill="#101835" stroke="#9f7aea" stroke-opacity="0.52"/>
+      <text x="1009" y="296" class="chipText">Copilot CLI</text>
 
-      <rect x="1138" y="274" width="246" height="42" rx="21" fill="#101835" stroke="#ff6bcb" stroke-opacity="0.52"/>
-      <text x="1261" y="296" class="chipText">Portable adapters</text>
+      <rect x="1120" y="274" width="132" height="42" rx="21" fill="#101835" stroke="#ff6bcb" stroke-opacity="0.52"/>
+      <text x="1186" y="296" class="chipText">Windsurf</text>
+
+      <rect x="1292" y="274" width="186" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
+      <text x="1385" y="296" class="chipText">8+ more CLIs</text>
     </g>
   </g>
 
   <g opacity="0.82">
-    <path class="connector" d="M800 332 V390"/>
-    <path class="flow" d="M570 390 H1030"/>
-    <path class="connector" d="M800 494 V532"/>
+    <path class="connector" d="M800 332 V388"/>
+    <path class="flow" d="M570 388 H1030"/>
+    <path class="connector" d="M800 500 V536"/>
   </g>
 
   <g filter="url(#softShadow)">
-    <rect x="470" y="392" width="660" height="108" rx="34" fill="#0b1227" stroke="url(#accent)" stroke-width="2.2"/>
-    <circle cx="548" cy="446" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
-    <path d="M532 446 H564 M548 430 V462" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
-    <text x="606" y="440" class="hubTitle">HarnessDeck</text>
-    <text x="606" y="468" class="hubCopy">scan - normalize - layer - apply - sync</text>
+    <rect x="470" y="390" width="660" height="110" rx="34" fill="#0b1227" stroke="url(#accent)" stroke-width="2.2"/>
+    <circle cx="548" cy="445" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
+    <path d="M532 445 H564 M548 429 V461" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
+    <text x="606" y="438" class="hubTitle">HarnessDeck</text>
+    <text x="606" y="468" class="hubCopy">scan · plugin · layer · deck · apply · sync</text>
   </g>
 
   <g filter="url(#softShadow)">
-    <g transform="translate(150 560)">
-      <rect class="card" width="300" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M44 48 h20 M54 38 v20" stroke="#74fbff" stroke-width="4.5" stroke-linecap="round"/>
-      <text x="92" y="52" class="label">Scan</text>
-      <text x="28" y="96" class="small">Find existing repo and home</text>
-      <text x="28" y="120" class="small">assistant configuration.</text>
+    <!-- Row 1: x=122,469,816,1163 | width=315 | gap=32 -->
+    <g transform="translate(122 548)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M40 48 h20 M50 38 v20" stroke="#74fbff" stroke-width="4.5" stroke-linecap="round"/>
+      <text x="84" y="52" class="label">Scan</text>
+      <text x="24" y="96" class="small">Find repo and home</text>
+      <text x="24" y="118" class="small">assistant defaults.</text>
     </g>
 
-    <g transform="translate(490 560)">
-      <rect class="card" width="300" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <ellipse cx="54" cy="40" rx="15" ry="7" fill="none" stroke="#b48cff" stroke-width="3"/>
-      <path d="M39 40 v18 c0 4 6.5 8 15 8 s15 -4 15 -8 V40" fill="none" stroke="#b48cff" stroke-width="3"/>
-      <text x="92" y="52" class="label">SQLite library</text>
-      <text x="28" y="96" class="small">Store resources canonically</text>
-      <text x="28" y="120" class="small">instead of per-tool sprawl.</text>
+    <g transform="translate(469 548)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <ellipse cx="50" cy="40" rx="15" ry="7" fill="none" stroke="#b48cff" stroke-width="3"/>
+      <path d="M35 40 v18 c0 4 6.5 8 15 8 s15 -4 15 -8 V40" fill="none" stroke="#b48cff" stroke-width="3"/>
+      <text x="84" y="52" class="label">Library</text>
+      <text x="24" y="96" class="small">Canonical SQLite</text>
+      <text x="24" y="118" class="small">resource store.</text>
     </g>
 
-    <g transform="translate(830 560)">
-      <rect class="card" width="300" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M42 40 h24 M42 49 h24 M42 58 h16" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
-      <text x="92" y="52" class="label">Reusable layers</text>
-      <text x="28" y="96" class="small">Bundle skills, rules, commands,</text>
-      <text x="28" y="120" class="small">dependencies, and version pins.</text>
+    <g transform="translate(816 548)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M38 40 h24 M38 49 h24 M38 58 h16" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
+      <text x="84" y="52" class="label">Compose</text>
+      <text x="24" y="96" class="small">Plugins, environments,</text>
+      <text x="24" y="118" class="small">layers, and decks.</text>
     </g>
 
-    <g transform="translate(1170 560)">
-      <rect class="card" width="280" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M41 48 h26 M54 39 l13 9 -13 9" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="92" y="52" class="label">Apply &amp; sync</text>
-      <text x="28" y="96" class="small">Materialize one layer into</text>
-      <text x="28" y="120" class="small">platform-specific files.</text>
+    <g transform="translate(1163 548)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M37 48 h26 M50 39 l13 9 -13 9" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="84" y="52" class="label">Apply</text>
+      <text x="24" y="96" class="small">Materialize layers to</text>
+      <text x="24" y="118" class="small">any harness output.</text>
     </g>
 
-    <g transform="translate(150 744)">
-      <rect class="card" width="300" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M42 54 h24 M42 42 h16 M42 42 l0 12 10 0" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="92" y="52" class="label">Snapshots</text>
-      <text x="28" y="96" class="small">Capture before writes.</text>
-      <text x="28" y="120" class="small">Revert with confidence.</text>
+    <!-- Row 2: y=548+162+36=746 -->
+    <g transform="translate(122 746)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M38 54 h24 M38 42 h16 M38 42 l0 12 10 0" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="84" y="52" class="label">Snapshots</text>
+      <text x="24" y="96" class="small">Capture before writes.</text>
+      <text x="24" y="118" class="small">Revert with confidence.</text>
     </g>
 
-    <g transform="translate(490 744)">
-      <rect class="card" width="300" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M40 57 C46 42 56 42 64 33" fill="none" stroke="#b48cff" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="41" cy="58" r="4" fill="#b48cff"/>
-      <circle cx="51" cy="47" r="4" fill="#b48cff"/>
-      <circle cx="64" cy="34" r="4" fill="#b48cff"/>
-      <text x="92" y="52" class="label">Drift detection</text>
-      <text x="28" y="96" class="small">Compare tracked state.</text>
-      <text x="28" y="120" class="small">See what changed.</text>
+    <g transform="translate(469 746)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M36 57 C42 42 52 42 60 33" fill="none" stroke="#b48cff" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="37" cy="58" r="4" fill="#b48cff"/>
+      <circle cx="47" cy="47" r="4" fill="#b48cff"/>
+      <circle cx="60" cy="34" r="4" fill="#b48cff"/>
+      <text x="84" y="52" class="label">Drift</text>
+      <text x="24" y="96" class="small">Compare tracked state</text>
+      <text x="24" y="118" class="small">after apply or sync.</text>
     </g>
 
-    <g transform="translate(830 744)">
-      <rect class="card" width="300" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M42 56 h24 M42 48 h18 M42 40 h24" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
-      <text x="92" y="52" class="label">Plugin governance</text>
-      <text x="28" y="96" class="small">Inventory plugins.</text>
-      <text x="28" y="120" class="small">Respect constraints.</text>
+    <g transform="translate(816 746)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M38 56 h24 M38 48 h18 M38 40 h24" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
+      <text x="84" y="52" class="label">Plugins</text>
+      <text x="24" y="96" class="small">Marketplace sync,</text>
+      <text x="24" y="118" class="small">pins, and doctor.</text>
     </g>
 
-    <g transform="translate(1170 744)">
-      <rect class="card" width="280" height="156" rx="26"/>
-      <circle class="iconCircle" cx="54" cy="48" r="24"/>
-      <path d="M40 52 C45 40 57 40 62 52 C57 64 45 64 40 52 Z" fill="none" stroke="#74fbff" stroke-width="3.5"/>
-      <path d="M54 30 v44 M32 52 h44" stroke="#74fbff" stroke-width="2.8" stroke-linecap="round" opacity="0.45"/>
-      <text x="92" y="52" class="label">Cloud sharing</text>
-      <text x="28" y="96" class="small">Search, add, publish</text>
-      <text x="28" y="120" class="small">team-ready layers.</text>
+    <g transform="translate(1163 746)">
+      <rect class="card" width="315" height="162" rx="26"/>
+      <circle class="iconCircle" cx="50" cy="48" r="24"/>
+      <path d="M36 52 C41 40 53 40 58 52 C53 64 41 64 36 52 Z" fill="none" stroke="#74fbff" stroke-width="3.5"/>
+      <path d="M50 30 v44 M28 52 h44" stroke="#74fbff" stroke-width="2.8" stroke-linecap="round" opacity="0.45"/>
+      <text x="84" y="52" class="label">Cloud</text>
+      <text x="24" y="96" class="small">Search, install, and</text>
+      <text x="24" y="118" class="small">publish team layers.</text>
     </g>
 
-    <g transform="translate(420 904)">
-      <rect class="card" width="760" height="82" rx="28"/>
-      <circle class="iconCircle" cx="58" cy="41" r="22"/>
-      <path d="M46 41 h24 M64 29 l12 12 -12 12" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="96" y="46" class="label">Migration export</text>
-      <text x="334" y="38" class="small">
-        <tspan x="334" dy="0">Move libraries, preferences, and config</tspan>
-        <tspan x="334" dy="22">across harnesses without losing structure.</tspan>
-      </text>
+    <!-- Bottom bar: y=746+162+36=944 -->
+    <g transform="translate(122 944)">
+      <rect class="card" width="1356" height="54" rx="24"/>
+      <circle class="iconCircle" cx="50" cy="27" r="20"/>
+      <path d="M38 27 h24 M56 15 l12 12 -12 12" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="84" y="32" class="label">Migrate</text>
+      <text x="800" y="32" class="small" text-anchor="middle">Export libraries, harness prefs, and config across machines.</text>
     </g>
   </g>
 
-  <g transform="translate(500 514)">
-    <rect width="600" height="34" rx="17" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="300" y="22" class="tiny" text-anchor="middle">portable JSON bundles - built-in starter layers - layer doctor - diffs</text>
+  <g transform="translate(350 518)">
+    <rect width="900" height="32" rx="16" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
+    <text x="450" y="21" class="tiny" text-anchor="middle">bundle v1 · deck v1 · environments · layer doctor · diffs · from-project</text>
   </g>
 </svg>
