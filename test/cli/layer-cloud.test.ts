@@ -146,6 +146,76 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
+  it("project apply fetches a published selector when the layer is not installed locally", async () => {
+    const context = await createTestContext("cli-project-apply-remote-fetch");
+    try {
+      await runCli(["init"]);
+
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        libraries: [{
+          orgSlug: "harnessdeck-cloud",
+          slug: "team",
+          name: "Team Layer",
+          summary: "Team layer",
+          latestVersion: "1.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: [],
+          visibility: "public",
+        }],
+      });
+
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
+
+      const humanRun = await runCli([
+        "project",
+        "apply",
+        "harnessdeck-cloud/team@1.0",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+        "--dry-run",
+      ]);
+      expect(humanRun.stdout).toContain("Fetched harnessdeck-cloud/team@1.0 from catalog");
+
+      const dryRun = await runCli([
+        "project",
+        "apply",
+        "harnessdeck-cloud/team@1.0",
+        "--project",
+        context.projectDir,
+        "--platform",
+        "claude-code",
+        "--dry-run",
+        "--format",
+        "json",
+      ]);
+      expect(dryRun.exitCode).toBeUndefined();
+      const dryRunPayload = JSON.parse(dryRun.stdout);
+      expect(dryRunPayload).toEqual(
+        expect.objectContaining({
+          layer: "remote-team",
+          layers: ["harnessdeck-cloud/team@1.0"],
+        }),
+      );
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("layer add accepts --org and --version helpers to complete partial selectors", async () => {
     const context = await createTestContext("cli-layer-add-helpers");
     try {

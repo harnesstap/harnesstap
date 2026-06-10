@@ -92,7 +92,6 @@ import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import {
-  downloadCatalogBundle,
   listLibrariesInScope,
 } from "./services/catalog-client.js";
 import {
@@ -156,7 +155,8 @@ import {
   importEnvironmentJsonc,
 } from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
-import { isLayerUrl, fetchLayerBundleToTempFile, isBundleFilePath, writeLayerBundleToTempFile } from "./services/layer-source.js";
+import { resolveApplyLayerSource } from "./services/layer-apply-source.js";
+import { installLayerFromCatalog } from "./services/layer-catalog-install.js";
 import { syncProject } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
@@ -853,6 +853,9 @@ async function handleScanCommand(
 async function resolveApplyLayers(
   layerNames: [string, ...string[]],
   projectRoot: string,
+  options: {
+    onFetched?: (sourceLabel: string) => void;
+  } = {},
 ): Promise<{
   layers: ReturnType<typeof getPlugin>[];
   resources: Resource[];
@@ -860,18 +863,6 @@ async function resolveApplyLayers(
   configuredLayerIds: string[];
   primaryConfiguredLayerId: string;
 }> {
-  function resolveConfiguredLayerIds(
-    selectors: string[],
-  ): string[] {
-    return selectors.map((selector) => {
-      const configuredLayer = resolveConfiguredLayerSelector(selector);
-      if (!configuredLayer) {
-        throw new Error(`Layer not found: ${selector}`);
-      }
-      return configuredLayer.id;
-    });
-  }
-
   function importedBundleToApplyResult(imported: ReturnType<typeof importFromFile>) {
     const layers = imported.layers.map((entry) => entry.layer);
     const primaryLayer = layers[layers.length - 1];
@@ -889,24 +880,29 @@ async function resolveApplyLayers(
     };
   }
 
-  if (layerNames.length === 1 && isLayerUrl(layerNames[0])) {
-    const tempFile = await fetchLayerBundleToTempFile(layerNames[0]);
+  const resolvedSources = await Promise.all(
+    layerNames.map((selector) =>
+      resolveApplyLayerSource(selector, { onFetched: options.onFetched }),
+    ),
+  );
+
+  if (
+    resolvedSources.length === 1
+    && resolvedSources[0]?.kind === "bundle"
+  ) {
     return importedBundleToApplyResult(
-      importFromFile(tempFile, {
+      importFromFile(resolvedSources[0].path, {
         embeddedTargetDir: projectRoot,
       }),
     );
   }
 
-  if (layerNames.length === 1 && isBundleFilePath(layerNames[0])) {
-    return importedBundleToApplyResult(
-      importFromFile(layerNames[0], {
-        embeddedTargetDir: projectRoot,
-      }),
-    );
-  }
-
-  const configuredLayerIds = resolveConfiguredLayerIds(layerNames);
+  const configuredLayerIds = resolvedSources.map((source) => {
+    if (source.kind === "bundle") {
+      throw new Error("Bundle paths and URLs cannot be mixed with layer selectors.");
+    }
+    return ensureImplicitConfiguredLayer(source.layerId).id;
+  });
   const merged = mergeConfiguredLayers(configuredLayerIds);
   return {
     layers: merged.layers,
@@ -1003,10 +999,19 @@ async function handleApplyCommand(
   let applyBundle: Awaited<ReturnType<typeof resolveApplyLayers>>;
   const layerLabel = resolvedLayerNames.join(" + ");
   const resolveSpin = createProgress(`Resolving ${layerLabel}…`);
+  const outputFormat = parseOutputFormat(opts.format);
   try {
     applyBundle = await resolveApplyLayers(
       resolvedLayerNames as [string, ...string[]],
       projectRoot,
+      {
+        onFetched:
+          outputFormat === "human"
+            ? (sourceLabel) => {
+                ui.info(`Fetched ${sourceLabel} from catalog`);
+              }
+            : undefined,
+      },
     );
   } catch (err) {
     resolveSpin.stop();
@@ -1487,28 +1492,18 @@ async function handleLayerInstallCommand(
   }
 
   try {
-    const downloaded = await downloadCatalogBundle({
-      orgSlug: parsed.org_slug,
-      catalogSlug: parsed.catalog_slug,
-      librarySlug: parsed.library_slug,
-      version: parsed.version,
+    const installed = await installLayerFromCatalog(parsed, {
+      as: opts.as,
       profile: opts.profile,
       baseUrl: opts.baseUrl,
     });
-    const tempPath = writeLayerBundleToTempFile(downloaded.body);
-    const imported = importFromFile(tempPath, { layerNameOverride: opts.as });
-    updateLayerPublishedIdentity(imported.layer.id, {
-      org_slug: parsed.org_slug,
-      catalog_slug: parsed.catalog_slug,
-      version: downloaded.version,
-    });
     if (parseOutputFormat(opts.format) === "json") {
       printJson({
-        layer_name: imported.layer.name,
+        layer_name: installed.layerName,
         org_slug: parsed.org_slug,
         catalog_slug: parsed.catalog_slug,
         library_slug: parsed.library_slug,
-        version: downloaded.version,
+        version: installed.version,
       });
       return;
     }
@@ -1517,7 +1512,7 @@ async function handleLayerInstallCommand(
       catalog: parsed.catalog_slug,
       name: parsed.library_slug,
     });
-    ui.success(`Installed layer ${imported.layer.name} from ${sourceLabel}`);
+    ui.success(`Installed layer ${installed.layerName} from ${sourceLabel}`);
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));

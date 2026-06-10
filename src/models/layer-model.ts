@@ -452,6 +452,21 @@ export function getLayerByPublishedIdentity(input: {
   return getLayerByName(input.name, input.version);
 }
 
+export function getLayerByCatalogVersion(
+  org: string,
+  catalog: string,
+  version: string,
+): Layer | undefined {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM layers WHERE org_slug = ? AND catalog_slug = ? AND version = ?`,
+    )
+    .all(org, catalog, version) as LayerRow[];
+  const row = preferLocalLayerRows(rows)[0];
+  return row ? rowToLayer(row) : undefined;
+}
+
 export function listLayers(): Layer[] {
   const db = getDb();
   const rows = db

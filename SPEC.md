@@ -350,7 +350,7 @@ Remote catalog workflows live on **`layer`**, not `cloud`:
 - `layer add` — fetch a published layer + local import (distinct from `layer import` on a local file)
 - `layer publish` — export bundle + upload a versioned layer to an org catalog
 
-`project apply` applies already-resolved local inputs; fetch remote layers with `layer add` first.
+`project apply` resolves local layer names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `layer add`).
 
 ### `migrate` subcommands
 
@@ -725,4 +725,3 @@ bun run build
 - Bundle export/import operates on one layer body at a time; full deck-repo round-trip is Cloud/catalog workflows today.
 - **Secret dereferencing at apply** — cascade merges `env_var` values but does not yet read `keychain`, `env`, or `file` secret refs into materialized env vars.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
-- **`project apply` remote layers** — published selectors (`org/catalog/name@version`) are not resolved at apply time; use `layer add` first or pass a bundle path/URL.
