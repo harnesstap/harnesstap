@@ -429,6 +429,44 @@ export function getLayerByName(
   return getLayerLatestByName(name);
 }
 
+export function getLayerByPublishedIdentity(input: {
+  name: string;
+  version: string;
+  org?: string;
+  catalog?: string;
+}): Layer | undefined {
+  const orgSlug = input.org ?? "";
+  const catalogSlug = input.catalog ?? "";
+
+  if (orgSlug || catalogSlug) {
+    const db = getDb();
+    const rows = db
+      .prepare(
+        `SELECT * FROM layers
+         WHERE name = ? AND version = ? AND org_slug = ? AND catalog_slug = ?`,
+      )
+      .all(input.name, input.version, orgSlug, catalogSlug) as LayerRow[];
+    return rows[0] ? rowToLayer(rows[0]) : undefined;
+  }
+
+  return getLayerByName(input.name, input.version);
+}
+
+export function getLayerByCatalogVersion(
+  org: string,
+  catalog: string,
+  version: string,
+): Layer | undefined {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT * FROM layers WHERE org_slug = ? AND catalog_slug = ? AND version = ?`,
+    )
+    .all(org, catalog, version) as LayerRow[];
+  const row = preferLocalLayerRows(rows)[0];
+  return row ? rowToLayer(row) : undefined;
+}
+
 export function listLayers(): Layer[] {
   const db = getDb();
   const rows = db

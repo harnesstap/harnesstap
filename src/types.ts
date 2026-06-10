@@ -279,11 +279,20 @@ export interface DeckJsonLayerPluginRef {
 export interface DeckJsonLayer {
   name: string;
   version: string;
-  plugins: DeckJsonLayerPluginRef[];
+  org?: string;
+  catalog?: string;
+  /** @deprecated Import only — resolve layers by name, version, and optional org/catalog. */
+  plugins?: DeckJsonLayerPluginRef[];
   environment?: string;
 }
 
-export type DeckJsonSecretProvider = "keychain" | "env";
+export interface DeckJsonExportOptions {
+  deckName?: string;
+  /** When true (default), emit layer selectors only without legacy `plugins[]`. */
+  selectorOnly?: boolean;
+}
+
+export type DeckJsonSecretProvider = "keychain" | "env" | "file";
 
 export interface DeckJsonEnvironmentSecretRef {
   provider: DeckJsonSecretProvider;
