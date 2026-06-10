@@ -219,6 +219,7 @@ export async function runCli(
   const envOverrides = {
     CI: undefined,
     HARNESSDECK_NO_INTERACTIVE: undefined,
+    HARNESSDECK_FORCE_WIZARD: effectiveIsTTY ? "1" : undefined,
     ...(options.env ?? {}),
   };
   const envEntries = Object.entries(envOverrides);
