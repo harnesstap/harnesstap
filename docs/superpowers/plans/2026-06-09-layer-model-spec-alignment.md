@@ -14,7 +14,7 @@ Align HarnessDeck CLI storage and commands with the unified **layer** model in `
 - Plugin pins and layer dependencies stored as composition resources on plugin rows (pre-v15).
 - Migration 14 converts legacy pin/dependency tables to composition resources.
 
-## Phase 3 — SQLite schema v15 (this branch)
+## Phase 3 — SQLite schema v15 (done)
 
 Unify `plugins` + `configured_layers` into `layers` + `layer_resources`.
 
@@ -35,15 +35,15 @@ Unify `plugins` + `configured_layers` into `layers` + `layer_resources`.
 
 ## Phase 4 — Cloud identity on local layers
 
-### 4.1 `layer add`
+### 4.1 `layer add` (done)
 
 After remote install, stamp `org_slug` and `catalog_slug` on the imported local layer row.
 
-### 4.2 `layer publish`
+### 4.2 `layer publish` (done)
 
 After successful publish, update local layer published identity (`org_slug`, `catalog_slug`, version when returned).
 
-### 4.3+ (future)
+### 4.3+ (future — see [2026-06-10-spec-follow-up.md](./2026-06-10-spec-follow-up.md))
 
 - Resolve published layers from catalog during apply
 - Deck export/import uses unified layer rows only

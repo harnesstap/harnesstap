@@ -99,15 +99,15 @@ Examples:
 
 The words **plugin** and **layer** each appear in more than one role. Use this table to disambiguate.
 
-| Concept | CLI | Storage (target → current SQLite) |
+| Concept | CLI | Storage (SQLite v15) |
 | --- | --- | --- |
-| **Layer** (versioned capability: resources + refs + optional default environment) | `hd layer …`, `project apply <layer>` | `layers` → **`plugins` + `configured_layers`** (split; see [Layer model](#layer-model)) |
+| **Layer** (versioned capability: resources + refs + optional default environment) | `hd layer …`, `project apply <layer>` | `layers` + `layer_resources` |
 | **`plugin` resource** (marketplace/local reference attached to a layer) | `layer attach plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + layer attachment rows |
 | **`layer` resource** (composition ref to another layer) | `layer attach layer:name` or `--type layer` | `resources` (`type=layer`) + layer attachment rows |
 | **Catalog** (org-scoped layer collection) | `layer catalog …`, `layer search`, `layer add` | Cloud catalog APIs; `catalog` in `config.jsonc` |
-| **Deck** | `.harnessdeck/deck.json`, deck doctor | `decks`, `deck_configured_layers` |
+| **Deck** | `.harnessdeck/deck.json`, deck doctor | `decks`, `deck_layers` |
 
-Until the SQLite unification lands, `hd layer create|list|show|attach|…` mutates **`plugins`** (composition body) and often an implicit or explicit **`configured_layers`** row (apply target + default environment). `layer set-environment` and `project apply` operate on the apply-target side.
+Compat shims (`configured-layer.ts`, `listDeckConfiguredLayers`) delegate to `layer-model.ts` / `deck_layers` and are deprecated.
 
 Layer freshness and composition use `resource sync`, `layer doctor`, and `project apply` plugin-version flags.
 
@@ -482,12 +482,6 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 - `resources` — canonical configuration items (including `plugin` and `layer` composition resource types).
 - `harness_preferences`, `project_harnesses`, `snapshots`, `schema_version`.
 
-**Current SQLite** (pre-unification — see [Layer model](#layer-model)):
-
-- `plugins` + `plugin_resources` hold layer **composition** today.
-- `configured_layers` + `configured_layer_plugins` hold the **apply target** and multi-plugin merge grouping.
-- Table names above marked `deck_layers` / `project_layers` are still `deck_configured_layers` / `project_configured_layers` in the database.
-
 ### Project tracking
 
 Project identity uses a normalized git `origin` remote. `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
@@ -555,7 +549,7 @@ A **layer** is the primary composable unit.
 
 **CLI selectors:** ULID; `name` (highest version wins locally); `name@version`; `org/catalog/name@version` for published layers.
 
-**Implementation note (current SQLite):** composition is stored on `plugins` + `plugin_resources`; the apply surface may still route through `configured_layers` + `configured_layer_plugins` when multiple plugin rows are merged into one apply target. Unifying these tables into `layers` + `layer_resources` with nullable `org_slug` / `catalog_slug` is the planned migration.
+**Implementation (SQLite v15):** composition and apply identity share one `layers` row per capability. `layer_resources` holds ordered attachments. Published identity uses `org_slug` / `catalog_slug` (empty strings for local layers).
 
 ### Deck model
 
@@ -629,7 +623,7 @@ Orphans are removed only with `--prune`.
 
 Bundle export/import uses JSONC with schema `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains one **layer** payload (the top-level JSON key remains `layer` for transport compatibility), a flat `resources[]` list (including `plugin` and `layer` composition resources), optional `plugins[]` / `embedded_plugins[]`, optional `dependencies[]`, and optional top-level `claude` object. Missing optional arrays import as empty.
 
-Internal database IDs, timestamps, `org_slug`, `catalog_slug`, and `source` fields are not exported from local export; publish adds org/catalog on upload. Import creates a local layer and associated resources (today: a `plugins` row plus implicit `configured_layers` linkage).
+Internal database IDs, timestamps, `org_slug`, `catalog_slug`, and `source` fields are not exported from local export; publish adds org/catalog on upload. Import creates a local `layers` row and associated `layer_resources`.
 
 Default export path: `<name>.harnessdeck.jsonc`.
 
@@ -725,10 +719,10 @@ bun run build
 
 ## Known gaps and non-goals
 
-- `environment` commands are specified but not yet implemented in the CLI (environment schema and cascade exist today).
 - Only a subset of registered harnesses have fully native serializers; generic harness support remains path-driven.
 - Sync writes files directly; no interactive conflict resolution on apply.
 - Bundle export/import operates on one layer body at a time; full deck-repo round-trip is Cloud/catalog workflows today.
-- Secret resolution supports `keychain` and `env` providers; `file` provider support is incomplete.
+- **Secret dereferencing at apply** — cascade merges `env_var` values but does not yet read `keychain`, `env`, or `file` secret refs into materialized env vars.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
-- **Deck.json transport** — layer entries may still embed legacy `plugins[]` arrays; target shape references layers by selector only (see Phase 4.4 in layer model plan).
+- **Deck.json transport** — layer entries may still embed legacy `plugins[]` arrays; target shape references layers by selector only (see Phase 4.3+ in [layer model plan](docs/superpowers/plans/2026-06-09-layer-model-spec-alignment.md)).
+- **`project apply` remote layers** — published selectors (`org/catalog/name@version`) are not resolved at apply time; use `layer add` first or pass a bundle path/URL.
