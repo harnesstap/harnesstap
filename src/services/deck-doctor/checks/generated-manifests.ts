@@ -34,13 +34,69 @@ function readRepoPluginManifest(
   }
 }
 
+function readMarketplacePluginRefs(
+  repoRoot: string,
+): Array<{ name: string; version: string }> {
+  const marketplacePath = join(repoRoot, ".claude-plugin", "marketplace.json");
+  if (!existsSync(marketplacePath)) {
+    return [];
+  }
+
+  try {
+    const manifest = JSON.parse(readFileSync(marketplacePath, "utf-8")) as {
+      plugins?: Array<{ name?: string; version?: string }>;
+    };
+    return (manifest.plugins ?? [])
+      .filter((entry): entry is { name: string; version?: string } =>
+        typeof entry.name === "string",
+      )
+      .map((entry) => ({
+        name: entry.name,
+        version: entry.version ?? "1.0.0",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function collectDeckJsonPluginRefs(
+  context: DeckDoctorContext,
+): Array<{ name: string; version: string }> {
+  const refs: Array<{ name: string; version: string }> = [];
+  const seen = new Set<string>();
+
+  for (const layer of context.deckJson.layers) {
+    const layerRefs =
+      layer.plugins && layer.plugins.length > 0
+        ? layer.plugins
+        : [{ name: layer.name, version: layer.version }];
+    for (const ref of layerRefs) {
+      if (seen.has(ref.name)) {
+        continue;
+      }
+      seen.add(ref.name);
+      refs.push(ref);
+    }
+  }
+
+  if (refs.length === 0) {
+    for (const ref of readMarketplacePluginRefs(context.repoRoot)) {
+      if (seen.has(ref.name)) {
+        continue;
+      }
+      seen.add(ref.name);
+      refs.push(ref);
+    }
+  }
+
+  return refs;
+}
+
 function buildMaterializeInput(context: DeckDoctorContext): MaterializeDeckRepoInput {
   const pluginVersions = new Map<string, string>();
-  for (const layer of context.deckJson.layers) {
-    for (const ref of layer.plugins) {
-      if (!pluginVersions.has(ref.name)) {
-        pluginVersions.set(ref.name, ref.version);
-      }
+  for (const ref of collectDeckJsonPluginRefs(context)) {
+    if (!pluginVersions.has(ref.name)) {
+      pluginVersions.set(ref.name, ref.version);
     }
   }
 
@@ -73,19 +129,10 @@ function buildMaterializeInput(context: DeckDoctorContext): MaterializeDeckRepoI
   };
 }
 
-function collectPluginManifestPaths(deckJson: DeckDoctorContext["deckJson"]): string[] {
-  const paths: string[] = [];
-  const seen = new Set<string>();
-  for (const layer of deckJson.layers) {
-    for (const plugin of layer.plugins) {
-      if (seen.has(plugin.name)) {
-        continue;
-      }
-      seen.add(plugin.name);
-      paths.push(`${plugin.name}/.claude-plugin/plugin.json`);
-    }
-  }
-  return paths.sort();
+function collectPluginManifestPaths(context: DeckDoctorContext): string[] {
+  return collectDeckJsonPluginRefs(context)
+    .map((plugin) => `${plugin.name}/.claude-plugin/plugin.json`)
+    .sort();
 }
 
 function readNormalizedJson(filePath: string): unknown | null {
@@ -151,7 +198,7 @@ export const generatedManifestsCheck = {
 
       const relativePaths = [
         ...GENERATED_MANIFEST_PATHS,
-        ...collectPluginManifestPaths(context.deckJson),
+        ...collectPluginManifestPaths(context),
       ];
 
       return relativePaths

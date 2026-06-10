@@ -164,6 +164,51 @@ describe("environment cascade", () => {
     }
   });
 
+  it("dereferences env secret refs into vars for apply", async () => {
+    const context = await createInitializedTestContext("env-cascade-secrets");
+
+    const envKey = "HD_TEST_CASCADE_SECRET";
+    const previousValue = process.env[envKey];
+    process.env[envKey] = "resolved-token";
+
+    try {
+      mkdirSync(join(context.projectDir, ".harnessdeck", "environments"), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(context.projectDir, ".harnessdeck", "deck.json"),
+        JSON.stringify({
+          $schema: "urn:harnessdeck:deck:v1",
+          version: 1,
+          name: "repo-deck",
+          layers: [],
+          environments: [
+            {
+              name: "staging",
+              values: { PD_TOKEN: "plain-token" },
+              secret_refs: { PD_TOKEN: { provider: "env", ref: envKey } },
+            },
+          ],
+          active_environment: "staging",
+        }),
+        "utf-8",
+      );
+
+      const resolved = resolveEnvironmentCascadeForApply({
+        configuredLayerIds: [],
+        projectRoot: context.projectDir,
+      });
+      expect(resolved.vars.PD_TOKEN).toBe("resolved-token");
+    } finally {
+      if (previousValue === undefined) {
+        delete process.env[envKey];
+      } else {
+        process.env[envKey] = previousValue;
+      }
+      await context.cleanup();
+    }
+  });
+
   it("overrides merged environment resources before serialize", () => {
     const merged = mergeResolvedEnvironmentIntoResources(
       [
