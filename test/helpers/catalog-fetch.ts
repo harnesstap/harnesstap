@@ -5,13 +5,20 @@ const DEFAULT_BUNDLE = JSON.stringify({
   resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
 });
 
+function normalizeLibrary(library: Record<string, unknown>) {
+  return {
+    catalogSlug: "default",
+    ...library,
+  };
+}
+
 export function createCatalogFetchMock(input?: {
   libraries?: Array<Record<string, unknown>>;
   bundle?: string;
   baseUrl?: string;
 }) {
   const baseUrl = (input?.baseUrl ?? "https://mock").replace(/\/+$/, "");
-  const libraries = input?.libraries ?? [{
+  const libraries = (input?.libraries ?? [{
     orgSlug: "harnessdeck-cloud",
     slug: "team",
     name: "Team Layer",
@@ -20,7 +27,7 @@ export function createCatalogFetchMock(input?: {
     updatedAt: new Date().toISOString(),
     tags: [],
     visibility: "public",
-  }];
+  }]).map((library) => normalizeLibrary(library));
   const bundle = input?.bundle ?? DEFAULT_BUNDLE;
   const originalFetch = globalThis.fetch;
 
@@ -32,7 +39,7 @@ export function createCatalogFetchMock(input?: {
         json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
       };
     }
-    if (url.startsWith(`${baseUrl}/api/public/libraries`)) {
+    if (url.startsWith(`${baseUrl}/api/public/libraries`) || url.startsWith(`${baseUrl}/api/catalog/libraries`)) {
       const parsed = new URL(url);
       const orgFilters = parsed.searchParams.getAll("org");
       const filtered = orgFilters.length === 0
@@ -43,12 +50,6 @@ export function createCatalogFetchMock(input?: {
       return {
         ok: true,
         json: async () => ({ libraries: filtered, nextCursor: null }),
-      };
-    }
-    if (url.startsWith(`${baseUrl}/api/catalog/libraries`)) {
-      return {
-        ok: true,
-        json: async () => ({ libraries, nextCursor: null }),
       };
     }
     if (/\/api\/public\/.+\/versions\/.+\/bundle$/.test(url)) {

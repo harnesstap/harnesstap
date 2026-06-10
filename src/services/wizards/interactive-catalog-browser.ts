@@ -12,6 +12,9 @@ import {
 } from "@inquirer/core";
 import type { CatalogLibrary } from "../catalog-types.js";
 import {
+  formatPublishedSelectorWithVersion,
+} from "../layer-selector.js";
+import {
   formatCatalogSelectionLabel,
   renderCatalogListTable,
 } from "../../ui/catalog-list-render.js";
@@ -19,8 +22,10 @@ import { theme } from "../../ui/theme.js";
 
 export type InteractiveCatalogBrowserResult = {
   orgSlug: string;
+  catalogSlug: string;
   slug: string;
   version: string | null;
+  selector: string;
 };
 
 type PromptConfig = {
@@ -140,8 +145,15 @@ export const promptForInteractiveCatalogBrowser: (
       if (selectedLibrary) {
         done({
           orgSlug: selectedLibrary.orgSlug,
+          catalogSlug: selectedLibrary.catalogSlug,
           slug: selectedLibrary.slug,
           version: selectedLibrary.latestVersion,
+          selector: formatPublishedSelectorWithVersion({
+            org: selectedLibrary.orgSlug,
+            catalog: selectedLibrary.catalogSlug,
+            name: selectedLibrary.slug,
+            version: selectedLibrary.latestVersion ?? undefined,
+          }),
         });
       }
       return;
@@ -189,7 +201,7 @@ export const promptForInteractiveCatalogBrowser: (
     "",
     error ? theme.danger(error) : renderCatalogListTable(libraries, {
       selectedSelector: selectedLibrary
-        ? `${selectedLibrary.orgSlug}/${selectedLibrary.slug}`
+        ? formatCatalogSelectionLabel(selectedLibrary)
         : undefined,
     }),
     "",

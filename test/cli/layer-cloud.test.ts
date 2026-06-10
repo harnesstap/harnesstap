@@ -52,6 +52,7 @@ describe("CLI cloud layer workflows", () => {
       expect(Array.isArray(searchJson)).toBe(true);
       expect(searchJson[0]).toEqual(expect.objectContaining({
         orgSlug: "harnessdeck-cloud",
+        catalogSlug: "default",
         slug: "team",
       }));
 
@@ -74,6 +75,7 @@ describe("CLI cloud layer workflows", () => {
         expect.objectContaining({
           layer_name: "team-cloud",
           org_slug: "harnessdeck-cloud",
+          catalog_slug: "default",
           library_slug: "team",
           version: "1.0",
         }),
@@ -339,9 +341,7 @@ describe("CLI cloud layer workflows", () => {
       const result = await runCli(["layer", "add", "@broken"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain(
-        "Invalid library selector: @broken. Use org/library[@version] or library[@version] with --org",
-      );
+      expect(result.stderr).toContain("Invalid library selector");
     } finally {
       await context.cleanup();
     }
@@ -663,6 +663,143 @@ describe("CLI cloud layer workflows", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("already exists");
+
+      globalThis.fetch = originalFetch;
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer add resolves three-part selectors against the catalog API", async () => {
+    const context = await createTestContext("cli-layer-add-three-part");
+    try {
+      await runCli(["init"]);
+
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        libraries: [{
+          orgSlug: "acme",
+          catalogSlug: "personas",
+          slug: "frontend",
+          name: "Frontend Persona",
+          summary: "Frontend persona layer",
+          latestVersion: "2.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: [],
+          visibility: "public",
+        }],
+      });
+
+      const result = await runCli([
+        "layer",
+        "add",
+        "acme/personas/frontend@2.0.0",
+        "--as",
+        "persona-frontend",
+        "--profile",
+        "test",
+        "--base-url",
+        "https://mock",
+        "--format",
+        "json",
+      ]);
+
+      expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
+      expect(JSON.parse(result.stdout)).toEqual(
+        expect.objectContaining({
+          layer_name: "persona-frontend",
+          org_slug: "acme",
+          catalog_slug: "personas",
+          library_slug: "frontend",
+          version: "2.0.0",
+        }),
+      );
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer publish passes catalog_slug to the cloud publish API", async () => {
+    const context = await createTestContext("cli-layer-publish-catalog");
+    try {
+      await runCli(["init"]);
+
+      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
+      await cloudProfiles.saveCloudProfile("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudProfiles.setDefaultCloudProfile("test");
+
+      const layerModel = await import("../../src/models/layer.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const layer = layerModel.createLayer({ name: "catalog-layer" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ name: "r", content: "#x" }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+
+      let publishMetadata: Record<string, unknown> | undefined;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/oauth/token") && init?.method === "POST") {
+          return {
+            ok: true,
+            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
+          };
+        }
+        if (url.endsWith("/orgs")) {
+          return {
+            ok: true,
+            json: async () => ([{ slug: "acme", name: "Acme Corp" }]),
+          };
+        }
+        if (url.endsWith("/layers/publish") && init?.method === "POST") {
+          const form = init.body as FormData;
+          publishMetadata = JSON.parse(String(form.get("metadata"))) as Record<string, unknown>;
+          return { ok: true, json: async () => ({ id: "pub-cat", version: "1.0.0" }) };
+        }
+        return { ok: false, status: 404, text: async () => "not found" };
+      }) as typeof fetch;
+
+      const result = await runCli([
+        "layer",
+        "publish",
+        "catalog-layer",
+        "--org",
+        "acme",
+        "--catalog",
+        "platform-personas",
+        "--profile",
+        "test",
+        "--format",
+        "json",
+      ]);
+
+      expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
+      expect(publishMetadata).toEqual(
+        expect.objectContaining({
+          layer_name: "catalog-layer",
+          org_slug: "acme",
+          catalog_slug: "platform-personas",
+        }),
+      );
 
       globalThis.fetch = originalFetch;
     } finally {

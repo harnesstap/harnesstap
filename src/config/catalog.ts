@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnessdeckDir } from "../db/connection.js";
+import { DEFAULT_CATALOG_SLUG } from "../services/layer-selector.js";
 import { parseJsonc } from "./settings.js";
 
 export const DEFAULT_CATALOG_ORG_SLUG = "harnessdeck-cloud";
@@ -39,11 +40,16 @@ function normalizeOrgSlug(slug: string): string {
 
 function normalizeSelector(selector: string): string {
   const trimmed = selector.trim();
-  const match = trimmed.match(/^([^/]+)\/([^/]+)$/);
-  if (!match) {
-    throw new Error(`Invalid library selector: ${selector}. Use org/library.`);
+  const parts = trimmed.split("/").filter((part) => part.length > 0);
+  if (parts.length === 2) {
+    return `${parts[0]}/${parts[1]}`;
   }
-  return `${match[1]}/${match[2]}`;
+  if (parts.length === 3) {
+    return `${parts[0]}/${parts[1]}/${parts[2]}`;
+  }
+  throw new Error(
+    `Invalid library selector: ${selector}. Use org/library or org/catalog/library.`,
+  );
 }
 
 export function resolveCloudBaseUrl(override?: string): string {
@@ -144,19 +150,37 @@ export function formatCatalogScopeLabel(scope: CatalogScope): string {
   return `${scope.defaultOrgSlug} + ${extras.join(", ")}`;
 }
 
+function selectorVariants(selector: {
+  orgSlug: string;
+  catalogSlug: string;
+  librarySlug: string;
+}): string[] {
+  const orgSlug = normalizeOrgSlug(selector.orgSlug);
+  const catalogSlug = selector.catalogSlug.trim() || DEFAULT_CATALOG_SLUG;
+  const librarySlug = selector.librarySlug.trim();
+  const variants = [`${orgSlug}/${librarySlug}`];
+  if (catalogSlug !== DEFAULT_CATALOG_SLUG) {
+    variants.push(`${orgSlug}/${catalogSlug}/${librarySlug}`);
+  }
+  return variants;
+}
+
 export function isSelectorInCatalogScope(
-  selector: { orgSlug: string; librarySlug: string },
+  selector: { orgSlug: string; catalogSlug?: string; librarySlug: string },
   scope: CatalogScope,
 ): boolean {
   const orgSlug = normalizeOrgSlug(selector.orgSlug);
+  const catalogSlug = selector.catalogSlug?.trim() || DEFAULT_CATALOG_SLUG;
   const librarySlug = selector.librarySlug.trim();
-  const fullSelector = `${orgSlug}/${librarySlug}`;
 
   if (scope.orgs.map(normalizeOrgSlug).includes(orgSlug)) {
     return true;
   }
 
-  return scope.selectors.map((entry) => normalizeSelector(entry)).includes(fullSelector);
+  const normalizedScopeSelectors = scope.selectors.map((entry) => normalizeSelector(entry));
+  return selectorVariants({ orgSlug, catalogSlug, librarySlug }).some((variant) =>
+    normalizedScopeSelectors.includes(variant),
+  );
 }
 
 export function formatOutOfScopeMessage(selector: string): string {

@@ -103,12 +103,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `cloud`.
 - `layer export <layer>`
 - `layer import <file>` — import a local bundle file (`urn:harnessdeck:bundle:v1`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
-- `layer add [selector]` — download a remote layer bundle and import it (`org/library[@version]`); interactive browse on TTY when selector is omitted
+- `layer add [selector]` — download a remote layer bundle and import it (`org/catalog/layer[@version]` or `org/layer[@version]`); interactive browse on TTY when selector is omitted
 - `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL
 - `layer catalog connect org <slug>` — opt into another org's public libraries
 - `layer catalog disconnect org <slug>`
-- `layer catalog connect library <org>/<slug>` — opt into a single public library
-- `layer catalog disconnect library <org>/<slug>`
+- `layer catalog connect library <org>/<slug>` or `<org>/<catalog>/<slug>` — opt into a single public library
+- `layer catalog disconnect library <org>/<slug>` or `<org>/<catalog>/<slug>`
 - `layer publish <layer>` — export bundle and upload to HarnessDeck Cloud
 - `layer diff <left> <right>`
 - `layer doctor [name]` — validate a layer without writing to disk
@@ -138,10 +138,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `cloud`.
 - `layer from-project -p, --platform <slug>`
 - `layer add --as <name>`
 - `layer add --org <slug>`
+- `layer add --catalog <slug>` — catalog slug when selector omits catalog (default `default`)
 - `layer add --version <constraint>`
 - `layer add --base-url <url>`
 - `layer search --profile <name>`
 - `layer search --base-url <url>`
+- `layer publish --catalog <slug>` — target catalog slug (default `default`)
 - `layer publish --profile <name>`
 
 `layer add` and `layer search` work without `cloud login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer add` fails on local name conflict instead of overwriting. Fetch remote layers with `layer add` before `project apply`.
