@@ -1,9 +1,20 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
+import { listDeckLayers } from "../../src/models/deck.ts";
+import { getLayerById } from "../../src/models/layer-model.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+
+const minimalDeckFixturePath = join(
+  import.meta.dir,
+  "../fixtures/decks/minimal-deck.json",
+);
+const selectorOnlyDeckFixturePath = join(
+  import.meta.dir,
+  "../fixtures/decks/selector-only-deck.json",
+);
 
 describe("exporter deck adapters", () => {
   it("imports bundle v1 single layer as one plugin + implicit configured layer", async () => {
@@ -155,6 +166,180 @@ describe("exporter deck adapters", () => {
       }
     } finally {
       await exportContext.cleanup();
+    }
+  });
+
+  it("exports deck layers without plugins[] by default (selector-only)", async () => {
+    const context = await createInitializedTestContext("deck-json-selector-export");
+
+    try {
+      const pluginModel = await import("../../src/models/plugin-component.ts");
+      const environmentModel = await import("../../src/models/environment.ts");
+      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
+      const deckModel = await import("../../src/models/deck.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const plugin = pluginModel.createPlugin({
+        name: "pagerduty",
+        version: "1.0.0",
+      });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ name: "oncall-guide", type: "instruction" }),
+      );
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
+
+      const prod = environmentModel.createEnvironment({ name: "prod" });
+      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+        name: "backend-oncall",
+        version: "1.0.0",
+        pluginIds: [plugin.id],
+        environmentId: prod.id,
+      });
+      const deck = deckModel.createDeck({ name: "team-deck" });
+      deckModel.addConfiguredLayerToDeck(deck.id, configuredLayer.id);
+
+      const deckJson = exporter.exportDeckToDeckJson(deck.id);
+      expect(deckJson.layers[0]).toMatchObject({
+        name: "backend-oncall",
+        version: "1.0.0",
+        environment: "prod",
+      });
+      expect(deckJson.layers[0]).not.toHaveProperty("plugins");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("exports legacy plugins[] when selectorOnly is false", async () => {
+    const context = await createInitializedTestContext("deck-json-legacy-export");
+
+    try {
+      const pluginModel = await import("../../src/models/plugin-component.ts");
+      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
+      const deckModel = await import("../../src/models/deck.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const plugin = pluginModel.createPlugin({
+        name: "pagerduty",
+        version: "1.0.0",
+      });
+      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+        name: "backend-oncall",
+        version: "1.0.0",
+        pluginIds: [plugin.id],
+      });
+      const deck = deckModel.createDeck({ name: "team-deck" });
+      deckModel.addConfiguredLayerToDeck(deck.id, configuredLayer.id);
+
+      const deckJson = exporter.exportDeckToDeckJson(deck.id, {
+        selectorOnly: false,
+      });
+      expect(deckJson.layers[0]?.plugins).toEqual([
+        { name: "backend-oncall", version: "1.0.0" },
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("imports deck.json with legacy plugins[] arrays", async () => {
+    const context = await createInitializedTestContext("deck-json-legacy-import");
+
+    try {
+      const pluginModel = await import("../../src/models/plugin-component.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      pluginModel.createPlugin({
+        name: "pagerduty",
+        version: "1.0.0",
+      });
+
+      const imported = exporter.importDeckJson(minimalDeckFixturePath, {
+        rootPath: context.projectDir,
+      });
+      const [deckLayer] = listDeckLayers(imported.deck.id);
+      expect(getLayerById(deckLayer?.layer_id ?? "")?.name).toBe("backend-oncall");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("imports selector-only deck.json without plugins[]", async () => {
+    const context = await createInitializedTestContext("deck-json-selector-import");
+
+    try {
+      const pluginModel = await import("../../src/models/plugin-component.ts");
+      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      const plugin = pluginModel.createPlugin({
+        name: "pagerduty",
+        version: "1.0.0",
+      });
+      configuredLayerModel.createConfiguredLayer({
+        name: "backend-oncall",
+        version: "1.0.0",
+        pluginIds: [plugin.id],
+      });
+
+      const imported = exporter.importDeckJson(selectorOnlyDeckFixturePath, {
+        rootPath: context.projectDir,
+      });
+      const [deckLayer] = listDeckLayers(imported.deck.id);
+      const layer = getLayerById(deckLayer?.layer_id ?? "");
+      expect(layer?.name).toBe("backend-oncall");
+      expect(layer?.version).toBe("1.0.0");
+      expect(layer?.default_environment_id).toBeDefined();
+      expect(imported.environments).toHaveLength(1);
+      expect(imported.environments[0]?.name).toBe("prod");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("imports selector-only deck.json with org and catalog", async () => {
+    const context = await createInitializedTestContext("deck-json-published-import");
+
+    try {
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const exporter = await import("../../src/services/exporter.ts");
+
+      layerModel.createLayer({
+        name: "backend-oncall",
+        version: "1.0.0",
+        org_slug: "acme",
+        catalog_slug: "platform",
+      });
+
+      const fixturePath = join(context.projectDir, "published-deck.json");
+      writeFileSync(
+        fixturePath,
+        JSON.stringify({
+          $schema: "urn:harnessdeck:deck:v1",
+          version: 1,
+          name: "published-deck",
+          layers: [
+            {
+              name: "backend-oncall",
+              version: "1.0.0",
+              org: "acme",
+              catalog: "platform",
+            },
+          ],
+          environments: [],
+        }),
+      );
+
+      const imported = exporter.importDeckJson(fixturePath, {
+        rootPath: context.projectDir,
+      });
+      const [deckLayer] = listDeckLayers(imported.deck.id);
+      const layer = getLayerById(deckLayer?.layer_id ?? "");
+      expect(layer?.org_slug).toBe("acme");
+      expect(layer?.catalog_slug).toBe("platform");
+    } finally {
+      await context.cleanup();
     }
   });
 
