@@ -640,7 +640,8 @@ Default export path: `<name>.harnessdeck.jsonc`.
     {
       "name": "backend-oncall",
       "version": "1.0.0",
-      "plugins": [{ "name": "pagerduty", "version": "1.0.0" }],
+      "org": "acme",
+      "catalog": "platform",
       "environment": "oncall-prod"
     }
   ],
@@ -652,7 +653,7 @@ Default export path: `<name>.harnessdeck.jsonc`.
 }
 ```
 
-Non-secret environment values may also live under `.harnessdeck/environments/<name>.json`. Deck doctor materializes and checks generated marketplace/native files against canonical `deck.json`. During migration, `deck.json` layers may still embed `plugins[]` refs; the target transport describes layers only.
+Non-secret environment values may also live under `.harnessdeck/environments/<name>.json`. Deck doctor materializes and checks generated marketplace/native files against canonical `deck.json`. Layer entries reference layers by `name`, `version`, and optional `org`/`catalog` for published layers. Legacy `plugins[]` arrays are still accepted on import for backward compatibility.
 
 ### Machine transfer archives
 
@@ -724,5 +725,4 @@ bun run build
 - Bundle export/import operates on one layer body at a time; full deck-repo round-trip is Cloud/catalog workflows today.
 - **Secret dereferencing at apply** — cascade merges `env_var` values but does not yet read `keychain`, `env`, or `file` secret refs into materialized env vars.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
-- **Deck.json transport** — layer entries may still embed legacy `plugins[]` arrays; target shape references layers by selector only (see Phase 4.3+ in [layer model plan](docs/superpowers/plans/2026-06-09-layer-model-spec-alignment.md)).
 - **`project apply` remote layers** — published selectors (`org/catalog/name@version`) are not resolved at apply time; use `layer add` first or pass a bundle path/URL.
