@@ -109,6 +109,10 @@ import {
 } from "./services/layer-catalog.js";
 import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
 import {
+  formatPublishedSelector,
+  resolveRemoteLayerSelector,
+} from "./services/layer-selector.js";
+import {
   syncPluginPinsForApply,
   type SyncPluginPinsForApplyResult,
 } from "./services/plugin-apply-sync.js";
@@ -1383,56 +1387,6 @@ async function resolveCloudClientForLayerCommand(profileName?: string) {
   return createCloudClient({ baseUrl: profile.cloudBaseUrl, token });
 }
 
-function normalizeRemoteLibrarySelector(
-  selector: string,
-  opts: { org?: string; version?: string },
-): { org_slug: string; library_slug: string; version?: string } {
-  // Try to parse as full selector first
-  const fullMatch = selector.match(/^([^/@]+)\/([^@]+)(?:@(.+))?$/);
-  if (fullMatch) {
-    const selectorOrg = String(fullMatch[1]);
-    const library = String(fullMatch[2]);
-    const selectorVersion = fullMatch[3] !== undefined ? String(fullMatch[3]) : undefined;
-
-    // Check for conflicts
-    if (opts.org && selectorOrg) {
-      throw new Error(`--org conflicts with org in selector. Remove --org or use selector without org.`);
-    }
-    if (opts.version && selectorVersion) {
-      throw new Error(`--version conflicts with version in selector. Remove --version or use selector without version.`);
-    }
-
-    return {
-      org_slug: selectorOrg,
-      library_slug: library,
-      version: opts.version ?? selectorVersion,
-    };
-  }
-
-  // Selector is library-only or library@version
-  const libraryMatch = selector.match(/^([^@]+)(?:@(.+))?$/);
-  if (!libraryMatch) {
-    throw new Error(`Invalid library selector: ${selector}. Use org/library[@version] or library[@version] with --org`);
-  }
-
-  const library = String(libraryMatch[1]);
-  const selectorVersion = libraryMatch[2] !== undefined ? String(libraryMatch[2]) : undefined;
-
-  if (!opts.org) {
-    throw new Error(`org is required. Provide it in the selector as org/library or use --org <slug>`);
-  }
-
-  if (opts.version && selectorVersion) {
-    throw new Error(`--version conflicts with version in selector. Remove --version or use selector without version.`);
-  }
-
-  return {
-    org_slug: opts.org,
-    library_slug: library,
-    version: opts.version ?? selectorVersion,
-  };
-}
-
 async function handleLayerSearchCommand(
   query: string,
   opts: { profile?: string; format?: string; baseUrl?: string },
@@ -1459,6 +1413,7 @@ async function handleLayerInstallCommand(
   opts: {
     as?: string;
     org?: string;
+    catalog?: string;
     version?: string;
     profile?: string;
     baseUrl?: string;
@@ -1481,7 +1436,7 @@ async function handleLayerInstallCommand(
 
     if (!canPrompt) {
       process.exitCode = 1;
-      ui.danger("error: selector is required in non-interactive mode. Use: layer add org/library[@version]");
+      ui.danger("error: selector is required in non-interactive mode. Use: layer add org/catalog/layer[@version]");
       return;
     }
 
@@ -1495,7 +1450,7 @@ async function handleLayerInstallCommand(
             { profile: opts.profile, baseUrl: opts.baseUrl },
           ),
       });
-      selector = `${selected.orgSlug}/${selected.slug}`;
+      selector = selected.selector;
       if (!opts.version && selected.version) {
         opts = { ...opts, version: selected.version };
       }
@@ -1509,9 +1464,13 @@ async function handleLayerInstallCommand(
     }
   }
 
-  let parsed: { org_slug: string; library_slug: string; version?: string };
+  let parsed: ReturnType<typeof resolveRemoteLayerSelector>;
   try {
-    parsed = normalizeRemoteLibrarySelector(selector, { org: opts.org, version: opts.version });
+    parsed = resolveRemoteLayerSelector(selector, {
+      org: opts.org,
+      catalog: opts.catalog,
+      version: opts.version,
+    });
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
@@ -1529,6 +1488,7 @@ async function handleLayerInstallCommand(
   try {
     const downloaded = await downloadCatalogBundle({
       orgSlug: parsed.org_slug,
+      catalogSlug: parsed.catalog_slug,
       librarySlug: parsed.library_slug,
       version: parsed.version,
       profile: opts.profile,
@@ -1540,19 +1500,28 @@ async function handleLayerInstallCommand(
       printJson({
         layer_name: imported.layer.name,
         org_slug: parsed.org_slug,
+        catalog_slug: parsed.catalog_slug,
         library_slug: parsed.library_slug,
         version: downloaded.version,
       });
       return;
     }
-    ui.success(`Installed layer ${imported.layer.name} from ${parsed.org_slug}/${parsed.library_slug}`);
+    const sourceLabel = formatPublishedSelector({
+      org: parsed.org_slug,
+      catalog: parsed.catalog_slug,
+      name: parsed.library_slug,
+    });
+    ui.success(`Installed layer ${imported.layer.name} from ${sourceLabel}`);
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
-async function handleLayerPublishCommand(layerName: string, opts: { org?: string; profile?: string; format?: string }) {
+async function handleLayerPublishCommand(
+  layerName: string,
+  opts: { org?: string; catalog?: string; profile?: string; format?: string },
+) {
   const db = getDb();
   initializeSchema(db);
   const layer = getPlugin(layerName);
@@ -1626,12 +1595,21 @@ async function handleLayerPublishCommand(layerName: string, opts: { org?: string
     const bundle = exportLayer(layer.id);
     const bundleJson = JSON.stringify(bundle);
 
-    const resp = await client.publishLayerBundle({ layer_name: layer.name, org_slug: orgSlug }, bundleJson);
+    const catalogSlug = opts.catalog ?? "default";
+    const resp = await client.publishLayerBundle(
+      { layer_name: layer.name, org_slug: orgSlug, catalog_slug: catalogSlug },
+      bundleJson,
+    );
     if (parseOutputFormat(opts.format) === "json") {
       printJson(resp);
       return;
     }
-    ui.success(`Published layer ${layer.name} to ${orgSlug}`);
+    const publishedLabel = formatPublishedSelector({
+      org: orgSlug,
+      catalog: catalogSlug,
+      name: layer.name,
+    });
+    ui.success(`Published layer ${layer.name} to ${publishedLabel}`);
   } catch (err) {
     process.exitCode = 1;
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -3423,9 +3401,10 @@ layerCatalogCmd
 
 layerCmd
   .command("add")
-  .argument("[selector]", "Remote library selector: org/library[@version] or library[@version] with --org")
+  .argument("[selector]", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
   .option("--as <name>", "Add under a different local layer name")
   .option("--org <slug>", "Organization slug (when selector omits org)")
+  .option("--catalog <slug>", "Catalog slug (default: default)")
   .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--base-url <url>", "HarnessDeck Cloud base URL")
@@ -3438,6 +3417,7 @@ layerCmd
   .command("publish")
   .argument("<layer>", "Local layer name to publish")
   .option("--org <slug>", "Organization slug to publish under")
+  .option("--catalog <slug>", "Catalog slug to publish under (default: default)")
   .option("--profile <name>", "Cloud profile to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Publish a local layer to the cloud catalog")

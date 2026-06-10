@@ -146,16 +146,43 @@ const interactiveCatalogBrowserMock = mock(async (
   }
   const value = shiftSinglePromptValue();
   if (typeof value === "string") {
-    const [orgSlug, slug] = value.split("/");
-    return { orgSlug, slug, version: "1.0.0" };
+    const parts = value.split("/").filter(Boolean);
+    if (parts.length === 2) {
+      const [orgSlug, slug] = parts;
+      return {
+        orgSlug,
+        catalogSlug: "default",
+        slug,
+        version: "1.0.0",
+        selector: value,
+      };
+    }
+    if (parts.length === 3) {
+      const [orgSlug, catalogSlug, slug] = parts;
+      return {
+        orgSlug,
+        catalogSlug,
+        slug,
+        version: "1.0.0",
+        selector: value,
+      };
+    }
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
     if (typeof record.orgSlug === "string" && typeof record.slug === "string") {
+      const catalogSlug = typeof record.catalogSlug === "string" ? record.catalogSlug : "default";
+      const selector = typeof record.selector === "string"
+        ? record.selector
+        : catalogSlug === "default"
+          ? `${record.orgSlug}/${record.slug}`
+          : `${record.orgSlug}/${catalogSlug}/${record.slug}`;
       return {
         orgSlug: record.orgSlug,
+        catalogSlug,
         slug: record.slug,
         version: typeof record.version === "string" ? record.version : "1.0.0",
+        selector,
       };
     }
   }
