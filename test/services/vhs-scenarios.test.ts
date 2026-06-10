@@ -158,7 +158,7 @@ describe("VHS scenario manifest", () => {
   it("embeds the single demo GIF in the root README and links to the walkthrough doc", () => {
     const readmePath = resolve(repoRoot, "README.md");
     const readme = readFileSync(readmePath, "utf-8");
-    expect(readme).toContain("existing-repo-adoption demo");
+    expect(readme).toContain("Existing repo adoption walkthrough");
     expect(readme).toContain("docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md");
   });
 

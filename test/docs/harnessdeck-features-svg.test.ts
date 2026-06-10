@@ -38,9 +38,8 @@ describe("HarnessDeck features SVG", () => {
     expect(matchAttribute(description?.[1] ?? "", "id")).toBe("desc");
     expect(countOccurrences(svg, "Agent harnesses")).toBe(1);
     expect(countOccurrences(svg, 'class="panel"')).toBe(1);
-    expect(countOccurrences(svg, 'class="chipText"')).toBe(6);
-    expect(svg).toContain('<tspan x="334" dy="0">Move libraries, preferences, and config</tspan>');
-    expect(svg).toContain('<tspan x="334" dy="22">across harnesses without losing structure.</tspan>');
+    expect(countOccurrences(svg, 'class="chipText"')).toBe(7);
+    expect(svg).toContain("Export libraries, harness prefs, and config across machines.");
 
     const requiredLabels = [
       "HarnessDeck",
@@ -49,16 +48,16 @@ describe("HarnessDeck features SVG", () => {
       "Cursor",
       "Codex",
       "GitHub Copilot",
-      "Other CLIs",
+      "8+ more CLIs",
       "Scan",
-      "SQLite library",
-      "Reusable layers",
-      "Apply & sync",
+      "Library",
+      "Compose",
+      "Apply",
       "Snapshots",
-      "Drift detection",
-      "Plugin governance",
-      "Cloud sharing",
-      "Migration export",
+      "Drift",
+      "Plugins",
+      "Cloud",
+      "Migrate",
     ];
     const removedLabels = ["Future Harnesses"];
     const textContent = decodeXmlText(svg.replace(/<[^>]+>/g, " "));
