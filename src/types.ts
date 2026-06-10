@@ -292,7 +292,7 @@ export interface DeckJsonExportOptions {
   selectorOnly?: boolean;
 }
 
-export type DeckJsonSecretProvider = "keychain" | "env";
+export type DeckJsonSecretProvider = "keychain" | "env" | "file";
 
 export interface DeckJsonEnvironmentSecretRef {
   provider: DeckJsonSecretProvider;

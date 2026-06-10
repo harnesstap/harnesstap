@@ -723,5 +723,5 @@ bun run build
 - Only a subset of registered harnesses have fully native serializers; generic harness support remains path-driven.
 - Sync writes files directly; no interactive conflict resolution on apply.
 - Bundle export/import operates on one layer body at a time; full deck-repo round-trip is Cloud/catalog workflows today.
-- **Secret dereferencing at apply** — cascade merges `env_var` values but does not yet read `keychain`, `env`, or `file` secret refs into materialized env vars.
+- **Keychain secret provider at apply** — `env` and `file` secret refs are dereferenced into materialized env vars at apply; macOS keychain lookup is not yet implemented.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.

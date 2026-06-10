@@ -17,6 +17,7 @@ import type {
   ResourceType,
 } from "../types.js";
 import { ENVIRONMENT_RESOURCE_TYPES } from "./resource-classification.js";
+import { resolveSecretRefs } from "./secret-resolver.js";
 
 export interface EnvironmentFragment {
   vars: Record<string, string>;
@@ -287,7 +288,12 @@ export function buildEnvironmentCascadeInput(
 export function resolveEnvironmentCascadeForApply(
   input: ResolveEnvironmentCascadeForApplyInput,
 ): EnvironmentFragment {
-  return resolveEnvironmentCascade(buildEnvironmentCascadeInput(input));
+  const cascaded = resolveEnvironmentCascade(buildEnvironmentCascadeInput(input));
+  const resolvedSecrets = resolveSecretRefs(cascaded.secretRefs);
+  return {
+    vars: { ...cascaded.vars, ...resolvedSecrets },
+    secretRefs: cascaded.secretRefs,
+  };
 }
 
 export function fragmentToEnvironmentResources(
