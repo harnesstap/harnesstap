@@ -10,7 +10,7 @@ export const DEFAULT_CLOUD_BASE_URL = "https://harnessdeck.kayrnt.fr";
 export interface CatalogSettings {
   cloudBaseUrl: string;
   connectedOrgs: string[];
-  connectedLibraries: string[];
+  connectedLayers: string[];
 }
 
 export interface CatalogScope {
@@ -23,7 +23,7 @@ export interface CatalogScope {
 const DEFAULT_CATALOG_SETTINGS: CatalogSettings = {
   cloudBaseUrl: DEFAULT_CLOUD_BASE_URL,
   connectedOrgs: [],
-  connectedLibraries: [],
+  connectedLayers: [],
 };
 
 function getConfigPath(harnessdeckDir = getHarnessdeckDir()): string {
@@ -41,14 +41,11 @@ function normalizeOrgSlug(slug: string): string {
 function normalizeSelector(selector: string): string {
   const trimmed = selector.trim();
   const parts = trimmed.split("/").filter((part) => part.length > 0);
-  if (parts.length === 2) {
-    return `${parts[0]}/${parts[1]}`;
-  }
   if (parts.length === 3) {
     return `${parts[0]}/${parts[1]}/${parts[2]}`;
   }
   throw new Error(
-    `Invalid library selector: ${selector}. Use org/library or org/catalog/library.`,
+    `Invalid layer selector: ${selector}. Use org/catalog/layer.`,
   );
 }
 
@@ -76,8 +73,8 @@ export function loadCatalogSettings(harnessdeckDir = getHarnessdeckDir()): Catal
     const connectedOrgs = Array.isArray(catalog.connectedOrgs)
       ? [...new Set(catalog.connectedOrgs.map((org) => normalizeOrgSlug(String(org))).filter(Boolean))]
       : [];
-    const connectedLibraries = Array.isArray(catalog.connectedLibraries)
-      ? [...new Set(catalog.connectedLibraries.map((selector) => normalizeSelector(String(selector))))]
+    const connectedLayers = Array.isArray(catalog.connectedLayers)
+      ? [...new Set(catalog.connectedLayers.map((selector) => normalizeSelector(String(selector))))]
       : [];
 
     return {
@@ -86,7 +83,7 @@ export function loadCatalogSettings(harnessdeckDir = getHarnessdeckDir()): Catal
           ? catalog.cloudBaseUrl.replace(/\/+$/, "")
           : DEFAULT_CATALOG_SETTINGS.cloudBaseUrl,
       connectedOrgs: connectedOrgs.filter((org) => org !== DEFAULT_CATALOG_ORG_SLUG),
-      connectedLibraries,
+      connectedLayers,
     };
   } catch {
     return { ...DEFAULT_CATALOG_SETTINGS };
@@ -111,7 +108,7 @@ export function saveCatalogSettings(
   const next: CatalogSettings = {
     cloudBaseUrl: input.cloudBaseUrl?.replace(/\/+$/, "") ?? current.cloudBaseUrl,
     connectedOrgs: input.connectedOrgs ?? current.connectedOrgs,
-    connectedLibraries: input.connectedLibraries ?? current.connectedLibraries,
+    connectedLayers: input.connectedLayers ?? current.connectedLayers,
   };
 
   writeFileSync(
@@ -134,7 +131,7 @@ export function resolveCatalogScope(input?: {
       DEFAULT_CATALOG_ORG_SLUG,
       ...settings.connectedOrgs,
     ],
-    selectors: settings.connectedLibraries,
+    selectors: settings.connectedLayers,
     cloudBaseUrl: resolveCloudBaseUrl(input?.baseUrl),
   };
 }
@@ -153,41 +150,41 @@ export function formatCatalogScopeLabel(scope: CatalogScope): string {
 function selectorVariants(selector: {
   orgSlug: string;
   catalogSlug: string;
-  librarySlug: string;
+  layerSlug: string;
 }): string[] {
   const orgSlug = normalizeOrgSlug(selector.orgSlug);
   const catalogSlug = selector.catalogSlug.trim() || DEFAULT_CATALOG_SLUG;
-  const librarySlug = selector.librarySlug.trim();
-  const variants = [`${orgSlug}/${librarySlug}`];
+  const layerSlug = selector.layerSlug.trim();
+  const variants = [`${orgSlug}/${layerSlug}`];
   if (catalogSlug !== DEFAULT_CATALOG_SLUG) {
-    variants.push(`${orgSlug}/${catalogSlug}/${librarySlug}`);
+    variants.push(`${orgSlug}/${catalogSlug}/${layerSlug}`);
   }
   return variants;
 }
 
 export function isSelectorInCatalogScope(
-  selector: { orgSlug: string; catalogSlug?: string; librarySlug: string },
+  selector: { orgSlug: string; catalogSlug?: string; layerSlug: string },
   scope: CatalogScope,
 ): boolean {
   const orgSlug = normalizeOrgSlug(selector.orgSlug);
   const catalogSlug = selector.catalogSlug?.trim() || DEFAULT_CATALOG_SLUG;
-  const librarySlug = selector.librarySlug.trim();
+  const layerSlug = selector.layerSlug.trim();
 
   if (scope.orgs.map(normalizeOrgSlug).includes(orgSlug)) {
     return true;
   }
 
   const normalizedScopeSelectors = scope.selectors.map((entry) => normalizeSelector(entry));
-  return selectorVariants({ orgSlug, catalogSlug, librarySlug }).some((variant) =>
+  return selectorVariants({ orgSlug, catalogSlug, layerSlug }).some((variant) =>
     normalizedScopeSelectors.includes(variant),
   );
 }
 
 export function formatOutOfScopeMessage(selector: string): string {
   return [
-    `Library ${selector} is not in your catalog scope.`,
+    `Layer ${selector} is not in your catalog scope.`,
     `Connect the org:  hd layer catalog connect org <slug>`,
-    `Connect one lib:  hd layer catalog connect library ${selector}`,
+    `Connect one lib:  hd layer catalog connect layer ${selector}`,
   ].join("\n");
 }
 
@@ -216,27 +213,27 @@ export function disconnectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnes
   }, harnessdeckDir);
 }
 
-export function connectCatalogLibrary(
+export function connectCatalogLayer(
   selector: string,
   harnessdeckDir = getHarnessdeckDir(),
 ): CatalogSettings {
   const normalized = normalizeSelector(selector);
   const current = loadCatalogSettings(harnessdeckDir);
-  if (current.connectedLibraries.includes(normalized)) {
+  if (current.connectedLayers.includes(normalized)) {
     return current;
   }
   return saveCatalogSettings({
-    connectedLibraries: [...current.connectedLibraries, normalized],
+    connectedLayers: [...current.connectedLayers, normalized],
   }, harnessdeckDir);
 }
 
-export function disconnectCatalogLibrary(
+export function disconnectCatalogLayer(
   selector: string,
   harnessdeckDir = getHarnessdeckDir(),
 ): CatalogSettings {
   const normalized = normalizeSelector(selector);
   const current = loadCatalogSettings(harnessdeckDir);
   return saveCatalogSettings({
-    connectedLibraries: current.connectedLibraries.filter((entry) => entry !== normalized),
+    connectedLayers: current.connectedLayers.filter((entry) => entry !== normalized),
   }, harnessdeckDir);
 }

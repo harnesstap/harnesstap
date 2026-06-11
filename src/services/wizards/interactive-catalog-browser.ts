@@ -10,7 +10,7 @@ import {
   usePrefix,
   useState,
 } from "@inquirer/core";
-import type { CatalogLibrary } from "../catalog-types.js";
+import type { CatalogLayer } from "../catalog-types.js";
 import {
   formatPublishedSelectorWithVersion,
 } from "../layer-selector.js";
@@ -31,7 +31,7 @@ export type InteractiveCatalogBrowserResult = {
 type PromptConfig = {
   message: string;
   scopeLabel: string;
-  listLibraries: (input: { q: string; limit: number }) => Promise<CatalogLibrary[]>;
+  listLayers: (input: { q: string; limit: number }) => Promise<CatalogLayer[]>;
 };
 
 type PromptContext = {
@@ -85,7 +85,7 @@ export const promptForInteractiveCatalogBrowser: (
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const [libraries, setLibraries] = useState<CatalogLibrary[]>([]);
+  const [layers, setLayers] = useState<CatalogLayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchedQueryRef = { current: "__unset__" };
@@ -97,20 +97,20 @@ export const promptForInteractiveCatalogBrowser: (
     setLoading(true);
     setError(null);
     try {
-      const results = await config.listLibraries({
+      const results = await config.listLayers({
         q: nextQuery,
         limit: nextQuery.trim() ? 25 : 10,
       });
       if (requestId !== requestRef.current) {
         return;
       }
-      setLibraries(results);
+      setLayers(results);
       fetchedQueryRef.current = nextQuery;
     } catch (searchError) {
       if (requestId !== requestRef.current) {
         return;
       }
-      setLibraries([]);
+      setLayers([]);
       setError(searchError instanceof Error ? searchError.message : String(searchError));
     } finally {
       if (requestId === requestRef.current) {
@@ -133,8 +133,8 @@ export const promptForInteractiveCatalogBrowser: (
     void runSearch("");
   }
 
-  const clampedActive = clampActiveIndex(active, libraries.length);
-  const selectedLibrary = libraries[clampedActive];
+  const clampedActive = clampActiveIndex(active, layers.length);
+  const selectedLayer = layers[clampedActive];
 
   useKeypress((key) => {
     if (isEscapeKey(key)) {
@@ -142,26 +142,26 @@ export const promptForInteractiveCatalogBrowser: (
     }
 
     if (isEnterKey(key)) {
-      if (selectedLibrary) {
+      if (selectedLayer) {
         done({
-          orgSlug: selectedLibrary.orgSlug,
-          catalogSlug: selectedLibrary.catalogSlug,
-          slug: selectedLibrary.slug,
-          version: selectedLibrary.latestVersion,
+          orgSlug: selectedLayer.orgSlug,
+          catalogSlug: selectedLayer.catalogSlug,
+          slug: selectedLayer.slug,
+          version: selectedLayer.latestVersion,
           selector: formatPublishedSelectorWithVersion({
-            org: selectedLibrary.orgSlug,
-            catalog: selectedLibrary.catalogSlug,
-            name: selectedLibrary.slug,
-            version: selectedLibrary.latestVersion ?? undefined,
+            org: selectedLayer.orgSlug,
+            catalog: selectedLayer.catalogSlug,
+            name: selectedLayer.slug,
+            version: selectedLayer.latestVersion ?? undefined,
           }),
         });
       }
       return;
     }
 
-    if (libraries.length > 0 && (isUpKey(key) || isDownKey(key))) {
+    if (layers.length > 0 && (isUpKey(key) || isDownKey(key))) {
       const direction = isUpKey(key) ? -1 : 1;
-      setActive(clampActiveIndex(clampedActive + direction, libraries.length));
+      setActive(clampActiveIndex(clampedActive + direction, layers.length));
       return;
     }
 
@@ -181,9 +181,9 @@ export const promptForInteractiveCatalogBrowser: (
     }
   });
 
-  const selectionLine = selectedLibrary
-    ? `Install: ${theme.accent(`> ${formatCatalogSelectionLabel(selectedLibrary)}`)}`
-    : theme.muted(loading ? "Loading libraries…" : "No matching libraries");
+  const selectionLine = selectedLayer
+    ? `Install: ${theme.accent(`> ${formatCatalogSelectionLabel(selectedLayer)}`)}`
+    : theme.muted(loading ? "Loading layers…" : "No matching layers");
 
   const helpLine = promptTheme.style.keysHelpTip([
     ["↑↓", "select"],
@@ -199,9 +199,9 @@ export const promptForInteractiveCatalogBrowser: (
     `Search: ${query || "(type to filter)"}`,
     selectionLine,
     "",
-    error ? theme.danger(error) : renderCatalogListTable(libraries, {
-      selectedSelector: selectedLibrary
-        ? formatCatalogSelectionLabel(selectedLibrary)
+    error ? theme.danger(error) : renderCatalogListTable(layers, {
+      selectedSelector: selectedLayer
+        ? formatCatalogSelectionLabel(selectedLayer)
         : undefined,
     }),
     "",
@@ -212,7 +212,7 @@ export const promptForInteractiveCatalogBrowser: (
 export async function runInteractiveCatalogBrowser(input: {
   message: string;
   scopeLabel: string;
-  listLibraries: PromptConfig["listLibraries"];
+  listLayers: PromptConfig["listLayers"];
 }): Promise<InteractiveCatalogBrowserResult> {
   return promptForInteractiveCatalogBrowser(input);
 }

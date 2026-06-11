@@ -25,7 +25,7 @@ export async function installLayerFromCatalog(
   parsed: ResolvedRemoteLayerSelector,
   opts: InstallLayerFromCatalogOptions = {},
 ): Promise<InstallLayerFromCatalogResult> {
-  const localName = opts.as ?? parsed.library_slug;
+  const localName = opts.as ?? parsed.layer_slug;
   const existing = getPlugin(localName);
   if (existing && !opts.as) {
     throw new Error(
@@ -36,7 +36,7 @@ export async function installLayerFromCatalog(
   const downloaded = await downloadCatalogBundle({
     orgSlug: parsed.org_slug,
     catalogSlug: parsed.catalog_slug,
-    librarySlug: parsed.library_slug,
+    layerSlug: parsed.layer_slug,
     version: parsed.version,
     profile: opts.profile,
     baseUrl: opts.baseUrl,
@@ -52,7 +52,7 @@ export async function installLayerFromCatalog(
   const sourceLabel = formatPublishedSelectorWithVersion({
     org: parsed.org_slug,
     catalog: parsed.catalog_slug,
-    name: parsed.library_slug,
+    name: parsed.layer_slug,
     version: downloaded.version,
   });
 
