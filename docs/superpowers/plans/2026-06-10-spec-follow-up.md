@@ -1,6 +1,8 @@
 # SPEC follow-up implementation plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status: shipped** in [harnessdeck#40](https://github.com/harnessdeck/harnessdeck/pull/40) (CLI) and [harnessdeck-cloud#34](https://github.com/harnessdeck/harnessdeck-cloud/pull/34) (cloud SPEC). Track 3.3 (keychain) remains deferred.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]` / `- [ ]`) syntax for tracking.
 
 **Goal:** Close the gap between `SPEC.md` and the codebase after schema v15 layer unification, and ship the remaining Phase 4.3+ transport/apply behaviors called out in the layer model plan.
 
@@ -21,7 +23,7 @@
 **Files:**
 - Modify: `SPEC.md` (lines 726–734)
 
-- [ ] **Step 1: Remove stale environment gap**
+- [x] **Step 1: Remove stale environment gap**
 
 Delete:
 
@@ -29,11 +31,11 @@ Delete:
 - `environment` commands are specified but not yet implemented in the CLI (environment schema and cascade exist today).
 ```
 
-- [ ] **Step 2: Fix deck.json gap reference**
+- [x] **Step 2: Fix deck.json gap reference**
 
 Change `Phase 4.4` → `Phase 4.3+` in the deck.json transport bullet.
 
-- [ ] **Step 3: Add explicit open gaps from layer model plan**
+- [x] **Step 3: Add explicit open gaps from layer model plan**
 
 Append after the deck.json bullet:
 
@@ -42,7 +44,7 @@ Append after the deck.json bullet:
 - **Secret dereferencing at apply** — cascade merges `env_var` values but does not yet read `keychain`, `env`, or `file` secret refs into materialized env vars.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add SPEC.md
@@ -54,7 +56,7 @@ git commit -m "docs: refresh SPEC known gaps after v15 and environment CLI"
 **Files:**
 - Modify: `SPEC.md` (lines 102–110, 485–489, 556–558, 630–632)
 
-- [ ] **Step 1: Fix naming map table**
+- [x] **Step 1: Fix naming map table**
 
 Replace the Layer and Deck storage columns and remove the “Until SQLite unification” paragraph:
 
@@ -65,21 +67,21 @@ Replace the Layer and Deck storage columns and remove the “Until SQLite unific
 
 Add one sentence: compat shims (`configured-layer.ts`, `listDeckConfiguredLayers`) delegate to `layer-model.ts` / `deck_layers` and are deprecated.
 
-- [ ] **Step 2: Remove “Current SQLite (pre-unification)” block**
+- [x] **Step 2: Remove “Current SQLite (pre-unification)” block**
 
 Delete lines 485–489. The target model list (lines 475–483) is now the actual schema.
 
-- [ ] **Step 3: Update Layer model implementation note**
+- [x] **Step 3: Update Layer model implementation note**
 
 Replace the paragraph at line 558 with:
 
 > **Implementation (SQLite v15):** composition and apply identity share one `layers` row per capability. `layer_resources` holds ordered attachments. Published identity uses nullable `org_slug` / `catalog_slug` (empty strings for local layers).
 
-- [ ] **Step 4: Fix bundle import note**
+- [x] **Step 4: Fix bundle import note**
 
 Change “Import creates a local layer… (`plugins` row plus implicit `configured_layers` linkage)” to “Import creates a local `layers` row and associated `layer_resources`.”
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add SPEC.md
@@ -91,11 +93,11 @@ git commit -m "docs: align SPEC storage sections with schema v15"
 **Files:**
 - Modify: `docs/superpowers/plans/2026-06-09-layer-model-spec-alignment.md`
 
-- [ ] **Step 1: Annotate completed phases**
+- [x] **Step 1: Annotate completed phases**
 
 Add `(done)` to Phase 3 header and 4.1 / 4.2 subsections. Link to this follow-up plan for 4.3+.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-06-09-layer-model-spec-alignment.md
@@ -114,7 +116,7 @@ git commit -m "docs: mark layer model phases 3 and 4.1–4.2 complete"
 - Modify: `src/types.ts` (DeckJsonLayer, DeckJsonEnvironmentSecretRef)
 - Test: `test/services/exporter-deck.test.ts`
 
-- [ ] **Step 1: Write failing test for selector-only export**
+- [x] **Step 1: Write failing test for selector-only export**
 
 In `test/services/exporter-deck.test.ts`, add:
 
@@ -130,13 +132,13 @@ it("exports deck layers without plugins[] when selector-only mode is used", () =
 });
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
 ```bash
 bun run test:run test/services/exporter-deck.test.ts
 ```
 
-- [ ] **Step 3: Update types**
+- [x] **Step 3: Update types**
 
 In `src/types.ts`:
 
@@ -154,21 +156,21 @@ export interface DeckJsonLayer {
 
 Add `selectorOnly?: boolean` to export options type used by `exportDeckToDeckJson`.
 
-- [ ] **Step 4: Implement export path**
+- [x] **Step 4: Implement export path**
 
 In `src/services/exporter.ts` `exportDeckToDeckJson` and `parsedBundleToDeckJson`:
 
 - When `selectorOnly: true` (default for new exports): emit `name`, `version`, and `org`/`catalog` when non-empty on the layer row; omit `plugins`.
 - When `selectorOnly: false`: keep current `plugins[]` emission for backward compat.
 
-- [ ] **Step 5: Run tests — expect PASS**
+- [x] **Step 5: Run tests — expect PASS**
 
 ```bash
 bun run test:run test/services/exporter-deck.test.ts
 bun run typecheck
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/types.ts src/services/exporter.ts test/services/exporter-deck.test.ts
@@ -182,7 +184,7 @@ git commit -m "feat(deck): export selector-only deck.json layer entries"
 - Test: `test/services/exporter-deck.test.ts`
 - Fixture: `test/fixtures/decks/minimal-deck.json` (keep legacy shape for regression)
 
-- [ ] **Step 1: Write failing test — import legacy plugins[] deck**
+- [x] **Step 1: Write failing test — import legacy plugins[] deck**
 
 ```typescript
 it("imports deck.json with legacy plugins[] arrays", async () => {
@@ -192,25 +194,25 @@ it("imports deck.json with legacy plugins[] arrays", async () => {
 });
 ```
 
-- [ ] **Step 2: Write failing test — import selector-only deck**
+- [x] **Step 2: Write failing test — import selector-only deck**
 
 New fixture `test/fixtures/decks/selector-only-deck.json` with layers lacking `plugins[]`.
 
-- [ ] **Step 3: Implement import branch**
+- [x] **Step 3: Implement import branch**
 
 In deck import: if `layer.plugins` present, resolve by `name@version` (current behavior). Else resolve by `name`, `version`, optional `org`/`catalog` via `resolveLayerSelector`.
 
-- [ ] **Step 4: Update deck doctor / materializer if they assume plugins[]**
+- [x] **Step 4: Update deck doctor / materializer if they assume plugins[]**
 
 Check `src/services/deck-materializer.ts`, `src/services/deck-doctor/` — adjust only if tests fail.
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 ```bash
 bun run test:run
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/services/exporter.ts test/services/exporter-deck.test.ts test/fixtures/decks/
@@ -224,13 +226,13 @@ git commit -m "feat(deck): import selector-only and legacy deck.json layer entri
 - Modify: `SPEC.md` (Deck v1 example ~lines 640–658)
 - Modify: `test/fixtures/decks/minimal-deck.json` only if doctor tests require both shapes
 
-- [ ] **Step 1: Default new exports to selector-only**
+- [x] **Step 1: Default new exports to selector-only**
 
-- [ ] **Step 2: Update SPEC deck.json example** — remove `plugins[]` from layer entry; show optional `org`/`catalog` on published deck layers.
+- [x] **Step 2: Update SPEC deck.json example** — remove `plugins[]` from layer entry; show optional `org`/`catalog` on published deck layers.
 
-- [ ] **Step 3: Remove deck.json from Known gaps** once import + export + doctor pass.
+- [x] **Step 3: Remove deck.json from Known gaps** once import + export + doctor pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add SPEC.md src/services/exporter.ts
@@ -251,7 +253,7 @@ git commit -m "docs: deck.json selector-only is default transport shape"
 - Modify: `src/services/layer-selector.ts` (reuse `resolveRemoteLayerSelector`)
 - Test: `test/cli/project-apply.test.ts` or nearest integration test
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```typescript
 it("project apply fetches published layer when not installed locally", async () => {
@@ -261,7 +263,7 @@ it("project apply fetches published layer when not installed locally", async () 
 
 Use existing CLI test helpers in `test/helpers/cli.ts`.
 
-- [ ] **Step 2: Add `resolveApplyLayerSource(selector)` helper**
+- [x] **Step 2: Add `resolveApplyLayerSource(selector)` helper**
 
 In `src/services/layer-source.ts`:
 
@@ -269,24 +271,24 @@ In `src/services/layer-source.ts`:
 2. If selector matches published grammar (`org/catalog/name` or `org/name`) → call existing `layer add` import path (no duplicate if version exists).
 3. If bundle path/URL → existing behavior.
 
-- [ ] **Step 3: Wire into `project apply`**
+- [x] **Step 3: Wire into `project apply`**
 
 Before `applyBundle` merge, map each positional selector through `resolveApplyLayerSource`.
 
-- [ ] **Step 4: Human-mode messaging**
+- [x] **Step 4: Human-mode messaging**
 
 Print one line: `Fetched org/catalog/name@version from catalog` when remote install occurs.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 bun run test:run test/cli/
 bun run typecheck
 ```
 
-- [ ] **Step 6: Update SPEC** — remove `project apply remote layers` known gap; document fetch-on-miss in Apply section.
+- [x] **Step 6: Update SPEC** — remove `project apply remote layers` known gap; document fetch-on-miss in Apply section.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/services/layer-source.ts src/index.ts test/
@@ -305,7 +307,7 @@ git commit -m "feat(apply): resolve published layer selectors from catalog on mi
 - Create: `src/services/secret-resolver.ts`
 - Test: `test/services/secret-resolver.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```typescript
 describe("resolveSecretRef", () => {
@@ -328,7 +330,7 @@ describe("resolveSecretRef", () => {
 
 Start with `env` + `file`; keychain can delegate to macOS `security` CLI or remain explicit unsupported with a actionable error until a follow-up.
 
-- [ ] **Step 2: Implement `resolveSecretRefs(fragment)`**
+- [x] **Step 2: Implement `resolveSecretRefs(fragment)`**
 
 ```typescript
 export function resolveSecretRefs(
@@ -342,13 +344,13 @@ export function resolveSecretRefs(
 }
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 bun run test:run test/services/secret-resolver.test.ts
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/services/secret-resolver.ts test/services/secret-resolver.test.ts
@@ -362,23 +364,23 @@ git commit -m "feat(secrets): add env and file secret ref resolver"
 - Modify: `src/services/applier.ts` (or call site in `index.ts`)
 - Test: `test/services/environment-cascade.test.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 After `resolveEnvironmentCascadeForApply`, secrets with `provider: env` become vars merged into resources.
 
-- [ ] **Step 2: In `resolveEnvironmentCascadeForApply` post-merge**, call `resolveSecretRefs` on `acc.secretRefs` and merge into `acc.vars` (secrets win over plain vars for same key).
+- [x] **Step 2: In `resolveEnvironmentCascadeForApply` post-merge**, call `resolveSecretRefs` on `acc.secretRefs` and merge into `acc.vars` (secrets win over plain vars for same key).
 
-- [ ] **Step 3: Extend `DeckJsonSecretProvider`** to include `"file"` in `src/types.ts` if deck transport should carry file refs (path relative to deck root).
+- [x] **Step 3: Extend `DeckJsonSecretProvider`** to include `"file"` in `src/types.ts` if deck transport should carry file refs (path relative to deck root).
 
-- [ ] **Step 4: Run full suite**
+- [x] **Step 4: Run full suite**
 
 ```bash
 bun run test:run
 ```
 
-- [ ] **Step 5: Update SPEC** — tighten secret gap to “keychain provider not yet implemented” only; remove file from incomplete list once done.
+- [x] **Step 5: Update SPEC** — tighten secret gap to “keychain provider not yet implemented” only; remove file from incomplete list once done.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/services/environment-cascade.ts src/types.ts test/
@@ -405,11 +407,11 @@ Defer unless macOS keychain integration is required for a near-term deck. Docume
 - Modify: `../harnessdeck-cloud/SPEC.md`
 - Modify: `../harnessdeck-cloud/README.md` (if it repeats old terms)
 
-- [ ] **Step 1: Replace configured layer / design plugin** with **layer** in Shared concepts table.
+- [x] **Step 1: Replace configured layer / design plugin** with **layer** in Shared concepts table.
 
-- [ ] **Step 2: Update cascade line** — “layer default environment” not “configured-layer default”.
+- [x] **Step 2: Update cascade line** — “layer default environment” not “configured-layer default”.
 
-- [ ] **Step 3: Commit in harnessdeck-cloud repo**
+- [x] **Step 3: Commit in harnessdeck-cloud repo**
 
 ```bash
 cd ../harnessdeck-cloud

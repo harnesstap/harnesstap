@@ -43,10 +43,11 @@ After remote install, stamp `org_slug` and `catalog_slug` on the imported local 
 
 After successful publish, update local layer published identity (`org_slug`, `catalog_slug`, version when returned).
 
-### 4.3+ (future — see [2026-06-10-spec-follow-up.md](./2026-06-10-spec-follow-up.md))
+### 4.3+ (done — shipped in [2026-06-10-spec-follow-up.md](./2026-06-10-spec-follow-up.md) / harnessdeck#40)
 
-- Resolve published layers from catalog during apply
-- Deck export/import uses unified layer rows only
+- Resolve published layers from catalog during apply (done)
+- Deck export/import uses selector-only layer entries with legacy `plugins[]` import compat (done)
+- Secret dereferencing at apply for `env` and `file` providers (done; keychain deferred)
 
 ## Tests
 
