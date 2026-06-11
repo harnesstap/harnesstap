@@ -1621,7 +1621,7 @@ async function handleLayerPublishCommand(
     const errorMsg = err instanceof Error ? err.message : String(err);
     // Enhance error message for common cases
     if (errorMsg.includes("409")) {
-      ui.danger(`Library slug "${layer.name}" already exists in organization. Choose a different layer name or delete the existing library.`);
+      ui.danger(`Layer slug "${layer.name}" already exists in organization. Choose a different layer name or delete the existing published layer.`);
     } else {
       ui.danger(errorMsg);
     }
@@ -4228,7 +4228,9 @@ async function handleCloudLoginCommand(profileName: string | undefined, opts: { 
       refreshToken: token.refresh_token,
       accessTokenExpiresAt: token.expires_in ? now + token.expires_in : undefined,
       refreshTokenExpiresAt: undefined,
-      scopes: [],
+      orgId: token.orgId,
+      orgSlug: token.orgSlug,
+      scopes: token.scopes ?? [],
     };
     await saveCloudProfile(name, profile);
     await setDefaultCloudProfile(name);
