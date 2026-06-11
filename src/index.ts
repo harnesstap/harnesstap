@@ -157,6 +157,16 @@ import {
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { resolveApplyLayerSource } from "./services/layer-apply-source.js";
 import { installLayerFromCatalog } from "./services/layer-catalog-install.js";
+import {
+  promptMaterializationConflict,
+  resolveApplyConflictPolicy,
+} from "./services/materialization-conflicts.js";
+import {
+  exportDeckRepo,
+  importDeckRepo,
+} from "./services/deck-transport.js";
+import { listDecks } from "./models/deck.js";
+import { runDeckDoctor } from "./services/deck-doctor.js";
 import { syncProject } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
@@ -965,6 +975,7 @@ async function handleApplyCommand(
     syncPlugins?: boolean;
     interactive?: boolean;
     noInteractive?: boolean;
+    onConflict?: string;
   },
 ): Promise<void> {
   const db = getDb();
@@ -1228,15 +1239,43 @@ async function handleApplyCommand(
     return;
   }
 
-  // Write files with per-platform progress handles.
+  const conflictPolicy = resolveApplyConflictPolicy({
+    onConflict: opts.onConflict,
+    noInteractive: opts.noInteractive,
+  });
+  const conflictResolver =
+    conflictPolicy === "prompt" ? promptMaterializationConflict : undefined;
+
   for (const result of generated) {
     const spin = createProgress(`Applying ${result.platformId}…`);
-    writeFiles(result.files, projectRoot);
-    spin.succeed(
-      `${result.platformId} ${ui.icons.bullet} wrote ${formatCount(result.files.length, "file")}`,
+    const materialized = await materializeFiles(result.files, projectRoot, {
+      conflictPolicy,
+      conflictResolver,
+    });
+    spin.stop();
+    if (materialized.cancelled) {
+      ui.danger("Apply cancelled due to file conflicts");
+      process.exitCode = 1;
+      return;
+    }
+    const writtenCount = materialized.writtenFiles.length;
+    const skippedCount = materialized.skippedFiles.length;
+    const summary =
+      skippedCount > 0
+        ? `wrote ${formatCount(writtenCount, "file")}, skipped ${formatCount(skippedCount, "file")}`
+        : `wrote ${formatCount(writtenCount, "file")}`;
+    console.log(
+      ui.theme.success(
+        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${summary}`,
+      ),
     );
-    for (const file of result.files) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${file.path}`));
+    for (const filePath of materialized.writtenFiles) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${filePath}`));
+    }
+    for (const filePath of materialized.skippedFiles) {
+      console.log(
+        ui.theme.muted(`  ${ui.icons.bullet} skipped ${filePath}`),
+      );
     }
   }
 
@@ -3851,6 +3890,132 @@ environmentCmd
     console.log(payload.jsonc);
   });
 
+// ── deck ────────────────────────────────────────────────────────────────
+
+const deckCmd = configureCommandGroup(
+  program
+    .command("deck")
+    .description("Export, import, and validate portable deck repositories"),
+);
+
+deckCmd
+  .command("list")
+  .alias("ls")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List deck records in the local database")
+  .action((opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const decks = listDecks();
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(decks);
+      return;
+    }
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 24 },
+        { key: "root_path", header: "ROOT", width: 40 },
+      ],
+      rows: decks.map((deck) => ({
+        name: deck.name,
+        root_path: deck.root_path || ui.theme.muted("(not set)"),
+      })),
+      empty: "No decks found.",
+    });
+  });
+
+deckCmd
+  .command("export")
+  .argument("<deck>", "Deck name or ID")
+  .requiredOption("--output <path>", "Directory to write the deck repo")
+  .option("--with-layer-bundles", "Include portable layer bundles under .harnessdeck/layers/")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Export a deck to a portable hybrid deck repo directory")
+  .action((deck: string, opts: { output: string; withLayerBundles?: boolean; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const result = exportDeckRepo(deck, opts.output, {
+        withLayerBundles: opts.withLayerBundles,
+      });
+      const format = parseOutputFormat(opts.format);
+      if (format === "json") {
+        printJson(result);
+        return;
+      }
+      ui.success(`Exported deck to ${ui.theme.accent(resolve(opts.output))}`);
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${result.deckJsonPath}`));
+      for (const bundlePath of result.layerBundlePaths) {
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${bundlePath}`));
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+deckCmd
+  .command("import")
+  .argument("<path>", "Deck repo directory containing .harnessdeck/deck.json")
+  .option("--as <name>", "Override imported deck name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Import a deck repo into the local database")
+  .action((path: string, opts: { as?: string; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const imported = importDeckRepo(path, { deckNameOverride: opts.as });
+      const format = parseOutputFormat(opts.format);
+      if (format === "json") {
+        printJson({
+          deck: imported.deck,
+          layers: imported.configuredLayers.map((layer) => ({
+            name: layer.name,
+            version: layer.version,
+          })),
+          environments: imported.environments.map((environment) => environment.name),
+        });
+        return;
+      }
+      ui.success(`Imported deck ${ui.theme.accent(imported.deck.name)}`);
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+deckCmd
+  .command("doctor")
+  .argument("<path>", "Deck repo directory")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Validate generated marketplace and native files against deck.json")
+  .action(async (path: string, opts: { format?: string }) => {
+    try {
+      const result = await runDeckDoctor({ repoRoot: resolve(path) });
+      const format = parseOutputFormat(opts.format);
+      if (format === "json") {
+        printJson(result);
+        return;
+      }
+      if (result.valid) {
+        ui.success("Deck doctor passed");
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger("Deck doctor found issues");
+      for (const issue of result.results) {
+        console.log(ui.theme.warn(`  ${issue.message}`));
+        if (issue.fix) {
+          console.log(ui.theme.muted(`    fix: ${issue.fix}`));
+        }
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
 // ── migrate ─────────────────────────────────────────────────────────────
 
 const migrateCmd = configureCommandGroup(
@@ -4099,6 +4264,10 @@ projectCmd
   .option(
     "--sync-plugins",
     "Refresh all pinned plugin resources from install trees before apply (unresolved plugins are synced by default)",
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
   )
   .description(
     "Apply one or more layers (or a bundle URL) to a project, serializing for each harness",
