@@ -122,10 +122,21 @@ describe("CLI output format", () => {
       await cloudProfiles.setDefaultCloudProfile("test");
 
       const { createCatalogFetchMock } = await import("../helpers/catalog-fetch.ts");
+      const { createCloudPublishFetchMock } = await import("../helpers/cloud-fetch.ts");
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        layers: [],
+        layers: [{
+          orgSlug: "harnessdeck-cloud",
+          slug: "lib",
+          name: "Lib Layer",
+          summary: "Remote layer",
+          latestVersion: "1.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: [],
+          visibility: "public",
+        }],
       });
+      const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
       try {
         const search = await runCli([
@@ -180,6 +191,7 @@ describe("CLI output format", () => {
         ]);
         expect(JSON.parse(publish.stdout)).toBeDefined();
       } finally {
+        restorePublishFetch();
         restoreFetch();
       }
     } finally {

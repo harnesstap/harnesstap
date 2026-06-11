@@ -13,8 +13,8 @@ export type CatalogListRenderOptions = {
   selectedSelector?: string;
 };
 
-function toRows(libraries: CatalogLayer[]): CatalogListRow[] {
-  return libraries.map((library) => {
+function toRows(layers: CatalogLayer[]): CatalogListRow[] {
+  return layers.map((library) => {
     const selector = formatPublishedSelector({
       org: library.orgSlug,
       catalog: library.catalogSlug,
@@ -65,10 +65,10 @@ export function formatCatalogSelectionLabel(library: CatalogLayer): string {
 }
 
 export function renderCatalogListTable(
-  libraries: CatalogLayer[],
+  layers: CatalogLayer[],
   opts: CatalogListRenderOptions = {},
 ): string {
-  const rows = toRows(libraries).map((row) => {
+  const rows = toRows(layers).map((row) => {
     const isSelected = opts.selectedSelector === row.selector
       || opts.selectedSelector === row.list_display_name;
     return {
@@ -78,12 +78,12 @@ export function renderCatalogListTable(
   });
 
   if (rows.length === 0) {
-    return theme.muted("No matching libraries.");
+    return theme.muted("No matching layers.");
   }
 
   return renderTable({
     columns: makeColumns(Boolean(opts.selectedSelector)),
     rows,
-    summary: `${rows.length} libraries`,
+    summary: `${rows.length} layers`,
   });
 }

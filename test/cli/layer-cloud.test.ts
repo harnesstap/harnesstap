@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
+import { createCloudPublishFetchMock } from "../helpers/cloud-fetch.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
@@ -90,32 +91,12 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      // Mock /orgs endpoint for auto-select
-      const oldFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.endsWith("/orgs")) {
-          return {
-            ok: true,
-            json: async () => ([{ slug: "acme", name: "Acme Corp" }]),
-          };
-        }
-        if (url.endsWith("/layers/publish")) {
-          return { ok: true, json: async () => ({ id: "pub-1", version: "1.2.3", url: "https://mock/layers/pub-1" }) };
-        }
-        return oldFetch(input, init);
-      }) as typeof fetch;
+      const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
       const publish = await runCli(["layer", "publish", "pubtest", "--profile", "test", "--format", "json"]);
-      expect(JSON.parse(publish.stdout)).toEqual(expect.objectContaining({ id: "pub-1", version: "1.2.3", url: expect.any(String) }));
+      expect(JSON.parse(publish.stdout)).toEqual(expect.objectContaining({ id: expect.any(String), version: "1.0.0", url: expect.any(String) }));
 
-      globalThis.fetch = oldFetch;
+      restorePublishFetch();
 
       // applying a cloud-installed layer through project apply
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
@@ -498,26 +479,7 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.endsWith("/orgs")) {
-          return {
-            ok: true,
-            json: async () => ([{ slug: "acme", name: "Acme Corp" }]),
-          };
-        }
-        if (url.endsWith("/layers/publish")) {
-          return { ok: true, json: async () => ({ id: "pub-1", version: "1.0.0", url: "https://mock/layers/pub-1" }) };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
       const layerModel = await import("../../src/models/layer.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
@@ -537,9 +499,9 @@ describe("CLI cloud layer workflows", () => {
 
       expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
       const payload = JSON.parse(result.stdout);
-      expect(payload).toEqual(expect.objectContaining({ id: "pub-1", version: "1.0.0" }));
+      expect(payload).toEqual(expect.objectContaining({ id: expect.any(String), version: "1.0.0" }));
 
-      globalThis.fetch = originalFetch;
+      restorePublishFetch();
     } finally {
       await context.cleanup();
     }
@@ -560,29 +522,13 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.endsWith("/orgs")) {
-          return {
-            ok: true,
-            json: async () => ([
-              { slug: "acme", name: "Acme Corp" },
-              { slug: "widgets", name: "Widgets Inc" },
-            ]),
-          };
-        }
-        if (url.endsWith("/layers/publish")) {
-          return { ok: true, json: async () => ({ id: "pub-2", version: "1.0.0", url: "https://mock/layers/pub-2" }) };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restorePublishFetch = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        orgs: [
+          { id: "org-1", slug: "acme", name: "Acme Corp" },
+          { id: "org-2", slug: "widgets", name: "Widgets Inc" },
+        ],
+      });
 
       const layerModel = await import("../../src/models/layer.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
@@ -614,7 +560,7 @@ describe("CLI cloud layer workflows", () => {
       }
       expect(result.stdout).toContain("Published layer");
 
-      globalThis.fetch = originalFetch;
+      restorePublishFetch();
     } finally {
       await context.cleanup();
     }
@@ -635,20 +581,10 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.endsWith("/orgs")) {
-          return { ok: true, json: async () => ([]) };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restorePublishFetch = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        orgs: [],
+      });
 
       const layerModel = await import("../../src/models/layer.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
@@ -669,13 +605,13 @@ describe("CLI cloud layer workflows", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("No organizations found");
 
-      globalThis.fetch = originalFetch;
+      restorePublishFetch();
     } finally {
       await context.cleanup();
     }
   });
 
-  it("layer publish detects existing library slug and errors clearly", async () => {
+  it("layer publish detects existing layer slug and errors clearly", async () => {
     const context = await createTestContext("cli-layer-publish-slug-exists");
     try {
       await runCli(["init"]);
@@ -690,30 +626,11 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudProfiles.setDefaultCloudProfile("test");
 
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.endsWith("/orgs")) {
-          return {
-            ok: true,
-            json: async () => ([{ slug: "acme", name: "Acme Corp" }]),
-          };
-        }
-        if (url.endsWith("/layers/publish")) {
-          return { 
-            ok: false, 
-            status: 409,
-            text: async () => "Library slug already exists"
-          };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      const restorePublishFetch = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        createStatus: 409,
+        patchStatus: 409,
+      });
 
       const layerModel = await import("../../src/models/layer.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
@@ -734,7 +651,7 @@ describe("CLI cloud layer workflows", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("already exists");
 
-      globalThis.fetch = originalFetch;
+      restorePublishFetch();
     } finally {
       await context.cleanup();
     }
@@ -824,29 +741,13 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      let publishMetadata: Record<string, unknown> | undefined;
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-        const url = String(input);
-        if (url.endsWith("/oauth/token") && init?.method === "POST") {
-          return {
-            ok: true,
-            json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
-          };
-        }
-        if (url.endsWith("/orgs")) {
-          return {
-            ok: true,
-            json: async () => ([{ slug: "acme", name: "Acme Corp" }]),
-          };
-        }
-        if (url.endsWith("/layers/publish") && init?.method === "POST") {
-          const form = init.body as FormData;
-          publishMetadata = JSON.parse(String(form.get("metadata"))) as Record<string, unknown>;
-          return { ok: true, json: async () => ({ id: "pub-cat", version: "1.0.0" }) };
-        }
-        return { ok: false, status: 404, text: async () => "not found" };
-      }) as typeof fetch;
+      let createPayload: Record<string, unknown> | undefined;
+      const restorePublishFetch = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        onCreate: (body) => {
+          createPayload = body;
+        },
+      });
 
       const result = await runCli([
         "layer",
@@ -863,15 +764,14 @@ describe("CLI cloud layer workflows", () => {
       ]);
 
       expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
-      expect(publishMetadata).toEqual(
+      expect(createPayload).toEqual(
         expect.objectContaining({
-          layer_name: "catalog-layer",
-          org_slug: "acme",
-          catalog_slug: "platform-personas",
+          name: "catalog-layer",
+          catalogSlug: "platform-personas",
         }),
       );
 
-      globalThis.fetch = originalFetch;
+      restorePublishFetch();
     } finally {
       await context.cleanup();
     }

@@ -58,14 +58,11 @@ export function createCatalogFetchMock(input?: {
     if (/\/api\/catalog\/.+\/versions\/.+\/bundle$/.test(url)) {
       return { ok: true, text: async () => bundle };
     }
-    if (url.endsWith("/orgs")) {
+    if (url.endsWith("/api/me/orgs")) {
       return {
         ok: true,
-        json: async () => ([{ slug: "acme", name: "Acme Corp" }]),
+        json: async () => ({ orgs: [{ id: "org-1", slug: "acme", name: "Acme Corp" }] }),
       };
-    }
-    if (url.endsWith("/layers/publish")) {
-      return { ok: true, json: async () => ({ id: "pub-1", version: "1.2.3", url: "https://mock/layers/pub-1" }) };
     }
     return originalFetch(urlInput, init);
   }) as typeof fetch;
