@@ -278,8 +278,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer catalog list` | Shows default catalog, connected orgs, connected layers, and effective cloud base URL. |
 | `layer catalog connect org <slug>` | Opt in to public layers from another org in browse/search scope. |
 | `layer catalog disconnect org <slug>` | Remove a connected org from scope (cannot remove `harnessdeck-cloud`). |
-| `layer catalog connect library <org>/<name>` | Opt in to one published layer without subscribing to the whole org. |
-| `layer catalog disconnect library <org>/<name>` | Remove a connected layer from scope. |
+| `layer catalog connect layer <org>/<name>` | Opt in to one published layer without subscribing to the whole org. |
+| `layer catalog disconnect layer <org>/<name>` | Remove a connected layer from scope. |
 | `layer diff` | Compares two layers, or a layer and a bundle file. |
 | `layer doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
 | `layer from-project` | Scans a project and creates a layer from imported resources. |
@@ -677,7 +677,7 @@ The CLI builds a **catalog scope** from:
 | --- | --- |
 | Default catalog | Public layers in the `harnessdeck-cloud` org (always included) |
 | Connected org | `layer catalog connect org <slug>` — public layers from that org |
-| Connected layer | `layer catalog connect library <org/name>` — opt-in to one published layer |
+| Connected layer | `layer catalog connect layer <org/name>` — opt-in to one published layer |
 | Authenticated | Private and shared layers in orgs the user belongs to |
 
 `layer search` and interactive `layer add` query this union. Configuration persists under `catalog` in `~/.harnessdeck/config.jsonc`.

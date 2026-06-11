@@ -15,7 +15,7 @@ export type ParsedLayerSelector =
     };
 
 const INVALID_SELECTOR_MESSAGE =
-  "Invalid library selector. Use name, name@version, org/name[@version], or org/catalog/name[@version].";
+  "Invalid layer selector. Use name, name@version, or org/catalog/name[@version].";
 
 function splitVersionFromSegment(segment: string): { name: string; version?: string } {
   if (!segment) {
@@ -51,7 +51,7 @@ export function parseLayerSelector(selector: string): ParsedLayerSelector {
   }
 
   const segments = trimmed.split("/").filter((part) => part.length > 0);
-  if (segments.length < 2 || segments.length > 3) {
+  if (segments.length !== 3) {
     throw new Error(INVALID_SELECTOR_MESSAGE);
   }
 
@@ -65,20 +65,6 @@ export function parseLayerSelector(selector: string): ParsedLayerSelector {
     throw new Error(INVALID_SELECTOR_MESSAGE);
   }
   segments[lastIndex] = layerName;
-
-  if (segments.length === 2) {
-    const [org, name] = segments;
-    if (!org || !name) {
-      throw new Error(INVALID_SELECTOR_MESSAGE);
-    }
-    return {
-      scope: "published",
-      org,
-      catalog: DEFAULT_CATALOG_SLUG,
-      name,
-      version,
-    };
-  }
 
   const [org, catalog, name] = segments;
   if (!org || !catalog || !name) {
@@ -117,7 +103,7 @@ export function formatPublishedSelectorWithVersion(selector: {
 export interface ResolvedRemoteLayerSelector {
   org_slug: string;
   catalog_slug: string;
-  library_slug: string;
+  layer_slug: string;
   version?: string;
 }
 
@@ -135,14 +121,14 @@ export function resolveRemoteLayerSelector(
     }
     if (!opts.org) {
       throw new Error(
-        "org is required. Provide it in the selector as org/library or use --org <slug>",
+        "org is required. Provide it in the selector as org/catalog/layer or use --org <slug>",
       );
     }
 
     return {
       org_slug: opts.org,
       catalog_slug: opts.catalog ?? DEFAULT_CATALOG_SLUG,
-      library_slug: parsed.name,
+      layer_slug: parsed.name,
       version: opts.version ?? parsed.version,
     };
   }
@@ -166,7 +152,7 @@ export function resolveRemoteLayerSelector(
   return {
     org_slug: parsed.org,
     catalog_slug: opts.catalog ?? parsed.catalog,
-    library_slug: parsed.name,
+    layer_slug: parsed.name,
     version: opts.version ?? parsed.version,
   };
 }

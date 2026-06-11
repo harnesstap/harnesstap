@@ -124,7 +124,7 @@ describe("CLI output format", () => {
       const { createCatalogFetchMock } = await import("../helpers/catalog-fetch.ts");
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        libraries: [],
+        layers: [],
       });
 
       try {
@@ -144,7 +144,7 @@ describe("CLI output format", () => {
         const install = await runCli([
           "layer",
           "add",
-          "harnessdeck-cloud/lib@1.0",
+          "harnessdeck-cloud/default/lib@1.0",
           "--as",
           "lib-local",
           "--profile",
@@ -158,7 +158,7 @@ describe("CLI output format", () => {
           expect.objectContaining({
             layer_name: expect.any(String),
             org_slug: expect.any(String),
-            library_slug: expect.any(String),
+            layer_slug: expect.any(String),
             version: expect.anything(),
           }),
         );

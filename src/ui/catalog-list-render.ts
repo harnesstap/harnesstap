@@ -1,10 +1,10 @@
-import type { CatalogLibrary } from "../services/catalog-types.js";
+import type { CatalogLayer } from "../services/catalog-types.js";
 import { formatPublishedSelector } from "../services/layer-selector.js";
 import * as format from "./format.js";
 import { renderTable, type Column } from "./table.js";
 import { theme } from "./theme.js";
 
-export type CatalogListRow = CatalogLibrary & {
+export type CatalogListRow = CatalogLayer & {
   selector: string;
   list_display_name: string;
 };
@@ -13,7 +13,7 @@ export type CatalogListRenderOptions = {
   selectedSelector?: string;
 };
 
-function toRows(libraries: CatalogLibrary[]): CatalogListRow[] {
+function toRows(libraries: CatalogLayer[]): CatalogListRow[] {
   return libraries.map((library) => {
     const selector = formatPublishedSelector({
       org: library.orgSlug,
@@ -60,12 +60,12 @@ function makeColumns(highlightSelection: boolean): Column[] {
   ];
 }
 
-export function formatCatalogSelectionLabel(library: CatalogLibrary): string {
+export function formatCatalogSelectionLabel(library: CatalogLayer): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }
 
 export function renderCatalogListTable(
-  libraries: CatalogLibrary[],
+  libraries: CatalogLayer[],
   opts: CatalogListRenderOptions = {},
 ): string {
   const rows = toRows(libraries).map((row) => {

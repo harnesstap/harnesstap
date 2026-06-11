@@ -6,8 +6,8 @@ import {
   type CatalogScope,
 } from "../config/catalog.js";
 import {
-  normalizeCatalogLibrary,
-  type CatalogLibrary,
+  normalizeCatalogLayer,
+  type CatalogLayer,
   type CatalogListOptions,
   type CatalogListResult,
 } from "./catalog-types.js";
@@ -25,28 +25,28 @@ function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): Cat
   };
 }
 
-function catalogLibraryKey(library: CatalogLibrary): string {
-  return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
+function catalogLayerKey(layer: CatalogLayer): string {
+  return `${layer.orgSlug}/${layer.catalogSlug}/${layer.slug}`;
 }
 
-function dedupeCatalogLibraries(libraries: CatalogLibrary[]): CatalogLibrary[] {
-  const byKey = new Map<string, CatalogLibrary>();
+function dedupeCatalogLayers(layers: CatalogLayer[]): CatalogLayer[] {
+  const byKey = new Map<string, CatalogLayer>();
   const visibilityRank = { organization: 3, shared: 2, public: 1 } as const;
-  for (const library of libraries) {
-    const key = catalogLibraryKey(library);
+  for (const layer of layers) {
+    const key = catalogLayerKey(layer);
     const existing = byKey.get(key);
-    if (!existing || visibilityRank[library.visibility] > visibilityRank[existing.visibility]) {
-      byKey.set(key, library);
+    if (!existing || visibilityRank[layer.visibility] > visibilityRank[existing.visibility]) {
+      byKey.set(key, layer);
     }
   }
   return [...byKey.values()];
 }
 
-function sortCatalogLibraries(
-  libraries: CatalogLibrary[],
+function sortCatalogLayers(
+  layers: CatalogLayer[],
   sort: "updated" | "name" = "updated",
-): CatalogLibrary[] {
-  const sorted = [...libraries];
+): CatalogLayer[] {
+  const sorted = [...layers];
   if (sort === "name") {
     sorted.sort((left, right) => {
       const byOrg = left.orgSlug.localeCompare(right.orgSlug);
@@ -74,7 +74,7 @@ function sortCatalogLibraries(
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {
     ...result,
-    libraries: result.libraries.map((library) => normalizeCatalogLibrary(library)),
+    layers: result.layers.map((layer) => normalizeCatalogLayer(layer)),
   };
 }
 
@@ -82,7 +82,7 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
   const root = baseUrl.replace(/\/+$/, "");
 
   return {
-    async listLibraries(options: CatalogListOptions = {}): Promise<CatalogListResult> {
+    async listLayers(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = new URLSearchParams();
       if (options.q?.trim()) params.set("q", options.q.trim());
       if (options.tag?.trim()) params.set("tag", options.tag.trim());
@@ -93,13 +93,13 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
       for (const org of options.orgs ?? []) params.append("org", org);
       for (const selector of options.selectors ?? []) params.append("selector", selector);
 
-      const response = await fetch(`${root}/api/catalog/libraries?${params.toString()}`, {
+      const response = await fetch(`${root}/api/catalog/layers?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
       if (!response.ok) {
-        throw new Error(`Failed to list catalog libraries: ${response.status}`);
+        throw new Error(`Failed to list catalog layers: ${response.status}`);
       }
       const result = await response.json() as CatalogListResult;
       return normalizeListResult(result);
@@ -127,19 +127,19 @@ export async function resolveCatalogAccess(input?: {
   };
 }
 
-export async function listLibrariesInScope(
+export async function listLayersInScope(
   options: CatalogListOptions = {},
   input?: { profile?: string; baseUrl?: string },
-): Promise<CatalogLibrary[]> {
+): Promise<CatalogLayer[]> {
   const access = await resolveCatalogAccess(input);
   const scopedOptions = buildScopeParams(access.scope, options);
 
   if (access.authenticatedClient) {
-    const result = await access.authenticatedClient.listLibraries(scopedOptions);
-    return result.libraries;
+    const result = await access.authenticatedClient.listLayers(scopedOptions);
+    return result.layers;
   }
 
-  const orgScopedLibraries: CatalogLibrary[] = [];
+  const orgScopedLayers: CatalogLayer[] = [];
   const selectorsOnly = (scopedOptions.selectors ?? []).filter((selector) => {
     const parsed = parseLayerSelector(selector);
     if (parsed.scope !== "published") {
@@ -149,33 +149,33 @@ export async function listLibrariesInScope(
   });
 
   if ((scopedOptions.orgs ?? []).length > 0) {
-    const result = await access.publicClient.listLibraries({
+    const result = await access.publicClient.listLayers({
       ...scopedOptions,
       selectors: [],
       limit: scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10),
     });
-    orgScopedLibraries.push(...result.libraries);
+    orgScopedLayers.push(...result.layers);
   }
 
   if (selectorsOnly.length > 0) {
-    const result = await access.publicClient.listLibraries({
+    const result = await access.publicClient.listLayers({
       ...scopedOptions,
       orgs: [],
       selectors: selectorsOnly,
       limit: scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10),
     });
-    orgScopedLibraries.push(...result.libraries);
+    orgScopedLayers.push(...result.layers);
   }
 
-  const deduped = dedupeCatalogLibraries(orgScopedLibraries);
+  const deduped = dedupeCatalogLayers(orgScopedLayers);
   const limit = scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10);
-  return sortCatalogLibraries(deduped, scopedOptions.sort).slice(0, limit);
+  return sortCatalogLayers(deduped, scopedOptions.sort).slice(0, limit);
 }
 
 export async function downloadCatalogBundle(input: {
   orgSlug: string;
   catalogSlug?: string;
-  librarySlug: string;
+  layerSlug: string;
   version?: string;
   profile?: string;
   baseUrl?: string;
@@ -189,13 +189,13 @@ export async function downloadCatalogBundle(input: {
   const selector = formatPublishedSelector({
     org: input.orgSlug,
     catalog: catalogSlug,
-    name: input.librarySlug,
+    name: input.layerSlug,
   });
   const inScope = isSelectorInCatalogScope(
     {
       orgSlug: input.orgSlug,
       catalogSlug,
-      librarySlug: input.librarySlug,
+      layerSlug: input.layerSlug,
     },
     access.scope,
   );
@@ -209,8 +209,8 @@ export async function downloadCatalogBundle(input: {
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
     const url = catalogSlug === "default"
-      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.librarySlug)}/versions/${encodedVersion}/bundle`
-      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.librarySlug)}/versions/${encodedVersion}/bundle`;
+      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/bundle`
+      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/bundle`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -230,31 +230,31 @@ export async function downloadCatalogBundle(input: {
 
   return access.publicClient.downloadBundle(
     input.orgSlug,
-    input.librarySlug,
+    input.layerSlug,
     version,
     catalogSlug,
   );
 }
 
-export async function validatePublicOrgHasLibraries(orgSlug: string, baseUrl?: string): Promise<boolean> {
+export async function validatePublicOrgHasLayers(orgSlug: string, baseUrl?: string): Promise<boolean> {
   const client = createPublicCatalogClient(resolveCatalogScope({ baseUrl }).cloudBaseUrl);
-  const result = await client.listLibraries({ orgs: [orgSlug], limit: 1 });
-  return result.libraries.length > 0;
+  const result = await client.listLayers({ orgs: [orgSlug], limit: 1 });
+  return result.layers.length > 0;
 }
 
-export async function validatePublicLibraryExists(
+export async function validatePublicLayerExists(
   selector: string,
   baseUrl?: string,
 ): Promise<boolean> {
   const client = createPublicCatalogClient(resolveCatalogScope({ baseUrl }).cloudBaseUrl);
-  const result = await client.listLibraries({ selectors: [selector], limit: 1 });
+  const result = await client.listLayers({ selectors: [selector], limit: 1 });
   const parsed = parseLayerSelector(selector);
   if (parsed.scope !== "published") {
     return false;
   }
-  return result.libraries.some((library) =>
-    library.orgSlug === parsed.org
-    && library.catalogSlug === parsed.catalog
-    && library.slug === parsed.name,
+  return result.layers.some((layer) =>
+    layer.orgSlug === parsed.org
+    && layer.catalogSlug === parsed.catalog
+    && layer.slug === parsed.name,
   );
 }

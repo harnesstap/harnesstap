@@ -1,5 +1,5 @@
 import {
-  normalizeCatalogLibrary,
+  normalizeCatalogLayer,
   type CatalogListOptions,
   type CatalogListResult,
 } from "./catalog-types.js";
@@ -25,7 +25,7 @@ function buildSearchParams(options: CatalogListOptions): URLSearchParams {
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {
     ...result,
-    libraries: result.libraries.map((library) => normalizeCatalogLibrary(library)),
+    layers: result.layers.map((layer) => normalizeCatalogLayer(layer)),
   };
 }
 
@@ -33,12 +33,12 @@ export function createPublicCatalogClient(baseUrl: string) {
   const root = baseUrl.replace(/\/+$/, "");
 
   return {
-    async listLibraries(options: CatalogListOptions = {}): Promise<CatalogListResult> {
+    async listLayers(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = buildSearchParams(options);
-      const url = `${root}/api/public/libraries?${params.toString()}`;
+      const url = `${root}/api/public/layers?${params.toString()}`;
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to list public libraries: ${response.status}`);
+        throw new Error(`Failed to list public layers: ${response.status}`);
       }
       const result = await response.json() as CatalogListResult;
       return normalizeListResult(result);
@@ -46,14 +46,14 @@ export function createPublicCatalogClient(baseUrl: string) {
 
     async downloadBundle(
       orgSlug: string,
-      librarySlug: string,
+      layerSlug: string,
       version = "latest",
       catalogSlug = DEFAULT_CATALOG_SLUG,
     ): Promise<{ version: string; body: string }> {
       const encodedVersion = encodeURIComponent(version);
       const url = catalogSlug === DEFAULT_CATALOG_SLUG
-        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(librarySlug)}/versions/${encodedVersion}/bundle`
-        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(librarySlug)}/versions/${encodedVersion}/bundle`;
+        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/bundle`
+        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/bundle`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to download public bundle: ${response.status}`);

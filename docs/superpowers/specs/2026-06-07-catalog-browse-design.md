@@ -64,9 +64,9 @@ flowchart LR
   end
 
   subgraph Cloud
-    PUB["GET /api/public/libraries"]
+    PUB["GET /api/public/layers"]
     PUB_BUNDLE["GET /api/public/{org}/{lib}/versions/{v}/bundle"]
-    AUTH["GET /api/catalog/libraries"]
+    AUTH["GET /api/catalog/layers"]
     AUTH_BUNDLE["GET /api/orgs/{org}/libraries/{lib}/versions/{v}/bundle"]
   end
 
@@ -90,7 +90,7 @@ Extend `~/.harnessdeck/config.jsonc`:
   "catalog": {
     "cloudBaseUrl": "https://harnessdeck.kayrnt.fr",
     "connectedOrgs": ["acme"],
-    "connectedLibraries": ["partner-co/design-system"]
+    "connectedLayers": ["partner-co/design-system"]
   }
 }
 ```
@@ -99,7 +99,7 @@ Extend `~/.harnessdeck/config.jsonc`:
 | --- | --- | --- |
 | `catalog.cloudBaseUrl` | `https://harnessdeck.kayrnt.fr` | HarnessDeck Cloud API root. Overridable via `--base-url` or `HARNESSDECK_CLOUD_URL`. |
 | `catalog.connectedOrgs` | `[]` | Additional org slugs whose public libraries are included in browse/search. |
-| `catalog.connectedLibraries` | `[]` | Individual `org/library` selectors included even when the org is not connected. |
+| `catalog.connectedLayers` | `[]` | Individual `org/library` selectors included even when the org is not connected. |
 
 `harnessdeck-cloud` is **not** stored in `connectedOrgs`; it is always implicit.
 
@@ -107,7 +107,7 @@ Extend `~/.harnessdeck/config.jsonc`:
 
 ### Public listing (anonymous)
 
-`GET /api/public/libraries`
+`GET /api/public/layers`
 
 Remove the authentication requirement. Response is already limited to `visibility=public` libraries.
 
@@ -129,7 +129,7 @@ Remove the authentication requirement. Response is already limited to `visibilit
 
 ```json
 {
-  "libraries": [{
+  "layers": [{
     "orgSlug": "harnessdeck-cloud",
     "slug": "incident-response",
     "name": "Incident Response",
@@ -145,7 +145,7 @@ Remove the authentication requirement. Response is already limited to `visibilit
 
 ### Public bundle download (new)
 
-`GET /api/public/{orgSlug}/{librarySlug}/versions/{version}/bundle`
+`GET /api/public/{orgSlug}/{layerSlug}/versions/{version}/bundle`
 
 - No authentication.
 - `version` accepts `latest` (resolves to `library.latestVersion`).
@@ -154,7 +154,7 @@ Remove the authentication requirement. Response is already limited to `visibilit
 
 ### Authenticated unified catalog (new)
 
-`GET /api/catalog/libraries`
+`GET /api/catalog/layers`
 
 Requires bearer token with `read` scope (CLI JWT or PAT).
 
@@ -169,7 +169,7 @@ Same query params, sort, limit, and response shape as the public route. Dedupe b
 
 Authenticated bundle download for non-public libraries uses the existing org-scoped route:
 
-`GET /api/orgs/{orgSlug}/libraries/{librarySlug}/versions/{version}/bundle`
+`GET /api/orgs/{orgSlug}/libraries/{layerSlug}/versions/{version}/bundle`
 
 ### Rate limiting
 
@@ -193,8 +193,8 @@ Migrate all HTTP paths to the `/api/...` prefix (fixes the wire-protocol gap in 
 **`listLibrariesInScope({ q, tag, limit, cursor })`** — CLI-side orchestration:
 
 1. Build org/selector param sets from `resolveCatalogScope()`.
-2. If anonymous → one or more `GET /api/public/libraries` calls, merge, dedupe, sort by `updatedAt`, apply `limit`.
-3. If authenticated → `GET /api/catalog/libraries` with the same scope params (single round-trip).
+2. If anonymous → one or more `GET /api/public/layers` calls, merge, dedupe, sort by `updatedAt`, apply `limit`.
+3. If authenticated → `GET /api/catalog/layers` with the same scope params (single round-trip).
 
 **`downloadBundle(org, slug, version?)`** — pick public or authenticated download path based on library visibility and auth state.
 
@@ -209,8 +209,8 @@ New `layer catalog` subcommand group:
 | `layer catalog list` | Show default catalog, connected orgs, connected libraries, and effective cloud base URL. |
 | `layer catalog connect org <slug>` | Append org slug to `catalog.connectedOrgs` (idempotent). Validates org exists and has at least one public library. |
 | `layer catalog disconnect org <slug>` | Remove org from `catalog.connectedOrgs`. Cannot disconnect `harnessdeck-cloud`. |
-| `layer catalog connect library <org>/<slug>` | Append selector to `catalog.connectedLibraries`. Validates public visibility. |
-| `layer catalog disconnect library <org>/<slug>` | Remove selector from `catalog.connectedLibraries`. |
+| `layer catalog connect layer <org>/<slug>` | Append selector to `catalog.connectedLayers`. Validates public visibility. |
+| `layer catalog disconnect layer <org>/<slug>` | Remove selector from `catalog.connectedLayers`. |
 
 `--format human|json` on `list`. Mutations write `config.jsonc` atomically.
 
@@ -218,7 +218,7 @@ New `layer catalog` subcommand group:
 
 - Default browse never queries all public libraries globally.
 - `connect org` only adds one org at a time; the CLI validates the org slug against the API before persisting.
-- `connect library` allows pinning a single public library from any org without subscribing to the whole org.
+- `connect layer` allows pinning a single public library from any org without subscribing to the whole org.
 - Authenticated private/shared libraries appear only for orgs the user belongs to — never from arbitrary orgs.
 
 ### Interactive browse (`hd l add`)
@@ -276,7 +276,7 @@ hd l add [selector] [flags]
 ```
 Library acme/team is not in your catalog scope.
 Connect the org:  hd layer catalog connect org acme
-Connect one lib:  hd layer catalog connect library acme/team
+Connect one lib:  hd layer catalog connect layer acme/team
 ```
 
 ### `layer search`
@@ -305,7 +305,7 @@ hd layer catalog connect org acme
 hd l add
 # → browse spans harnessdeck-cloud + acme public libraries
 
-hd layer catalog connect library partner-co/design-system
+hd layer catalog connect layer partner-co/design-system
 # → browse also includes that single library
 ```
 
@@ -322,7 +322,7 @@ hd l add
 
 ### Phase 1 — Cloud public catalog (harnessdeck-cloud)
 
-- Remove auth gate on `GET /api/public/libraries`.
+- Remove auth gate on `GET /api/public/layers`.
 - Add `sort`, `org`, `selector`, `updatedAt` sort via `publishedAt` join.
 - Implement `GET /api/public/{org}/{slug}/versions/{version}/bundle`.
 - Tests: anonymous list/download, yanked/non-public 404, multi-org filter.
@@ -343,7 +343,7 @@ hd l add
 
 ### Phase 4 — Authenticated catalog
 
-- `GET /api/catalog/libraries` on Cloud.
+- `GET /api/catalog/layers` on Cloud.
 - `authenticated-catalog-client` aligned to `/api/cli/*` device-auth paths.
 - Merge authenticated libraries in browse; visibility hints in table.
 

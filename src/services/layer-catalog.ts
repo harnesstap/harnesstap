@@ -1,16 +1,16 @@
 import {
-  connectCatalogLibrary,
+  connectCatalogLayer,
   connectCatalogOrg,
   DEFAULT_CATALOG_ORG_SLUG,
-  disconnectCatalogLibrary,
+  disconnectCatalogLayer,
   disconnectCatalogOrg,
   formatCatalogScopeLabel,
   loadCatalogSettings,
   resolveCatalogScope,
 } from "../config/catalog.js";
 import {
-  validatePublicLibraryExists,
-  validatePublicOrgHasLibraries,
+  validatePublicLayerExists,
+  validatePublicOrgHasLayers,
 } from "./catalog-client.js";
 import { renderCatalogListTable } from "../ui/catalog-list-render.js";
 import { ui } from "../ui/index.js";
@@ -25,7 +25,7 @@ export async function handleLayerCatalogListCommand(opts: {
     defaultOrg: DEFAULT_CATALOG_ORG_SLUG,
     cloudBaseUrl: scope.cloudBaseUrl,
     connectedOrgs: settings.connectedOrgs,
-    connectedLibraries: settings.connectedLibraries,
+    connectedLayers: settings.connectedLayers,
     scopeLabel: formatCatalogScopeLabel(scope),
   };
 
@@ -38,7 +38,7 @@ export async function handleLayerCatalogListCommand(opts: {
   console.log(`Cloud base URL: ${payload.cloudBaseUrl}`);
   console.log(`Connected orgs: ${payload.connectedOrgs.length > 0 ? payload.connectedOrgs.join(", ") : "—"}`);
   console.log(
-    `Connected libraries: ${payload.connectedLibraries.length > 0 ? payload.connectedLibraries.join(", ") : "—"}`,
+    `Connected layers: ${payload.connectedLayers.length > 0 ? payload.connectedLayers.join(", ") : "—"}`,
   );
 }
 
@@ -46,10 +46,10 @@ export async function handleLayerCatalogConnectOrgCommand(
   orgSlug: string,
   opts: { baseUrl?: string },
 ) {
-  const hasLibraries = await validatePublicOrgHasLibraries(orgSlug, opts.baseUrl);
+  const hasLayers = await validatePublicOrgHasLayers(orgSlug, opts.baseUrl);
   const settings = connectCatalogOrg(orgSlug);
-  if (!hasLibraries) {
-    ui.warn(`No public libraries found for org ${orgSlug} yet. Connection saved anyway.`);
+  if (!hasLayers) {
+    ui.warn(`No public layers found for org ${orgSlug} yet. Connection saved anyway.`);
   }
   ui.success(`Connected catalog org ${ui.theme.accent(orgSlug)}`);
   if (settings.connectedOrgs.length > 0) {
@@ -65,28 +65,28 @@ export async function handleLayerCatalogDisconnectOrgCommand(orgSlug: string) {
   }
 }
 
-export async function handleLayerCatalogConnectLibraryCommand(
+export async function handleLayerCatalogConnectLayerCommand(
   selector: string,
   opts: { baseUrl?: string },
 ) {
-  const exists = await validatePublicLibraryExists(selector, opts.baseUrl);
-  connectCatalogLibrary(selector);
+  const exists = await validatePublicLayerExists(selector, opts.baseUrl);
+  connectCatalogLayer(selector);
   if (!exists) {
-    ui.warn(`Public library ${selector} was not found. Connection saved anyway.`);
+    ui.warn(`Public layer ${selector} was not found. Connection saved anyway.`);
   } else {
-    ui.success(`Connected catalog library ${ui.theme.accent(selector)}`);
+    ui.success(`Connected catalog layer ${ui.theme.accent(selector)}`);
   }
 }
 
-export async function handleLayerCatalogDisconnectLibraryCommand(selector: string) {
-  disconnectCatalogLibrary(selector);
-  ui.success(`Disconnected catalog library ${ui.theme.accent(selector)}`);
+export async function handleLayerCatalogDisconnectLayerCommand(selector: string) {
+  disconnectCatalogLayer(selector);
+  ui.success(`Disconnected catalog layer ${ui.theme.accent(selector)}`);
 }
 
-export function renderLayerSearchResults(libraries: Parameters<typeof renderCatalogListTable>[0]) {
-  if (libraries.length === 0) {
+export function renderLayerSearchResults(layers: Parameters<typeof renderCatalogListTable>[0]) {
+  if (layers.length === 0) {
     ui.dim("No remote results.");
     return;
   }
-  console.log(renderCatalogListTable(libraries));
+  console.log(renderCatalogListTable(layers));
 }
