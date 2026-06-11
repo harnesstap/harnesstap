@@ -2,6 +2,7 @@ export interface DeviceCodeResponse {
   device_code: string;
   user_code: string;
   verification_uri: string;
+  verification_uri_complete?: string;
   expires_in: number;
   interval?: number;
 }
@@ -11,7 +12,9 @@ export interface DeviceTokenResponse {
   refresh_token?: string;
   expires_in?: number;
   token_type?: string;
-  scope?: string;
+  orgId?: string;
+  orgSlug?: string;
+  scopes?: string[];
 }
 
 export interface CloudClientOptions {
@@ -23,51 +26,133 @@ export interface CloudClientOptions {
   };
 }
 
-export async function requestDeviceCode(baseUrl: string, opts?: { client_id?: string }): Promise<DeviceCodeResponse> {
-  const url = `${baseUrl.replace(/\/+$/, "")}/oauth/device/code`;
-  const body = new URLSearchParams();
-  if (opts?.client_id) body.set("client_id", opts.client_id);
+type PublishedLayerRecord = {
+  id: string;
+  slug: string;
+  catalogSlug: string;
+  latestVersion: string | null;
+  name: string;
+  summary: string;
+};
 
-  const resp = await fetch(url, { method: "POST", body });
-  if (!resp.ok) throw new Error(`Failed to request device code: ${resp.status}`);
-  const data = await resp.json() as DeviceCodeResponse;
-  return data;
+const DEFAULT_DEVICE_SCOPES = ["read", "publish"] as const;
+
+function apiUrl(baseUrl: string, path: string): string {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  return `${normalized}/api${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export async function pollDeviceToken(baseUrl: string, deviceCode: string, opts?: { interval?: number; maxPolls?: number; client_id?: string; }) : Promise<DeviceTokenResponse> {
-  const url = `${baseUrl.replace(/\/+$/, "")}/oauth/token`;
+function parseApiError(body: unknown): string {
+  if (body && typeof body === "object" && "error" in body) {
+    const error = (body as { error?: { message?: string; code?: string } }).error;
+    if (error?.message) return error.message;
+    if (error?.code) return error.code;
+  }
+  return JSON.stringify(body);
+}
+
+function toSlug(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function nextPublishVersion(latestVersion: string | null | undefined): string {
+  if (!latestVersion) return "1.0.0";
+  const match = latestVersion.match(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)/);
+  if (!match) return "1.0.0";
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
+
+function exportBundleToCloudBundle(bundleJson: string): { layers: Array<Record<string, unknown>> } {
+  const parsed = JSON.parse(bundleJson) as Record<string, unknown>;
+  if (Array.isArray(parsed.layers)) {
+    return {
+      layers: parsed.layers.map((layer) => ({ ...(layer as Record<string, unknown>) })),
+    };
+  }
+
+  const layer = parsed.layer as Record<string, unknown> | undefined;
+  if (!layer) {
+    throw new Error("Bundle is missing a layer payload.");
+  }
+
+  const plugins = Array.isArray(parsed.plugins) ? parsed.plugins : [];
+  const pluginPins = plugins.map((plugin) => {
+    const ref = String((plugin as { ref?: string }).ref ?? "");
+    const at = ref.lastIndexOf("@");
+    const id = at >= 0 ? ref.slice(0, at) : ref;
+    const author = at >= 0 ? ref.slice(at + 1) : "";
+    return {
+      id,
+      author,
+      version: String((plugin as { version_constraint?: string }).version_constraint ?? "*"),
+    };
+  });
+
+  return {
+    layers: [{
+      name: String(layer.name ?? ""),
+      description: typeof layer.description === "string" ? layer.description : "",
+      tags: Array.isArray(layer.tags) ? layer.tags : [],
+      pluginPins,
+      resources: Array.isArray(parsed.resources) ? parsed.resources : [],
+      ...(parsed.claude ? { claude: parsed.claude } : {}),
+    }],
+  };
+}
+
+export async function requestDeviceCode(
+  baseUrl: string,
+  opts?: { scopes?: Array<"read" | "publish" | "admin"> },
+): Promise<DeviceCodeResponse> {
+  const response = await fetch(apiUrl(baseUrl, "/cli/device/code"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ scopes: opts?.scopes ?? [...DEFAULT_DEVICE_SCOPES] }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(`Failed to request device code: ${response.status} ${parseApiError(body)}`);
+  }
+  return await response.json() as DeviceCodeResponse;
+}
+
+export async function pollDeviceToken(
+  baseUrl: string,
+  deviceCode: string,
+  opts?: { interval?: number; maxPolls?: number },
+): Promise<DeviceTokenResponse> {
   const interval = (opts?.interval ?? 5) * 1000;
   const maxPolls = opts?.maxPolls ?? 60;
 
-  for (let i = 0; i < maxPolls; i++) {
-    const body = new URLSearchParams();
-    body.set("grant_type", "urn:ietf:params:oauth:grant-type:device_code");
-    body.set("device_code", deviceCode);
-    if (opts?.client_id) body.set("client_id", opts.client_id);
+  for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+    const response = await fetch(apiUrl(baseUrl, "/cli/device/token"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ device_code: deviceCode }),
+    });
 
-    const resp = await fetch(url, { method: "POST", body });
-    if (resp.ok) {
-      const data = await resp.json() as DeviceTokenResponse;
-      return data;
+    if (response.ok) {
+      return await response.json() as DeviceTokenResponse;
     }
 
-    // non-ok: read error and decide
-    const errBody = await resp.json().catch(() => ({}));
-    const err = (errBody && (errBody as Record<string, unknown>)["error"]) || null;
-    if (err === "authorization_pending") {
-      await new Promise((r) => setTimeout(r, interval));
+    const body = await response.json().catch(() => ({}));
+    const code = body && typeof body === "object" && "error" in body
+      ? (body as { error?: { code?: string } }).error?.code
+      : undefined;
+    if (code === "authorization_pending" || code === "slow_down") {
+      await new Promise((resolve) => setTimeout(resolve, interval));
       continue;
     }
-    throw new Error(`Failed to poll device token: ${JSON.stringify(errBody)}`);
+
+    throw new Error(`Failed to poll device token: ${parseApiError(body)}`);
   }
+
   throw new Error("Timed out polling device token");
 }
 
 export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
-  searchLibraries(query: string): Promise<Record<string, unknown>[]>;
-  downloadLibraryBundle(id: string, version?: string): Promise<{ version: string; body: string }>;
   publishLayerBundle(metadata: Record<string, unknown>, bundleJson: string): Promise<Record<string, unknown>>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
@@ -82,103 +167,185 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
   async function ensureTokenValid(): Promise<void> {
     if (!state.token) throw new Error("Not authenticated");
     const now = Math.floor(Date.now() / 1000);
-    // If expires_at is absent, treat the token as non-expiring/valid and skip refresh.
     if (state.token.expires_at == null || state.token.expires_at > now + 5) return;
-
-    // refresh
     if (!state.token.refresh_token) throw new Error("No refresh token available");
-    const url = `${state.baseUrl}/oauth/token`;
-    const body = new URLSearchParams();
-    body.set("grant_type", "refresh_token");
-    body.set("refresh_token", state.token.refresh_token);
 
-    const resp = await fetch(url, { method: "POST", body });
-    if (!resp.ok) throw new Error(`Failed to refresh token: ${resp.status}`);
-    const data = await resp.json() as { access_token: string; refresh_token?: string; expires_in?: number };
-    const expires_in = data.expires_in ?? 3600;
+    const response = await fetch(apiUrl(state.baseUrl, "/cli/token/refresh"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refresh_token: state.token.refresh_token }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to refresh token: ${response.status}`);
+    }
+
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
+    const expiresIn = data.expires_in ?? 3600;
     state.token = {
       access_token: data.access_token,
       refresh_token: data.refresh_token || state.token.refresh_token,
-      expires_at: Math.floor(Date.now() / 1000) + expires_in,
+      expires_at: Math.floor(Date.now() / 1000) + expiresIn,
     };
   }
 
   async function authFetch(input: string, init?: RequestInit): Promise<Response> {
     await ensureTokenValid();
-    const headers = new Headers();
-    if (init?.headers) {
-      try {
-        const hdrs = init.headers as Record<string, unknown>;
-        for (const [k, v] of Object.entries(hdrs)) {
-          headers.set(k, String(v));
-        }
-      } catch {
-        // ignore if headers can't be iterated
-      }
-    }
-    if (!state.token) throw new Error('Missing auth token');
+    const headers = new Headers(init?.headers);
+    if (!state.token) throw new Error("Missing auth token");
     headers.set("Authorization", `Bearer ${state.token.access_token}`);
-    const res = await fetch(input, { ...init, headers });
-    return res;
+    return fetch(input, { ...init, headers });
+  }
+
+  async function listPublishedLayers(orgId: string): Promise<PublishedLayerRecord[]> {
+    const response = await authFetch(`${apiUrl(state.baseUrl, "/layers")}?orgId=${encodeURIComponent(orgId)}`);
+    if (!response.ok) {
+      throw new Error(`list layers failed: ${response.status}`);
+    }
+    const data = await response.json() as { layers?: PublishedLayerRecord[] };
+    return data.layers ?? [];
+  }
+
+  async function createPublishedLayer(input: {
+    orgId: string;
+    name: string;
+    slug: string;
+    summary: string;
+    layerCount: number;
+    catalogSlug: string;
+  }): Promise<PublishedLayerRecord> {
+    const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orgId: input.orgId,
+        name: input.name,
+        slug: input.slug,
+        summary: input.summary,
+        layerCount: input.layerCount,
+        catalogSlug: input.catalogSlug,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(`create layer failed: ${response.status} ${parseApiError(body)}`);
+    }
+    return (body as { layer: PublishedLayerRecord }).layer;
+  }
+
+  async function publishVersion(input: {
+    orgId: string;
+    layerId: string;
+    version: string;
+    summary: string;
+    bundle: { layers: Array<Record<string, unknown>> };
+  }): Promise<{ version: { version: string } }> {
+    const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orgId: input.orgId,
+        layerId: input.layerId,
+        version: input.version,
+        summary: input.summary,
+        bundle: input.bundle,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(`publish failed: ${response.status} ${parseApiError(body)}`);
+    }
+    return body as { version: { version: string } };
   }
 
   return {
     async whoami() {
-      const res = await authFetch(`${state.baseUrl}/me`);
-      if (!res.ok) throw new Error(`whoami failed: ${res.status}`);
-      const data = await res.json() as Record<string, unknown>;
-      return data;
+      const response = await authFetch(apiUrl(state.baseUrl, "/me"));
+      if (!response.ok) throw new Error(`whoami failed: ${response.status}`);
+      return await response.json() as Record<string, unknown>;
     },
 
     async listOrgs() {
-      const res = await authFetch(`${state.baseUrl}/orgs`);
-      if (!res.ok) throw new Error(`listOrgs failed: ${res.status}`);
-      const data = await res.json() as Record<string, unknown>[];
-      return data;
+      const response = await authFetch(apiUrl(state.baseUrl, "/me/orgs"));
+      if (!response.ok) throw new Error(`listOrgs failed: ${response.status}`);
+      const data = await response.json() as { orgs?: Record<string, unknown>[] };
+      return data.orgs ?? [];
     },
 
-    async searchLibraries(query: string) {
-      // ensure token automatically inside authFetch
-      const q = encodeURIComponent(query);
-      const res = await authFetch(`${state.baseUrl}/libraries/search?query=${q}`);
-      if (!res.ok) throw new Error(`searchLibraries failed: ${res.status}`);
-      const data = await res.json() as Record<string, unknown>[];
-      return data;
-    },
-
-    async downloadLibraryBundle(id: string, version?: string) {
-      // Resolve latest version when omitted
-      if (!version) {
-        const metaRes = await fetch(`${state.baseUrl}/libraries/${id}/meta`);
-        if (!metaRes.ok) throw new Error(`Failed to get library meta: ${metaRes.status}`);
-        const meta = await metaRes.json() as { latest_version: string };
-        version = meta.latest_version as string;
-      }
-      const res = await fetch(`${state.baseUrl}/libraries/${id}/bundle/${version}`);
-      if (!res.ok) throw new Error(`Failed to download bundle: ${res.status}`);
-      const body = await res.text();
-      return { version: version as string, body };
-    },
     async publishLayerBundle(metadata: Record<string, unknown>, bundleJson: string) {
-      const form = new FormData();
-      form.set("metadata", JSON.stringify(metadata));
-      // Some FormData implementations (Node test env) require the value to be a Blob when a filename is provided.
-      const bundleBlob = typeof Blob !== 'undefined' ? new Blob([bundleJson], { type: 'application/json' }) : undefined;
-      if (bundleBlob) form.set("bundle", bundleBlob, "bundle.json");
-      else form.set("bundle", bundleJson);
-      const res = await authFetch(`${state.baseUrl}/layers/publish`, { method: "POST", body: form });
-      if (!res.ok) throw new Error(`publish failed: ${res.status}`);
-      const data = await res.json() as Record<string, unknown>;
-      return data;
+      const orgSlug = String(metadata.org_slug ?? "");
+      const catalogSlug = String(metadata.catalog_slug ?? "default");
+      const layerName = String(metadata.layer_name ?? "");
+      if (!orgSlug || !layerName) {
+        throw new Error("publish metadata must include org_slug and layer_name.");
+      }
+
+      const orgs = await this.listOrgs();
+      const org = orgs.find((entry) => String(entry.slug) === orgSlug);
+      if (!org || typeof org.id !== "string") {
+        throw new Error(`Organization not found: ${orgSlug}`);
+      }
+
+      const slug = toSlug(layerName);
+      const cloudBundle = exportBundleToCloudBundle(bundleJson);
+      const layerCount = cloudBundle.layers.length;
+      const summary = String(
+        (cloudBundle.layers[0] as { description?: string } | undefined)?.description
+          || `Published layer ${layerName}`,
+      );
+
+      let publishedLayer = (await listPublishedLayers(org.id)).find(
+        (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
+      );
+
+      if (!publishedLayer) {
+        try {
+          publishedLayer = await createPublishedLayer({
+            orgId: org.id,
+            name: layerName,
+            slug,
+            summary,
+            layerCount,
+            catalogSlug,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!message.includes("409")) {
+            throw error;
+          }
+          publishedLayer = (await listPublishedLayers(org.id)).find(
+            (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
+          );
+          if (!publishedLayer) {
+            throw error;
+          }
+        }
+      }
+
+      const version = nextPublishVersion(publishedLayer.latestVersion);
+      const published = await publishVersion({
+        orgId: org.id,
+        layerId: publishedLayer.id,
+        version,
+        summary,
+        bundle: cloudBundle,
+      });
+
+      return {
+        id: publishedLayer.id,
+        version: published.version.version,
+        url: `${state.baseUrl}/catalogs/${catalogSlug}/${slug}`,
+      };
     },
+
     async revokeRefreshToken() {
-      if (!state.token || !state.token.refresh_token) return undefined;
-      const res = await authFetch(`${state.baseUrl}/oauth/revoke`, { method: "POST", body: new URLSearchParams({ token: state.token.refresh_token }) });
-      if (!res.ok) throw new Error(`revoke failed: ${res.status}`);
       state.token = undefined;
       return true;
     },
-    // expose internals for tests
+
     _state: state,
   };
 }
