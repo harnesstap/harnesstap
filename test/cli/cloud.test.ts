@@ -17,7 +17,7 @@ describe("cloud CLI auth flow", () => {
     // Device flow: device code, two polls (pending), then token
     const fetchMock = mock()
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ device_code: "dc-123", user_code: "UC-ABC", verification_uri: "https://verify.example", expires_in: 600, interval: 1 }) })
-      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: "authorization_pending" }) })
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: { code: "authorization_pending" } }) })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access_token: "AT-XYZ", refresh_token: "RT-XYZ", expires_in: 3600, token_type: "Bearer" }) });
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -34,12 +34,12 @@ describe("cloud CLI auth flow", () => {
     expect(JSON.parse(who.stdout).user_email).toBe("user@example.com");
 
     // orgs list JSON
-    globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ([{ id: "org1", slug: "org-slug", name: "Org" }]) }) as unknown as typeof fetch;
+    globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ orgs: [{ id: "org1", slug: "org-slug", name: "Org" }] }) }) as unknown as typeof fetch;
     const orgs = await runCli(["cloud", "orgs", "--profile", "testprofile", "--format", "json"]);
     expect(Array.isArray(JSON.parse(orgs.stdout))).toBe(true);
 
     // switch org
-    globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ([{ id: "org1", slug: "org-slug", name: "Org" }]) }) as unknown as typeof fetch;
+    globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ orgs: [{ id: "org1", slug: "org-slug", name: "Org" }] }) }) as unknown as typeof fetch;
     const _switched = await runCli(["cloud", "orgs", "--profile", "testprofile", "--switch", "org-slug"]);
     const afterSwitch = await cloudProfiles.getCloudProfile("testprofile");
     expect(afterSwitch.profile?.orgSlug).toBe("org-slug");
@@ -71,7 +71,7 @@ describe("cloud CLI auth flow", () => {
     globalThis.fetch = mock().mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => [{ id: "org1", slug: "org-slug", name: "Org" }],
+      json: async () => ({ orgs: [{ id: "org1", slug: "org-slug", name: "Org" }] }),
     }) as unknown as typeof fetch;
 
     const result = await runCli([
