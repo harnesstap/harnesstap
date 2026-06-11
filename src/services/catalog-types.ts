@@ -1,6 +1,6 @@
-export type CatalogLibraryVisibility = "organization" | "shared" | "public";
+export type CatalogLayerVisibility = "organization" | "shared" | "public";
 
-export interface CatalogLibrary {
+export interface CatalogLayer {
   orgSlug: string;
   catalogSlug: string;
   slug: string;
@@ -9,27 +9,27 @@ export interface CatalogLibrary {
   latestVersion: string | null;
   updatedAt: string | null;
   tags: string[];
-  visibility: CatalogLibraryVisibility;
+  visibility: CatalogLayerVisibility;
 }
 
-export function normalizeCatalogLibrary(
-  library: Partial<CatalogLibrary> & Pick<CatalogLibrary, "orgSlug" | "slug">,
-): CatalogLibrary {
+export function normalizeCatalogLayer(
+  layer: Partial<CatalogLayer> & Pick<CatalogLayer, "orgSlug" | "slug">,
+): CatalogLayer {
   return {
-    orgSlug: library.orgSlug,
-    catalogSlug: library.catalogSlug ?? "default",
-    slug: library.slug,
-    name: library.name ?? library.slug,
-    summary: library.summary ?? "",
-    latestVersion: library.latestVersion ?? null,
-    updatedAt: library.updatedAt ?? null,
-    tags: library.tags ?? [],
-    visibility: library.visibility ?? "public",
+    orgSlug: layer.orgSlug,
+    catalogSlug: layer.catalogSlug ?? "default",
+    slug: layer.slug,
+    name: layer.name ?? layer.slug,
+    summary: layer.summary ?? "",
+    latestVersion: layer.latestVersion ?? null,
+    updatedAt: layer.updatedAt ?? null,
+    tags: layer.tags ?? [],
+    visibility: layer.visibility ?? "public",
   };
 }
 
 export interface CatalogListResult {
-  libraries: CatalogLibrary[];
+  layers: CatalogLayer[];
   nextCursor: string | null;
 }
 

@@ -24,7 +24,7 @@ describe("CLI cloud layer workflows", () => {
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        libraries: [{
+        layers: [{
           orgSlug: "harnessdeck-cloud",
           slug: "team",
           name: "Team Layer",
@@ -60,7 +60,7 @@ describe("CLI cloud layer workflows", () => {
       const add = await runCli([
         "layer",
         "add",
-        "harnessdeck-cloud/team@1.0",
+        "harnessdeck-cloud/default/team@1.0",
         "--as",
         "team-cloud",
         "--profile",
@@ -76,7 +76,7 @@ describe("CLI cloud layer workflows", () => {
           layer_name: "team-cloud",
           org_slug: "harnessdeck-cloud",
           catalog_slug: "default",
-          library_slug: "team",
+          layer_slug: "team",
           version: "1.0",
         }),
       );
@@ -137,7 +137,7 @@ describe("CLI cloud layer workflows", () => {
 
       // add conflict when local layer name exists and --as missing
       const _conflictLayer = layerModel.createLayer({ name: "conflict" });
-      const conflict = await runCli(["layer", "add", "org/conflict@1.0"]);
+      const conflict = await runCli(["layer", "add", "org/default/conflict@1.0"]);
       expect(conflict.stderr).toContain("Layer name already exists");
 
       restoreFetch();
@@ -163,7 +163,7 @@ describe("CLI cloud layer workflows", () => {
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        libraries: [{
+        layers: [{
           orgSlug: "harnessdeck-cloud",
           slug: "team",
           name: "Team Layer",
@@ -180,7 +180,7 @@ describe("CLI cloud layer workflows", () => {
       const humanRun = await runCli([
         "project",
         "apply",
-        "harnessdeck-cloud/team@1.0",
+        "harnessdeck-cloud/default/team@1.0",
         "--project",
         context.projectDir,
         "--platform",
@@ -192,7 +192,7 @@ describe("CLI cloud layer workflows", () => {
       const dryRun = await runCli([
         "project",
         "apply",
-        "harnessdeck-cloud/team@1.0",
+        "harnessdeck-cloud/default/team@1.0",
         "--project",
         context.projectDir,
         "--platform",
@@ -206,7 +206,7 @@ describe("CLI cloud layer workflows", () => {
       expect(dryRunPayload).toEqual(
         expect.objectContaining({
           layer: "remote-team",
-          layers: ["harnessdeck-cloud/team@1.0"],
+          layers: ["harnessdeck-cloud/default/team@1.0"],
         }),
       );
 
@@ -253,7 +253,7 @@ describe("CLI cloud layer workflows", () => {
       expect(withOrgPayload).toEqual(
         expect.objectContaining({
           org_slug: "harnessdeck-cloud",
-          library_slug: "my-library",
+          layer_slug: "my-library",
           version: "latest",
         }),
       );
@@ -272,7 +272,7 @@ describe("CLI cloud layer workflows", () => {
       const withVersion = await runCli([
         "layer",
         "add",
-        "other-org/other-lib",
+        "other-org/default/other-lib",
         "--version",
         "^1.0.0",
         "--as",
@@ -297,7 +297,7 @@ describe("CLI cloud layer workflows", () => {
       expect(withVersionPayload).toEqual(
         expect.objectContaining({
           org_slug: "other-org",
-          library_slug: "other-lib",
+          layer_slug: "other-lib",
           version: "^1.0.0", // version passed as-is to cloud
         }),
       );
@@ -333,7 +333,7 @@ describe("CLI cloud layer workflows", () => {
       expect(withBothPayload).toEqual(
         expect.objectContaining({
           org_slug: "harnessdeck-cloud",
-          library_slug: "combined-lib",
+          layer_slug: "combined-lib",
           version: "~2.0.0", // version passed as-is to cloud
         }),
       );
@@ -352,7 +352,7 @@ describe("CLI cloud layer workflows", () => {
       const result = await runCli([
         "layer",
         "add",
-        "acme/library",
+        "acme/default/library",
         "--org",
         "other-org",
       ]);
@@ -372,7 +372,7 @@ describe("CLI cloud layer workflows", () => {
       const result = await runCli([
         "layer",
         "add",
-        "acme/library@1.0.0",
+        "acme/default/library@1.0.0",
         "--version",
         "^2.0.0",
       ]);
@@ -403,7 +403,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("rejects malformed remote library selectors before contacting the cloud", async () => {
+  it("rejects malformed remote layer selectors before contacting the cloud", async () => {
     const context = await createTestContext("cli-layer-cloud-selector");
     try {
       await runCli(["init"]);
@@ -411,7 +411,7 @@ describe("CLI cloud layer workflows", () => {
       const result = await runCli(["layer", "add", "@broken"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("Invalid library selector");
+      expect(result.stderr).toContain("Invalid layer selector");
     } finally {
       await context.cleanup();
     }
@@ -440,7 +440,7 @@ describe("CLI cloud layer workflows", () => {
         ["layer", "add", "--profile", "test", "--base-url", "https://mock"],
         {
           isTTY: true,
-          promptResponses: [{ choice: "harnessdeck-cloud/team" }],
+          promptResponses: [{ choice: "harnessdeck-cloud/default/team" }],
         },
       );
 
@@ -757,7 +757,7 @@ describe("CLI cloud layer workflows", () => {
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        libraries: [{
+        layers: [{
           orgSlug: "acme",
           catalogSlug: "personas",
           slug: "frontend",
@@ -790,7 +790,7 @@ describe("CLI cloud layer workflows", () => {
           layer_name: "persona-frontend",
           org_slug: "acme",
           catalog_slug: "personas",
-          library_slug: "frontend",
+          layer_slug: "frontend",
           version: "2.0.0",
         }),
       );
@@ -877,7 +877,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add installs a public default-catalog library without a cloud profile", async () => {
+  it("layer add installs a public default-catalog layer without a cloud profile", async () => {
     const context = await createTestContext("cli-layer-add-anonymous");
     try {
       await runCli(["init"]);
@@ -886,7 +886,7 @@ describe("CLI cloud layer workflows", () => {
       const result = await runCli([
         "layer",
         "add",
-        "harnessdeck-cloud/team@1.0",
+        "harnessdeck-cloud/default/team@1.0",
         "--as",
         "oss-team",
         "--format",
@@ -898,7 +898,7 @@ describe("CLI cloud layer workflows", () => {
         expect.objectContaining({
           layer_name: "oss-team",
           org_slug: "harnessdeck-cloud",
-          library_slug: "team",
+          layer_slug: "team",
         }),
       );
 

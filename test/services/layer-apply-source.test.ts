@@ -20,14 +20,14 @@ describe("resolveApplyLayerSource", () => {
       const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
       const fetchedLabels: string[] = [];
 
-      const resolved = await resolveApplyLayerSource("harnessdeck-cloud/team@1.0", {
+      const resolved = await resolveApplyLayerSource("harnessdeck-cloud/default/team@1.0", {
         onFetched: (label) => fetchedLabels.push(label),
       });
 
       expect(resolved).toEqual({ kind: "local", layerId: expect.any(String) });
       expect(fetchedLabels).toEqual(["harnessdeck-cloud/team@1.0"]);
 
-      const second = await resolveApplyLayerSource("harnessdeck-cloud/team@1.0");
+      const second = await resolveApplyLayerSource("harnessdeck-cloud/default/team@1.0");
       expect(second).toEqual(resolved);
 
       restoreFetch();

@@ -92,16 +92,16 @@ import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import {
-  listLibrariesInScope,
+  listLayersInScope,
 } from "./services/catalog-client.js";
 import {
   formatCatalogScopeLabel,
   resolveCatalogScope,
 } from "./config/catalog.js";
 import {
-  handleLayerCatalogConnectLibraryCommand,
+  handleLayerCatalogConnectLayerCommand,
   handleLayerCatalogConnectOrgCommand,
-  handleLayerCatalogDisconnectLibraryCommand,
+  handleLayerCatalogDisconnectLayerCommand,
   handleLayerCatalogDisconnectOrgCommand,
   handleLayerCatalogListCommand,
   renderLayerSearchResults,
@@ -1399,7 +1399,7 @@ async function handleLayerSearchCommand(
 ) {
   const format = parseOutputFormat(opts.format);
   try {
-    const results = await listLibrariesInScope(
+    const results = await listLayersInScope(
       { q: query, limit: 25, sort: "updated" },
       { profile: opts.profile, baseUrl: opts.baseUrl },
     );
@@ -1450,8 +1450,8 @@ async function handleLayerInstallCommand(
       const selected = await runInteractiveCatalogBrowser({
         message: "Select a layer to install",
         scopeLabel: formatCatalogScopeLabel(scope),
-        listLibraries: ({ q, limit }) =>
-          listLibrariesInScope(
+        listLayers: ({ q, limit }) =>
+          listLayersInScope(
             { q, limit, sort: "updated" },
             { profile: opts.profile, baseUrl: opts.baseUrl },
           ),
@@ -1483,7 +1483,7 @@ async function handleLayerInstallCommand(
     return;
   }
 
-  const localName = opts.as ?? parsed.library_slug;
+  const localName = opts.as ?? parsed.layer_slug;
   const existing = getPlugin(localName);
   if (existing && !opts.as) {
     process.exitCode = 1;
@@ -1502,7 +1502,7 @@ async function handleLayerInstallCommand(
         layer_name: installed.layerName,
         org_slug: parsed.org_slug,
         catalog_slug: parsed.catalog_slug,
-        library_slug: parsed.library_slug,
+        layer_slug: parsed.layer_slug,
         version: installed.version,
       });
       return;
@@ -1510,7 +1510,7 @@ async function handleLayerInstallCommand(
     const sourceLabel = formatPublishedSelector({
       org: parsed.org_slug,
       catalog: parsed.catalog_slug,
-      name: parsed.library_slug,
+      name: parsed.layer_slug,
     });
     ui.success(`Installed layer ${installed.layerName} from ${sourceLabel}`);
   } catch (err) {
@@ -3340,10 +3340,10 @@ layerCatalogCmd
 
 layerCatalogCmd
   .command("connect")
-  .argument("<target>", "org <slug> or library <org/library>")
-  .argument("[value]", "Organization slug or org/library selector")
+  .argument("<target>", "org <slug> or layer <org/catalog/layer>")
+  .argument("[value]", "Organization slug or org/catalog/layer selector")
   .option("--base-url <url>", "HarnessDeck Cloud base URL")
-  .description("Connect an org or individual public library to the local catalog scope")
+  .description("Connect an org or individual public layer to the local catalog scope")
   .action(async (target: string, value: string | undefined, opts: { baseUrl?: string }) => {
     try {
       if (target === "org") {
@@ -3355,17 +3355,17 @@ layerCatalogCmd
         await handleLayerCatalogConnectOrgCommand(value, opts);
         return;
       }
-      if (target === "library") {
+      if (target === "layer") {
         if (!value) {
           process.exitCode = 1;
-          ui.danger("error: missing required argument 'org/library' for library connect");
+          ui.danger("error: missing required argument 'org/catalog/layer' for layer connect");
           return;
         }
-        await handleLayerCatalogConnectLibraryCommand(value, opts);
+        await handleLayerCatalogConnectLayerCommand(value, opts);
         return;
       }
       process.exitCode = 1;
-      ui.danger("error: target must be 'org' or 'library'");
+      ui.danger("error: target must be 'org' or 'layer'");
     } catch (error) {
       process.exitCode = 1;
       ui.danger(error instanceof Error ? error.message : String(error));
@@ -3374,9 +3374,9 @@ layerCatalogCmd
 
 layerCatalogCmd
   .command("disconnect")
-  .argument("<target>", "org <slug> or library <org/library>")
-  .argument("[value]", "Organization slug or org/library selector")
-  .description("Disconnect a connected org or library from the local catalog scope")
+  .argument("<target>", "org <slug> or layer <org/catalog/layer>")
+  .argument("[value]", "Organization slug or org/catalog/layer selector")
+  .description("Disconnect a connected org or layer from the local catalog scope")
   .action(async (target: string, value: string | undefined) => {
     try {
       if (target === "org") {
@@ -3388,17 +3388,17 @@ layerCatalogCmd
         await handleLayerCatalogDisconnectOrgCommand(value);
         return;
       }
-      if (target === "library") {
+      if (target === "layer") {
         if (!value) {
           process.exitCode = 1;
-          ui.danger("error: missing required argument 'org/library' for library disconnect");
+          ui.danger("error: missing required argument 'org/catalog/layer' for layer disconnect");
           return;
         }
-        await handleLayerCatalogDisconnectLibraryCommand(value);
+        await handleLayerCatalogDisconnectLayerCommand(value);
         return;
       }
       process.exitCode = 1;
-      ui.danger("error: target must be 'org' or 'library'");
+      ui.danger("error: target must be 'org' or 'layer'");
     } catch (error) {
       process.exitCode = 1;
       ui.danger(error instanceof Error ? error.message : String(error));

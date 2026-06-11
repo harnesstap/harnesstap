@@ -107,8 +107,8 @@ Remote library discovery, install, and publish live on **`layer`**, not `cloud`.
 - `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL
 - `layer catalog connect org <slug>` — opt into another org's public libraries
 - `layer catalog disconnect org <slug>`
-- `layer catalog connect library <org>/<slug>` or `<org>/<catalog>/<slug>` — opt into a single public library
-- `layer catalog disconnect library <org>/<slug>` or `<org>/<catalog>/<slug>`
+- `layer catalog connect layer <org>/<slug>` or `<org>/<catalog>/<slug>` — opt into a single public library
+- `layer catalog disconnect layer <org>/<slug>` or `<org>/<catalog>/<slug>`
 - `layer publish <layer>` — export bundle and upload to HarnessDeck Cloud
 - `layer diff <left> <right>`
 - `layer doctor [name]` — validate a layer without writing to disk
