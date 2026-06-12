@@ -11,6 +11,10 @@ import {
 } from "./layer-selector.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
 import {
+  LayerResolveError,
+  resolveBareNameFromCatalog,
+} from "./layer-bare-name-resolve.js";
+import {
   fetchLayerBundleToTempFile,
   isBundleFilePath,
   isLayerUrl,
@@ -66,6 +70,13 @@ function isPublishedSelector(selector: string): boolean {
   }
 }
 
+function isBareLayerName(selector: string): boolean {
+  if (isLayerUrl(selector) || isBundleFilePath(selector)) {
+    return false;
+  }
+  return !selector.includes("/");
+}
+
 export async function resolveApplyLayerSource(
   selector: string,
   options: ResolveApplyLayerSourceOptions = {},
@@ -84,8 +95,22 @@ export async function resolveApplyLayerSource(
     return { kind: "local", layerId: localLayer.id };
   }
 
+  if (isBareLayerName(selector)) {
+    const parsed = await resolveBareNameFromCatalog(selector, options);
+    const installed = await installLayerFromCatalog(parsed, {
+      profile: options.profile,
+      baseUrl: options.baseUrl,
+    });
+    options.onFetched?.(installed.sourceLabel);
+    return { kind: "local", layerId: installed.layerId };
+  }
+
   if (!isPublishedSelector(selector)) {
-    throw new Error(`Layer not found: ${selector}`);
+    throw new LayerResolveError(`Layer not found: ${selector}`, [
+      "hd layer search <query>",
+      "hd layer pull org/catalog/name",
+      "hd layer list",
+    ]);
   }
 
   const parsed = resolveRemoteLayerSelector(selector, {});

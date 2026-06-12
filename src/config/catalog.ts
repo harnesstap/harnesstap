@@ -11,6 +11,7 @@ export interface CatalogSettings {
   cloudBaseUrl: string;
   connectedOrgs: string[];
   connectedLayers: string[];
+  publicCatalog: boolean;
 }
 
 export interface CatalogScope {
@@ -24,6 +25,7 @@ const DEFAULT_CATALOG_SETTINGS: CatalogSettings = {
   cloudBaseUrl: DEFAULT_CLOUD_BASE_URL,
   connectedOrgs: [],
   connectedLayers: [],
+  publicCatalog: true,
 };
 
 function getConfigPath(harnessdeckDir = getHarnessdeckDir()): string {
@@ -84,6 +86,10 @@ export function loadCatalogSettings(harnessdeckDir = getHarnessdeckDir()): Catal
           : DEFAULT_CATALOG_SETTINGS.cloudBaseUrl,
       connectedOrgs: connectedOrgs.filter((org) => org !== DEFAULT_CATALOG_ORG_SLUG),
       connectedLayers,
+      publicCatalog:
+        typeof catalog.publicCatalog === "boolean"
+          ? catalog.publicCatalog
+          : DEFAULT_CATALOG_SETTINGS.publicCatalog,
     };
   } catch {
     return { ...DEFAULT_CATALOG_SETTINGS };
@@ -109,6 +115,7 @@ export function saveCatalogSettings(
     cloudBaseUrl: input.cloudBaseUrl?.replace(/\/+$/, "") ?? current.cloudBaseUrl,
     connectedOrgs: input.connectedOrgs ?? current.connectedOrgs,
     connectedLayers: input.connectedLayers ?? current.connectedLayers,
+    publicCatalog: input.publicCatalog ?? current.publicCatalog,
   };
 
   writeFileSync(
@@ -134,6 +141,17 @@ export function resolveCatalogScope(input?: {
     selectors: settings.connectedLayers,
     cloudBaseUrl: resolveCloudBaseUrl(input?.baseUrl),
   };
+}
+
+export function isPublicCatalogEnabled(harnessdeckDir = getHarnessdeckDir()): boolean {
+  const env = process.env.HARNESSDECK_PUBLIC_CATALOG?.trim().toLowerCase();
+  if (env === "0" || env === "false" || env === "no") {
+    return false;
+  }
+  if (env === "1" || env === "true" || env === "yes") {
+    return true;
+  }
+  return loadCatalogSettings(harnessdeckDir).publicCatalog;
 }
 
 export function formatCatalogScopeLabel(scope: CatalogScope): string {
