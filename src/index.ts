@@ -26,7 +26,7 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile, exportLayer } from "./services/exporter.js";
+import { exportToFile, importFromFile, exportLayer, inspectBundleFile } from "./services/exporter.js";
 import {
   listResources,
   deleteResource,
@@ -64,7 +64,6 @@ import {
   getAllPlatforms,
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
-import { seedBuiltInPlugins } from "./services/seed-plugins.js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
@@ -127,7 +126,7 @@ import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergePlugins } from "./services/layer-merge.js";
 import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
-import { updateLayerPublishedIdentity } from "./models/layer-model.js";
+import { resolveLayerSelector, updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -156,6 +155,7 @@ import {
 } from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { resolveApplyLayerSource } from "./services/layer-apply-source.js";
+import { LayerAmbiguityError, LayerResolveError } from "./services/layer-bare-name-resolve.js";
 import { installLayerFromCatalog } from "./services/layer-catalog-install.js";
 import { syncProject } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
@@ -890,8 +890,29 @@ async function resolveApplyLayers(
     resolvedSources.length === 1
     && resolvedSources[0]?.kind === "bundle"
   ) {
+    const bundlePath = resolvedSources[0].path;
+    const summary = inspectBundleFile(bundlePath);
+    const primarySummary = summary.layers[summary.layers.length - 1];
+    if (primarySummary) {
+      const selector = primarySummary.version
+        ? `${primarySummary.name}@${primarySummary.version}`
+        : primarySummary.name;
+      const existingLayer = resolveLayerSelector(selector);
+      if (existingLayer) {
+        const configuredLayer = ensureImplicitConfiguredLayer(existingLayer.id);
+        const merged = mergeConfiguredLayers([configuredLayer.id]);
+        return {
+          layers: merged.layers,
+          resources: merged.resources,
+          claude: merged.claude,
+          configuredLayerIds: [configuredLayer.id],
+          primaryConfiguredLayerId: configuredLayer.id,
+        };
+      }
+    }
+
     return importedBundleToApplyResult(
-      importFromFile(resolvedSources[0].path, {
+      importFromFile(bundlePath, {
         embeddedTargetDir: projectRoot,
       }),
     );
@@ -1015,6 +1036,14 @@ async function handleApplyCommand(
     );
   } catch (err) {
     resolveSpin.stop();
+    process.exitCode = 1;
+    if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
+      ui.danger(err.message);
+      for (const hint of err.hints) {
+        ui.hint(hint);
+      }
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
@@ -2287,7 +2316,6 @@ async function handleInitCommand(opts: {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const seeded = seedBuiltInPlugins();
   const homeDefaults = await scanAndPersistHomeDefaults();
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
@@ -2319,10 +2347,6 @@ async function handleInitCommand(opts: {
 
   if (format === "json") {
     printJson({
-      built_in_layers: {
-        seeded,
-        status: seeded > 0 ? "seeded" : "already_up_to_date",
-      },
       home_defaults: homeDefaults.results,
       database_path: getDbPath(),
       ...(savedHarnessPreference
@@ -2349,12 +2373,6 @@ async function handleInitCommand(opts: {
   console.log("");
   ui.kvBlock([
     { key: "Database", value: getDbPath() },
-    ...(seeded > 0
-      ? [{
-          key: "Built-in Layers",
-          value: `seeded ${formatCount(seeded, "built-in layer")}`,
-        }]
-      : []),
   ]);
 
   if (homeDefaults.detected.length === 0) {

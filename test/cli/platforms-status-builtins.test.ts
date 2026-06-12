@@ -5,16 +5,51 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 
-describe("CLI platforms, status, and built-in layers", () => {
-  it("lists harnesses and applies built-in layers", async () => {
+const NEXTJS_CATALOG_BUNDLE = JSON.stringify({
+  $schema: "urn:harnessdeck:bundle:v1",
+  version: 1,
+  layer: {
+    name: "nextjs-fullstack",
+    description: "Next.js template",
+    tags: ["nextjs"],
+  },
+  resources: [
+    {
+      type: "instruction",
+      name: "project-context",
+      description: "ctx",
+      content: "# Next.js\n",
+      metadata: {},
+    },
+  ],
+  plugins: [],
+  embedded_plugins: [],
+});
+
+describe("CLI platforms, status, and catalog baselines", () => {
+  it("lists harnesses and applies catalog baseline layers", async () => {
     const context = await createTestContext("cli-builtins");
+    const restoreFetch = createCatalogFetchMock({
+      baseUrl: "https://harnessdeck.kayrnt.fr",
+      bundle: NEXTJS_CATALOG_BUNDLE,
+      layers: [{
+        orgSlug: "harnessdeck-cloud",
+        slug: "nextjs-fullstack",
+        name: "Next.js Fullstack",
+        summary: "Template",
+        latestVersion: "1.0.0",
+        updatedAt: new Date().toISOString(),
+        tags: [],
+        visibility: "public",
+      }],
+    });
 
     try {
       await runCli(["init"]);
 
       const platforms = await runCli(["harness", "list"]);
-      const templates = await runCli(["layer", "list"]);
       const applied = await runCli([
         "project",
         "apply",
@@ -24,15 +59,16 @@ describe("CLI platforms, status, and built-in layers", () => {
         "--platform",
         "codex",
       ]);
+      const templates = await runCli(["layer", "list"]);
 
       expect(platforms.stdout).toContain("claude-code");
       expect(platforms.stdout).toContain("cursor");
       expect(templates.stdout).toContain("nextjs-fullstack");
-      // New per-platform verdict format: "codex · wrote N file(s)"
       expect(applied.stdout).toContain("codex");
       expect(applied.stdout).toContain("wrote");
       expect(existsSync(`${context.projectDir}/AGENTS.md`)).toBe(true);
     } finally {
+      restoreFetch();
       await context.cleanup();
     }
   });
