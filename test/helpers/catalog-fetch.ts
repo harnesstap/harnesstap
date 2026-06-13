@@ -42,11 +42,19 @@ export function createCatalogFetchMock(input?: {
     if (url.startsWith(`${baseUrl}/api/public/layers`) || url.startsWith(`${baseUrl}/api/catalog/layers`)) {
       const parsed = new URL(url);
       const orgFilters = parsed.searchParams.getAll("org");
-      const filtered = orgFilters.length === 0
+      const query = parsed.searchParams.get("q")?.trim().toLowerCase() ?? "";
+      let filtered = orgFilters.length === 0
         ? layers
         : layers.filter((layer) =>
             orgFilters.includes(String(layer.orgSlug)),
           );
+      if (query) {
+        filtered = filtered.filter((layer) => {
+          const slug = String(layer.slug ?? "").toLowerCase();
+          const name = String(layer.name ?? "").toLowerCase();
+          return slug.includes(query) || name.includes(query);
+        });
+      }
       return {
         ok: true,
         json: async () => ({ layers: filtered, nextCursor: null }),

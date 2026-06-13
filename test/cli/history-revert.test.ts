@@ -130,7 +130,7 @@ describe("CLI history and revert", () => {
     }
   });
 
-  it("warns when history is requested outside a git repository", async () => {
+  it("errors when history is requested without a git remote origin", async () => {
     const context = await createTestContext("cli-history-non-git");
 
     try {
@@ -144,7 +144,8 @@ describe("CLI history and revert", () => {
       ]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("Not a git repository.");
+      expect(result.stderr).toContain("No git remote origin configured.");
+      expect(result.stderr).toContain("git remote add origin");
     } finally {
       await context.cleanup();
     }

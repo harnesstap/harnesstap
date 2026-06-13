@@ -1,11 +1,13 @@
-# Scenario 27: True cross-harness `project sync`
+# Scenario 27: True cross-harness `project mirror`
 
 **Frequency: Common** · **Status: Shipped**
 
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnessdeck project sync .
-harnessdeck project sync . --force-shift-reference codex
-harnessdeck project sync . --dry-run
+harnessdeck project mirror .
+harnessdeck project mirror . --force-shift-reference codex
+harnessdeck project mirror . --dry-run
 ```
+
+`project sync` remains available as a deprecated alias for one release cycle.

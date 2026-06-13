@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
+import { importBuiltinFixtures } from "../helpers/builtin-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI resource", () => {
@@ -100,6 +101,7 @@ describe("CLI resource", () => {
     const context = await createTestContext("cli-resource-list-table");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
       const result = await runCli(["resource", "list"]);
       expect(result.stdout).toContain("instruction (");
       expect(result.stdout).toContain("rule (");
@@ -114,6 +116,7 @@ describe("CLI resource", () => {
     const context = await createTestContext("cli-resource-list-positional-type");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
       const all = await runCli(["resource", "list"]);
       const rules = await runCli(["resource", "list", "rule"]);
 
@@ -129,6 +132,7 @@ describe("CLI resource", () => {
     const context = await createTestContext("cli-resource-list-type-flag");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
       const rules = await runCli(["resource", "list", "--type", "rule"]);
 
       expect(rules.stdout).toContain("api-design");
@@ -142,6 +146,7 @@ describe("CLI resource", () => {
     const context = await createTestContext("cli-resource-list-interactive");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
 
       const result = await runCli(["resource", "list"], {
         isTTY: true,
@@ -160,6 +165,7 @@ describe("CLI resource", () => {
     const context = await createTestContext("cli-resource-list-static-search");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
 
       const result = await runCli(["resource", "list", "--search", "api-design"], {
         isTTY: true,
