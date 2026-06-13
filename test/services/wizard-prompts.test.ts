@@ -28,7 +28,7 @@ function firstPrompt(input: unknown): CapturedPrompt {
 }
 
 describe("wizard prompts", () => {
-  it("uses list prompts for layer add resource flows", async () => {
+  it("uses list prompts for layer pull resource flows", async () => {
     const context = await createInitializedTestContext("wizard-layer-add-prompts");
     const promptCalls: CapturedPrompt[] = [];
     let selectedResourceId = "";

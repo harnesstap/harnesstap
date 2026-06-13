@@ -56,7 +56,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
         "nextjs-fullstack",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "codex",
       ]);
       const templates = await runCli(["layer", "list"]);
@@ -106,7 +106,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
         "tracked",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 

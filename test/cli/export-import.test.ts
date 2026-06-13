@@ -270,7 +270,7 @@ describe("CLI export and import", () => {
         bundlePath,
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "codex",
       ]);
 

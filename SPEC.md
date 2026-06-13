@@ -44,7 +44,7 @@ flowchart TB
     DL2[layer]
   end
 
-  PubL -->|layer add| Local
+  PubL -->|layer pull| Local
   Deck --> Cascade["home env ◂ layer default env ◂ deck active env"]
   Local --> Cascade
   Cascade --> Out[Harness outputs in the project]
@@ -64,7 +64,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
 - `project`: a git-backed directory tracked by HarnessDeck, keyed by normalized `origin` when available.
-- `snapshot`: a saved copy of files generated during layer application or project sync.
+- `snapshot`: a saved copy of files generated during layer application or project mirror.
 
 ### Layer identity & scope
 
@@ -91,7 +91,7 @@ Examples:
 
 1. Local layers may be created, composed, exported, and applied with **no** organization or catalog.
 2. `layer publish` requires an active Cloud organization, a target **catalog** name, and produces an immutable published version.
-3. `layer search` and `layer add` resolve against the CLI [catalog scope](#harnessdeck-cloud) (default public org + connected catalogs + authenticated private layers).
+3. `layer search` and `layer pull` resolve against the CLI [catalog scope](#harnessdeck-cloud) (default public org + connected catalogs + authenticated private layers).
 
 **Wire compatibility:** Cloud APIs and the CLI still accept `org/library[@version]` today. Treat `library` as the published **layer name** inside the org's default or named catalog until selectors migrate to `org/catalog/name`.
 
@@ -102,9 +102,9 @@ The words **plugin** and **layer** each appear in more than one role. Use this t
 | Concept | CLI | Storage (SQLite v15) |
 | --- | --- | --- |
 | **Layer** (versioned capability: resources + refs + optional default environment) | `hd layer …`, `project apply <layer>` | `layers` + `layer_resources` |
-| **`plugin` resource** (marketplace/local reference attached to a layer) | `layer attach plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + layer attachment rows |
-| **`layer` resource** (composition ref to another layer) | `layer attach layer:name` or `--type layer` | `resources` (`type=layer`) + layer attachment rows |
-| **Catalog** (org-scoped layer collection) | `layer catalog …`, `layer search`, `layer add` | Cloud catalog APIs; `catalog` in `config.jsonc` |
+| **`plugin` resource** (marketplace/local reference attached to a layer) | `layer combine plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + layer combinement rows |
+| **`layer` resource** (composition ref to another layer) | `layer combine layer:name` or `--type layer` | `resources` (`type=layer`) + layer combinement rows |
+| **Catalog** (org-scoped layer collection) | `layer catalog …`, `layer search`, `layer pull` | Cloud catalog APIs; `catalog` in `config.jsonc` |
 | **Deck** | `.harnessdeck/deck.json`, deck doctor | `decks`, `deck_layers` |
 
 Compat shims (`configured-layer.ts`, `listDeckConfiguredLayers`) delegate to `layer-model.ts` / `deck_layers` and are deprecated.
@@ -151,7 +151,7 @@ selector ::= [ type ":" ] name [ "@" namespace ]
 Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `plugin:posthog@cursor-team-kit`, `layer:backend-oncall`, `01J…` (ULID id).
 
 - **Display** commands (`resource show`, `resource delete`): bare names prefer the unnamespaced row when present; otherwise list ambiguous matches.
-- **Compose** commands (`layer attach`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
+- **Compose** commands (`layer combine`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
 
 Imported bodies are content-addressed under `~/.harnessdeck/blobs/sha256/…` with `content_hash` stored on the row.
 
@@ -161,13 +161,13 @@ A layer is an ordered list of attachments:
 
 | Attachment | `resource list` | Attach example | Refresh |
 | --- | --- | --- | --- |
-| Material (`skill`, …) | yes | `layer attach L skill:foo@ns` | via `resource sync` when `origin_kind=marketplace_link` |
-| `plugin` | yes | `layer attach L plugin:posthog@cursor-team-kit` | `resource sync plugin:posthog@cursor-team-kit` |
-| `layer` | no | `layer attach L layer:backend-oncall@^1.0` | resolves to another local or published layer version |
+| Material (`skill`, …) | yes | `layer combine L skill:foo@ns` | via `resource sync` when `origin_kind=marketplace_link` |
+| `plugin` | yes | `layer combine L plugin:posthog@cursor-team-kit` | `resource sync plugin:posthog@cursor-team-kit` |
+| `layer` | no | `layer combine L layer:backend-oncall@^1.0` | resolves to another local or published layer version |
 
 Nested `layer` refs expand depth-first with cycle detection at apply time.
 
-**Lazy plugin attach:** `layer attach plugin:…` links only. Sync is explicit via `resource sync`, `layer attach --sync`, or `project apply --sync-plugins`.
+**Lazy plugin attach:** `layer combine plugin:…` links only. Sync is explicit via `resource sync`, `layer combine --sync`, or `project apply --sync-plugins`.
 
 **Plugin resource metadata** (harness-agnostic):
 
@@ -267,13 +267,13 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer create` | Creates a local layer with optional description, tags, and version. |
 | `layer list` | Lists layers (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
 | `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
-| `layer attach` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
-| `layer detach` | Removes a typed attachment. |
+| `layer combine` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
+| `layer uncombine` | Removes a typed attachment. |
 | `layer delete` | Deletes a layer by selector. |
 | `layer export` | Writes a portable JSONC bundle (`urn:harnessdeck:bundle:v1`). |
 | `layer import` | Imports a bundle v1 file into the local database. |
 | `layer search` | Searches remote catalogs through the configured cloud profile and connected org scopes. |
-| `layer add` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
+| `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
 | `layer publish` | Publishes a local layer to a Cloud org **catalog** (requires organization, catalog name, and publish scope). |
 | `layer catalog list` | Shows default catalog, connected orgs, connected layers, and effective cloud base URL. |
 | `layer catalog connect org <slug>` | Opt in to public layers from another org in browse/search scope. |
@@ -320,7 +320,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `project scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnessdeckignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
 | `project apply` | Applies layer selectors, bundle paths, or bundle URLs; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
 | `project drift` | Compares working tree against the latest apply/sync snapshot. |
-| `project sync` | Re-materializes alias harness outputs from the main harness reference. |
+| `project mirror` | Re-materializes alias harness outputs from the main harness reference. |
 | `project history` | Lists stored snapshots (requires git-backed project). |
 | `project revert` | Restores files from a snapshot. |
 | `project status` | Shows harnesses, applied layers, snapshots, and harness preferences. |
@@ -339,18 +339,18 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 
 | Command | Current behavior |
 | --- | --- |
-| `cloud login [profile]` | Device authentication; saves a named local cloud profile. |
-| `cloud whoami` | Shows authenticated user/profile context. |
-| `cloud orgs` | Lists organizations; `--switch` updates the active org. |
-| `cloud logout` | Removes a local cloud profile. |
+| `auth login [profile]` | Device authentication; saves a named local cloud profile. |
+| `auth status` | Shows authenticated user/profile context. |
+| `auth orgs` | Lists organizations; `--switch` updates the active org. |
+| `auth logout` | Removes a local cloud profile. |
 
 Remote catalog workflows live on **`layer`**, not `cloud`:
 
 - `layer search` — search catalogs in scope
-- `layer add` — fetch a published layer + local import (distinct from `layer import` on a local file)
+- `layer pull` — fetch a published layer + local import (distinct from `layer import` on a local file)
 - `layer publish` — export bundle + upload a versioned layer to an org catalog
 
-`project apply` resolves local layer names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `layer add`).
+`project apply` resolves local layer names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `layer pull`).
 
 ### `migrate` subcommands
 
@@ -370,7 +370,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `cloud whoami|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -378,7 +378,7 @@ Mutation commands return concise human verdict lines unless they already expose 
 
 - **Environments:** name or ULID.
 - **Local layers:** `name`, `name@version`, or ULID.
-- **Published layers:** `org/catalog/name`, `org/catalog/name@version`, or ULID when stored locally after `layer add`.
+- **Published layers:** `org/catalog/name`, `org/catalog/name@version`, or ULID when stored locally after `layer pull`.
 - During migration, `org/library[@version]` resolves as `org/<default-catalog>/library`.
 - **Resources:** `name`, `type:name`, `type:name@namespace`, or ULID.
 - **Snapshots:** full snapshot IDs in `project history`; `project revert` accepts the same ID.
@@ -406,7 +406,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ## Wizard mode
 
-Several commands support wizard mode for interactive use: `layer add`, `layer show`, `layer delete`, `layer attach`, `layer detach`, `layer from-project`, `layer set-environment`, `project apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
+Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer combine`, `layer uncombine`, `layer from-project`, `layer set-environment`, `project apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
 
 Wizard mode triggers when all of these are true:
 
@@ -426,7 +426,7 @@ The CLI renders human mode through `src/ui/` primitives (`table`, `panel`, `diff
 - One visual language across commands (semantic colors, `✓` / `⚠` / `✗` verdicts, boxed tables).
 - List tables use uppercase muted headers and optional summary footers.
 - Diff and drift output color rows by change kind (`+` / `−` / `~`).
-- Spinners for long operations (`project scan`, `project apply`, `project sync`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
+- Spinners for long operations (`project scan`, `project apply`, `project mirror`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
 - `--no-color` and `NO_COLOR` disable styling; box-drawing degrades to ASCII when not a TTY.
 
 JSON output is unchanged by the visual layer.
@@ -487,11 +487,11 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 
 Project identity uses a normalized git `origin` remote. `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
 
-During `project scan`, `project apply`, and `project sync`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
+During `project scan`, `project apply`, and `project mirror`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
 
 ### Snapshot behavior
 
-Snapshots are created during `project apply` and `project sync` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `project revert` restores those files. `project drift` compares the latest snapshot to the working tree.
+Snapshots are created during `project apply` and `project mirror` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `project revert` restores those files. `project drift` compares the latest snapshot to the working tree.
 
 ## Canonical model
 
@@ -507,7 +507,7 @@ An environment has a unique `name`, description, ordered **environment values** 
 
 ### Environment capture
 
-**Environment capture** creates or refreshes an environment from the current state of a project. It is distinct from **apply snapshots** stored during `project apply` / `project sync`.
+**Environment capture** creates or refreshes an environment from the current state of a project. It is distinct from **apply snapshots** stored during `project apply` / `project mirror`.
 
 `environment capture` and `environment refresh` store only environment values **required by the layer stack in scope** — not the full machine environment:
 
@@ -596,11 +596,11 @@ When one supported harness already exists in a project, it becomes the default m
 
 Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
 
-If no `--platform` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
+If no `--harness` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
 
 ### Project sync
 
-`project sync` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing.
+`project mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing.
 
 ### Project drift
 
@@ -666,9 +666,9 @@ HarnessDeck Cloud is the multiplayer control plane for **published layers**. An 
 
 Authentication stores named profiles in `~/.harnessdeck/cloud-profiles.json`.
 
-- `cloud login` performs device authentication.
-- `cloud whoami`, `cloud orgs`, and `cloud logout` manage profiles and active org context.
-- `layer search`, `layer add`, and `layer publish` use the selected cloud profile.
+- `auth login` performs device authentication.
+- `auth status`, `auth orgs`, and `auth logout` manage profiles and active org context.
+- `layer search`, `layer pull`, and `layer publish` use the selected cloud profile.
 
 ### Catalog scope
 
@@ -681,14 +681,14 @@ The CLI builds a **catalog scope** from:
 | Connected layer | `layer catalog connect layer <org/name>` — opt-in to one published layer |
 | Authenticated | Private and shared layers in orgs the user belongs to |
 
-`layer search` and interactive `layer add` query this union. Configuration persists under `catalog` in `~/.harnessdeck/config.jsonc`.
+`layer search` and interactive `layer pull` query this union. Configuration persists under `catalog` in `~/.harnessdeck/config.jsonc`.
 
 ### Publish and install
 
 | Action | Requires | Result |
 | --- | --- | --- |
 | `layer publish` | Cloud org, target **catalog**, publish scope | New immutable version under `org/catalog/name` |
-| `layer add` | Selector in catalog scope (or explicit `org/catalog/name@version`) | Local import of the published bundle |
+| `layer pull` | Selector in catalog scope (or explicit `org/catalog/name@version`) | Local import of the published bundle |
 | Solo local work | Neither org nor catalog | Layers exist only in local SQLite until published |
 
 **Wire compatibility:** Cloud APIs today expose published layers as `org/library` entries (`layer_libraries` in HarnessDeck Cloud). Spec-wise, `library` is a published **layer name**; explicit `catalog` segments in selectors and APIs are the target shape. See [harnessdeck-cloud SPEC](../harnessdeck-cloud/SPEC.md).
@@ -697,7 +697,7 @@ Local integration behavior:
 
 - Token refresh before remote calls; re-login guidance on refresh failure.
 - No silent profile/org switching during other commands.
-- `layer add` fails on local name conflict instead of overwriting.
+- `layer pull` fails on local name conflict instead of overwriting.
 
 ## Terminal demos (VHS)
 

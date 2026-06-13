@@ -148,7 +148,7 @@ describe("VHS scenario manifest", () => {
     expect(tape).toContain('Type "harnessdeck project scan ."');
     expect(tape).toContain('Type "harnessdeck resource list"');
     expect(tape).toContain('Type "harnessdeck layer list"');
-    expect(tape).toContain('Type "harnessdeck project apply nextjs-fullstack --project . --platform codex"');
+    expect(tape).toContain('Type "harnessdeck project apply nextjs-fullstack --project . --harness codex"');
     expect(tape).toContain('Type "harnessdeck project status ."');
 
     // Tape does not use --format json
@@ -200,7 +200,7 @@ describe("VHS scenario manifest", () => {
     );
     expect(readme).not.toContain("hd platform list");
     expect(readme).not.toContain("hd layer validate");
-    expect(readme).not.toContain("hd layer add-plugin");
+    expect(readme).not.toContain("hd layer pull-plugin");
     expect(readme).toContain("```mermaid");
   });
 
@@ -211,8 +211,8 @@ describe("VHS scenario manifest", () => {
     expect(spec).toContain("Agent harness configuration toolkit");
     expect(spec).toContain("harness list");
     expect(spec).toContain("layer doctor");
-    expect(spec).toContain("layer attach");
-    expect(spec).toContain("layer detach");
+    expect(spec).toContain("layer combine");
+    expect(spec).toContain("layer uncombine");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
     expect(spec).not.toContain("harnessdeck platform list");

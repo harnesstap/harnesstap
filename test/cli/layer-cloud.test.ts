@@ -60,7 +60,7 @@ describe("CLI cloud layer workflows", () => {
       // add (remote install) from a remote selector; use --as to pick local name
       const add = await runCli([
         "layer",
-        "add",
+        "pull",
         "harnessdeck-cloud/default/team@1.0",
         "--as",
         "team-cloud",
@@ -106,7 +106,7 @@ describe("CLI cloud layer workflows", () => {
         "team-cloud",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--dry-run",
         "--format",
@@ -118,7 +118,7 @@ describe("CLI cloud layer workflows", () => {
 
       // add conflict when local layer name exists and --as missing
       const _conflictLayer = layerModel.createLayer({ name: "conflict" });
-      const conflict = await runCli(["layer", "add", "org/default/conflict@1.0"]);
+      const conflict = await runCli(["layer", "pull", "org/default/conflict@1.0"]);
       expect(conflict.stderr).toContain("Layer name already exists");
 
       restoreFetch();
@@ -164,7 +164,7 @@ describe("CLI cloud layer workflows", () => {
         "harnessdeck-cloud/default/team@1.0",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--dry-run",
       ]);
@@ -176,7 +176,7 @@ describe("CLI cloud layer workflows", () => {
         "harnessdeck-cloud/default/team@1.0",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--dry-run",
         "--format",
@@ -197,7 +197,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add accepts --org and --version helpers to complete partial selectors", async () => {
+  it("layer pull accepts --org and --version helpers to complete partial selectors", async () => {
     const context = await createTestContext("cli-layer-add-helpers");
     try {
       await runCli(["init"]);
@@ -217,7 +217,7 @@ describe("CLI cloud layer workflows", () => {
       // Test --org helper fills missing org
       const withOrg = await runCli([
         "layer",
-        "add",
+        "pull",
         "my-library",
         "--org",
         "harnessdeck-cloud",
@@ -252,7 +252,7 @@ describe("CLI cloud layer workflows", () => {
 
       const withVersion = await runCli([
         "layer",
-        "add",
+        "pull",
         "other-org/default/other-lib",
         "--version",
         "^1.0.0",
@@ -286,7 +286,7 @@ describe("CLI cloud layer workflows", () => {
       // Test both helpers together
       const withBoth = await runCli([
         "layer",
-        "add",
+        "pull",
         "combined-lib",
         "--org",
         "harnessdeck-cloud",
@@ -325,14 +325,14 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add rejects --org when org is already in selector", async () => {
+  it("layer pull rejects --org when org is already in selector", async () => {
     const context = await createTestContext("cli-layer-add-org-conflict");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "layer",
-        "add",
+        "pull",
         "acme/default/library",
         "--org",
         "other-org",
@@ -345,14 +345,14 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add rejects --version when version is already in selector", async () => {
+  it("layer pull rejects --version when version is already in selector", async () => {
     const context = await createTestContext("cli-layer-add-version-conflict");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "layer",
-        "add",
+        "pull",
         "acme/default/library@1.0.0",
         "--version",
         "^2.0.0",
@@ -365,14 +365,14 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add requires org from selector or --org", async () => {
+  it("layer pull requires org from selector or --org", async () => {
     const context = await createTestContext("cli-layer-add-missing-org");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "layer",
-        "add",
+        "pull",
         "library-name",
       ]);
 
@@ -389,7 +389,7 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["layer", "add", "@broken"]);
+      const result = await runCli(["layer", "pull", "@broken"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Invalid layer selector");
@@ -400,7 +400,7 @@ describe("CLI cloud layer workflows", () => {
 
   // ── Task 4: Interactive remote layer search ──────────────────────────────
 
-  it("layer add with no selector on TTY launches interactive remote search", async () => {
+  it("layer pull with no selector on TTY launches interactive remote search", async () => {
     const context = await createTestContext("cli-layer-add-interactive-search");
     try {
       await runCli(["init"]);
@@ -418,7 +418,7 @@ describe("CLI cloud layer workflows", () => {
       const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
 
       const result = await runCli(
-        ["layer", "add", "--profile", "test", "--base-url", "https://mock"],
+        ["layer", "pull", "--profile", "test", "--base-url", "https://mock"],
         {
           isTTY: true,
           promptResponses: [{ choice: "harnessdeck-cloud/default/team" }],
@@ -434,7 +434,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add with no selector on non-TTY fails with clear error", async () => {
+  it("layer pull with no selector on non-TTY fails with clear error", async () => {
     const context = await createTestContext("cli-layer-add-no-selector-non-tty");
     try {
       await runCli(["init"]);
@@ -451,7 +451,7 @@ describe("CLI cloud layer workflows", () => {
 
       // Non-TTY environment
       const result = await runCli(
-        ["layer", "add", "--profile", "test"],
+        ["layer", "pull", "--profile", "test"],
         { isTTY: false }
       );
 
@@ -657,7 +657,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add resolves three-part selectors against the catalog API", async () => {
+  it("layer pull resolves three-part selectors against the catalog API", async () => {
     const context = await createTestContext("cli-layer-add-three-part");
     try {
       await runCli(["init"]);
@@ -689,7 +689,7 @@ describe("CLI cloud layer workflows", () => {
 
       const result = await runCli([
         "layer",
-        "add",
+        "pull",
         "acme/personas/frontend@2.0.0",
         "--as",
         "persona-frontend",
@@ -777,7 +777,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer add installs a public default-catalog layer without a cloud profile", async () => {
+  it("layer pull installs a public default-catalog layer without a cloud profile", async () => {
     const context = await createTestContext("cli-layer-add-anonymous");
     try {
       await runCli(["init"]);
@@ -785,7 +785,7 @@ describe("CLI cloud layer workflows", () => {
 
       const result = await runCli([
         "layer",
-        "add",
+        "pull",
         "harnessdeck-cloud/default/team@1.0",
         "--as",
         "oss-team",

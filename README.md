@@ -258,7 +258,7 @@ sequenceDiagram
   User->>CLI: hd project scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
-  User->>CLI: hd layer create / attach
+  User->>CLI: hd layer create / combine
   CLI->>DB: Save reusable layer
   User->>CLI: hd project apply layer --harness ...
   CLI->>Project: Snapshot tracked files
@@ -383,7 +383,7 @@ hd layer combine my-setup plugin:formatter@my-marketplace --version "^2.1.0"
 hd layer combine my-setup plugin:formatter@my-marketplace --sync   # eager sync after combine
 hd resource sync plugin:formatter@my-marketplace
 hd resource show plugin:formatter@my-marketplace
-hd layer detach my-setup plugin:formatter@my-marketplace --type plugin
+hd layer uncombine my-setup plugin:formatter@my-marketplace --type plugin
 hd layer export my-setup --file ./team.harnessdeck.jsonc --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
@@ -433,7 +433,7 @@ hd migrate export ./harnessdeck-migrate.tar.gz
 hd migrate import ./harnessdeck-migrate.tar.gz
 ```
 
-`project drift` compares the current working tree against the latest apply/sync snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud profiles remain in `cloud-profiles.json`.
+`project drift` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud profiles remain in `cloud-profiles.json`.
 
 **Project command preconditions**
 
@@ -476,17 +476,17 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 2. **Inspect** the authenticated user.
    ```bash
-   harnessdeck cloud whoami [--profile <name>] [--format human|json]
+   harnessdeck auth status [--profile <name>] [--format human|json]
    ```
 
 3. **List organizations** or switch the active organization.
    ```bash
-   harnessdeck cloud orgs [--profile <name>] [--switch <slug>]
+   harnessdeck auth orgs [--profile <name>] [--switch <slug>]
    ```
 
 4. **Log out** and remove a local profile.
    ```bash
-   harnessdeck cloud logout [--profile <name>]
+   harnessdeck auth logout [--profile <name>]
    ```
 
 5. **Search** the remote layer catalog.
@@ -496,7 +496,7 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 6. **Add** a layer from the cloud.
    ```bash
-   harnessdeck layer add <org>/<library>[@version] [--as <name>] [--profile <name>]
+   harnessdeck layer pull <org>/<library>[@version] [--as <name>] [--profile <name>]
    ```
    Downloads a layer bundle and imports it locally. Use `--as` to avoid name conflicts.
 

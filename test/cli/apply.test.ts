@@ -135,7 +135,7 @@ describe("CLI apply", () => {
         "applied",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--dry-run",
       ]);
@@ -148,7 +148,7 @@ describe("CLI apply", () => {
         "applied",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -190,7 +190,7 @@ describe("CLI apply", () => {
         "foundation-only",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--ignore-plugin-versions",
       ]);
@@ -238,7 +238,7 @@ describe("CLI apply", () => {
         "catalog-like",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--ignore-plugin-versions",
       ]);
@@ -359,7 +359,7 @@ describe("CLI apply", () => {
         "auto-sync-plugins",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -401,7 +401,7 @@ describe("CLI apply", () => {
         "with-plugins",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -444,7 +444,7 @@ describe("CLI apply", () => {
         "strict-plugins",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--strict-plugin-versions",
       ]);
@@ -487,7 +487,7 @@ describe("CLI apply", () => {
         "ignore-plugins",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--ignore-plugin-versions",
       ]);
@@ -532,7 +532,7 @@ describe("CLI apply", () => {
         "conflict-plugins",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--strict-plugin-versions",
         "--ignore-plugin-versions",
@@ -573,7 +573,7 @@ describe("CLI apply", () => {
         "non-git-apply",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -625,7 +625,7 @@ describe("CLI apply", () => {
         bundlePath,
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "codex",
       ]);
       const secondApply = await runCli([
@@ -634,7 +634,7 @@ describe("CLI apply", () => {
         bundlePath,
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "codex",
       ]);
 
@@ -692,7 +692,7 @@ describe("CLI apply", () => {
         "overlay-no-plugins",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--strict-plugin-versions",
       ]);

@@ -9,5 +9,3 @@ harnessdeck project mirror .
 harnessdeck project mirror . --force-shift-reference codex
 harnessdeck project mirror . --dry-run
 ```
-
-`project sync` remains available as a deprecated alias for one release cycle.
