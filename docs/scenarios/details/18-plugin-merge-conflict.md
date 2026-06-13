@@ -11,8 +11,8 @@ merging user, project, and local scopes.
 Typical commands:
 
 ```bash
-harnessdeck project scan . --platform claude-code --dry-run
-harnessdeck project scan . --platform claude-code
+harnessdeck project scan . --harness claude-code --dry-run
+harnessdeck project scan . --harness claude-code
 harnessdeck resource list --type plugin
 harnessdeck resource show formatter@team-marketplace --all-fields
 harnessdeck layer show my-setup
