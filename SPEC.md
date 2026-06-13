@@ -436,11 +436,12 @@ JSON output is unchanged by the visual layer.
 `harnessdeck init` is the explicit first-run flow. It:
 
 1. Initializes the local database.
-2. Seeds built-in starter layers from `builtin-plugins/` (bundle v1 files).
-3. Discovers supported harness configuration in the user's home directory and imports findings.
-4. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
+2. Discovers supported harness configuration in the user's home directory and imports findings.
+3. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
 
-The main harness may differ from the first harness discovered on disk. Every later sync operation uses one reference harness and a defined set of alias outputs.
+Starter layers are **not** seeded locally. Apply catalog baselines with `project apply <name>` (bare names resolve against the public catalog) or install bundles with `layer pull`.
+
+The main harness may differ from the first harness discovered on disk. Every later mirror operation uses one reference harness and a defined set of alias outputs.
 
 After init, update preferences with `harness set` or `harness project set` (flags or interactive prompts).
 
