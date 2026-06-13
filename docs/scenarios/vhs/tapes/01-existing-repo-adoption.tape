@@ -14,7 +14,7 @@ Type "harnessdeck resource list"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck layer list"
+Type "harnessdeck layer search fullstack"
 Enter
 Sleep 3000ms
 

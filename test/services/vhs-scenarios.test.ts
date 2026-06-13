@@ -147,7 +147,7 @@ describe("VHS scenario manifest", () => {
     // Tape contains the visible commands from the approved story
     expect(tape).toContain('Type "harnessdeck project scan ."');
     expect(tape).toContain('Type "harnessdeck resource list"');
-    expect(tape).toContain('Type "harnessdeck layer list"');
+    expect(tape).toContain('Type "harnessdeck layer search fullstack"');
     expect(tape).toContain('Type "harnessdeck project apply nextjs-fullstack --project . --harness codex"');
     expect(tape).toContain('Type "harnessdeck project status ."');
 
