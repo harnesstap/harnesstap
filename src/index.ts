@@ -2376,7 +2376,7 @@ function handleGuideCommand(): void {
   console.log("");
   console.log(`  ${formatCommand("init")}`);
   console.log(
-    `  ${formatCommand("project apply nextjs-fullstack --project . --harness codex")}`,
+    `  ${formatCommand("project apply engineering-foundation --project . --harness codex")}`,
   );
   console.log(`  ${formatCommand("project status .")}`);
   console.log("");
