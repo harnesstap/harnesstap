@@ -16,16 +16,23 @@ export function renderWarn(message: string, opts?: { hint?: string }): string {
     : theme.warn(line(icons.warn, message));
 }
 
-export function renderDanger(message: string, opts?: { hint?: string }): string {
-  return opts?.hint
-    ? `${theme.danger(line(icons.danger, message))}\n  ${theme.info(`${icons.hint} ${opts.hint}`)}`
-    : theme.danger(line(icons.danger, message));
+export function renderDanger(
+  message: string,
+  opts?: { hint?: string; hints?: string[] },
+): string {
+  const hints = opts?.hints ?? (opts?.hint ? [opts.hint] : []);
+  const base = theme.danger(line(icons.danger, message));
+  if (hints.length === 0) {
+    return base;
+  }
+  return `${base}\n${hints.map((hint) => `  ${theme.info(`${icons.hint} ${hint}`)}`).join("\n")}`;
 }
 
 export const status = {
   success: (message: string, opts?: { hint?: string }) => console.log(renderSuccess(message, opts)),
   warn: (message: string, opts?: { hint?: string }) => console.log(renderWarn(message, opts)),
-  danger: (message: string, opts?: { hint?: string }) => console.error(renderDanger(message, opts)),
+  danger: (message: string, opts?: { hint?: string; hints?: string[] }) =>
+    console.error(renderDanger(message, opts)),
   info: (message: string) => console.log(theme.info(message)),
   dim: (message: string) => console.log(theme.info(message)),
   hint: (message: string) => console.log(`  ${theme.info(`${icons.hint} ${message}`)}`),
