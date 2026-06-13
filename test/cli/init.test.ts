@@ -5,7 +5,7 @@ import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("CLI init", () => {
-  test("initializes the database and seeds built-in layers", async () => {
+  test("initializes the database without seeding built-in layers", async () => {
     const context = await createTestContext("cli-init");
 
     try {
@@ -16,7 +16,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Database");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
-      expect(layerModel.listLayers().length).toBeGreaterThan(0);
+      expect(layerModel.listLayers()).toEqual([]);
     } finally {
       await context.cleanup();
     }
@@ -43,7 +43,6 @@ describe("CLI init", () => {
           .filter((resource) => resource.source.startsWith("~/.claude"));
 
       expect(result.stdout).toContain("Harnessdeck initialized");
-      expect(result.stdout).toContain("Built-in Layers");
       expect(result.stdout).toContain("HOME DEFAULTS");
       expect(result.stdout).toContain("Claude Code");
       expect(result.stdout).toContain("~/.claude");
@@ -52,10 +51,9 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Found");
       expect(result.stdout).toContain("2 resources");
       expect(result.stdout).toContain("1 instruction, 1 skill");
-      expect(result.stdout).toContain("Built-in Layers");
-      expect(result.stdout).toContain("seeded");
       expect(result.stdout).toContain("Status");
       expect(result.stdout).toContain("2 new resources imported");
+      expect(result.stdout).not.toContain("Built-in Layers");
       expect(result.stdout).not.toContain("claude-instructions");
       expect(result.stdout).not.toContain("skill          research");
       expect(homeResources()).toEqual(
@@ -106,7 +104,7 @@ describe("CLI init", () => {
     }
   });
 
-  it("warns when init reruns with saved harness defaults and hides the no-op built-in layer summary", async () => {
+  it("warns when init reruns with saved harness defaults", async () => {
     const context = await createTestContext("cli-init-rerun-warning");
 
     try {

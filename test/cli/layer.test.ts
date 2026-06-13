@@ -3,6 +3,7 @@ import type { CommanderError } from "commander";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { importBuiltinFixtures } from "../helpers/builtin-fixtures.ts";
 
 describe("CLI layer", () => {
   it("creates a layer with an explicit version via --version", async () => {
@@ -488,6 +489,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-list-table");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
       const result = await runCli(["layer", "list"], { commandName: "hd" });
       expect(result.stdout).toContain("NAME");
       expect(result.stdout).toContain("DESCRIPTION");
@@ -501,6 +503,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-show-panel");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
       const result = await runCli(["layer", "show", "nextjs-fullstack"]);
       expect(result.stdout).toContain("LAYER");
       expect(result.stdout).toContain("Description");
@@ -514,6 +517,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-diff-ui");
     try {
       await runCli(["init"]);
+      await importBuiltinFixtures();
       const result = await runCli(["layer", "diff", "nextjs-fullstack", "python-fastapi"]);
       expect(result.stdout).toContain("DIFF");
       expect(result.stdout).toContain("~");

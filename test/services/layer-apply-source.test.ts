@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { resolveApplyLayerSource } from "../../src/services/layer-apply-source.ts";
+import { LayerAmbiguityError, LayerResolveError } from "../../src/services/layer-bare-name-resolve.ts";
+import { connectCatalogOrg, saveCatalogSettings } from "../../src/config/catalog.ts";
 
 describe("resolveApplyLayerSource", () => {
   it("installs a published selector from the catalog when missing locally", async () => {
@@ -31,6 +35,96 @@ describe("resolveApplyLayerSource", () => {
       expect(second).toEqual(resolved);
 
       restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resolves a unique bare name from the public catalog", async () => {
+    const context = await createInitializedTestContext("resolve-apply-layer-source-bare");
+    try {
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [{
+          orgSlug: "harnessdeck-cloud",
+          slug: "nextjs-fullstack",
+          name: "Next.js Fullstack",
+          summary: "Template",
+          latestVersion: "1.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: [],
+          visibility: "public",
+        }],
+      });
+      const fetchedLabels: string[] = [];
+
+      const resolved = await resolveApplyLayerSource("nextjs-fullstack", {
+        baseUrl: "https://mock",
+        onFetched: (label) => fetchedLabels.push(label),
+      });
+
+      expect(resolved.kind).toBe("local");
+      expect(fetchedLabels).toEqual(["harnessdeck-cloud/nextjs-fullstack@1.0.0"]);
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects ambiguous bare names with candidate selectors", async () => {
+    const context = await createInitializedTestContext("resolve-apply-layer-source-ambiguous");
+    try {
+      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      mkdirSync(harnessdeckDir, { recursive: true });
+      connectCatalogOrg("acme", harnessdeckDir);
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [
+          {
+            orgSlug: "harnessdeck-cloud",
+            slug: "team",
+            name: "Team",
+            summary: "A",
+            latestVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+          {
+            orgSlug: "acme",
+            slug: "team",
+            name: "Team",
+            summary: "B",
+            latestVersion: "2.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+        ],
+      });
+
+      await expect(
+        resolveApplyLayerSource("team", { baseUrl: "https://mock" }),
+      ).rejects.toBeInstanceOf(LayerAmbiguityError);
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects bare names when public catalog is disabled", async () => {
+    const context = await createInitializedTestContext("resolve-apply-layer-source-no-public");
+    try {
+      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      mkdirSync(harnessdeckDir, { recursive: true });
+      saveCatalogSettings({ publicCatalog: false }, harnessdeckDir);
+
+      await expect(resolveApplyLayerSource("nextjs-fullstack")).rejects.toBeInstanceOf(
+        LayerResolveError,
+      );
     } finally {
       await context.cleanup();
     }

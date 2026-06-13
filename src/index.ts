@@ -27,7 +27,7 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile, exportLayer } from "./services/exporter.js";
+import { exportToFile, importFromFile, exportLayer, inspectBundleFile } from "./services/exporter.js";
 import {
   listResources,
   deleteResource,
@@ -65,8 +65,7 @@ import {
   getAllPlatforms,
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
-import { seedBuiltInPlugins } from "./services/seed-plugins.js";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
@@ -128,7 +127,7 @@ import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergePlugins } from "./services/layer-merge.js";
 import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
-import { updateLayerPublishedIdentity } from "./models/layer-model.js";
+import { resolveLayerSelector, updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -157,6 +156,7 @@ import {
 } from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { resolveApplyLayerSource } from "./services/layer-apply-source.js";
+import { LayerAmbiguityError, LayerResolveError } from "./services/layer-bare-name-resolve.js";
 import { installLayerFromCatalog } from "./services/layer-catalog-install.js";
 import { syncProject } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
@@ -201,6 +201,16 @@ function resolveInvocationName(): "harnessdeck" | "hd" {
 
 function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
+}
+
+const GIT_ORIGIN_HINTS = [
+  "Add a remote: git remote add origin <url>",
+  "Snapshots and drift detection require a git repository with origin configured.",
+];
+
+function reportNoGitOrigin(): void {
+  process.exitCode = 1;
+  ui.danger("No git remote origin configured.", { hints: GIT_ORIGIN_HINTS });
 }
 
 function isVerboseMode(argv: string[] = process.argv): boolean {
@@ -906,8 +916,29 @@ async function resolveApplyLayers(
     resolvedSources.length === 1
     && resolvedSources[0]?.kind === "bundle"
   ) {
+    const bundlePath = resolvedSources[0].path;
+    const summary = inspectBundleFile(bundlePath);
+    const primarySummary = summary.layers[summary.layers.length - 1];
+    if (primarySummary) {
+      const selector = primarySummary.version
+        ? `${primarySummary.name}@${primarySummary.version}`
+        : primarySummary.name;
+      const existingLayer = resolveLayerSelector(selector);
+      if (existingLayer) {
+        const configuredLayer = ensureImplicitConfiguredLayer(existingLayer.id);
+        const merged = mergeConfiguredLayers([configuredLayer.id]);
+        return {
+          layers: merged.layers,
+          resources: merged.resources,
+          claude: merged.claude,
+          configuredLayerIds: [configuredLayer.id],
+          primaryConfiguredLayerId: configuredLayer.id,
+        };
+      }
+    }
+
     return importedBundleToApplyResult(
-      importFromFile(resolvedSources[0].path, {
+      importFromFile(bundlePath, {
         embeddedTargetDir: projectRoot,
       }),
     );
@@ -1031,6 +1062,11 @@ async function handleApplyCommand(
     );
   } catch (err) {
     resolveSpin.stop();
+    process.exitCode = 1;
+    if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
@@ -1038,6 +1074,7 @@ async function handleApplyCommand(
 
   const primaryLayer = applyBundle.layers[applyBundle.layers.length - 1];
   if (!primaryLayer) {
+    process.exitCode = 1;
     ui.danger("No layer resolved for apply");
     return;
   }
@@ -1062,11 +1099,13 @@ async function handleApplyCommand(
       harnessFilter,
     );
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
 
   if (platforms.length === 0) {
+    process.exitCode = 1;
     ui.warn(
       "No harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
     );
@@ -1222,6 +1261,10 @@ async function handleApplyCommand(
       configured_layer_id: applyBundle.primaryConfiguredLayerId,
       platforms,
     });
+  } else if (outputFormat === "human" && !opts.dryRun) {
+    ui.warn("No git remote origin — configuration snapshot will not be stored.", {
+      hint: "git remote add origin <url>",
+    });
   }
 
   if (opts.dryRun) {
@@ -1283,8 +1326,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    process.exitCode = 1;
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -2300,6 +2342,21 @@ async function handleEnvironmentUseCommand(
   ui.success(`Set active home environment ${ui.theme.accent(payload.environment_name)}`);
 }
 
+function printQuickStartGuide(): void {
+  console.log("");
+  ui.subheader("NEXT STEPS");
+  console.log("");
+  console.log(`  ${formatCommand("layer search <query>")}`);
+  console.log(`  ${formatCommand("project apply <layer> --project .")}`);
+  console.log(`  ${formatCommand("guide")}`);
+}
+
+function handleGuideCommand(): void {
+  printQuickStartGuide();
+  console.log("");
+  ui.info("docs/scenarios/scenarios.md");
+}
+
 async function handleInitCommand(opts: {
   format?: string;
   main?: string;
@@ -2310,7 +2367,18 @@ async function handleInitCommand(opts: {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const seeded = seedBuiltInPlugins();
+  if (format === "human" && existsSync(getDbPath())) {
+    const preference = getHarnessPreference();
+    ui.warn(
+      "~/.harnessdeck already exists. Harness preferences stay unchanged unless you pass --main or --aliases.",
+    );
+    if (preference) {
+      ui.dim(
+        `Current defaults: main=${preference.main_harness}, aliases=${preference.alias_harnesses.join(", ") || "(none)"}`,
+      );
+    }
+    console.log("");
+  }
   const homeDefaults = await scanAndPersistHomeDefaults();
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
@@ -2342,10 +2410,6 @@ async function handleInitCommand(opts: {
 
   if (format === "json") {
     printJson({
-      built_in_layers: {
-        seeded,
-        status: seeded > 0 ? "seeded" : "already_up_to_date",
-      },
       home_defaults: homeDefaults.results,
       database_path: getDbPath(),
       ...(savedHarnessPreference
@@ -2372,12 +2436,6 @@ async function handleInitCommand(opts: {
   console.log("");
   ui.kvBlock([
     { key: "Database", value: getDbPath() },
-    ...(seeded > 0
-      ? [{
-          key: "Built-in Layers",
-          value: `seeded ${formatCount(seeded, "built-in layer")}`,
-        }]
-      : []),
   ]);
 
   if (homeDefaults.detected.length === 0) {
@@ -2427,6 +2485,8 @@ async function handleInitCommand(opts: {
       },
     ], { keyWidth: 14 });
   }
+
+  printQuickStartGuide();
 }
 
 async function handleHarnessSetCommand(opts: {
@@ -2492,7 +2552,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
 
@@ -2540,7 +2600,7 @@ function handleProjectDriftCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -2981,7 +3041,7 @@ function handleHarnessProjectStatusCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
 
@@ -3015,6 +3075,13 @@ function handleHarnessProjectStatusCommand(opts: {
 }
 
 // ── init ────────────────────────────────────────────────────────────────
+
+program
+  .command("guide")
+  .description("Show quick start commands and documentation links")
+  .action(() => {
+    handleGuideCommand();
+  });
 
 program
   .command("init")
