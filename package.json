@@ -26,7 +26,8 @@
     "clean": "rm -rf dist",
     "preflight": "bun run lint && bun run typecheck && bun run test:run && bun run build",
     "prepublishOnly": "bun run build",
-    "docs:vhs": "bash scripts/generate-vhs-scenarios.sh"
+    "docs:vhs": "bash scripts/generate-vhs-scenarios.sh",
+    "check:scenario-docs": "bash scripts/check-scenario-docs.sh"
   },
   "keywords": [
     "ai",
