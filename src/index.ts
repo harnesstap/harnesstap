@@ -3,6 +3,7 @@ import { PACKAGE_VERSION } from "./version.js";
 import { getDb, closeDb, getDbPath, getHarnessdeckDir } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { ui } from "./ui/index.js";
+import { resolveDeprecatedHarnessFlag, warnDeprecatedReplacement } from "./cli/deprecation.js";
 import {
   getGitOrigin,
   normalizeGitUrl,
@@ -567,7 +568,7 @@ function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|project|plugin|cloud|migrate|harness|environment)'/i.test(candidate.message);
+    && /too many arguments for '(layer|resource|project|plugin|cloud|auth|migrate|harness|environment)'/i.test(candidate.message);
 }
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
@@ -708,13 +709,28 @@ async function handleScanCommand(
   const projectRoot = resolve(path);
   const detected = detectPlatforms(projectRoot);
   const pluginSourcePath = detected.length === 0 && isPluginSourcePath(projectRoot);
+  const scanHarnessFilter = (() => {
+    if (opts.global) {
+      return undefined;
+    }
+    try {
+      return resolveDeprecatedHarnessFlag({
+        harness: opts.harness,
+        platform: opts.platform,
+        commandLabel: "project scan",
+      });
+    } catch (error) {
+      throw error;
+    }
+  })();
 
-  if (opts.harness && !opts.global) {
-    throw new Error("--harness can only be used together with --global");
+  if (pluginSourcePath && opts.harness && !opts.global) {
+    throw new Error("--harness without --global is not supported when scanning a plugin source");
   }
 
   if (pluginSourcePath) {
     if (opts.platform) {
+      warnDeprecatedReplacement("project scan --platform", "project scan --harness");
       throw new Error("--platform is not supported when scanning a plugin source");
     }
 
@@ -784,7 +800,7 @@ async function handleScanCommand(
     return;
   }
   if (opts.dryRun) {
-    const results = await scanProject(projectRoot, opts.platform);
+    const results = await scanProject(projectRoot, scanHarnessFilter);
     for (const result of results) {
       const count = result.resources.length;
       const dryTag = ui.theme.muted("[dry run] ");
@@ -800,7 +816,7 @@ async function handleScanCommand(
   }
 
   const spin = createProgress("Scanning…");
-  const results = await scanProject(projectRoot, opts.platform);
+  const results = await scanProject(projectRoot, scanHarnessFilter);
   const conflictPolicy = resolveScanConflictPolicy(opts);
   let persisted = persistScanResults(results, {
     conflictPolicy,
@@ -1026,9 +1042,16 @@ async function handleApplyCommand(
     return;
   }
 
-  if (opts.harness && opts.platform) {
+  let harnessFilter: string | undefined;
+  try {
+    harnessFilter = resolveDeprecatedHarnessFlag({
+      harness: opts.harness,
+      platform: opts.platform,
+      commandLabel: "project apply",
+    });
+  } catch (err) {
     process.exitCode = 1;
-    ui.danger("Choose either --harness or --platform, not both.");
+    ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
 
@@ -1036,7 +1059,7 @@ async function handleApplyCommand(
   try {
     platforms = resolveApplyHarnessTargets(
       projectRoot,
-      opts.harness ?? opts.platform,
+      harnessFilter,
     );
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
@@ -1442,7 +1465,7 @@ async function handleLayerInstallCommand(
 
     if (!canPrompt) {
       process.exitCode = 1;
-      ui.danger("error: selector is required in non-interactive mode. Use: layer add org/catalog/layer[@version]");
+      ui.danger("error: selector is required in non-interactive mode. Use: layer pull org/catalog/layer[@version]");
       return;
     }
 
@@ -1536,7 +1559,7 @@ async function handleLayerPublishCommand(
     const client = await resolveCloudClientForLayerCommand(opts.profile);
     if (!client) {
       process.exitCode = 1;
-      ui.danger("No cloud profile configured. Use `cloud login` to create one or pass --profile.");
+      ui.danger("No cloud profile configured. Use `auth login` to create one or pass --profile.");
       return;
     }
 
@@ -3099,16 +3122,16 @@ layerCmd
   });
 
 layerCmd
-  .command("attach")
+  .command("combine")
   .argument("[layer]", "Layer name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
   .option("--type <type>", `Attachment type when selector omits prefix: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
   .option("--version <constraint>", "Version constraint for plugin or layer attachments")
   .option("--embed", "Mark plugin resource as embed-on-export")
-  .option("--sync", "Sync plugin resource immediately after attach (default: lazy)")
+  .option("--sync", "Sync plugin resource immediately after combine (default: lazy)")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Attach a resource, plugin, or layer reference to a layer")
+  .description("Combine a resource, plugin, or layer reference into a layer")
   .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; sync?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -3172,6 +3195,151 @@ layerCmd
   });
 
 layerCmd
+  .command("attach")
+  .argument("[layer]", "Layer name or ID")
+  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
+  .option("--type <type>", `Attachment type when selector omits prefix: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--version <constraint>", "Version constraint for plugin or layer attachments")
+  .option("--embed", "Mark plugin resource as embed-on-export")
+  .option("--sync", "Sync plugin resource immediately after attach (default: lazy)")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Attach a resource, plugin, or layer reference to a layer")
+  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; sync?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+    warnDeprecatedReplacement("layer attach", "layer combine");
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const layerTarget = await resolveLayerMutationTarget({
+        layerName,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which layer do you want to update?",
+      });
+      if (!layerTarget) {
+        process.exitCode = 1;
+        ui.danger(
+          listDesignPlugins().length > 0
+            ? "error: missing required argument 'layer'"
+            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
+        );
+        return;
+      }
+
+      const layer = getPlugin(layerTarget);
+      if (!layer) {
+        process.exitCode = 1;
+        ui.danger(`Layer not found: ${layerTarget}`);
+        return;
+      }
+
+      const attachmentType = validateLayerAttachmentType(opts.type);
+
+      const wizardValues = await runLayerAddWizard({
+        selector,
+        type: attachmentType,
+        version: opts.version,
+        embed: opts.embed,
+        layerName: layer.name,
+        shouldPrompt: shouldUseWizard({
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+          format: parseOutputFormat(opts.format),
+          missingRequiredArgs: !layerName || !selector,
+        }),
+      });
+
+      if (!wizardValues.selector) {
+        throw new Error(`error: missing required argument 'selector'`);
+      }
+
+      ui.success(ui.theme.accent(await addLayerAttachment({
+        layer,
+        selector: wizardValues.selector,
+        type: wizardValues.type,
+        version: wizardValues.version,
+        embed: wizardValues.embed ?? opts.embed,
+        sync: opts.sync,
+      })));
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+layerCmd
+  .command("uncombine")
+  .argument("[layer]", "Layer name or ID")
+  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
+  .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Uncombine a resource, plugin, or layer reference from a layer")
+  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const layerTarget = await resolveLayerMutationTarget({
+        layerName,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which layer do you want to update?",
+      });
+      if (!layerTarget) {
+        process.exitCode = 1;
+        ui.danger(
+          listDesignPlugins().length > 0
+            ? "error: missing required argument 'layer'"
+            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
+        );
+        return;
+      }
+
+      const layer = getPlugin(layerTarget);
+      if (!layer) {
+        process.exitCode = 1;
+        ui.danger(`Layer not found: ${layerTarget}`);
+        return;
+      }
+
+      const attachmentType = validateLayerAttachmentType(opts.type);
+
+      const wizardValues = await runLayerAddWizard({
+        selector,
+        type: attachmentType,
+        layerName: layer.name,
+        shouldPrompt: shouldUseWizard({
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+          format: parseOutputFormat(opts.format),
+          missingRequiredArgs: !layerName || !selector,
+        }),
+      });
+
+      if (!wizardValues.selector) {
+        throw new Error(`error: missing required argument 'selector'`);
+      }
+
+      const result = removeLayerAttachment({
+        layer,
+        selector: wizardValues.selector,
+        type: wizardValues.type ?? attachmentType,
+      });
+      if (!result.removed && attachmentType === "layer") {
+        process.exitCode = 1;
+        ui.danger(result.message);
+        return;
+      }
+      ui.success(ui.theme.accent(result.message));
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+layerCmd
   .command("detach")
   .argument("[layer]", "Layer name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
@@ -3180,6 +3348,7 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Remove a resource, plugin, or layer reference from a layer")
   .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
+    warnDeprecatedReplacement("layer detach", "layer uncombine");
     const db = getDb();
     initializeSchema(db);
     try {
@@ -3406,6 +3575,20 @@ layerCatalogCmd
   });
 
 layerCmd
+  .command("pull")
+  .argument("[selector]", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
+  .option("--as <name>", "Install under a different local layer name")
+  .option("--org <slug>", "Organization slug (when selector omits org)")
+  .option("--catalog <slug>", "Catalog slug (default: default)")
+  .option("--version <constraint>", "Version constraint (when selector omits version)")
+  .option("--profile <name>", "Cloud profile to use")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Pull a layer from the remote catalog into the local DB")
+  .action(handleLayerInstallCommand);
+
+layerCmd
   .command("add")
   .argument("[selector]", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
   .option("--as <name>", "Add under a different local layer name")
@@ -3417,7 +3600,20 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Add a layer from the remote catalog into the local DB")
-  .action(handleLayerInstallCommand);
+  .action(async (selector: string | undefined, opts: {
+    as?: string;
+    org?: string;
+    catalog?: string;
+    version?: string;
+    profile?: string;
+    baseUrl?: string;
+    format?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  }) => {
+    warnDeprecatedReplacement("layer add", "layer pull");
+    await handleLayerInstallCommand(selector, opts);
+  });
 
 layerCmd
   .command("publish")
@@ -4058,13 +4254,10 @@ const projectCmd = configureCommandGroup(
 projectCmd
   .command("scan")
   .argument("[path]", "Project directory or plugin source to scan", ".")
-  .option("-p, --platform <slug>", "Scan only a specific platform")
+  .option("-h, --harness <slugs>", "Harness slug(s): scan filter, or install targets with --global")
+  .option("--platform <slug>", "Deprecated alias for --harness when scanning a project directory")
   .option("--dry-run", "Show what would be imported without writing to DB")
   .option("--global", "Install imported plugin sources into global harness locations")
-  .option(
-    "--harness <slugs>",
-    "Comma-separated harness slugs to target for --global plugin installs",
-  )
   .option("--overwrite", "Overwrite library resources when scan content differs")
   .option("--skip-existing", "Keep existing library resources when scan content differs")
   .option("--namespace <name>", "Namespace for imported project resources")
@@ -4115,6 +4308,20 @@ projectCmd
   .action(handleProjectDriftCommand);
 
 projectCmd
+  .command("mirror")
+  .argument("[path]", "Project directory", ".")
+  .option("--dry-run", "Show what would be written without writing files")
+  .option(
+    "--force-shift-reference <slug>",
+    "Set the project main harness before mirroring",
+  )
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description(
+    "Mirror alias harness outputs from the main harness on-disk configuration",
+  )
+  .action(handleProjectSyncCommand);
+
+projectCmd
   .command("sync")
   .argument("[path]", "Project directory", ".")
   .option("--dry-run", "Show what would be written without writing files")
@@ -4126,7 +4333,14 @@ projectCmd
   .description(
     "Sync alias harness outputs from the main harness on-disk configuration",
   )
-  .action(handleProjectSyncCommand);
+  .action(async (path: string, opts: {
+    dryRun?: boolean;
+    forceShiftReference?: string;
+    format?: string;
+  }) => {
+    warnDeprecatedReplacement("project sync", "project mirror");
+    await handleProjectSyncCommand(path, opts);
+  });
 
 projectCmd
   .command("history")
@@ -4355,7 +4569,48 @@ async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promis
   }
 }
 
-// ── cloud ───────────────────────────────────────────────────────────────
+// ── auth ────────────────────────────────────────────────────────────────
+
+const authCmd = configureCommandGroup(
+  program
+    .command("auth")
+    .description("Authenticate with HarnessDeck Cloud and manage cloud profiles"),
+);
+
+authCmd
+  .command("login [profile]")
+  .option("--base-url <url>", "Cloud base URL")
+  .description("Log into HarnessDeck Cloud via device authentication")
+  .action(async (profile: string | undefined, opts: { baseUrl?: string }) => {
+    await handleCloudLoginCommand(profile, opts);
+  });
+
+authCmd
+  .command("status")
+  .option("--profile <name>", "Profile name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show authenticated user and profile context")
+  .action(async (opts: { profile?: string; format?: string }) => {
+    await handleCloudWhoamiCommand(opts);
+  });
+
+authCmd
+  .command("orgs")
+  .option("--profile <name>", "Profile name")
+  .option("--switch <org_slug>", "Switch to the given organization slug")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List organizations and optionally switch")
+  .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
+    await handleCloudOrgsCommand(opts);
+  });
+
+authCmd
+  .command("logout")
+  .option("--profile <name>", "Profile name")
+  .description("Log out and remove local cloud profile")
+  .action(async (opts: { profile?: string }) => {
+    await handleCloudLogoutCommand(opts);
+  });
 
 const cloudCmd = configureCommandGroup(
   program
@@ -4369,6 +4624,7 @@ cloudCmd
   .option("--base-url <url>", "Cloud base URL")
   .description("Log into Harness cloud via device authentication")
   .action(async (profile: string | undefined, opts: { baseUrl?: string }) => {
+    warnDeprecatedReplacement("cloud login", "auth login");
     await handleCloudLoginCommand(profile, opts);
   });
 
@@ -4378,6 +4634,7 @@ cloudCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Show information about the authenticated user")
   .action(async (opts: { profile?: string; format?: string }) => {
+    warnDeprecatedReplacement("cloud whoami", "auth status");
     await handleCloudWhoamiCommand(opts);
   });
 
@@ -4388,6 +4645,7 @@ cloudCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("List organizations and optionally switch")
   .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
+    warnDeprecatedReplacement("cloud orgs", "auth orgs");
     await handleCloudOrgsCommand(opts);
   });
 
@@ -4396,6 +4654,7 @@ cloudCmd
   .option("--profile <name>", "Profile name")
   .description("Log out and remove local cloud profile")
   .action(async (opts: { profile?: string }) => {
+    warnDeprecatedReplacement("cloud logout", "auth logout");
     await handleCloudLogoutCommand(opts);
   });
 
