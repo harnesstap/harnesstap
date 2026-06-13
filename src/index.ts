@@ -212,6 +212,13 @@ function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
 }
 
+const GUIDE_QUICK_START_URL =
+  "https://github.com/bqbooster/harnessdeck#quick-start";
+const GUIDE_CLI_REFERENCE_URL =
+  "https://github.com/bqbooster/harnessdeck/blob/main/docs/cli/command-reference.md";
+const GUIDE_SCENARIOS_URL =
+  "https://github.com/bqbooster/harnessdeck/blob/main/docs/scenarios/scenarios.md";
+
 const GIT_ORIGIN_HINTS = [
   "Add a remote: git remote add origin <url>",
   "Snapshots and drift detection require a git repository with origin configured.",
@@ -2358,9 +2365,32 @@ function printQuickStartGuide(): void {
 }
 
 function handleGuideCommand(): void {
-  printQuickStartGuide();
   console.log("");
-  ui.info("docs/scenarios/scenarios.md");
+  ui.subheader("WHAT HARNESSDECK DOES");
+  console.log("");
+  console.log(
+    "  Scan assistant config, store canonical resources, compose layers, apply to projects.",
+  );
+  console.log("");
+  ui.subheader("QUICK START");
+  console.log("");
+  console.log(`  ${formatCommand("init")}`);
+  console.log(
+    `  ${formatCommand("project apply nextjs-fullstack --project . --harness codex")}`,
+  );
+  console.log(`  ${formatCommand("project status .")}`);
+  console.log("");
+  ui.subheader("EXPLORE");
+  console.log("");
+  console.log(`  ${formatCommand("layer search <query>")}`);
+  console.log(`  ${formatCommand("project scan .")}`);
+  console.log(`  ${formatCommand("harness list")}`);
+  console.log("");
+  ui.subheader("DOCUMENTATION");
+  console.log("");
+  ui.info(GUIDE_QUICK_START_URL);
+  ui.info(GUIDE_CLI_REFERENCE_URL);
+  ui.info(GUIDE_SCENARIOS_URL);
 }
 
 async function handleInitCommand(opts: {

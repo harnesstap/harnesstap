@@ -201,4 +201,21 @@ describe("CLI help and command organization", () => {
     expect(layerHelp.stdout).toContain("from-project");
     expect(layerHelp.stdout).toContain("Scan current folder and create a layer from its resources");
   });
+
+  it("prints an expanded quick-start guide with documentation links", async () => {
+    const result = await runCli(["guide"]);
+
+    expect(result.stdout).toContain("WHAT HARNESSDECK DOES");
+    expect(result.stdout).toContain("QUICK START");
+    expect(result.stdout).toContain("project apply nextjs-fullstack --project . --harness codex");
+    expect(result.stdout).toContain("layer search <query>");
+    expect(result.stdout).toContain("DOCUMENTATION");
+    expect(result.stdout).toContain("https://github.com/bqbooster/harnessdeck#quick-start");
+    expect(result.stdout).toContain(
+      "https://github.com/bqbooster/harnessdeck/blob/main/docs/cli/command-reference.md",
+    );
+    expect(result.stdout).toContain(
+      "https://github.com/bqbooster/harnessdeck/blob/main/docs/scenarios/scenarios.md",
+    );
+  });
 });
