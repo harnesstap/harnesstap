@@ -36,7 +36,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 - [Quick start](#quick-start)
 - [Architecture](#architecture)
 - [Deck model](#deck-model)
-- [Built-in plugins](#built-in-plugins)
+- [Catalog baselines](#catalog-baselines)
 - [More layer workflows](#more-layer-workflows)
 - [Import and export](#import-and-export)
 - [Plugin composition and sync](#plugin-composition-and-sync)
@@ -83,9 +83,9 @@ Initialise HarnessDeck, scan an existing repository, browse built-in layers, app
 harnessdeck init                              # initialise HarnessDeck in the repository
 harnessdeck project scan .                    # detect existing resources
 harnessdeck resource list                     # review discovered resources
-harnessdeck layer list                        # browse available layers
+harnessdeck layer search fullstack            # browse catalog layers
 harnessdeck project apply nextjs-fullstack \
-  --project . --platform codex                # apply a layer
+  --project . --harness codex                 # apply a catalog baseline
 harnessdeck project status .                  # confirm the final state
 ```
 
@@ -100,9 +100,21 @@ harnessdeck project status .                  # confirm the final state
 
 ## Install
 
-Install globally with Bun from the npm registry or a local checkout.
+### Recommended: npx (no global install)
 
-### From npm
+```bash
+npx harnessdeck@latest init
+```
+
+### npm global
+
+```bash
+npm install -g harnessdeck
+hd init
+```
+
+<details>
+<summary><strong>Bun install</strong> (alternative)</summary>
 
 ```bash
 bun install -g harnessdeck
@@ -115,7 +127,10 @@ Or run without a global install:
 bunx harnessdeck@latest init
 ```
 
-### From source
+</details>
+
+<details>
+<summary><strong>Install from source</strong></summary>
 
 ```bash
 git clone https://github.com/bqbooster/harnessdeck.git
@@ -132,59 +147,62 @@ hd init
 export PATH="$HOME/.bun/bin:$PATH"
 ```
 
+</details>
+
 ---
 
 ## Quick start
 
-The fastest path: initialize the local database, import home-directory defaults, scan a repository, build a reusable layer, and apply it to your harnesses.
+Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`. For the full command surface and global flags, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
 
-`hd` is a shorthand alias for `harnessdeck`. The CLI groups actions under noun-based commands such as `project`, `layer`, and `harness`. For the full command surface and global flags, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
-
-1. **Initialize** the local database and import supported home-directory defaults.
+1. **Initialize** local state (creates `~/.harnessdeck` and scans supported home harness folders).
    ```bash
    hd init
    hd init --main claude-code --aliases cursor,codex
    ```
 
-2. **Scan** the current repository.
+2. **Apply** a catalog layer by bare name (fetches from the public `harnessdeck-cloud` catalog when needed).
    ```bash
-   hd project scan .
+   hd project apply nextjs-fullstack --project . --harness codex
    ```
 
-3. **List** imported resources.
+3. **Inspect** project state and next steps.
    ```bash
+   hd project status .
+   hd guide
+   ```
+
+When a repository has a git `origin`, `hd project apply` stores a snapshot before writing files. Restore it later with `hd project revert`.
+
+### Follow-up: scan, compose, and publish
+
+After the baseline fits, build and share your own layers:
+
+1. **Scan** the current repository and review imports.
+   ```bash
+   hd project scan .
    hd resource list
    ```
 
-4. **Create** a reusable plugin bundle.
+2. **Create** a reusable layer and combine resources.
    ```bash
    hd layer create my-setup --description "Shared project assistant setup"
+   hd layer combine my-setup research-helper --type skill
    ```
 
-5. **Attach** imported resources to that layer.
+3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
    ```bash
-   hd layer attach my-setup research-helper --type skill
+   hd project apply my-setup --project . --harness claude-code,cursor
+   hd project mirror .
+   hd auth login
+   hd layer publish my-setup
    ```
 
-6. **Apply** the layer to one or more platforms.
-   ```bash
-   hd project apply my-setup --project . --platform claude-code,codex,cursor
-   ```
-   `hd project apply` also accepts multiple layer names, a local `.harnessdeck.jsonc` bundle, or a bundle URL. Later layers override earlier ones for matching resources and plugin pins.
-
-7. **Inspect** tracked project state.
-   ```bash
-   hd project status .
-   hd project history --project .
-   ```
-
-8. **Manage** harness preferences after init.
+4. **Manage** harness preferences after init.
    ```bash
    hd harness status --format json
    hd harness set --main claude-code --aliases cursor,codex
    ```
-
-When a repository has a git `origin`, `hd project apply` stores a snapshot before writing files. Restore it later with `hd project revert`.
 
 ---
 
@@ -196,7 +214,7 @@ flowchart TB
     Home[Home defaults]
     Repo[Existing project files]
     Cloud[HarnessDeck Cloud layers]
-    BuiltIn[Built-in starter layers]
+    BuiltIn[Public catalog baselines]
   end
 
   subgraph Library[Local HarnessDeck library]
@@ -242,7 +260,7 @@ sequenceDiagram
   CLI->>DB: Import resources canonically
   User->>CLI: hd layer create / attach
   CLI->>DB: Save reusable layer
-  User->>CLI: hd project apply layer --platform ...
+  User->>CLI: hd project apply layer --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
   User->>CLI: hd project status / drift / revert
@@ -286,25 +304,25 @@ flowchart LR
 
 ---
 
-## Built-in plugins
+## Catalog baselines
 
-Starter **plugins** (JSON under `builtin-layers/`, schema `urn:harnessdeck:bundle:v1`) are seeded during `hd init`. The same command scans supported default folders in your home directory, imports any resources it finds, and prints the discovered locations.
+Starter layers such as `nextjs-fullstack` and `python-fastapi` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd project apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
 
 ```bash
-hd layer list
-hd project apply nextjs-fullstack --project . --platform codex
+hd layer search fullstack
+hd project apply nextjs-fullstack --project . --harness codex
 ```
 
-The repository currently includes `nextjs-fullstack` and `python-fastapi`.
+To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
 
 ---
 
 ## More layer workflows
 
-Compare, diagnose, or derive plugin bundles beyond the basic create/attach/apply loop:
+Compare, diagnose, or derive plugin bundles beyond the basic create/combine/apply loop:
 
 ```bash
-hd layer attach team-stack layer:shared-baseline --version "^1.2.0"
+hd layer combine team-stack layer:shared-baseline --version "^1.2.0"
 hd layer doctor team-stack
 hd layer diff team-stack ./team-stack.harnessdeck.json
 hd layer from-project inferred-stack --project .
@@ -361,8 +379,8 @@ hd layer import ./my-setup.harnessdeck.jsonc
 Plugin references are `plugin` resources attached to a layer like any other composition item.
 
 ```bash
-hd layer attach my-setup plugin:formatter@my-marketplace --version "^2.1.0"
-hd layer attach my-setup plugin:formatter@my-marketplace --sync   # eager sync after attach
+hd layer combine my-setup plugin:formatter@my-marketplace --version "^2.1.0"
+hd layer combine my-setup plugin:formatter@my-marketplace --sync   # eager sync after combine
 hd resource sync plugin:formatter@my-marketplace
 hd resource show plugin:formatter@my-marketplace
 hd layer detach my-setup plugin:formatter@my-marketplace --type plugin
@@ -372,7 +390,7 @@ hd project apply my-setup --project . --strict-plugin-versions
 
 On `project apply`, harnessdeck compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
 
-Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer attach` is the **plugin semver pin or range**, not the global version flag.
+Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer combine` is the **plugin semver pin or range**, not the global version flag.
 
 Layer export bundles use schema `urn:harnessdeck:bundle:v1` and include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
@@ -410,7 +428,7 @@ HarnessDeck keeps snapshots of generated project files for tracked repositories,
 
 ```bash
 hd project drift --project .
-hd project sync . --force-shift-reference claude-code
+hd project mirror . --force-shift-reference claude-code
 hd migrate export ./harnessdeck-migrate.tar.gz
 hd migrate import ./harnessdeck-migrate.tar.gz
 ```
@@ -452,7 +470,7 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 1. **Authenticate** and create a profile.
    ```bash
-   harnessdeck cloud login [profile] [--base-url <url>]
+   harnessdeck auth login [profile] [--base-url <url>]
    ```
    Device-code authentication in the browser/terminal. Default profile name: `default`. Default base URL: `https://harnessdeck.kayrnt.fr`.
 
@@ -489,7 +507,7 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 8. **Apply** an installed layer to a project.
    ```bash
-   harnessdeck project apply <layer> --project <path> [--platform <harnesses>]
+   harnessdeck project apply <layer> --project <path> [--harness <harnesses>]
    ```
 
 Run `harnessdeck <command> --help` for full flag and output-format details.
