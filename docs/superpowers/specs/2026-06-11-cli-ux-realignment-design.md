@@ -9,9 +9,9 @@
 The current CLI optimizes for power users who build custom layers from scanned resources. New engineers face unnecessary friction:
 
 - Built-in starter layers ship inside the npm package instead of the public catalog.
-- `project apply` only auto-fetches remote layers when the selector is a published path (`org/catalog/name`); bare names require a prior `layer add`.
+- `project apply` only auto-fetches remote layers when the selector is a published path (`org/catalog/name`); bare names require a prior `layer pull`.
 - Similar verbs (`attach` vs `add`, `apply` vs `sync`, `cloud` vs `layer`) compete for the same mental slot.
-- `--platform` duplicates `--harness`.
+- `--harness` duplicates `--harness`.
 - Business-logic errors often lack recovery hints; some failure paths return exit code `0`.
 - README Quick start walks through create/attach before the user sees value from applying a baseline.
 - Install docs lead with Bun instead of `npx`/`npm`, the path most engineers expect.
@@ -21,7 +21,7 @@ The current CLI optimizes for power users who build custom layers from scanned r
 1. **Catalog-first baselines** — remove built-in layer seeding; resolve bare names against the public catalog (and connected orgs) at apply time.
 2. **Apply as the primary action** — users should not need to distinguish local vs remote for `project apply`.
 3. **Clearer command vocabulary** — `combine`/`uncombine`, `pull`, `mirror`, `auth`.
-4. **Single harness flag** — `--harness` only; remove `--platform`.
+4. **Single harness flag** — `--harness` only; remove `--harness`.
 5. **Onboarding that applies first** — Quick start applies an existing layer; a follow-up section covers scan → compose → publish.
 6. **Actionable errors and warnings** — every common failure suggests the next command; surface git/catalog/auth preconditions early.
 7. **npm-first install** — `npx`/`npm` primary; Bun and source install in collapsible README sections.
@@ -38,11 +38,11 @@ The current CLI optimizes for power users who build custom layers from scanned r
 
 | Topic | Decision |
 | --- | --- |
-| `attach` / `detach` | Rename to **`combine` / `uncombine`**; keep old names as deprecated aliases for one release cycle |
-| `layer add` | Rename to **`layer pull`**; deprecated alias `add` |
-| `project sync` | Rename to **`project mirror`**; deprecated alias `sync` |
-| `cloud` command group | Move to **`auth`** (`login`, `status`, `orgs`, `logout`); deprecated alias `cloud` |
-| `--platform` | **Remove**; deprecation warning mapping to `--harness` for one release, then delete |
+| `attach` / `detach` | **`combine` / `uncombine`** only (pre-0.1.0; no aliases) |
+| `layer add` | **`layer pull`** only |
+| `project sync` | **`project mirror`** only |
+| `cloud` command group | **`auth`** only (`login`, `status`, `orgs`, `logout`) |
+| `--platform` | **Removed**; `--harness` only |
 | Bare-name catalog resolve | Search **all orgs in catalog scope** (default `harnessdeck-cloud` + connected orgs + connected libraries); exact name match required |
 | Built-in seeding | **Remove** from `init`; publish `nextjs-fullstack` and `python-fastapi` to public catalog first |
 | Spec location | This document |
@@ -146,8 +146,7 @@ hd layer combine <layer> <selector> [--type …] [--version …] [--sync] [--emb
 hd layer uncombine <layer> <selector> [--type …]
 ```
 
-- `attach` / `detach` remain as hidden deprecated aliases for v0.2; print one-line deprecation warning per invocation.
-- Help groups under `layer`:
+Help groups under `layer`:
 
 ```
 LOCAL LIBRARY
@@ -165,9 +164,7 @@ Replace `layer add`.
 hd layer pull [selector] [--as <name>] [--org …] [--catalog …] [--version …] [--profile …]
 ```
 
-Interactive TTY browse when selector omitted (unchanged behavior from `layer add`).
-
-`add` remains deprecated alias for one release cycle.
+Interactive TTY browse when selector omitted (unchanged behavior from former `layer add`).
 
 ### 3.3 `project mirror`
 
@@ -179,22 +176,18 @@ hd project mirror [path] [--dry-run] [--force-shift-reference <slug>] [--format 
 
 **Semantics unchanged:** re-materialize alias harness outputs from the on-disk main harness configuration. Does not fetch layers from catalog.
 
-`sync` remains deprecated alias for one release cycle.
-
 Drift/history copy updates: “last apply/**mirror** snapshot”.
 
 ### 3.4 `auth` command group
 
 Replace top-level `cloud`:
 
-| New | Was | Description |
-| --- | --- | --- |
-| `auth login [profile]` | `cloud login` | Device authentication; save cloud profile |
-| `auth status [--profile]` | `cloud whoami` | Authenticated user and profile context |
-| `auth orgs [--switch <slug>]` | `cloud orgs` | List orgs; optionally switch active org |
-| `auth logout [profile]` | `cloud logout` | Remove local cloud profile |
-
-`cloud` remains deprecated alias group for one release cycle.
+| Command | Description |
+| --- | --- |
+| `auth login [profile]` | Device authentication; save cloud profile |
+| `auth status [--profile]` | Authenticated user and profile context |
+| `auth orgs [--switch <slug>]` | List orgs; optionally switch active org |
+| `auth logout [profile]` | Remove local cloud profile |
 
 Layer catalog operations stay on `layer`:
 
@@ -208,12 +201,7 @@ Unauthenticated `layer search` and public `project apply` continue to work. `lay
 
 ### 3.5 Remove `--platform`
 
-Remove from:
-
-- `project apply`
-- `project scan` (replace `-p, --platform` with `-h, --harness` for harness filter)
-
-For one release: if `--platform` is passed, print deprecation warning and treat value as `--harness`. Then remove.
+Remove from `project apply` and `project scan`. Use `-h, --harness` only.
 
 ---
 
@@ -340,18 +328,9 @@ Audit and fix all early returns. Minimum contract:
 
 ---
 
-## 7. Migration and compatibility
+## 7. Pre-release note
 
-| Deprecated (v0.2) | Replacement | Remove in |
-| --- | --- | --- |
-| `hd cloud *` | `hd auth *` | v0.3 |
-| `layer attach` / `detach` | `layer combine` / `uncombine` | v0.3 |
-| `layer add` | `layer pull` | v0.3 |
-| `project sync` | `project mirror` | v0.3 |
-| `--platform` | `--harness` | v0.3 |
-| Built-in seed on `init` | public catalog | v0.2 (immediate on release) |
-
-Test suites should cover both deprecated and canonical names during the deprecation window.
+HarnessDeck has not shipped v0.1.0. The CLI uses canonical command names only — no deprecated aliases for `attach`, `add`, `sync`, `cloud`, or `--platform`.
 
 ---
 
@@ -379,11 +358,11 @@ Publish `nextjs-fullstack` and `python-fastapi` to `harnessdeck-cloud` public ca
 
 ### Phase C — Command renames
 
-- `auth` group + deprecate `cloud`
-- `combine` / `uncombine` + deprecate `attach` / `detach`
-- `pull` + deprecate `add`
-- `mirror` + deprecate `sync`
-- Remove `--platform` (with deprecation shim)
+- `auth` group (no `cloud` alias)
+- `combine` / `uncombine` (no `attach` / `detach`)
+- `pull` (no `add`)
+- `mirror` (no `sync`)
+- Remove `--platform`
 
 ### Phase D — UX guardrails
 

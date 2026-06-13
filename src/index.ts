@@ -3,7 +3,6 @@ import { PACKAGE_VERSION } from "./version.js";
 import { getDb, closeDb, getDbPath, getHarnessdeckDir } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { ui } from "./ui/index.js";
-import { resolveDeprecatedHarnessFlag, warnDeprecatedReplacement } from "./cli/deprecation.js";
 import {
   getGitOrigin,
   normalizeGitUrl,
@@ -578,7 +577,7 @@ function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|project|plugin|cloud|auth|migrate|harness|environment)'/i.test(candidate.message);
+    && /too many arguments for '(layer|resource|project|plugin|auth|migrate|harness|environment)'/i.test(candidate.message);
 }
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
@@ -704,7 +703,6 @@ async function promptScanConflicts(
 async function handleScanCommand(
   path: string,
   opts: {
-    platform?: string;
     dryRun?: boolean;
     global?: boolean;
     harness?: string;
@@ -719,30 +717,13 @@ async function handleScanCommand(
   const projectRoot = resolve(path);
   const detected = detectPlatforms(projectRoot);
   const pluginSourcePath = detected.length === 0 && isPluginSourcePath(projectRoot);
-  const scanHarnessFilter = (() => {
-    if (opts.global) {
-      return undefined;
-    }
-    try {
-      return resolveDeprecatedHarnessFlag({
-        harness: opts.harness,
-        platform: opts.platform,
-        commandLabel: "project scan",
-      });
-    } catch (error) {
-      throw error;
-    }
-  })();
+  const scanHarnessFilter = opts.global ? undefined : opts.harness;
 
   if (pluginSourcePath && opts.harness && !opts.global) {
     throw new Error("--harness without --global is not supported when scanning a plugin source");
   }
 
   if (pluginSourcePath) {
-    if (opts.platform) {
-      warnDeprecatedReplacement("project scan --platform", "project scan --harness");
-      throw new Error("--platform is not supported when scanning a plugin source");
-    }
 
     if (opts.dryRun) {
       if (opts.global) {
@@ -1004,7 +985,6 @@ async function handleApplyCommand(
   opts: {
     project: string;
     harness?: string;
-    platform?: string;
     dryRun?: boolean;
     format?: string;
     ignorePluginVersions?: boolean;
@@ -1079,24 +1059,11 @@ async function handleApplyCommand(
     return;
   }
 
-  let harnessFilter: string | undefined;
-  try {
-    harnessFilter = resolveDeprecatedHarnessFlag({
-      harness: opts.harness,
-      platform: opts.platform,
-      commandLabel: "project apply",
-    });
-  } catch (err) {
-    process.exitCode = 1;
-    ui.danger(err instanceof Error ? err.message : String(err));
-    return;
-  }
-
   let platforms: string[];
   try {
     platforms = resolveApplyHarnessTargets(
       projectRoot,
-      harnessFilter,
+      opts.harness,
     );
   } catch (err) {
     process.exitCode = 1;
@@ -2805,7 +2772,7 @@ async function handleLayerFromProjectCommand(
   opts: {
     project: string;
     description?: string;
-    platform?: string;
+    harness?: string;
     interactive?: boolean;
     noInteractive?: boolean;
     format?: string;
@@ -2836,7 +2803,7 @@ async function handleLayerFromProjectCommand(
     const preview = await previewLayerFromProject({
       name: resolvedName,
       projectRoot,
-      platform: opts.platform,
+      platform: opts.harness,
     });
 
     // If layer exists and has conflicts, prompt for resolution
@@ -2895,7 +2862,7 @@ async function handleLayerFromProjectCommand(
           name: newName,
           description: opts.description,
           projectRoot,
-          platform: opts.platform,
+          platform: opts.harness,
         });
 
         ui.success(
@@ -2909,7 +2876,7 @@ async function handleLayerFromProjectCommand(
           name: resolvedName,
           description: opts.description,
           projectRoot,
-          platform: opts.platform,
+          platform: opts.harness,
           conflictStrategy: "overwrite",
         });
 
@@ -2925,7 +2892,7 @@ async function handleLayerFromProjectCommand(
       name: resolvedName,
       description: opts.description,
       projectRoot,
-      platform: opts.platform,
+      platform: opts.harness,
     });
 
     ui.success(
@@ -3262,80 +3229,6 @@ layerCmd
   });
 
 layerCmd
-  .command("attach")
-  .argument("[layer]", "Layer name or ID")
-  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type when selector omits prefix: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
-  .option("--version <constraint>", "Version constraint for plugin or layer attachments")
-  .option("--embed", "Mark plugin resource as embed-on-export")
-  .option("--sync", "Sync plugin resource immediately after attach (default: lazy)")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Attach a resource, plugin, or layer reference to a layer")
-  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; sync?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
-    warnDeprecatedReplacement("layer attach", "layer combine");
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const layerTarget = await resolveLayerMutationTarget({
-        layerName,
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format: opts.format,
-        message: "Which layer do you want to update?",
-      });
-      if (!layerTarget) {
-        process.exitCode = 1;
-        ui.danger(
-          listDesignPlugins().length > 0
-            ? "error: missing required argument 'layer'"
-            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
-        );
-        return;
-      }
-
-      const layer = getPlugin(layerTarget);
-      if (!layer) {
-        process.exitCode = 1;
-        ui.danger(`Layer not found: ${layerTarget}`);
-        return;
-      }
-
-      const attachmentType = validateLayerAttachmentType(opts.type);
-
-      const wizardValues = await runLayerAddWizard({
-        selector,
-        type: attachmentType,
-        version: opts.version,
-        embed: opts.embed,
-        layerName: layer.name,
-        shouldPrompt: shouldUseWizard({
-          interactive: opts.interactive,
-          noInteractive: opts.noInteractive,
-          format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !layerName || !selector,
-        }),
-      });
-
-      if (!wizardValues.selector) {
-        throw new Error(`error: missing required argument 'selector'`);
-      }
-
-      ui.success(ui.theme.accent(await addLayerAttachment({
-        layer,
-        selector: wizardValues.selector,
-        type: wizardValues.type,
-        version: wizardValues.version,
-        embed: wizardValues.embed ?? opts.embed,
-        sync: opts.sync,
-      })));
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-layerCmd
   .command("uncombine")
   .argument("[layer]", "Layer name or ID")
   .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
@@ -3344,78 +3237,6 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Uncombine a resource, plugin, or layer reference from a layer")
   .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const layerTarget = await resolveLayerMutationTarget({
-        layerName,
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format: opts.format,
-        message: "Which layer do you want to update?",
-      });
-      if (!layerTarget) {
-        process.exitCode = 1;
-        ui.danger(
-          listDesignPlugins().length > 0
-            ? "error: missing required argument 'layer'"
-            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
-        );
-        return;
-      }
-
-      const layer = getPlugin(layerTarget);
-      if (!layer) {
-        process.exitCode = 1;
-        ui.danger(`Layer not found: ${layerTarget}`);
-        return;
-      }
-
-      const attachmentType = validateLayerAttachmentType(opts.type);
-
-      const wizardValues = await runLayerAddWizard({
-        selector,
-        type: attachmentType,
-        layerName: layer.name,
-        shouldPrompt: shouldUseWizard({
-          interactive: opts.interactive,
-          noInteractive: opts.noInteractive,
-          format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !layerName || !selector,
-        }),
-      });
-
-      if (!wizardValues.selector) {
-        throw new Error(`error: missing required argument 'selector'`);
-      }
-
-      const result = removeLayerAttachment({
-        layer,
-        selector: wizardValues.selector,
-        type: wizardValues.type ?? attachmentType,
-      });
-      if (!result.removed && attachmentType === "layer") {
-        process.exitCode = 1;
-        ui.danger(result.message);
-        return;
-      }
-      ui.success(ui.theme.accent(result.message));
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-layerCmd
-  .command("detach")
-  .argument("[layer]", "Layer name or ID")
-  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Remove a resource, plugin, or layer reference from a layer")
-  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
-    warnDeprecatedReplacement("layer detach", "layer uncombine");
     const db = getDb();
     initializeSchema(db);
     try {
@@ -3656,33 +3477,6 @@ layerCmd
   .action(handleLayerInstallCommand);
 
 layerCmd
-  .command("add")
-  .argument("[selector]", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
-  .option("--as <name>", "Add under a different local layer name")
-  .option("--org <slug>", "Organization slug (when selector omits org)")
-  .option("--catalog <slug>", "Catalog slug (default: default)")
-  .option("--version <constraint>", "Version constraint (when selector omits version)")
-  .option("--profile <name>", "Cloud profile to use")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Add a layer from the remote catalog into the local DB")
-  .action(async (selector: string | undefined, opts: {
-    as?: string;
-    org?: string;
-    catalog?: string;
-    version?: string;
-    profile?: string;
-    baseUrl?: string;
-    format?: string;
-    interactive?: boolean;
-    noInteractive?: boolean;
-  }) => {
-    warnDeprecatedReplacement("layer add", "layer pull");
-    await handleLayerInstallCommand(selector, opts);
-  });
-
-layerCmd
   .command("publish")
   .argument("<layer>", "Local layer name to publish")
   .option("--org <slug>", "Organization slug to publish under")
@@ -3714,7 +3508,7 @@ layerCmd
   .argument("[name]", "New layer name")
   .option("--project <path>", "Project directory", ".")
   .option("-d, --description <text>", "Layer description")
-  .option("-p, --platform <slug>", "Scan only a specific platform")
+  .option("-h, --harness <slug>", "Scan only a specific harness")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Scan current folder and create a layer from its resources")
@@ -4322,7 +4116,6 @@ projectCmd
   .command("scan")
   .argument("[path]", "Project directory or plugin source to scan", ".")
   .option("-h, --harness <slugs>", "Harness slug(s): scan filter, or install targets with --global")
-  .option("--platform <slug>", "Deprecated alias for --harness when scanning a project directory")
   .option("--dry-run", "Show what would be imported without writing to DB")
   .option("--global", "Install imported plugin sources into global harness locations")
   .option("--overwrite", "Overwrite library resources when scan content differs")
@@ -4344,7 +4137,6 @@ projectCmd
     "--harness <slugs>",
     "Comma-separated harness slugs (defaults to project or global harness preference)",
   )
-  .option("--platform <slugs>", "Alias for --harness")
   .option("--dry-run", "Show what would be written")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
@@ -4370,7 +4162,7 @@ projectCmd
   .option("--project <path>", "Project directory", ".")
   .option("--format <mode>", "Output format: human or json", "human")
   .description(
-    "Detect drift between project files and the latest apply/sync snapshot",
+    "Detect drift between project files and the latest apply/mirror snapshot",
   )
   .action(handleProjectDriftCommand);
 
@@ -4387,27 +4179,6 @@ projectCmd
     "Mirror alias harness outputs from the main harness on-disk configuration",
   )
   .action(handleProjectSyncCommand);
-
-projectCmd
-  .command("sync")
-  .argument("[path]", "Project directory", ".")
-  .option("--dry-run", "Show what would be written without writing files")
-  .option(
-    "--force-shift-reference <slug>",
-    "Set the project main harness before syncing",
-  )
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description(
-    "Sync alias harness outputs from the main harness on-disk configuration",
-  )
-  .action(async (path: string, opts: {
-    dryRun?: boolean;
-    forceShiftReference?: string;
-    format?: string;
-  }) => {
-    warnDeprecatedReplacement("project sync", "project mirror");
-    await handleProjectSyncCommand(path, opts);
-  });
 
 projectCmd
   .command("history")
@@ -4641,6 +4412,7 @@ async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promis
 const authCmd = configureCommandGroup(
   program
     .command("auth")
+    .alias("a")
     .description("Authenticate with HarnessDeck Cloud and manage cloud profiles"),
 );
 
@@ -4676,52 +4448,6 @@ authCmd
   .option("--profile <name>", "Profile name")
   .description("Log out and remove local cloud profile")
   .action(async (opts: { profile?: string }) => {
-    await handleCloudLogoutCommand(opts);
-  });
-
-const cloudCmd = configureCommandGroup(
-  program
-    .command("cloud")
-    .alias("c")
-    .description("Authenticate with Harness cloud and manage cloud profiles"),
-);
-
-cloudCmd
-  .command("login [profile]")
-  .option("--base-url <url>", "Cloud base URL")
-  .description("Log into Harness cloud via device authentication")
-  .action(async (profile: string | undefined, opts: { baseUrl?: string }) => {
-    warnDeprecatedReplacement("cloud login", "auth login");
-    await handleCloudLoginCommand(profile, opts);
-  });
-
-cloudCmd
-  .command("whoami")
-  .option("--profile <name>", "Profile name")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Show information about the authenticated user")
-  .action(async (opts: { profile?: string; format?: string }) => {
-    warnDeprecatedReplacement("cloud whoami", "auth status");
-    await handleCloudWhoamiCommand(opts);
-  });
-
-cloudCmd
-  .command("orgs")
-  .option("--profile <name>", "Profile name")
-  .option("--switch <org_slug>", "Switch to the given organization slug")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("List organizations and optionally switch")
-  .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
-    warnDeprecatedReplacement("cloud orgs", "auth orgs");
-    await handleCloudOrgsCommand(opts);
-  });
-
-cloudCmd
-  .command("logout")
-  .option("--profile <name>", "Profile name")
-  .description("Log out and remove local cloud profile")
-  .action(async (opts: { profile?: string }) => {
-    warnDeprecatedReplacement("cloud logout", "auth logout");
     await handleCloudLogoutCommand(opts);
   });
 

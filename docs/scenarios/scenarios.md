@@ -19,9 +19,8 @@ A few CLI renames matter up front:
   harnesses) during init. Catalog baselines are applied with `project apply`, not
   seeded at init. [Scenario 2](./details/02-default-harness-aliases.md) is for
   changing that preference later.
-- The current CLI **does** expose a standalone `harnessdeck project mirror`
-  command ([Scenario 27](./details/27-project-sync.md); `sync` is deprecated).
-  Use it when you want to mirror alias harness outputs from the on-disk main
+- The current CLI exposes `harnessdeck project mirror`
+  command ([Scenario 27](./details/27-project-sync.md)). Use it when you want to mirror alias harness outputs from the on-disk main
   harness. Re-applying a layer to selected harnesses ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
   remains the right path when you want to push a known layer baseline onto
   disk.
