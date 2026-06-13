@@ -11,17 +11,18 @@ A few CLI renames matter up front:
   `project apply --strict-plugin-versions` instead ([Scenarios 8](./details/08-audit-plugins.md), [16](./details/16-ci-enforcement.md), [18](./details/18-plugin-merge-conflict.md), [19](./details/19-refresh-plugin-metadata.md)).
 - `harnessdeck layer doctor` replaced the removed `layer validate` command
   ([Scenario 23](./details/23-validate-layer.md)).
-- `harnessdeck layer attach` adds local resources or plugin pins to a layer;
-  `harnessdeck layer add` installs a layer from the remote catalog
+- `harnessdeck layer combine` adds local resources or plugin pins to a layer;
+- `harnessdeck layer pull` installs a layer from the remote catalog
   ([Scenario 5](./details/05-build-layer-from-resources.md)).
-- `harnessdeck init` initializes `~/.harnessdeck`, seeds built-in layers,
-  imports supported home-directory defaults, and can choose the default main
-  harness (plus alias harnesses) during init. [Scenario 2](./details/02-default-harness-aliases.md) is for changing that
-  preference later.
-- The current CLI **does** expose a standalone `harnessdeck project sync`
-  command ([Scenario 27](./details/27-project-sync.md)). Use it when you want
-  to sync alias harness outputs from the on-disk main harness. Re-applying a
-  layer to selected platforms ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
+- `harnessdeck init` initializes `~/.harnessdeck`, imports supported
+  home-directory defaults, and can choose the default main harness (plus alias
+  harnesses) during init. Catalog baselines are applied with `project apply`, not
+  seeded at init. [Scenario 2](./details/02-default-harness-aliases.md) is for
+  changing that preference later.
+- The current CLI **does** expose a standalone `harnessdeck project mirror`
+  command ([Scenario 27](./details/27-project-sync.md); `sync` is deprecated).
+  Use it when you want to mirror alias harness outputs from the on-disk main
+  harness. Re-applying a layer to selected harnesses ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
   remains the right path when you want to push a known layer baseline onto
   disk.
 
@@ -41,13 +42,13 @@ after HarnessDeck is set up — not how important it is the first time.
 | Scenario | Title | Frequency | Status |
 | -------- | ----- | --------- | ------ |
 | [7](./details/07-preview-apply-layer.md)  | Preview and apply a layer                          | Common     | Shipped |
-| [11](./details/11-builtin-layer.md) | Start from a built-in layer                        | Common     | Shipped |
+| [11](./details/11-builtin-layer.md) | Start from a catalog baseline                      | Common     | Shipped |
 | [4](./details/04-scan-import-repo.md)  | Scan and import an existing repo                    | Common     | Shipped |
 | [3](./details/03-project-harness-preferences.md)  | Override harness preferences for one repository     | Common     | Shipped |
 | [15](./details/15-subset-platforms.md) | Apply to a subset of target platforms               | Common     | Shipped |
 | [25](./details/25-stack-layers.md) | Stack multiple layers                              | Common     | Shipped |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer        | Common     | Shipped |
-| [27](./details/27-project-sync.md) | True cross-harness `project sync`                   | Common     | Shipped |
+| [27](./details/27-project-sync.md) | True cross-harness `project mirror`                 | Common     | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
 | [5](./details/05-build-layer-from-resources.md)  | Build a reusable layer from imported resources     | Occasional | Shipped |
@@ -85,13 +86,13 @@ one repo needs different harness defaults than your machine-wide setup.
 | Scenario | Summary |
 | -------- | ------- |
 | [7](./details/07-preview-apply-layer.md) | Preview and apply a layer to one or more target harnesses |
-| [11](./details/11-builtin-layer.md) | Start from a built-in layer instead of building from scratch |
+| [11](./details/11-builtin-layer.md) | Start from a catalog baseline instead of building from scratch |
 | [4](./details/04-scan-import-repo.md) | Scan an existing repository and import its current harness setup |
 | [3](./details/03-project-harness-preferences.md) | Override harness preferences for one repository |
 | [15](./details/15-subset-platforms.md) | Apply a layer to a subset of target platforms |
 | [25](./details/25-stack-layers.md) | Stack multiple layers in one apply |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer |
-| [27](./details/27-project-sync.md) | True cross-harness `project sync` |
+| [27](./details/27-project-sync.md) | True cross-harness `project mirror` |
 
 ---
 

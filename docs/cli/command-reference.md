@@ -21,7 +21,16 @@ Available on `harnessdeck` / `hd`:
 | `project` | `p` |
 | `harness` | `h` |
 | `environment` | `e` |
-| `cloud` | `c` |
+| `auth` | `a` |
+| `cloud` | `c` (deprecated; use `auth`) |
+
+## guide
+
+Print quick-start commands and documentation links.
+
+```bash
+hd guide
+```
 
 ## init
 
@@ -42,21 +51,21 @@ Key options:
 
 ## project (`p`)
 
-Manage project scanning, apply state, snapshots, drift, and sync.
+Manage project scanning, apply state, snapshots, drift, and mirror.
 
 ### Commands
 
 - `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `project apply <layer...>` — apply one or more configured layers, bundle paths, or bundle URLs
-- `project drift [path]` — compare the working tree against the latest apply/sync snapshot
-- `project sync [path]` — sync alias harness outputs from the main harness state
+- `project apply <layer...>` — apply one or more configured layers, bundle paths, bundle URLs, or bare catalog names
+- `project drift [path]` — compare the working tree against the latest apply/mirror snapshot
+- `project mirror [path]` — mirror alias harness outputs from the main harness state (`sync` is a deprecated alias)
 - `project history --project <path>` — list snapshots for a tracked project
 - `project revert [snapshot-id]` — restore files from a previous snapshot
 - `project status [path]` — show the current project status
 
 ### Important options
 
-- `project scan -p, --platform <slug>` — scan only one harness
+- `project scan -h, --harness <slug>` — scan only one harness (`--platform` is deprecated)
 - `project scan --dry-run` — preview imports without writing to the DB
 - `project scan --overwrite` — replace library rows when scan content differs
 - `project scan --skip-existing` — keep existing rows when scan content differs
@@ -64,16 +73,16 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 - `project scan --global` — install imported plugin sources into global harness locations
 - `project scan --harness <slugs>` — harness targets for `--global` plugin installs
 - `project apply --project <path>` — explicit target directory
-- `project apply --platform <slugs>` — comma-separated harness slugs
+- `project apply --harness <slugs>` — comma-separated harness slugs (`--platform` is deprecated)
 - `project apply --dry-run` — show planned file writes only
 - `project apply --format json`
 - `project apply --strict-plugin-versions` — fail with exit code `2` on plugin pin mismatch
 - `project apply --ignore-plugin-versions` — skip plugin pin validation entirely
 - `project apply --sync-plugins` — refresh stale plugin resources before materialize
 - `project drift --format json` — exits `1` when drift exists
-- `project sync --dry-run` — preview alias sync writes
-- `project sync --force-shift-reference <slug>` — set the project main harness before syncing
-- `project sync --format json`
+- `project mirror --dry-run` — preview alias mirror writes
+- `project mirror --force-shift-reference <slug>` — set the project main harness before mirroring
+- `project mirror --format json`
 - `project history --format json`
 - `project status --format json`
 
@@ -81,7 +90,7 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 
 ### Preconditions and side effects
 
-- `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
+- `project history`, `project drift`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
 - `project apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
 - `project revert` requires a snapshot ID from `project history`.
 - `project apply` resolves environment values through the cascade: home environment ◂ configured-layer default ◂ deck active environment (last wins).
@@ -90,20 +99,20 @@ Manage project scanning, apply state, snapshots, drift, and sync.
 
 Manage design plugins (resource bundles), composition attachments, portable bundle export/import, and HarnessDeck Cloud catalog workflows.
 
-Remote library discovery, install, and publish live on **`layer`**, not `cloud`. Use `cloud` only for authentication and org context.
+Remote library discovery, install, and publish live on **`layer`**, not `auth`. Use `auth` only for authentication and org context.
 
 ### Commands
 
 - `layer create <name>`
 - `layer list`
 - `layer show <name>`
-- `layer attach [layer] [selector] --type <type>`
-- `layer detach [layer] [selector] --type <type>`
+- `layer combine [layer] [selector] --type <type>` (`attach` is a deprecated alias)
+- `layer uncombine [layer] [selector] --type <type>` (`detach` is a deprecated alias)
 - `layer delete [name]`
 - `layer export <layer>`
 - `layer import <file>` — import a local bundle file (`urn:harnessdeck:bundle:v1`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
-- `layer add [selector]` — download a remote layer bundle and import it (`org/catalog/layer[@version]` or `org/layer[@version]`); interactive browse on TTY when selector is omitted
+- `layer pull [selector]` — download a remote layer bundle and import it (`add` is a deprecated alias)
 - `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL
 - `layer catalog connect org <slug>` — opt into another org's public libraries
 - `layer catalog disconnect org <slug>`
@@ -124,10 +133,10 @@ Remote library discovery, install, and publish live on **`layer`**, not `cloud`.
 - `layer list --format json`
 - `layer list --show-id`
 - `layer show --format json`
-- `layer attach --type <resource|skill|instruction|plugin|layer>` (`layer-dependency` is a deprecated alias for `layer`)
-- `layer attach --version <constraint>` — plugin or layer references only
-- `layer attach --sync` — sync a plugin resource immediately after attach (default: lazy)
-- `layer attach --embed` — mark plugin resource as embed-on-export
+- `layer combine --type <resource|skill|instruction|plugin|layer>` (`layer-dependency` is a deprecated alias for `layer`)
+- `layer combine --version <constraint>` — plugin or layer references only
+- `layer combine --sync` — sync a plugin resource immediately after combine (default: lazy)
+- `layer combine --embed` — mark plugin resource as embed-on-export
 - `layer export -f, --file <path>` — output bundle path
 - `layer export --embed-plugins`
 - `layer diff --format json`
@@ -135,18 +144,42 @@ Remote library discovery, install, and publish live on **`layer`**, not `cloud`.
 - `layer doctor --list-checks` — list available checks
 - `layer doctor --format json` — exits `1` when the layer is invalid
 - `layer from-project -d, --description <text>`
-- `layer from-project -p, --platform <slug>`
-- `layer add --as <name>`
-- `layer add --org <slug>`
-- `layer add --catalog <slug>` — catalog slug when selector omits catalog (default `default`)
-- `layer add --version <constraint>`
-- `layer add --base-url <url>`
+- `layer from-project -p, --harness <slug>` (`--platform` is deprecated)
+- `layer pull --as <name>`
+- `layer pull --org <slug>`
+- `layer pull --catalog <slug>` — catalog slug when selector omits catalog (default `default`)
+- `layer pull --version <constraint>`
+- `layer pull --base-url <url>`
 - `layer search --profile <name>`
 - `layer search --base-url <url>`
 - `layer publish --catalog <slug>` — target catalog slug (default `default`)
 - `layer publish --profile <name>`
 
-`layer add` and `layer search` work without `cloud login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer add` fails on local name conflict instead of overwriting. Fetch remote layers with `layer add` before `project apply`.
+`layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer pull` fails on local name conflict instead of overwriting. `project apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
+
+## auth (`a`)
+
+Manage HarnessDeck Cloud authentication and profile-local account state. The `cloud` command group is a deprecated alias.
+
+### Commands
+
+- `auth login [profile]`
+- `auth status` (`cloud whoami` is a deprecated alias)
+- `auth orgs`
+- `auth logout`
+
+### Important options
+
+- `auth login --base-url <url>`
+- `auth status --profile <name> --format json`
+- `auth orgs --switch <slug>`
+- `auth logout --profile <name>`
+
+Token refresh runs before remote calls. The CLI does not silently switch profiles or organizations during other commands.
+
+## cloud (`c`) — deprecated
+
+Deprecated alias for `auth`. Prefer `auth login`, `auth status`, `auth orgs`, and `auth logout`.
 
 ## resource (`r`)
 
@@ -174,7 +207,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource sync --prune` — remove orphaned child resources after sync
 - `resource list` shows material resources plus `plugin` resources; `layer` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
-- `layer attach` selectors accept `type:name@namespace` for compose-safe resolution
+- `layer combine` selectors accept `type:name@namespace` for compose-safe resolution
 - There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, and `project apply --strict-plugin-versions` for plugin workflows
 
 ## environment (`e`)
@@ -233,26 +266,6 @@ Manage global harness preferences and git-backed project overrides.
 - `harness project set --project <path>`
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`
-
-## cloud (`c`)
-
-Manage HarnessDeck Cloud authentication and profile-local account state.
-
-### Commands
-
-- `cloud login [profile]`
-- `cloud whoami`
-- `cloud orgs`
-- `cloud logout`
-
-### Important options
-
-- `cloud login --base-url <url>`
-- `cloud whoami --profile <name> --format json`
-- `cloud orgs --switch <slug>`
-- `cloud logout --profile <name>`
-
-Token refresh runs before remote calls. The CLI does not silently switch profiles or organizations during other commands.
 
 ## migrate
 
