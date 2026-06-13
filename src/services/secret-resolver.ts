@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import type { EnvironmentSecretProvider } from "../types.js";
 
@@ -42,11 +43,46 @@ export function resolveSecretRef(ref: SecretRefInput): string {
       }
     }
     case "keychain":
-      throw new Error("keychain secret provider is not yet supported");
+      return resolveKeychainSecret(ref.ref);
     default: {
       const _exhaustive: never = provider;
       throw new Error(`Unknown secret provider: ${_exhaustive}`);
     }
+  }
+}
+
+function resolveKeychainSecret(ref: string): string {
+  if (process.platform !== "darwin") {
+    throw new Error(
+      "Secret ref could not be resolved: keychain provider is only supported on macOS",
+    );
+  }
+
+  const slashIndex = ref.indexOf("/");
+  const service = slashIndex >= 0 ? ref.slice(0, slashIndex) : ref;
+  const account = slashIndex >= 0 ? ref.slice(slashIndex + 1) : undefined;
+
+  if (!service) {
+    throw new Error(
+      `Secret ref could not be resolved: keychain ref "${ref}" must include a service name`,
+    );
+  }
+
+  const args = ["find-generic-password", "-s", service, "-w"];
+  if (account) {
+    args.splice(2, 0, "-a", account);
+  }
+
+  try {
+    return execFileSync("security", args, {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).replace(/\n$/, "");
+  } catch {
+    const label = account ? `${service}/${account}` : service;
+    throw new Error(
+      `Secret ref could not be resolved: keychain item "${label}" was not found`,
+    );
   }
 }
 
