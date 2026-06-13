@@ -48,10 +48,25 @@ describe("resolveSecretRef", () => {
     ).toThrow(/file/i);
   });
 
-  it("throws actionable error for keychain provider", () => {
+  it("throws on non-darwin keychain platforms", () => {
+    if (process.platform === "darwin") {
+      return;
+    }
     expect(() => resolveSecretRef({ provider: "keychain", ref: "svc/token" })).toThrow(
-      /keychain secret provider is not yet supported/i,
+      /only supported on macOS/i,
     );
+  });
+
+  it("throws when keychain item is missing on darwin", () => {
+    if (process.platform !== "darwin") {
+      return;
+    }
+    expect(() =>
+      resolveSecretRef({
+        provider: "keychain",
+        ref: "harnessdeck/__missing_hd_secret_item__",
+      }),
+    ).toThrow(/keychain item/i);
   });
 });
 

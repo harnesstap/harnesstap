@@ -253,6 +253,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in layers, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnessdeck layer ...` | Layer CRUD, composition attach/detach, bundle export/import, cloud catalog workflows, diff, and doctor. |
+| `harnessdeck deck ...` | Exports, imports, and validates portable deck repositories (`deck export`, `deck import`, `deck doctor`, `deck list`). |
 | `harnessdeck migrate ...` | Exports or imports a machine-transfer archive. |
 | `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnessdeck project ...` | Scans projects, applies layers, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
@@ -561,7 +562,7 @@ Harness support splits between a registry and serializers. The registry declares
 
 ### Native serializers
 
-Dedicated serializers exist for `claude-code`, `codex`, and `cursor`.
+Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, and `copilot-cli`. Remaining registered harnesses use the generic serializer.
 
 ### Generic serializer
 
@@ -594,6 +595,8 @@ When one supported harness already exists in a project, it becomes the default m
 `layer` composition resources expand depth-first with cycle detection.
 
 Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
+
+When generated files already exist, `project apply` uses `--on-conflict replace|skip|prompt` (default: `prompt` on TTY, otherwise `replace`).
 
 If no `--platform` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
 
@@ -720,8 +723,6 @@ bun run build
 
 ## Known gaps and non-goals
 
-- Only a subset of registered harnesses have fully native serializers; generic harness support remains path-driven.
-- Sync writes files directly; no interactive conflict resolution on apply.
-- Bundle export/import operates on one layer body at a time; full deck-repo round-trip is Cloud/catalog workflows today.
-- **Keychain secret provider at apply** — `env` and `file` secret refs are dereferenced into materialized env vars at apply; macOS keychain lookup is not yet implemented.
+- Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
+- `layer export` / `layer import` still operate on one layer bundle at a time; use `deck export --with-layer-bundles` and `deck import` for portable deck-repo round-trip.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
