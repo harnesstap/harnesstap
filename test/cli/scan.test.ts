@@ -457,7 +457,7 @@ describe("CLI scan", () => {
           "--harness",
           "cursor",
         ]),
-      ).rejects.toThrow(/--harness can only be used together with --global/i);
+      ).rejects.toThrow(/--harness without --global is not supported when scanning a plugin source/i);
     } finally {
       await context.cleanup();
     }
