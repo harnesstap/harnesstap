@@ -1,4 +1,4 @@
-# Scenario 11: Start from a built-in layer instead of building from scratch
+# Scenario 11: Start from a catalog baseline instead of building from scratch
 
 **Frequency: Common** · **Status: Shipped**
 
@@ -11,9 +11,13 @@ Typical commands:
 
 ```bash
 harnessdeck init
-harnessdeck layer list
-harnessdeck project apply nextjs-fullstack --project . --platform codex
+harnessdeck layer search fullstack
+harnessdeck project apply nextjs-fullstack --project . --harness codex
 ```
 
-This is often the fastest path for a new repo: seed starter layers, apply
-one, then scan or extend it with project-specific resources later.
+This is often the fastest path for a new repo: apply a public catalog baseline,
+then scan or extend it with project-specific resources later.
+
+Bare names such as `nextjs-fullstack` resolve against the `harnessdeck-cloud`
+public catalog (and any connected orgs or libraries). Use `layer pull` when you
+want the bundle cached locally before going offline.
