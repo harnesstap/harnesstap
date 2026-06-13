@@ -49,7 +49,7 @@ describe("CLI output format", () => {
         "dry-run-layer",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
         "--dry-run",
         "--format",
@@ -69,7 +69,7 @@ describe("CLI output format", () => {
         "dry-run-layer",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -105,10 +105,10 @@ describe("CLI output format", () => {
         }),
       );
 
-      const cloudWhoami = await runCli(["cloud", "whoami", "--format", "json"]);
+      const cloudWhoami = await runCli(["auth", "status", "--format", "json"]);
       expect(JSON.parse(cloudWhoami.stdout)).toBeDefined();
 
-      const cloudOrgs = await runCli(["cloud", "orgs", "--format", "json"]);
+      const cloudOrgs = await runCli(["auth", "orgs", "--format", "json"]);
       expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
 
       const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
@@ -154,7 +154,7 @@ describe("CLI output format", () => {
 
         const install = await runCli([
           "layer",
-          "add",
+          "pull",
           "harnessdeck-cloud/default/lib@1.0",
           "--as",
           "lib-local",

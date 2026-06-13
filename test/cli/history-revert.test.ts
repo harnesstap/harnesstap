@@ -35,7 +35,7 @@ describe("CLI history and revert", () => {
         "history-layer",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -107,7 +107,7 @@ describe("CLI history and revert", () => {
         "history-layer",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 

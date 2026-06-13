@@ -91,7 +91,7 @@ describe("CLI apply with environment cascade", () => {
         "env-layer",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 

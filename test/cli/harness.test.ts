@@ -54,10 +54,10 @@ describe("CLI harness", () => {
         expect.objectContaining({ project_root: expect.any(String) }),
       );
 
-      const cloudWhoami = await runCli(["c", "whoami", "--format", "json"], {
+      const authStatus = await runCli(["a", "status", "--format", "json"], {
         commandName: "hd",
       });
-      expect(JSON.parse(cloudWhoami.stdout)).toEqual({});
+      expect(JSON.parse(authStatus.stdout)).toEqual({});
     } finally {
       await context.cleanup();
     }
