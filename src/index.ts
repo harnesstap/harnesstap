@@ -64,7 +64,7 @@ import {
   getAllPlatforms,
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
@@ -200,6 +200,16 @@ function resolveInvocationName(): "harnessdeck" | "hd" {
 
 function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
+}
+
+const GIT_ORIGIN_HINTS = [
+  "Add a remote: git remote add origin <url>",
+  "Snapshots and drift detection require a git repository with origin configured.",
+];
+
+function reportNoGitOrigin(): void {
+  process.exitCode = 1;
+  ui.danger("No git remote origin configured.", { hints: GIT_ORIGIN_HINTS });
 }
 
 function isVerboseMode(argv: string[] = process.argv): boolean {
@@ -1038,10 +1048,7 @@ async function handleApplyCommand(
     resolveSpin.stop();
     process.exitCode = 1;
     if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
-      ui.danger(err.message);
-      for (const hint of err.hints) {
-        ui.hint(hint);
-      }
+      ui.danger(err.message, { hints: err.hints });
       return;
     }
     ui.danger(err instanceof Error ? err.message : String(err));
@@ -1051,6 +1058,7 @@ async function handleApplyCommand(
 
   const primaryLayer = applyBundle.layers[applyBundle.layers.length - 1];
   if (!primaryLayer) {
+    process.exitCode = 1;
     ui.danger("No layer resolved for apply");
     return;
   }
@@ -1068,11 +1076,13 @@ async function handleApplyCommand(
       opts.harness ?? opts.platform,
     );
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
 
   if (platforms.length === 0) {
+    process.exitCode = 1;
     ui.warn(
       "No harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
     );
@@ -1228,6 +1238,10 @@ async function handleApplyCommand(
       configured_layer_id: applyBundle.primaryConfiguredLayerId,
       platforms,
     });
+  } else if (outputFormat === "human" && !opts.dryRun) {
+    ui.warn("No git remote origin — configuration snapshot will not be stored.", {
+      hint: "git remote add origin <url>",
+    });
   }
 
   if (opts.dryRun) {
@@ -1289,8 +1303,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    process.exitCode = 1;
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -2306,6 +2319,21 @@ async function handleEnvironmentUseCommand(
   ui.success(`Set active home environment ${ui.theme.accent(payload.environment_name)}`);
 }
 
+function printQuickStartGuide(): void {
+  console.log("");
+  ui.subheader("NEXT STEPS");
+  console.log("");
+  console.log(`  ${formatCommand("layer search <query>")}`);
+  console.log(`  ${formatCommand("project apply <layer> --project .")}`);
+  console.log(`  ${formatCommand("guide")}`);
+}
+
+function handleGuideCommand(): void {
+  printQuickStartGuide();
+  console.log("");
+  ui.info("docs/scenarios/scenarios.md");
+}
+
 async function handleInitCommand(opts: {
   format?: string;
   main?: string;
@@ -2316,6 +2344,18 @@ async function handleInitCommand(opts: {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
+  if (format === "human" && existsSync(getDbPath())) {
+    const preference = getHarnessPreference();
+    ui.warn(
+      "~/.harnessdeck already exists. Harness preferences stay unchanged unless you pass --main or --aliases.",
+    );
+    if (preference) {
+      ui.dim(
+        `Current defaults: main=${preference.main_harness}, aliases=${preference.alias_harnesses.join(", ") || "(none)"}`,
+      );
+    }
+    console.log("");
+  }
   const homeDefaults = await scanAndPersistHomeDefaults();
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
@@ -2422,6 +2462,8 @@ async function handleInitCommand(opts: {
       },
     ], { keyWidth: 14 });
   }
+
+  printQuickStartGuide();
 }
 
 async function handleHarnessSetCommand(opts: {
@@ -2487,7 +2529,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
 
@@ -2535,7 +2577,7 @@ function handleProjectDriftCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -2976,7 +3018,7 @@ function handleHarnessProjectStatusCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    ui.danger("Not a git repository.");
+    reportNoGitOrigin();
     return;
   }
 
@@ -3010,6 +3052,13 @@ function handleHarnessProjectStatusCommand(opts: {
 }
 
 // ── init ────────────────────────────────────────────────────────────────
+
+program
+  .command("guide")
+  .description("Show quick start commands and documentation links")
+  .action(() => {
+    handleGuideCommand();
+  });
 
 program
   .command("init")
