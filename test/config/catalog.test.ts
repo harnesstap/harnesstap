@@ -7,8 +7,10 @@ import {
   connectCatalogOrg,
   DEFAULT_CATALOG_ORG_SLUG,
   disconnectCatalogOrg,
+  isPublicCatalogEnabled,
   loadCatalogSettings,
   resolveCatalogScope,
+  saveCatalogSettings,
 } from "../../src/config/catalog.js";
 
 describe("catalog config", () => {
@@ -38,5 +40,22 @@ describe("catalog config", () => {
     expect(() => disconnectCatalogOrg(DEFAULT_CATALOG_ORG_SLUG, dir)).toThrow(
       /Cannot disconnect the default catalog org/,
     );
+  });
+
+  it("defaults publicCatalog to true and persists overrides", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-public-"));
+    expect(isPublicCatalogEnabled(dir)).toBe(true);
+
+    saveCatalogSettings({ publicCatalog: false }, dir);
+    expect(loadCatalogSettings(dir).publicCatalog).toBe(false);
+    expect(isPublicCatalogEnabled(dir)).toBe(false);
+  });
+
+  it("honors HARNESSDECK_PUBLIC_CATALOG=0", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-env-"));
+    const previous = process.env.HARNESSDECK_PUBLIC_CATALOG;
+    process.env.HARNESSDECK_PUBLIC_CATALOG = "0";
+    expect(isPublicCatalogEnabled(dir)).toBe(false);
+    process.env.HARNESSDECK_PUBLIC_CATALOG = previous;
   });
 });

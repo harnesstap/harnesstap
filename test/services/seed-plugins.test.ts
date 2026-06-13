@@ -4,9 +4,13 @@ import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
+const BUILTIN_FIXTURE_DIR = join(import.meta.dirname, "../fixtures/builtin-plugins");
+
 describe("seed plugins service", () => {
   it("seeds built-in plugins from the builtin-plugins directory", async () => {
     const context = await createInitializedTestContext("seed-plugins");
+    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -21,12 +25,15 @@ describe("seed plugins service", () => {
       expect(names).toContain("nextjs-fullstack");
       expect(names).toContain("python-fastapi");
     } finally {
+      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
 
   it("skips already-existing layers", async () => {
     const context = await createInitializedTestContext("seed-duplicate");
+    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -42,12 +49,15 @@ describe("seed plugins service", () => {
 
       expect(count1).toBe(count2);
     } finally {
+      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
 
   it("creates layers with resources from bundled JSON", async () => {
     const context = await createInitializedTestContext("seed-with-resources");
+    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -68,12 +78,15 @@ describe("seed plugins service", () => {
       expect(nextjs?.description).toContain("Next.js");
       expect(resourceModel.listResources({ source: "builtin:" })).toHaveLength(5);
     } finally {
+      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
 
   it("sets source to builtin:filename for seeded resources", async () => {
     const context = await createInitializedTestContext("seed-source");
+    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -91,6 +104,7 @@ describe("seed plugins service", () => {
       expect(builtinResources.length).toBeGreaterThan(0);
       expect(builtinResources[0]?.source).toMatch(/^builtin:/);
     } finally {
+      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });

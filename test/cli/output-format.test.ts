@@ -23,7 +23,7 @@ describe("CLI output format", () => {
       expect(JSON.parse(initResult.stdout)).toEqual(
         expect.objectContaining({
           database_path: expect.any(String),
-          built_in_layers: expect.anything(),
+          home_defaults: expect.any(Array),
         }),
       );
 
