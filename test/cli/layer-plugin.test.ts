@@ -3,7 +3,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI layer plugin pins", () => {
-  it("adds and shows plugin pin on layer through layer attach --type plugin", async () => {
+  it("adds and shows plugin pin on layer through layer combine --type plugin", async () => {
     const context = await createTestContext("cli-layer-plugin");
 
     try {
@@ -11,7 +11,7 @@ describe("CLI layer plugin pins", () => {
       await runCli(["layer", "create", "p1"]);
       await runCli([
         "layer",
-        "attach",
+        "combine",
         "p1",
         "fmt@acme",
         "--type",
@@ -27,7 +27,7 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("includes plugins in layer show JSON after layer attach --type plugin", async () => {
+  it("includes plugins in layer show JSON after layer combine --type plugin", async () => {
     const context = await createTestContext("cli-layer-plugin-json");
 
     try {
@@ -35,7 +35,7 @@ describe("CLI layer plugin pins", () => {
       await runCli(["layer", "create", "pj"]);
       await runCli([
         "layer",
-        "attach",
+        "combine",
         "pj",
         "tools@hub",
         "--type",
@@ -61,7 +61,7 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("layer detach --type plugin drops pin from show", async () => {
+  it("layer uncombine --type plugin drops pin from show", async () => {
     const context = await createTestContext("cli-layer-plugin-remove");
 
     try {
@@ -69,7 +69,7 @@ describe("CLI layer plugin pins", () => {
       await runCli(["layer", "create", "pr"]);
       await runCli([
         "layer",
-        "attach",
+        "combine",
         "pr",
         "gone@mp",
         "--type",
@@ -77,7 +77,7 @@ describe("CLI layer plugin pins", () => {
         "--version",
         "1.0.0",
       ]);
-      await runCli(["layer", "detach", "pr", "gone@mp", "--type", "plugin"]);
+      await runCli(["layer", "uncombine", "pr", "gone@mp", "--type", "plugin"]);
       const show = await runCli(["layer", "show", "pr"]);
       expect(show.stdout).not.toContain("gone@mp");
     } finally {
@@ -85,7 +85,7 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("allows lazy layer attach --type plugin without --version", async () => {
+  it("allows lazy layer combine --type plugin without --version", async () => {
     const context = await createTestContext("cli-layer-plugin-lazy");
 
     try {
@@ -94,7 +94,7 @@ describe("CLI layer plugin pins", () => {
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "pv",
         "tools@hub",
         "--type",
@@ -108,7 +108,7 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("persists embed_on_export for layer attach --type plugin --embed", async () => {
+  it("persists embed_on_export for layer combine --type plugin --embed", async () => {
     const context = await createTestContext("cli-layer-plugin-embed");
 
     try {
@@ -119,7 +119,7 @@ describe("CLI layer plugin pins", () => {
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "embed-layer",
         "tools@hub",
         "--type",

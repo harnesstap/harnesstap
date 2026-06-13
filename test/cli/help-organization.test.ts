@@ -9,7 +9,7 @@ describe("CLI help and command organization", () => {
       ["layer"],
       ["resource"],
       ["project"],
-      ["cloud"],
+      ["auth"],
       ["migrate"],
       ["harness"],
       ["harness", "project"],
@@ -167,12 +167,13 @@ describe("CLI help and command organization", () => {
     expect(help.stdout).not.toContain("scan [options] [path]");
     expect(projectHelp.stdout).not.toContain("help [command]");
     expect(layerHelp.stdout).not.toContain("help [command]");
-    // cloud command group should exist in top-level help
-    expect(help.stdout).toContain("cloud");
-    const cloudHelp = await runCli(["cloud", "-h"]);
-    expect(cloudHelp.stdout).toContain("login");
-    expect(cloudHelp.stdout).toContain("whoami");
-    expect(cloudHelp.stdout).toContain("orgs");
+    // auth command group should exist in top-level help
+    expect(help.stdout).toContain("auth");
+    expect(help.stdout).not.toContain("\n  cloud");
+    const authHelp = await runCli(["auth", "-h"]);
+    expect(authHelp.stdout).toContain("login");
+    expect(authHelp.stdout).toContain("status");
+    expect(authHelp.stdout).toContain("orgs");
   });
 
   it("does not append [options] to subcommands in grouped help", async () => {
@@ -189,12 +190,12 @@ describe("CLI help and command organization", () => {
     expect(layerHelp.stdout).not.toContain("export [options]");
   });
 
-  it("exposes attach/detach commands with updated descriptions in layer help", async () => {
+  it("exposes combine/uncombine commands with updated descriptions in layer help", async () => {
     const layerHelp = await runCli(["layer", "--help"]);
     
-    // Should show attach and detach commands
-    expect(layerHelp.stdout).toContain("attach");
-    expect(layerHelp.stdout).toContain("detach");
+    // Should show combine and uncombine commands
+    expect(layerHelp.stdout).toContain("combine");
+    expect(layerHelp.stdout).toContain("uncombine");
     
     // Should describe from-project correctly
     expect(layerHelp.stdout).toContain("from-project");

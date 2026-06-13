@@ -18,7 +18,7 @@ Type "harnessdeck layer list"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck project apply nextjs-fullstack --project . --platform codex"
+Type "harnessdeck project apply nextjs-fullstack --project . --harness codex"
 Enter
 Sleep 3000ms
 

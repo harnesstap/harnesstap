@@ -199,7 +199,7 @@ describe("CLI planned scenarios", () => {
         "sync-layer",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ]);
 
@@ -251,7 +251,7 @@ describe("CLI planned scenarios", () => {
 
       const syncDry = await runCli([
         "project",
-        "sync",
+        "mirror",
         context.projectDir,
         "--dry-run",
         "--format",
@@ -262,7 +262,7 @@ describe("CLI planned scenarios", () => {
       // Human-mode sync: spinner resolves to a Synced verdict
       const syncHuman = await runCli([
         "project",
-        "sync",
+        "mirror",
         context.projectDir,
       ]);
       expect(syncHuman.stdout).toContain("Synced");
@@ -296,7 +296,7 @@ describe("CLI planned scenarios", () => {
         "apply",
         "--project",
         context.projectDir,
-        "--platform",
+        "--harness",
         "claude-code",
       ], {
         isTTY: true,

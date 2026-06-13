@@ -127,7 +127,7 @@ describe("CLI layer", () => {
   });
 
 
-  it("layer attach/detach --type layer-dependency manage dependencies via CLI", async () => {
+  it("layer combine/detach --type layer-dependency manage dependencies via CLI", async () => {
     const context = await createTestContext("cli-layer-dependency");
     try {
       await runCli(["init"]);
@@ -136,7 +136,7 @@ describe("CLI layer", () => {
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
       await runCli([
-        "layer", "attach",
+        "layer", "combine",
         "team-stack@1.2.0",
         "baseline",
         "--type", "layer-dependency",
@@ -153,7 +153,7 @@ describe("CLI layer", () => {
 
       await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -167,13 +167,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer attach --type layer-dependency reports error for invalid layer selector instead of crashing", async () => {
+  it("layer combine --type layer-dependency reports error for invalid layer selector instead of crashing", async () => {
     const context = await createTestContext("cli-layer-dep-invalid-selector");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
-        "layer", "attach",
+        "layer", "combine",
         "team-stack@not-semver",
         "baseline",
         "--type", "layer-dependency",
@@ -189,14 +189,14 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer attach --type layer-dependency sets a failing exit code when the layer is missing", async () => {
+  it("layer combine --type layer-dependency sets a failing exit code when the layer is missing", async () => {
     const context = await createTestContext("cli-layer-dep-missing-layer");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "missing-layer",
         "baseline",
         "--type",
@@ -213,7 +213,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer attach --type layer-dependency sets a failing exit code for an invalid version constraint", async () => {
+  it("layer combine --type layer-dependency sets a failing exit code for an invalid version constraint", async () => {
     const context = await createTestContext("cli-layer-dep-invalid-version");
     try {
       await runCli(["init"]);
@@ -221,7 +221,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -237,14 +237,14 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer detach --type layer-dependency sets a failing exit code when the layer is missing", async () => {
+  it("layer uncombine --type layer-dependency sets a failing exit code when the layer is missing", async () => {
     const context = await createTestContext("cli-layer-remove-dep-missing-layer");
     try {
       await runCli(["init"]);
 
       const result = await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "missing-layer",
         "baseline",
         "--type",
@@ -258,7 +258,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer detach --type layer-dependency sets a failing exit code when the dependency is missing", async () => {
+  it("layer uncombine --type layer-dependency sets a failing exit code when the dependency is missing", async () => {
     const context = await createTestContext("cli-layer-remove-dep-missing-dependency");
     try {
       await runCli(["init"]);
@@ -266,7 +266,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -408,7 +408,7 @@ describe("CLI layer", () => {
 
       const addResult = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team",
         resource.id,
         "--type",
@@ -425,7 +425,7 @@ describe("CLI layer", () => {
 
       const removeResult = await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "team",
         resource.id,
         "--type",
@@ -469,7 +469,7 @@ describe("CLI layer", () => {
       );
 
       await runCli(["layer", "create", "team"]);
-      await runCli(["layer", "attach", "team", resource.id, "--type", "skill"]);
+      await runCli(["layer", "combine", "team", resource.id, "--type", "skill"]);
       const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
 
       const hidden = await runCli(["layer", "show", "team"]);
@@ -665,19 +665,19 @@ describe("CLI layer", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
 
-      await runCli(["layer", "attach", "team", "shared-skill", "--type", "skill"]);
+      await runCli(["layer", "combine", "team", "shared-skill", "--type", "skill"]);
       expect(layerModel.getLayerResources(layer.id)).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: resource.id })]),
       );
 
-      await runCli(["layer", "detach", "team", "shared-skill", "--type", "skill"]);
+      await runCli(["layer", "uncombine", "team", "shared-skill", "--type", "skill"]);
       expect(layerModel.getLayerResources(layer.id)).toHaveLength(0);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("shows candidate details for ambiguous typed layer attach resource matches", async () => {
+  it("shows candidate details for ambiguous typed layer combine resource matches", async () => {
     const context = await createTestContext("cli-layer-add-ambiguous-resource");
     try {
       await runCli(["init"]);
@@ -702,7 +702,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team",
         "shared-skill",
         "--type",
@@ -720,7 +720,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("shows candidate details for ambiguous typed layer detach resource matches", async () => {
+  it("shows candidate details for ambiguous typed layer uncombine resource matches", async () => {
     const context = await createTestContext("cli-layer-remove-ambiguous-resource");
     try {
       await runCli(["init"]);
@@ -748,7 +748,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "team",
         "shared-skill",
         "--type",
@@ -766,13 +766,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("requires --type for layer attach", async () => {
+  it("requires --type for layer combine", async () => {
     const context = await createTestContext("cli-layer-add-type-required");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "attach", "team", "shared-skill"]);
+      const result = await runCli(["layer", "combine", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("type prefix");
@@ -784,7 +784,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("auto-prompts layer attach on a TTY when required args are missing", async () => {
+  it("auto-prompts layer combine on a TTY when required args are missing", async () => {
     const context = await createTestContext("cli-layer-add-wizard");
     try {
       await runCli(["init"]);
@@ -794,7 +794,7 @@ describe("CLI layer", () => {
       );
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "attach", "team"], {
+      const result = await runCli(["layer", "combine", "team"], {
         isTTY: true,
         promptResponses: [
           { value: "resource" },
@@ -811,7 +811,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("auto-prompts layer attach for the layer when the layer name is missing", async () => {
+  it("auto-prompts layer combine for the layer when the layer name is missing", async () => {
     const context = await createTestContext("cli-layer-add-missing-layer");
     try {
       await runCli(["init"]);
@@ -822,7 +822,7 @@ describe("CLI layer", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
 
-      const result = await runCli(["layer", "attach"], {
+      const result = await runCli(["layer", "combine"], {
         isTTY: true,
         promptResponses: [
           { value: "team@1.0.0" },
@@ -843,13 +843,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("does not auto-prompt layer attach when --format json is requested", async () => {
+  it("does not auto-prompt layer combine when --format json is requested", async () => {
     const context = await createTestContext("cli-layer-add-wizard-json");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "attach", "team", "--format", "json"], {
+      const result = await runCli(["layer", "combine", "team", "--format", "json"], {
         isTTY: true,
       });
 
@@ -860,13 +860,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("does not auto-prompt layer attach when CI disables interactivity", async () => {
+  it("does not auto-prompt layer combine when CI disables interactivity", async () => {
     const context = await createTestContext("cli-layer-add-wizard-ci");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "attach", "team"], {
+      const result = await runCli(["layer", "combine", "team"], {
         isTTY: true,
         env: { CI: "true" },
       });
@@ -878,13 +878,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("does not auto-prompt layer attach when --no-interactive is requested", async () => {
+  it("does not auto-prompt layer combine when --no-interactive is requested", async () => {
     const context = await createTestContext("cli-layer-add-wizard-disabled");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["--no-interactive", "layer", "attach", "team"], {
+      const result = await runCli(["--no-interactive", "layer", "combine", "team"], {
         isTTY: true,
       });
 
@@ -895,13 +895,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("requires --type for layer detach", async () => {
+  it("requires --type for layer uncombine", async () => {
     const context = await createTestContext("cli-layer-remove-type-required");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "detach", "team", "shared-skill"]);
+      const result = await runCli(["layer", "uncombine", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("type prefix");
@@ -913,7 +913,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("rejects invalid --type for layer detach", async () => {
+  it("rejects invalid --type for layer uncombine", async () => {
     const context = await createTestContext("cli-layer-remove-type-invalid");
     try {
       await runCli(["init"]);
@@ -921,7 +921,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "team",
         "shared-skill",
         "--type",
@@ -949,7 +949,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team",
         "shared-skill",
         "--type",
@@ -977,7 +977,7 @@ describe("CLI layer", () => {
 
       const versionResult = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team",
         "shared-skill",
         "--type",
@@ -990,7 +990,7 @@ describe("CLI layer", () => {
 
       const embedResult = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team",
         "shared-skill",
         "--type",
@@ -1012,7 +1012,7 @@ describe("CLI layer", () => {
 
       const result = await runCli([
         "layer",
-        "attach",
+        "combine",
         "team-stack@1.2.0",
         "baseline",
         "--type",
@@ -1037,7 +1037,7 @@ describe("CLI layer", () => {
 
       const addResult = await runCli([
         "layer",
-        "attach",
+        "combine",
         "plugin-test",
         "formatter@marketplace",
         "--type",
@@ -1052,7 +1052,7 @@ describe("CLI layer", () => {
 
       const removeResult = await runCli([
         "layer",
-        "detach",
+        "uncombine",
         "plugin-test",
         "formatter@marketplace",
         "--type",
