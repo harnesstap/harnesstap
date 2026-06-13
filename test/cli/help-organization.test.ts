@@ -207,7 +207,9 @@ describe("CLI help and command organization", () => {
 
     expect(result.stdout).toContain("WHAT HARNESSDECK DOES");
     expect(result.stdout).toContain("QUICK START");
-    expect(result.stdout).toContain("project apply nextjs-fullstack --project . --harness codex");
+    expect(result.stdout).toContain(
+      "project apply engineering-foundation --project . --harness codex",
+    );
     expect(result.stdout).toContain("layer search <query>");
     expect(result.stdout).toContain("DOCUMENTATION");
     expect(result.stdout).toContain("https://github.com/bqbooster/harnessdeck#quick-start");
