@@ -1,5 +1,4 @@
 import { renderWarn } from "../ui/status.js";
-import { ui } from "./ui/index.js";
 
 export function warnDeprecatedReplacement(oldName: string, replacement: string): void {
   console.error(renderWarn(`\`${oldName}\` is deprecated. Use \`${replacement}\` instead.`));
