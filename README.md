@@ -73,7 +73,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 ## Demo
 
-Initialise HarnessDeck, scan an existing repository, browse built-in layers, apply one, and confirm the final state — all in about a minute.
+Initialise HarnessDeck, scan an existing repository, browse catalog layers, apply one, and confirm the final state — all in about a minute.
 
 [![Existing repo adoption walkthrough](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
@@ -94,7 +94,7 @@ harnessdeck project status .                  # confirm the final state
 ## Requirements
 
 - **Node.js** 20 or later (to run the built CLI)
-- **Bun** 1.3+ (recommended for install and development)
+- **Bun** 1.3+ (optional; required only for contributing from source)
 
 ---
 
