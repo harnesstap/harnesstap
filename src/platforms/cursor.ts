@@ -168,6 +168,7 @@ export class CursorSerializer extends BaseSerializer {
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
     const target = options.target ?? "project";
+    const skillCursorMode = options.skillCursorMode ?? "agent-requested";
     const targetPaths = this.getTargetPaths(target);
     const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
@@ -204,7 +205,7 @@ export class CursorSerializer extends BaseSerializer {
           break;
         }
         case "skill": {
-          if (target === "global" && skillsPath) {
+          if ((target === "global" || skillCursorMode === "agents-skills") && skillsPath) {
             const fm: Record<string, unknown> = {
               name: r.name,
               description: r.description,
@@ -216,10 +217,10 @@ export class CursorSerializer extends BaseSerializer {
             break;
           }
           if (!rulesPath) break;
-          // Cursor doesn't have native project skills — emit as agent-requested rule
+          const alwaysApply = skillCursorMode === "always-on";
           const fm: Record<string, unknown> = {
             description: r.description || `Skill: ${r.name}`,
-            alwaysApply: false,
+            alwaysApply,
           };
           files.push({
             path: join(rulesPath, `${r.name}.mdc`),

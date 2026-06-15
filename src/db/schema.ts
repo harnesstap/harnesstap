@@ -3,7 +3,7 @@ import { migrateToUnifiedLayers } from "./migrate-to-unified-layers.js";
 import { hashResourceBody } from "../services/resource-hash.js";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -339,6 +339,9 @@ const MIGRATIONS: Record<number, string> = {
       ON imported_snapshot_installs(installed_at DESC);
   `,
 
+  16: `
+    ALTER TABLE project_harnesses ADD COLUMN cursor_skill_mode TEXT;
+  `,
 };
 
 function ensurePluginsTableRenamed(db: SqliteDatabase): void {

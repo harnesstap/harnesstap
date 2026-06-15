@@ -338,9 +338,12 @@ export interface HarnessPreference extends HarnessSelection {
   updated_at: string;
 }
 
+export type CursorSkillMode = "agent-requested" | "always-on" | "agents-skills";
+
 export interface ProjectHarnessConfig extends HarnessSelection {
   project_id: string;
   materialization_strategy: "symlink-preferred" | "copy";
+  cursor_skill_mode?: CursorSkillMode;
   updated_at: string;
 }
 
@@ -541,6 +544,7 @@ export type SerializerTarget = "project" | "global";
 
 export interface SerializeOptions {
   target?: SerializerTarget;
+  skillCursorMode?: CursorSkillMode;
 }
 
 export interface PlatformSerializer {

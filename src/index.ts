@@ -1424,12 +1424,25 @@ async function handleApplyCommand(
 
   const generateSpin = createProgress("Generating harness files…");
   let generated: Awaited<ReturnType<typeof generateFiles>>;
+  const gitOriginForApply = getGitOrigin(projectRoot);
+  const projectForHarness = gitOriginForApply
+    ? getProjectByOrigin(normalizeGitUrl(gitOriginForApply))
+    : undefined;
+  const projectHarnessConfig = projectForHarness
+    ? getProjectHarnessConfig(projectForHarness.id)
+    : undefined;
   try {
     generated = await generateFiles(
       applyResources,
       platforms,
       projectRoot,
-      { claudeConfig: resolvedClaude, resolvedEnvironment },
+      {
+        claudeConfig: resolvedClaude,
+        resolvedEnvironment,
+        ...(projectHarnessConfig?.cursor_skill_mode
+          ? { skillCursorMode: projectHarnessConfig.cursor_skill_mode }
+          : {}),
+      },
     );
   } finally {
     generateSpin.stop();

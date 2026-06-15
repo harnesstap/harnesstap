@@ -138,6 +138,18 @@ function removeMaterializedFiles(rootPath: string, filePaths: string[]): void {
   }
 }
 
+function isGenerateFilesOptions(
+  value: ClaudeLayerConfig | GenerateFilesOptions | undefined,
+): value is GenerateFilesOptions {
+  return Boolean(
+    value &&
+      ("target" in value ||
+        "claudeConfig" in value ||
+        "resolvedEnvironment" in value ||
+        "skillCursorMode" in value),
+  );
+}
+
 /**
  * Generate platform files from resources without writing to disk.
  * Useful for dry-run / diff.
@@ -151,15 +163,12 @@ export async function generateFiles(
 ): Promise<ApplyResult[]> {
   const options =
     maybeOptions ??
-    (claudeConfigOrOptions &&
-    ("target" in claudeConfigOrOptions || "claudeConfig" in claudeConfigOrOptions)
-      ? claudeConfigOrOptions
-      : undefined) ??
+    (isGenerateFilesOptions(claudeConfigOrOptions) ? claudeConfigOrOptions : undefined) ??
     {};
   const claudeConfig =
     maybeOptions?.claudeConfig ??
-    ("target" in (claudeConfigOrOptions ?? {}) || "claudeConfig" in (claudeConfigOrOptions ?? {})
-      ? (claudeConfigOrOptions as GenerateFilesOptions | undefined)?.claudeConfig
+    (isGenerateFilesOptions(claudeConfigOrOptions)
+      ? claudeConfigOrOptions.claudeConfig
       : (claudeConfigOrOptions as ClaudeLayerConfig | undefined));
 
   const results: ApplyResult[] = [];
@@ -170,7 +179,10 @@ export async function generateFiles(
 
   for (const pid of platforms) {
     const serializer = getPlatformSerializer(pid);
-    let files = await serializer.serialize(serializedResources, projectRoot, { target });
+    let files = await serializer.serialize(serializedResources, projectRoot, {
+      target,
+      skillCursorMode: options.skillCursorMode,
+    });
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudeLayerExtensions(files, claudeConfig, projectRoot);
     }
@@ -349,9 +361,11 @@ export async function applyToProject(
   platforms: string[],
   projectRoot: string,
   claudeConfig?: ClaudeLayerConfig,
+  options: Pick<GenerateFilesOptions, "skillCursorMode"> = {},
 ): Promise<ApplyResult[]> {
   const results = await generateFiles(resources, platforms, projectRoot, claudeConfig, {
     target: "project",
+    skillCursorMode: options.skillCursorMode,
   });
 
   for (const result of results) {
