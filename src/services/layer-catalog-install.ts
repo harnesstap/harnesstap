@@ -6,7 +6,7 @@ import {
   formatPublishedSelectorWithVersion,
   type ResolvedRemoteLayerSelector,
 } from "./layer-selector.js";
-import { writeLayerBundleToTempFile } from "./layer-source.js";
+import { writeLayerExportToTempFile } from "./layer-source.js";
 
 export interface InstallLayerFromCatalogOptions {
   as?: string;
@@ -41,7 +41,7 @@ export async function installLayerFromCatalog(
     profile: opts.profile,
     baseUrl: opts.baseUrl,
   });
-  const tempPath = writeLayerBundleToTempFile(downloaded.body);
+  const tempPath = writeLayerExportToTempFile(downloaded.body);
   const imported = importFromFile(tempPath, { layerNameOverride: opts.as });
   updateLayerPublishedIdentity(imported.layer.id, {
     org_slug: parsed.org_slug,

@@ -912,10 +912,10 @@ async function resolveApplyLayers(
 
   if (
     resolvedSources.length === 1
-    && resolvedSources[0]?.kind === "bundle"
+    && resolvedSources[0]?.kind === "layer-export"
   ) {
-    const bundlePath = resolvedSources[0].path;
-    const summary = inspectLayerExportFile(bundlePath);
+    const layerExportPath = resolvedSources[0].path;
+    const summary = inspectLayerExportFile(layerExportPath);
     const primarySummary = summary.layers[summary.layers.length - 1];
     if (primarySummary) {
       const selector = primarySummary.version
@@ -936,15 +936,15 @@ async function resolveApplyLayers(
     }
 
     return importedBundleToApplyResult(
-      importFromFile(bundlePath, {
+      importFromFile(layerExportPath, {
         embeddedTargetDir: projectRoot,
       }),
     );
   }
 
   const configuredLayerIds = resolvedSources.map((source) => {
-    if (source.kind === "bundle") {
-      throw new Error("Bundle paths and URLs cannot be mixed with layer selectors.");
+    if (source.kind === "layer-export") {
+      throw new Error("Layer export paths and URLs cannot be mixed with layer selectors.");
     }
     return ensureImplicitConfiguredLayer(source.layerId).id;
   });
@@ -1028,7 +1028,7 @@ async function handleApplyCommand(
 
   if (resolvedLayerNames.length === 0) {
     process.exitCode = 1;
-    ui.danger("Provide at least one layer name, bundle path, or URL.");
+    ui.danger("Provide at least one layer name, layer export path, or URL.");
     return;
   }
 
@@ -1670,14 +1670,14 @@ async function handleLayerPublishCommand(
       return;
     }
 
-    // build bundle using exporter
-    const bundle = exportLayer(layer.id);
-    const bundleJson = JSON.stringify(bundle);
+    // build layer export using exporter
+    const layerExport = exportLayer(layer.id);
+    const layerExportJson = JSON.stringify(layerExport);
 
     const catalogSlug = opts.catalog ?? "default";
-    const resp = await client.publishLayerBundle(
+    const resp = await client.publishLayerExport(
       { layer_name: layer.name, org_slug: orgSlug, catalog_slug: catalogSlug },
-      bundleJson,
+      layerExportJson,
     );
     updateLayerPublishedIdentity(layer.id, {
       org_slug: orgSlug,
@@ -3424,13 +3424,13 @@ layerCmd
     "--embed-plugins",
     "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
   )
-  .description("Export a layer as a shareable JSON bundle")
+  .description("Export a layer as a shareable JSON layer export")
   .action(handleLayerExportCommand);
 
 layerCmd
   .command("import")
-  .argument("<file>", "JSON bundle file to import")
-  .description("Import a layer from a JSON bundle file")
+  .argument("<file>", "JSON layer export file to import")
+  .description("Import a layer from a JSON layer export file")
   .action(handleLayerImportCommand);
 
 layerCmd
@@ -3557,10 +3557,10 @@ layerCmd
 
 layerCmd
   .command("diff")
-  .argument("<left>", "Layer name or bundle file")
-  .argument("<right>", "Layer name or bundle file")
+  .argument("<left>", "Layer name or layer export file")
+  .argument("<right>", "Layer name or layer export file")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Diff two layers or a layer and a bundle file")
+  .description("Diff two layers or a layer and a layer export file")
   .action(handleLayerDiffCommand);
 
 layerCmd
@@ -4016,15 +4016,15 @@ deckCmd
   .command("export")
   .argument("<deck>", "Deck name or ID")
   .requiredOption("--output <path>", "Directory to write the deck repo")
-  .option("--with-layer-bundles", "Include portable layer bundles under .harnessdeck/layers/")
+  .option("--with-layer-exports", "Include portable layer exports under .harnessdeck/layers/")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Export a deck to a portable hybrid deck repo directory")
-  .action((deck: string, opts: { output: string; withLayerBundles?: boolean; format?: string }) => {
+  .action((deck: string, opts: { output: string; withLayerExports?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     try {
       const result = exportDeckRepo(deck, opts.output, {
-        withLayerBundles: opts.withLayerBundles,
+        withLayerExports: opts.withLayerExports,
       });
       const format = parseOutputFormat(opts.format);
       if (format === "json") {
@@ -4033,8 +4033,8 @@ deckCmd
       }
       ui.success(`Exported deck to ${ui.theme.accent(resolve(opts.output))}`);
       console.log(ui.theme.muted(`  ${ui.icons.bullet} ${result.deckJsonPath}`));
-      for (const bundlePath of result.layerBundlePaths) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${bundlePath}`));
+      for (const layerExportPath of result.layerExportPaths) {
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${layerExportPath}`));
       }
     } catch (err) {
       process.exitCode = 1;
@@ -4114,7 +4114,7 @@ const migrateCmd = configureCommandGroup(
 migrateCmd
   .command("export")
   .argument("<file>", "Output archive path (.tar.gz or .json)")
-  .option("--include-plugins", "Embed plugin trees in layer bundles")
+  .option("--include-plugins", "Embed plugin trees in layer exports")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Export all layers, harness preferences, and config")
   .action(handleMigrateExportCommand);
@@ -4325,7 +4325,7 @@ projectCmd
   .command("apply")
   .argument(
     "[layers...]",
-    "Layer name(s), bundle path, or URL (multiple layers are merged in order)",
+    "Layer name(s), layer export path, or URL (multiple layers are merged in order)",
   )
   .option("--project <path>", "Project directory", ".")
   .option(
@@ -4352,7 +4352,7 @@ projectCmd
     "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
   )
   .description(
-    "Apply one or more layers (or a bundle URL) to a project, serializing for each harness",
+    "Apply one or more layers (or a layer export URL) to a project, serializing for each harness",
   )
   .action(handleApplyCommand);
 

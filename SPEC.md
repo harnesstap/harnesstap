@@ -15,7 +15,7 @@ The product currently supports these main workflows:
 - Group imported resources into versioned **local layers** (`name` + `version` only).
 - Diff, doctor, export, import, publish, search, install, or derive layers from a project scan.
 - Compose layers by attaching material resources, `plugin` references, and nested `layer` references through one attachment model.
-- Apply one or more layers, a local bundle file, or a bundle URL to a project.
+- Apply one or more layers, a local bundle file, or a layer export URL to a project.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Export or import a machine-transfer archive of local layers, harness preferences, and config.
@@ -725,5 +725,5 @@ bun run build
 ## Known gaps and non-goals
 
 - Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
-- `layer export` / `layer import` still operate on one layer export at a time; use `deck export --with-layer-bundles` and `deck import` for portable deck-repo round-trip.
+- `layer export` / `layer import` still operate on one layer export at a time; use `deck export --with-layer-exports` and `deck import` for portable deck-repo round-trip.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.

@@ -60,10 +60,10 @@ export function createCatalogFetchMock(input?: {
         json: async () => ({ layers: filtered, nextCursor: null }),
       };
     }
-    if (/\/api\/public\/.+\/versions\/.+\/bundle$/.test(url)) {
+    if (/\/api\/public\/.+\/versions\/.+\/layer-export/.test(url)) {
       return { ok: true, text: async () => bundle };
     }
-    if (/\/api\/catalog\/.+\/versions\/.+\/bundle$/.test(url)) {
+    if (/\/api\/catalog\/.+\/versions\/.+\/layer-export/.test(url)) {
       return { ok: true, text: async () => bundle };
     }
     if (url.endsWith("/api/me/orgs")) {

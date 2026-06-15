@@ -55,7 +55,7 @@ Manage project scanning, apply state, snapshots, drift, and mirror.
 ### Commands
 
 - `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `project apply <layer...>` — apply one or more configured layers, bundle paths, bundle URLs, or bare catalog names
+- `project apply <layer...>` — apply one or more configured layers, layer export paths, layer export URLs, or bare catalog names
 - `project drift [path]` — compare the working tree against the latest apply/mirror snapshot
 - `project mirror [path]` — mirror alias harness outputs from the main harness state
 - `project history --project <path>` — list snapshots for a tracked project
