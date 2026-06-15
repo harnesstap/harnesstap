@@ -140,7 +140,10 @@ function buildPermissionProfiles(
     );
     if (filesystemRule) {
       const profileConfig = profiles[filesystemRule.profile] ?? {};
-      const filesystem = (profileConfig.filesystem ??= {});
+      if (!profileConfig.filesystem) {
+        profileConfig.filesystem = {};
+      }
+      const filesystem = profileConfig.filesystem;
       setNestedFilesystemRule(
         filesystem,
         filesystemRule.target,
@@ -156,8 +159,14 @@ function buildPermissionProfiles(
     );
     if (networkRule) {
       const profileConfig = profiles[networkRule.profile] ?? {};
-      const network = (profileConfig.network ??= {});
-      const domains = (network.domains ??= {});
+      if (!profileConfig.network) {
+        profileConfig.network = {};
+      }
+      const network = profileConfig.network;
+      if (!network.domains) {
+        network.domains = {};
+      }
+      const domains = network.domains;
       domains[networkRule.target] = networkRule.mode;
       profiles[networkRule.profile] = profileConfig;
     }

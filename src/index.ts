@@ -1012,7 +1012,7 @@ async function handleScanCommand(
 
   const spin = createProgress("Scanning…");
   const conflictPolicy = resolveScanConflictPolicy(opts);
-  let merged = await persistMergedProjectScan(projectRoot, scanHarnessFilter, {
+  const merged = await persistMergedProjectScan(projectRoot, scanHarnessFilter, {
     conflictPolicy,
     namespace: opts.namespace ?? "",
     originRef: projectRoot,
