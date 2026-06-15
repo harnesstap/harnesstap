@@ -4,7 +4,6 @@ import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createTempDir, writeTextFile } from "../helpers/fs.ts";
 import {
-  makeMultiLayerExport,
   makeSingleLayerExport,
   parseTestLayerToml,
   writeLayerExportToml,

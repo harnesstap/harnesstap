@@ -7,7 +7,6 @@ import { makeResourceInput } from "../helpers/resources.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 import {
   makeMultiLayerExport,
-  makeSingleLayerExport,
   parseTestLayerToml,
   writeLayerExportToml,
 } from "../helpers/transport-fixtures.ts";

@@ -149,9 +149,6 @@ describe("initializeSchema", () => {
       context.schema.initializeSchema(context.connection.getDb());
       const db = context.connection.getDb();
 
-      const tables = db
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-        .all() as Array<{ name: string }>;
       // layers table should have a version column
       const cols = db
         .prepare("PRAGMA table_info(layers)")
@@ -311,7 +308,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT resource_id FROM layer_resources WHERE layer_id = 'p1' ORDER BY resource_id")
         .all() as Array<{ resource_id: string }>;
       expect(prRows.map((row) => row.resource_id)).toEqual(
-        expect.arrayContaining(["r1", pluginResource!.id]),
+        expect.arrayContaining(["r1", pluginResource?.id]),
       );
       const pluginLink = db
         .prepare(

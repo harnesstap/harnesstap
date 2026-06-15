@@ -31,7 +31,6 @@ describe("wizard prompts", () => {
   it("uses list prompts for layer pull resource flows", async () => {
     const context = await createInitializedTestContext("wizard-layer-add-prompts");
     const promptCalls: CapturedPrompt[] = [];
-    let selectedResourceId = "";
     const promptSpy = spyOn(inquirer, "prompt").mockImplementation(
       async (questions) => {
         const prompt = firstPrompt(questions);
@@ -49,10 +48,9 @@ describe("wizard prompts", () => {
 
     try {
       const resourceModel = await import("../../src/models/resource.ts");
-      const resource = resourceModel.createResource(
+      resourceModel.createResource(
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
-      selectedResourceId = resource.id;
 
       const { runLayerAddWizard } = await import("../../src/services/wizards/layer-add.ts");
       const result = await runLayerAddWizard({ shouldPrompt: true });

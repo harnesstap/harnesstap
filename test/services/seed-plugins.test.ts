@@ -2,7 +2,6 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { writeTextFile } from "../helpers/fs.ts";
 import {
   makeMultiLayerExport,
   writeLayerExportToml,

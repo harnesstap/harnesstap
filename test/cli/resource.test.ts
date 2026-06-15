@@ -224,7 +224,7 @@ describe("CLI resource", () => {
           content: "# Older",
         }),
       );
-      const newer = resourceModel.createResource(
+      resourceModel.createResource(
         makeResourceInput({
           type: "skill",
           name: "newer-skill",

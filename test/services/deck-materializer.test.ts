@@ -166,13 +166,13 @@ describe("deck materializer", () => {
       "utf8",
     );
     expect(marketplaceRaw).toBe(
-      stableJsonStringify({
+      `${stableJsonStringify({
         name: "sorted-deck",
         plugins: [
           { name: "pagerduty", source: "./pagerduty", version: "1.0.0" },
           { name: "slack", source: "./slack", version: "1.0.0" },
         ],
-      }).trimEnd() + "\n",
+      }).trimEnd()}\n`,
     );
     expect(marketplaceRaw.indexOf("pagerduty")).toBeLessThan(
       marketplaceRaw.indexOf("slack"),

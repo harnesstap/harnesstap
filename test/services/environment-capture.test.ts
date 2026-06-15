@@ -66,7 +66,7 @@ describe("environment capture service", () => {
           transport: "stdio",
           command: "node",
           env: {
-            PROC_REGION: "${PROC_REGION}",
+            PROC_REGION: `\${PROC_REGION}`,
           },
         },
         source: "manual",
