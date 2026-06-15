@@ -204,7 +204,7 @@ import {
   isLayerUrl,
 } from "./services/layer-source.js";
 import { runDeckDeleteWizard } from "./services/wizards/deck-delete.js";
-import { syncProject } from "./services/project-sync.js";
+import { syncProject, type ProjectReferenceStrategy } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
   addLayerAttachment,
@@ -817,6 +817,23 @@ function resolveScanConflictPolicy(opts: {
     return "fail";
   }
   return "prompt";
+}
+
+function parseReferenceStrategy(
+  value: string | undefined,
+): ProjectReferenceStrategy {
+  const strategy = value ?? "main";
+  switch (strategy) {
+    case "main":
+    case "plugin":
+    case "agents":
+    case "auto":
+      return strategy;
+    default:
+      throw new Error(
+        `Invalid --reference value: ${value}. Expected main, plugin, agents, or auto.`,
+      );
+  }
 }
 
 function parseIncludePluginSourceMode(
@@ -3291,12 +3308,21 @@ async function handleProjectSyncCommand(
     dryRun?: boolean;
     format?: string;
     forceShiftReference?: string;
+    reference?: string;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
+  let referenceStrategy: ProjectReferenceStrategy;
+  try {
+    referenceStrategy = parseReferenceStrategy(opts.reference);
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
   try {
     const result = await (async () => {
       if (format === "human" && !opts.dryRun) {
@@ -3305,6 +3331,7 @@ async function handleProjectSyncCommand(
           projectRoot,
           dryRun: false,
           forceShiftReference: opts.forceShiftReference,
+          referenceStrategy,
         });
         spin.succeed(
           `Synced ${r.platforms_synced.join(", ") || "(none)"} from ${r.main_harness} ${ui.icons.bullet} ${formatCount(r.files_written, "file")}`,
@@ -3315,6 +3342,7 @@ async function handleProjectSyncCommand(
         projectRoot,
         dryRun: opts.dryRun,
         forceShiftReference: opts.forceShiftReference,
+        referenceStrategy,
       });
     })();
     if (format === "json") {
@@ -4891,6 +4919,11 @@ projectCmd
   .option(
     "--force-shift-reference <slug>",
     "Set the project main harness before mirroring",
+  )
+  .option(
+    "--reference <strategy>",
+    "Reference source for mirror: main, plugin, agents, or auto",
+    "main",
   )
   .option("--format <mode>", "Output format: human or json", "human")
   .description(
