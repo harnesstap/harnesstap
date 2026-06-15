@@ -252,11 +252,11 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Current behavior |
 | --- | --- |
 | `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in layers, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
-| `harnessdeck layer ...` | Layer CRUD, composition attach/detach, bundle export/import, cloud catalog workflows, diff, and doctor. |
-| `harnessdeck deck ...` | Exports, imports, and validates portable deck repositories (`deck export`, `deck import`, `deck doctor`, `deck list`). |
+| `harnessdeck layer ...` | Layer CRUD, **apply**, composition attach/detach, bundle export/import, cloud catalog workflows, diff, and doctor. |
+| `harnessdeck deck ...` | List, show, **apply**, delete, export, import, and validate portable deck repositories. |
 | `harnessdeck migrate ...` | Exports or imports a machine-transfer archive. |
 | `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
-| `harnessdeck project ...` | Scans projects, applies layers, syncs alias harnesses, inspects drift, lists snapshot history, reverts snapshots, and shows project status. |
+| `harnessdeck project ...` | Scans projects, drift, mirror, snapshots, and status (`project apply` is a deprecated alias for `layer apply`). |
 | `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
 | `harnessdeck environment ...` | Creates and manages environments, environment values, secret refs, active-environment pointers, scoped capture/refresh, and cascade preview. |
 | `harnessdeck cloud ...` | Authenticates with HarnessDeck Cloud and manages local cloud profiles. |

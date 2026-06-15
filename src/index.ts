@@ -181,6 +181,25 @@ import {
 } from "./services/deck-transport.js";
 import { listDecks } from "./models/deck.js";
 import { runDeckDoctor } from "./services/deck-doctor.js";
+import {
+  buildDeckShowPayload,
+  deleteDeckCommand,
+  printDeckShowHuman,
+} from "./services/deck-commands.js";
+import {
+  DeckResolveError,
+  resolveDeckOrThrow,
+  resolveDeckLayerSelectors,
+} from "./services/resolve-deck-layers.js";
+import {
+  addApplyCommandOptions,
+  type ApplyCommandOpts,
+} from "./services/apply-command-options.js";
+import {
+  isLayerExportFilePath,
+  isLayerUrl,
+} from "./services/layer-source.js";
+import { runDeckDeleteWizard } from "./services/wizards/deck-delete.js";
 import { syncProject } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
@@ -198,6 +217,7 @@ import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
   isPromptCancellationError,
   promptForChoice,
+  promptForConfirmation,
   promptForValue,
   shouldUseWizard,
 } from "./services/wizards/shared.js";
@@ -596,6 +616,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "delete",
   "export",
   "import",
+  "apply",
   "diff",
   "doctor",
   "from-project",
@@ -1094,23 +1115,56 @@ function printPluginApplyPostSyncSummary(
   }
 }
 
+async function handleDeckApplyCommand(
+  deckName: string,
+  overrideLayers: string[],
+  opts: ApplyCommandOpts,
+): Promise<void> {
+  try {
+    const deck = resolveDeckOrThrow(deckName);
+    const deckLayers = resolveDeckLayerSelectors(deckName);
+    for (const layer of overrideLayers) {
+      if (isLayerUrl(layer) || isLayerExportFilePath(layer)) {
+        process.exitCode = 1;
+        ui.danger(
+          "Deck apply override layers must be layer selectors, not export paths or URLs.",
+        );
+        return;
+      }
+    }
+    const combined = [...deckLayers, ...overrideLayers];
+    if (combined.length === 0) {
+      process.exitCode = 1;
+      ui.danger(`Deck has no layers: ${deck.name}`);
+      return;
+    }
+    await handleApplyCommand(
+      combined as [string, ...string[]],
+      { ...opts, deckId: deck.id },
+    );
+  } catch (err) {
+    if (err instanceof DeckResolveError) {
+      process.exitCode = 1;
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
+    throw err;
+  }
+}
+
 async function handleApplyCommand(
   layerNames: [string, ...string[]] | [],
-  opts: {
-    project: string;
-    harness?: string;
-    dryRun?: boolean;
-    format?: string;
-    ignorePluginVersions?: boolean;
-    strictPluginVersions?: boolean;
-    syncPlugins?: boolean;
-    interactive?: boolean;
-    noInteractive?: boolean;
-    onConflict?: string;
-  },
+  opts: ApplyCommandOpts,
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
+
+  const outputFormat = parseOutputFormat(opts.format);
+  if (opts.deprecateProjectApply && outputFormat === "human") {
+    ui.warn(
+      `\`${formatCommand("project apply")}\` is deprecated; use \`${formatCommand("layer apply")}\` instead.`,
+    );
+  }
 
    const resolvedLayerNames = layerNames.length > 0
     ? layerNames
@@ -1125,7 +1179,15 @@ async function handleApplyCommand(
 
   if (resolvedLayerNames.length === 0) {
     process.exitCode = 1;
-    ui.danger("Provide at least one layer name, layer export path, or URL.");
+    ui.danger(
+      "Provide at least one layer name, layer export path, or URL.",
+      {
+        hints: [
+          formatCommand("layer apply <layer>"),
+          formatCommand("deck apply <deck>"),
+        ],
+      },
+    );
     return;
   }
 
@@ -1141,7 +1203,6 @@ async function handleApplyCommand(
   let applyBundle: Awaited<ReturnType<typeof resolveApplyLayers>>;
   const layerLabel = resolvedLayerNames.join(" + ");
   const resolveSpin = createProgress(`Resolving ${layerLabel}…`);
-  const outputFormat = parseOutputFormat(opts.format);
   try {
     applyBundle = await resolveApplyLayers(
       resolvedLayerNames as [string, ...string[]],
@@ -1198,6 +1259,7 @@ async function handleApplyCommand(
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
     configuredLayerIds: applyBundle.configuredLayerIds,
     projectRoot,
+    deckId: opts.deckId,
   });
   const mergedPluginPins = (() => {
     const pins = new Map<string, { ref: string; version_constraint: string }>();
@@ -2472,7 +2534,7 @@ function printQuickStartGuide(): void {
     `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
   );
   console.log(
-    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE}`)}`,
+    `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("concepts")}`);
   console.log(`  ${formatCommand("guide")}`);
@@ -2493,7 +2555,7 @@ function handleGuideCommand(): void {
     `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
   );
   console.log(
-    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE}`)}`,
+    `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("project status .")}`);
   console.log("");
@@ -3671,6 +3733,20 @@ layerCmd
   .description("Import a layer from a TOML layer export file")
   .action(handleLayerImportCommand);
 
+addApplyCommandOptions(
+  layerCmd
+    .command("apply")
+    .argument(
+      "[layers...]",
+      "Layer name(s), layer export path, or URL (multiple layers are merged in order)",
+    )
+    .description(
+      "Apply one or more layers (or a layer export URL) to a project, serializing for each harness",
+    ),
+).action(async (layers: string[], opts: ApplyCommandOpts) => {
+  await handleApplyCommand(layers as [string, ...string[]] | [], opts);
+});
+
 layerCmd
   .command("search")
   .argument("<query>", "Search query for layers on the cloud catalog")
@@ -4220,7 +4296,7 @@ environmentCmd
 const deckCmd = configureCommandGroup(
   program
     .command("deck")
-    .description("Export, import, and validate portable deck repositories"),
+    .description("Curate, apply, export, import, and validate portable deck repositories"),
 );
 
 deckCmd
@@ -4248,6 +4324,144 @@ deckCmd
       })),
       empty: "No decks found.",
     });
+  });
+
+deckCmd
+  .command("show")
+  .argument("<name>", "Deck name or ID")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--show-id", "Show deck ID in human output")
+  .description("Show deck metadata, layer stack, and environments")
+  .action((name: string, opts: { format?: string; showId?: boolean }) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const payload = buildDeckShowPayload(name);
+      const format = parseOutputFormat(opts.format);
+      if (format === "json") {
+        printJson({
+          id: payload.id,
+          name: payload.name,
+          root_path: payload.root_path,
+          active_environment: payload.active_environment,
+          layers: payload.layers,
+          environments_referenced: payload.environments_referenced,
+          deck: payload.deck_json,
+        });
+        return;
+      }
+      printDeckShowHuman(payload, Boolean(opts.showId));
+    } catch (err) {
+      process.exitCode = 1;
+      if (err instanceof DeckResolveError) {
+        ui.danger(err.message, { hints: err.hints });
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+addApplyCommandOptions(
+  deckCmd
+    .command("apply")
+    .argument("<deck>", "Deck name or ID")
+    .argument(
+      "[layers...]",
+      "Optional override layers appended after the deck stack",
+    )
+    .description("Apply a deck's layer stack to a project"),
+).action(async (
+  deck: string,
+  layers: string[],
+  opts: ApplyCommandOpts,
+) => {
+  await handleDeckApplyCommand(deck, layers, opts);
+});
+
+deckCmd
+  .command("delete")
+  .argument("[name]", "Deck name or ID")
+  .option("-s, --search <query>", "Filter decks in the delete wizard")
+  .option("--force", "Skip confirmation when the deck has a root path")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Delete a deck record from the local database")
+  .action(async (
+    name: string | undefined,
+    opts: {
+      search?: string;
+      force?: boolean;
+      interactive?: boolean;
+      noInteractive?: boolean;
+      format?: string;
+    },
+  ) => {
+    const db = getDb();
+    initializeSchema(db);
+    try {
+      const useWizard = shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: parseOutputFormat(opts.format),
+        missingRequiredArgs: !name,
+      });
+      const selectors = name
+        ? [name]
+        : useWizard
+          ? await runDeckDeleteWizard({ search: opts.search })
+          : [];
+
+      if (selectors.length === 0) {
+        throw new Error(
+          !name && useWizard
+            ? "No decks selected for deletion"
+            : "Deck name is required",
+        );
+      }
+
+      for (const selector of selectors) {
+        const deck = resolveDeckOrThrow(selector);
+        const format = parseOutputFormat(opts.format);
+        const needsConfirm =
+          !opts.force
+          && format === "human"
+          && shouldUseWizard({
+            interactive: opts.interactive,
+            noInteractive: opts.noInteractive,
+            format,
+            missingRequiredArgs: false,
+          })
+          && deck.root_path.trim().length > 0;
+
+        if (needsConfirm) {
+          const confirmed = await promptForConfirmation({
+            message:
+              `Delete deck record ${deck.name}? Files at ${deck.root_path} will not be removed.`,
+            default: false,
+          });
+          if (!confirmed) {
+            ui.warn(`Skipped deleting deck ${deck.name}`);
+            continue;
+          }
+        }
+
+        const result = deleteDeckCommand(selector);
+        if (format === "json") {
+          printJson(result);
+          continue;
+        }
+        ui.success(
+          `Deleted deck ${ui.theme.accent(result.name)} (layers and files unchanged)`,
+        );
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      if (err instanceof DeckResolveError) {
+        ui.danger(err.message, { hints: err.hints });
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
   });
 
 deckCmd
@@ -4559,40 +4773,37 @@ projectCmd
   )
   .action(handleScanCommand);
 
-projectCmd
+const projectApplyCmd = projectCmd
   .command("apply")
   .argument(
     "[layers...]",
     "Layer name(s), layer export path, or URL (multiple layers are merged in order)",
   )
-  .option("--project <path>", "Project directory", ".")
   .option(
-    "--harness <slugs>",
-    "Comma-separated harness slugs (defaults to project or global harness preference)",
-  )
-  .option("--dry-run", "Show what would be written")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .option(
-    "--ignore-plugin-versions",
-    "Skip validating layer Claude plugin pins against installed versions",
-  )
-  .option(
-    "--strict-plugin-versions",
-    "Fail apply (exit 2) if any pinned plugin violates its version constraint",
-  )
-  .option(
-    "--sync-plugins",
-    "Refresh all pinned plugin resources from install trees before apply (unresolved plugins are synced by default)",
-  )
-  .option(
-    "--on-conflict <policy>",
-    "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
+    "--deck <name>",
+    "Deprecated — use deck apply instead",
   )
   .description(
-    "Apply one or more layers (or a layer export URL) to a project, serializing for each harness",
-  )
-  .action(handleApplyCommand);
+    "Deprecated alias for layer apply",
+  );
+
+addApplyCommandOptions(projectApplyCmd).action(async (
+  layers: string[],
+  opts: ApplyCommandOpts & { deck?: string },
+) => {
+  if (opts.deck) {
+    process.exitCode = 1;
+    ui.danger(
+      `Use \`${formatCommand("deck apply <deck>")}\` instead of --deck on project apply.`,
+      { hints: [formatCommand("deck apply <deck>")] },
+    );
+    return;
+  }
+  await handleApplyCommand(layers as [string, ...string[]] | [], {
+    ...opts,
+    deprecateProjectApply: true,
+  });
+});
 
 projectCmd
   .command("drift")

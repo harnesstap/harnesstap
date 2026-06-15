@@ -17,7 +17,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("NEXT STEPS");
       expect(result.stdout).not.toContain("already exists");
       expect(result.stdout).toContain("layer search foundation");
-      expect(result.stdout).toContain("project apply engineering-foundation");
+      expect(result.stdout).toContain("layer apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
       expect(layerModel.listLayers()).toEqual([]);
