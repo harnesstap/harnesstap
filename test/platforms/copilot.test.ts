@@ -109,8 +109,12 @@ describe("CopilotSerializer", () => {
 
     const paths = files.map((f) => f.path);
     expect(paths).toContain(".github/copilot-instructions.md");
-    expect(paths).toContain(".agents/skills/research/SKILL.md");
-    expect(paths).toContain(".agents/skills/research/SKILL.md");
+    expect(paths.some((p) => p.includes(".agents/skills"))).toBe(false);
+
+    const instructions = files.find((f) => f.path === ".github/copilot-instructions.md");
+    expect(instructions?.content).toContain("# GitHub instructions");
+    expect(instructions?.content).toContain("## research");
+    expect(instructions?.content).toContain("# Research");
   });
 
   it("serializes copilot-cli resources", async () => {
@@ -281,7 +285,7 @@ describe("CopilotSerializer", () => {
     expect(files.find((f) => f.path === ".copilot/mcp-config.json")).toBeUndefined();
   });
 
-  it("does not emit instructions when no instructions present", async () => {
+  it("emits skills-only github-copilot resources into copilot-instructions.md", async () => {
     const serializer = new CopilotSerializer("github-copilot");
     const files = await serializer.serialize(
       [
@@ -295,7 +299,11 @@ describe("CopilotSerializer", () => {
       ".",
     );
 
-    expect(files.find((f) => f.path === ".github/copilot-instructions.md")).toBeUndefined();
+    const instructions = files.find((f) => f.path === ".github/copilot-instructions.md");
+    expect(instructions).toBeDefined();
+    expect(instructions?.content).toContain("## demo");
+    expect(instructions?.content).toContain("# Demo");
+    expect(files.some((f) => f.path.includes(".agents/skills"))).toBe(false);
   });
 
   it("handles empty resources", async () => {

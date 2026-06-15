@@ -230,11 +230,20 @@ export class GeminiCliSerializer extends BaseSerializer {
     const instructions = resources.filter((r) => r.type === "instruction");
     const skills = resources.filter((r) => r.type === "skill");
     const commands = resources.filter((r) => r.type === "command");
+    const instructionOnlySkills =
+      this.platform.skillEmission === "instruction-only";
+    const instructionOnlySink = Boolean(instructionsPath);
 
     if (instructions.length > 0 && instructionsPath) {
+      const parts: string[] = instructions.map((r) => r.content);
+      if (instructionOnlySkills) {
+        for (const r of skills) {
+          parts.push(`## ${r.name}\n\n${r.content}`);
+        }
+      }
       files.push({
         path: instructionsPath,
-        content: instructions.map((r) => r.content).join("\n\n"),
+        content: parts.join("\n\n"),
       });
 
       if (target === "project") {
@@ -253,9 +262,26 @@ export class GeminiCliSerializer extends BaseSerializer {
           content: `${JSON.stringify(manifest, null, 2)}\n`,
         });
       }
+    } else if (instructionOnlySkills && skills.length > 0 && instructionsPath) {
+      const parts = skills.map((r) => `## ${r.name}\n\n${r.content}`);
+      files.push({
+        path: instructionsPath,
+        content: parts.join("\n\n"),
+      });
+
+      if (target === "project") {
+        files.push({
+          path: "gemini-extension.json",
+          content: `${JSON.stringify({ contextFileName: instructionsPath }, null, 2)}\n`,
+        });
+      }
     }
 
-    if (skillsPath) {
+    if (
+      skillsPath &&
+      (!instructionOnlySkills || !instructionOnlySink) &&
+      skills.length > 0
+    ) {
       for (const r of skills) {
         const fm: Record<string, unknown> = {
           name: r.name,

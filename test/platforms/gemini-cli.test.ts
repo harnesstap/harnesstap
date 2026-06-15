@@ -99,10 +99,15 @@ describe("GeminiCliSerializer", () => {
       expect.arrayContaining([
         "AGENTS.md",
         "gemini-extension.json",
-        ".agents/skills/ponytail/SKILL.md",
         "commands/ponytail.toml",
       ]),
     );
+    expect(files.some((file) => file.path.includes(".agents/skills"))).toBe(false);
+
+    const agents = files.find((file) => file.path === "AGENTS.md");
+    expect(agents?.content).toContain("# Ponytail");
+    expect(agents?.content).toContain("## ponytail");
+    expect(agents?.content).toContain("# Ponytail skill");
 
     const manifest = files.find((file) => file.path === "gemini-extension.json");
     expect(manifest).toBeDefined();

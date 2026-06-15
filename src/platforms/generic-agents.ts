@@ -420,8 +420,35 @@ export class GenericAgentsSerializer extends BaseSerializer {
     }
 
     // Skills
-    if (skillsPath) {
-      for (const r of resources.filter((r) => r.type === "skill")) {
+    const skills = resources.filter((r) => r.type === "skill");
+    const instructionOnlySkills =
+      this.platform.skillEmission === "instruction-only";
+    const instructionOnlySink = Boolean(rulesPath || instructionPath);
+
+    if (instructionOnlySkills && instructionOnlySink && rulesPath && skills.length > 0) {
+      if (rulesPath.endsWith("/")) {
+        for (const r of skills) {
+          const fm: Record<string, unknown> = {
+            description: r.description || `Skill ${r.name}`,
+          };
+          files.push({
+            path: `${rulesPath}${r.name}.md`,
+            content: this.emitFrontmatter(fm, r.content),
+          });
+        }
+      } else {
+        const parts: string[] = [];
+        for (const r of skills) {
+          parts.push(`## ${r.name}\n\n${r.content}`);
+        }
+        files.push({ path: rulesPath, content: parts.join("\n\n") });
+      }
+    } else if (
+      skillsPath &&
+      (!instructionOnlySkills || !instructionOnlySink) &&
+      skills.length > 0
+    ) {
+      for (const r of skills) {
         const fm: Record<string, unknown> = {
           name: r.name,
           description: r.description,

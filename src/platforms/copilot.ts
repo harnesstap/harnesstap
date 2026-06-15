@@ -176,18 +176,38 @@ export class CopilotSerializer extends BaseSerializer {
       target,
     );
 
-    // Instructions
+    // Instructions (and instruction-only skills merged for copilot)
     const instructions = resources.filter((r) => r.type === "instruction");
+    const skills = resources.filter((r) => r.type === "skill");
+    const instructionOnlySkills =
+      this.platform.skillEmission === "instruction-only";
+    const instructionOnlySink = Boolean(instructionsPath);
+
     if (instructions.length > 0 && instructionsPath) {
+      const parts: string[] = instructions.map((r) => r.content);
+      if (instructionOnlySkills) {
+        for (const r of skills) {
+          parts.push(`## ${r.name}\n\n${r.content}`);
+        }
+      }
       files.push({
         path: instructionsPath,
-        content: instructions.map((r) => r.content).join("\n\n"),
+        content: parts.join("\n\n"),
+      });
+    } else if (instructionOnlySkills && skills.length > 0 && instructionsPath) {
+      const parts = skills.map((r) => `## ${r.name}\n\n${r.content}`);
+      files.push({
+        path: instructionsPath,
+        content: parts.join("\n\n"),
       });
     }
 
-    // Skills
-    const skills = resources.filter((r) => r.type === "skill");
-    if (skillsPath) {
+    // Skills (native emission when not instruction-only, or no instruction sink)
+    if (
+      skillsPath &&
+      (!instructionOnlySkills || !instructionOnlySink) &&
+      skills.length > 0
+    ) {
       for (const r of skills) {
         const fm: Record<string, unknown> = {
           name: r.name,

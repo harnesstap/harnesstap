@@ -9,6 +9,7 @@ function def(
   features: PlatformFeature[],
   projectPaths: PlatformDefinition["projectPaths"],
   globalPaths: PlatformDefinition["globalPaths"],
+  skillEmission?: PlatformDefinition["skillEmission"],
 ): PlatformDefinition {
   return {
     id,
@@ -16,6 +17,7 @@ function def(
     supports: new Set(features),
     projectPaths,
     globalPaths,
+    ...(skillEmission ? { skillEmission } : {}),
   };
 }
 
@@ -120,7 +122,7 @@ const PLATFORMS: PlatformDefinition[] = [
   }, {
     skills: "~/.copilot/skills/",
     settings: "~/.copilot/mcp-config.json",
-  }),
+  }, "instruction-only"),
 
   def("copilot-cli", "Copilot CLI", ["instructions", "skills", "mcp", "agents"], {
     instructions: "AGENTS.md",
@@ -139,7 +141,7 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "gemini-extension.json",
   }, {
     skills: "~/.gemini/skills/",
-  }),
+  }, "instruction-only"),
 
   def("windsurf", "Windsurf", ["instructions", "skills", "rules", "mcp"], {
     instructions: ".windsurfrules",
@@ -148,7 +150,7 @@ const PLATFORMS: PlatformDefinition[] = [
   }, {
     skills: "~/.codeium/windsurf/skills/",
     settings: "~/.codeium/windsurf/mcp_config.json",
-  }),
+  }, "instruction-only"),
 
   def("cline", "Cline", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
@@ -158,7 +160,7 @@ const PLATFORMS: PlatformDefinition[] = [
   }, {
     skills: "~/.agents/skills/",
     settings: "~/.cline/data/settings/cline_mcp_settings.json",
-  }),
+  }, "instruction-only"),
 
   def("roo", "Roo Code", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
@@ -209,7 +211,7 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: ".agents/skills/",
   }, {
     skills: "~/.kiro/skills/",
-  }),
+  }, "instruction-only"),
 
   // Pi extensions install via `pi install git:...`, not layer apply.
   // HarnessDeck can scan `.agents/skills/` but cannot materialize pi-extension/index.js.

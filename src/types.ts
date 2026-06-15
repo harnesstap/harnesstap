@@ -444,12 +444,16 @@ export interface PlatformPaths {
   }>;
 }
 
+export type SkillEmission = "native" | "instruction-only";
+
 export interface PlatformDefinition {
   id: string;
   name: string;
   supports: Set<PlatformFeature>;
   projectPaths: PlatformPaths;
   globalPaths: PlatformPaths;
+  /** When "instruction-only", skills are emitted as rules/instructions instead of native skill dirs. */
+  skillEmission?: SkillEmission;
 }
 
 // ── Layer export format ─────────────────────────────────────────────────
