@@ -34,6 +34,7 @@ export interface EnvironmentCascadeInput {
 export interface ResolveEnvironmentCascadeForApplyInput {
   configuredLayerIds: string[];
   projectRoot: string;
+  deckId?: string;
 }
 
 const EMPTY_FRAGMENT: EnvironmentFragment = { vars: {}, secretRefs: {} };
@@ -271,7 +272,10 @@ export function buildEnvironmentCascadeInput(
   return {
     home: loadHomeEnvironmentFragment(),
     layerDefaults: loadLayerDefaultFragments(input.configuredLayerIds),
-    deckActive: loadDeckActiveEnvironmentFragment(input.projectRoot),
+    deckActive: loadDeckActiveEnvironmentFragment(
+      input.projectRoot,
+      input.deckId,
+    ),
   };
 }
 
