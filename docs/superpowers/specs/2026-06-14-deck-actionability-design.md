@@ -74,7 +74,7 @@ The product chain is **resource → layer → deck → apply**, but apply only a
 ### Phase 3 — Transport polish (defer)
 
 - `project apply <bundle.harnessdeck.toml>` for `urn:harnessdeck:bundle:v1`.
-- Scenario 29 VHS: import → show → apply → materialize → doctor.
+- VHS tapes for scenarios 29–30 (walkthrough text shipped).
 - Optional `deck sync <path>` as alias for `deck import` when repo already linked.
 
 ## Design details
