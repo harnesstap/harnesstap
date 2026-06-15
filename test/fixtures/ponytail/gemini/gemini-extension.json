@@ -1,0 +1,6 @@
+{
+  "name": "ponytail",
+  "version": "4.6.0",
+  "description": "Lazy senior dev mode for Gemini CLI.",
+  "contextFileName": "AGENTS.md"
+}

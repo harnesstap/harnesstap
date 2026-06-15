@@ -132,6 +132,15 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.copilot/mcp-config.json",
   }),
 
+  def("gemini-cli", "Gemini CLI", ["instructions", "skills", "commands"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+    commands: "commands/",
+    settings: "gemini-extension.json",
+  }, {
+    skills: "~/.gemini/skills/",
+  }),
+
   def("windsurf", "Windsurf", ["instructions", "skills", "rules", "mcp"], {
     instructions: ".windsurfrules",
     rules: ".windsurf/rules/",
@@ -212,7 +221,6 @@ const PLATFORMS: PlatformDefinition[] = [
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],
-    ["gemini-cli", "Gemini CLI", ".agents/skills/", "~/.gemini/skills/"],
     ["kilo", "Kilo Code", ".kilocode/skills/", "~/.kilocode/skills/"],
     ["augment", "Augment", ".augment/skills/", "~/.augment/skills/"],
     ["firebender", "Firebender", ".agents/skills/", "~/.firebender/skills/"],
