@@ -219,20 +219,32 @@ describe("VHS scenario manifest", () => {
     expect(spec).not.toContain("harnessdeck layer validate");
   });
 
-  it("new GIF artifact exists on disk", () => {
-    const newGif = resolve(repoRoot, "docs/scenarios/vhs/output/01-existing-repo-adoption.gif");
-    expect(existsSync(newGif), "01-existing-repo-adoption.gif must be generated").toBe(true);
+  it("curated GIF artifacts exist on disk", () => {
+    const definitions = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    ) as VhsScenarioDefinition[];
+
+    for (const definition of definitions) {
+      const gifPath = resolve(repoRoot, definition.outputPath);
+      expect(existsSync(gifPath), `${definition.outputPath} must be generated`).toBe(
+        true,
+      );
+    }
   });
 
   it("obsolete per-scenario GIFs are removed from disk", () => {
+    const definitions = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    ) as VhsScenarioDefinition[];
+    const curatedOutputs = new Set(definitions.map((definition) => definition.outputPath));
+
     const obsoleteGifs = [
       "docs/scenarios/vhs/output/01-bootstrap-machine.gif",
       "docs/scenarios/vhs/output/04-scan-import-repo.gif",
-      "docs/scenarios/vhs/output/07-preview-apply-layer.gif",
       "docs/scenarios/vhs/output/11-builtin-layer.gif",
       "docs/scenarios/vhs/output/21-detect-drift.gif",
       "docs/scenarios/vhs/output/27-project-sync.gif",
-    ];
+    ].filter((gifPath) => !curatedOutputs.has(gifPath));
 
     for (const gifPath of obsoleteGifs) {
       expect(existsSync(resolve(repoRoot, gifPath)), `${gifPath} should have been deleted`).toBe(false);
