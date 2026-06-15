@@ -26,7 +26,7 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile, exportLayer, inspectBundleFile } from "./services/exporter.js";
+import { exportToFile, importFromFile, exportLayer, inspectLayerExportFile } from "./services/exporter.js";
 import {
   listResources,
   deleteResource,
@@ -915,7 +915,7 @@ async function resolveApplyLayers(
     && resolvedSources[0]?.kind === "bundle"
   ) {
     const bundlePath = resolvedSources[0].path;
-    const summary = inspectBundleFile(bundlePath);
+    const summary = inspectLayerExportFile(bundlePath);
     const primarySummary = summary.layers[summary.layers.length - 1];
     if (primarySummary) {
       const selector = primarySummary.version

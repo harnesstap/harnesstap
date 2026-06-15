@@ -271,8 +271,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer combine` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer uncombine` | Removes a typed attachment. |
 | `layer delete` | Deletes a layer by selector. |
-| `layer export` | Writes a portable JSONC bundle (`urn:harnessdeck:bundle:v1`). |
-| `layer import` | Imports a bundle v1 file into the local database. |
+| `layer export` | Writes a portable JSONC layer export (`urn:harnessdeck:layer:v1`). |
+| `layer import` | Imports a layer v1 file into the local database. |
 | `layer search` | Searches remote catalogs through the configured cloud profile and connected org scopes. |
 | `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
 | `layer publish` | Publishes a local layer to a Cloud org **catalog** (requires organization, catalog name, and publish scope). |
@@ -623,9 +623,9 @@ Orphans are removed only with `--prune`.
 
 ## Transport formats
 
-### Bundle v1
+### Layer v1
 
-Bundle export/import uses JSONC with schema `urn:harnessdeck:bundle:v1` and bundle version `1`. Each bundle contains one **layer** payload (the top-level JSON key remains `layer` for transport compatibility), a flat `resources[]` list (including `plugin` and `layer` composition resources), optional `plugins[]` / `embedded_plugins[]`, optional `dependencies[]`, and optional top-level `claude` object. Missing optional arrays import as empty.
+Layer export/import uses JSONC with schema `urn:harnessdeck:layer:v1` and version `1`. Each export contains one **layer** payload (the top-level JSON key remains `layer` for transport compatibility), a flat `resources[]` list (including `plugin` and `layer` composition resources), optional `plugins[]` / `embedded_plugins[]`, optional `dependencies[]`, and optional top-level `claude` object. Missing optional arrays import as empty.
 
 Internal database IDs, timestamps, `org_slug`, `catalog_slug`, and `source` fields are not exported from local export; publish adds org/catalog on upload. Import creates a local `layers` row and associated `layer_resources`.
 
@@ -725,5 +725,5 @@ bun run build
 ## Known gaps and non-goals
 
 - Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
-- `layer export` / `layer import` still operate on one layer bundle at a time; use `deck export --with-layer-bundles` and `deck import` for portable deck-repo round-trip.
+- `layer export` / `layer import` still operate on one layer export at a time; use `deck export --with-layer-bundles` and `deck import` for portable deck-repo round-trip.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.

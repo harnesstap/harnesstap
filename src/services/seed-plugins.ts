@@ -2,7 +2,7 @@ import { readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getPlugin } from "../models/plugin-component.js";
-import { importFromFile, inspectBundleFile } from "./exporter.js";
+import { importFromFile, inspectLayerExportFile } from "./exporter.js";
 
 function normalizePluginVersion(version: string | undefined): string {
   return typeof version === "string" && version.length > 0 ? version : "";
@@ -57,7 +57,7 @@ export function seedBuiltInPlugins(): number {
     if (!file.endsWith(".json") && !file.endsWith(".jsonc")) continue;
 
     const filePath = join(pluginsDir, file);
-    const summary = inspectBundleFile(filePath);
+    const summary = inspectLayerExportFile(filePath);
     const missingPluginKeys = new Set(
       summary.layers
         .filter((layer) => !hasPluginInstalled(layer.name, layer.version))

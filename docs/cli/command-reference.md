@@ -109,7 +109,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer uncombine [layer] [selector] --type <type>`
 - `layer delete [name]`
 - `layer export <layer>`
-- `layer import <file>` — import a local bundle file (`urn:harnessdeck:bundle:v1`)
+- `layer import <file>` — import a local bundle file (`urn:harnessdeck:layer:v1`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
 - `layer pull [selector]` — download a remote layer bundle and import it
 - `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL

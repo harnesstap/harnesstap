@@ -436,72 +436,72 @@ export interface PlatformDefinition {
   globalPaths: PlatformPaths;
 }
 
-// ── Export/import bundle ────────────────────────────────────────────────
+// ── Layer export format ─────────────────────────────────────────────────
 
-export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
-export const BUNDLE_VERSION = 1 as const;
+export const LAYER_SCHEMA = "urn:harnessdeck:layer:v1" as const;
+export const LAYER_SCHEMA_VERSION = 1 as const;
 
-export type ExportBundleLayer = Omit<
+export type LayerExportLayer = Omit<
   Layer,
   "id" | "created_at" | "updated_at" | "org_slug" | "catalog_slug" | "default_environment_id"
 >;
 
-export type ExportBundleResource = Omit<
+export type LayerExportResource = Omit<
   Resource,
   "id" | "created_at" | "updated_at" | "source"
 >;
 
-export type ExportBundleDependency = Omit<LayerDependency, "layer_id">;
+export type LayerExportDependency = Omit<LayerDependency, "layer_id">;
 
-export interface ExportBundleLayerEntry extends ExportBundleLayer {
+export interface LayerExportEntry extends LayerExportLayer {
   name: string;
   version: string;
   description: string;
   tags: string[];
-  resources: ExportBundleResource[];
+  resources: LayerExportResource[];
   /** Claude Code marketplace and plugin configuration for this layer. */
   claude?: ClaudeLayerConfig;
-  /** Layer plugin pins (marketplace refs, not inlined in the bundle file). */
-  plugins: ExportBundleLayerPluginPin[];
-  /** Embedded plugin refs used by this layer; payload lives at bundle root. */
+  /** Layer plugin pins (marketplace refs, not inlined in the export file). */
+  plugins: LayerExportPluginPin[];
+  /** Embedded plugin refs used by this layer; payload lives at export root. */
   embedded_plugin_refs?: string[];
   /** Layer composition dependencies (name + version constraint). */
-  dependencies?: ExportBundleDependency[];
+  dependencies?: LayerExportDependency[];
 }
 
-export interface LegacyExportBundle {
-  $schema: typeof BUNDLE_SCHEMA;
-  version: typeof BUNDLE_VERSION;
-  layer: ExportBundleLayer;
-  resources: ExportBundleResource[];
+export interface LegacyLayerExport {
+  $schema: typeof LAYER_SCHEMA;
+  version: typeof LAYER_SCHEMA_VERSION;
+  layer: LayerExportLayer;
+  resources: LayerExportResource[];
   /** Claude Code marketplace and plugin configuration for this layer. */
   claude?: ClaudeLayerConfig;
-  /** Layer plugin pins (marketplace refs, not inlined in the bundle file). */
-  plugins: ExportBundleLayerPluginPin[];
+  /** Layer plugin pins (marketplace refs, not inlined in the export file). */
+  plugins: LayerExportPluginPin[];
   /** Layer composition dependencies (name + version constraint). */
-  dependencies?: ExportBundleDependency[];
-  /** Plugin trees inlined in the bundle file. */
-  embedded_plugins: ExportBundleEmbeddedPlugin[];
+  dependencies?: LayerExportDependency[];
+  /** Plugin trees inlined in the export file. */
+  embedded_plugins: LayerExportEmbeddedPlugin[];
 }
 
-export interface MultiLayerExportBundle {
-  $schema: typeof BUNDLE_SCHEMA;
-  version: typeof BUNDLE_VERSION;
-  layers: ExportBundleLayerEntry[];
-  /** Plugin trees inlined in the bundle file and shared by bundle layers. */
-  embedded_plugins: ExportBundleEmbeddedPlugin[];
+export interface MultiLayerExport {
+  $schema: typeof LAYER_SCHEMA;
+  version: typeof LAYER_SCHEMA_VERSION;
+  layers: LayerExportEntry[];
+  /** Plugin trees inlined in the export file and shared by exported layers. */
+  embedded_plugins: LayerExportEmbeddedPlugin[];
 }
 
-export type ExportBundle = LegacyExportBundle | MultiLayerExportBundle;
+export type LayerExport = LegacyLayerExport | MultiLayerExport;
 
-/** Plugin pin carried in bundles (non-embedded). */
-export interface ExportBundleLayerPluginPin {
+/** Plugin pin carried in layer exports (non-embedded). */
+export interface LayerExportPluginPin {
   ref: string;
   version_constraint: string;
 }
 
-/** Plugin tree inlined in bundles. */
-export interface ExportBundleEmbeddedPlugin {
+/** Plugin tree inlined in layer exports. */
+export interface LayerExportEmbeddedPlugin {
   ref: string;
   version_constraint: string;
   /** Logical directory key for imports that are not `./...` project-relative refs. */

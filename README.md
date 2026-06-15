@@ -62,7 +62,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 | **Portable decks** | Ship git repos that work as Claude marketplaces and embed `.harnessdeck/deck.json` |
 | **Layer tooling** | Create layers from scanned projects, diff layers, run `layer doctor` before apply |
 | **Dependencies & pins** | Record layer dependencies and Claude plugin version pins in portable bundles |
-| **Bundles** | Export or import layers as JSON bundles (`urn:harnessdeck:bundle:v1`) |
+| **Layer exports** | Export or import layers as JSON (`urn:harnessdeck:layer:v1`) |
 | **Snapshots & drift** | Snapshot tracked projects before apply, detect drift later, revert when needed |
 | **Cloud catalog** | Search, add, and publish shared layers through HarnessDeck Cloud |
 | **Machine transfer** | Export local layer library, harness preferences, and config for another machine |
@@ -223,7 +223,7 @@ flowchart TB
     Envs[Environments — the how]
     Layers[Configured layers]
     Decks[Decks and deck.json]
-    Bundles[Bundle v1 JSON]
+    Bundles[Layer v1 JSON]
   end
 
   subgraph Targets[Materialized harnesses]
@@ -334,7 +334,7 @@ Layer dependencies are stored with semver constraints and round-trip through bun
 
 ## Import and export
 
-**Bundle v1** — plugin bundles move between machines as JSONC files (`hd layer export` / `import`). Export strips local-only database fields and keeps the portable plugin definition plus its resources.
+**Layer v1** — layers move between machines as JSONC files (`hd layer export` / `import`). Export strips local-only database fields and keeps the portable layer definition plus its resources.
 
 **Deck v1** — whole setups use `.harnessdeck/deck.json` (`urn:harnessdeck:deck:v1`) inside a git repo; see [SPEC.md](SPEC.md#transport-formats) for the schema.
 
@@ -342,7 +342,7 @@ Layer bundles may include Claude Code marketplace configuration under a top-leve
 
 ```json
 {
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layer": {
     "name": "team-stack",
@@ -392,7 +392,7 @@ On `project apply`, harnessdeck compares layer plugin pins to library `resolved_
 
 Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer combine` is the **plugin semver pin or range**, not the global version flag.
 
-Layer export bundles use schema `urn:harnessdeck:bundle:v1` and include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
+Layer export bundles use schema `urn:harnessdeck:layer:v1` and include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
 Refresh policy for marketplace metadata is configured in `~/.harnessdeck/config.jsonc`:
 

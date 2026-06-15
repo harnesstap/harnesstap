@@ -16,7 +16,7 @@ import {
 import type { DeckJsonLayer } from "../types.js";
 
 export interface ExportDeckRepoOptions {
-  /** Write bundle v1 files under `.harnessdeck/layers/` for portable round-trip. */
+  /** Write layer v1 files under `.harnessdeck/layers/` for portable round-trip. */
   withLayerBundles?: boolean;
 }
 
@@ -74,7 +74,7 @@ export function exportDeckRepo(
         }) ?? resolveLayerSelector(`${layerEntry.name}@${layerEntry.version}`);
       if (!localLayer) {
         throw new Error(
-          `Cannot export layer bundle for missing local layer: ${layerEntry.name}@${layerEntry.version}`,
+          `Cannot export layer export for missing local layer: ${layerEntry.name}@${layerEntry.version}`,
         );
       }
       const bundlePath = join(layersDir, layerBundleFileName(layerEntry));

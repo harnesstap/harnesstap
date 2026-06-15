@@ -121,7 +121,7 @@ describe("seed plugins service", () => {
         writeTextFile(
           join(builtinDir, "multi.jsonc"),
           `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layers": [
     {
@@ -184,7 +184,7 @@ describe("seed plugins service", () => {
         writeTextFile(
           join(builtinDir, "partial.jsonc"),
           `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layers": [
     {

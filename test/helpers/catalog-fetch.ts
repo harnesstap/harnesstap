@@ -1,5 +1,5 @@
 const DEFAULT_BUNDLE = JSON.stringify({
-  $schema: "urn:harnessdeck:bundle:v1",
+  $schema: "urn:harnessdeck:layer:v1",
   version: 1,
   layer: { name: "remote-team", description: "from cloud", tags: [] },
   resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
