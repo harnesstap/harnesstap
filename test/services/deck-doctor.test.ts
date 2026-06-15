@@ -3,12 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { materializeDeckRepo } from "../../src/services/deck-materializer.ts";
 import { runDeckDoctor } from "../../src/services/deck-doctor.ts";
+import { parseDeckToml } from "../../src/services/transport/deck.ts";
 import type { DeckJson, Plugin } from "../../src/types.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const minimalDeckFixturePath = join(
   import.meta.dir,
-  "../fixtures/decks/minimal-deck.json",
+  "../fixtures/decks/minimal-deck.toml",
 );
 
 const pagerdutyPlugin = {
@@ -25,7 +26,7 @@ const pagerdutyPlugin = {
 };
 
 function loadMinimalDeckJson(): DeckJson {
-  return JSON.parse(readFileSync(minimalDeckFixturePath, "utf-8")) as DeckJson;
+  return parseDeckToml(readFileSync(minimalDeckFixturePath, "utf-8"));
 }
 
 async function writeDeckRepoWithDriftedMarketplace(repoRoot: string): Promise<void> {
@@ -51,7 +52,7 @@ async function writeDeckRepoWithDriftedMarketplace(repoRoot: string): Promise<vo
 }
 
 describe("deck doctor", () => {
-  it("reports error when marketplace.json drifts from deck.json", async () => {
+  it("reports error when marketplace.json drifts from deck.toml", async () => {
     const fixturesDir = createTempDir("deck-doctor-drift");
 
     try {
@@ -64,7 +65,7 @@ describe("deck doctor", () => {
     }
   });
 
-  it("passes when generated manifests match deck.json", async () => {
+  it("passes when generated manifests match deck.toml", async () => {
     const fixturesDir = createTempDir("deck-doctor-clean");
 
     try {

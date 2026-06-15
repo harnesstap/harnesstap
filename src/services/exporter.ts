@@ -1,11 +1,5 @@
-import {
-  existsSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
-import { basename, extname, resolve } from "node:path";
-import { parse as parseJsonc, type ParseError, printParseErrorCode } from "jsonc-parser";
+import { existsSync, statSync, writeFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 import {
   getPlugin,
   getPluginResources,
@@ -79,6 +73,15 @@ import {
   PLUGIN_RESOURCE_TYPES,
 } from "./resource-classification.js";
 import { collectEmbeddedPluginFiles, writeEmbeddedPluginsOnImport } from "./plugin-layer-export.js";
+import {
+  assertTransportExtension,
+  formatLayerExportToml,
+  parseDeckToml,
+  parseLayerExportToml,
+  readTransportFile,
+  writeTransportToml,
+  deckJsonToTomlDocument,
+} from "./transport/index.js";
 
 export interface ExportLayerOptions {
   /** When true, embed marketplace-installed plugins too if their install paths resolve from `HOME`. */
@@ -347,50 +350,19 @@ function normalizeLayerExport(bundle: LayerExport): NormalizedLayerExport {
 }
 
 function parseLayerExport(raw: string): ParsedLayerExportSummary {
-  const parseErrors: ParseError[] = [];
-  const parsed = parseJsonc(raw, parseErrors, {
-    allowTrailingComma: true,
-    disallowComments: false,
-  }) as Record<string, unknown>;
-
-  if (parseErrors.length > 0) {
-    const [firstError] = parseErrors;
-    const detail = firstError
-      ? `${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`
-      : "invalid JSONC";
-    throw new Error(`Invalid layer export JSONC: ${detail}`);
-  }
-
-  if (parsed.$schema !== LAYER_SCHEMA) {
-    throw new Error(`Unsupported layer schema: ${parsed.$schema}`);
-  }
-
-  if (parsed.version !== LAYER_SCHEMA_VERSION) {
-    throw new Error(`Unsupported layer version: ${parsed.version}`);
-  }
-
-  return normalizeLayerExport(parsed as unknown as LayerExport);
+  const multi = parseLayerExportToml(raw);
+  return {
+    layers: multi.layers.map((layer) => ({
+      ...layer,
+      plugins: [...(layer.plugins ?? [])],
+    })),
+    embedded_plugins: multi.embedded_plugins ?? [],
+    multiLayer: multi.layers.length > 1,
+  };
 }
 
 export function inspectLayerExportFile(filePath: string): ParsedLayerExportSummary {
-  return parseLayerExport(readFileSync(filePath, "utf-8"));
-}
-
-function formatLayerExportAsJsonc(bundle: LayerExport): string {
-  const layerNames = "layers" in bundle
-    ? bundle.layers.map((layer) => layer.name)
-    : [bundle.layer.name];
-  const sourceMachine = process.env.HOSTNAME ?? process.env.COMPUTERNAME ?? "unknown";
-
-  return [
-    "/*",
-    " * HarnessDeck layer export",
-    ` * Layers: ${layerNames.join(", ")}`,
-    ` * Generated at: ${new Date().toISOString()}`,
-    ` * Source machine: ${sourceMachine}`,
-    " */",
-    JSON.stringify(bundle, null, 2),
-  ].join("\n");
+  return parseLayerExport(readTransportFile(filePath));
 }
 
 /**
@@ -631,34 +603,16 @@ export function exportDeckToDeckJson(
   };
 }
 
-function parseDeckJsonFile(raw: string): DeckJson {
-  const parseErrors: ParseError[] = [];
-  const parsed = parseJsonc(raw, parseErrors, {
-    allowTrailingComma: true,
-    disallowComments: false,
-  }) as Record<string, unknown>;
-
-  if (parseErrors.length > 0) {
-    const [firstError] = parseErrors;
-    const detail = firstError
-      ? `${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`
-      : "invalid JSONC";
-    throw new Error(`Invalid deck JSONC: ${detail}`);
-  }
-
-  if (parsed.$schema !== DECK_SCHEMA) {
-    throw new Error(`Unsupported deck schema: ${parsed.$schema}`);
-  }
-  if (parsed.version !== DECK_JSON_VERSION) {
-    throw new Error(`Unsupported deck version: ${parsed.version}`);
-  }
-
-  return parsed as unknown as DeckJson;
+function parseDeckTomlFile(raw: string): DeckJson {
+  return parseDeckToml(raw);
 }
 
-export function readDeckJson(filePath: string): DeckJson {
-  return parseDeckJsonFile(readFileSync(filePath, "utf-8"));
+export function readDeckToml(filePath: string): DeckJson {
+  return parseDeckTomlFile(readTransportFile(filePath));
 }
+
+/** @deprecated Use readDeckToml */
+export const readDeckJson = readDeckToml;
 
 function resolvePluginRef(ref: DeckJsonLayerPluginRef): Plugin {
   const plugin =
@@ -735,7 +689,7 @@ function importDeckEnvironment(
         description: "",
         content: "",
         metadata: { key, value },
-        source: opts?.resourceSource ?? "import:deck.json",
+        source: opts?.resourceSource ?? "import:deck.toml",
         origin_ref: `environment:${created.id}`,
       }),
       { policy: "overwrite" },
@@ -759,13 +713,13 @@ function importDeckEnvironment(
 }
 
 /**
- * Import deck.json into the database (plugins must already exist).
+ * Import deck.toml into the database (plugins must already exist).
  */
-export function importDeckJson(
+export function importDeckToml(
   filePath: string,
   opts?: ImportDeckJsonOptions,
 ): ImportDeckJsonResult {
-  const deckJson = readDeckJson(filePath);
+  const deckJson = readDeckToml(filePath);
   const environments: Environment[] = [];
   const environmentIdsByName = new Map<string, string>();
 
@@ -799,7 +753,7 @@ export function importDeckJson(
 
     const refreshed = getLayerById(resolvedLayer.id);
     if (!refreshed) {
-      throw new Error(`Layer ${resolvedLayer.id} not found after deck.json import`);
+      throw new Error(`Layer ${resolvedLayer.id} not found after deck.toml import`);
     }
     configuredLayers.push(refreshed);
   }
@@ -822,7 +776,7 @@ export function importDeckJson(
 
   const finalized = getDeck(deck.id);
   if (!finalized) {
-    throw new Error(`Deck ${deck.id} not found after deck.json import`);
+    throw new Error(`Deck ${deck.id} not found after deck.toml import`);
   }
 
   return {
@@ -905,9 +859,16 @@ export function importLayerExportAsDeck(
   };
 }
 
-export function writeDeckJson(filePath: string, deckJson: DeckJson): void {
-  writeFileSync(filePath, `${JSON.stringify(deckJson, null, 2)}\n`, "utf-8");
+/** @deprecated Use importDeckToml */
+export const importDeckJson = importDeckToml;
+
+export function writeDeckToml(filePath: string, deckJson: DeckJson): void {
+  assertTransportExtension(filePath);
+  writeTransportToml(filePath, deckJsonToTomlDocument(deckJson));
 }
+
+/** @deprecated Use writeDeckToml */
+export const writeDeckJson = writeDeckToml;
 
 /**
  * Export a layer and its resources as a portable JSON bundle.
@@ -917,7 +878,7 @@ export function exportLayer(
   exportOpts?: ExportLayerOptions,
 ): LayerExport {
   process.stderr.write(
-    "Warning: exportLayer writes layer v1 (urn:harnessdeck:layer:v1). Prefer deck.json export for new decks.\n",
+    "Warning: exportLayer writes layer v1 (urn:harnessdeck:layer:v1). Prefer deck.toml export for new decks.\n",
   );
   const selectors = Array.isArray(layerNameOrId) ? layerNameOrId : [layerNameOrId];
   const layers = selectors.map((selector) => {
@@ -990,11 +951,9 @@ export function exportToFile(
   filePath: string,
   exportOpts?: ExportLayerOptions,
 ): void {
+  assertTransportExtension(filePath);
   const bundle = exportLayer(layerNameOrId, exportOpts);
-  const content = extname(filePath).toLowerCase() === ".jsonc"
-    ? formatLayerExportAsJsonc(bundle)
-    : JSON.stringify(bundle, null, 2);
-  writeFileSync(filePath, content, "utf-8");
+  writeFileSync(filePath, formatLayerExportToml(bundle), "utf-8");
 }
 
 function importLayerFromBundleParsed(

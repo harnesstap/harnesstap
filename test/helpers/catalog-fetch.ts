@@ -1,8 +1,12 @@
-const DEFAULT_BUNDLE = JSON.stringify({
+import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+
+const DEFAULT_BUNDLE = formatLayerExportToml({
   $schema: "urn:harnessdeck:layer:v1",
   version: 1,
   layer: { name: "remote-team", description: "from cloud", tags: [] },
-  resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
+  resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {}, namespace: "", origin_kind: "manual", origin_ref: "", content_hash: "", content_blob_ref: "" }],
+  plugins: [],
+  embedded_plugins: [],
 });
 
 function normalizeLayer(layer: Record<string, unknown>) {

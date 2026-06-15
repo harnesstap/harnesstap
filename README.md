@@ -59,7 +59,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 | **Canonical library** | Store imported configuration as resources in local SQLite |
 | **Plugins & layers** | Group resources into reusable **plugins**; bind plugins and **environments** into **layers** |
 | **Multi-harness apply** | Materialize layers to one or more harnesses with environment cascade (home → layer default → deck active) |
-| **Portable decks** | Ship git repos that work as Claude marketplaces and embed `.harnessdeck/deck.json` |
+| **Portable decks** | Ship git repos that work as Claude marketplaces and embed `.harnessdeck/deck.toml` |
 | **Layer tooling** | Create layers from scanned projects, diff layers, run `layer doctor` before apply |
 | **Dependencies & pins** | Record layer dependencies and Claude plugin version pins in portable bundles |
 | **Layer exports** | Export or import layers as JSON (`urn:harnessdeck:layer:v1`) |
@@ -163,7 +163,7 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
 2. **Apply** a catalog layer by bare name (fetches from the public `harnessdeck-cloud` catalog when needed).
    ```bash
    hd layer search foundation
-   hd project apply engineering-foundation --project .
+   hd project apply engineering-foundation
    ```
 
 3. **Inspect** project state and next steps.
@@ -287,7 +287,7 @@ HarnessDeck separates **what** your agent loads (skills, MCP, hooks, rules) from
 **Hybrid repo:** a deck is a normal Claude marketplace repo *and* carries canonical state:
 
 ```
-my-deck/.harnessdeck/deck.json            # source of truth (urn:harnessdeck:deck:v1)
+my-deck/.harnessdeck/deck.toml            # source of truth (urn:harnessdeck:deck:v1)
 my-deck/.harnessdeck/environments/
 my-deck/.claude-plugin/marketplace.json   # generated; installable without HarnessDeck
 ```
@@ -311,7 +311,7 @@ Starter layers such as `engineering-foundation` and `frontend-engineer` live in 
 
 ```bash
 hd layer search foundation
-hd project apply engineering-foundation --project .
+hd project apply engineering-foundation
 ```
 
 To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
@@ -325,7 +325,7 @@ Compare, diagnose, or derive plugin bundles beyond the basic create/combine/appl
 ```bash
 hd layer combine team-stack layer:shared-baseline --version "^1.2.0"
 hd layer doctor team-stack
-hd layer diff team-stack ./team-stack.harnessdeck.json
+hd layer diff team-stack ./team-stack.harnessdeck.toml
 hd layer from-project inferred-stack --project .
 ```
 
@@ -335,42 +335,14 @@ Layer dependencies are stored with semver constraints and round-trip through bun
 
 ## Import and export
 
-**Layer v1** — layers move between machines as JSONC files (`hd layer export` / `import`). Export strips local-only database fields and keeps the portable layer definition plus its resources.
+**Layer v1** — layers move between machines as TOML files (`hd layer export` / `import`). Default path: `<name>.harnessdeck.toml`.
 
-**Deck v1** — whole setups use `.harnessdeck/deck.json` (`urn:harnessdeck:deck:v1`) inside a git repo; see [SPEC.md](SPEC.md#transport-formats) for the schema.
-
-Layer bundles may include Claude Code marketplace configuration under a top-level `claude` key. When you apply such a layer to a project with `claude-code`, harnessdeck merges `extraKnownMarketplaces` and `enabledPlugins` into `.claude/settings.json`:
-
-```json
-{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layer": {
-    "name": "team-stack",
-    "version": "1.0.0",
-    "description": "...",
-    "tags": []
-  },
-  "claude": {
-    "marketplaces": {
-      "team-plugins": {
-        "source": { "source": "github", "repo": "org/claude-plugins" },
-        "autoUpdate": true
-      }
-    },
-    "plugins": [
-      { "id": "formatter@team-plugins", "enabled": true, "version": "1.2.0" }
-    ]
-  },
-  "resources": [],
-  "plugins": [],
-  "embedded_plugins": []
-}
-```
+**Deck v1** — whole setups use `.harnessdeck/deck.toml` (`urn:harnessdeck:deck:v1`) with inlined environments; see [SPEC.md](SPEC.md#transport-formats).
 
 ```bash
-hd layer export my-setup --file ./my-setup.harnessdeck.jsonc
-hd layer import ./my-setup.harnessdeck.jsonc
+hd layer export my-setup --file ./my-setup.harnessdeck.toml
+hd layer import ./my-setup.harnessdeck.toml
+hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
 ```
 
 ---
@@ -385,7 +357,7 @@ hd layer combine my-setup plugin:formatter@my-marketplace --sync   # eager sync 
 hd resource sync plugin:formatter@my-marketplace
 hd resource show plugin:formatter@my-marketplace
 hd layer uncombine my-setup plugin:formatter@my-marketplace --type plugin
-hd layer export my-setup --file ./team.harnessdeck.jsonc --embed-plugins
+hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```
 

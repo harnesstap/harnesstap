@@ -17,7 +17,8 @@ import { listPlugins } from "../models/plugin-component.js";
 import { exportToFile, importFromFile } from "./exporter.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnessdeckSettings } from "../config/settings.js";
-import type { HarnessPreference } from "../types.js";
+import type { HarnessPreference, LayerExport } from "../types.js";
+import { formatLayerExportToml, parseLayerExportToml } from "./transport/layer.js";
 
 export const MIGRATE_MANIFEST_VERSION = 1 as const;
 
@@ -67,9 +68,9 @@ function createArchive(sourceDir: string, outputPath: string): void {
         ? JSON.parse(readFileSync(join(sourceDir, "config.json"), "utf-8"))
         : null,
       layers: readdirSync(join(sourceDir, "layers"))
-        .filter((f) => f.endsWith(".json"))
+        .filter((f) => f.endsWith(".toml"))
         .map((f) =>
-          JSON.parse(
+          parseLayerExportToml(
             readFileSync(join(sourceDir, "layers", f), "utf-8"),
           ),
         ),
@@ -95,7 +96,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
 
   const layers = listPlugins();
   for (const layer of layers) {
-    exportToFile(layer.name, join(layersDir, `${layer.name}.harnessdeck.json`), {
+    exportToFile(layer.name, join(layersDir, `${layer.name}.harnessdeck.toml`), {
       embedPlugins: opts.includePlugins ?? false,
     });
   }
@@ -153,9 +154,10 @@ export function importMigrationState(opts: MigrateImportOptions): {
       layersDir = join(workDir, "import-layers");
       mkdirSync(layersDir, { recursive: true });
       for (let i = 0; i < state.layers.length; i++) {
-        writeJson(
-          join(layersDir, `layer-${i}.harnessdeck.json`),
-          state.layers[i],
+        writeFileSync(
+          join(layersDir, `layer-${i}.harnessdeck.toml`),
+          formatLayerExportToml(state.layers[i] as LayerExport),
+          "utf-8",
         );
       }
       if (state.harness) {
@@ -180,7 +182,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
     let layersImported = 0;
     if (existsSync(layersDir)) {
       for (const file of readdirSync(layersDir)) {
-        if (!file.endsWith(".json")) continue;
+        if (!file.endsWith(".toml")) continue;
         importFromFile(join(layersDir, file));
         layersImported++;
       }

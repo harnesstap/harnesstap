@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
+import { parseDeckToml } from "../../src/services/transport/deck.ts";
 
 describe("CLI environment", () => {
   it("supports create/list/show/delete plus var and secret mutation commands", async () => {
@@ -372,9 +373,9 @@ describe("CLI environment", () => {
         }),
       );
 
-      const deckJson = JSON.parse(
-        readFileSync(join(context.projectDir, ".harnessdeck", "deck.json"), "utf-8"),
-      ) as { active_environment?: string };
+      const deckJson = parseDeckToml(
+        readFileSync(join(context.projectDir, ".harnessdeck", "deck.toml"), "utf-8"),
+      );
       expect(deckJson.active_environment).toBe("deck-env");
     } finally {
       await context.cleanup();
@@ -399,7 +400,7 @@ describe("CLI environment", () => {
         "PD_TOKEN",
       ]);
 
-      const filePath = join(context.projectDir, "portable-environment.jsonc");
+      const filePath = join(context.projectDir, "portable-environment.toml");
       const exported = await runCli([
         "environment",
         "export",

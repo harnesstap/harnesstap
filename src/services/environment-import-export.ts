@@ -1,4 +1,5 @@
-import { parse as parseJsonc, type ParseError, printParseErrorCode } from "jsonc-parser";
+import { readFileSync } from "node:fs";
+import { parse } from "smol-toml";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -8,6 +9,9 @@ import {
   upsertEnvironmentEnvVar,
 } from "../models/environment.js";
 import { resolveEnvironmentOrThrow } from "./environment-selectors.js";
+import { assertTransportExtension } from "./transport/validate.js";
+import { formatTransportToml } from "./transport/write.js";
+import { deckJsonToTomlDocument } from "./transport/deck.js";
 import type {
   DeckJsonEnvironment,
   DeckJsonEnvironmentSecretRef,
@@ -17,7 +21,7 @@ import type {
 
 export interface EnvironmentImportExportPayload {
   environment: DeckJsonEnvironment;
-  jsonc: string;
+  toml: string;
 }
 
 function toDeckJsonEnvironment(environment: Environment): DeckJsonEnvironment {
@@ -45,47 +49,88 @@ function toDeckJsonEnvironment(environment: Environment): DeckJsonEnvironment {
   };
 }
 
-export function exportEnvironmentJsonc(
+function environmentToTomlDocument(environment: DeckJsonEnvironment): Record<string, unknown> {
+  const deckDocument = deckJsonToTomlDocument({
+    $schema: "urn:harnessdeck:deck:v1",
+    version: 1,
+    name: environment.name,
+    layers: [],
+    environments: [environment],
+  });
+  return {
+    name: environment.name,
+    environments: deckDocument.environments,
+  };
+}
+
+export function exportEnvironmentToml(
   selector: string,
 ): EnvironmentImportExportPayload {
   const environment = resolveEnvironmentOrThrow(selector);
   const payload = toDeckJsonEnvironment(environment);
   return {
     environment: payload,
-    jsonc: `${JSON.stringify(payload, null, 2)}\n`,
+    toml: formatTransportToml(environmentToTomlDocument(payload)),
   };
 }
 
-function parseDeckEnvironmentJsonc(raw: string): DeckJsonEnvironment {
-  const parseErrors: ParseError[] = [];
-  const parsed = parseJsonc(raw, parseErrors, {
-    allowTrailingComma: true,
-    disallowComments: false,
-  }) as Record<string, unknown>;
+/** @deprecated Use exportEnvironmentToml */
+export const exportEnvironmentJsonc = exportEnvironmentToml;
 
-  if (parseErrors.length > 0) {
-    const [firstError] = parseErrors;
-    const detail = firstError
-      ? `${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`
-      : "invalid JSONC";
-    throw new Error(`Invalid environment JSONC: ${detail}`);
+function parseEnvironmentToml(raw: string): DeckJsonEnvironment {
+  const document = parse(raw) as Record<string, unknown>;
+  if (!document || typeof document !== "object" || Array.isArray(document)) {
+    throw new Error("Invalid environment TOML: expected a table at the document root");
   }
 
-  if (typeof parsed.name !== "string" || !parsed.name) {
+  if (document.environments && typeof document.environments === "object") {
+    const environments = document.environments as Record<string, Record<string, unknown>>;
+    const name = typeof document.name === "string" ? document.name : Object.keys(environments)[0];
+    if (!name || !environments[name]) {
+      throw new Error("Environment import payload must include a named environment");
+    }
+    const entry = environments[name];
+    const valuesRaw = entry.values;
+    const values: Record<string, string> = {};
+    if (valuesRaw && typeof valuesRaw === "object" && !Array.isArray(valuesRaw)) {
+      for (const [key, value] of Object.entries(valuesRaw)) {
+        values[key] = String(value);
+      }
+    }
+    return {
+      name,
+      values,
+      ...(entry.secret_refs && typeof entry.secret_refs === "object"
+        ? { secret_refs: entry.secret_refs as DeckJsonEnvironment["secret_refs"] }
+        : {}),
+    };
+  }
+
+  if (typeof document.name !== "string" || !document.name) {
     throw new Error("Environment import payload must include a non-empty name");
   }
-  if (!parsed.values || typeof parsed.values !== "object") {
-    throw new Error("Environment import payload must include values object");
+  const valuesRaw = document.values;
+  if (!valuesRaw || typeof valuesRaw !== "object" || Array.isArray(valuesRaw)) {
+    throw new Error("Environment import payload must include values table");
   }
-
-  return parsed as unknown as DeckJsonEnvironment;
+  const values: Record<string, string> = {};
+  for (const [key, value] of Object.entries(valuesRaw as Record<string, unknown>)) {
+    values[key] = String(value);
+  }
+  return {
+    name: document.name,
+    values,
+    ...(document.secret_refs && typeof document.secret_refs === "object"
+      ? { secret_refs: document.secret_refs as DeckJsonEnvironment["secret_refs"] }
+      : {}),
+  };
 }
 
-export function importEnvironmentJsonc(
+export function importEnvironmentToml(
   raw: string,
   options?: { createIfMissing?: boolean },
 ): { environment: Environment; imported_keys: string[]; imported_secret_refs: string[] } {
-  const payload = parseDeckEnvironmentJsonc(raw);
+  const payload = parseEnvironmentToml(raw);
   const existing = getEnvironmentByName(payload.name);
   const environment =
     existing ??
@@ -117,4 +162,12 @@ export function importEnvironmentJsonc(
     imported_keys: Object.keys(payload.values).sort(),
     imported_secret_refs: Object.keys(payload.secret_refs ?? {}).sort(),
   };
+}
+
+/** @deprecated Use importEnvironmentToml */
+export const importEnvironmentJsonc = importEnvironmentToml;
+
+export function importEnvironmentFile(filePath: string): ReturnType<typeof importEnvironmentToml> {
+  assertTransportExtension(filePath);
+  return importEnvironmentToml(readFileSync(filePath, "utf-8"));
 }

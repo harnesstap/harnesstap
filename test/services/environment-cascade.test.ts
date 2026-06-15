@@ -12,6 +12,7 @@ import {
   resolveEnvironmentCascade,
   resolveEnvironmentCascadeForApply,
 } from "../../src/services/environment-cascade.ts";
+import { writeDeckToml } from "../helpers/transport-fixtures.ts";
 import { createDeck, setDeckActiveEnvironment } from "../../src/models/deck.ts";
 
 describe("environment cascade", () => {
@@ -65,23 +66,17 @@ describe("environment cascade", () => {
         "utf-8",
       );
 
-      mkdirSync(join(context.projectDir, ".harnessdeck", "environments"), {
-        recursive: true,
+      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
+      writeDeckToml(join(context.projectDir, ".harnessdeck", "deck.toml"), {
+        $schema: "urn:harnessdeck:deck:v1",
+        version: 1,
+        name: "repo-deck",
+        layers: [],
+        environments: [
+          { name: "staging", values: { PD_REGION: "staging" } },
+        ],
+        active_environment: "staging",
       });
-      writeFileSync(
-        join(context.projectDir, ".harnessdeck", "deck.json"),
-        JSON.stringify({
-          $schema: "urn:harnessdeck:deck:v1",
-          version: 1,
-          name: "repo-deck",
-          layers: [],
-          environments: [
-            { name: "staging", values: { PD_REGION: "staging" } },
-          ],
-          active_environment: "staging",
-        }),
-        "utf-8",
-      );
 
       const home = loadHomeEnvironmentFragment();
       expect(home?.vars.PD_REGION).toBe("us");
@@ -96,7 +91,7 @@ describe("environment cascade", () => {
     }
   });
 
-  it("prefers deck active environment from DB over repo deck.json", async () => {
+  it("prefers deck active environment from DB over repo deck.toml", async () => {
     const context = await createInitializedTestContext("env-cascade-db-deck");
 
     try {
@@ -140,18 +135,14 @@ describe("environment cascade", () => {
       setDeckActiveEnvironment(deck.id, staging.id);
 
       mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
-      writeFileSync(
-        join(context.projectDir, ".harnessdeck", "deck.json"),
-        JSON.stringify({
-          $schema: "urn:harnessdeck:deck:v1",
-          version: 1,
-          name: "repo-deck",
-          layers: [],
-          environments: [{ name: "prod", values: { PD_REGION: "prod-file" } }],
-          active_environment: "prod",
-        }),
-        "utf-8",
-      );
+      writeDeckToml(join(context.projectDir, ".harnessdeck", "deck.toml"), {
+        $schema: "urn:harnessdeck:deck:v1",
+        version: 1,
+        name: "repo-deck",
+        layers: [],
+        environments: [{ name: "prod", values: { PD_REGION: "prod-file" } }],
+        active_environment: "prod",
+      });
 
       const cascadeInput = buildEnvironmentCascadeInput({
         configuredLayerIds: [layer.id],
@@ -172,27 +163,21 @@ describe("environment cascade", () => {
     process.env[envKey] = "resolved-token";
 
     try {
-      mkdirSync(join(context.projectDir, ".harnessdeck", "environments"), {
-        recursive: true,
+      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
+      writeDeckToml(join(context.projectDir, ".harnessdeck", "deck.toml"), {
+        $schema: "urn:harnessdeck:deck:v1",
+        version: 1,
+        name: "repo-deck",
+        layers: [],
+        environments: [
+          {
+            name: "staging",
+            values: { PD_TOKEN: "plain-token" },
+            secret_refs: { PD_TOKEN: { provider: "env", ref: envKey } },
+          },
+        ],
+        active_environment: "staging",
       });
-      writeFileSync(
-        join(context.projectDir, ".harnessdeck", "deck.json"),
-        JSON.stringify({
-          $schema: "urn:harnessdeck:deck:v1",
-          version: 1,
-          name: "repo-deck",
-          layers: [],
-          environments: [
-            {
-              name: "staging",
-              values: { PD_TOKEN: "plain-token" },
-              secret_refs: { PD_TOKEN: { provider: "env", ref: envKey } },
-            },
-          ],
-          active_environment: "staging",
-        }),
-        "utf-8",
-      );
 
       const resolved = resolveEnvironmentCascadeForApply({
         configuredLayerIds: [],

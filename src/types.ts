@@ -271,6 +271,9 @@ export interface DeckConfiguredLayer {
 export const DECK_SCHEMA = "urn:harnessdeck:deck:v1" as const;
 export const DECK_JSON_VERSION = 1 as const;
 
+export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
+export const BUNDLE_SCHEMA_VERSION = 1 as const;
+
 export interface DeckJsonLayerPluginRef {
   name: string;
   version: string;

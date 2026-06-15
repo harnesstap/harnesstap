@@ -27,6 +27,7 @@ import {
   writeFiles,
 } from "./services/applier.js";
 import { exportToFile, importFromFile, exportLayer, inspectLayerExportFile } from "./services/exporter.js";
+import { formatLayerExportToml } from "./services/transport/index.js";
 import {
   listResources,
   deleteResource,
@@ -163,8 +164,8 @@ import {
 } from "./services/environment-commands.js";
 import { captureOrRefreshEnvironment } from "./services/environment-capture.js";
 import {
-  exportEnvironmentJsonc,
-  importEnvironmentJsonc,
+  exportEnvironmentToml,
+  importEnvironmentToml,
 } from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { resolveApplyLayerSource } from "./services/layer-apply-source.js";
@@ -1536,7 +1537,7 @@ function handleLayerExportCommand(
     ui.danger("Provide at least one layer name or ID to export.");
     return;
   }
-  const filePath = opts.file ?? `${firstLayerName}.harnessdeck.jsonc`;
+  const filePath = opts.file ?? `${firstLayerName}.harnessdeck.toml`;
   const exportSelector = layerNames.length === 1 ? firstLayerName : layerNames;
   try {
     exportToFile(exportSelector, filePath, {
@@ -1780,12 +1781,12 @@ async function handleLayerPublishCommand(
 
     // build layer export using exporter
     const layerExport = exportLayer(layer.id);
-    const layerExportJson = JSON.stringify(layerExport);
+    const layerExportToml = formatLayerExportToml(layerExport);
 
     const catalogSlug = opts.catalog ?? "default";
     const resp = await client.publishLayerExport(
       { layer_name: layer.name, org_slug: orgSlug, catalog_slug: catalogSlug },
-      layerExportJson,
+      layerExportToml,
     );
     updateLayerPublishedIdentity(layer.id, {
       org_slug: orgSlug,
@@ -2471,7 +2472,7 @@ function printQuickStartGuide(): void {
     `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
   );
   console.log(
-    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE} --project .`)}`,
+    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("concepts")}`);
   console.log(`  ${formatCommand("guide")}`);
@@ -2492,7 +2493,7 @@ function handleGuideCommand(): void {
     `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
   );
   console.log(
-    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE} --project .`)}`,
+    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("project status .")}`);
   console.log("");
@@ -3661,13 +3662,13 @@ layerCmd
     "--embed-plugins",
     "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
   )
-  .description("Export a layer as a shareable JSON layer export")
+  .description("Export a layer as a shareable TOML layer export")
   .action(handleLayerExportCommand);
 
 layerCmd
   .command("import")
-  .argument("<file>", "JSON layer export file to import")
-  .description("Import a layer from a JSON layer export file")
+  .argument("<file>", "TOML layer export file to import")
+  .description("Import a layer from a TOML layer export file")
   .action(handleLayerImportCommand);
 
 layerCmd
@@ -4168,14 +4169,14 @@ environmentCmd
 
 environmentCmd
   .command("import")
-  .argument("<file>", "Environment JSON/JSONC file")
+  .argument("<file>", "Environment TOML file")
   .option("--format <mode>", "Output format: human or json", "human")
   .action((file: string, opts: { format?: string }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
     const raw = readFileSync(resolve(file), "utf-8");
-    const result = importEnvironmentJsonc(raw);
+    const result = importEnvironmentToml(raw);
     if (format === "json") {
       printJson(result);
       return;
@@ -4194,10 +4195,10 @@ environmentCmd
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const payload = exportEnvironmentJsonc(name);
+    const payload = exportEnvironmentToml(name);
     if (file) {
       const outPath = resolve(file);
-      writeFileSync(outPath, payload.jsonc, "utf-8");
+      writeFileSync(outPath, payload.toml, "utf-8");
       if (format === "json") {
         printJson({ environment: payload.environment, file: outPath });
         return;
@@ -4211,7 +4212,7 @@ environmentCmd
       printJson(payload.environment);
       return;
     }
-    console.log(payload.jsonc);
+    console.log(payload.toml);
   });
 
 // ── deck ────────────────────────────────────────────────────────────────
@@ -4269,7 +4270,7 @@ deckCmd
         return;
       }
       ui.success(`Exported deck to ${ui.theme.accent(resolve(opts.output))}`);
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${result.deckJsonPath}`));
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${result.deckTomlPath}`));
       for (const layerExportPath of result.layerExportPaths) {
         console.log(ui.theme.muted(`  ${ui.icons.bullet} ${layerExportPath}`));
       }
@@ -4281,7 +4282,7 @@ deckCmd
 
 deckCmd
   .command("import")
-  .argument("<path>", "Deck repo directory containing .harnessdeck/deck.json")
+  .argument("<path>", "Deck repo directory containing .harnessdeck/deck.toml")
   .option("--as <name>", "Override imported deck name")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Import a deck repo into the local database")
@@ -4313,7 +4314,7 @@ deckCmd
   .command("doctor")
   .argument("<path>", "Deck repo directory")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Validate generated marketplace and native files against deck.json")
+  .description("Validate generated marketplace and native files against deck.toml")
   .action(async (path: string, opts: { format?: string }) => {
     try {
       const result = await runDeckDoctor({ repoRoot: resolve(path) });

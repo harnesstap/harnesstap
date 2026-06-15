@@ -54,7 +54,7 @@ export function seedBuiltInPlugins(): number {
   let seeded = 0;
 
   for (const file of readdirSync(pluginsDir)) {
-    if (!file.endsWith(".json") && !file.endsWith(".jsonc")) continue;
+    if (!file.endsWith(".toml")) continue;
 
     const filePath = join(pluginsDir, file);
     const summary = inspectLayerExportFile(filePath);

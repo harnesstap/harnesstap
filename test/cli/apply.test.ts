@@ -4,6 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
+import { writeLayerExportToml, makeSingleLayerExport } from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { findPluginResourceByPin } from "../../src/services/composition-resource.ts";
 import { getDb } from "../../src/db/connection.ts";
@@ -592,31 +593,26 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-bundle-reuse.git");
       await runCli(["init"]);
 
-      const bundlePath = join(context.projectDir, "bundle.jsonc");
-      writeFileSync(
+      const bundlePath = join(context.projectDir, "bundle.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layer": {
-    "name": "bundle-reuse",
-    "version": "1.0.0",
-    "description": "",
-    "tags": []
-  },
-  "resources": [
-    {
-      "type": "instruction",
-      "name": "ctx",
-      "description": "",
-      "content": "# Reusable",
-      "metadata": {}
-    }
-  ],
-  "plugins": [],
-  "embedded_plugins": []
-}`,
-        "utf-8",
+        makeSingleLayerExport({
+          name: "bundle-reuse",
+          resources: [
+            {
+              type: "instruction",
+              name: "ctx",
+              description: "",
+              content: "# Reusable",
+              metadata: {},
+              namespace: "",
+              origin_kind: "manual",
+              origin_ref: "",
+              content_hash: "",
+              content_blob_ref: "",
+            },
+          ],
+        }),
       );
 
       const firstApply = await runCli([

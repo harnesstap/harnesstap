@@ -8,26 +8,26 @@ import {
   upsertEnvironmentEnvVar,
 } from "../../src/models/environment.ts";
 import {
-  exportEnvironmentJsonc,
-  importEnvironmentJsonc,
+  exportEnvironmentToml,
+  importEnvironmentToml,
 } from "../../src/services/environment-import-export.ts";
 
 describe("environment import/export service", () => {
-  it("imports JSONC with comments and trailing commas", async () => {
-    const context = await createInitializedTestContext("env-import-jsonc");
+  it("imports TOML with comments", async () => {
+    const context = await createInitializedTestContext("env-import-toml");
 
     try {
-      const result = importEnvironmentJsonc(`{
-  // environment for local testing
-  "name": "local",
-  "values": {
-    "PD_REGION": "us",
-    "PD_SITE": "us1",
-  },
-  "secret_refs": {
-    "PD_TOKEN": { "provider": "env", "ref": "PD_TOKEN" },
-  },
-}`);
+      const result = importEnvironmentToml(`# environment for local testing
+name = "local"
+
+[environments.local.values]
+PD_REGION = "us"
+PD_SITE = "us1"
+
+[environments.local.secret_refs.PD_TOKEN]
+provider = "env"
+ref = "PD_TOKEN"
+`);
 
       expect(result.environment.name).toBe("local");
       expect(result.imported_keys).toEqual(["PD_REGION", "PD_SITE"]);
@@ -50,7 +50,7 @@ describe("environment import/export service", () => {
     }
   });
 
-  it("roundtrips environment values and secret refs via export/import JSONC", async () => {
+  it("roundtrips environment values and secret refs via export/import TOML", async () => {
     const context = await createInitializedTestContext("env-export-roundtrip");
 
     try {
@@ -59,7 +59,7 @@ describe("environment import/export service", () => {
       upsertEnvironmentEnvVar(source.id, "PD_SITE", "eu1");
       addSecretRefToEnvironment(source.id, "PD_TOKEN", "env", "PD_TOKEN");
 
-      const exported = exportEnvironmentJsonc("staging");
+      const exported = exportEnvironmentToml("staging");
       expect(exported.environment).toEqual({
         name: "staging",
         values: {
@@ -73,9 +73,9 @@ describe("environment import/export service", () => {
           },
         },
       });
-      expect(exported.jsonc).toContain('"name": "staging"');
+      expect(exported.toml).toContain('name = "staging"');
 
-      const imported = importEnvironmentJsonc(exported.jsonc, {
+      const imported = importEnvironmentToml(exported.toml, {
         createIfMissing: false,
       });
       expect(imported.environment.id).toBe(source.id);
