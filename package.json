@@ -27,7 +27,9 @@
     "preflight": "bun run lint && bun run typecheck && bun run test:run && bun run build",
     "prepublishOnly": "bun run build",
     "docs:vhs": "bash scripts/generate-vhs-scenarios.sh",
-    "check:scenario-docs": "bash scripts/check-scenario-docs.sh"
+    "check:scenario-docs": "bash scripts/check-scenario-docs.sh",
+    "check:scenario-smoke": "bun test test/cli/scenario-smoke.test.ts",
+    "sync:cloud-docs": "bash scripts/sync-cloud-cli-docs.sh"
   },
   "keywords": [
     "ai",

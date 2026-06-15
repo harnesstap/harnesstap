@@ -29,6 +29,16 @@ Print quick-start commands and documentation links.
 
 ```bash
 hd guide
+hd guide --scenario 11
+```
+
+## scenario
+
+Show a numbered scenario playbook from `docs/scenarios/details/`.
+
+```bash
+hd scenario 11
+hd scenario 7 --format json
 ```
 
 ## concepts
@@ -37,6 +47,17 @@ Explain core HarnessDeck concepts (resource, layer, deck, environment, harness) 
 
 ```bash
 hd concepts
+hd concepts --format json
+```
+
+## completion
+
+Generate shell completion for bash, zsh, or fish.
+
+```bash
+hd completion bash >> ~/.bashrc
+hd completion zsh >> ~/.zshrc
+hd completion fish > ~/.config/fish/completions/hd.fish
 ```
 
 ## init

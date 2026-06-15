@@ -8,6 +8,10 @@ import {
 } from "../models/resource.js";
 import { parseResourceSelector } from "./resource-selector.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import {
+  LayerAttachmentHintError,
+  attachmentTypeRequiredHints,
+} from "./layer-attachments.js";
 import type {
   LayerResourceMetadata,
   PluginResourceMetadata,
@@ -266,7 +270,11 @@ export function attachCompositionResource(
   addResourceToPlugin(pluginId, resource.id);
 }
 
-export function resolveAttachmentType(selector: string, explicitType?: string): ResourceType {
+export function resolveAttachmentType(
+  selector: string,
+  explicitType?: string,
+  context?: { layerName?: string },
+): ResourceType {
   const parsed = parseResourceSelector(selector);
   const normalizedExplicit =
     explicitType === "layer-dependency" ? "layer" : explicitType;
@@ -285,8 +293,9 @@ export function resolveAttachmentType(selector: string, explicitType?: string): 
     }
     return normalizedExplicit as ResourceType;
   }
-  throw new Error(
-    "Selector must include a type prefix (e.g. skill:foo, plugin:posthog@marketplace, layer:backend-oncall)",
+  throw new LayerAttachmentHintError(
+    `Attachment type required for selector "${selector}"`,
+    attachmentTypeRequiredHints(selector, context?.layerName),
   );
 }
 

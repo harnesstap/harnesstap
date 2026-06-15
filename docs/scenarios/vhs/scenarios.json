@@ -7,5 +7,23 @@
     "tapePath": "docs/scenarios/vhs/tapes/01-existing-repo-adoption.tape",
     "outputPath": "docs/scenarios/vhs/output/01-existing-repo-adoption.gif",
     "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 7,
+    "slug": "preview-apply-layer",
+    "title": "Preview and apply a layer",
+    "docPath": "docs/scenarios/vhs/walkthroughs/07-preview-apply-layer.md",
+    "tapePath": "docs/scenarios/vhs/tapes/07-preview-apply-layer.tape",
+    "outputPath": "docs/scenarios/vhs/output/07-preview-apply-layer.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 11,
+    "slug": "catalog-baseline",
+    "title": "Start from a catalog baseline",
+    "docPath": "docs/scenarios/vhs/walkthroughs/11-catalog-baseline.md",
+    "tapePath": "docs/scenarios/vhs/tapes/11-catalog-baseline.tape",
+    "outputPath": "docs/scenarios/vhs/output/11-catalog-baseline.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
   }
 ]

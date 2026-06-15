@@ -20,7 +20,12 @@ describe("CLI help and command organization", () => {
       expect(result.exitCode).toBeUndefined();
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("USAGE");
-      expect(result.stdout).toContain("COMMANDS");
+      if (args[0] === "layer") {
+        expect(result.stdout).toContain("LOCAL LIBRARY");
+        expect(result.stdout).toContain("REMOTE CATALOG");
+      } else {
+        expect(result.stdout).toContain("COMMANDS");
+      }
     }
   });
 
@@ -237,5 +242,34 @@ describe("CLI help and command organization", () => {
   it("shows concepts in top-level help", async () => {
     const result = await runCli(["--help"]);
     expect(result.stdout).toContain("concepts");
+    expect(result.stdout).toContain("completion");
+    expect(result.stdout).toContain("scenario");
+  });
+
+  it("shows grouped layer help sections", async () => {
+    const result = await runCli(["layer", "--help"]);
+    expect(result.stdout).toContain("LOCAL LIBRARY");
+    expect(result.stdout).toContain("REMOTE CATALOG");
+    expect(result.stdout).toContain("combine");
+    expect(result.stdout).toContain("pull");
+  });
+
+  it("prints scenario guide output", async () => {
+    const result = await runCli(["guide", "--scenario", "11"]);
+    expect(result.stdout).toContain("SCENARIO 11");
+    expect(result.stdout).toContain("engineering-foundation");
+  });
+
+  it("prints concepts as json", async () => {
+    const result = await runCli(["concepts", "--format", "json"]);
+    const payload = JSON.parse(result.stdout);
+    expect(payload.concepts).toBeArray();
+    expect(payload.commands).toBeArray();
+  });
+
+  it("generates bash completion", async () => {
+    const result = await runCli(["completion", "bash"]);
+    expect(result.stdout).toContain("complete -F _harnessdeck_completions");
+    expect(result.stdout).toContain("project apply");
   });
 });

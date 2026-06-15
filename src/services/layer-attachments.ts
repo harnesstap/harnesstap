@@ -18,11 +18,33 @@ import { syncPluginResource } from "./resource-sync.js";
 import type { Layer, ResourceType } from "../types.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 
+export class LayerAttachmentHintError extends Error {
+  readonly hints: string[];
+
+  constructor(message: string, hints: string[]) {
+    super(message);
+    this.name = "LayerAttachmentHintError";
+    this.hints = hints;
+  }
+}
+
 export const LAYER_ATTACHMENT_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
   "plugin",
   "layer",
 ] as const;
+
+export function attachmentTypeRequiredHints(
+  selector: string,
+  layerName?: string,
+): string[] {
+  const exampleLayer = layerName ?? "<layer>";
+  return [
+    `hd layer combine ${exampleLayer} ${selector} --type skill`,
+    `Valid types: ${LAYER_ATTACHMENT_TYPES.join(", ")}`,
+    "Or use a typed selector: skill:name, plugin:ref@marketplace, layer:dep",
+  ];
+}
 
 const LAYER_ATTACHMENT_TYPE_ALIASES = [
   ...LAYER_ATTACHMENT_TYPES,
@@ -120,7 +142,9 @@ function normalizeAttachmentSelector(selector: string, explicitType?: string): s
 export async function addLayerAttachment(input: AddLayerAttachmentInput): Promise<string> {
   const explicitType = normalizeLegacyType(input.type);
   const selector = normalizeAttachmentSelector(input.selector, explicitType);
-  const attachmentType = resolveAttachmentType(selector, explicitType);
+  const attachmentType = resolveAttachmentType(selector, explicitType, {
+    layerName: input.layer.name,
+  });
 
   if (attachmentType === "plugin") {
     if (input.version) {
@@ -178,7 +202,9 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
 } {
   const explicitType = normalizeLegacyType(input.type);
   const selector = normalizeAttachmentSelector(input.selector, explicitType);
-  const attachmentType = resolveAttachmentType(selector, explicitType);
+  const attachmentType = resolveAttachmentType(selector, explicitType, {
+    layerName: input.layer.name,
+  });
 
   if (attachmentType === "plugin") {
     const parsed = parseResourceSelector(selector);
