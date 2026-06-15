@@ -25,8 +25,8 @@ describe("seed plugins service", () => {
 
       const layers = layerModel.listLayers();
       const names = layers.map((p) => p.name);
-      expect(names).toContain("nextjs-fullstack");
-      expect(names).toContain("python-fastapi");
+      expect(names).toContain("demo-stack");
+      expect(names).toContain("demo-api");
     } finally {
       process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
@@ -76,9 +76,9 @@ describe("seed plugins service", () => {
 
       expect(count).toBeGreaterThan(0);
 
-      const nextjs = layerModel.getLayer("nextjs-fullstack");
-      expect(nextjs).toBeDefined();
-      expect(nextjs?.description).toContain("Next.js");
+      const demoStack = layerModel.getLayer("demo-stack");
+      expect(demoStack).toBeDefined();
+      expect(demoStack?.description).toContain("Demo web stack");
       expect(resourceModel.listResources({ source: "builtin:" })).toHaveLength(5);
     } finally {
       process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;

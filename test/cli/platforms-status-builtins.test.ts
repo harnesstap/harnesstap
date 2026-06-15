@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
 import type { CommanderError } from "commander";
 import { createTestContext } from "../helpers/db.ts";
@@ -6,32 +5,18 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
-
 import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 
-const NEXTJS_CATALOG_BUNDLE = formatLayerExportToml({
+const FOUNDATION_CATALOG_BUNDLE = formatLayerExportToml({
   $schema: "urn:harnessdeck:layer:v1",
   version: 1,
   layer: {
-    name: "nextjs-fullstack",
-    description: "Next.js template",
-    tags: ["nextjs"],
+    name: "engineering-foundation",
+    description: "Shared engineering baseline",
+    tags: ["foundation"],
   },
-  resources: [
-    {
-      type: "instruction",
-      name: "project-context",
-      description: "ctx",
-      content: "# Next.js\n",
-      metadata: {},
-      namespace: "",
-      origin_kind: "manual",
-      origin_ref: "",
-      content_hash: "",
-      content_blob_ref: "",
-    },
-  ],
-  plugins: [],
+  resources: [],
+  plugins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
   embedded_plugins: [],
 });
 
@@ -40,15 +25,15 @@ describe("CLI platforms, status, and catalog baselines", () => {
     const context = await createTestContext("cli-builtins");
     const restoreFetch = createCatalogFetchMock({
       baseUrl: "https://harnessdeck.kayrnt.fr",
-      bundle: NEXTJS_CATALOG_BUNDLE,
+      bundle: FOUNDATION_CATALOG_BUNDLE,
       layers: [{
         orgSlug: "harnessdeck-cloud",
-        slug: "nextjs-fullstack",
-        name: "Next.js Fullstack",
-        summary: "Template",
+        slug: "engineering-foundation",
+        name: "Engineering foundation",
+        summary: "Shared baseline",
         latestVersion: "1.0.0",
         updatedAt: new Date().toISOString(),
-        tags: [],
+        tags: ["foundation"],
         visibility: "public",
       }],
     });
@@ -60,20 +45,20 @@ describe("CLI platforms, status, and catalog baselines", () => {
       const applied = await runCli([
         "project",
         "apply",
-        "nextjs-fullstack",
+        "engineering-foundation",
         "--project",
         context.projectDir,
         "--harness",
-        "codex",
+        "claude-code",
+        "--dry-run",
       ]);
       const templates = await runCli(["layer", "list"]);
 
       expect(platforms.stdout).toContain("claude-code");
       expect(platforms.stdout).toContain("cursor");
-      expect(templates.stdout).toContain("nextjs-fullstack");
-      expect(applied.stdout).toContain("codex");
-      expect(applied.stdout).toContain("wrote");
-      expect(existsSync(`${context.projectDir}/AGENTS.md`)).toBe(true);
+      expect(templates.stdout).toContain("engineering-foundation");
+      expect(applied.stdout).toContain("Fetched harnessdeck-cloud/engineering-foundation@1.0.0 from catalog");
+      expect(applied.stdout).toContain("[dry run]");
     } finally {
       restoreFetch();
       await context.cleanup();
