@@ -219,6 +219,17 @@ describe("VHS scenario manifest", () => {
     expect(spec).not.toContain("harnessdeck layer validate");
   });
 
+  it("generate script bakes isolated HOME and HARNESSDECK_HOME into the harnessdeck wrapper", () => {
+    const script = readFileSync(
+      resolve(repoRoot, "scripts/generate-vhs-scenarios.sh"),
+      "utf-8",
+    );
+
+    expect(script).toContain('export HOME="$home_dir"');
+    expect(script).toContain('export HARNESSDECK_HOME="$hd_dir"');
+    expect(script).toContain('export HARNESSDECK_NO_INTERACTIVE=1');
+  });
+
   it("curated GIF artifacts exist on disk", () => {
     const definitions = JSON.parse(
       readFileSync(manifestPath, "utf-8"),

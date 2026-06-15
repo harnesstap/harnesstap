@@ -72,10 +72,16 @@ prepare_git_repo() {
 
 create_vhs_commands() {
   local bin_dir="$1"
+  local home_dir="$2"
+  local hd_dir="$3"
+  local project_dir="$4"
 
   cat >"$bin_dir/harnessdeck" <<EOF
 #!/usr/bin/env bash
-cd "\${HD_PROJECT_ROOT:?HD_PROJECT_ROOT is required}"
+export HOME="$home_dir"
+export HARNESSDECK_HOME="$hd_dir"
+export HARNESSDECK_NO_INTERACTIVE=1
+cd "$project_dir"
 exec node "$ROOT/dist/index.js" "\$@"
 EOF
 
@@ -98,11 +104,12 @@ for row in "${SCENARIOS[@]}"; do
   fi
 
   prepare_git_repo "$project_dir"
-  create_vhs_commands "$bin_dir"
+  create_vhs_commands "$bin_dir" "$home_dir" "$hd_dir" "$project_dir"
 
   PATH="$bin_dir:$PATH" \
   HOME="$home_dir" \
   HARNESSDECK_HOME="$hd_dir" \
+  HARNESSDECK_NO_INTERACTIVE=1 \
   HD_PROJECT_ROOT="$project_dir" \
   HD_SCENARIO_KEY="$key" \
   vhs "$ROOT/$tape"

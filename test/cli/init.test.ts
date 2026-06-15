@@ -15,6 +15,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Harnessdeck initialized");
       expect(result.stdout).toContain("Database");
       expect(result.stdout).toContain("NEXT STEPS");
+      expect(result.stdout).not.toContain("already exists");
       expect(result.stdout).toContain("layer search foundation");
       expect(result.stdout).toContain("project apply engineering-foundation --project .");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
@@ -153,6 +154,7 @@ describe("CLI init", () => {
       const rerun = await runCli(["init"]);
 
       expect(rerun.stdout).toContain("Harnessdeck initialized");
+      expect(rerun.stdout).toContain("already exists");
       expect(rerun.stdout).not.toContain("will be overwritten");
       expect(rerun.stdout).not.toContain("Existing harness defaults");
     } finally {

@@ -2559,10 +2559,12 @@ async function handleInitCommand(opts: {
   interactive?: boolean;
   noInteractive?: boolean;
 } = {}): Promise<void> {
+  const dbPath = getDbPath();
+  const hadExistingStore = existsSync(dbPath);
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  if (format === "human" && existsSync(getDbPath())) {
+  if (format === "human" && hadExistingStore) {
     const preference = getHarnessPreference();
     ui.warn(
       "~/.harnessdeck already exists. Harness preferences stay unchanged unless you pass --main or --aliases.",
