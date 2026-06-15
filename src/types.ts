@@ -67,6 +67,10 @@ export interface PermissionMetadata {
 export interface HookMetadata {
   event: string;
   script: string;
+  commandWindows?: string;
+  timeout?: number;
+  matcher?: string;
+  hook_entry?: Record<string, unknown>;
 }
 
 export interface AgentMetadata {

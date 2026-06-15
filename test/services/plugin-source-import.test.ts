@@ -105,6 +105,13 @@ describe("plugin-source-import service", () => {
     expect(entries[0]?.resources.some((r) => r.type === "skill")).toBe(true);
   });
 
+  it("imports TOML commands and JSON hooks from plugin manifest pointers", async () => {
+    const entries = await scanPluginSource(join(fixtureRoot, "claude-ponytail"));
+    const types = entries[0]?.resources.map((r) => r.type) ?? [];
+    expect(types).toContain("command");
+    expect(types).toContain("hook");
+  });
+
   it("keeps cursor rule always_apply false when metadata omits alwaysApply", async () => {
     const entries = await scanPluginSource(join(fixtureRoot, "cursor-team-kit"));
     const advisoryRule = entries[0]?.resources.find(

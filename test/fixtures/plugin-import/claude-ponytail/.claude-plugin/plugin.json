@@ -1,0 +1,7 @@
+{
+  "name": "ponytail",
+  "version": "1.0.0",
+  "description": "Ponytail skill pack for Claude Code",
+  "commands": "commands",
+  "hooks": "hooks/hooks.json"
+}
