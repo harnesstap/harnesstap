@@ -1,7 +1,7 @@
 import { getPlugin, getPluginResources, listPluginDependencies } from "../models/plugin-component.js";
 import { listLayerPlugins } from "../models/plugin-pins.js";
 import type { Resource } from "../types.js";
-import { inspectBundleFile } from "./exporter.js";
+import { inspectLayerExportFile } from "./exporter.js";
 
 export interface LayerDiffEntry {
   kind: "resource" | "plugin" | "metadata";
@@ -43,15 +43,15 @@ function loadLayerView(nameOrPath: string): LayerView {
     nameOrPath.endsWith(".harnessdeck.json") ||
     nameOrPath.endsWith(".harnessdeck.jsonc")
   ) {
-    const summary = inspectBundleFile(nameOrPath);
+    const summary = inspectLayerExportFile(nameOrPath);
     if (summary.layers.length > 1) {
       throw new Error(
-        `Multi-layer bundles are not supported by layer diff: ${nameOrPath}`,
+        `Multi-layer exports are not supported by layer diff: ${nameOrPath}`,
       );
     }
     const [bundle] = summary.layers;
     if (!bundle) {
-      throw new Error(`Unsupported bundle: ${nameOrPath}`);
+      throw new Error(`Unsupported layer export: ${nameOrPath}`);
     }
     const resources = bundle.resources.map((r, order) => ({
       key: resourceKey(r),

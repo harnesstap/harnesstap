@@ -39,10 +39,10 @@ describe("deck transport", () => {
     tempDirs.push(outputDir);
 
     const exported = exportDeckRepo(deck.id, outputDir, {
-      withLayerBundles: true,
+      withLayerExports: true,
     });
     expect(existsSync(exported.deckJsonPath)).toBe(true);
-    expect(exported.layerBundlePaths).toHaveLength(1);
+    expect(exported.layerExportPaths).toHaveLength(1);
 
     const deckJson = JSON.parse(readFileSync(exported.deckJsonPath, "utf-8"));
     expect(deckJson.$schema).toBe(DECK_SCHEMA);

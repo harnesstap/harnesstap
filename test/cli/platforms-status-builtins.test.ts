@@ -8,7 +8,7 @@ import { makeResourceInput } from "../helpers/resources.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 
 const NEXTJS_CATALOG_BUNDLE = JSON.stringify({
-  $schema: "urn:harnessdeck:bundle:v1",
+  $schema: "urn:harnessdeck:layer:v1",
   version: 1,
   layer: {
     name: "nextjs-fullstack",

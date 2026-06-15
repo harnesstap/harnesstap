@@ -105,7 +105,7 @@ describe("layer marketplace configuration", () => {
       writeTextFile(
         bundlePath,
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: {
             name: "team-stack",

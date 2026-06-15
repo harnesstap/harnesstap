@@ -22,7 +22,7 @@ describe("exporter services", () => {
 
       const bundle = exporter.exportLayer(layer.id);
 
-      expect(bundle.$schema).toBe("urn:harnessdeck:bundle:v1");
+      expect(bundle.$schema).toBe("urn:harnessdeck:layer:v1");
       expect(bundle.version).toBe(1);
       expect(bundle.plugins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
@@ -87,7 +87,7 @@ describe("exporter services", () => {
 
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw.startsWith("/*\n")).toBe(true);
-      expect(raw).toContain('"$schema": "urn:harnessdeck:bundle:v1"');
+      expect(raw).toContain('"$schema": "urn:harnessdeck:layer:v1"');
       expect(raw).toContain(" * Source machine: ");
 
       const importContext = await createInitializedTestContext("import-jsonc-comment-block");
@@ -116,7 +116,7 @@ describe("exporter services", () => {
     }
   });
 
-  it("throws when importing with unsupported bundle version", async () => {
+  it("throws when importing with unsupported layer version", async () => {
     const context = await createInitializedTestContext("export-bad-version");
 
     try {
@@ -126,14 +126,14 @@ describe("exporter services", () => {
       try {
         const bundlePath = join(tempDir, "bundle.json");
         writeTextFile(bundlePath, JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 99,
           layer: { name: "bad-version", description: "", tags: [] },
           resources: [],
         }));
 
         expect(() => exporter.importFromFile(bundlePath)).toThrow(
-          "Unsupported bundle version: 99",
+          "Unsupported layer version: 99",
         );
       } finally {
         require("node:fs").rmSync(tempDir, { recursive: true, force: true });
@@ -175,7 +175,7 @@ describe("exporter services", () => {
         writeTextFile(
           bundlePath,
           `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layer": {
     "name": "truncated-bundle",
@@ -207,7 +207,7 @@ describe("exporter services", () => {
           bundlePath,
           `{
   // comment before schema
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layer": {
     "name": "jsonc-bundle",
@@ -504,7 +504,7 @@ describe("exporter services", () => {
       writeTextFile(
         bundlePath,
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: { name: "orig-name", description: "", tags: [] },
           resources: [],

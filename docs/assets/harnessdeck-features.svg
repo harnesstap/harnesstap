@@ -204,6 +204,6 @@
 
   <g transform="translate(350 518)">
     <rect width="900" height="32" rx="16" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="450" y="21" class="tiny" text-anchor="middle">bundle v1 · deck v1 · environments · layer doctor · diffs · from-project</text>
+    <text x="450" y="21" class="tiny" text-anchor="middle">layer v1 · deck v1 · environments · layer doctor · diffs · from-project</text>
   </g>
 </svg>

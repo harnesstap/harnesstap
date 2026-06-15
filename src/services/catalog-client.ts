@@ -209,8 +209,8 @@ export async function downloadCatalogBundle(input: {
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
     const url = catalogSlug === "default"
-      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/bundle`
-      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/bundle`;
+      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`
+      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -220,7 +220,7 @@ export async function downloadCatalogBundle(input: {
       return { version, body: await response.text() };
     }
     if (response.status !== 404) {
-      throw new Error(`Failed to download catalog bundle: ${response.status}`);
+      throw new Error(`Failed to download catalog layer export: ${response.status}`);
     }
   }
 

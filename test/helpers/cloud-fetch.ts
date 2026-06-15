@@ -83,8 +83,8 @@ export function createCloudPublishFetchMock(input?: {
     if (
       url.startsWith(`${baseUrl}/api/public/layers`)
       || url.startsWith(`${baseUrl}/api/catalog/layers`)
-      || /\/api\/public\/.+\/versions\/.+\/bundle$/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/bundle$/.test(url)
+      || /\/api\/public\/.+\/versions\/.+\/layer-export/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/layer-export/.test(url)
     ) {
       return originalFetch(urlInput, init);
     }

@@ -88,7 +88,7 @@ BUNDLE="$WORKDIR/team.harnessdeck.json"
 "${CLI[@]}" layer export team-setup --file "$BUNDLE" >/dev/null
 bun -e "
 const raw = await Bun.file(process.argv[1]).json();
-if (raw.version !== 1 || raw.$schema !== 'urn:harnessdeck:bundle:v1') throw new Error('expected bundle v1');
+if (raw.version !== 1 || raw.$schema !== 'urn:harnessdeck:layer:v1') throw new Error('expected layer v1');
 const pin = (raw.plugins ?? []).find((p) => p.ref === 'formatter@acme-marketplace');
 if (!pin || pin.version_constraint !== '>=2.0.0 <3.0.0') throw new Error('pin missing');
 console.log('ok bundle pin');

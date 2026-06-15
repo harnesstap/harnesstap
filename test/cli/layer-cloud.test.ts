@@ -553,7 +553,7 @@ describe("CLI cloud layer workflows", () => {
       );
 
       const stderr = result.stderr
-        ?.replace(/^Warning: exportLayer writes bundle v1[^\n]*\n?/m, "")
+        ?.replace(/^Warning: exportLayer writes layer v1[^\n]*\n?/m, "")
         .trim();
       if (stderr) {
         throw new Error(`Command failed with stderr: ${stderr}`);
