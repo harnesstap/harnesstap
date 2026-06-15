@@ -1,13 +1,8 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
-
-const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
 describe("CLI output format", () => {
   it("emits JSON for layer, status, history, harness, init, and apply dry-run commands", async () => {
