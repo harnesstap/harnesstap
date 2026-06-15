@@ -8,12 +8,12 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 <br />
 
-[![CI](https://github.com/bqbooster/harnessdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/bqbooster/harnessdeck/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/bqbooster/harnessdeck)](LICENSE)
+[![CI](https://github.com/harnessdeck/harnessdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/harnessdeck/harnessdeck/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/harnessdeck/harnessdeck)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Bun](https://img.shields.io/badge/bun-1.3+-000000?logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/bqbooster/harnessdeck)
+[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/harnessdeck/harnessdeck)
 
 <br />
 
@@ -133,7 +133,7 @@ bunx harnessdeck@latest init
 <summary><strong>Install from source</strong></summary>
 
 ```bash
-git clone https://github.com/bqbooster/harnessdeck.git
+git clone https://github.com/harnessdeck/harnessdeck.git
 cd harnessdeck
 bun install
 bun run build
