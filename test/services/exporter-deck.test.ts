@@ -1,19 +1,23 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { listDeckLayers } from "../../src/models/deck.ts";
 import { getLayerById } from "../../src/models/layer-model.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { writeTextFile } from "../helpers/fs.ts";
+import {
+  makeSingleLayerExport,
+  writeDeckToml,
+  writeLayerExportToml,
+} from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 const minimalDeckFixturePath = join(
   import.meta.dir,
-  "../fixtures/decks/minimal-deck.json",
+  "../fixtures/decks/minimal-deck.toml",
 );
 const selectorOnlyDeckFixturePath = join(
   import.meta.dir,
-  "../fixtures/decks/selector-only-deck.json",
+  "../fixtures/decks/selector-only-deck.toml",
 );
 
 describe("exporter deck adapters", () => {
@@ -22,18 +26,14 @@ describe("exporter deck adapters", () => {
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
-      const bundlePath = join(context.projectDir, "single-layer.json");
-      writeTextFile(
+      const bundlePath = join(context.projectDir, "single-layer.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: {
-            name: "pagerduty",
-            version: "1.0.0",
-            description: "On-call plugin",
-            tags: ["oncall"],
-          },
+        makeSingleLayerExport({
+          name: "pagerduty",
+          version: "1.0.0",
+          description: "On-call plugin",
+          tags: ["oncall"],
           resources: [
             {
               type: "instruction",
@@ -41,10 +41,13 @@ describe("exporter deck adapters", () => {
               description: "",
               content: "# On-call",
               metadata: {},
+              namespace: "",
+              origin_kind: "manual",
+              origin_ref: "",
+              content_hash: "",
+              content_blob_ref: "",
             },
           ],
-          plugins: [],
-          embedded_plugins: [],
         }),
       );
 
@@ -60,7 +63,7 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("converts layer v1 env vars into deck.json environments", async () => {
+  it("converts layer v1 env vars into deck.toml environments", async () => {
     const exporter = await import("../../src/services/exporter.ts");
 
     const deckJson = exporter.layerExportToDeckJson({
@@ -79,6 +82,11 @@ describe("exporter deck adapters", () => {
           description: "",
           content: "",
           metadata: { key: "PD_REGION", value: "eu" },
+          namespace: "",
+          origin_kind: "manual",
+          origin_ref: "",
+          content_hash: "",
+          content_blob_ref: "",
         },
       ],
       plugins: [],
@@ -91,8 +99,8 @@ describe("exporter deck adapters", () => {
     expect(deckJson.layers[0]?.environment).toBe("pagerduty-env");
   });
 
-  it("exports and re-imports deck.json losslessly", async () => {
-    const exportContext = await createInitializedTestContext("deck-json-export");
+  it("exports and re-imports deck.toml losslessly", async () => {
+    const exportContext = await createInitializedTestContext("deck-toml-export");
 
     try {
       const pluginModel = await import("../../src/models/plugin-component.ts");
@@ -120,6 +128,11 @@ describe("exporter deck adapters", () => {
         content: "",
         metadata: { key: "PD_REGION", value: "eu" },
         source: "test",
+        namespace: "",
+        origin_kind: "manual",
+        origin_ref: "",
+        content_hash: "",
+        content_blob_ref: "",
       });
       environmentModel.addResourceToEnvironment(prod.id, prodVar);
       environmentModel.addSecretRefToEnvironment(
@@ -140,10 +153,10 @@ describe("exporter deck adapters", () => {
       deckModel.setDeckActiveEnvironment(deck.id, prod.id);
 
       const exported = exporter.exportDeckToDeckJson(deck.id);
-      const deckPath = join(exportContext.projectDir, "deck.json");
-      exporter.writeDeckJson(deckPath, exported);
+      const deckPath = join(exportContext.projectDir, "deck.toml");
+      exporter.writeDeckToml(deckPath, exported);
 
-      const importContext = await createInitializedTestContext("deck-json-import");
+      const importContext = await createInitializedTestContext("deck-toml-import");
 
       try {
         pluginModel.createPlugin({
@@ -152,7 +165,7 @@ describe("exporter deck adapters", () => {
           needs: ["PD_TOKEN"],
         });
 
-        const imported = exporter.importDeckJson(deckPath, {
+        const imported = exporter.importDeckToml(deckPath, {
           rootPath: importContext.projectDir,
         });
         const reExported = exporter.exportDeckToDeckJson(imported.deck.id);
@@ -170,7 +183,7 @@ describe("exporter deck adapters", () => {
   });
 
   it("exports deck layers without plugins[] by default (selector-only)", async () => {
-    const context = await createInitializedTestContext("deck-json-selector-export");
+    const context = await createInitializedTestContext("deck-toml-selector-export");
 
     try {
       const pluginModel = await import("../../src/models/plugin-component.ts");
@@ -212,7 +225,7 @@ describe("exporter deck adapters", () => {
   });
 
   it("exports legacy plugins[] when selectorOnly is false", async () => {
-    const context = await createInitializedTestContext("deck-json-legacy-export");
+    const context = await createInitializedTestContext("deck-toml-legacy-export");
 
     try {
       const pluginModel = await import("../../src/models/plugin-component.ts");
@@ -243,8 +256,8 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("imports deck.json with legacy plugins[] arrays", async () => {
-    const context = await createInitializedTestContext("deck-json-legacy-import");
+  it("imports deck.toml with legacy plugins[] arrays", async () => {
+    const context = await createInitializedTestContext("deck-toml-legacy-import");
 
     try {
       const pluginModel = await import("../../src/models/plugin-component.ts");
@@ -255,7 +268,7 @@ describe("exporter deck adapters", () => {
         version: "1.0.0",
       });
 
-      const imported = exporter.importDeckJson(minimalDeckFixturePath, {
+      const imported = exporter.importDeckToml(minimalDeckFixturePath, {
         rootPath: context.projectDir,
       });
       const [deckLayer] = listDeckLayers(imported.deck.id);
@@ -265,8 +278,8 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("imports selector-only deck.json without plugins[]", async () => {
-    const context = await createInitializedTestContext("deck-json-selector-import");
+  it("imports selector-only deck.toml without plugins[]", async () => {
+    const context = await createInitializedTestContext("deck-toml-selector-import");
 
     try {
       const pluginModel = await import("../../src/models/plugin-component.ts");
@@ -283,7 +296,7 @@ describe("exporter deck adapters", () => {
         pluginIds: [plugin.id],
       });
 
-      const imported = exporter.importDeckJson(selectorOnlyDeckFixturePath, {
+      const imported = exporter.importDeckToml(selectorOnlyDeckFixturePath, {
         rootPath: context.projectDir,
       });
       const [deckLayer] = listDeckLayers(imported.deck.id);
@@ -298,8 +311,8 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("imports selector-only deck.json with org and catalog", async () => {
-    const context = await createInitializedTestContext("deck-json-published-import");
+  it("imports selector-only deck.toml with org and catalog", async () => {
+    const context = await createInitializedTestContext("deck-toml-published-import");
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -312,26 +325,23 @@ describe("exporter deck adapters", () => {
         catalog_slug: "platform",
       });
 
-      const fixturePath = join(context.projectDir, "published-deck.json");
-      writeFileSync(
-        fixturePath,
-        JSON.stringify({
-          $schema: "urn:harnessdeck:deck:v1",
-          version: 1,
-          name: "published-deck",
-          layers: [
-            {
-              name: "backend-oncall",
-              version: "1.0.0",
-              org: "acme",
-              catalog: "platform",
-            },
-          ],
-          environments: [],
-        }),
-      );
+      const fixturePath = join(context.projectDir, "published-deck.toml");
+      writeDeckToml(fixturePath, {
+        $schema: "urn:harnessdeck:deck:v1",
+        version: 1,
+        name: "published-deck",
+        layers: [
+          {
+            name: "backend-oncall",
+            version: "1.0.0",
+            org: "acme",
+            catalog: "platform",
+          },
+        ],
+        environments: [],
+      });
 
-      const imported = exporter.importDeckJson(fixturePath, {
+      const imported = exporter.importDeckToml(fixturePath, {
         rootPath: context.projectDir,
       });
       const [deckLayer] = listDeckLayers(imported.deck.id);
@@ -348,21 +358,12 @@ describe("exporter deck adapters", () => {
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
-      const bundlePath = join(context.projectDir, "legacy.json");
-      writeFileSync(
+      const bundlePath = join(context.projectDir, "legacy.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: {
-            name: "legacy-plugin",
-            version: "2.0.0",
-            description: "",
-            tags: [],
-          },
-          resources: [],
-          plugins: [],
-          embedded_plugins: [],
+        makeSingleLayerExport({
+          name: "legacy-plugin",
+          version: "2.0.0",
         }),
       );
 

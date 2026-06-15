@@ -214,7 +214,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("QUICK START");
     expect(result.stdout).toContain("layer search foundation");
     expect(result.stdout).toContain(
-      "project apply engineering-foundation --project .",
+      "project apply engineering-foundation",
     );
     expect(result.stdout).toContain("concepts");
     expect(result.stdout).toContain("DOCUMENTATION");

@@ -21,8 +21,9 @@ import {
 } from "../models/configured-layer.js";
 import { setDeckActiveEnvironment } from "../models/deck.js";
 import { DECK_JSON_VERSION, DECK_SCHEMA } from "../types.js";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { basename, join } from "node:path";
+import { readDeckToml, writeDeckToml } from "./exporter.js";
 import { loadDeckActiveEnvironmentFragment, loadHomeEnvironmentFragment, resolveEnvironmentCascade, loadLayerDefaultFragments } from "./environment-cascade.js";
 import { resolveConfiguredLayerOrThrow, resolveDeckByProjectRoot, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import type {
@@ -276,9 +277,9 @@ export function useEnvironmentForProjectCommand(
   const environment = resolveEnvironmentOrThrow(selector);
   const deckDir = join(projectRoot, ".harnessdeck");
   mkdirSync(deckDir, { recursive: true });
-  const deckFile = join(deckDir, "deck.json");
+  const deckFile = join(deckDir, "deck.toml");
   const parsedDeckJson = existsSync(deckFile)
-    ? JSON.parse(readFileSync(deckFile, "utf-8")) as Partial<DeckJson>
+    ? readDeckToml(deckFile)
     : undefined;
   const deckJson: DeckJson = {
     $schema: DECK_SCHEMA,
@@ -286,13 +287,11 @@ export function useEnvironmentForProjectCommand(
     name: parsedDeckJson?.name && parsedDeckJson.name.length > 0
       ? parsedDeckJson.name
       : basename(projectRoot),
-    layers: Array.isArray(parsedDeckJson?.layers) ? parsedDeckJson.layers : [],
-    environments: Array.isArray(parsedDeckJson?.environments)
-      ? parsedDeckJson.environments
-      : [],
+    layers: parsedDeckJson?.layers ?? [],
+    environments: parsedDeckJson?.environments ?? [],
     active_environment: environment.name,
   };
-  writeFileSync(deckFile, `${JSON.stringify(deckJson, null, 2)}\n`, "utf-8");
+  writeDeckToml(deckFile, deckJson);
 
   const deck = resolveDeckByProjectRoot(projectRoot);
   if (!deck) {

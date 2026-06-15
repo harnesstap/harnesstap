@@ -38,10 +38,8 @@ function resourceKey(resource: Pick<Resource, "type" | "name" | "namespace">): s
 
 function loadLayerView(nameOrPath: string): LayerView {
   if (
-    nameOrPath.endsWith(".json") ||
-    nameOrPath.endsWith(".jsonc") ||
-    nameOrPath.endsWith(".harnessdeck.json") ||
-    nameOrPath.endsWith(".harnessdeck.jsonc")
+    nameOrPath.endsWith(".toml") ||
+    nameOrPath.endsWith(".harnessdeck.toml")
   ) {
     const summary = inspectLayerExportFile(nameOrPath);
     if (summary.layers.length > 1) {

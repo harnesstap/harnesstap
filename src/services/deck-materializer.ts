@@ -7,6 +7,7 @@ import type {
   Resource,
 } from "../types.js";
 import { generateFiles, writeFiles } from "./applier.js";
+import { formatDeckToml } from "./transport/index.js";
 import {
   getDedicatedSerializerPlatformIds,
 } from "./platform-serializers.js";
@@ -114,17 +115,6 @@ function buildMarketplaceManifest(
   };
 }
 
-function buildEnvironmentFile(env: DeckJsonEnvironment): DeckJsonEnvironment {
-  const file: DeckJsonEnvironment = {
-    name: env.name,
-    values: sortKeysDeep(env.values ?? {}),
-  };
-  if (env.secret_refs && Object.keys(env.secret_refs).length > 0) {
-    file.secret_refs = sortKeysDeep(env.secret_refs);
-  }
-  return file;
-}
-
 async function materializePluginNativeFiles(
   pluginDir: string,
   resources: Resource[],
@@ -150,19 +140,19 @@ export async function materializeDeckRepo(
   const platforms =
     input.platforms ?? getDedicatedSerializerPlatformIds();
 
-  writeDeterministicJson(
-    join(outDir, ".harnessdeck", "deck.json"),
-    input.deckJson,
+  mkdirSync(join(outDir, ".harnessdeck"), { recursive: true });
+  const deckJsonForExport: DeckJson = {
+    ...input.deckJson,
+    environments:
+      input.environments.length > 0
+        ? input.environments
+        : input.deckJson.environments,
+  };
+  writeFileSync(
+    join(outDir, ".harnessdeck", "deck.toml"),
+    formatDeckToml(deckJsonForExport),
+    "utf-8",
   );
-
-  for (const env of [...input.environments].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )) {
-    writeDeterministicJson(
-      join(outDir, ".harnessdeck", "environments", `${env.name}.json`),
-      buildEnvironmentFile(env),
-    );
-  }
 
   for (const { plugin, resources } of input.plugins) {
     const pluginDir = join(outDir, plugin.name);

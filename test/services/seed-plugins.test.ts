@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
+import {
+  makeMultiLayerExport,
+  writeLayerExportToml,
+} from "../helpers/transport-fixtures.ts";
 
 const BUILTIN_FIXTURE_DIR = join(import.meta.dirname, "../fixtures/builtin-plugins");
 
@@ -118,31 +122,12 @@ describe("seed plugins service", () => {
       const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
       try {
         process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = builtinDir;
-        writeTextFile(
-          join(builtinDir, "multi.jsonc"),
-          `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layers": [
-    {
-      "name": "multi-one",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [],
-      "plugins": [],
-    },
-    {
-      "name": "multi-two",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [],
-      "plugins": [],
-    },
-  ],
-  "embedded_plugins": [],
-}`,
+        writeLayerExportToml(
+          join(builtinDir, "multi.harnessdeck.toml"),
+          makeMultiLayerExport([
+            { name: "multi-one", version: "1.0.0" },
+            { name: "multi-two", version: "1.0.0" },
+          ]),
         );
 
         const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -181,31 +166,12 @@ describe("seed plugins service", () => {
       const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
       try {
         process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = builtinDir;
-        writeTextFile(
-          join(builtinDir, "partial.jsonc"),
-          `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layers": [
-    {
-      "name": "partial-one",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [],
-      "plugins": []
-    },
-    {
-      "name": "partial-two",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [],
-      "plugins": []
-    }
-  ],
-  "embedded_plugins": []
-}`,
+        writeLayerExportToml(
+          join(builtinDir, "partial.harnessdeck.toml"),
+          makeMultiLayerExport([
+            { name: "partial-one", version: "1.0.0" },
+            { name: "partial-two", version: "1.0.0" },
+          ]),
         );
 
         const seedPlugins = await import("../../src/services/seed-plugins.ts");

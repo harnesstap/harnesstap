@@ -17,6 +17,7 @@ import type {
   ResourceType,
 } from "../types.js";
 import { ENVIRONMENT_RESOURCE_TYPES } from "./resource-classification.js";
+import { readDeckToml } from "./exporter.js";
 import { resolveSecretRefs } from "./secret-resolver.js";
 
 export interface EnvironmentFragment {
@@ -202,14 +203,14 @@ export function loadLayerDefaultFragments(
 }
 
 function loadDeckActiveFragmentFromRepo(projectRoot: string): EnvironmentFragment | undefined {
-  const deckJsonPath = join(projectRoot, ".harnessdeck", "deck.json");
-  if (!existsSync(deckJsonPath)) {
+  const deckTomlPath = join(projectRoot, ".harnessdeck", "deck.toml");
+  if (!existsSync(deckTomlPath)) {
     return undefined;
   }
 
   let deckJson: DeckJson;
   try {
-    deckJson = JSON.parse(readFileSync(deckJsonPath, "utf-8")) as DeckJson;
+    deckJson = readDeckToml(deckTomlPath);
   } catch {
     return undefined;
   }
@@ -217,17 +218,6 @@ function loadDeckActiveFragmentFromRepo(projectRoot: string): EnvironmentFragmen
   const activeName = deckJson.active_environment;
   if (!activeName) {
     return undefined;
-  }
-
-  const envFilePath = join(
-    projectRoot,
-    ".harnessdeck",
-    "environments",
-    `${activeName}.json`,
-  );
-  const fileFragment = readEnvironmentFile(envFilePath);
-  if (Object.keys(fileFragment.vars).length > 0 || Object.keys(fileFragment.secretRefs).length > 0) {
-    return fileFragment;
   }
 
   const inlineEnvironment = deckJson.environments?.find(

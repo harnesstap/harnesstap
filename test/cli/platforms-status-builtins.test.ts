@@ -7,7 +7,9 @@ import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 
-const NEXTJS_CATALOG_BUNDLE = JSON.stringify({
+import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+
+const NEXTJS_CATALOG_BUNDLE = formatLayerExportToml({
   $schema: "urn:harnessdeck:layer:v1",
   version: 1,
   layer: {
@@ -22,6 +24,11 @@ const NEXTJS_CATALOG_BUNDLE = JSON.stringify({
       description: "ctx",
       content: "# Next.js\n",
       metadata: {},
+      namespace: "",
+      origin_kind: "manual",
+      origin_ref: "",
+      content_hash: "",
+      content_blob_ref: "",
     },
   ],
   plugins: [],

@@ -1,0 +1,23 @@
+schema = "urn:harnessdeck:deck:v1"
+version = 1
+name = "minimal-deck"
+active_environment = "prod"
+
+[[layers]]
+name = "backend-oncall"
+version = "1.0.0"
+environment = "prod"
+
+[[layers.plugins]]
+name = "pagerduty"
+version = "1.0.0"
+
+[environments.prod.values]
+PD_REGION = "eu"
+
+[environments.staging.values]
+PD_REGION = "us"
+
+[environments.staging.secret_refs.PD_TOKEN]
+provider = "keychain"
+ref = "harnessdeck/pd-token"

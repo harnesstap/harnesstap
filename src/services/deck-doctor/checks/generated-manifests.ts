@@ -162,7 +162,7 @@ function compareGeneratedFile(
     return {
       severity: "error",
       message: `Unexpected generated file on disk: ${relativePath}`,
-      fix: `Remove ${relativePath} or update .harnessdeck/deck.json`,
+      fix: `Remove ${relativePath} or update .harnessdeck/deck.toml`,
     };
   }
 
@@ -178,7 +178,7 @@ function compareGeneratedFile(
     return {
       severity: "error",
       message: `Generated manifest drift: ${relativePath}`,
-      detail: `Expected output from .harnessdeck/deck.json does not match ${relativePath}`,
+      detail: `Expected output from .harnessdeck/deck.toml does not match ${relativePath}`,
       fix: `Run deck materialize to refresh ${relativePath}`,
     };
   }
@@ -189,7 +189,7 @@ function compareGeneratedFile(
 export const generatedManifestsCheck = {
   id: "generated-manifests",
   description:
-    "Compare generated Claude manifests and HarnessDeck-owned files against .harnessdeck/deck.json",
+    "Compare generated Claude manifests and HarnessDeck-owned files against .harnessdeck/deck.toml",
   async run(context: DeckDoctorContext): Promise<DeckDoctorCheckResult[]> {
     const tempDir = mkdtempSync(join(tmpdir(), "harnessdeck-deck-doctor-"));
 

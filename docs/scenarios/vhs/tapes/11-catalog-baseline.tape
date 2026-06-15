@@ -10,7 +10,7 @@ Type "harnessdeck layer search foundation"
 Enter
 Sleep 2500ms
 
-Type "harnessdeck project apply engineering-foundation --project ."
+Type "harnessdeck project apply engineering-foundation"
 Enter
 Sleep 2500ms
 

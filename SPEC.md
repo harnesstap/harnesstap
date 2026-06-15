@@ -59,7 +59,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `environment`: a named, swappable bundle of environment-side resources. Non-secret values can travel in a deck; secrets are referenced, not embedded.
 - `organization`: a Cloud tenant boundary (members, roles, billing). Required to publish layers for multiplayer use.
 - `catalog`: a named collection of layers within an organization — the browse, search, and install scope in Cloud and the CLI. Required alongside an organization when publishing; omitted for purely local layers.
-- `deck`: a curated bundle of layers and environments, importable as a git repo and described by `.harnessdeck/deck.json`. Decks are the portable transport format; day-to-day multiplayer distribution flows through **catalogs**, not deck repos.
+- `deck`: a curated bundle of layers and environments, importable as a git repo and described by `.harnessdeck/deck.toml`. Decks are the portable transport format; day-to-day multiplayer distribution flows through **catalogs**, not deck repos.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
@@ -105,7 +105,7 @@ The words **plugin** and **layer** each appear in more than one role. Use this t
 | **`plugin` resource** (marketplace/local reference attached to a layer) | `layer combine plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + layer combinement rows |
 | **`layer` resource** (composition ref to another layer) | `layer combine layer:name` or `--type layer` | `resources` (`type=layer`) + layer combinement rows |
 | **Catalog** (org-scoped layer collection) | `layer catalog …`, `layer search`, `layer pull` | Cloud catalog APIs; `catalog` in `config.jsonc` |
-| **Deck** | `.harnessdeck/deck.json`, deck doctor | `decks`, `deck_layers` |
+| **Deck** | `.harnessdeck/deck.toml`, deck doctor | `decks`, `deck_layers` |
 
 Compat shims (`configured-layer.ts`, `listDeckConfiguredLayers`) delegate to `layer-model.ts` / `deck_layers` and are deprecated.
 
@@ -205,11 +205,11 @@ my-deck/
 ├─ <plugin-name>/.claude-plugin/plugin.json   # + harnessdeck.needs
 ├─ AGENTS.md · .cursor/rules/ · …             # generated native files
 └─ .harnessdeck/
-   ├─ deck.json                                # urn:harnessdeck:deck:v1
+   ├─ deck.toml                                # urn:harnessdeck:deck:v1
    └─ environments/<name>.json                 # non-secret values only
 ```
 
-`.harnessdeck/deck.json` is the lossless source; marketplace and native files are **generated** and checked by deck doctor. See [Transport formats](#transport-formats).
+`.harnessdeck/deck.toml` is the lossless source; marketplace and native files are **generated** and checked by deck doctor. See [Transport formats](#transport-formats).
 
 ### Progressive enhancement
 
@@ -555,7 +555,7 @@ A **layer** is the primary composable unit.
 
 ### Deck model
 
-A deck record has a `name`, optional `root_path`, optional `active_environment_id`, and ordered layer membership. On-disk source of truth: `.harnessdeck/deck.json` (`urn:harnessdeck:deck:v1`).
+A deck record has a `name`, optional `root_path`, optional `active_environment_id`, and ordered layer membership. On-disk source of truth: `.harnessdeck/deck.toml` (`urn:harnessdeck:deck:v1`).
 
 ## Agent harness model
 
@@ -623,45 +623,50 @@ Orphans are removed only with `--prune`.
 
 ## Transport formats
 
+All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport files are rejected. Toolkit config (`~/.harnessdeck/config.jsonc`) remains JSONC.
+
+See [TOML transport design](docs/superpowers/specs/2026-06-14-toml-transport-design.md) for the full schema family.
+
 ### Layer v1
 
-Layer export/import uses JSONC with schema `urn:harnessdeck:layer:v1` and version `1`. Each export contains one **layer** payload (the top-level JSON key remains `layer` for transport compatibility), a flat `resources[]` list (including `plugin` and `layer` composition resources), optional `plugins[]` / `embedded_plugins[]`, optional `dependencies[]`, and optional top-level `claude` object. Missing optional arrays import as empty.
+`urn:harnessdeck:layer:v1` in `*.harnessdeck.toml`. Each file contains one or more `[[layers]]` rows with nested `[[layers.resources]]`, optional `[[layers.plugins]]`, optional root `embedded_plugins`, and optional `claude` configuration. Multiline resource and plugin file bodies use TOML `"""` strings.
 
-Internal database IDs, timestamps, `org_slug`, `catalog_slug`, and `source` fields are not exported from local export; publish adds org/catalog on upload. Import creates a local `layers` row and associated `layer_resources`.
-
-Default export path: `<name>.harnessdeck.jsonc`.
+Default export path: `<name>.harnessdeck.toml`.
 
 ### Deck v1 (canonical repo format)
 
-`urn:harnessdeck:deck:v1` in `.harnessdeck/deck.json`:
+`urn:harnessdeck:deck:v1` in `.harnessdeck/deck.toml`:
 
-```json
-{
-  "$schema": "urn:harnessdeck:deck:v1",
-  "version": 1,
-  "name": "my-deck",
-  "layers": [
-    {
-      "name": "backend-oncall",
-      "version": "1.0.0",
-      "org": "acme",
-      "catalog": "platform",
-      "environment": "oncall-prod"
-    }
-  ],
-  "environments": [
-    { "name": "staging", "values": { "PD_REGION": "eu" } },
-    { "name": "prod", "values": { "PD_REGION": "us" } }
-  ],
-  "active_environment": "staging"
-}
+```toml
+schema = "urn:harnessdeck:deck:v1"
+version = 1
+
+name = "my-deck"
+active_environment = "staging"
+
+[[layers]]
+name = "backend-oncall"
+version = "1.0.0"
+org = "acme"
+catalog = "platform"
+environment = "oncall-prod"
+
+[environments.staging.values]
+PD_REGION = "eu"
+
+[environments.prod.values]
+PD_REGION = "us"
 ```
 
-Non-secret environment values may also live under `.harnessdeck/environments/<name>.json`. Deck doctor materializes and checks generated marketplace/native files against canonical `deck.json`. Layer entries reference layers by `name`, `version`, and optional `org`/`catalog` for published layers. Legacy `plugins[]` arrays are still accepted on import for backward compatibility.
+Environments are inlined under `[environments.<name>]`. Deck doctor materializes and checks generated marketplace/native files against canonical `deck.toml`. Layer entries reference layers by `name`, `version`, and optional `org`/`catalog`.
+
+### Bundle v1 (portable single file)
+
+`urn:harnessdeck:bundle:v1` combines `[deck]`, top-level `[environments.*]`, full `[[layers]]` payloads, and deduplicated `embedded_plugins` in one `*.harnessdeck.toml` file.
 
 ### Machine transfer archives
 
-`migrate export` writes JSON or tar.gz containing a manifest, exported layer bundles, the global harness preference record, and config. `migrate import` restores them. Archives do not include tracked project records, snapshots, or cloud profiles.
+`migrate export` writes TOML layer exports inside JSON metadata or tar.gz archives. `migrate import` restores them. Archives do not include tracked project records, snapshots, or cloud profiles.
 
 ## HarnessDeck Cloud
 

@@ -62,41 +62,32 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
   return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
 }
 
-function exportLayerExportToCloudPayload(layerExportJson: string): { layers: Array<Record<string, unknown>> } {
-  const parsed = JSON.parse(layerExportJson) as Record<string, unknown>;
-  if (Array.isArray(parsed.layers)) {
-    return {
-      layers: parsed.layers.map((layer) => ({ ...(layer as Record<string, unknown>) })),
-    };
-  }
+import { parseLayerExportToml } from "./transport/index.js";
 
-  const layer = parsed.layer as Record<string, unknown> | undefined;
-  if (!layer) {
-    throw new Error("Layer export is missing a layer payload.");
-  }
-
-  const plugins = Array.isArray(parsed.plugins) ? parsed.plugins : [];
-  const pluginPins = plugins.map((plugin) => {
-    const ref = String((plugin as { ref?: string }).ref ?? "");
-    const at = ref.lastIndexOf("@");
-    const id = at >= 0 ? ref.slice(0, at) : ref;
-    const author = at >= 0 ? ref.slice(at + 1) : "";
-    return {
-      id,
-      author,
-      version: String((plugin as { version_constraint?: string }).version_constraint ?? "*"),
-    };
-  });
-
+function exportLayerExportToCloudPayload(layerExportToml: string): { layers: Array<Record<string, unknown>> } {
+  const parsed = parseLayerExportToml(layerExportToml);
   return {
-    layers: [{
-      name: String(layer.name ?? ""),
-      description: typeof layer.description === "string" ? layer.description : "",
-      tags: Array.isArray(layer.tags) ? layer.tags : [],
-      pluginPins,
-      resources: Array.isArray(parsed.resources) ? parsed.resources : [],
-      ...(parsed.claude ? { claude: parsed.claude } : {}),
-    }],
+    layers: parsed.layers.map((layer) => {
+      const pluginPins = layer.plugins.map((plugin) => {
+        const ref = plugin.ref;
+        const at = ref.lastIndexOf("@");
+        const id = at >= 0 ? ref.slice(0, at) : ref;
+        const author = at >= 0 ? ref.slice(at + 1) : "";
+        return {
+          id,
+          author,
+          version: plugin.version_constraint,
+        };
+      });
+      return {
+        name: layer.name,
+        description: layer.description,
+        tags: layer.tags,
+        pluginPins,
+        resources: layer.resources,
+        ...(layer.claude ? { claude: layer.claude } : {}),
+      };
+    }),
   };
 }
 
@@ -153,7 +144,7 @@ export async function pollDeviceToken(
 export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
-  publishLayerExport(metadata: Record<string, unknown>, layerExportJson: string): Promise<Record<string, unknown>>;
+  publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string): Promise<Record<string, unknown>>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 }
@@ -242,6 +233,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     version: string;
     summary: string;
     layerExport: { layers: Array<Record<string, unknown>> };
+    harnessdeckLayerExportBody: string;
   }): Promise<{ version: { version: string } }> {
     const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
       method: "PATCH",
@@ -252,6 +244,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         version: input.version,
         summary: input.summary,
         layerExport: input.layerExport,
+        harnessdeckLayerExportBody: input.harnessdeckLayerExportBody,
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -275,7 +268,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       return data.orgs ?? [];
     },
 
-    async publishLayerExport(metadata: Record<string, unknown>, layerExportJson: string) {
+    async publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string) {
       const orgSlug = String(metadata.org_slug ?? "");
       const catalogSlug = String(metadata.catalog_slug ?? "default");
       const layerName = String(metadata.layer_name ?? "");
@@ -290,7 +283,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       }
 
       const slug = toSlug(layerName);
-      const layerExportPayload = exportLayerExportToCloudPayload(layerExportJson);
+      const layerExportPayload = exportLayerExportToCloudPayload(layerExportToml);
       const layerCount = layerExportPayload.layers.length;
       const summary = String(
         (layerExportPayload.layers[0] as { description?: string } | undefined)?.description
@@ -332,6 +325,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         version,
         summary,
         layerExport: layerExportPayload,
+        harnessdeckLayerExportBody: layerExportToml,
       });
 
       return {

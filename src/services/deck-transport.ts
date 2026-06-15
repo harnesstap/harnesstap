@@ -1,18 +1,19 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { getDeck, getDeckByName } from "../models/deck.js";
 import {
   getLayerByPublishedIdentity,
   resolveLayerSelector,
 } from "../models/layer-model.js";
-import { stableJsonStringify } from "./deck-materializer.js";
 import {
   exportDeckToDeckJson,
   exportToFile,
-  importDeckJson,
+  importDeckToml,
   importFromFile,
+  readDeckToml,
   type ImportDeckJsonResult,
 } from "./exporter.js";
+import { formatDeckToml } from "./transport/index.js";
 import type { DeckJsonLayer } from "../types.js";
 
 export interface ExportDeckRepoOptions {
@@ -26,7 +27,7 @@ export interface ImportDeckRepoOptions {
 }
 
 function layerExportFileName(layer: DeckJsonLayer): string {
-  return `${layer.name}@${layer.version}.harnessdeck.jsonc`;
+  return `${layer.name}@${layer.version}.harnessdeck.toml`;
 }
 
 function resolveDeck(deckSelector: string) {
@@ -44,21 +45,15 @@ export function exportDeckRepo(
   deckSelector: string,
   outputDir: string,
   options: ExportDeckRepoOptions = {},
-): { deckJsonPath: string; layerExportPaths: string[] } {
+): { deckTomlPath: string; layerExportPaths: string[] } {
   const deck = resolveDeck(deckSelector);
   const resolvedOutput = resolve(outputDir);
   const harnessdeckDir = join(resolvedOutput, ".harnessdeck");
   mkdirSync(harnessdeckDir, { recursive: true });
 
   const deckJson = exportDeckToDeckJson(deck.id);
-  const deckJsonPath = join(harnessdeckDir, "deck.json");
-  writeFileSync(deckJsonPath, stableJsonStringify(deckJson), "utf-8");
-
-  mkdirSync(join(harnessdeckDir, "environments"), { recursive: true });
-  for (const environment of deckJson.environments) {
-    const envPath = join(harnessdeckDir, "environments", `${environment.name}.json`);
-    writeFileSync(envPath, stableJsonStringify(environment), "utf-8");
-  }
+  const deckTomlPath = join(harnessdeckDir, "deck.toml");
+  writeFileSync(deckTomlPath, formatDeckToml(deckJson), "utf-8");
 
   const layerExportPaths: string[] = [];
   if (options.withLayerExports) {
@@ -83,18 +78,16 @@ export function exportDeckRepo(
     }
   }
 
-  return { deckJsonPath, layerExportPaths };
+  return { deckTomlPath, layerExportPaths };
 }
 
-function importMissingLayerExports(repoRoot: string, deckJsonPath: string): void {
+function importMissingLayerExports(repoRoot: string, deckTomlPath: string): void {
   const layersDir = join(repoRoot, ".harnessdeck", "layers");
   if (!existsSync(layersDir)) {
     return;
   }
 
-  const deckJson = JSON.parse(readFileSync(deckJsonPath, "utf-8")) as {
-    layers: DeckJsonLayer[];
-  };
+  const deckJson = readDeckToml(deckTomlPath);
 
   for (const layerEntry of deckJson.layers) {
     const selector = layerEntry.org && layerEntry.catalog
@@ -122,14 +115,14 @@ export function importDeckRepo(
   options: ImportDeckRepoOptions = {},
 ): ImportDeckJsonResult {
   const resolvedRoot = resolve(repoRoot);
-  const deckJsonPath = join(resolvedRoot, ".harnessdeck", "deck.json");
-  if (!existsSync(deckJsonPath)) {
-    throw new Error(`Deck repo missing canonical source: ${deckJsonPath}`);
+  const deckTomlPath = join(resolvedRoot, ".harnessdeck", "deck.toml");
+  if (!existsSync(deckTomlPath)) {
+    throw new Error(`Deck repo missing canonical source: ${deckTomlPath}`);
   }
 
-  importMissingLayerExports(resolvedRoot, deckJsonPath);
+  importMissingLayerExports(resolvedRoot, deckTomlPath);
 
-  return importDeckJson(deckJsonPath, {
+  return importDeckToml(deckTomlPath, {
     deckNameOverride: options.deckNameOverride,
     rootPath: resolvedRoot,
     resourceSource: options.resourceSource ?? "import:deck-repo",

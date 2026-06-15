@@ -1,7 +1,11 @@
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { writeTextFile } from "../helpers/fs.ts";
+import {
+  makeMultiLayerExport,
+  makeSingleLayerExport,
+  writeLayerExportToml,
+} from "../helpers/transport-fixtures.ts";
 
 describe("diffLayers - metadata: version and dependencies", () => {
   it("reports metadata change when layer version differs between two bundles", async () => {
@@ -12,20 +16,11 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-version-change");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.json");
-      const rightPath = join(tmpDir, "right.harnessdeck.json");
+      const leftPath = join(tmpDir, "left.harnessdeck.toml");
+      const rightPath = join(tmpDir, "right.harnessdeck.toml");
 
-      const makeBundle = (version: string) => JSON.stringify({
-        $schema: "urn:harnessdeck:layer:v1",
-        version: 1,
-        layer: { name: "test", version, description: "", tags: [] },
-        resources: [],
-        plugins: [],
-        embedded_plugins: [],
-      });
-
-      writeTextFile(leftPath, makeBundle("1.0.0"));
-      writeTextFile(rightPath, makeBundle("2.0.0"));
+      writeLayerExportToml(leftPath, makeSingleLayerExport({ name: "test", version: "1.0.0" }));
+      writeLayerExportToml(rightPath, makeSingleLayerExport({ name: "test", version: "2.0.0" }));
 
       const report = diffLayers(leftPath, rightPath);
       const versionChange = report.changes.find(
@@ -48,20 +43,11 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-version-same");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.json");
-      const rightPath = join(tmpDir, "right.harnessdeck.json");
+      const leftPath = join(tmpDir, "left.harnessdeck.toml");
+      const rightPath = join(tmpDir, "right.harnessdeck.toml");
 
-      const makeBundle = (version: string) => JSON.stringify({
-        $schema: "urn:harnessdeck:layer:v1",
-        version: 1,
-        layer: { name: "test", version, description: "", tags: [] },
-        resources: [],
-        plugins: [],
-        embedded_plugins: [],
-      });
-
-      writeTextFile(leftPath, makeBundle("1.0.0"));
-      writeTextFile(rightPath, makeBundle("1.0.0"));
+      writeLayerExportToml(leftPath, makeSingleLayerExport({ name: "test", version: "1.0.0" }));
+      writeLayerExportToml(rightPath, makeSingleLayerExport({ name: "test", version: "1.0.0" }));
 
       const report = diffLayers(leftPath, rightPath);
       const versionChange = report.changes.find(
@@ -81,22 +67,23 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-change");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.json");
-      const rightPath = join(tmpDir, "right.harnessdeck.json");
+      const leftPath = join(tmpDir, "left.harnessdeck.toml");
+      const rightPath = join(tmpDir, "right.harnessdeck.toml");
 
-      const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: { name: "test", version: "1.0.0", description: "", tags: [] },
-          resources: [],
-          plugins: [],
-          embedded_plugins: [],
-          dependencies: deps,
-        });
-
-      writeTextFile(leftPath, makeBundle([{ dependency_name: "base", version_constraint: "^1.0.0", order: 0 }]));
-      writeTextFile(rightPath, makeBundle([{ dependency_name: "base", version_constraint: "^2.0.0", order: 0 }]));
+      writeLayerExportToml(
+        leftPath,
+        makeSingleLayerExport({
+          name: "test",
+          dependencies: [{ dependency_name: "base", version_constraint: "^1.0.0", order: 0 }],
+        }),
+      );
+      writeLayerExportToml(
+        rightPath,
+        makeSingleLayerExport({
+          name: "test",
+          dependencies: [{ dependency_name: "base", version_constraint: "^2.0.0", order: 0 }],
+        }),
+      );
 
       const report = diffLayers(leftPath, rightPath);
       const depsChange = report.changes.find(
@@ -117,23 +104,15 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-same");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.json");
-      const rightPath = join(tmpDir, "right.harnessdeck.json");
+      const leftPath = join(tmpDir, "left.harnessdeck.toml");
+      const rightPath = join(tmpDir, "right.harnessdeck.toml");
 
-      const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: { name: "test", version: "1.0.0", description: "", tags: [] },
-          resources: [],
-          plugins: [],
-          embedded_plugins: [],
-          dependencies: deps,
-        });
-
-      const deps = [{ dependency_name: "base", version_constraint: "^1.0.0", order: 0 }];
-      writeTextFile(leftPath, makeBundle(deps));
-      writeTextFile(rightPath, makeBundle(deps));
+      const bundle = makeSingleLayerExport({
+        name: "test",
+        dependencies: [{ dependency_name: "base", version_constraint: "^1.0.0", order: 0 }],
+      });
+      writeLayerExportToml(leftPath, bundle);
+      writeLayerExportToml(rightPath, bundle);
 
       const report = diffLayers(leftPath, rightPath);
       const depsChange = report.changes.find(
@@ -153,23 +132,23 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-order-irrelevant");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.json");
-      const rightPath = join(tmpDir, "right.harnessdeck.json");
+      const leftPath = join(tmpDir, "left.harnessdeck.toml");
+      const rightPath = join(tmpDir, "right.harnessdeck.toml");
 
-      const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: { name: "test", version: "1.0.0", description: "", tags: [] },
-          resources: [],
-          plugins: [],
-          embedded_plugins: [],
-          dependencies: deps,
-        });
-
-      // Same deps and constraints but different numeric `order` field — should not trigger a diff
-      writeTextFile(leftPath, makeBundle([{ dependency_name: "base", version_constraint: "^1.0.0", order: 0 }]));
-      writeTextFile(rightPath, makeBundle([{ dependency_name: "base", version_constraint: "^1.0.0", order: 99 }]));
+      writeLayerExportToml(
+        leftPath,
+        makeSingleLayerExport({
+          name: "test",
+          dependencies: [{ dependency_name: "base", version_constraint: "^1.0.0", order: 0 }],
+        }),
+      );
+      writeLayerExportToml(
+        rightPath,
+        makeSingleLayerExport({
+          name: "test",
+          dependencies: [{ dependency_name: "base", version_constraint: "^1.0.0", order: 99 }],
+        }),
+      );
 
       const report = diffLayers(leftPath, rightPath);
       const depsChange = report.changes.find(
@@ -189,30 +168,29 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-reorder");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.json");
-      const rightPath = join(tmpDir, "right.harnessdeck.json");
+      const leftPath = join(tmpDir, "left.harnessdeck.toml");
+      const rightPath = join(tmpDir, "right.harnessdeck.toml");
 
-      const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: { name: "test", version: "1.0.0", description: "", tags: [] },
-          resources: [],
-          plugins: [],
-          embedded_plugins: [],
-          dependencies: deps,
-        });
-
-      const depsAB = [
-        { dependency_name: "alpha", version_constraint: "^1.0.0", order: 0 },
-        { dependency_name: "beta", version_constraint: "^1.0.0", order: 1 },
-      ];
-      const depsBA = [
-        { dependency_name: "beta", version_constraint: "^1.0.0", order: 0 },
-        { dependency_name: "alpha", version_constraint: "^1.0.0", order: 1 },
-      ];
-      writeTextFile(leftPath, makeBundle(depsAB));
-      writeTextFile(rightPath, makeBundle(depsBA));
+      writeLayerExportToml(
+        leftPath,
+        makeSingleLayerExport({
+          name: "test",
+          dependencies: [
+            { dependency_name: "alpha", version_constraint: "^1.0.0", order: 0 },
+            { dependency_name: "beta", version_constraint: "^1.0.0", order: 1 },
+          ],
+        }),
+      );
+      writeLayerExportToml(
+        rightPath,
+        makeSingleLayerExport({
+          name: "test",
+          dependencies: [
+            { dependency_name: "beta", version_constraint: "^1.0.0", order: 0 },
+            { dependency_name: "alpha", version_constraint: "^1.0.0", order: 1 },
+          ],
+        }),
+      );
 
       const report = diffLayers(leftPath, rightPath);
       const depsChange = report.changes.find(
@@ -225,7 +203,6 @@ describe("diffLayers - metadata: version and dependencies", () => {
     }
   });
 
-
   it("reports version change when diffing a DB layer against a bundle with different version", async () => {
     const context = await createInitializedTestContext("diff-db-vs-bundle-version");
 
@@ -237,15 +214,11 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       layerModel.createLayer({ name: "local-layer", version: "3.0.0" });
 
-      const bundlePath = join(tmpDir, "bundle.harnessdeck.json");
-      writeTextFile(bundlePath, JSON.stringify({
-        $schema: "urn:harnessdeck:layer:v1",
-        version: 1,
-        layer: { name: "local-layer", version: "1.0.0", description: "", tags: [] },
-        resources: [],
-        plugins: [],
-        embedded_plugins: [],
-      }));
+      const bundlePath = join(tmpDir, "bundle.harnessdeck.toml");
+      writeLayerExportToml(
+        bundlePath,
+        makeSingleLayerExport({ name: "local-layer", version: "1.0.0" }),
+      );
 
       const report = diffLayers("local-layer", bundlePath);
       const versionChange = report.changes.find(
@@ -270,32 +243,13 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       layerModel.createLayer({ name: "local-layer", version: "1.0.0" });
 
-      const bundlePath = join(tmpDir, "multi.harnessdeck.jsonc");
-      writeTextFile(
+      const bundlePath = join(tmpDir, "multi.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layers": [
-    {
-      "name": "first",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [],
-      "plugins": []
-    },
-    {
-      "name": "second",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [],
-      "plugins": []
-    }
-  ],
-  "embedded_plugins": []
-}`,
+        makeMultiLayerExport([
+          { name: "first", version: "1.0.0" },
+          { name: "second", version: "1.0.0" },
+        ]),
       );
 
       expect(() => diffLayers(bundlePath, "local-layer")).toThrow(
