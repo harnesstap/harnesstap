@@ -10,7 +10,7 @@ An **agent harness** is the complete infrastructure that wraps around an LLM and
 
 The product currently supports these main workflows:
 
-- Initialize local state, seed built-in layers, discover supported home-directory defaults, and choose global harness preferences.
+- Initialize local state, discover supported home-directory defaults, and choose global harness preferences.
 - Scan an existing repository (or plugin source) and import agent configuration into a local database.
 - Group imported resources into versioned **local layers** (`name` + `version` only).
 - Diff, doctor, export, import, publish, search, install, or derive layers from a project scan.

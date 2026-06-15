@@ -14,6 +14,9 @@ describe("CLI init", () => {
 
       expect(result.stdout).toContain("Harnessdeck initialized");
       expect(result.stdout).toContain("Database");
+      expect(result.stdout).toContain("NEXT STEPS");
+      expect(result.stdout).toContain("layer search foundation");
+      expect(result.stdout).toContain("project apply engineering-foundation --project .");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
       expect(layerModel.listLayers()).toEqual([]);

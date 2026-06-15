@@ -80,12 +80,12 @@ Initialise HarnessDeck, scan an existing repository, browse catalog layers, appl
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```bash
-harnessdeck init                              # initialise HarnessDeck in the repository
+harnessdeck init --main codex --aliases claude-code,cursor
 harnessdeck project scan .                    # detect existing resources
 harnessdeck resource list                     # review discovered resources
-harnessdeck layer search fullstack            # browse catalog layers
-harnessdeck project apply nextjs-fullstack \
-  --project . --harness codex                 # apply a catalog baseline
+harnessdeck layer search foundation           # browse catalog layers
+harnessdeck project apply engineering-foundation \
+  --project .                                 # apply a catalog baseline
 harnessdeck project status .                  # confirm the final state
 ```
 
@@ -157,18 +157,19 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
 
 1. **Initialize** local state (creates `~/.harnessdeck` and scans supported home harness folders).
    ```bash
-   hd init
-   hd init --main claude-code --aliases cursor,codex
+   hd init --main codex --aliases claude-code,cursor
    ```
 
 2. **Apply** a catalog layer by bare name (fetches from the public `harnessdeck-cloud` catalog when needed).
    ```bash
-   hd project apply nextjs-fullstack --project . --harness codex
+   hd layer search foundation
+   hd project apply engineering-foundation --project .
    ```
 
 3. **Inspect** project state and next steps.
    ```bash
    hd project status .
+   hd concepts
    hd guide
    ```
 
@@ -306,11 +307,11 @@ flowchart LR
 
 ## Catalog baselines
 
-Starter layers such as `nextjs-fullstack` and `python-fastapi` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd project apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
+Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd project apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
 
 ```bash
-hd layer search fullstack
-hd project apply nextjs-fullstack --project . --harness codex
+hd layer search foundation
+hd project apply engineering-foundation --project .
 ```
 
 To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.

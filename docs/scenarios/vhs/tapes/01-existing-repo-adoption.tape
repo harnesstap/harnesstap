@@ -14,11 +14,11 @@ Type "harnessdeck resource list"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck layer search fullstack"
+Type "harnessdeck layer search foundation"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck project apply nextjs-fullstack --project . --harness codex"
+Type "harnessdeck project apply engineering-foundation --project ."
 Enter
 Sleep 3000ms
 

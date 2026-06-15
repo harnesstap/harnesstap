@@ -107,6 +107,11 @@ import {
 } from "./services/layer-catalog.js";
 import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
 import {
+  CANONICAL_CATALOG_BASELINE,
+  CANONICAL_CATALOG_SEARCH_HINT,
+} from "./constants/onboarding.js";
+import { printConceptsGuide } from "./services/concepts-guide.js";
+import {
   formatPublishedSelector,
   resolveRemoteLayerSelector,
 } from "./services/layer-selector.js";
@@ -2359,8 +2364,13 @@ function printQuickStartGuide(): void {
   console.log("");
   ui.subheader("NEXT STEPS");
   console.log("");
-  console.log(`  ${formatCommand("layer search <query>")}`);
-  console.log(`  ${formatCommand("project apply <layer> --project .")}`);
+  console.log(
+    `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
+  );
+  console.log(
+    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE} --project .`)}`,
+  );
+  console.log(`  ${formatCommand("concepts")}`);
   console.log(`  ${formatCommand("guide")}`);
 }
 
@@ -2374,17 +2384,20 @@ function handleGuideCommand(): void {
   console.log("");
   ui.subheader("QUICK START");
   console.log("");
-  console.log(`  ${formatCommand("init")}`);
+  console.log(`  ${formatCommand("init --main codex --aliases claude-code,cursor")}`);
   console.log(
-    `  ${formatCommand("project apply engineering-foundation --project . --harness codex")}`,
+    `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
+  );
+  console.log(
+    `  ${formatCommand(`project apply ${CANONICAL_CATALOG_BASELINE} --project .`)}`,
   );
   console.log(`  ${formatCommand("project status .")}`);
   console.log("");
   ui.subheader("EXPLORE");
   console.log("");
-  console.log(`  ${formatCommand("layer search <query>")}`);
   console.log(`  ${formatCommand("project scan .")}`);
   console.log(`  ${formatCommand("harness list")}`);
+  console.log(`  ${formatCommand("concepts")}`);
   console.log("");
   ui.subheader("DOCUMENTATION");
   console.log("");
@@ -3117,6 +3130,13 @@ program
   .description("Show quick start commands and documentation links")
   .action(() => {
     handleGuideCommand();
+  });
+
+program
+  .command("concepts")
+  .description("Explain core HarnessDeck concepts and common command choices")
+  .action(() => {
+    printConceptsGuide();
   });
 
 program
