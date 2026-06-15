@@ -14,12 +14,12 @@ describe("ui table", () => {
         { key: "name", header: "NAME", width: 12 },
         { key: "description", header: "DESCRIPTION", width: 24 },
       ],
-      rows: [{ name: "nextjs-fullstack", description: "Next.js fullstack layer" }],
+      rows: [{ name: "demo-stack", description: "Demo web stack layer" }],
       summary: "1 layer · run `harnessdeck layer show <name>` for details",
     });
 
     expect(output).toContain("NAME");
-    expect(output).toContain("nextjs-fullstack");
+    expect(output).toContain("demo-stack");
     expect(output).toContain("1 layer");
   });
 

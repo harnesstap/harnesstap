@@ -504,7 +504,7 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
       await importBuiltinFixtures();
-      const result = await runCli(["layer", "show", "nextjs-fullstack"]);
+      const result = await runCli(["layer", "show", "demo-stack"]);
       expect(result.stdout).toContain("LAYER");
       expect(result.stdout).toContain("Description");
       expect(result.stdout).toContain("RESOURCES");
@@ -518,7 +518,7 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
       await importBuiltinFixtures();
-      const result = await runCli(["layer", "diff", "nextjs-fullstack", "python-fastapi"]);
+      const result = await runCli(["layer", "diff", "demo-stack", "demo-api"]);
       expect(result.stdout).toContain("DIFF");
       expect(result.stdout).toContain("~");
     } finally {

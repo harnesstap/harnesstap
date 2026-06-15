@@ -47,24 +47,24 @@ describe("resolveApplyLayerSource", () => {
         baseUrl: "https://mock",
         layers: [{
           orgSlug: "harnessdeck-cloud",
-          slug: "nextjs-fullstack",
-          name: "Next.js Fullstack",
-          summary: "Template",
+          slug: "engineering-foundation",
+          name: "Engineering foundation",
+          summary: "Shared baseline",
           latestVersion: "1.0.0",
           updatedAt: new Date().toISOString(),
-          tags: [],
+          tags: ["foundation"],
           visibility: "public",
         }],
       });
       const fetchedLabels: string[] = [];
 
-      const resolved = await resolveApplyLayerSource("nextjs-fullstack", {
+      const resolved = await resolveApplyLayerSource("engineering-foundation", {
         baseUrl: "https://mock",
         onFetched: (label) => fetchedLabels.push(label),
       });
 
       expect(resolved.kind).toBe("local");
-      expect(fetchedLabels).toEqual(["harnessdeck-cloud/nextjs-fullstack@1.0.0"]);
+      expect(fetchedLabels).toEqual(["harnessdeck-cloud/engineering-foundation@1.0.0"]);
 
       restoreFetch();
     } finally {
@@ -122,7 +122,7 @@ describe("resolveApplyLayerSource", () => {
       mkdirSync(harnessdeckDir, { recursive: true });
       saveCatalogSettings({ publicCatalog: false }, harnessdeckDir);
 
-      await expect(resolveApplyLayerSource("nextjs-fullstack")).rejects.toBeInstanceOf(
+      await expect(resolveApplyLayerSource("engineering-foundation")).rejects.toBeInstanceOf(
         LayerResolveError,
       );
     } finally {
