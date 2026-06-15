@@ -13,6 +13,6 @@ Tape: [../tapes/01-existing-repo-adoption.tape](../tapes/01-existing-repo-adopti
 1. `harnessdeck init` — initialise HarnessDeck in the repository
 2. `harnessdeck project scan .` — detect existing resources
 3. `harnessdeck resource list` — review discovered resources
-4. `harnessdeck layer search fullstack` — browse catalog layers
-5. `harnessdeck project apply nextjs-fullstack --project . --harness codex` — apply a layer
+4. `harnessdeck layer search foundation` — browse catalog layers
+5. `harnessdeck project apply engineering-foundation --project .` — apply a layer
 6. `harnessdeck project status .` — confirm the final state

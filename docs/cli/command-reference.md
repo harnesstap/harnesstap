@@ -31,6 +31,14 @@ Print quick-start commands and documentation links.
 hd guide
 ```
 
+## concepts
+
+Explain core HarnessDeck concepts (resource, layer, deck, environment, harness) and when to use common commands.
+
+```bash
+hd concepts
+```
+
 ## init
 
 Initialize local HarnessDeck state.

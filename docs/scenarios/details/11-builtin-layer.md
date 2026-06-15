@@ -10,14 +10,14 @@ your repo afterward.
 Typical commands:
 
 ```bash
-harnessdeck init
-harnessdeck layer search fullstack
-harnessdeck project apply nextjs-fullstack --project . --harness codex
+harnessdeck init --main codex --aliases claude-code,cursor
+harnessdeck layer search foundation
+harnessdeck project apply engineering-foundation --project .
 ```
 
 This is often the fastest path for a new repo: apply a public catalog baseline,
 then scan or extend it with project-specific resources later.
 
-Bare names such as `nextjs-fullstack` resolve against the `harnessdeck-cloud`
+Bare names such as `engineering-foundation` resolve against the `harnessdeck-cloud`
 public catalog (and any connected orgs or libraries). Use `layer pull` when you
 want the bundle cached locally before going offline.
