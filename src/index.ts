@@ -110,7 +110,15 @@ import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "./constants/onboarding.js";
-import { printConceptsGuide } from "./services/concepts-guide.js";
+import { buildConceptsGuidePayload, printConceptsGuide } from "./services/concepts-guide.js";
+import { catalogAliasHint } from "./services/catalog-aliases.js";
+import { maybePromptInitCatalogInstall } from "./services/init-catalog-prompt.js";
+import {
+  listScenarioIds,
+  loadScenarioGuide,
+  parseScenarioId,
+} from "./services/scenario-guide.js";
+import { renderShellCompletion } from "./services/shell-completion.js";
 import {
   formatPublishedSelector,
   resolveRemoteLayerSelector,
@@ -177,6 +185,7 @@ import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
   addLayerAttachment,
   LAYER_ATTACHMENT_TYPES,
+  LayerAttachmentHintError,
   removeLayerAttachment,
   validateLayerAttachmentType,
 } from "./services/layer-attachments.js";
@@ -226,12 +235,16 @@ const GUIDE_SCENARIOS_URL =
 
 const GIT_ORIGIN_HINTS = [
   "Add a remote: git remote add origin <url>",
-  "Snapshots and drift detection require a git repository with origin configured.",
+  "Snapshots, drift, history, and revert require a git repository with origin configured.",
 ];
 
-function reportNoGitOrigin(): void {
+function reportNoGitOrigin(retryCommand?: string): void {
   process.exitCode = 1;
-  ui.danger("No git remote origin configured.", { hints: GIT_ORIGIN_HINTS });
+  const hints = [...GIT_ORIGIN_HINTS];
+  if (retryCommand) {
+    hints.push(`Then retry: ${retryCommand}`);
+  }
+  ui.danger("No git remote origin configured.", { hints });
 }
 
 function isVerboseMode(argv: string[] = process.argv): boolean {
@@ -573,6 +586,80 @@ function renderGroupedCommandHelp(cmd: Command): string {
   return lines.join("\n");
 }
 
+const LAYER_HELP_LOCAL_COMMANDS = new Set([
+  "create",
+  "list",
+  "show",
+  "combine",
+  "uncombine",
+  "delete",
+  "export",
+  "import",
+  "diff",
+  "doctor",
+  "from-project",
+  "set-environment",
+  "unset-environment",
+]);
+
+const LAYER_HELP_REMOTE_COMMANDS = new Set([
+  "search",
+  "catalog",
+  "pull",
+  "publish",
+]);
+
+function renderCommandSection(title: string, commands: Command[]): string {
+  if (commands.length === 0) {
+    return "";
+  }
+
+  const commandStrs = commands.map((c) => {
+    const name = c.name();
+    const aliases = c.aliases();
+    const args = c.registeredArguments?.map((arg) => {
+      if (arg.required) {
+        return `<${arg.name()}>`;
+      }
+      return `[${arg.name()}]`;
+    }).join(" ") || "";
+    let fullStr = name;
+    if (aliases.length) {
+      fullStr += ` (${aliases.join(", ")})`;
+    }
+    if (args) {
+      fullStr += ` ${args}`;
+    }
+    return fullStr;
+  });
+  const maxNameLength = Math.max(...commandStrs.map((entry) => entry.length));
+  const lines = [ui.theme.heading(title)];
+  for (let i = 0; i < commands.length; i++) {
+    const command = commands[i];
+    const nameStr = commandStrs[i];
+    if (!command || !nameStr) {
+      continue;
+    }
+    const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
+    lines.push(`  ${ui.theme.command(nameStr)}${padding}${command.description() || ""}`);
+  }
+  return lines.join("\n");
+}
+
+function renderLayerGroupedCommandHelp(cmd: Command): string {
+  const local = cmd.commands.filter((command) =>
+    LAYER_HELP_LOCAL_COMMANDS.has(command.name()),
+  );
+  const remote = cmd.commands.filter((command) =>
+    LAYER_HELP_REMOTE_COMMANDS.has(command.name()),
+  );
+  return [
+    renderCommandSection("LOCAL LIBRARY", local),
+    "",
+    renderCommandSection("REMOTE CATALOG", remote),
+  ].join("\n");
+}
+
 function configureCommandGroup(cmd: Command): Command {
   cmd.helpCommand(false);
   cmd.action(() => {
@@ -655,9 +742,13 @@ program
           lines.push("");
         }
         
-        const subcommands = renderGroupedCommandHelp(cmd);
+        const subcommands = cmd.name() === "layer"
+          ? renderLayerGroupedCommandHelp(cmd)
+          : renderGroupedCommandHelp(cmd);
         if (subcommands) {
-          lines.push(ui.theme.heading("COMMANDS"));
+          if (cmd.name() !== "layer") {
+            lines.push(ui.theme.heading("COMMANDS"));
+          }
           lines.push(subcommands);
           lines.push("");
         }
@@ -1252,9 +1343,9 @@ async function handleApplyCommand(
       platforms,
     });
   } else if (outputFormat === "human" && !opts.dryRun) {
-    ui.warn("No git remote origin — configuration snapshot will not be stored.", {
-      hint: "git remote add origin <url>",
-    });
+    ui.warn("No git remote origin — configuration snapshot will not be stored.");
+    ui.hint("git remote add origin <url>");
+    ui.hint("Snapshots and drift detection require a git repository with origin configured.");
   }
 
   if (opts.dryRun) {
@@ -1344,7 +1435,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    reportNoGitOrigin();
+    reportNoGitOrigin(`${formatCommand("project history --project .")}`);
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -1447,9 +1538,15 @@ function handleLayerExportCommand(
   }
   const filePath = opts.file ?? `${firstLayerName}.harnessdeck.jsonc`;
   const exportSelector = layerNames.length === 1 ? firstLayerName : layerNames;
-  exportToFile(exportSelector, filePath, {
-    embedPlugins: opts.embedPlugins,
-  });
+  try {
+    exportToFile(exportSelector, filePath, {
+      embedPlugins: opts.embedPlugins,
+    });
+  } catch (err) {
+    ui.danger(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
   ui.success(
     `Exported layer ${ui.theme.accent(layerNames.join(", "))} ${ui.icons.hint} ${filePath}`,
   );
@@ -1492,6 +1589,12 @@ async function handleLayerSearchCommand(
     }
 
     renderLayerSearchResults(results);
+    if (results.length === 0) {
+      const aliasHint = catalogAliasHint(query);
+      if (aliasHint) {
+        ui.hint(aliasHint);
+      }
+    }
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
   }
@@ -2404,6 +2507,49 @@ function handleGuideCommand(): void {
   ui.info(GUIDE_QUICK_START_URL);
   ui.info(GUIDE_CLI_REFERENCE_URL);
   ui.info(GUIDE_SCENARIOS_URL);
+  ui.dim(`Run ${formatCommand("guide --scenario <id>")} for a scenario playbook (1-${listScenarioIds().at(-1) ?? 28}).`);
+}
+
+function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: string }): void {
+  const format = parseOutputFormat(opts.format);
+  try {
+    const scenario = loadScenarioGuide(parseScenarioId(scenarioInput));
+    if (format === "json") {
+      printJson(scenario);
+      return;
+    }
+
+    console.log("");
+    ui.subheader(`SCENARIO ${scenario.id}: ${scenario.title.toUpperCase()}`);
+    if (scenario.frequency || scenario.status) {
+      console.log("");
+      ui.dim(
+        [scenario.frequency, scenario.status].filter(Boolean).join(" · "),
+      );
+    }
+    if (scenario.summaryLines.length > 0) {
+      console.log("");
+      for (const line of scenario.summaryLines) {
+        console.log(`  ${line}`);
+      }
+    }
+    if (scenario.commands.length > 0) {
+      console.log("");
+      ui.subheader("TYPICAL COMMANDS");
+      console.log("");
+      for (const command of scenario.commands) {
+        console.log(`  ${formatCommand(command)}`);
+      }
+    }
+    console.log("");
+    ui.dim(`Full doc: docs/scenarios/details/${scenario.filename}`);
+    ui.dim(`All scenarios: ${GUIDE_SCENARIOS_URL}`);
+  } catch (err) {
+    process.exitCode = 1;
+    ui.danger(err instanceof Error ? err.message : String(err), {
+      hints: [`hd guide --scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
+    });
+  }
 }
 
 async function handleInitCommand(opts: {
@@ -2536,6 +2682,29 @@ async function handleInitCommand(opts: {
   }
 
   printQuickStartGuide();
+
+  const canPromptCatalog =
+    format === "human"
+    && !opts.noInteractive
+    && !process.argv.includes("--no-interactive")
+    && Boolean(process.stdin.isTTY && process.stdout.isTTY)
+    && !["1", "true", "yes"].includes(process.env.CI?.trim().toLowerCase() ?? "")
+    && (opts.interactive === true || useWizard)
+    && listDesignPlugins().length === 0;
+
+  if (canPromptCatalog) {
+    try {
+      await maybePromptInitCatalogInstall({
+        interactive: true,
+        noInteractive: opts.noInteractive,
+        format,
+      });
+    } catch (err) {
+      if (!isPromptCancellationError(err)) {
+        throw err;
+      }
+    }
+  }
 }
 
 async function handleHarnessSetCommand(opts: {
@@ -2601,7 +2770,7 @@ async function handleHarnessProjectSetCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    reportNoGitOrigin();
+    reportNoGitOrigin(`${formatCommand("harness project set --project . --main codex")}`);
     return;
   }
 
@@ -2649,7 +2818,7 @@ function handleProjectDriftCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    reportNoGitOrigin();
+    reportNoGitOrigin(`${formatCommand("project drift --project .")}`);
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -3056,6 +3225,7 @@ function handleMigrateExportCommand(
     ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.layer_count} layers`);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
   }
 }
 
@@ -3077,6 +3247,7 @@ function handleMigrateImportCommand(
     );
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
   }
 }
 
@@ -3090,7 +3261,7 @@ function handleHarnessProjectStatusCommand(opts: {
   const projectRoot = resolve(opts.project);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    reportNoGitOrigin();
+    reportNoGitOrigin(`${formatCommand("harness project status --project .")}`);
     return;
   }
 
@@ -3128,15 +3299,51 @@ function handleHarnessProjectStatusCommand(opts: {
 program
   .command("guide")
   .description("Show quick start commands and documentation links")
-  .action(() => {
+  .option("--scenario <id>", "Show commands for a numbered user scenario playbook")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { scenario?: string; format?: string }) => {
+    if (opts.scenario) {
+      handleScenarioGuideCommand(opts.scenario, opts);
+      return;
+    }
     handleGuideCommand();
+  });
+
+program
+  .command("scenario")
+  .argument("<id>", "Scenario number from docs/scenarios/scenarios.md")
+  .description("Show a numbered scenario playbook from the docs")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((id: string, opts: { format?: string }) => {
+    handleScenarioGuideCommand(id, opts);
   });
 
 program
   .command("concepts")
   .description("Explain core HarnessDeck concepts and common command choices")
-  .action(() => {
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { format?: string }) => {
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(buildConceptsGuidePayload());
+      return;
+    }
     printConceptsGuide();
+  });
+
+program
+  .command("completion")
+  .argument("<shell>", "Shell: bash, zsh, or fish")
+  .description("Generate shell completion script")
+  .action((shell: string) => {
+    try {
+      process.stdout.write(
+        renderShellCompletion(shell, program, resolveInvocationName()),
+      );
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
   });
 
 program
@@ -3313,6 +3520,10 @@ layerCmd
       })));
     } catch (err) {
       process.exitCode = 1;
+      if (err instanceof LayerAttachmentHintError) {
+        ui.danger(err.message, { hints: err.hints });
+        return;
+      }
       ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
@@ -3384,6 +3595,10 @@ layerCmd
       ui.success(ui.theme.accent(result.message));
     } catch (err) {
       process.exitCode = 1;
+      if (err instanceof LayerAttachmentHintError) {
+        ui.danger(err.message, { hints: err.hints });
+        return;
+      }
       ui.danger(err instanceof Error ? err.message : String(err));
     }
   });

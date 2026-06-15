@@ -44,7 +44,7 @@ describe("CLI error output", () => {
     expect(result.stderr).toContain("error: unknown command 'layer validate'");
     // Should append contextual help
     expect(result.stderr).toContain("USAGE");
-    expect(result.stderr).toContain("COMMANDS");
+    expect(result.stderr).toContain("LOCAL LIBRARY");
     // Should show actual layer commands (without [options] in command name)
     expect(result.stderr).toContain("show [name]");
     expect(result.stderr).toContain("doctor");

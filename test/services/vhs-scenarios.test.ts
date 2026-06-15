@@ -15,8 +15,8 @@ interface VhsScenarioDefinition {
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 const manifestPath = resolve(repoRoot, "docs/scenarios/vhs/scenarios.json");
-const expectedIds = [1];
-const fixtureRequiredIds = new Set([1]);
+const expectedIds = [1, 7, 11];
+const fixtureRequiredIds = new Set([1, 7, 11]);
 
 describe("VHS scenario manifest", () => {
   it("declares the curated scenarios with repo-relative paths", () => {
