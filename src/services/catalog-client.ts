@@ -16,6 +16,7 @@ import {
   parseLayerSelector,
 } from "./layer-selector.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
+import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 
 function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): CatalogListOptions {
   return {
@@ -169,7 +170,10 @@ export async function listLayersInScope(
 
   const deduped = dedupeCatalogLayers(orgScopedLayers);
   const limit = scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10);
-  return sortCatalogLayers(deduped, scopedOptions.sort).slice(0, limit);
+  const ordered = scopedOptions.q?.trim()
+    ? rankCatalogSearchResults(deduped, scopedOptions.q)
+    : sortCatalogLayers(deduped, scopedOptions.sort);
+  return ordered.slice(0, limit);
 }
 
 export async function downloadCatalogBundle(input: {

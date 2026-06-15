@@ -127,6 +127,55 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
+  it("ranks exact slug matches first in layer search results", async () => {
+    const context = await createTestContext("cli-layer-search-rank");
+    try {
+      await runCli(["init"]);
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [
+          {
+            orgSlug: "harnessdeck-cloud",
+            slug: "devops-engineer",
+            name: "DevOps engineer",
+            summary: "fullstack DevOps coverage",
+            latestVersion: "1.0.0",
+            updatedAt: "2026-06-01T00:00:00.000Z",
+            tags: ["fullstack"],
+            visibility: "public",
+          },
+          {
+            orgSlug: "harnessdeck-cloud",
+            slug: "engineering-foundation",
+            name: "Engineering foundation",
+            summary: "Shared baseline",
+            latestVersion: "1.0.0",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            tags: ["foundation"],
+            visibility: "public",
+          },
+        ],
+      });
+
+      const search = await runCli([
+        "layer",
+        "search",
+        "engineering-foundation",
+        "--base-url",
+        "https://mock",
+        "--format",
+        "json",
+      ]);
+      const searchJson = JSON.parse(search.stdout) as Array<{ slug: string }>;
+      expect(searchJson[0]?.slug).toBe("engineering-foundation");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("project apply fetches a published selector when the layer is not installed locally", async () => {
     const context = await createTestContext("cli-project-apply-remote-fetch");
     try {

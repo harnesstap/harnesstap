@@ -207,10 +207,11 @@ describe("CLI help and command organization", () => {
 
     expect(result.stdout).toContain("WHAT HARNESSDECK DOES");
     expect(result.stdout).toContain("QUICK START");
+    expect(result.stdout).toContain("layer search foundation");
     expect(result.stdout).toContain(
-      "project apply engineering-foundation --project . --harness codex",
+      "project apply engineering-foundation --project .",
     );
-    expect(result.stdout).toContain("layer search <query>");
+    expect(result.stdout).toContain("concepts");
     expect(result.stdout).toContain("DOCUMENTATION");
     expect(result.stdout).toContain("https://github.com/bqbooster/harnessdeck#quick-start");
     expect(result.stdout).toContain(
@@ -219,5 +220,22 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain(
       "https://github.com/bqbooster/harnessdeck/blob/main/docs/scenarios/scenarios.md",
     );
+  });
+
+  it("prints core concepts and command guidance", async () => {
+    const result = await runCli(["concepts"]);
+
+    expect(result.stdout).toContain("CORE CONCEPTS");
+    expect(result.stdout).toContain("resource");
+    expect(result.stdout).toContain("layer");
+    expect(result.stdout).toContain("project apply");
+    expect(result.stdout).toContain("project mirror");
+    expect(result.stdout).toContain("layer search foundation");
+    expect(result.stdout).toContain("ENVIRONMENT CASCADE");
+  });
+
+  it("shows concepts in top-level help", async () => {
+    const result = await runCli(["--help"]);
+    expect(result.stdout).toContain("concepts");
   });
 });
