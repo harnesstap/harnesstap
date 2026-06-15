@@ -3,8 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { ulid } from "ulid";
-import { getDb } from "../../src/db/connection.js";
-import { initializeSchema } from "../../src/db/schema.js";
 import { addConfiguredLayerToDeck, createDeck } from "../../src/models/deck.js";
 import { createLayer } from "../../src/models/layer-model.js";
 import {
@@ -13,6 +11,7 @@ import {
 } from "../../src/services/deck-transport.js";
 import { parseDeckToml } from "../../src/services/transport/deck.js";
 import { DECK_SCHEMA } from "../../src/types.js";
+import { createInitializedTestContext } from "../helpers/db.ts";
 
 describe("deck transport", () => {
   const tempDirs: string[] = [];
@@ -23,10 +22,10 @@ describe("deck transport", () => {
     }
   });
 
-  it("exports and imports a deck repo with layer bundles", () => {
-    const db = getDb();
-    initializeSchema(db);
+  it("exports and imports a deck repo with layer bundles", async () => {
+    const context = await createInitializedTestContext("deck-transport");
 
+    try {
     const suffix = ulid().toLowerCase();
     const layer = createLayer({
       name: `transport-layer-${suffix}`,
@@ -58,5 +57,8 @@ describe("deck transport", () => {
     });
     expect(imported.deck.name).toBe(`imported-deck-${suffix}`);
     expect(imported.configuredLayers.map((entry) => entry.name)).toContain(layer.name);
+    } finally {
+      await context.cleanup();
+    }
   });
 });

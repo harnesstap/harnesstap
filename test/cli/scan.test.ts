@@ -419,8 +419,9 @@ describe("CLI scan", () => {
       );
 
       expect(result.stdout).toContain("codex");
+      expect(result.stdout).toContain("embedded-plugin");
       expect(result.stdout).toContain("Project registered");
-      expect(importedSnapshotModel.listImportedSnapshots()).toHaveLength(0);
+      expect(importedSnapshotModel.listImportedSnapshots()).toHaveLength(1);
     } finally {
       await context.cleanup();
     }
