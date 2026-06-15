@@ -39,7 +39,8 @@ Common development commands:
 | `bun run start:dist -- <args>` | Run the built CLI from `dist/` |
 | `bun run lint:fix` | Apply Biome lint fixes |
 | `bun run clean` | Remove the `dist/` build output |
-| `bun run docs:vhs` | Rebuild recorded CLI VHS scenarios |
+| `bun run docs:vhs` | Rebuild recorded CLI VHS scenario GIFs |
+| `node scripts/scaffold-vhs-artifacts.mjs` | Regenerate tapes, walkthroughs, and `scenarios.json` from command definitions |
 
 ### Running the CLI Locally
 

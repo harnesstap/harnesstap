@@ -1,8 +1,8 @@
 # Preview and apply a layer
 
-Tape: [../tapes/07-preview-apply-layer.tape](../tapes/07-preview-apply-layer.tape)
+[![preview-apply-layer demo](../output/07-preview-apply-layer.gif)](../output/07-preview-apply-layer.gif)
 
-[![Preview and apply demo](../output/07-preview-apply-layer.gif)](../output/07-preview-apply-layer.gif)
+Tape: [../tapes/07-preview-apply-layer.tape](../tapes/07-preview-apply-layer.tape)
 
 ## Commands
 

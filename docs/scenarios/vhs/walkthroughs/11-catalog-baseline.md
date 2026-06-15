@@ -1,8 +1,8 @@
 # Start from a catalog baseline
 
-Tape: [../tapes/11-catalog-baseline.tape](../tapes/11-catalog-baseline.tape)
+[![catalog-baseline demo](../output/11-catalog-baseline.gif)](../output/11-catalog-baseline.gif)
 
-[![Catalog baseline demo](../output/11-catalog-baseline.gif)](../output/11-catalog-baseline.gif)
+Tape: [../tapes/11-catalog-baseline.tape](../tapes/11-catalog-baseline.tape)
 
 ## Commands
 

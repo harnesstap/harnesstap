@@ -75,9 +75,9 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 Initialise HarnessDeck, scan an existing repository, browse catalog layers, apply one, and confirm the final state — all in about a minute.
 
-[![Existing repo adoption walkthrough](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
+[![Preview and apply layer walkthrough](docs/scenarios/vhs/output/07-preview-apply-layer.gif)](docs/scenarios/vhs/walkthroughs/07-preview-apply-layer.md)
 
-[Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
+[All terminal walkthroughs →](docs/scenarios/vhs/README.md)
 
 ```bash
 harnessdeck init --main codex --aliases claude-code,cursor

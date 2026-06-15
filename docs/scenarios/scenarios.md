@@ -25,7 +25,7 @@ A few CLI renames matter up front:
   remains the right path when you want to push a known layer baseline onto
   disk.
 
-See the [VHS demo pack](./vhs/README.md) for rendered walkthroughs of the covered workflows.
+See the [VHS demo pack](./vhs/README.md) for rendered walkthroughs of every scenario.
 
 ## Usage frequency
 

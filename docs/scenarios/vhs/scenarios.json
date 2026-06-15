@@ -1,11 +1,54 @@
 [
   {
     "id": 1,
-    "slug": "existing-repo-adoption",
-    "title": "Adopt HarnessDeck in an existing repository",
-    "docPath": "docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md",
-    "tapePath": "docs/scenarios/vhs/tapes/01-existing-repo-adoption.tape",
-    "outputPath": "docs/scenarios/vhs/output/01-existing-repo-adoption.gif",
+    "slug": "bootstrap-machine",
+    "title": "Bootstrap HarnessDeck on a machine",
+    "docPath": "docs/scenarios/vhs/walkthroughs/01-bootstrap-machine.md",
+    "tapePath": "docs/scenarios/vhs/tapes/01-bootstrap-machine.tape",
+    "outputPath": "docs/scenarios/vhs/output/01-bootstrap-machine.gif"
+  },
+  {
+    "id": 2,
+    "slug": "default-harness-aliases",
+    "title": "Choose a default main harness and aliases",
+    "docPath": "docs/scenarios/vhs/walkthroughs/02-default-harness-aliases.md",
+    "tapePath": "docs/scenarios/vhs/tapes/02-default-harness-aliases.tape",
+    "outputPath": "docs/scenarios/vhs/output/02-default-harness-aliases.gif"
+  },
+  {
+    "id": 3,
+    "slug": "project-harness-preferences",
+    "title": "Override harness preferences for one repository",
+    "docPath": "docs/scenarios/vhs/walkthroughs/03-project-harness-preferences.md",
+    "tapePath": "docs/scenarios/vhs/tapes/03-project-harness-preferences.tape",
+    "outputPath": "docs/scenarios/vhs/output/03-project-harness-preferences.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 4,
+    "slug": "scan-import-repo",
+    "title": "Scan and import an existing repository",
+    "docPath": "docs/scenarios/vhs/walkthroughs/04-scan-import-repo.md",
+    "tapePath": "docs/scenarios/vhs/tapes/04-scan-import-repo.tape",
+    "outputPath": "docs/scenarios/vhs/output/04-scan-import-repo.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 5,
+    "slug": "build-layer-from-resources",
+    "title": "Build a reusable layer from imported resources",
+    "docPath": "docs/scenarios/vhs/walkthroughs/05-build-layer-from-resources.md",
+    "tapePath": "docs/scenarios/vhs/tapes/05-build-layer-from-resources.tape",
+    "outputPath": "docs/scenarios/vhs/output/05-build-layer-from-resources.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 6,
+    "slug": "plugin-constraints",
+    "title": "Add plugin constraints to a layer",
+    "docPath": "docs/scenarios/vhs/walkthroughs/06-plugin-constraints.md",
+    "tapePath": "docs/scenarios/vhs/tapes/06-plugin-constraints.tape",
+    "outputPath": "docs/scenarios/vhs/output/06-plugin-constraints.gif",
     "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
   },
   {
@@ -18,6 +61,33 @@
     "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
   },
   {
+    "id": 8,
+    "slug": "audit-plugins",
+    "title": "Audit plugin resources and layer pins",
+    "docPath": "docs/scenarios/vhs/walkthroughs/08-audit-plugins.md",
+    "tapePath": "docs/scenarios/vhs/tapes/08-audit-plugins.tape",
+    "outputPath": "docs/scenarios/vhs/output/08-audit-plugins.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 9,
+    "slug": "history-revert",
+    "title": "Review history and recover from a bad apply",
+    "docPath": "docs/scenarios/vhs/walkthroughs/09-history-revert.md",
+    "tapePath": "docs/scenarios/vhs/tapes/09-history-revert.tape",
+    "outputPath": "docs/scenarios/vhs/output/09-history-revert.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 10,
+    "slug": "export-import-layer",
+    "title": "Export or import a layer bundle",
+    "docPath": "docs/scenarios/vhs/walkthroughs/10-export-import-layer.md",
+    "tapePath": "docs/scenarios/vhs/tapes/10-export-import-layer.tape",
+    "outputPath": "docs/scenarios/vhs/output/10-export-import-layer.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
     "id": 11,
     "slug": "catalog-baseline",
     "title": "Start from a catalog baseline",
@@ -25,5 +95,154 @@
     "tapePath": "docs/scenarios/vhs/tapes/11-catalog-baseline.tape",
     "outputPath": "docs/scenarios/vhs/output/11-catalog-baseline.gif",
     "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 12,
+    "slug": "scripts-agents",
+    "title": "Drive HarnessDeck from scripts or agents",
+    "docPath": "docs/scenarios/vhs/walkthroughs/12-scripts-agents.md",
+    "tapePath": "docs/scenarios/vhs/tapes/12-scripts-agents.tape",
+    "outputPath": "docs/scenarios/vhs/output/12-scripts-agents.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 13,
+    "slug": "materialization-strategy",
+    "title": "Choose a materialization strategy",
+    "docPath": "docs/scenarios/vhs/walkthroughs/13-materialization-strategy.md",
+    "tapePath": "docs/scenarios/vhs/tapes/13-materialization-strategy.tape",
+    "outputPath": "docs/scenarios/vhs/output/13-materialization-strategy.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 14,
+    "slug": "curate-resource-db",
+    "title": "Curate and clean up the local resource DB",
+    "docPath": "docs/scenarios/vhs/walkthroughs/14-curate-resource-db.md",
+    "tapePath": "docs/scenarios/vhs/tapes/14-curate-resource-db.tape",
+    "outputPath": "docs/scenarios/vhs/output/14-curate-resource-db.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 15,
+    "slug": "subset-platforms",
+    "title": "Apply to a subset of target platforms",
+    "docPath": "docs/scenarios/vhs/walkthroughs/15-subset-platforms.md",
+    "tapePath": "docs/scenarios/vhs/tapes/15-subset-platforms.tape",
+    "outputPath": "docs/scenarios/vhs/output/15-subset-platforms.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 16,
+    "slug": "ci-enforcement",
+    "title": "Enforce layer and plugin state in CI",
+    "docPath": "docs/scenarios/vhs/walkthroughs/16-ci-enforcement.md",
+    "tapePath": "docs/scenarios/vhs/tapes/16-ci-enforcement.tape",
+    "outputPath": "docs/scenarios/vhs/output/16-ci-enforcement.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 17,
+    "slug": "migrate-state",
+    "title": "Migrate HarnessDeck state to a new machine",
+    "docPath": "docs/scenarios/vhs/walkthroughs/17-migrate-state.md",
+    "tapePath": "docs/scenarios/vhs/tapes/17-migrate-state.tape",
+    "outputPath": "docs/scenarios/vhs/output/17-migrate-state.gif"
+  },
+  {
+    "id": 18,
+    "slug": "plugin-merge-conflict",
+    "title": "Debug committed vs effective Claude plugin settings",
+    "docPath": "docs/scenarios/vhs/walkthroughs/18-plugin-merge-conflict.md",
+    "tapePath": "docs/scenarios/vhs/tapes/18-plugin-merge-conflict.tape",
+    "outputPath": "docs/scenarios/vhs/output/18-plugin-merge-conflict.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 19,
+    "slug": "refresh-plugin-metadata",
+    "title": "Sync plugin resources from install trees",
+    "docPath": "docs/scenarios/vhs/walkthroughs/19-refresh-plugin-metadata.md",
+    "tapePath": "docs/scenarios/vhs/tapes/19-refresh-plugin-metadata.tape",
+    "outputPath": "docs/scenarios/vhs/output/19-refresh-plugin-metadata.gif"
+  },
+  {
+    "id": 20,
+    "slug": "inspect-platforms",
+    "title": "Inspect supported platforms before targeting",
+    "docPath": "docs/scenarios/vhs/walkthroughs/20-inspect-platforms.md",
+    "tapePath": "docs/scenarios/vhs/tapes/20-inspect-platforms.tape",
+    "outputPath": "docs/scenarios/vhs/output/20-inspect-platforms.gif"
+  },
+  {
+    "id": 21,
+    "slug": "detect-drift",
+    "title": "Detect drift between project and last applied layer",
+    "docPath": "docs/scenarios/vhs/walkthroughs/21-detect-drift.md",
+    "tapePath": "docs/scenarios/vhs/tapes/21-detect-drift.tape",
+    "outputPath": "docs/scenarios/vhs/output/21-detect-drift.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/drift-project"
+  },
+  {
+    "id": 22,
+    "slug": "diff-layers",
+    "title": "Diff two layers",
+    "docPath": "docs/scenarios/vhs/walkthroughs/22-diff-layers.md",
+    "tapePath": "docs/scenarios/vhs/tapes/22-diff-layers.tape",
+    "outputPath": "docs/scenarios/vhs/output/22-diff-layers.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 23,
+    "slug": "validate-layer",
+    "title": "Doctor-check a layer without writing",
+    "docPath": "docs/scenarios/vhs/walkthroughs/23-validate-layer.md",
+    "tapePath": "docs/scenarios/vhs/tapes/23-validate-layer.tape",
+    "outputPath": "docs/scenarios/vhs/output/23-validate-layer.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 24,
+    "slug": "apply-from-url",
+    "title": "Apply a layer directly from a URL",
+    "docPath": "docs/scenarios/vhs/walkthroughs/24-apply-from-url.md",
+    "tapePath": "docs/scenarios/vhs/tapes/24-apply-from-url.tape",
+    "outputPath": "docs/scenarios/vhs/output/24-apply-from-url.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 25,
+    "slug": "stack-layers",
+    "title": "Stack multiple layers",
+    "docPath": "docs/scenarios/vhs/walkthroughs/25-stack-layers.md",
+    "tapePath": "docs/scenarios/vhs/tapes/25-stack-layers.tape",
+    "outputPath": "docs/scenarios/vhs/output/25-stack-layers.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 26,
+    "slug": "layer-from-project",
+    "title": "Turn a project's current state into a layer",
+    "docPath": "docs/scenarios/vhs/walkthroughs/26-layer-from-project.md",
+    "tapePath": "docs/scenarios/vhs/tapes/26-layer-from-project.tape",
+    "outputPath": "docs/scenarios/vhs/output/26-layer-from-project.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
+  },
+  {
+    "id": 27,
+    "slug": "project-sync",
+    "title": "True cross-harness project mirror",
+    "docPath": "docs/scenarios/vhs/walkthroughs/27-project-sync.md",
+    "tapePath": "docs/scenarios/vhs/tapes/27-project-sync.tape",
+    "outputPath": "docs/scenarios/vhs/output/27-project-sync.gif",
+    "fixturePath": "docs/scenarios/vhs/fixtures/sync-project"
+  },
+  {
+    "id": 28,
+    "slug": "machine-migration",
+    "title": "One-command machine migration",
+    "docPath": "docs/scenarios/vhs/walkthroughs/28-machine-migration.md",
+    "tapePath": "docs/scenarios/vhs/tapes/28-machine-migration.tape",
+    "outputPath": "docs/scenarios/vhs/output/28-machine-migration.gif"
   }
 ]
