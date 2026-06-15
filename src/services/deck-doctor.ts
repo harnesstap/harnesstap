@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DeckJson } from "../types.js";
+import { readDeckToml } from "./exporter.js";
 import { generatedManifestsCheck } from "./deck-doctor/checks/generated-manifests.js";
 import type {
   DeckDoctorCheck,
@@ -10,24 +10,20 @@ import type {
 
 const deckDoctorChecks: DeckDoctorCheck[] = [generatedManifestsCheck];
 
-function readDeckJson(repoRoot: string): DeckJson {
-  const deckJsonPath = join(repoRoot, ".harnessdeck", "deck.json");
-  if (!existsSync(deckJsonPath)) {
-    throw new Error(`Deck repo missing canonical source: ${deckJsonPath}`);
-  }
-
+function readDeckTomlFromRepo(repoRoot: string): DeckJson {
+  const deckTomlPath = join(repoRoot, ".harnessdeck", "deck.toml");
   try {
-    return JSON.parse(readFileSync(deckJsonPath, "utf-8")) as DeckJson;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid .harnessdeck/deck.json: ${message}`);
+    return readDeckToml(deckTomlPath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid .harnessdeck/deck.toml: ${message}`);
   }
 }
 
 function createDeckDoctorContext(repoRoot: string): DeckDoctorContext {
   return {
     repoRoot,
-    deckJson: readDeckJson(repoRoot),
+    deckJson: readDeckTomlFromRepo(repoRoot),
   };
 }
 

@@ -7,6 +7,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
+import { parseDeckToml } from "../../src/services/transport/deck.ts";
 import {
   materializeDeckRepo,
   stableJsonStringify,
@@ -63,7 +64,7 @@ const samplePlugin: MaterializeDeckPlugin = {
 
 const prodEnv: DeckJsonEnvironment = {
   name: "prod",
-  values: { PD_REGION: "us", PD_TOKEN: "redacted-should-not-embed" },
+  values: { PD_REGION: "us" },
   secret_refs: { PD_TOKEN: { provider: "keychain", ref: "pagerduty-token" } },
 };
 
@@ -87,7 +88,7 @@ function makeOutDir(): string {
 }
 
 describe("deck materializer", () => {
-  it("writes marketplace.json and harnessdeck deck.json", async () => {
+  it("writes marketplace.json and harnessdeck deck.toml", async () => {
     const outDir = makeOutDir();
     await materializeDeckRepo(
       {
@@ -101,7 +102,7 @@ describe("deck materializer", () => {
     expect(existsSync(join(outDir, ".claude-plugin", "marketplace.json"))).toBe(
       true,
     );
-    expect(existsSync(join(outDir, ".harnessdeck", "deck.json"))).toBe(true);
+    expect(existsSync(join(outDir, ".harnessdeck", "deck.toml"))).toBe(true);
 
     const manifest = JSON.parse(
       readFileSync(
@@ -112,7 +113,7 @@ describe("deck materializer", () => {
     expect(manifest.harnessdeck.needs).toEqual(["PD_REGION", "PD_TOKEN"]);
   });
 
-  it("writes environment files with non-secret values and secret refs only", async () => {
+  it("embeds environments inline in deck.toml", async () => {
     const outDir = makeOutDir();
     await materializeDeckRepo(
       {
@@ -123,21 +124,20 @@ describe("deck materializer", () => {
       outDir,
     );
 
-    const prod = JSON.parse(
-      readFileSync(join(outDir, ".harnessdeck", "environments", "prod.json"), "utf8"),
-    ) as DeckJsonEnvironment;
-    expect(prod.values).toEqual({
+    const deck = parseDeckToml(
+      readFileSync(join(outDir, ".harnessdeck", "deck.toml"), "utf8"),
+    );
+    const prod = deck.environments?.find((environment) => environment.name === "prod");
+    expect(prod?.values).toEqual({
       PD_REGION: "us",
-      PD_TOKEN: "redacted-should-not-embed",
     });
-    expect(prod.secret_refs?.PD_TOKEN).toEqual({
+    expect(prod?.secret_refs?.PD_TOKEN).toEqual({
       provider: "keychain",
       ref: "pagerduty-token",
     });
 
-    expect(
-      existsSync(join(outDir, ".harnessdeck", "environments", "staging.json")),
-    ).toBe(true);
+    const staging = deck.environments?.find((environment) => environment.name === "staging");
+    expect(staging?.values).toEqual({ PD_REGION: "eu" });
   });
 
   it("emits sorted marketplace plugin entries and deterministic JSON", async () => {

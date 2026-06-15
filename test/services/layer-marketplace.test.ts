@@ -2,7 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { writeTextFile } from "../helpers/fs.ts";
+import {
+  makeSingleLayerExport,
+  writeLayerExportToml,
+} from "../helpers/transport-fixtures.ts";
 
 describe("layer marketplace configuration", () => {
   it("round-trips claude config through export and import", async () => {
@@ -33,7 +36,7 @@ describe("layer marketplace configuration", () => {
       });
       expect(bundle.claude?.plugins?.[0]?.id).toBe("fmt@team-plugins");
 
-      const bundlePath = join(context.projectDir, "with-plugins.harnessdeck.json");
+      const bundlePath = join(context.projectDir, "with-plugins.harnessdeck.toml");
       exporter.exportToFile(layer.id, bundlePath);
 
       layerModel.deleteLayer(layer.id);
@@ -101,17 +104,13 @@ describe("layer marketplace configuration", () => {
       const exporter = await import("../../src/services/exporter.ts");
       const layerModel = await import("../../src/models/layer.ts");
 
-      const bundlePath = join(context.projectDir, "team-stack.harnessdeck.json");
-      writeTextFile(
+      const bundlePath = join(context.projectDir, "team-stack.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: {
-            name: "team-stack",
-            description: "Team Claude plugins",
-            tags: ["team"],
-          },
+        makeSingleLayerExport({
+          name: "team-stack",
+          description: "Team Claude plugins",
+          tags: ["team"],
           claude: {
             marketplaces: {
               "team-plugins": {
@@ -120,7 +119,6 @@ describe("layer marketplace configuration", () => {
             },
             plugins: [{ id: "review@team-plugins" }],
           },
-          resources: [],
         }),
       );
 

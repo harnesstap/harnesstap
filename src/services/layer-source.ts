@@ -9,17 +9,12 @@ export function isLayerUrl(source: string): boolean {
 }
 
 export function isLayerExportFilePath(source: string): boolean {
-  return (
-    source.endsWith(".json") ||
-    source.endsWith(".jsonc") ||
-    source.endsWith(".harnessdeck.json") ||
-    source.endsWith(".harnessdeck.jsonc")
-  );
+  return source.endsWith(".toml") || source.endsWith(".harnessdeck.toml");
 }
 
 export function writeLayerExportToTempFile(body: string): string {
   const dir = mkdtempSync(join(tmpdir(), "harnessdeck-layer-export-"));
-  const filePath = join(dir, "remote.harnessdeck.jsonc");
+  const filePath = join(dir, "remote.harnessdeck.toml");
   writeFileSync(filePath, body, "utf-8");
   return filePath;
 }

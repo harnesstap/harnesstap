@@ -3,6 +3,12 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createTempDir, writeTextFile } from "../helpers/fs.ts";
+import {
+  makeMultiLayerExport,
+  makeSingleLayerExport,
+  parseTestLayerToml,
+  writeLayerExportToml,
+} from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("exporter services", () => {
@@ -49,11 +55,11 @@ describe("exporter services", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const bundlePath = `${exportContext.projectDir}/bundle.json`;
+      const bundlePath = `${exportContext.projectDir}/bundle.harnessdeck.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       expect(existsSync(bundlePath)).toBe(true);
-      expect(JSON.parse(readFileSync(bundlePath, "utf-8"))).toEqual(
+      expect(parseTestLayerToml(readFileSync(bundlePath, "utf-8"))).toEqual(
         expect.objectContaining({ version: 1 }),
       );
 
@@ -74,23 +80,23 @@ describe("exporter services", () => {
     }
   });
 
-  it("writes .jsonc bundles with a leading comment block", async () => {
-    const exportContext = await createInitializedTestContext("export-jsonc-comment-block");
+  it("writes TOML bundles with a leading comment block", async () => {
+    const exportContext = await createInitializedTestContext("export-toml-comment-block");
 
     try {
       const layerModel = await import("../../src/models/layer.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({ name: "commented-export" });
-      const bundlePath = join(exportContext.projectDir, "commented-export.jsonc");
+      const bundlePath = join(exportContext.projectDir, "commented-export.harnessdeck.toml");
       exporter.exportToFile(layer.id, bundlePath);
 
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw.startsWith("/*\n")).toBe(true);
-      expect(raw).toContain('"$schema": "urn:harnessdeck:layer:v1"');
-      expect(raw).toContain(" * Source machine: ");
+      expect(raw.startsWith("# HarnessDeck layer export\n")).toBe(true);
+      expect(raw).toContain('schema = "urn:harnessdeck:layer:v1"');
+      expect(raw).toContain("# Source machine: ");
 
-      const importContext = await createInitializedTestContext("import-jsonc-comment-block");
+      const importContext = await createInitializedTestContext("import-toml-comment-block");
       try {
         const importedExporter = await import("../../src/services/exporter.ts");
         expect(() => importedExporter.importFromFile(bundlePath)).not.toThrow();
@@ -124,13 +130,17 @@ describe("exporter services", () => {
       const tempDir = createTempDir("export-bad-version");
 
       try {
-        const bundlePath = join(tempDir, "bundle.json");
-        writeTextFile(bundlePath, JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 99,
-          layer: { name: "bad-version", description: "", tags: [] },
-          resources: [],
-        }));
+        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
+        writeTextFile(bundlePath, `schema = "urn:harnessdeck:layer:v1"
+version = 99
+
+[[layers]]
+name = "bad-version"
+description = ""
+tags = []
+version = "1.0.0"
+plugins = []
+`);
 
         expect(() => exporter.importFromFile(bundlePath)).toThrow(
           "Unsupported layer version: 99",
@@ -143,7 +153,7 @@ describe("exporter services", () => {
     }
   });
 
-  it("throws when importing malformed JSON", async () => {
+  it("throws when importing malformed TOML", async () => {
     const context = await createInitializedTestContext("export-malformed");
 
     try {
@@ -151,8 +161,8 @@ describe("exporter services", () => {
       const tempDir = createTempDir("export-malformed");
 
       try {
-        const bundlePath = join(tempDir, "bundle.json");
-        writeTextFile(bundlePath, "this is not json");
+        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
+        writeTextFile(bundlePath, "this is not toml [[[");
 
         expect(() => exporter.importFromFile(bundlePath)).toThrow();
       } finally {
@@ -163,26 +173,23 @@ describe("exporter services", () => {
     }
   });
 
-  it("throws when importing truncated JSONC that parses to a partial object", async () => {
-    const context = await createInitializedTestContext("export-truncated-jsonc");
+  it("throws when importing truncated TOML that parses to a partial object", async () => {
+    const context = await createInitializedTestContext("export-truncated-toml");
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
-      const tempDir = createTempDir("export-truncated-jsonc");
+      const tempDir = createTempDir("export-truncated-toml");
 
       try {
-        const bundlePath = join(tempDir, "bundle.jsonc");
+        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
         writeTextFile(
           bundlePath,
-          `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layer": {
-    "name": "truncated-bundle",
-    "description": "broken",
-    "tags": []
-  },
-  "resources": []`,
+          `schema = "urn:harnessdeck:layer:v1"
+version = 1
+
+[[layers
+name = "truncated-bundle"
+`,
         );
 
         expect(() => exporter.importFromFile(bundlePath)).toThrow();
@@ -194,43 +201,38 @@ describe("exporter services", () => {
     }
   });
 
-  it("imports a bundle file with comments and trailing commas", async () => {
-    const context = await createInitializedTestContext("export-jsonc-import");
+  it("imports a bundle file with comments", async () => {
+    const context = await createInitializedTestContext("export-toml-import");
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
-      const tempDir = createTempDir("export-jsonc-import");
+      const tempDir = createTempDir("export-toml-import");
 
       try {
-        const bundlePath = join(tempDir, "bundle.jsonc");
+        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
         writeTextFile(
           bundlePath,
-          `{
-  // comment before schema
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layer": {
-    "name": "jsonc-bundle",
-    "version": "1.2.3",
-    "description": "JSONC bundle",
-    "tags": ["jsonc",],
-  },
-  "resources": [
-    {
-      "type": "instruction",
-      "name": "shared",
-      "description": "Shared skill",
-      "content": "# Shared",
-      "metadata": {},
-    },
-  ],
-  "plugins": [],
-  "embedded_plugins": [],
-}`,
+          `# comment before schema
+schema = "urn:harnessdeck:layer:v1"
+version = 1
+
+[[layers]]
+name = "toml-bundle"
+description = "TOML bundle"
+tags = ["toml"]
+version = "1.2.3"
+plugins = []
+
+[[layers.resources]]
+type = "instruction"
+name = "shared"
+description = "Shared skill"
+content = "# Shared"
+`,
         );
 
         const imported = exporter.importFromFile(bundlePath);
-        expect(imported.layer.name).toBe("jsonc-bundle");
+        expect(imported.layer.name).toBe("toml-bundle");
         expect(imported.layer.version).toBe("1.2.3");
         expect(imported.resources).toHaveLength(1);
         expect(imported.resources[0]?.name).toBe("shared");
@@ -344,7 +346,7 @@ describe("exporter services", () => {
       expect(bundle.embedded_plugins).toHaveLength(1);
       expect(bundle.embedded_plugins[0]?.ref).toBe("fmt@acme-marketplace");
 
-      const bundlePath = join(context.projectDir, "embedded.json");
+      const bundlePath = join(context.projectDir, "embedded.harnessdeck.toml");
       exporter.exportToFile(layer.id, bundlePath, {
         embedPlugins: true,
         homeRoot: context.homeDir,
@@ -405,7 +407,7 @@ describe("exporter services", () => {
       const bundle = exporter.exportLayer(layer.id);
       expect(bundle.layer.version).toBe("2.3.1");
 
-      const bundlePath = `${exportContext.projectDir}/versioned.json`;
+      const bundlePath = `${exportContext.projectDir}/versioned.harnessdeck.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-version-rt");
@@ -438,7 +440,7 @@ describe("exporter services", () => {
         { dependency_name: "extra-layer", version_constraint: ">=2.0.0", order: 1 },
       ]);
 
-      const bundlePath = `${exportContext.projectDir}/with-deps.json`;
+      const bundlePath = `${exportContext.projectDir}/with-deps.harnessdeck.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-deps-rt");
@@ -474,7 +476,7 @@ describe("exporter services", () => {
       layerModel.addResourceToLayer(layer.id, r2.id);
       layerModel.addResourceToLayer(layer.id, r3.id);
 
-      const bundlePath = join(exportContext.projectDir, "multi.json");
+      const bundlePath = join(exportContext.projectDir, "multi.harnessdeck.toml");
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-multi");
@@ -499,16 +501,10 @@ describe("exporter services", () => {
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
-      const bundlePath = require("node:path").join(exportContext.projectDir, "override.json");
-      const { writeTextFile } = await import("../helpers/fs.ts");
-      writeTextFile(
+      const bundlePath = require("node:path").join(exportContext.projectDir, "override.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        JSON.stringify({
-          $schema: "urn:harnessdeck:layer:v1",
-          version: 1,
-          layer: { name: "orig-name", description: "", tags: [] },
-          resources: [],
-        }),
+        makeSingleLayerExport({ name: "orig-name" }),
       );
 
       const imported = exporter.importFromFile(bundlePath, { layerNameOverride: "override-name" });
@@ -561,7 +557,7 @@ describe("exporter services", () => {
       expect(bundle.layers?.[0]).not.toHaveProperty("layer");
       expect(bundle.embedded_plugins).toHaveLength(1);
 
-      const bundlePath = join(exportContext.projectDir, "multi-bundle.jsonc");
+      const bundlePath = join(exportContext.projectDir, "multi-bundle.harnessdeck.toml");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });
@@ -651,7 +647,7 @@ describe("exporter services", () => {
       );
       expect(bundle.layers?.[0]).not.toHaveProperty("layer");
 
-      const bundlePath = join(exportContext.projectDir, "selective-multi.jsonc");
+      const bundlePath = join(exportContext.projectDir, "selective-multi.harnessdeck.toml");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });
@@ -719,7 +715,7 @@ describe("exporter services", () => {
         version_constraint: "^2.0.0",
       });
 
-      const bundlePath = join(exportContext.projectDir, "shared-ref-constraints.jsonc");
+      const bundlePath = join(exportContext.projectDir, "shared-ref-constraints.harnessdeck.toml");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });

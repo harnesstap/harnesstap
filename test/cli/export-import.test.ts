@@ -5,6 +5,12 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { writeTextFile } from "../helpers/fs.ts";
+import {
+  makeMultiLayerExport,
+  makeSingleLayerExport,
+  parseTestLayerToml,
+  writeLayerExportToml,
+} from "../helpers/transport-fixtures.ts";
 import { initGitRepo } from "../helpers/git.ts";
 
 describe("CLI export and import", () => {
@@ -23,7 +29,7 @@ describe("CLI export and import", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const bundlePath = `${exportContext.projectDir}/bundle.json`;
+      const bundlePath = `${exportContext.projectDir}/bundle.harnessdeck.toml`;
       const exportResult = await runCli([
         "layer",
         "export",
@@ -36,10 +42,10 @@ describe("CLI export and import", () => {
       expect(exportResult.stdout).toContain(bundlePath);
       expect(existsSync(bundlePath)).toBe(true);
 
-      const raw = JSON.parse(readFileSync(bundlePath, "utf-8"));
+      const raw = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
       expect(raw.version).toBe(1);
       expect(raw.$schema).toBe("urn:harnessdeck:layer:v1");
-      expect(raw.plugins ?? []).toEqual([]);
+      expect(raw.layers[0]?.plugins ?? []).toEqual([]);
       expect(raw.embedded_plugins ?? []).toEqual([]);
 
       const importContext = await createTestContext("cli-import");
@@ -95,7 +101,7 @@ describe("CLI export and import", () => {
       const layer = layerModel.createLayer({ name: "embed-flag" });
       pluginPins.addPluginToLayer(layer.id, "fmt-cli@acme-marketplace", "2.x");
 
-      const bundlePath = join(context.projectDir, "embedded-cli.json");
+      const bundlePath = join(context.projectDir, "embedded-cli.harnessdeck.toml");
       const exportResult = await runCli([
         "layer",
         "export",
@@ -106,33 +112,34 @@ describe("CLI export and import", () => {
       ]);
 
       expect(exportResult.stderr).not.toContain("ENOENT");
-      expect(JSON.parse(readFileSync(bundlePath, "utf-8"))).toMatchObject({
-        version: 1,
-        $schema: "urn:harnessdeck:layer:v1",
-        embedded_plugins: expect.arrayContaining([
+      const parsed = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
+      expect(parsed.version).toBe(1);
+      expect(parsed.$schema).toBe("urn:harnessdeck:layer:v1");
+      expect(parsed.embedded_plugins).toEqual(
+        expect.arrayContaining([
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
         ]),
-        plugins: [],
-      });
+      );
+      expect(parsed.layers[0]?.plugins ?? []).toEqual([]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("exports a layer bundle to a .jsonc path", async () => {
-    const context = await createTestContext("cli-export-jsonc");
+  it("exports a layer bundle to a .harnessdeck.toml path", async () => {
+    const context = await createTestContext("cli-export-toml");
 
     try {
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer.ts");
-      layerModel.createLayer({ name: "jsonc-export" });
+      layerModel.createLayer({ name: "toml-export" });
 
-      const bundlePath = join(context.projectDir, "bundle.jsonc");
+      const bundlePath = join(context.projectDir, "bundle.harnessdeck.toml");
       const exportResult = await runCli([
         "layer",
         "export",
-        "jsonc-export",
+        "toml-export",
         "--file",
         bundlePath,
       ]);
@@ -140,36 +147,33 @@ describe("CLI export and import", () => {
       expect(exportResult.stdout).toContain("Exported layer");
       expect(existsSync(bundlePath)).toBe(true);
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw.startsWith("/*\n")).toBe(true);
-      expect(raw).toContain('"$schema": "urn:harnessdeck:layer:v1"');
+      expect(raw.startsWith("# HarnessDeck layer export\n")).toBe(true);
+      expect(raw).toContain('schema = "urn:harnessdeck:layer:v1"');
     } finally {
       await context.cleanup();
     }
   });
 
   it("imports a commented bundle file", async () => {
-    const context = await createTestContext("cli-import-jsonc");
+    const context = await createTestContext("cli-import-toml");
 
     try {
       await runCli(["init"]);
 
-      const bundlePath = join(context.projectDir, "commented-bundle.jsonc");
+      const bundlePath = join(context.projectDir, "commented-bundle.harnessdeck.toml");
       writeTextFile(
         bundlePath,
-        `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layer": {
-    "name": "commented-import",
-    "version": "1.0.0",
-    "description": "Imported from JSONC",
-    "tags": ["commented",],
-  },
-  // resources stay comment-friendly
-  "resources": [],
-  "plugins": [],
-  "embedded_plugins": [],
-}`,
+        `# commented import
+schema = "urn:harnessdeck:layer:v1"
+version = 1
+
+[[layers]]
+name = "commented-import"
+description = "Imported from TOML"
+tags = ["commented"]
+version = "1.0.0"
+plugins = []
+`,
       );
 
       const importResult = await runCli(["layer", "import", bundlePath]);
@@ -192,7 +196,7 @@ describe("CLI export and import", () => {
       layerModel.createLayer({ name: "alpha" });
       layerModel.createLayer({ name: "beta" });
 
-      const bundlePath = join(context.projectDir, "multi-export.jsonc");
+      const bundlePath = join(context.projectDir, "multi-export.harnessdeck.toml");
       const exportResult = await runCli([
         "layer",
         "export",
@@ -203,7 +207,7 @@ describe("CLI export and import", () => {
 
       expect(exportResult.stdout).toContain("Exported layer");
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw).toContain('"layers"');
+      expect(raw).toContain("[[layers]]");
 
       const parsed = await import("../../src/services/exporter.ts");
       const bundle = parsed.inspectLayerExportFile(bundlePath);
@@ -220,48 +224,45 @@ describe("CLI export and import", () => {
       await runCli(["init"]);
       initGitRepo(context.projectDir, "git@github.com:acme/multi-bundle-apply.git");
 
-      const bundlePath = join(context.projectDir, "apply-bundle.jsonc");
-      writeTextFile(
+      const bundlePath = join(context.projectDir, "apply-bundle.harnessdeck.toml");
+      writeLayerExportToml(
         bundlePath,
-        `{
-  "$schema": "urn:harnessdeck:layer:v1",
-  "version": 1,
-  "layers": [
-    {
-      "name": "alpha-imported",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [
-        {
-          "type": "instruction",
-          "name": "shared",
-          "description": "",
-          "content": "# Alpha",
-          "metadata": {}
-        }
-      ],
-      "plugins": []
-    },
-    {
-      "name": "beta-imported",
-      "version": "1.0.0",
-      "description": "",
-      "tags": [],
-      "resources": [
-        {
-          "type": "instruction",
-          "name": "shared",
-          "description": "",
-          "content": "# Beta",
-          "metadata": {}
-        }
-      ],
-      "plugins": []
-    }
-  ],
-  "embedded_plugins": []
-}`,
+        makeMultiLayerExport([
+          {
+            name: "alpha-imported",
+            resources: [
+              {
+                type: "instruction",
+                name: "shared",
+                description: "",
+                content: "# Alpha",
+                metadata: {},
+                namespace: "",
+                origin_kind: "manual",
+                origin_ref: "",
+                content_hash: "",
+                content_blob_ref: "",
+              },
+            ],
+          },
+          {
+            name: "beta-imported",
+            resources: [
+              {
+                type: "instruction",
+                name: "shared",
+                description: "",
+                content: "# Beta",
+                metadata: {},
+                namespace: "",
+                origin_kind: "manual",
+                origin_ref: "",
+                content_hash: "",
+                content_blob_ref: "",
+              },
+            ],
+          },
+        ]),
       );
 
       const applyResult = await runCli([

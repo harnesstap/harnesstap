@@ -11,6 +11,7 @@ import {
   exportDeckRepo,
   importDeckRepo,
 } from "../../src/services/deck-transport.js";
+import { parseDeckToml } from "../../src/services/transport/deck.js";
 import { DECK_SCHEMA } from "../../src/types.js";
 
 describe("deck transport", () => {
@@ -41,10 +42,10 @@ describe("deck transport", () => {
     const exported = exportDeckRepo(deck.id, outputDir, {
       withLayerExports: true,
     });
-    expect(existsSync(exported.deckJsonPath)).toBe(true);
+    expect(existsSync(exported.deckTomlPath)).toBe(true);
     expect(exported.layerExportPaths).toHaveLength(1);
 
-    const deckJson = JSON.parse(readFileSync(exported.deckJsonPath, "utf-8"));
+    const deckJson = parseDeckToml(readFileSync(exported.deckTomlPath, "utf-8"));
     expect(deckJson.$schema).toBe(DECK_SCHEMA);
     expect(deckJson.layers[0]).toMatchObject({
       name: layer.name,

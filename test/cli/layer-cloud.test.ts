@@ -5,6 +5,7 @@ import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { createCloudPublishFetchMock } from "../helpers/cloud-fetch.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 
 describe("CLI cloud layer workflows", () => {
   it("search, add (remote install), publish, apply cloud-installed layer, and conflict handling", async () => {
@@ -169,6 +170,53 @@ describe("CLI cloud layer workflows", () => {
       ]);
       const searchJson = JSON.parse(search.stdout) as Array<{ slug: string }>;
       expect(searchJson[0]?.slug).toBe("engineering-foundation");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("project apply resolves a bare catalog name when the layer is not installed locally", async () => {
+    const context = await createTestContext("cli-project-apply-bare-name");
+    try {
+      await runCli(["init"]);
+
+      const foundationBundle = formatLayerExportToml({
+        $schema: "urn:harnessdeck:layer:v1",
+        version: 1,
+        layer: { name: "engineering-foundation", description: "Shared baseline", tags: ["foundation"] },
+        resources: [],
+        plugins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
+        embedded_plugins: [],
+      });
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [{
+          orgSlug: "harnessdeck-cloud",
+          slug: "engineering-foundation",
+          name: "Engineering foundation",
+          summary: "Shared baseline",
+          latestVersion: "1.0.0",
+          updatedAt: new Date().toISOString(),
+          tags: ["foundation"],
+          visibility: "public",
+        }],
+        bundle: foundationBundle,
+      });
+
+      initGitRepo(context.projectDir, "git@github.com:acme/demo.git");
+
+      const dryRun = await runCli([
+        "project",
+        "apply",
+        "engineering-foundation",
+        "--harness",
+        "claude-code",
+        "--dry-run",
+      ]);
+      expect(dryRun.stdout).toContain("Fetched harnessdeck-cloud/engineering-foundation@1.0.0 from catalog");
 
       restoreFetch();
     } finally {
