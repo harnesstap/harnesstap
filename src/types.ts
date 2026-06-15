@@ -429,12 +429,19 @@ export interface PlatformPaths {
   legacy_instructions?: string;
   skills?: string;
   rules?: string;
+  /** Single-file rules path when the primary `rules` path is a directory. */
+  legacy_rules?: string;
   mcp?: string;
   permissions?: string;
   hooks?: string;
   agents?: string;
   commands?: string;
   settings?: string;
+  /** Alternate on-disk paths checked during platform detection. */
+  pathAlternates?: Partial<{
+    commands: string[];
+    rules: string[];
+  }>;
 }
 
 export interface PlatformDefinition {

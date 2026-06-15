@@ -220,6 +220,15 @@ export class GenericAgentsSerializer extends BaseSerializer {
         ...this.scanRulesAt(join(projectRoot, rulesPath), rulesPath),
       );
     }
+    const legacyRulesPath = this.platform.projectPaths.legacy_rules;
+    if (legacyRulesPath) {
+      resources.push(
+        ...this.scanRulesAt(
+          join(projectRoot, legacyRulesPath),
+          legacyRulesPath,
+        ),
+      );
+    }
 
     // Agents
     const agentsPath = this.platform.projectPaths.agents;

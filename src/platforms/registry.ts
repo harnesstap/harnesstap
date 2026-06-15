@@ -102,6 +102,9 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: ".opencode/skills/",
     agents: ".opencode/agents/",
     commands: ".opencode/commands/",
+    pathAlternates: {
+      commands: [".opencode/command/"],
+    },
     mcp: "opencode.json",
   }, {
     skills: "~/.config/opencode/skills/",
@@ -129,8 +132,9 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.copilot/mcp-config.json",
   }),
 
-  def("windsurf", "Windsurf", ["instructions", "skills", "mcp"], {
+  def("windsurf", "Windsurf", ["instructions", "skills", "rules", "mcp"], {
     instructions: ".windsurfrules",
+    rules: ".windsurf/rules/",
     skills: ".agents/skills/",
   }, {
     skills: "~/.codeium/windsurf/skills/",
@@ -139,7 +143,8 @@ const PLATFORMS: PlatformDefinition[] = [
 
   def("cline", "Cline", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
-    rules: ".clinerules",
+    rules: ".clinerules/",
+    legacy_rules: ".clinerules",
     skills: ".agents/skills/",
   }, {
     skills: "~/.agents/skills/",

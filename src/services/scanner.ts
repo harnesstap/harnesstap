@@ -30,33 +30,42 @@ function resolveConfiguredPath(
     : join(rootPath, configuredPath);
 }
 
+function configuredProjectPaths(paths: PlatformPaths): string[] {
+  const result: string[] = [];
+  for (const [key, value] of Object.entries(paths)) {
+    if (key === "pathAlternates" || typeof value !== "string" || !value) {
+      continue;
+    }
+    result.push(value);
+  }
+  for (const alternates of Object.values(paths.pathAlternates ?? {})) {
+    if (alternates) {
+      result.push(...alternates);
+    }
+  }
+  return result;
+}
+
 function existingPaths(paths: PlatformPaths, rootPath: string): string[] {
-  return Object.values(paths)
-    .filter((configuredPath): configuredPath is string =>
-      Boolean(configuredPath),
-    )
-    .filter((configuredPath) =>
-      existsSync(resolveConfiguredPath(rootPath, configuredPath)),
-    );
+  return configuredProjectPaths(paths).filter((configuredPath) =>
+    existsSync(resolveConfiguredPath(rootPath, configuredPath)),
+  );
 }
 
 // ── Platform detection ─────────────────────────────────────────────────
+
+function platformHasConfiguredPath(projectRoot: string, configuredPath: string): boolean {
+  return existsSync(join(projectRoot, configuredPath));
+}
 
 /** Check if a platform has any recognizable files in the project. */
 function platformHasFiles(platformId: string, projectRoot: string): boolean {
   const platform = getAllPlatforms().find((p) => p.id === platformId);
   if (!platform) return false;
 
-  const pathsToCheck = Object.values(platform.projectPaths).filter(
-    Boolean,
-  ) as string[];
-
-  for (const p of pathsToCheck) {
-    const fullPath = join(projectRoot, p);
-    if (existsSync(fullPath)) return true;
-  }
-
-  return false;
+  return configuredProjectPaths(platform.projectPaths).some((configuredPath) =>
+    platformHasConfiguredPath(projectRoot, configuredPath),
+  );
 }
 
 /** Detect all platforms with configuration in a project directory. */
