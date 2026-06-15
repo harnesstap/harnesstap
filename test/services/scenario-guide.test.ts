@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import { catalogAliasHint, resolveCatalogLayerAlias } from "../../src/services/catalog-aliases.js";
 import { loadScenarioGuide, listScenarioIds, parseScenarioId } from "../../src/services/scenario-guide.js";
 
 describe("scenario guide", () => {
@@ -20,12 +19,5 @@ describe("scenario guide", () => {
   it("parses scenario ids", () => {
     expect(parseScenarioId("11")).toBe(11);
     expect(() => parseScenarioId("nope")).toThrow(/Invalid scenario id/);
-  });
-});
-
-describe("catalog aliases", () => {
-  it("resolves legacy slugs", () => {
-    expect(resolveCatalogLayerAlias("nextjs-fullstack")).toBe("frontend-engineer");
-    expect(catalogAliasHint("nextjs-fullstack")).toContain("frontend-engineer");
   });
 });

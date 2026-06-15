@@ -2,7 +2,7 @@
   "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layer": {
-    "name": "nextjs-fullstack",
+    "name": "demo-stack",
     "description": "Next.js 15 fullstack app with TypeScript, Tailwind, Prisma, and Vitest",
     "tags": ["nextjs", "typescript", "react", "tailwind", "prisma"],
     "is_template": true
