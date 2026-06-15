@@ -23,7 +23,7 @@ export async function maybePromptInitCatalogInstall(input: {
     message: "Browse public catalog layers now?",
     choices: [
       { name: "Yes — install a layer into the local library", value: "yes" as const },
-      { name: "No — I'll use layer search / project apply later", value: "no" as const },
+      { name: "No — I'll use layer search / layer apply later", value: "no" as const },
     ],
   });
 
@@ -48,5 +48,5 @@ export async function maybePromptInitCatalogInstall(input: {
   ui.success(
     `Installed layer ${ui.theme.accent(installed.layerName)} from catalog (${installed.sourceLabel})`,
   );
-  ui.hint(`Apply it with: hd project apply ${installed.layerName}`);
+  ui.hint(`Apply it with: hd layer apply ${installed.layerName}`);
 }
