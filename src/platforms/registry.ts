@@ -194,6 +194,21 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.openhands/mcp.json",
   }),
 
+  def("kiro", "Kiro", ["instructions", "skills", "rules"], {
+    instructions: "AGENTS.md",
+    rules: ".kiro/steering/",
+    skills: ".agents/skills/",
+  }, {
+    skills: "~/.kiro/skills/",
+  }),
+
+  // Pi extensions install via `pi install git:...`, not layer apply.
+  // HarnessDeck can scan `.agents/skills/` but cannot materialize pi-extension/index.js.
+  def("pi", "Pi", ["instructions", "skills"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+  }, {}),
+
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],

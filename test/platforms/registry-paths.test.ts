@@ -24,6 +24,10 @@ describe("registry path detection", () => {
     expect(detectPlatforms(ponytailFixture)).toContain("opencode");
   });
 
+  it("detects kiro from .kiro/steering", () => {
+    expect(detectPlatforms(ponytailFixture)).toContain("kiro");
+  });
+
   it("detects cline from legacy .clinerules file", () => {
     const projectDir = createTempDir("cline-legacy-rules");
 
@@ -57,6 +61,17 @@ describe("registry path scanning", () => {
     expect(resources.find((r) => r.type === "rule" && r.name === "ponytail")).toEqual(
       expect.objectContaining({
         source: ".clinerules/ponytail.md",
+      }),
+    );
+  });
+
+  it("scans kiro rules from .kiro/steering", async () => {
+    const serializer = new GenericAgentsSerializer("kiro");
+    const resources = await serializer.scan(ponytailFixture);
+
+    expect(resources.find((r) => r.type === "rule" && r.name === "ponytail")).toEqual(
+      expect.objectContaining({
+        source: ".kiro/steering/ponytail.md",
       }),
     );
   });
