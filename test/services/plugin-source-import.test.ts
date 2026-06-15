@@ -89,6 +89,22 @@ describe("plugin-source-import service", () => {
     });
   });
 
+  it("scans a codex plugin root", async () => {
+    const entries = await scanPluginSource(join(fixtureRoot, "codex-ponytail"));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.metadata.source_plugin_kind).toBe("codex-plugin");
+    expect(entries[0]?.resources.some((r) => r.type === "skill")).toBe(true);
+  });
+
+  it("scans a copilot plugin root", async () => {
+    const entries = await scanPluginSource(join(fixtureRoot, "copilot-ponytail"));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.metadata.source_plugin_kind).toBe("copilot-plugin");
+    expect(entries[0]?.resources.some((r) => r.type === "skill")).toBe(true);
+  });
+
   it("keeps cursor rule always_apply false when metadata omits alwaysApply", async () => {
     const entries = await scanPluginSource(join(fixtureRoot, "cursor-team-kit"));
     const advisoryRule = entries[0]?.resources.find(

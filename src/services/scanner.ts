@@ -93,7 +93,9 @@ export function isPluginSourcePath(sourcePath: string): boolean {
 
   return (
     existsSync(join(sourcePath, ".cursor-plugin", "plugin.json")) ||
-    existsSync(join(sourcePath, ".claude-plugin", "plugin.json"))
+    existsSync(join(sourcePath, ".claude-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".codex-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".github", "plugin", "plugin.json"))
   );
 }
 

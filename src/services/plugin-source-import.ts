@@ -180,31 +180,39 @@ function resolvePluginRoot(sourcePath: string): {
   sourcePluginKind: PluginSourceRootKind;
   manifest: ValidatedPluginManifest;
 } {
-  const cursorManifestPath = join(sourcePath, ".cursor-plugin", "plugin.json");
-  const claudeManifestPath = join(sourcePath, ".claude-plugin", "plugin.json");
-
-  if (existsSync(cursorManifestPath)) {
-    const manifest = validatePluginManifest(
-      readRequiredJson<PluginManifest>(cursorManifestPath, "plugin manifest"),
-      cursorManifestPath,
-    );
-    return {
-      rootPath: sourcePath,
-      manifestPath: cursorManifestPath,
+  const manifestCandidates: Array<{
+    manifestPath: string;
+    sourcePluginKind: PluginSourceRootKind;
+  }> = [
+    {
+      manifestPath: join(sourcePath, ".cursor-plugin", "plugin.json"),
       sourcePluginKind: "cursor-plugin",
-      manifest,
-    };
-  }
+    },
+    {
+      manifestPath: join(sourcePath, ".claude-plugin", "plugin.json"),
+      sourcePluginKind: "claude-plugin",
+    },
+    {
+      manifestPath: join(sourcePath, ".codex-plugin", "plugin.json"),
+      sourcePluginKind: "codex-plugin",
+    },
+    {
+      manifestPath: join(sourcePath, ".github", "plugin", "plugin.json"),
+      sourcePluginKind: "copilot-plugin",
+    },
+  ];
 
-  if (existsSync(claudeManifestPath)) {
+  for (const candidate of manifestCandidates) {
+    if (!existsSync(candidate.manifestPath)) continue;
+
     const manifest = validatePluginManifest(
-      readRequiredJson<PluginManifest>(claudeManifestPath, "plugin manifest"),
-      claudeManifestPath,
+      readRequiredJson<PluginManifest>(candidate.manifestPath, "plugin manifest"),
+      candidate.manifestPath,
     );
     return {
       rootPath: sourcePath,
-      manifestPath: claudeManifestPath,
-      sourcePluginKind: "claude-plugin",
+      manifestPath: candidate.manifestPath,
+      sourcePluginKind: candidate.sourcePluginKind,
       manifest,
     };
   }

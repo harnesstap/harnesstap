@@ -357,6 +357,8 @@ export interface Snapshot {
 export const IMPORTED_SOURCE_KINDS = [
   "cursor-plugin",
   "claude-plugin",
+  "codex-plugin",
+  "copilot-plugin",
   "marketplace",
 ] as const;
 
