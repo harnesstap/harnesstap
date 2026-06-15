@@ -12,7 +12,7 @@ Typical commands:
 ```bash
 harnessdeck init --main codex --aliases claude-code,cursor
 harnessdeck layer search foundation
-harnessdeck project apply engineering-foundation --project .
+harnessdeck project apply engineering-foundation
 ```
 
 This is often the fastest path for a new repo: apply a public catalog baseline,
