@@ -775,7 +775,7 @@ describe("CLI layer", () => {
       const result = await runCli(["layer", "combine", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("type prefix");
+      expect(result.stderr).toContain("Attachment type required");
       expect(result.stderr).toContain("skill:");
       expect(result.stderr).toContain("plugin:");
       expect(result.stderr).toContain("layer:");
@@ -904,7 +904,7 @@ describe("CLI layer", () => {
       const result = await runCli(["layer", "uncombine", "team", "shared-skill"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("type prefix");
+      expect(result.stderr).toContain("Attachment type required");
       expect(result.stderr).toContain("skill:");
       expect(result.stderr).toContain("plugin:");
       expect(result.stderr).toContain("layer:");

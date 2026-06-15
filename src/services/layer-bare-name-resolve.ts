@@ -1,5 +1,9 @@
 import { listLayersInScope } from "./catalog-client.js";
 import { isPublicCatalogEnabled } from "../config/catalog.js";
+import {
+  catalogAliasHint,
+  resolveCatalogLayerAlias,
+} from "./catalog-aliases.js";
 import type { CatalogLayer } from "./catalog-types.js";
 import {
   parseLayerSelector,
@@ -73,14 +77,38 @@ export async function resolveBareNameFromCatalog(
   const matches = exactCatalogMatches(catalogResults, parsed.name);
 
   if (matches.length === 0) {
-    throw new LayerResolveError(
-      `Layer not found: ${selector}`,
-      [
-        "hd layer search <query>",
-        "hd layer pull org/catalog/name",
-        "hd layer list",
-      ],
-    );
+    const aliasTarget = resolveCatalogLayerAlias(parsed.name);
+    if (aliasTarget) {
+      const aliasResults = await listLayersInScope(
+        { q: aliasTarget, limit: 100, sort: "name" },
+        options,
+      );
+      const aliasMatches = exactCatalogMatches(aliasResults, aliasTarget);
+      if (aliasMatches.length === 1) {
+        const aliasMatch = aliasMatches[0];
+        if (!aliasMatch) {
+          throw new LayerResolveError(`Layer not found: ${selector}`);
+        }
+        return resolveRemoteLayerSelector(
+          formatCatalogSelector(
+            aliasMatch,
+            parsed.version ?? aliasMatch.latestVersion ?? undefined,
+          ),
+          {},
+        );
+      }
+    }
+
+    const hints = [
+      "hd layer search <query>",
+      "hd layer pull org/catalog/name",
+      "hd layer list",
+    ];
+    const aliasHint = catalogAliasHint(parsed.name);
+    if (aliasHint) {
+      hints.unshift(aliasHint);
+    }
+    throw new LayerResolveError(`Layer not found: ${selector}`, hints);
   }
 
   if (matches.length > 1) {
