@@ -1429,7 +1429,7 @@ async function handleApplyCommand(
   }
 }
 
-function handleHistoryCommand(opts: { project: string; format?: string }): void {
+function handleHistoryCommand(opts: { project: string; format?: string; showId?: boolean }): void {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
@@ -1467,6 +1467,7 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
     );
     return;
   }
+  const showId = Boolean(opts.showId);
   const rows = snapshots.map((s) => ({
     when: s.created_at,
     id: s.id,
@@ -1475,8 +1476,8 @@ function handleHistoryCommand(opts: { project: string; format?: string }): void 
   ui.table.print({
     columns: [
       { key: "when", header: "WHEN", width: 16, transform: (value) => ui.format.formatRelativeTime(String(value)) },
-      { key: "id", header: "ID", width: 14, transform: (value) => ui.format.shortenId(String(value)) },
-      { key: "label", header: "LABEL", width: 36 },
+      ...makeIdColumn(showId, 14),
+      { key: "label", header: "LABEL", width: showId ? 36 : 50 },
     ],
     rows,
     summary: `${rows.length} snapshots`,
@@ -1489,7 +1490,7 @@ function handleRevertCommand(snapshotId?: string): void {
   if (!snapshotId) {
     process.exitCode = 1;
     ui.danger(
-      `Please provide a snapshot ID. Use \`${formatCommand("project history")}\` to list them.`,
+      `Please provide a snapshot ID. Use \`${formatCommand("project history --show-id")}\` or \`${formatCommand("project history --format json")}\` to list them.`,
     );
     return;
   }
@@ -4621,6 +4622,7 @@ projectCmd
   .command("history")
   .option("--project <path>", "Project directory", ".")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--show-id", "Show snapshot IDs in human-readable tables")
   .description("List configuration snapshots for a project")
   .action(handleHistoryCommand);
 

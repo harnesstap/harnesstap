@@ -49,7 +49,7 @@ describe("CLI history and revert", () => {
       ]);
       expect(history.stdout).toContain("Before applying: history-layer");
       expect(history.stdout).toContain("WHEN");
-      expect(history.stdout).toContain("ID");
+      expect(history.stdout).not.toMatch(/\|\s+ID\s+\|/);
       expect(history.stdout).toContain("LABEL");
 
       const project = projectModel.getProjectByOrigin(
@@ -81,7 +81,7 @@ describe("CLI history and revert", () => {
     }
   });
 
-  it("prints full snapshot IDs in history output", async () => {
+  it("shows snapshot IDs in history output when --show-id is set", async () => {
     const context = await createTestContext("cli-history-full-id");
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-history.git");
@@ -116,6 +116,7 @@ describe("CLI history and revert", () => {
         "history",
         "--project",
         context.projectDir,
+        "--show-id",
       ]);
       const project = projectModel.getProjectByOrigin(
         git.normalizeGitUrl("git@github.com:acme/harnessdeck-history.git"),
@@ -123,6 +124,7 @@ describe("CLI history and revert", () => {
       const snapshot = project ? snapshotModel.listSnapshots(project.id)[0] : undefined;
 
       expect(snapshot).toBeDefined();
+      expect(history.stdout).toMatch(/\|\s+ID\s+\|/);
       // IDs are shortened in human-mode table output (first 6 chars always visible)
       expect(history.stdout).toContain((snapshot?.id ?? "").slice(0, 6));
     } finally {
@@ -161,7 +163,7 @@ describe("CLI history and revert", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Please provide a snapshot ID.");
-      expect(result.stderr).toContain("project history");
+      expect(result.stderr).toContain("project history --show-id");
     } finally {
       await context.cleanup();
     }
