@@ -56,21 +56,21 @@ import type {
   DeckJsonLayerPluginRef,
   EnvVarMetadata,
   Environment,
-  ExportBundle,
-  ExportBundleDependency,
-  ExportBundleLayer,
-  ExportBundleLayerEntry,
-  ExportBundleLayerPluginPin,
-  ExportBundleResource,
-  LegacyExportBundle,
-  MultiLayerExportBundle,
+  LayerExport,
+  LayerExportDependency,
+  LayerExportLayer,
+  LayerExportEntry,
+  LayerExportPluginPin,
+  LayerExportResource,
+  LegacyLayerExport,
+  MultiLayerExport,
   Layer,
   Plugin,
   Resource,
 } from "../types.js";
 import {
-  BUNDLE_SCHEMA,
-  BUNDLE_VERSION,
+  LAYER_SCHEMA,
+  LAYER_SCHEMA_VERSION,
   DECK_JSON_VERSION,
   DECK_SCHEMA,
 } from "../types.js";
@@ -78,7 +78,7 @@ import {
   ENVIRONMENT_RESOURCE_TYPES,
   PLUGIN_RESOURCE_TYPES,
 } from "./resource-classification.js";
-import { collectEmbeddedPluginFiles, writeEmbeddedPluginsOnImport } from "./plugin-bundle.js";
+import { collectEmbeddedPluginFiles, writeEmbeddedPluginsOnImport } from "./plugin-layer-export.js";
 
 export interface ExportLayerOptions {
   /** When true, embed marketplace-installed plugins too if their install paths resolve from `HOME`. */
@@ -89,14 +89,14 @@ export interface ExportLayerOptions {
 }
 
 export interface ImportLayerOptions {
-  /** When importing a bundle with `embedded_plugins`, write those trees under this directory. */
+  /** When importing a layer export with `embedded_plugins`, write those trees under this directory. */
   embeddedTargetDir?: string;
   /** Override the imported layer name (useful when installing a remote library under a different local name). */
   layerNameOverride?: string;
   /** Override the resource source label recorded on imported resources. */
   resourceSource?: string;
-  /** Skip bundle layers whose name/version key is not allowed. */
-  includeLayers?: (layer: ExportBundleLayerEntry) => boolean;
+  /** Skip exported layers whose name/version key is not allowed. */
+  includeLayers?: (layer: LayerExportEntry) => boolean;
 }
 
 export interface ImportedLayerBundleEntry {
@@ -117,7 +117,7 @@ export interface ImportDeckJsonResult {
   environments: Environment[];
 }
 
-export interface ImportBundleV1AsDeckResult {
+export interface ImportLayerExportAsDeckResult {
   deck: Deck;
   deckJson: DeckJson;
   plugins: Plugin[];
@@ -133,19 +133,19 @@ export interface ImportDeckJsonOptions {
 
 type ExportLayerSelector = string | string[];
 
-interface NormalizedExportBundle {
-  embedded_plugins: LegacyExportBundle["embedded_plugins"];
-  layers: ExportBundleLayerEntry[];
+interface NormalizedLayerExport {
+  embedded_plugins: LegacyLayerExport["embedded_plugins"];
+  layers: LayerExportEntry[];
   multiLayer: boolean;
 }
 
-interface ExportBundlePayloadWithEmbedded extends ExportBundleLayerEntry {
-  embedded_plugins: LegacyExportBundle["embedded_plugins"];
+interface LayerExportPayloadWithEmbedded extends LayerExportEntry {
+  embedded_plugins: LegacyLayerExport["embedded_plugins"];
 }
 
-interface ParsedBundleSummary {
-  layers: ExportBundleLayerEntry[];
-  embedded_plugins: LegacyExportBundle["embedded_plugins"];
+interface ParsedLayerExportSummary {
+  layers: LayerExportEntry[];
+  embedded_plugins: LegacyLayerExport["embedded_plugins"];
   multiLayer: boolean;
 }
 
@@ -214,14 +214,14 @@ function classifyLayerPluginsForExport(
   rows: LayerPluginRow[],
   opts?: ExportLayerOptions,
 ): {
-  pins: ExportBundleLayerPluginPin[];
-  embeddedRoots: ExportBundle["embedded_plugins"];
+  pins: LayerExportPluginPin[];
+  embeddedRoots: LayerExport["embedded_plugins"];
 } {
   const projectRoot = resolveProjectRoot(opts);
   const homeRoot = resolveHomeRoot(opts);
   const optEmbedMarketplace = opts?.embedPlugins ?? false;
-  const pins: ExportBundleLayerPluginPin[] = [];
-  const embeddedRoots: ExportBundle["embedded_plugins"] = [];
+  const pins: LayerExportPluginPin[] = [];
+  const embeddedRoots: LayerExport["embedded_plugins"] = [];
 
   for (const row of rows) {
     const marketplaceAbs = marketplaceInstallRoot(row.ref, homeRoot);
@@ -256,7 +256,7 @@ function classifyLayerPluginsForExport(
   return { pins, embeddedRoots };
 }
 
-function toExportBundleLayer(layer: Layer): ExportBundleLayer {
+function toLayerExportLayer(layer: Layer): LayerExportLayer {
   return {
     name: layer.name,
     version: layer.version,
@@ -269,7 +269,7 @@ function toExportBundleLayer(layer: Layer): ExportBundleLayer {
 function collectBundlePayload(
   layer: Layer,
   exportOpts?: ExportLayerOptions,
-): ExportBundlePayloadWithEmbedded {
+): LayerExportPayloadWithEmbedded {
   const resources = getPluginResources(layer.id);
   const layerRows = listLayerPlugins(layer.id);
   const deps = listPluginDependencies(layer.id);
@@ -278,7 +278,7 @@ function collectBundlePayload(
     exportOpts,
   );
 
-  const payload: ExportBundlePayloadWithEmbedded = {
+  const payload: LayerExportPayloadWithEmbedded = {
     name: layer.name,
     version: layer.version,
     description: layer.description,
@@ -309,7 +309,7 @@ function collectBundlePayload(
             dependency_name: d.dependency_name,
             version_constraint: d.version_constraint,
             order: d.order,
-          } satisfies ExportBundleDependency)),
+          } satisfies LayerExportDependency)),
         }
       : {}),
   };
@@ -317,7 +317,7 @@ function collectBundlePayload(
   return payload;
 }
 
-function normalizeExportBundle(bundle: ExportBundle): NormalizedExportBundle {
+function normalizeLayerExport(bundle: LayerExport): NormalizedLayerExport {
   if ("layers" in bundle) {
     return {
       embedded_plugins: bundle.embedded_plugins ?? [],
@@ -346,7 +346,7 @@ function normalizeExportBundle(bundle: ExportBundle): NormalizedExportBundle {
   };
 }
 
-function parseBundle(raw: string): ParsedBundleSummary {
+function parseLayerExport(raw: string): ParsedLayerExportSummary {
   const parseErrors: ParseError[] = [];
   const parsed = parseJsonc(raw, parseErrors, {
     allowTrailingComma: true,
@@ -358,21 +358,25 @@ function parseBundle(raw: string): ParsedBundleSummary {
     const detail = firstError
       ? `${printParseErrorCode(firstError.error)} at offset ${firstError.offset}`
       : "invalid JSONC";
-    throw new Error(`Invalid bundle JSONC: ${detail}`);
+    throw new Error(`Invalid layer export JSONC: ${detail}`);
   }
 
-  if (parsed.version !== BUNDLE_VERSION) {
-    throw new Error(`Unsupported bundle version: ${parsed.version}`);
+  if (parsed.$schema !== LAYER_SCHEMA) {
+    throw new Error(`Unsupported layer schema: ${parsed.$schema}`);
   }
 
-  return normalizeExportBundle(parsed as unknown as ExportBundle);
+  if (parsed.version !== LAYER_SCHEMA_VERSION) {
+    throw new Error(`Unsupported layer version: ${parsed.version}`);
+  }
+
+  return normalizeLayerExport(parsed as unknown as LayerExport);
 }
 
-export function inspectBundleFile(filePath: string): ParsedBundleSummary {
-  return parseBundle(readFileSync(filePath, "utf-8"));
+export function inspectLayerExportFile(filePath: string): ParsedLayerExportSummary {
+  return parseLayerExport(readFileSync(filePath, "utf-8"));
 }
 
-function formatBundleAsJsonc(bundle: ExportBundle): string {
+function formatLayerExportAsJsonc(bundle: LayerExport): string {
   const layerNames = "layers" in bundle
     ? bundle.layers.map((layer) => layer.name)
     : [bundle.layer.name];
@@ -380,7 +384,7 @@ function formatBundleAsJsonc(bundle: ExportBundle): string {
 
   return [
     "/*",
-    " * HarnessDeck layer bundle",
+    " * HarnessDeck layer export",
     ` * Layers: ${layerNames.join(", ")}`,
     ` * Generated at: ${new Date().toISOString()}`,
     ` * Source machine: ${sourceMachine}`,
@@ -400,12 +404,12 @@ function isPluginResourceType(type: string): boolean {
   return (PLUGIN_RESOURCE_TYPES as readonly string[]).includes(type);
 }
 
-function splitBundleResources(resources: ExportBundleResource[]): {
-  pluginResources: ExportBundleResource[];
-  environmentResources: ExportBundleResource[];
+function splitLayerExportResources(resources: LayerExportResource[]): {
+  pluginResources: LayerExportResource[];
+  environmentResources: LayerExportResource[];
 } {
-  const pluginResources: ExportBundleResource[] = [];
-  const environmentResources: ExportBundleResource[] = [];
+  const pluginResources: LayerExportResource[] = [];
+  const environmentResources: LayerExportResource[] = [];
 
   for (const resource of resources) {
     if (isEnvironmentResourceType(resource.type)) {
@@ -422,7 +426,7 @@ function splitBundleResources(resources: ExportBundleResource[]): {
 
 function environmentResourcesToDeckJson(
   envName: string,
-  resources: ExportBundleResource[],
+  resources: LayerExportResource[],
 ): DeckJsonEnvironment | undefined {
   const values: Record<string, string> = {};
 
@@ -468,8 +472,8 @@ function layerToDeckJsonEntry(
   return entry;
 }
 
-function parsedBundleToDeckJson(
-  normalized: NormalizedExportBundle,
+function parsedLayerExportToDeckJson(
+  normalized: NormalizedLayerExport,
   options?: DeckJsonExportOptions,
 ): DeckJson {
   const selectorOnly = isSelectorOnlyExport(options);
@@ -481,7 +485,7 @@ function parsedBundleToDeckJson(
       typeof layer.version === "string" && layer.version.length > 0
         ? layer.version
         : "1.0.0";
-    const { environmentResources } = splitBundleResources(layer.resources);
+    const { environmentResources } = splitLayerExportResources(layer.resources);
     const envName = defaultEnvironmentNameForLayer(layer.name);
     const envEntry = environmentResourcesToDeckJson(
       envName,
@@ -528,13 +532,13 @@ function parsedBundleToDeckJson(
 }
 
 /**
- * Convert a bundle v1 export into canonical deck.json (plugins + configured layers).
+ * Convert a layer v1 export into canonical deck.json (plugins + configured layers).
  */
-export function bundleV1ToDeckJson(
-  bundle: ExportBundle,
+export function layerExportToDeckJson(
+  bundle: LayerExport,
   options?: DeckJsonExportOptions,
 ): DeckJson {
-  return parsedBundleToDeckJson(normalizeExportBundle(bundle), options);
+  return parsedLayerExportToDeckJson(normalizeLayerExport(bundle), options);
 }
 
 function environmentToDeckJson(environmentId: string): DeckJsonEnvironment {
@@ -830,17 +834,17 @@ export function importDeckJson(
 }
 
 /**
- * Import bundle v1 via the legacy importer, then materialize deck.json structure.
+ * Import layer v1 via the legacy importer, then materialize deck.json structure.
  */
-export function importBundleV1AsDeck(
+export function importLayerExportAsDeck(
   filePath: string,
   opts?: ImportLayerOptions & {
     deckName?: string;
     rootPath?: string;
     resourceSource?: string;
   },
-): ImportBundleV1AsDeckResult {
-  const deckJson = parsedBundleToDeckJson(inspectBundleFile(filePath), {
+): ImportLayerExportAsDeckResult {
+  const deckJson = parsedLayerExportToDeckJson(inspectLayerExportFile(filePath), {
     deckName: opts?.deckName,
   });
 
@@ -889,7 +893,7 @@ export function importBundleV1AsDeck(
 
   const finalized = getDeck(deck.id);
   if (!finalized) {
-    throw new Error(`Deck ${deck.id} not found after bundle v1 import`);
+    throw new Error(`Deck ${deck.id} not found after layer v1 import`);
   }
 
   return {
@@ -911,9 +915,9 @@ export function writeDeckJson(filePath: string, deckJson: DeckJson): void {
 export function exportLayer(
   layerNameOrId: ExportLayerSelector,
   exportOpts?: ExportLayerOptions,
-): ExportBundle {
+): LayerExport {
   process.stderr.write(
-    "Warning: exportLayer writes bundle v1 (urn:harnessdeck:bundle:v1). Prefer deck.json export for new decks.\n",
+    "Warning: exportLayer writes layer v1 (urn:harnessdeck:layer:v1). Prefer deck.json export for new decks.\n",
   );
   const selectors = Array.isArray(layerNameOrId) ? layerNameOrId : [layerNameOrId];
   const layers = selectors.map((selector) => {
@@ -929,9 +933,9 @@ export function exportLayer(
       throw new Error("Expected a bundle payload for export");
     }
     return {
-      $schema: BUNDLE_SCHEMA,
-      version: BUNDLE_VERSION,
-      layer: toExportBundleLayer({
+      $schema: LAYER_SCHEMA,
+      version: LAYER_SCHEMA_VERSION,
+      layer: toLayerExportLayer({
         id: "",
         name: payload.name,
         version: payload.version,
@@ -948,10 +952,10 @@ export function exportLayer(
       plugins: payload.plugins,
       embedded_plugins: payload.embedded_plugins,
       ...(payload.dependencies ? { dependencies: payload.dependencies } : {}),
-    } satisfies LegacyExportBundle;
+    } satisfies LegacyLayerExport;
   }
 
-  const embeddedPluginsByKey = new Map<string, LegacyExportBundle["embedded_plugins"][number]>();
+  const embeddedPluginsByKey = new Map<string, LegacyLayerExport["embedded_plugins"][number]>();
   for (const payload of payloads) {
     for (const plugin of payload.embedded_plugins) {
       const key = `${plugin.ref}\u0000${plugin.version_constraint}`;
@@ -962,8 +966,8 @@ export function exportLayer(
   }
 
   return {
-    $schema: BUNDLE_SCHEMA,
-    version: BUNDLE_VERSION,
+    $schema: LAYER_SCHEMA,
+    version: LAYER_SCHEMA_VERSION,
     layers: payloads.map(({ embedded_plugins: _embeddedPlugins, ...payload }) => ({
       ...payload,
       plugins: [
@@ -975,7 +979,7 @@ export function exportLayer(
       ],
     })),
     embedded_plugins: [...embeddedPluginsByKey.values()],
-  } satisfies MultiLayerExportBundle;
+  } satisfies MultiLayerExport;
 }
 
 /**
@@ -988,14 +992,14 @@ export function exportToFile(
 ): void {
   const bundle = exportLayer(layerNameOrId, exportOpts);
   const content = extname(filePath).toLowerCase() === ".jsonc"
-    ? formatBundleAsJsonc(bundle)
+    ? formatLayerExportAsJsonc(bundle)
     : JSON.stringify(bundle, null, 2);
   writeFileSync(filePath, content, "utf-8");
 }
 
 function importLayerFromBundleParsed(
-  bundle: ExportBundleLayerEntry,
-  embeddedPlugins: LegacyExportBundle["embedded_plugins"],
+  bundle: LayerExportEntry,
+  embeddedPlugins: LegacyLayerExport["embedded_plugins"],
   useLegacyEmbeddedFallback: boolean,
   filePath: string,
   opts?: ImportLayerOptions,
@@ -1100,7 +1104,7 @@ export function importFromFile(
   filePath: string,
   opts?: ImportLayerOptions,
 ) : ImportedLayerBundle {
-  const normalized = inspectBundleFile(filePath);
+  const normalized = inspectLayerExportFile(filePath);
   const bundleLayers = normalized.layers.filter((bundleLayer) =>
     opts?.includeLayers ? opts.includeLayers(bundleLayer) : true,
   );

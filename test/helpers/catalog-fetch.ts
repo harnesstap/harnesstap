@@ -1,5 +1,5 @@
 const DEFAULT_BUNDLE = JSON.stringify({
-  $schema: "urn:harnessdeck:bundle:v1",
+  $schema: "urn:harnessdeck:layer:v1",
   version: 1,
   layer: { name: "remote-team", description: "from cloud", tags: [] },
   resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {} }],
@@ -60,10 +60,10 @@ export function createCatalogFetchMock(input?: {
         json: async () => ({ layers: filtered, nextCursor: null }),
       };
     }
-    if (/\/api\/public\/.+\/versions\/.+\/bundle$/.test(url)) {
+    if (/\/api\/public\/.+\/versions\/.+\/layer-export/.test(url)) {
       return { ok: true, text: async () => bundle };
     }
-    if (/\/api\/catalog\/.+\/versions\/.+\/bundle$/.test(url)) {
+    if (/\/api\/catalog\/.+\/versions\/.+\/layer-export/.test(url)) {
       return { ok: true, text: async () => bundle };
     }
     if (url.endsWith("/api/me/orgs")) {

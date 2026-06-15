@@ -52,11 +52,11 @@ export function createPublicCatalogClient(baseUrl: string) {
     ): Promise<{ version: string; body: string }> {
       const encodedVersion = encodeURIComponent(version);
       const url = catalogSlug === DEFAULT_CATALOG_SLUG
-        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/bundle`
-        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/bundle`;
+        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`
+        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`;
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to download public bundle: ${response.status}`);
+        throw new Error(`Failed to download public layer export: ${response.status}`);
       }
       const body = await response.text();
       return { version, body };

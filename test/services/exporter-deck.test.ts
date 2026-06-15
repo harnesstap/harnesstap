@@ -17,7 +17,7 @@ const selectorOnlyDeckFixturePath = join(
 );
 
 describe("exporter deck adapters", () => {
-  it("imports bundle v1 single layer as one plugin + implicit configured layer", async () => {
+  it("imports layer v1 single layer as one plugin + implicit configured layer", async () => {
     const context = await createInitializedTestContext("import-bundle-v1-deck");
 
     try {
@@ -26,7 +26,7 @@ describe("exporter deck adapters", () => {
       writeTextFile(
         bundlePath,
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: {
             name: "pagerduty",
@@ -48,7 +48,7 @@ describe("exporter deck adapters", () => {
         }),
       );
 
-      const result = exporter.importBundleV1AsDeck(bundlePath);
+      const result = exporter.importLayerExportAsDeck(bundlePath);
 
       expect(result.plugins).toHaveLength(1);
       expect(result.plugins[0]?.name).toBe("pagerduty");
@@ -60,11 +60,11 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("converts bundle v1 env vars into deck.json environments", async () => {
+  it("converts layer v1 env vars into deck.json environments", async () => {
     const exporter = await import("../../src/services/exporter.ts");
 
-    const deckJson = exporter.bundleV1ToDeckJson({
-      $schema: "urn:harnessdeck:bundle:v1",
+    const deckJson = exporter.layerExportToDeckJson({
+      $schema: "urn:harnessdeck:layer:v1",
       version: 1,
       layer: {
         name: "pagerduty",
@@ -343,7 +343,7 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("keeps bundle v1 import working via importFromFile adapter", async () => {
+  it("keeps layer v1 import working via importFromFile adapter", async () => {
     const context = await createInitializedTestContext("bundle-v1-adapter");
 
     try {
@@ -352,7 +352,7 @@ describe("exporter deck adapters", () => {
       writeFileSync(
         bundlePath,
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: {
             name: "legacy-plugin",

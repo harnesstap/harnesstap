@@ -596,7 +596,7 @@ describe("CLI apply", () => {
       writeFileSync(
         bundlePath,
         `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layer": {
     "name": "bundle-reuse",

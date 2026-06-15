@@ -16,8 +16,8 @@ import {
 import type { DeckJsonLayer } from "../types.js";
 
 export interface ExportDeckRepoOptions {
-  /** Write bundle v1 files under `.harnessdeck/layers/` for portable round-trip. */
-  withLayerBundles?: boolean;
+  /** Write layer v1 files under `.harnessdeck/layers/` for portable round-trip. */
+  withLayerExports?: boolean;
 }
 
 export interface ImportDeckRepoOptions {
@@ -25,7 +25,7 @@ export interface ImportDeckRepoOptions {
   resourceSource?: string;
 }
 
-function layerBundleFileName(layer: DeckJsonLayer): string {
+function layerExportFileName(layer: DeckJsonLayer): string {
   return `${layer.name}@${layer.version}.harnessdeck.jsonc`;
 }
 
@@ -44,7 +44,7 @@ export function exportDeckRepo(
   deckSelector: string,
   outputDir: string,
   options: ExportDeckRepoOptions = {},
-): { deckJsonPath: string; layerBundlePaths: string[] } {
+): { deckJsonPath: string; layerExportPaths: string[] } {
   const deck = resolveDeck(deckSelector);
   const resolvedOutput = resolve(outputDir);
   const harnessdeckDir = join(resolvedOutput, ".harnessdeck");
@@ -60,8 +60,8 @@ export function exportDeckRepo(
     writeFileSync(envPath, stableJsonStringify(environment), "utf-8");
   }
 
-  const layerBundlePaths: string[] = [];
-  if (options.withLayerBundles) {
+  const layerExportPaths: string[] = [];
+  if (options.withLayerExports) {
     const layersDir = join(harnessdeckDir, "layers");
     mkdirSync(layersDir, { recursive: true });
     for (const layerEntry of deckJson.layers) {
@@ -74,19 +74,19 @@ export function exportDeckRepo(
         }) ?? resolveLayerSelector(`${layerEntry.name}@${layerEntry.version}`);
       if (!localLayer) {
         throw new Error(
-          `Cannot export layer bundle for missing local layer: ${layerEntry.name}@${layerEntry.version}`,
+          `Cannot export layer export for missing local layer: ${layerEntry.name}@${layerEntry.version}`,
         );
       }
-      const bundlePath = join(layersDir, layerBundleFileName(layerEntry));
-      exportToFile(localLayer.id, bundlePath);
-      layerBundlePaths.push(bundlePath);
+      const layerExportPath = join(layersDir, layerExportFileName(layerEntry));
+      exportToFile(localLayer.id, layerExportPath);
+      layerExportPaths.push(layerExportPath);
     }
   }
 
-  return { deckJsonPath, layerBundlePaths };
+  return { deckJsonPath, layerExportPaths };
 }
 
-function importMissingLayerBundles(repoRoot: string, deckJsonPath: string): void {
+function importMissingLayerExports(repoRoot: string, deckJsonPath: string): void {
   const layersDir = join(repoRoot, ".harnessdeck", "layers");
   if (!existsSync(layersDir)) {
     return;
@@ -104,13 +104,13 @@ function importMissingLayerBundles(repoRoot: string, deckJsonPath: string): void
       continue;
     }
 
-    const bundlePath = join(layersDir, layerBundleFileName(layerEntry));
-    if (!existsSync(bundlePath)) {
+    const layerExportPath = join(layersDir, layerExportFileName(layerEntry));
+    if (!existsSync(layerExportPath)) {
       throw new Error(
-        `Layer ${layerEntry.name}@${layerEntry.version} is not installed locally and no bundle was found at ${bundlePath}`,
+        `Layer ${layerEntry.name}@${layerEntry.version} is not installed locally and no layer export was found at ${layerExportPath}`,
       );
     }
-    importFromFile(bundlePath, { resourceSource: "import:deck-repo" });
+    importFromFile(layerExportPath, { resourceSource: "import:deck-repo" });
   }
 }
 
@@ -127,7 +127,7 @@ export function importDeckRepo(
     throw new Error(`Deck repo missing canonical source: ${deckJsonPath}`);
   }
 
-  importMissingLayerBundles(resolvedRoot, deckJsonPath);
+  importMissingLayerExports(resolvedRoot, deckJsonPath);
 
   return importDeckJson(deckJsonPath, {
     deckNameOverride: options.deckNameOverride,

@@ -14,6 +14,6 @@ export async function runProjectApplyWizard(): Promise<string> {
   }
 
   return promptForValue({
-    message: "Layer name, bundle path, or URL",
+    message: "Layer name, layer export path, or URL",
   });
 }

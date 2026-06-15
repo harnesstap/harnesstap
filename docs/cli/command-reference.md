@@ -55,7 +55,7 @@ Manage project scanning, apply state, snapshots, drift, and mirror.
 ### Commands
 
 - `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `project apply <layer...>` — apply one or more configured layers, bundle paths, bundle URLs, or bare catalog names
+- `project apply <layer...>` — apply one or more configured layers, layer export paths, layer export URLs, or bare catalog names
 - `project drift [path]` — compare the working tree against the latest apply/mirror snapshot
 - `project mirror [path]` — mirror alias harness outputs from the main harness state
 - `project history --project <path>` — list snapshots for a tracked project
@@ -109,7 +109,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer uncombine [layer] [selector] --type <type>`
 - `layer delete [name]`
 - `layer export <layer>`
-- `layer import <file>` — import a local bundle file (`urn:harnessdeck:bundle:v1`)
+- `layer import <file>` — import a local bundle file (`urn:harnessdeck:layer:v1`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
 - `layer pull [selector]` — download a remote layer bundle and import it
 - `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL

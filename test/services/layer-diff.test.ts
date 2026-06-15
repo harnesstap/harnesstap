@@ -16,7 +16,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const rightPath = join(tmpDir, "right.harnessdeck.json");
 
       const makeBundle = (version: string) => JSON.stringify({
-        $schema: "urn:harnessdeck:bundle:v1",
+        $schema: "urn:harnessdeck:layer:v1",
         version: 1,
         layer: { name: "test", version, description: "", tags: [] },
         resources: [],
@@ -52,7 +52,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const rightPath = join(tmpDir, "right.harnessdeck.json");
 
       const makeBundle = (version: string) => JSON.stringify({
-        $schema: "urn:harnessdeck:bundle:v1",
+        $schema: "urn:harnessdeck:layer:v1",
         version: 1,
         layer: { name: "test", version, description: "", tags: [] },
         resources: [],
@@ -86,7 +86,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: { name: "test", version: "1.0.0", description: "", tags: [] },
           resources: [],
@@ -122,7 +122,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: { name: "test", version: "1.0.0", description: "", tags: [] },
           resources: [],
@@ -158,7 +158,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: { name: "test", version: "1.0.0", description: "", tags: [] },
           resources: [],
@@ -194,7 +194,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       const makeBundle = (deps: Array<{ dependency_name: string; version_constraint: string; order: number }>) =>
         JSON.stringify({
-          $schema: "urn:harnessdeck:bundle:v1",
+          $schema: "urn:harnessdeck:layer:v1",
           version: 1,
           layer: { name: "test", version: "1.0.0", description: "", tags: [] },
           resources: [],
@@ -239,7 +239,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       const bundlePath = join(tmpDir, "bundle.harnessdeck.json");
       writeTextFile(bundlePath, JSON.stringify({
-        $schema: "urn:harnessdeck:bundle:v1",
+        $schema: "urn:harnessdeck:layer:v1",
         version: 1,
         layer: { name: "local-layer", version: "1.0.0", description: "", tags: [] },
         resources: [],
@@ -274,7 +274,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
       writeTextFile(
         bundlePath,
         `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layers": [
     {
@@ -299,7 +299,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
       );
 
       expect(() => diffLayers(bundlePath, "local-layer")).toThrow(
-        "Multi-layer bundles are not supported by layer diff",
+        "Multi-layer exports are not supported by layer diff",
       );
     } finally {
       await context.cleanup();

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import type { ExportBundleEmbeddedPlugin } from "../types.js";
+import type { LayerExportEmbeddedPlugin } from "../types.js";
 
 /** Relative path under plugin root (`./`-style prefixes stripped). */
 function stripProjectRelativePrefix(ref: string): string {
@@ -34,7 +34,7 @@ export function collectEmbeddedPluginFiles(pluginRootAbs: string): Record<string
   return out;
 }
 
-function embeddedMaterializeBase(targetDir: string, entry: ExportBundleEmbeddedPlugin): string {
+function embeddedMaterializeBase(targetDir: string, entry: LayerExportEmbeddedPlugin): string {
   if (entry.ref.startsWith("./") || entry.ref.startsWith(".\\")) {
     return join(targetDir, stripProjectRelativePrefix(entry.ref));
   }
@@ -44,7 +44,7 @@ function embeddedMaterializeBase(targetDir: string, entry: ExportBundleEmbeddedP
 /** Write inlined plugin trees from a bundle to disk under `targetDir`. */
 export function writeEmbeddedPluginsOnImport(
   targetDir: string,
-  embedded: ExportBundleEmbeddedPlugin[],
+  embedded: LayerExportEmbeddedPlugin[],
 ): void {
   for (const entry of embedded) {
     const base = embeddedMaterializeBase(targetDir, entry);

@@ -38,7 +38,7 @@ describe("CLI export and import", () => {
 
       const raw = JSON.parse(readFileSync(bundlePath, "utf-8"));
       expect(raw.version).toBe(1);
-      expect(raw.$schema).toBe("urn:harnessdeck:bundle:v1");
+      expect(raw.$schema).toBe("urn:harnessdeck:layer:v1");
       expect(raw.plugins ?? []).toEqual([]);
       expect(raw.embedded_plugins ?? []).toEqual([]);
 
@@ -108,7 +108,7 @@ describe("CLI export and import", () => {
       expect(exportResult.stderr).not.toContain("ENOENT");
       expect(JSON.parse(readFileSync(bundlePath, "utf-8"))).toMatchObject({
         version: 1,
-        $schema: "urn:harnessdeck:bundle:v1",
+        $schema: "urn:harnessdeck:layer:v1",
         embedded_plugins: expect.arrayContaining([
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
         ]),
@@ -141,7 +141,7 @@ describe("CLI export and import", () => {
       expect(existsSync(bundlePath)).toBe(true);
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw.startsWith("/*\n")).toBe(true);
-      expect(raw).toContain('"$schema": "urn:harnessdeck:bundle:v1"');
+      expect(raw).toContain('"$schema": "urn:harnessdeck:layer:v1"');
     } finally {
       await context.cleanup();
     }
@@ -157,7 +157,7 @@ describe("CLI export and import", () => {
       writeTextFile(
         bundlePath,
         `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layer": {
     "name": "commented-import",
@@ -206,7 +206,7 @@ describe("CLI export and import", () => {
       expect(raw).toContain('"layers"');
 
       const parsed = await import("../../src/services/exporter.ts");
-      const bundle = parsed.inspectBundleFile(bundlePath);
+      const bundle = parsed.inspectLayerExportFile(bundlePath);
       expect(bundle.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
     } finally {
       await context.cleanup();
@@ -224,7 +224,7 @@ describe("CLI export and import", () => {
       writeTextFile(
         bundlePath,
         `{
-  "$schema": "urn:harnessdeck:bundle:v1",
+  "$schema": "urn:harnessdeck:layer:v1",
   "version": 1,
   "layers": [
     {

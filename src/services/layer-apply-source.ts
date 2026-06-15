@@ -15,14 +15,14 @@ import {
   resolveBareNameFromCatalog,
 } from "./layer-bare-name-resolve.js";
 import {
-  fetchLayerBundleToTempFile,
-  isBundleFilePath,
+  fetchLayerExportToTempFile,
+  isLayerExportFilePath,
   isLayerUrl,
 } from "./layer-source.js";
 
 export type ResolvedApplyLayerSource =
   | { kind: "local"; layerId: string }
-  | { kind: "bundle"; path: string };
+  | { kind: "layer-export"; path: string };
 
 export interface ResolveApplyLayerSourceOptions {
   profile?: string;
@@ -71,7 +71,7 @@ function isPublishedSelector(selector: string): boolean {
 }
 
 function isBareLayerName(selector: string): boolean {
-  if (isLayerUrl(selector) || isBundleFilePath(selector)) {
+  if (isLayerUrl(selector) || isLayerExportFilePath(selector)) {
     return false;
   }
   return !selector.includes("/");
@@ -82,12 +82,12 @@ export async function resolveApplyLayerSource(
   options: ResolveApplyLayerSourceOptions = {},
 ): Promise<ResolvedApplyLayerSource> {
   if (isLayerUrl(selector)) {
-    const path = await fetchLayerBundleToTempFile(selector);
-    return { kind: "bundle", path };
+    const path = await fetchLayerExportToTempFile(selector);
+    return { kind: "layer-export", path };
   }
 
-  if (isBundleFilePath(selector)) {
-    return { kind: "bundle", path: selector };
+  if (isLayerExportFilePath(selector)) {
+    return { kind: "layer-export", path: selector };
   }
 
   const localLayer = resolveLocalLayer(selector);

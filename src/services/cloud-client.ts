@@ -62,8 +62,8 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
   return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
 }
 
-function exportBundleToCloudBundle(bundleJson: string): { layers: Array<Record<string, unknown>> } {
-  const parsed = JSON.parse(bundleJson) as Record<string, unknown>;
+function exportLayerExportToCloudPayload(layerExportJson: string): { layers: Array<Record<string, unknown>> } {
+  const parsed = JSON.parse(layerExportJson) as Record<string, unknown>;
   if (Array.isArray(parsed.layers)) {
     return {
       layers: parsed.layers.map((layer) => ({ ...(layer as Record<string, unknown>) })),
@@ -72,7 +72,7 @@ function exportBundleToCloudBundle(bundleJson: string): { layers: Array<Record<s
 
   const layer = parsed.layer as Record<string, unknown> | undefined;
   if (!layer) {
-    throw new Error("Bundle is missing a layer payload.");
+    throw new Error("Layer export is missing a layer payload.");
   }
 
   const plugins = Array.isArray(parsed.plugins) ? parsed.plugins : [];
@@ -153,7 +153,7 @@ export async function pollDeviceToken(
 export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
-  publishLayerBundle(metadata: Record<string, unknown>, bundleJson: string): Promise<Record<string, unknown>>;
+  publishLayerExport(metadata: Record<string, unknown>, layerExportJson: string): Promise<Record<string, unknown>>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 }
@@ -241,7 +241,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     layerId: string;
     version: string;
     summary: string;
-    bundle: { layers: Array<Record<string, unknown>> };
+    layerExport: { layers: Array<Record<string, unknown>> };
   }): Promise<{ version: { version: string } }> {
     const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
       method: "PATCH",
@@ -251,7 +251,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         layerId: input.layerId,
         version: input.version,
         summary: input.summary,
-        bundle: input.bundle,
+        layerExport: input.layerExport,
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -275,7 +275,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       return data.orgs ?? [];
     },
 
-    async publishLayerBundle(metadata: Record<string, unknown>, bundleJson: string) {
+    async publishLayerExport(metadata: Record<string, unknown>, layerExportJson: string) {
       const orgSlug = String(metadata.org_slug ?? "");
       const catalogSlug = String(metadata.catalog_slug ?? "default");
       const layerName = String(metadata.layer_name ?? "");
@@ -290,10 +290,10 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       }
 
       const slug = toSlug(layerName);
-      const cloudBundle = exportBundleToCloudBundle(bundleJson);
-      const layerCount = cloudBundle.layers.length;
+      const layerExportPayload = exportLayerExportToCloudPayload(layerExportJson);
+      const layerCount = layerExportPayload.layers.length;
       const summary = String(
-        (cloudBundle.layers[0] as { description?: string } | undefined)?.description
+        (layerExportPayload.layers[0] as { description?: string } | undefined)?.description
           || `Published layer ${layerName}`,
       );
 
@@ -331,7 +331,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         layerId: publishedLayer.id,
         version,
         summary,
-        bundle: cloudBundle,
+        layerExport: layerExportPayload,
       });
 
       return {
