@@ -84,7 +84,7 @@ Manage project scanning, apply state, snapshots, drift, and mirror.
 ### Commands
 
 - `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `project apply <layer...>` — apply one or more configured layers, layer export paths, layer export URLs, or bare catalog names
+- `project apply <layer...>` — **deprecated** alias for `layer apply`
 - `project drift [path]` — compare the working tree against the latest apply/mirror snapshot
 - `project mirror [path]` — mirror alias harness outputs from the main harness state
 - `project history --project <path>` — list snapshots for a tracked project
@@ -100,7 +100,7 @@ Manage project scanning, apply state, snapshots, drift, and mirror.
 - `project scan --namespace <name>` — namespace for imported project resources
 - `project scan --global` — install imported plugin sources into global harness locations
 - `project scan --harness <slugs>` — harness targets for `--global` plugin installs
-- `project apply --project <path>` — explicit target directory
+- `project apply --project <path>` — explicit target directory (prefer `layer apply`)
 - `project apply --harness <slugs>` — comma-separated harness slugs
 - `project apply --dry-run` — show planned file writes only
 - `project apply --format json`
@@ -121,7 +121,7 @@ Manage project scanning, apply state, snapshots, drift, and mirror.
 - `project history`, `project drift`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
 - `project apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
 - `project revert` requires a snapshot ID from `project history`.
-- `project apply` resolves environment values through the cascade: home environment ◂ configured-layer default ◂ deck active environment (last wins).
+- `layer apply` and `deck apply` resolve environment values through the cascade: home environment ◂ configured-layer default ◂ deck active environment (last wins).
 
 ## layer (`l`)
 
@@ -139,6 +139,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer delete [name]`
 - `layer export <layer>`
 - `layer import <file>` — import a local bundle file (`urn:harnessdeck:layer:v1`)
+- `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
 - `layer pull [selector]` — download a remote layer bundle and import it
 - `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL
@@ -150,7 +151,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer diff <left> <right>`
 - `layer doctor [name]` — validate a layer without writing to disk
 - `layer from-project [name] --project <path>`
-- `layer set-environment <layer> <environment>` — bind a default environment to the configured layer that `project apply` resolves
+- `layer set-environment <layer> <environment>` — bind a default environment to the configured layer that `layer apply` resolves
 - `layer unset-environment <layer>` — clear the configured layer default environment
 
 ### Important options
@@ -167,6 +168,10 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer combine --embed` — mark plugin resource as embed-on-export
 - `layer export -f, --file <path>` — output bundle path
 - `layer export --embed-plugins`
+- `layer apply --project <path>` — target project directory (default `.`)
+- `layer apply --harness <slugs>` — comma-separated harness slugs
+- `layer apply --dry-run` — show planned file writes only
+- `layer apply --strict-plugin-versions` / `--ignore-plugin-versions` / `--sync-plugins`
 - `layer diff --format json`
 - `layer doctor --check <name>` — run one check (repeatable)
 - `layer doctor --list-checks` — list available checks
@@ -183,7 +188,28 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer publish --catalog <slug>` — target catalog slug (default `default`)
 - `layer publish --profile <name>`
 
-`layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer pull` fails on local name conflict instead of overwriting. `project apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
+`layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
+
+## deck
+
+Curate and apply portable deck repositories (`.harnessdeck/deck.toml`).
+
+### Commands
+
+- `deck list` — list deck records in the local database
+- `deck show <name>` — ordered layer stack, environments, active environment
+- `deck apply <deck> [layer...]` — apply a deck's layers; optional override layers append after the stack
+- `deck delete [name]` — remove deck record (layers and on-disk repos unchanged)
+- `deck export <deck> --output <dir>` — write portable hybrid deck repo
+- `deck import <path>` — import deck repo into the local database
+- `deck doctor <path>` — validate generated marketplace files against `deck.toml`
+
+### Important options
+
+- `deck show --format json` / `--show-id`
+- `deck apply` accepts the same flags as `layer apply` (`--project`, `--harness`, `--dry-run`, plugin strictness, `--sync-plugins`)
+- `deck delete --force` — skip confirmation when `root_path` is set
+- `deck export --with-layer-exports` — include portable layer exports under `.harnessdeck/layers/`
 
 ## auth (`a`)
 
@@ -232,7 +258,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource list` shows material resources plus `plugin` resources; `layer` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
 - `layer combine` selectors accept `type:name@namespace` for compose-safe resolution
-- There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, and `project apply --strict-plugin-versions` for plugin workflows
+- There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, and `layer apply --strict-plugin-versions` for plugin workflows
 
 ## environment (`e`)
 

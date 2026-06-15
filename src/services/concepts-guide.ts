@@ -16,7 +16,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
     concepts: [
       { term: "resource", definition: "Single canonical item (skill, rule, MCP, hook, agent, …)" },
       { term: "layer", definition: "Named bundle of resources you apply to projects" },
-      { term: "deck", definition: "Portable git repo with .harnessdeck/deck.toml" },
+      { term: "deck", definition: "Curated layer stack; apply with deck apply" },
       { term: "environment", definition: "Named how-values (vars, secrets, model config)" },
       { term: "harness", definition: "Target CLI (claude-code, codex, cursor, …)" },
     ],
@@ -26,8 +26,12 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
     ],
     commands: [
       {
-        command: "project apply <layer>",
-        purpose: "Materialize a layer onto disk",
+        command: "layer apply <layer>",
+        purpose: "Materialize layer(s) onto a project",
+      },
+      {
+        command: "deck apply <deck>",
+        purpose: "Materialize a deck's layer stack onto a project",
       },
       {
         command: "project mirror .",

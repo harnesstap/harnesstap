@@ -8,7 +8,7 @@ A few CLI renames matter up front:
   ([Scenario 20](./details/20-inspect-platforms.md)).
 - Plugin workflows no longer use a top-level `plugin` command group. Use
   `resource sync`, `layer show`, `layer doctor`, and
-  `project apply --strict-plugin-versions` instead ([Scenarios 8](./details/08-audit-plugins.md), [16](./details/16-ci-enforcement.md), [18](./details/18-plugin-merge-conflict.md), [19](./details/19-refresh-plugin-metadata.md)).
+  `layer apply --strict-plugin-versions` instead ([Scenarios 8](./details/08-audit-plugins.md), [16](./details/16-ci-enforcement.md), [18](./details/18-plugin-merge-conflict.md), [19](./details/19-refresh-plugin-metadata.md)).
 - `harnessdeck layer doctor` replaced the removed `layer validate` command
   ([Scenario 23](./details/23-validate-layer.md)).
 - `harnessdeck layer combine` adds local resources or plugin pins to a layer;
@@ -16,9 +16,10 @@ A few CLI renames matter up front:
   ([Scenario 5](./details/05-build-layer-from-resources.md)).
 - `harnessdeck init` initializes `~/.harnessdeck`, imports supported
   home-directory defaults, and can choose the default main harness (plus alias
-  harnesses) during init. Catalog baselines are applied with `project apply`, not
+  harnesses) during init. Catalog baselines are applied with `layer apply`, not
   seeded at init. [Scenario 2](./details/02-default-harness-aliases.md) is for
   changing that preference later.
+- **Layers vs decks:** use `layer apply` for one or more layers ([Scenarios 7](./details/07-preview-apply-layer.md), [25](./details/25-stack-layers.md)); use `deck apply` for a curated stack imported from a deck repo ([Scenario 29](./details/29-apply-deck.md)). `project apply` remains a deprecated alias for `layer apply`.
 - The current CLI exposes `harnessdeck project mirror`
   command ([Scenario 27](./details/27-project-sync.md)). Use it when you want to mirror alias harness outputs from the on-disk main
   harness. Re-applying a layer to selected harnesses ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
@@ -48,6 +49,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [25](./details/25-stack-layers.md) | Stack multiple layers                              | Common     | Shipped |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer        | Common     | Shipped |
 | [27](./details/27-project-sync.md) | True cross-harness `project mirror`                 | Common     | Shipped |
+| [29](./details/29-apply-deck.md) | Apply a curated deck to a project                   | Common     | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
 | [5](./details/05-build-layer-from-resources.md)  | Build a reusable layer from imported resources     | Occasional | Shipped |
@@ -62,6 +64,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [22](./details/22-diff-layers.md) | Diff two layers                                    | Occasional | Shipped |
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing               | Occasional | Shipped |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL                  | Occasional | Shipped |
+| [30](./details/30-manage-deck-records.md) | Import, inspect, and remove deck records        | Occasional | Shipped |
 | [6](./details/06-plugin-constraints.md)  | Add plugin constraints to a layer                  | Rare       | Shipped |
 | [9](./details/09-history-revert.md)  | Review history and recover from a bad apply         | Rare       | Shipped |
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB           | Rare       | Shipped |
@@ -92,6 +95,7 @@ one repo needs different harness defaults than your machine-wide setup.
 | [25](./details/25-stack-layers.md) | Stack multiple layers in one apply |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer |
 | [27](./details/27-project-sync.md) | True cross-harness `project mirror` |
+| [29](./details/29-apply-deck.md) | Apply a curated deck stack in one command |
 
 ---
 
@@ -116,6 +120,7 @@ baselines, or when integrating HarnessDeck into tooling.
 | [22](./details/22-diff-layers.md) | Diff two layers (or a layer vs an imported bundle) |
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing to disk |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL |
+| [30](./details/30-manage-deck-records.md) | Import, show, export, and delete deck records |
 
 ---
 

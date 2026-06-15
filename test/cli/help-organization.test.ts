@@ -214,7 +214,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("QUICK START");
     expect(result.stdout).toContain("layer search foundation");
     expect(result.stdout).toContain(
-      "project apply engineering-foundation",
+      "layer apply engineering-foundation",
     );
     expect(result.stdout).toContain("concepts");
     expect(result.stdout).toContain("DOCUMENTATION");
@@ -233,7 +233,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("CORE CONCEPTS");
     expect(result.stdout).toContain("resource");
     expect(result.stdout).toContain("layer");
-    expect(result.stdout).toContain("project apply");
+    expect(result.stdout).toContain("layer apply");
     expect(result.stdout).toContain("project mirror");
     expect(result.stdout).toContain("layer search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
@@ -270,6 +270,6 @@ describe("CLI help and command organization", () => {
   it("generates bash completion", async () => {
     const result = await runCli(["completion", "bash"]);
     expect(result.stdout).toContain("complete -F _harnessdeck_completions");
-    expect(result.stdout).toContain("project apply");
+    expect(result.stdout).toContain("layer apply");
   });
 });
