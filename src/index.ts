@@ -15,8 +15,12 @@ import {
   detectPlatforms,
   detectHomePlatforms,
   isPluginSourcePath,
+  shouldIncludePluginSource,
+  scanProjectWithPluginSource,
+  persistMergedProjectScan,
   scanAndPersistPluginSource,
   scanAndPersistHomeDefaults,
+  type IncludePluginSourceMode,
 } from "./services/scanner.js";
 import { syncLinkedResources } from "./services/resource-sync.js";
 import type { ImportConflictPolicy } from "./models/resource.js";
@@ -815,6 +819,54 @@ function resolveScanConflictPolicy(opts: {
   return "prompt";
 }
 
+function parseIncludePluginSourceMode(
+  value: string | undefined,
+): IncludePluginSourceMode {
+  const mode = value ?? "auto";
+  switch (mode) {
+    case "auto":
+    case "always":
+    case "never":
+      return mode;
+    default:
+      throw new Error(
+        `Invalid --include-plugin-source value: ${value}. Expected auto, always, or never.`,
+      );
+  }
+}
+
+function printHarnessScanDryRun(
+  results: Awaited<ReturnType<typeof scanProject>>,
+): void {
+  for (const result of results) {
+    const count = result.resources.length;
+    const dryTag = ui.theme.muted("[dry run] ");
+    const verdict = ui.theme.success(
+      `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
+    );
+    console.log(dryTag + verdict);
+    for (const resource of result.resources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+    }
+  }
+}
+
+function printPluginScanDryRun(
+  imports: Awaited<ReturnType<typeof scanPluginSource>>,
+): void {
+  for (const result of imports) {
+    const count = result.resources.length;
+    const dryTag = ui.theme.muted("[dry run] ");
+    const verdict = ui.theme.success(
+      `${ui.icons.success} ${result.plugin_name} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
+    );
+    console.log(dryTag + verdict);
+    for (const resource of result.resources) {
+      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+    }
+  }
+}
+
 async function promptScanConflicts(
   conflicts: Awaited<ReturnType<typeof persistScanResults>>["conflicts"],
 ): Promise<"overwrite" | "skip" | "cancel"> {
@@ -845,12 +897,14 @@ async function handleScanCommand(
     skipExisting?: boolean;
     namespace?: string;
     noInteractive?: boolean;
+    includePluginSource?: string;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const projectRoot = resolve(path);
   const detected = detectPlatforms(projectRoot);
+  const includePluginSource = parseIncludePluginSourceMode(opts.includePluginSource);
   const pluginSourcePath = detected.length === 0 && isPluginSourcePath(projectRoot);
   const scanHarnessFilter = opts.global ? undefined : opts.harness;
 
@@ -926,53 +980,63 @@ async function handleScanCommand(
     return;
   }
   if (opts.dryRun) {
-    const results = await scanProject(projectRoot, scanHarnessFilter);
-    for (const result of results) {
-      const count = result.resources.length;
-      const dryTag = ui.theme.muted("[dry run] ");
-      const verdict = ui.theme.success(
-        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
-      );
-      console.log(dryTag + verdict);
-      for (const resource of result.resources) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
-      }
+    const { harness, plugin } = await scanProjectWithPluginSource(
+      projectRoot,
+      scanHarnessFilter,
+    );
+    printHarnessScanDryRun(harness);
+    if (
+      shouldIncludePluginSource(includePluginSource, projectRoot, detected.length)
+    ) {
+      printPluginScanDryRun(plugin);
     }
     return;
   }
 
   const spin = createProgress("Scanning…");
-  const results = await scanProject(projectRoot, scanHarnessFilter);
   const conflictPolicy = resolveScanConflictPolicy(opts);
-  let persisted = persistScanResults(results, {
+  let merged = await persistMergedProjectScan(projectRoot, scanHarnessFilter, {
     conflictPolicy,
     namespace: opts.namespace ?? "",
     originRef: projectRoot,
+    includePluginSource,
   });
   spin.stop();
 
-  if (persisted.conflicts.length > 0 && conflictPolicy === "prompt") {
-    const resolution = await promptScanConflicts(persisted.conflicts);
+  let harnessPersisted = merged.harness;
+  if (harnessPersisted.conflicts.length > 0 && conflictPolicy === "prompt") {
+    const resolution = await promptScanConflicts(harnessPersisted.conflicts);
     if (resolution === "cancel") {
       throw new Error("Scan cancelled due to resource conflicts.");
     }
-    const resolved = applyScanConflicts(persisted.conflicts, resolution);
-    persisted = {
-      ...persisted,
-      resources: [...persisted.resources, ...resolved],
+    const resolved = applyScanConflicts(harnessPersisted.conflicts, resolution);
+    harnessPersisted = {
+      ...harnessPersisted,
+      resources: [...harnessPersisted.resources, ...resolved],
       conflicts: [],
     };
-  } else if (persisted.conflicts.length > 0) {
+  } else if (harnessPersisted.conflicts.length > 0) {
     throw new Error(
-      `${persisted.conflicts.length} resource conflict(s). Use --overwrite or --skip-existing.`,
+      `${harnessPersisted.conflicts.length} resource conflict(s). Use --overwrite or --skip-existing.`,
     );
   }
 
-  for (const result of results) {
-    const importedCount = persisted.importedCounts.get(result.platformId) ?? 0;
+  for (const result of merged.scan.harness) {
+    const importedCount = harnessPersisted.importedCounts.get(result.platformId) ?? 0;
     ui.success(`${result.platformId} ${ui.icons.bullet} ${formatCount(importedCount, "resource")}`);
     for (const resource of result.resources) {
       console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+    }
+  }
+
+  if (
+    shouldIncludePluginSource(includePluginSource, projectRoot, detected.length)
+  ) {
+    for (const result of merged.scan.plugin) {
+      ui.success(`${result.plugin_name} ${ui.icons.bullet} ${formatCount(result.resources.length, "resource")}`);
+      for (const resource of result.resources) {
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
+      }
     }
   }
 
@@ -4769,6 +4833,11 @@ projectCmd
   .option("--overwrite", "Overwrite library resources when scan content differs")
   .option("--skip-existing", "Keep existing library resources when scan content differs")
   .option("--namespace <name>", "Namespace for imported project resources")
+  .option(
+    "--include-plugin-source <mode>",
+    "Merge plugin-source imports with project scan: auto, always, or never",
+    "auto",
+  )
   .description(
     "Scan a project directory or plugin source and import configurations into the database",
   )

@@ -5,7 +5,10 @@ import {
   getPluginResources,
   deletePlugin,
 } from "../models/plugin-component.js";
-import { scanProject, scanAndPersist } from "./scanner.js";
+import {
+  scanProjectWithPluginSource,
+  persistMergedProjectScan,
+} from "./scanner.js";
 import type { Layer, Resource } from "../types.js";
 
 export interface LayerFromProjectResult {
@@ -38,8 +41,14 @@ export async function previewLayerFromProject(input: {
   platform?: string;
 }): Promise<LayerFromProjectPreview> {
   const existingLayer = getPlugin(input.name);
-  const scanResults = await scanProject(input.projectRoot, input.platform);
-  const scannedResources = scanResults.flatMap((result) => result.resources);
+  const { harness, plugin } = await scanProjectWithPluginSource(
+    input.projectRoot,
+    input.platform,
+  );
+  const scannedResources = [
+    ...harness.flatMap((result) => result.resources),
+    ...plugin.flatMap((result) => result.resources),
+  ];
 
   if (!existingLayer) {
     return {
@@ -97,11 +106,14 @@ export async function createLayerFromProject(input: {
 
   const namespace =
     existing && input.conflictStrategy === "overwrite" ? "" : input.name;
-  const resources = await scanAndPersist(input.projectRoot, input.platform, {
-    conflictPolicy: input.conflictStrategy === "skip" ? "skip" : "overwrite",
-    originRef: input.projectRoot,
-    namespace,
-  });
+  const resources = (
+    await persistMergedProjectScan(input.projectRoot, input.platform, {
+      conflictPolicy: input.conflictStrategy === "skip" ? "skip" : "overwrite",
+      originRef: input.projectRoot,
+      namespace,
+      includePluginSource: "always",
+    })
+  ).resources;
 
   let layer: Layer;
   if (existing && input.conflictStrategy === "overwrite") {

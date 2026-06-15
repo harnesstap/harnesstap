@@ -19,7 +19,7 @@ import { getPlatformSerializer } from "./platform-serializers.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
-import type { ImportedSnapshot } from "../types.js";
+import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
 function resolveConfiguredPath(
   rootPath: string,
@@ -97,6 +97,10 @@ export function isPluginSourcePath(sourcePath: string): boolean {
   );
 }
 
+export function hasPluginSourceLayout(projectRoot: string): boolean {
+  return isPluginSourcePath(projectRoot);
+}
+
 // ── Scanning ───────────────────────────────────────────────────────────
 
 export interface ScanResult {
@@ -167,6 +171,20 @@ export async function scanProject(
     results.push(await scanPlatform(pid, projectRoot));
   }
   return normalizeProjectScanResults(projectRoot, results);
+}
+
+export async function scanProjectWithPluginSource(
+  projectRoot: string,
+  platformFilter?: string,
+): Promise<{
+  harness: ScanResult[];
+  plugin: PluginSourceScanResult[];
+}> {
+  const harness = await scanProject(projectRoot, platformFilter);
+  const plugin = hasPluginSourceLayout(projectRoot)
+    ? await scanPluginSource(projectRoot)
+    : [];
+  return { harness, plugin };
 }
 
 export async function scanHomeDefaults(
@@ -396,10 +414,9 @@ export async function scanAndPersist(
   }).resolved;
 }
 
-export async function scanAndPersistPluginSource(
-  sourcePath: string,
-): Promise<PersistedPluginSourceResults> {
-  const imports = await scanPluginSource(sourcePath);
+export function persistPluginSourceScanResults(
+  imports: PluginSourceScanResult[],
+): PersistedPluginSourceResults {
   const resources: Resource[] = [];
   const snapshots: ImportedSnapshot[] = [];
   const returnedResourceIds = new Set<string>();
@@ -443,6 +460,97 @@ export async function scanAndPersistPluginSource(
   }
 
   return { imports, resources, snapshots };
+}
+
+export async function scanAndPersistPluginSource(
+  sourcePath: string,
+): Promise<PersistedPluginSourceResults> {
+  const imports = await scanPluginSource(sourcePath);
+  return persistPluginSourceScanResults(imports);
+}
+
+export type IncludePluginSourceMode = "auto" | "always" | "never";
+
+export function shouldIncludePluginSource(
+  mode: IncludePluginSourceMode,
+  projectRoot: string,
+  detectedPlatformCount: number,
+): boolean {
+  if (!hasPluginSourceLayout(projectRoot)) {
+    return false;
+  }
+
+  switch (mode) {
+    case "never":
+      return false;
+    case "always":
+      return true;
+    case "auto":
+      return detectedPlatformCount > 0;
+    default: {
+      const _exhaustive: never = mode;
+      return _exhaustive;
+    }
+  }
+}
+
+export interface PersistMergedProjectScanOptions extends PersistScanOptions {
+  includePluginSource?: IncludePluginSourceMode;
+}
+
+export interface PersistMergedProjectScanResults {
+  harness: PersistedScanResults;
+  plugin: PersistedPluginSourceResults;
+  resources: Resource[];
+  scan: {
+    harness: ScanResult[];
+    plugin: PluginSourceScanResult[];
+  };
+}
+
+export async function persistMergedProjectScan(
+  projectRoot: string,
+  platformFilter?: string,
+  options?: PersistMergedProjectScanOptions,
+): Promise<PersistMergedProjectScanResults> {
+  const includeMode = options?.includePluginSource ?? "always";
+  const { harness, plugin } = await scanProjectWithPluginSource(
+    projectRoot,
+    platformFilter,
+  );
+
+  const harnessPersisted = persistScanResults(harness, {
+    ...options,
+    originRef: options?.originRef ?? projectRoot,
+  });
+
+  const pluginPersisted =
+    shouldIncludePluginSource(
+      includeMode,
+      projectRoot,
+      detectPlatforms(projectRoot).length,
+    ) && plugin.length > 0
+      ? persistPluginSourceScanResults(plugin)
+      : { imports: [], resources: [], snapshots: [] };
+
+  const seen = new Set<string>();
+  const resources: Resource[] = [];
+  for (const resource of [
+    ...harnessPersisted.resolved,
+    ...pluginPersisted.resources,
+  ]) {
+    const key = resourceDedupKey(resource);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    resources.push(resource);
+  }
+
+  return {
+    harness: harnessPersisted,
+    plugin: pluginPersisted,
+    resources,
+    scan: { harness, plugin },
+  };
 }
 
 /** @deprecated Plugin inventory is declared via composition `plugin` resources and `resource sync`. */
