@@ -40,15 +40,19 @@ describe("HarnessDeck features SVG", () => {
     expect(countOccurrences(svg, 'class="panel"')).toBe(1);
     expect(countOccurrences(svg, 'class="chipText"')).toBe(7);
     expect(svg).toContain("Export libraries, harness prefs, and config across machines.");
+    expect(svg).toContain("Catalog baselines,");
+    expect(svg).toContain("env cascade");
+    expect(svg).toContain("layer deps");
 
     const requiredLabels = [
       "HarnessDeck",
+      "Agent harness configuration toolkit",
       "Agent harnesses",
       "Claude Code",
       "Cursor",
       "Codex",
       "GitHub Copilot",
-      "8+ more CLIs",
+      "25+ more CLIs",
       "Scan",
       "Library",
       "Compose",
