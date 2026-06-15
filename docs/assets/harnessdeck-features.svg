@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title" aria-describedby="desc">
   <title id="title">HarnessDeck feature map</title>
-  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins and layers, portable decks, apply and sync, snapshots, drift detection, plugin pins, cloud sharing, and machine migration.</desc>
+  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins and layers, portable decks, apply with environment cascade, sync and mirror, snapshots, drift detection, plugin pins, layer dependencies, catalog baselines, cloud catalogs, and machine migration.</desc>
   <defs>
     <radialGradient id="bg" cx="50%" cy="28%" r="88%">
       <stop offset="0%" stop-color="#24316d"/>
@@ -67,7 +67,7 @@
   <circle cx="800" cy="760" r="360" fill="#8b5cf6" opacity="0.08"/>
 
   <text x="800" y="92" class="title" text-anchor="middle">HarnessDeck</text>
-  <text x="800" y="130" class="subtitle" text-anchor="middle">One control plane for every coding agent harness</text>
+  <text x="800" y="130" class="subtitle" text-anchor="middle">Agent harness configuration toolkit</text>
 
   <g filter="url(#softShadow)">
     <rect class="panel" x="122" y="172" width="1356" height="160" rx="34"/>
@@ -94,7 +94,7 @@
       <text x="1186" y="296" class="chipText">Windsurf</text>
 
       <rect x="1292" y="274" width="186" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
-      <text x="1385" y="296" class="chipText">8+ more CLIs</text>
+      <text x="1385" y="296" class="chipText">25+ more CLIs</text>
     </g>
   </g>
 
@@ -109,7 +109,7 @@
     <circle cx="548" cy="445" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
     <path d="M532 445 H564 M548 429 V461" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
     <text x="606" y="438" class="hubTitle">HarnessDeck</text>
-    <text x="606" y="468" class="hubCopy">scan · plugin · layer · deck · apply · sync</text>
+    <text x="606" y="468" class="hubCopy">scan · plugin · layer · deck · apply · sync · mirror</text>
   </g>
 
   <g filter="url(#softShadow)">
@@ -147,8 +147,8 @@
       <circle class="iconCircle" cx="50" cy="48" r="24"/>
       <path d="M37 48 h26 M50 39 l13 9 -13 9" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       <text x="84" y="52" class="label">Apply</text>
-      <text x="24" y="96" class="small">Materialize layers to</text>
-      <text x="24" y="118" class="small">any harness output.</text>
+      <text x="24" y="96" class="small">Materialize with env</text>
+      <text x="24" y="118" class="small">cascade to harnesses.</text>
     </g>
 
     <!-- Row 2: y=548+162+36=746 -->
@@ -170,7 +170,7 @@
       <circle cx="60" cy="34" r="4" fill="#b48cff"/>
       <text x="84" y="52" class="label">Drift</text>
       <text x="24" y="96" class="small">Compare tracked state</text>
-      <text x="24" y="118" class="small">after apply or sync.</text>
+      <text x="24" y="118" class="small">after apply or mirror.</text>
     </g>
 
     <g transform="translate(816 746)">
@@ -179,7 +179,7 @@
       <path d="M38 56 h24 M38 48 h18 M38 40 h24" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
       <text x="84" y="52" class="label">Plugins</text>
       <text x="24" y="96" class="small">Marketplace sync,</text>
-      <text x="24" y="118" class="small">pins, and doctor.</text>
+      <text x="24" y="118" class="small">pins, and layer deps.</text>
     </g>
 
     <g transform="translate(1163 746)">
@@ -188,8 +188,8 @@
       <path d="M36 52 C41 40 53 40 58 52 C53 64 41 64 36 52 Z" fill="none" stroke="#74fbff" stroke-width="3.5"/>
       <path d="M50 30 v44 M28 52 h44" stroke="#74fbff" stroke-width="2.8" stroke-linecap="round" opacity="0.45"/>
       <text x="84" y="52" class="label">Cloud</text>
-      <text x="24" y="96" class="small">Search, install, and</text>
-      <text x="24" y="118" class="small">publish team layers.</text>
+      <text x="24" y="96" class="small">Catalog baselines,</text>
+      <text x="24" y="118" class="small">search, pull, publish.</text>
     </g>
 
     <!-- Bottom bar: y=746+162+36=944 -->
@@ -204,6 +204,6 @@
 
   <g transform="translate(350 518)">
     <rect width="900" height="32" rx="16" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="450" y="21" class="tiny" text-anchor="middle">layer v1 · deck v1 · environments · layer doctor · diffs · from-project</text>
+    <text x="450" y="21" class="tiny" text-anchor="middle">layer v1 · deck v1 · env cascade · layer deps · doctor · diffs · from-project</text>
   </g>
 </svg>

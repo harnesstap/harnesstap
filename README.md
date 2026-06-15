@@ -62,7 +62,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 | **Portable decks** | Ship git repos that work as Claude marketplaces and embed `.harnessdeck/deck.toml` |
 | **Layer tooling** | Create layers from scanned projects, diff layers, run `layer doctor` before apply |
 | **Dependencies & pins** | Record layer dependencies and Claude plugin version pins in portable bundles |
-| **Layer exports** | Export or import layers as JSON (`urn:harnessdeck:layer:v1`) |
+| **Layer exports** | Export or import layers as TOML (`urn:harnessdeck:layer:v1`) |
 | **Snapshots & drift** | Snapshot tracked projects before apply, detect drift later, revert when needed |
 | **Cloud catalog** | Search, add, and publish shared layers through HarnessDeck Cloud |
 | **Machine transfer** | Export local layer library, harness preferences, and config for another machine |
