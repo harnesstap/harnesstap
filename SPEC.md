@@ -561,6 +561,8 @@ A deck record has a `name`, optional `root_path`, optional `active_environment_i
 
 Harness support splits between a registry and serializers. The registry declares capability flags and default project/global paths. Serializers implement scan, canonicalization, aliasing rules, and write behavior.
 
+Not every host surface round-trips through apply or mirror. Static resources (skills, instructions, rules, MCP, commands, agents) bridge faithfully; hooks with install-time `${*_PLUGIN_ROOT}` paths, OpenCode `.mjs` server plugins, pi extensions, runtime mode state, and host-specific statusline integrations do not. Registry metadata such as `skillEmission: instruction-only` and project `cursor_skill_mode` control how skills are re-emitted per harness. See [Portability limits](docs/portability-limits.md) for the full fidelity matrix, workarounds (`resource sync`, plugin pins, `project mirror --reference`), and related scenarios 31–34.
+
 ### Native serializers
 
 Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, and `copilot-cli`. Remaining registered harnesses use the generic serializer.
@@ -585,7 +587,9 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 **`.harnessdeckignore`:** gitignore-style patterns at the project root exclude paths from project scan and `layer from-project`. Applies to project-derived flows only (not home-default discovery during `init`).
 
-**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
+**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
+
+**Dual-mode repos:** when a project has both harness files and a plugin manifest, `project scan --include-plugin-source auto` (default) merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
 
 When one supported harness already exists in a project, it becomes the default main harness for that project.
 
@@ -603,7 +607,7 @@ If no `--harness` list is passed, platforms are detected from the target directo
 
 ### Project sync
 
-`project mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing.
+`project mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing. `--reference auto|main|plugin|agents` selects the on-disk source; `auto` falls back to plugin-source then `AGENTS.md` instructions when the main harness tree is empty.
 
 ### Project drift
 
