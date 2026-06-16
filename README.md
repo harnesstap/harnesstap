@@ -17,7 +17,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 <br />
 
-[Quick start](#quick-start) · [Install](#install) · [Demo](#demo) · [Specification](SPEC.md) · [CLI reference](docs/cli/command-reference.md) · [Contributing](CONTRIBUTING.md)
+[Quick start](#quick-start) · [Install](#install) · [Demo](#demo) · [Specification](SPEC.md) · [Supported harnesses](docs/supported-harnesses.md) · [CLI reference](docs/cli/command-reference.md) · [Contributing](CONTRIBUTING.md)
 
 <br />
 
@@ -419,10 +419,15 @@ hd migrate import ./harnessdeck-migrate.tar.gz
 
 ## Supported harnesses
 
-Dedicated serializers exist for **Claude Code**, **Codex**, and **Cursor**. A broader set registers through a generic path-driven serializer, including GitHub Copilot, Copilot CLI, Windsurf, Warp, OpenCode, Roo, Continue, Gemini CLI, and others.
+HarnessDeck registers **33 harnesses** — from Claude Code, Codex, and Cursor through GitHub Copilot, OpenCode, Windsurf, Warp, Gemini CLI, and many `.agents/skills/`-style CLIs. Each harness declares which layer resources (skills, rules, MCP, hooks, …) and environment resources (env vars, model config, permissions) it can scan and materialize, plus default on-disk paths.
+
+Seven harnesses have **native serializers** (`claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`); the rest use a generic path-driven serializer. Plugin install/sync providers exist for **Claude Code** and **Cursor**; plugin-source scan covers `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and `.github/plugin/` layouts.
+
+See the full matrix — resource types, skill emission modes, plugin support, and project paths — in **[Supported harnesses](docs/supported-harnesses.md)**.
 
 ```bash
 hd harness list
+hd harness list --supported    # native serializers only
 ```
 
 ---
