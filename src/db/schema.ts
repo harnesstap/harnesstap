@@ -3,7 +3,7 @@ import { migrateToUnifiedLayers } from "./migrate-to-unified-layers.js";
 import { hashResourceBody } from "../services/resource-hash.js";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -355,6 +355,46 @@ function applyMigration16(db: SqliteDatabase): void {
   if (!columns.some((column) => column.name === "cursor_skill_mode")) {
     db.exec("ALTER TABLE project_harnesses ADD COLUMN cursor_skill_mode TEXT");
   }
+}
+
+function applyMigration17(db: SqliteDatabase): void {
+  const table = db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'imported_snapshots'",
+    )
+    .get() as { sql: string } | undefined;
+  if (!table?.sql || table.sql.includes("'skill-package'")) return;
+
+  db.exec(`
+    CREATE TABLE imported_snapshots_new (
+      id              TEXT PRIMARY KEY,
+      source_kind     TEXT NOT NULL CHECK(source_kind IN (
+        'cursor-plugin', 'claude-plugin', 'codex-plugin', 'copilot-plugin',
+        'marketplace', 'skill-package'
+      )),
+      source_label    TEXT NOT NULL,
+      plugin_name     TEXT NOT NULL,
+      plugin_version  TEXT,
+      resource_ids    TEXT NOT NULL DEFAULT '[]',
+      metadata        TEXT NOT NULL DEFAULT '{}',
+      created_at      TEXT NOT NULL
+    );
+
+    INSERT INTO imported_snapshots_new (
+      id, source_kind, source_label, plugin_name, plugin_version,
+      resource_ids, metadata, created_at
+    )
+    SELECT
+      id, source_kind, source_label, plugin_name, plugin_version,
+      resource_ids, metadata, created_at
+    FROM imported_snapshots;
+
+    DROP TABLE imported_snapshots;
+    ALTER TABLE imported_snapshots_new RENAME TO imported_snapshots;
+
+    CREATE INDEX IF NOT EXISTS idx_imported_snapshots_created_at
+      ON imported_snapshots(created_at DESC);
+  `);
 }
 
 function ensurePluginsTableRenamed(db: SqliteDatabase): void {
@@ -962,6 +1002,10 @@ export function initializeSchema(db: SqliteDatabase): void {
         }
         if (v === 16) {
           applyMigration16(db);
+          continue;
+        }
+        if (v === 17) {
+          applyMigration17(db);
           continue;
         }
         const migration = MIGRATIONS[v];
