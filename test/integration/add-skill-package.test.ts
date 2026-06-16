@@ -36,4 +36,28 @@ describe("addSkillPackage integration", () => {
       await context.cleanup();
     }
   });
+
+  it("creates layer with skill refs when createLayer set", async () => {
+    const context = await createInitializedTestContext("add-create-layer");
+    try {
+      const { setHarnessPreference } = await import("../../src/models/harness.ts");
+      setHarnessPreference({ main_harness: "codex", alias_harnesses: [] });
+      await addSkillPackage({
+        source: fixture,
+        skillNames: ["caveman"],
+        scope: "global",
+        method: "symlink",
+        homeRoot: context.homeDir,
+        harnessdeckDir: join(context.homeDir, ".harnessdeck"),
+        createLayer: "mattpocock-skills",
+      });
+      const { getPlugin, getPluginResources } = await import("../../src/models/plugin-component.ts");
+      const layer = getPlugin("mattpocock-skills");
+      expect(layer).toBeDefined();
+      const attached = getPluginResources(layer!.id);
+      expect(attached.some((r) => r.type === "skill" && r.name === "caveman")).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

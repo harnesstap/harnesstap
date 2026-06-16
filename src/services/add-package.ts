@@ -17,9 +17,14 @@ import {
   installSkillsToProject,
 } from "./skill-install.js";
 import {
+  createPlugin,
+  getPlugin,
+} from "../models/plugin-component.js";
+import {
   resolveRemoteSource,
   sourceCacheDir,
 } from "./source-resolver.js";
+import { addLayerAttachment } from "./layer-attachments.js";
 
 export interface AddSkillPackageOptions {
   source: string;
@@ -31,6 +36,8 @@ export interface AddSkillPackageOptions {
   harnesses?: string[];
   homeRoot: string;
   harnessdeckDir: string;
+  createLayer?: string;
+  layer?: string;
   dryRun?: boolean;
 }
 
@@ -190,10 +197,31 @@ export async function addSkillPackage(
 
   updateSnapshotInstalledSkillNames(importResult.snapshot.id, installedSkills);
 
+  let attachedLayer: string | undefined;
+  const layerName = options.createLayer ?? options.layer;
+  if (layerName) {
+    const targetLayer = options.createLayer
+      ? createPlugin({ name: options.createLayer })
+      : getPlugin(options.layer!);
+    if (!targetLayer) {
+      throw new Error(`Layer not found: ${options.layer}`);
+    }
+
+    for (const skillName of installedSkills) {
+      await addLayerAttachment({
+        layer: targetLayer,
+        selector: `skill:${skillName}@${namespace}`,
+        type: "skill",
+      });
+    }
+    attachedLayer = targetLayer.name;
+  }
+
   return {
     namespace,
     importedSkills,
     installedSkills,
     snapshotId: importResult.snapshot.id,
+    ...(attachedLayer ? { layer: attachedLayer } : {}),
   };
 }

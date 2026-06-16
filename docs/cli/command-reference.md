@@ -77,6 +77,35 @@ Key options:
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
 
+## add
+
+Install skills from a remote GitHub repo, Git URL, or local skill-package directory. Discovers skills recursively under `skills/` or `.agents/skills/`, imports the full package into the HarnessDeck library, and installs a selected subset to disk.
+
+```bash
+hd add mattpocock/skills
+hd add mattpocock/skills --list
+hd add mattpocock/skills --skill caveman,grill-me --global --yes
+hd add mattpocock/skills --create-layer mattpocock-skills --global -y
+hd add ./local/skills-repo --project .
+```
+
+| Flag | Purpose |
+| ---- | ------- |
+| `--skill <names>` | Install subset (comma-separated) |
+| `--all` | Install all discovered skills |
+| `--harness <slugs>` | Target harnesses (default: main + alias harnesses from preferences) |
+| `--global` | Install to user home paths |
+| `--project [path]` | Install to project directory (default `.` when flag present without value) |
+| `--method symlink\|copy` | Installation method (default `symlink`) |
+| `--layer <name>` | Attach installed skills to an existing layer |
+| `--create-layer <name>` | Create a layer and attach installed skills |
+| `--list` | Discover skills only; no import or install |
+| `--dry-run` | Show plan without writing |
+| `-y, --yes` | Skip interactive prompts |
+| `--format human\|json` | Output mode |
+
+Scope rule: exactly one of `--global` or `--project` must be resolved before install (the wizard asks if neither is set). Import to the library always runs on a successful add except with `--list` or `--dry-run`.
+
 ## project (`p`)
 
 Manage project scanning, apply state, snapshots, drift, and mirror.

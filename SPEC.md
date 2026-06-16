@@ -593,6 +593,10 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 When one supported harness already exists in a project, it becomes the default main harness for that project.
 
+### `add`
+
+`hd add <source>` installs skills from a remote GitHub repo, Git URL, or local skill-package directory. It discovers skills recursively, imports the full package into the library under a source namespace, installs a selected subset to the hub (`~/.agents/skills/` globally or `{project}/.agents/skills/` for project scope) with fan-out symlinks to target harnesses, and optionally creates or attaches a layer with namespaced skill refs (`skill:{name}@{namespace}`). Use `--list` to discover only, `--dry-run` to preview, and `--create-layer` / `--layer` to bridge into layer apply workflows.
+
 ### Apply
 
 `project apply` accepts layer selectors, bundle files, or bundle URLs. Later layers override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs. Environment cascade merges home, per-layer defaults, and deck-active fragments before serialization.

@@ -2823,6 +2823,8 @@ async function handleAddCommand(
     harnesses: wizard.harnesses,
     homeRoot,
     harnessdeckDir,
+    createLayer: wizard.createLayer,
+    layer: wizard.layer,
     dryRun: opts.dryRun,
   });
 
@@ -2834,8 +2836,6 @@ async function handleAddCommand(
     installed: result.installedSkills,
     snapshot_id: result.snapshotId,
     ...(result.layer ? { layer: result.layer } : {}),
-    ...(wizard.createLayer ? { create_layer: wizard.createLayer } : {}),
-    ...(wizard.layer ? { layer_target: wizard.layer } : {}),
   };
 
   if (format === "json") {
