@@ -10,6 +10,10 @@ import { createSnapshot } from "../models/snapshot.js";
 import type { CursorSkillMode, SnapshotState } from "../types.js";
 import { detectPlatforms, hasPluginSourceLayout, scanPlatform } from "./scanner.js";
 import { scanPluginSource } from "./plugin-source-import.js";
+import {
+  mainScanLacksPluginSkills,
+  mergeReferenceResourceInputs,
+} from "./reference-resources.js";
 import { generateFiles, writeFiles } from "./applier.js";
 import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "./git.js";
 import {
@@ -229,9 +233,22 @@ async function resolveReferenceResources(
   }
 
   const mainScan = await scanPlatform(mainHarness, projectRoot);
-  if (mainScan.resources.length > 0 || strategy === "main") {
+
+  if (strategy === "main") {
     if (mainScan.resources.length === 0) {
       throw emptyReferenceError(mainHarness, projectRoot);
+    }
+    return toSyncResources(mainScan.resources);
+  }
+
+  if (mainScan.resources.length > 0) {
+    if (strategy === "auto" && hasPluginSourceLayout(projectRoot)) {
+      const pluginResources = await scanPluginReferenceResources(projectRoot);
+      if (mainScanLacksPluginSkills(mainScan.resources, pluginResources)) {
+        return toSyncResources(
+          mergeReferenceResourceInputs(mainScan.resources, pluginResources),
+        );
+      }
     }
     return toSyncResources(mainScan.resources);
   }

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo superpowers-claude",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
