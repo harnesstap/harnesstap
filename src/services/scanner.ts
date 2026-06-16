@@ -19,6 +19,7 @@ import { getPlatformSerializer } from "./platform-serializers.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
+import { dropHarnessSkillsDuplicatingPluginSource } from "./scan-dedup.js";
 import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
 function resolveConfiguredPath(
@@ -497,10 +498,11 @@ export async function persistMergedProjectScan(
   platformFilter?: string,
   options?: PersistMergedProjectScanOptions,
 ): Promise<PersistMergedProjectScanResults> {
-  const { harness, plugin } = await scanProjectWithPluginSource(
+  const { harness: rawHarness, plugin } = await scanProjectWithPluginSource(
     projectRoot,
     platformFilter,
   );
+  const harness = dropHarnessSkillsDuplicatingPluginSource(rawHarness, plugin);
 
   const harnessPersisted = persistScanResults(harness, {
     ...options,

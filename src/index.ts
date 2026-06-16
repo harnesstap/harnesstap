@@ -20,6 +20,7 @@ import {
   scanAndPersistPluginSource,
   scanAndPersistHomeDefaults,
 } from "./services/scanner.js";
+import { dropHarnessSkillsDuplicatingPluginSource } from "./services/scan-dedup.js";
 import { syncLinkedResources } from "./services/resource-sync.js";
 import type { ImportConflictPolicy } from "./models/resource.js";
 import {
@@ -977,10 +978,11 @@ async function handleScanCommand(
     return;
   }
   if (opts.dryRun) {
-    const { harness, plugin } = await scanProjectWithPluginSource(
+    const { harness: rawHarness, plugin } = await scanProjectWithPluginSource(
       projectRoot,
       scanHarnessFilter,
     );
+    const harness = dropHarnessSkillsDuplicatingPluginSource(rawHarness, plugin);
     printHarnessScanDryRun(harness);
     if (plugin.length > 0) {
       printPluginScanDryRun(plugin);
