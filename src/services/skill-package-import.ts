@@ -77,10 +77,7 @@ function listRelativeFiles(dirPath: string): string[] {
 function buildCategoriesMap(skills: DiscoveredSkill[]): Record<string, string[]> {
   const categories: Record<string, string[]> = {};
   for (const skill of skills) {
-    if (!categories[skill.category]) {
-      categories[skill.category] = [];
-    }
-    categories[skill.category].push(skill.name);
+    (categories[skill.category] ??= []).push(skill.name);
   }
   for (const names of Object.values(categories)) {
     names.sort((a, b) => a.localeCompare(b));
