@@ -1,6 +1,10 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import {
+  canonicalAgentFromResource,
+  emitMarkdownAgent,
+} from "../services/agent-bridge.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -154,16 +158,13 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     }
 
     // 6. Agents: .claude/agents/*.md
-    const agentsDir = join(projectRoot, ".claude", "agents");
-    for (const file of this.listDir(agentsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const content = this.readFile(join(agentsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.md$/, "");
-      resources.push(
-        this.makeResource("agent", name, content, `.claude/agents/${file}`),
-      );
-    }
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(projectRoot, ".claude", "agents"),
+        ".claude/agents/",
+        [".md"],
+      ),
+    );
 
     // 7. Commands: .claude/commands/*.md
     const commandsDir = join(projectRoot, ".claude", "commands");
@@ -278,16 +279,13 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       }
     }
 
-    const agentsDir = join(homeRoot, ".claude", "agents");
-    for (const file of this.listDir(agentsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const content = this.readFile(join(agentsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.md$/, "");
-      resources.push(
-        this.makeResource("agent", name, content, `~/.claude/agents/${file}`),
-      );
-    }
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(homeRoot, ".claude", "agents"),
+        "~/.claude/agents/",
+        [".md"],
+      ),
+    );
 
     const commandsDir = join(homeRoot, ".claude", "commands");
     for (const file of this.listDir(commandsDir)) {
@@ -426,17 +424,17 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     // Agents → .claude/agents/{name}.md
     for (const r of byType.get("agent") ?? []) {
       if (!agentsPath) continue;
-      const meta = r.metadata as AgentMetadata;
-      const frontmatter: Record<string, unknown> = {
-        name: r.name,
-        description: r.description || undefined,
-        model: meta.model,
-        reasoning_effort: meta.reasoning_effort,
-        sandbox_mode: meta.sandbox_mode,
-      };
       const content = r.content.startsWith("---")
         ? r.content
-        : this.emitFrontmatter(frontmatter, r.content);
+        : emitMarkdownAgent(
+            canonicalAgentFromResource({
+              name: r.name,
+              description: r.description,
+              content: r.content,
+              metadata: r.metadata as AgentMetadata,
+            }),
+            "claude",
+          );
       files.push({ path: `${agentsPath}${r.name}.md`, content });
     }
 

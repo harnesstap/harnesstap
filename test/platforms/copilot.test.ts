@@ -14,9 +14,9 @@ describe("CopilotSerializer", () => {
     const serializer = new CopilotSerializer("github-copilot");
     const resources = await serializer.scan(COPILOT_FIXTURE_DIR);
 
-    // github-copilot has no projectPaths.mcp, so only instruction + skill
+    // github-copilot has no projectPaths.mcp, so instruction + skill + agent
     expect(resources.map((r) => r.type)).toEqual(
-      expect.arrayContaining(["instruction", "skill"]),
+      expect.arrayContaining(["instruction", "skill", "agent"]),
     );
 
     const instruction = resources.find((r) => r.type === "instruction");

@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import {
+  canonicalAgentFromResource,
+  emitMarkdownAgent,
+} from "../services/agent-bridge.js";
 import type {
+  AgentMetadata,
   PlatformDefinition,
   Resource,
   ResourceCreateInput,
@@ -99,6 +104,15 @@ export class CursorSerializer extends BaseSerializer {
     // 4. Skills
     resources.push(...this.scanSkillsDir(projectRoot, ".agents/skills"));
 
+    // 5. Agents: .cursor/agents/*.md
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(projectRoot, ".cursor", "agents"),
+        ".cursor/agents/",
+        [".md"],
+      ),
+    );
+
     return resources;
   }
 
@@ -158,6 +172,14 @@ export class CursorSerializer extends BaseSerializer {
       ),
     );
 
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(homeRoot, ".cursor", "agents"),
+        "~/.cursor/agents/",
+        [".md"],
+      ),
+    );
+
     return resources;
   }
 
@@ -172,6 +194,7 @@ export class CursorSerializer extends BaseSerializer {
     const targetPaths = this.getTargetPaths(target);
     const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
+    const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
 
     for (const r of resources) {
       switch (r.type) {
@@ -228,7 +251,23 @@ export class CursorSerializer extends BaseSerializer {
           });
           break;
         }
-        // mcp_server, permission, hook, agent, command — not supported in Cursor
+        case "agent": {
+          if (!agentsPath) break;
+          files.push({
+            path: join(agentsPath, `${r.name}.md`),
+            content: emitMarkdownAgent(
+              canonicalAgentFromResource({
+                name: r.name,
+                description: r.description,
+                content: r.content,
+                metadata: r.metadata as AgentMetadata,
+              }),
+              "cursor",
+            ),
+          });
+          break;
+        }
+        // mcp_server, permission, hook, command — not supported in Cursor
         default:
           break;
       }

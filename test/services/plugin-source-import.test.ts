@@ -274,7 +274,35 @@ describe("plugin-source-import service", () => {
           model: "claude-sonnet-4-5",
           reasoning_effort: "high",
           sandbox_mode: "workspace-write",
+          wire_format: "markdown-frontmatter",
         },
+      });
+    } finally {
+      cleanupDir(pluginRoot);
+    }
+  });
+
+  it("imports Codex agent TOML from plugin agents/", async () => {
+    const pluginRoot = createTempDir("plugin-source-codex-agent");
+
+    try {
+      writeTextFile(join(pluginRoot, ".codex-plugin", "plugin.json"), '{"name":"codex-pack"}');
+      writeTextFile(
+        join(pluginRoot, "agents", "api-designer.toml"),
+        `name = "api-designer"
+description = "API design specialist"
+developer_instructions = "Design contracts."
+`,
+      );
+
+      const entries = await scanPluginSource(pluginRoot);
+      const agent = entries[0]?.resources.find((resource) => resource.type === "agent");
+
+      expect(agent).toMatchObject({
+        name: "api-designer",
+        description: "API design specialist",
+        content: "Design contracts.",
+        metadata: { wire_format: "codex-toml" },
       });
     } finally {
       cleanupDir(pluginRoot);

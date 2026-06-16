@@ -180,4 +180,46 @@ describe("CursorSerializer", () => {
       cleanupDir(projectDir);
     }
   });
+
+  it("scans and serializes subagent files under .cursor/agents/", async () => {
+    const projectDir = createTempDir("cursor-agents");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".cursor", "agents", "reviewer.md"),
+        [
+          "---",
+          "name: reviewer",
+          "description: Review changes",
+          "readonly: true",
+          "---",
+          "Review carefully.",
+        ].join("\n"),
+      );
+
+      const serializer = new CursorSerializer();
+      const scanned = await serializer.scan(projectDir);
+      const agent = scanned.find((resource) => resource.type === "agent");
+      expect(agent?.name).toBe("reviewer");
+      expect(agent?.metadata).toMatchObject({ readonly: true });
+
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "agent",
+            name: "api-designer",
+            description: "API design",
+            content: "Design contracts.",
+            metadata: { sandbox_mode: "read-only", model: "gpt-5.4" },
+          }),
+        ],
+        projectDir,
+      );
+
+      const emitted = files.find((file) => file.path.endsWith("api-designer.md"));
+      expect(emitted?.content).toContain("readonly: true");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
 });

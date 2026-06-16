@@ -24,13 +24,17 @@ paths for supported harnesses:
 | **Rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.windsurf/rules/`, `.clinerules/`, `.kiro/steering/`, and directory-based rule trees. |
 | **MCP servers** | stdio and HTTP transports from `.mcp.json`, `.codex/config.toml`, and harness-specific MCP config files. |
 | **Static commands** | Markdown (`.md`) and TOML (`.toml`) command definitions from `commands/` trees and plugin manifest pointers. |
-| **Agents** | Agent manifest files under harness-specific `agents/` directories. |
+| **Agents** | Subagent manifests under harness `agents/` dirs. Codex uses `.toml` (`developer_instructions`); Claude/Cursor/Copilot use markdown + YAML. Cross-harness apply maps `model`, `reasoning_effort`, and read-only semantics; see [supported-harnesses — agent bridging](supported-harnesses.md#agent--subagent-bridging). |
 
 Plugin-source discovery covers `.cursor-plugin/`, `.claude-plugin/`, `.codex-plugin/`,
 and `.github/plugin/` manifests. `project scan` automatically merges repo-root
 plugin trees with harness project files when a recognized manifest is present.
 
 ## Partially bridgeable
+
+### Agent host-specific fields
+
+Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcpServers`, `hooks`, `isolation`, `skills`, …) that other harnesses do not model. HarnessDeck preserves unknown keys in `metadata.extra` for same-harness round-trip but does not translate them when applying a layer to Codex or Cursor.
 
 ### Hooks with `PLUGIN_ROOT` paths
 

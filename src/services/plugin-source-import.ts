@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { parse as parseToml } from "smol-toml";
+import { normalizeAgentInput } from "./agent-bridge.js";
 import type {
   ResourceCreateInput,
   AgentMetadata,
@@ -342,16 +343,41 @@ function scanAgents(rootPath: string, metadata: {
 
   const resources: ResourceInput[] = [];
   for (const entry of listDir(agentsDir)) {
-    if (!entry.endsWith(".md")) continue;
+    if (!entry.endsWith(".md") && !entry.endsWith(".toml")) continue;
     const agentPath = join(agentsDir, entry);
     const raw = readText(agentPath);
     if (!raw) continue;
 
-    const parsed = parseFrontmatter(agentPath, raw);
     const provenance = buildProvenance({
       ...metadata,
       relativePath: relativePath(rootPath, agentPath),
     });
+
+    const normalized = normalizeAgentInput({
+      name: entry.replace(/\.(md|toml)$/, ""),
+      content: raw,
+      source: provenance.relative_path,
+    });
+
+    if (normalized) {
+      const agentMetadata: AgentMetadata & { imported_from: ImportedResourceProvenance } = {
+        ...normalized.metadata,
+        imported_from: provenance,
+      };
+      resources.push({
+        type: "agent",
+        name: assertSafeImportedResourceName(normalized.name, agentPath),
+        description: normalized.description,
+        content: normalized.content,
+        source: provenance.relative_path,
+        metadata: agentMetadata,
+      });
+      continue;
+    }
+
+    if (!entry.endsWith(".md")) continue;
+
+    const parsed = parseFrontmatter(agentPath, raw);
     const agentMetadata: AgentMetadata & { imported_from: ImportedResourceProvenance } = {
       imported_from: provenance,
     };

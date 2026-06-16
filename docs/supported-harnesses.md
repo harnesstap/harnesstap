@@ -98,6 +98,20 @@ Most harnesses emit skills to native skill directories. These harnesses declare 
 
 **Cursor** additionally honors project `cursor_skill_mode` (`agent-requested`, `always-on`, `agents-skills`). Inspect with `hd harness project status --project . --format json`.
 
+## Agent / subagent bridging
+
+Harnesses with a delegated **subagent** model normalize into a shared canonical shape (`description`, instruction body, `model`, `reasoning_effort`, sandbox/readonly flags) via `src/services/agent-bridge.ts`:
+
+| Harness | Native format | Apply notes |
+| ------- | ------------- | ----------- |
+| **codex** | `.codex/agents/*.toml` | `developer_instructions`, `model_reasoning_effort`, `sandbox_mode` |
+| **claude-code** | `.claude/agents/*.md` + YAML | Richest metadata; extra Claude-only keys preserved in `metadata.extra` |
+| **cursor** | `.cursor/agents/*.md` + YAML | `readonly` / `is_background`; `sandbox_mode: read-only` maps to `readonly: true` |
+| **opencode**, **github-copilot**, **copilot-cli** | `*/agents/*.md` | Markdown with optional frontmatter |
+| **generic** harnesses with `agents:` paths | `*.md` | Same as OpenCode/Copilot emission |
+
+Plugin import scans `agents/*.md` and `agents/*.toml` (Codex packs). Cross-harness layer apply re-emits valid native files per target harness.
+
 ## Harness reference
 
 Legend for the **Resources** column: `instr` instructions · `skill` skills · `rule` rules · `mcp` MCP · `perm` permissions · `hook` hooks · `agent` agents · `cmd` commands · `env` env vars · `model` model config.
