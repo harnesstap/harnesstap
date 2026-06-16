@@ -31,6 +31,7 @@ describe("CLI harness", () => {
         "opencode",
         "github-copilot",
         "copilot-cli",
+        "gemini-cli",
       ]);
 
       const layerList = await runCli(["l", "ls", "--format", "json"], {

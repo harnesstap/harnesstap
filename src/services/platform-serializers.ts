@@ -3,6 +3,7 @@ import { CursorSerializer } from "../platforms/cursor.js";
 import { CodexSerializer } from "../platforms/codex.js";
 import { OpenCodeSerializer } from "../platforms/opencode.js";
 import { CopilotSerializer } from "../platforms/copilot.js";
+import { GeminiCliSerializer } from "../platforms/gemini-cli.js";
 import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import type { PlatformSerializer } from "../types.js";
 
@@ -13,6 +14,7 @@ export const DEDICATED_SERIALIZER_PLATFORM_IDS = [
   "opencode",
   "github-copilot",
   "copilot-cli",
+  "gemini-cli",
 ] as const;
 
 const dedicatedSerializerPlatformIds = new Set<string>(
@@ -37,6 +39,8 @@ export function getPlatformSerializer(platformId: string): PlatformSerializer {
       return new CopilotSerializer("github-copilot");
     case "copilot-cli":
       return new CopilotSerializer("copilot-cli");
+    case "gemini-cli":
+      return new GeminiCliSerializer();
     default:
       return new GenericAgentsSerializer(platformId);
   }

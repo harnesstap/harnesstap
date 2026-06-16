@@ -71,6 +71,63 @@ describe("CursorSerializer", () => {
     );
   });
 
+  it("defaults skill emission to agent-requested rules", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ],
+      ".",
+    );
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.path).toBe(".cursor/rules/research.mdc");
+    expect(files[0]?.content).toContain("alwaysApply: false");
+  });
+
+  it("always-on mode sets alwaysApply true on skill rules", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ],
+      ".",
+      { skillCursorMode: "always-on" },
+    );
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.path).toBe(".cursor/rules/research.mdc");
+    expect(files[0]?.content).toContain("alwaysApply: true");
+  });
+
+  it("agents-skills mode writes project skills under .agents/skills/", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ],
+      ".",
+      { skillCursorMode: "agents-skills" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual([".agents/skills/research/SKILL.md"]);
+  });
+
   it("serializes global Cursor skills into the global layout", async () => {
     const serializer = new CursorSerializer();
     const files = await (serializer as unknown as {

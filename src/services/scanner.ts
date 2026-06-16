@@ -19,7 +19,7 @@ import { getPlatformSerializer } from "./platform-serializers.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
-import type { ImportedSnapshot } from "../types.js";
+import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
 function resolveConfiguredPath(
   rootPath: string,
@@ -30,33 +30,42 @@ function resolveConfiguredPath(
     : join(rootPath, configuredPath);
 }
 
+function configuredProjectPaths(paths: PlatformPaths): string[] {
+  const result: string[] = [];
+  for (const [key, value] of Object.entries(paths)) {
+    if (key === "pathAlternates" || typeof value !== "string" || !value) {
+      continue;
+    }
+    result.push(value);
+  }
+  for (const alternates of Object.values(paths.pathAlternates ?? {})) {
+    if (alternates) {
+      result.push(...alternates);
+    }
+  }
+  return result;
+}
+
 function existingPaths(paths: PlatformPaths, rootPath: string): string[] {
-  return Object.values(paths)
-    .filter((configuredPath): configuredPath is string =>
-      Boolean(configuredPath),
-    )
-    .filter((configuredPath) =>
-      existsSync(resolveConfiguredPath(rootPath, configuredPath)),
-    );
+  return configuredProjectPaths(paths).filter((configuredPath) =>
+    existsSync(resolveConfiguredPath(rootPath, configuredPath)),
+  );
 }
 
 // ── Platform detection ─────────────────────────────────────────────────
+
+function platformHasConfiguredPath(projectRoot: string, configuredPath: string): boolean {
+  return existsSync(join(projectRoot, configuredPath));
+}
 
 /** Check if a platform has any recognizable files in the project. */
 function platformHasFiles(platformId: string, projectRoot: string): boolean {
   const platform = getAllPlatforms().find((p) => p.id === platformId);
   if (!platform) return false;
 
-  const pathsToCheck = Object.values(platform.projectPaths).filter(
-    Boolean,
-  ) as string[];
-
-  for (const p of pathsToCheck) {
-    const fullPath = join(projectRoot, p);
-    if (existsSync(fullPath)) return true;
-  }
-
-  return false;
+  return configuredProjectPaths(platform.projectPaths).some((configuredPath) =>
+    platformHasConfiguredPath(projectRoot, configuredPath),
+  );
 }
 
 /** Detect all platforms with configuration in a project directory. */
@@ -93,8 +102,14 @@ export function isPluginSourcePath(sourcePath: string): boolean {
 
   return (
     existsSync(join(sourcePath, ".cursor-plugin", "plugin.json")) ||
-    existsSync(join(sourcePath, ".claude-plugin", "plugin.json"))
+    existsSync(join(sourcePath, ".claude-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".codex-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".github", "plugin", "plugin.json"))
   );
+}
+
+export function hasPluginSourceLayout(projectRoot: string): boolean {
+  return isPluginSourcePath(projectRoot);
 }
 
 // ── Scanning ───────────────────────────────────────────────────────────
@@ -167,6 +182,20 @@ export async function scanProject(
     results.push(await scanPlatform(pid, projectRoot));
   }
   return normalizeProjectScanResults(projectRoot, results);
+}
+
+export async function scanProjectWithPluginSource(
+  projectRoot: string,
+  platformFilter?: string,
+): Promise<{
+  harness: ScanResult[];
+  plugin: PluginSourceScanResult[];
+}> {
+  const harness = await scanProject(projectRoot, platformFilter);
+  const plugin = hasPluginSourceLayout(projectRoot)
+    ? await scanPluginSource(projectRoot)
+    : [];
+  return { harness, plugin };
 }
 
 export async function scanHomeDefaults(
@@ -396,10 +425,9 @@ export async function scanAndPersist(
   }).resolved;
 }
 
-export async function scanAndPersistPluginSource(
-  sourcePath: string,
-): Promise<PersistedPluginSourceResults> {
-  const imports = await scanPluginSource(sourcePath);
+export function persistPluginSourceScanResults(
+  imports: PluginSourceScanResult[],
+): PersistedPluginSourceResults {
   const resources: Resource[] = [];
   const snapshots: ImportedSnapshot[] = [];
   const returnedResourceIds = new Set<string>();
@@ -443,6 +471,65 @@ export async function scanAndPersistPluginSource(
   }
 
   return { imports, resources, snapshots };
+}
+
+export async function scanAndPersistPluginSource(
+  sourcePath: string,
+): Promise<PersistedPluginSourceResults> {
+  const imports = await scanPluginSource(sourcePath);
+  return persistPluginSourceScanResults(imports);
+}
+
+export interface PersistMergedProjectScanOptions extends PersistScanOptions {}
+
+export interface PersistMergedProjectScanResults {
+  harness: PersistedScanResults;
+  plugin: PersistedPluginSourceResults;
+  resources: Resource[];
+  scan: {
+    harness: ScanResult[];
+    plugin: PluginSourceScanResult[];
+  };
+}
+
+export async function persistMergedProjectScan(
+  projectRoot: string,
+  platformFilter?: string,
+  options?: PersistMergedProjectScanOptions,
+): Promise<PersistMergedProjectScanResults> {
+  const { harness, plugin } = await scanProjectWithPluginSource(
+    projectRoot,
+    platformFilter,
+  );
+
+  const harnessPersisted = persistScanResults(harness, {
+    ...options,
+    originRef: options?.originRef ?? projectRoot,
+  });
+
+  const pluginPersisted =
+    plugin.length > 0
+      ? persistPluginSourceScanResults(plugin)
+      : { imports: [], resources: [], snapshots: [] };
+
+  const seen = new Set<string>();
+  const resources: Resource[] = [];
+  for (const resource of [
+    ...harnessPersisted.resolved,
+    ...pluginPersisted.resources,
+  ]) {
+    const key = resourceDedupKey(resource);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    resources.push(resource);
+  }
+
+  return {
+    harness: harnessPersisted,
+    plugin: pluginPersisted,
+    resources,
+    scan: { harness, plugin },
+  };
 }
 
 /** @deprecated Plugin inventory is declared via composition `plugin` resources and `resource sync`. */

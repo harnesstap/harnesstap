@@ -1,7 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import { ulid } from "ulid";
-import { getDb } from "../../src/db/connection.js";
-import { initializeSchema } from "../../src/db/schema.js";
 import {
   addConfiguredLayerToDeck,
   createDeck,
@@ -12,12 +10,13 @@ import {
   layerToApplySelector,
   resolveDeckLayerSelectors,
 } from "../../src/services/resolve-deck-layers.js";
+import { createInitializedTestContext } from "../helpers/db.ts";
 
 describe("resolveDeckLayerSelectors", () => {
-  it("returns ordered layer selectors for a deck", () => {
-    const db = getDb();
-    initializeSchema(db);
+  it("returns ordered layer selectors for a deck", async () => {
+    const context = await createInitializedTestContext("resolve-deck-layers");
 
+    try {
     const suffix = ulid().toLowerCase();
     const first = createLayer({
       name: `deck-layer-a-${suffix}`,
@@ -39,13 +38,19 @@ describe("resolveDeckLayerSelectors", () => {
       layerToApplySelector(first),
       layerToApplySelector(second),
     ]);
+    } finally {
+      await context.cleanup();
+    }
   });
 
-  it("throws when the deck has no layers", () => {
-    const db = getDb();
-    initializeSchema(db);
+  it("throws when the deck has no layers", async () => {
+    const context = await createInitializedTestContext("resolve-deck-empty");
 
+    try {
     const deck = createDeck({ name: `empty-deck-${ulid().toLowerCase()}` });
     expect(() => resolveDeckLayerSelectors(deck.name)).toThrow(DeckResolveError);
+    } finally {
+      await context.cleanup();
+    }
   });
 });

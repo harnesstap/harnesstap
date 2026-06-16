@@ -1,0 +1,19 @@
+model = "gpt-5"
+model_provider = "openai"
+
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem"]
+env = { DIR = "/tmp" }
+
+[mcp_servers.remote]
+url = "https://mcp.example.com/mcp"
+
+[permissions.project.filesystem]
+"**/*.env" = "deny"
+
+[shell_environment_policy.set]
+API_KEY = "from-config"
+
+# unrelated key preserved on merge
+personality = "pragmatic"

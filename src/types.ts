@@ -67,6 +67,10 @@ export interface PermissionMetadata {
 export interface HookMetadata {
   event: string;
   script: string;
+  commandWindows?: string;
+  timeout?: number;
+  matcher?: string;
+  hook_entry?: Record<string, unknown>;
 }
 
 export interface AgentMetadata {
@@ -334,9 +338,12 @@ export interface HarnessPreference extends HarnessSelection {
   updated_at: string;
 }
 
+export type CursorSkillMode = "agent-requested" | "always-on" | "agents-skills";
+
 export interface ProjectHarnessConfig extends HarnessSelection {
   project_id: string;
   materialization_strategy: "symlink-preferred" | "copy";
+  cursor_skill_mode?: CursorSkillMode;
   updated_at: string;
 }
 
@@ -357,6 +364,8 @@ export interface Snapshot {
 export const IMPORTED_SOURCE_KINDS = [
   "cursor-plugin",
   "claude-plugin",
+  "codex-plugin",
+  "copilot-plugin",
   "marketplace",
 ] as const;
 
@@ -423,13 +432,22 @@ export interface PlatformPaths {
   legacy_instructions?: string;
   skills?: string;
   rules?: string;
+  /** Single-file rules path when the primary `rules` path is a directory. */
+  legacy_rules?: string;
   mcp?: string;
   permissions?: string;
   hooks?: string;
   agents?: string;
   commands?: string;
   settings?: string;
+  /** Alternate on-disk paths checked during platform detection. */
+  pathAlternates?: Partial<{
+    commands: string[];
+    rules: string[];
+  }>;
 }
+
+export type SkillEmission = "native" | "instruction-only";
 
 export interface PlatformDefinition {
   id: string;
@@ -437,6 +455,8 @@ export interface PlatformDefinition {
   supports: Set<PlatformFeature>;
   projectPaths: PlatformPaths;
   globalPaths: PlatformPaths;
+  /** When "instruction-only", skills are emitted as rules/instructions instead of native skill dirs. */
+  skillEmission?: SkillEmission;
 }
 
 // ── Layer export format ─────────────────────────────────────────────────
@@ -524,6 +544,7 @@ export type SerializerTarget = "project" | "global";
 
 export interface SerializeOptions {
   target?: SerializerTarget;
+  skillCursorMode?: CursorSkillMode;
 }
 
 export interface PlatformSerializer {

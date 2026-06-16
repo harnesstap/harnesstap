@@ -3,7 +3,7 @@ import { migrateToUnifiedLayers } from "./migrate-to-unified-layers.js";
 import { hashResourceBody } from "../services/resource-hash.js";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -340,6 +340,22 @@ const MIGRATIONS: Record<number, string> = {
   `,
 
 };
+
+function applyMigration16(db: SqliteDatabase): void {
+  const hasProjectHarnesses = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'project_harnesses'",
+    )
+    .get();
+  if (!hasProjectHarnesses) return;
+
+  const columns = db
+    .prepare("PRAGMA table_info(project_harnesses)")
+    .all() as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === "cursor_skill_mode")) {
+    db.exec("ALTER TABLE project_harnesses ADD COLUMN cursor_skill_mode TEXT");
+  }
+}
 
 function ensurePluginsTableRenamed(db: SqliteDatabase): void {
   const hasPlugins = db
@@ -925,7 +941,7 @@ export function initializeSchema(db: SqliteDatabase): void {
           applyMigration8(db);
           continue;
         }
-        if (v >= 9) {
+        if (v >= 9 && v < 15) {
           ensurePluginsTableRenamed(db);
         }
         if (v === 11) {
@@ -942,6 +958,10 @@ export function initializeSchema(db: SqliteDatabase): void {
         }
         if (v === 15) {
           migrateToUnifiedLayers(db);
+          continue;
+        }
+        if (v === 16) {
+          applyMigration16(db);
           continue;
         }
         const migration = MIGRATIONS[v];

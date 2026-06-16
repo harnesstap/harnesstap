@@ -44,6 +44,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [7](./details/07-preview-apply-layer.md)  | Preview and apply a layer                          | Common     | Shipped |
 | [11](./details/11-builtin-layer.md) | Start from a catalog baseline                      | Common     | Shipped |
 | [4](./details/04-scan-import-repo.md)  | Scan and import an existing repo                    | Common     | Shipped |
+| [31](./details/31-dual-mode-plugin-import.md) | Import dual-mode plugin repo                 | Common     | Shipped |
 | [3](./details/03-project-harness-preferences.md)  | Override harness preferences for one repository     | Common     | Shipped |
 | [15](./details/15-subset-platforms.md) | Apply to a subset of target platforms               | Common     | Shipped |
 | [25](./details/25-stack-layers.md) | Stack multiple layers                              | Common     | Shipped |
@@ -65,6 +66,9 @@ after HarnessDeck is set up — not how important it is the first time.
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing               | Occasional | Shipped |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL                  | Occasional | Shipped |
 | [30](./details/30-manage-deck-records.md) | Import, inspect, and remove deck records        | Occasional | Shipped |
+| [32](./details/32-instruction-tier-apply.md) | Apply to instruction-tier harnesses          | Occasional | Shipped |
+| [33](./details/33-mirror-plugin-fallback.md) | Mirror with plugin-source fallback           | Occasional | Shipped |
+| [34](./details/34-portability-limits.md) | Understand portability limits                  | Occasional | Shipped |
 | [6](./details/06-plugin-constraints.md)  | Add plugin constraints to a layer                  | Rare       | Shipped |
 | [9](./details/09-history-revert.md)  | Review history and recover from a bad apply         | Rare       | Shipped |
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB           | Rare       | Shipped |
@@ -90,6 +94,7 @@ one repo needs different harness defaults than your machine-wide setup.
 | [7](./details/07-preview-apply-layer.md) | Preview and apply a layer to one or more target harnesses |
 | [11](./details/11-builtin-layer.md) | Start from a catalog baseline instead of building from scratch |
 | [4](./details/04-scan-import-repo.md) | Scan an existing repository and import its current harness setup |
+| [31](./details/31-dual-mode-plugin-import.md) | Import a repo with both harness files and plugin-source layout |
 | [3](./details/03-project-harness-preferences.md) | Override harness preferences for one repository |
 | [15](./details/15-subset-platforms.md) | Apply a layer to a subset of target platforms |
 | [25](./details/25-stack-layers.md) | Stack multiple layers in one apply |
@@ -121,6 +126,9 @@ baselines, or when integrating HarnessDeck into tooling.
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing to disk |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL |
 | [30](./details/30-manage-deck-records.md) | Import, show, export, and delete deck records |
+| [32](./details/32-instruction-tier-apply.md) | Apply layers to instruction-tier harnesses (windsurf, cline, copilot, …) |
+| [33](./details/33-mirror-plugin-fallback.md) | Mirror alias harnesses when main harness tree is empty |
+| [34](./details/34-portability-limits.md) | Review what transfers across harnesses and what does not |
 
 ---
 
