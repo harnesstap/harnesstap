@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import {
+  canonicalAgentFromResource,
+  emitMarkdownAgent,
+} from "../services/agent-bridge.js";
 import type {
+  AgentMetadata,
   PlatformDefinition,
   ResourceCreateInput,
   Resource,
@@ -108,27 +113,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
   }
 
   private scanAgentsAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
-    const resources: ResourceCreateInput[] = [];
-    if (displayPath.endsWith("/")) {
-      for (const file of this.listDir(fullPath)) {
-        if (!file.endsWith(".md")) continue;
-        const raw = this.readFile(join(fullPath, file));
-        if (!raw) continue;
-        const parsed = this.tryParseFrontmatter(raw);
-        if (!parsed) continue;
-        const { content } = parsed;
-        const name = file.replace(/\.(agent\.)?md$/, "");
-        resources.push(
-          this.makeResource(
-            "agent",
-            name,
-            content.trim(),
-            `${displayPath}${file}`,
-          ),
-        );
-      }
-    }
-    return resources;
+    return this.scanAgentFilesAt(fullPath, displayPath, [".md"]);
   }
 
   private scanHooksAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
@@ -391,13 +376,17 @@ export class GenericAgentsSerializer extends BaseSerializer {
     const agents = resources.filter((r) => r.type === "agent");
     if (agentsPath && agents.length > 0 && agentsPath.endsWith("/")) {
       for (const r of agents) {
-        const fm: Record<string, unknown> = {
-          name: r.name,
-          description: r.description || `Agent ${r.name}`,
-        };
         files.push({
           path: `${agentsPath}${r.name}.md`,
-          content: this.emitFrontmatter(fm, r.content),
+          content: emitMarkdownAgent(
+            canonicalAgentFromResource({
+              name: r.name,
+              description: r.description,
+              content: r.content,
+              metadata: r.metadata as AgentMetadata,
+            }),
+            "generic",
+          ),
         });
       }
     }

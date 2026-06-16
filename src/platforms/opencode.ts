@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import {
+  canonicalAgentFromResource,
+  emitMarkdownAgent,
+} from "../services/agent-bridge.js";
 import type {
+  AgentMetadata,
   PlatformDefinition,
   ResourceCreateInput,
   Resource,
@@ -102,16 +107,13 @@ export class OpenCodeSerializer extends BaseSerializer {
     resources.push(...this.scanSkillsDir(projectRoot, ".opencode/skills"));
 
     // 2.1 Agents: .opencode/agents/
-    const agentsDir = join(projectRoot, ".opencode", "agents");
-    for (const file of this.listDir(agentsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const content = this.readFile(join(agentsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.md$/, "");
-      resources.push(
-        this.makeResource("agent", name, content, `.opencode/agents/${file}`),
-      );
-    }
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(projectRoot, ".opencode", "agents"),
+        ".opencode/agents/",
+        [".md"],
+      ),
+    );
 
     // 2.2 Commands: .opencode/commands/ and .opencode/command/
     for (const commandsDir of [".opencode/commands", ".opencode/command"]) {
@@ -163,22 +165,13 @@ export class OpenCodeSerializer extends BaseSerializer {
       ),
     );
 
-    // Global agents
-    const globalAgentsDir = join(homeRoot, ".config", "opencode", "agents");
-    for (const file of this.listDir(globalAgentsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const content = this.readFile(join(globalAgentsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.md$/, "");
-      resources.push(
-        this.makeResource(
-          "agent",
-          name,
-          content,
-          `~/.config/opencode/agents/${file}`,
-        ),
-      );
-    }
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(homeRoot, ".config", "opencode", "agents"),
+        "~/.config/opencode/agents/",
+        [".md"],
+      ),
+    );
 
     // Global commands
     const globalCommandsDir = join(homeRoot, ".config", "opencode", "commands");
@@ -284,7 +277,15 @@ export class OpenCodeSerializer extends BaseSerializer {
       for (const r of agents) {
         files.push({
           path: `${agentsPath}${r.name}.md`,
-          content: r.content,
+          content: emitMarkdownAgent(
+            canonicalAgentFromResource({
+              name: r.name,
+              description: r.description,
+              content: r.content,
+              metadata: r.metadata as AgentMetadata,
+            }),
+            "generic",
+          ),
         });
       }
     }

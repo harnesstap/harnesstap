@@ -77,6 +77,10 @@ export interface AgentMetadata {
   model?: string;
   reasoning_effort?: string;
   sandbox_mode?: string;
+  readonly?: boolean;
+  is_background?: boolean;
+  extra?: Record<string, unknown>;
+  wire_format?: "codex-toml" | "markdown-frontmatter" | "markdown-body";
 }
 
 export interface EnvVarMetadata {
@@ -367,6 +371,7 @@ export const IMPORTED_SOURCE_KINDS = [
   "codex-plugin",
   "copilot-plugin",
   "marketplace",
+  "skill-package",
 ] as const;
 
 export type ImportedSourceKind = (typeof IMPORTED_SOURCE_KINDS)[number];

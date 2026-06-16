@@ -9,11 +9,10 @@ import {
   projectNameFromUrl,
 } from "./services/git.js";
 import {
-  scanProject,
-  persistScanResults,
+  type scanProject,
+  type persistScanResults,
   applyScanConflicts,
   detectPlatforms,
-  detectHomePlatforms,
   isPluginSourcePath,
   scanProjectWithPluginSource,
   persistMergedProjectScan,
@@ -91,6 +90,12 @@ import {
 } from "./models/harness.js";
 import { listImportedSnapshots } from "./models/imported-snapshot.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
+import {
+  assertSupportedHarnessTargets,
+  parsePlatformFilter,
+  resolveScanGlobalHarnessTargets,
+  uniqueHarnessTargets,
+} from "./services/harness-targets.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
@@ -231,6 +236,15 @@ import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
 import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
+import { runAddPackageWizard } from "./services/wizards/add-package.js";
+import { addSkillPackage } from "./services/add-package.js";
+import { discoverSkillPackage } from "./services/skill-discovery.js";
+import { classifyRepo } from "./services/repo-profile.js";
+import {
+  resolveRemoteSource,
+  sourceCacheDir,
+} from "./services/source-resolver.js";
+import { refreshGitSource } from "./plugins/refresh.js";
 import type { PersistedPluginSourceResults } from "./services/scanner.js";
 import type { Column } from "./ui/table.js";
 import {
@@ -2102,10 +2116,6 @@ function handleLayerShowCommand(
   }
 }
 
-function parsePlatformFilter(platform?: string): string[] | undefined {
-  return platform?.split(",").map((p) => p.trim()).filter(Boolean);
-}
-
 function parseHarnessAliases(aliases?: string): string[] | undefined {
   return aliases
     ?.split(",")
@@ -2255,18 +2265,6 @@ function resolveConfiguredLayersForCascade(
   return configuredLayerIds;
 }
 
-function uniqueHarnessTargets(harnesses: string[]): string[] {
-  return [...new Set(harnesses.filter(Boolean))];
-}
-
-function assertSupportedHarnessTargets(harnesses: string[]): void {
-  const supported = new Set(getAllPlatforms().map((platform) => platform.id));
-  const invalid = harnesses.filter((harness) => !supported.has(harness));
-  if (invalid.length > 0) {
-    throw new Error(`Unsupported harness: ${invalid.join(", ")}`);
-  }
-}
-
 function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
   return listImportedSnapshots()
     .filter((candidate) =>
@@ -2359,38 +2357,6 @@ function resolveApplyHarnessTargets(
   }
 
   return uniqueHarnessTargets(detectPlatforms(projectRoot));
-}
-
-function resolveScanGlobalHarnessTargets(
-  harnessOption?: string,
-  homeRoot = resolveHomeRoot(),
-): string[] {
-  const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
-  if (explicitTargets.length > 0) {
-    assertSupportedHarnessTargets(explicitTargets);
-    return explicitTargets;
-  }
-
-  const preference = getHarnessPreference();
-  if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
-    assertSupportedHarnessTargets(preferredTargets);
-    return preferredTargets;
-  }
-
-  const detectedTargets = uniqueHarnessTargets(
-    detectHomePlatforms(homeRoot).map((result) => result.platformId),
-  );
-  if (detectedTargets.length > 0) {
-    return detectedTargets;
-  }
-
-  throw new Error(
-    "No global harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
-  );
 }
 
 async function handleProjectStatusCommand(
@@ -2685,6 +2651,219 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
       hints: [`hd guide --scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
     });
   }
+}
+
+async function resolveSkillPackageCheckout(
+  source: string,
+  harnessdeckDir: string,
+): Promise<{ checkoutRoot: string; namespace: string }> {
+  const resolved = resolveRemoteSource(source);
+  if (resolved.kind === "git") {
+    const cacheDir = sourceCacheDir(
+      harnessdeckDir,
+      resolved.owner,
+      resolved.repo,
+    );
+    const refresh = refreshGitSource({
+      url: resolved.url,
+      targetDir: cacheDir,
+    });
+    if (!refresh.ok) {
+      throw new Error(refresh.message);
+    }
+    return { checkoutRoot: cacheDir, namespace: resolved.label };
+  }
+
+  return { checkoutRoot: resolved.path, namespace: resolved.label };
+}
+
+function parseCommaSeparatedList(value: string | undefined): string[] | undefined {
+  if (!value) return undefined;
+  const items = value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  return items.length > 0 ? items : undefined;
+}
+
+function resolveAddScope(opts: {
+  global?: boolean;
+  project?: boolean | string;
+}): { scope: "global" | "project"; projectRoot?: string } | undefined {
+  if (opts.global && opts.project !== undefined) {
+    throw new Error("Pass only one of --global or --project.");
+  }
+  if (opts.global) {
+    return { scope: "global" };
+  }
+  if (opts.project !== undefined) {
+    return {
+      scope: "project",
+      projectRoot: typeof opts.project === "string" ? opts.project : ".",
+    };
+  }
+  return undefined;
+}
+
+async function handleAddCommand(
+  source: string,
+  opts: {
+    skill?: string;
+    all?: boolean;
+    harness?: string;
+    global?: boolean;
+    project?: boolean | string;
+    method?: string;
+    layer?: string;
+    createLayer?: string;
+    list?: boolean;
+    dryRun?: boolean;
+    yes?: boolean;
+    format?: string;
+  },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const harnessdeckDir = getHarnessdeckDir();
+  const homeRoot = resolveHomeRoot();
+
+  if (opts.layer && opts.createLayer) {
+    throw new Error("Pass only one of --layer or --create-layer.");
+  }
+
+  const method = opts.method === "copy" ? "copy" : opts.method === "symlink" || !opts.method
+    ? "symlink"
+  : (() => {
+      throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
+    })();
+
+  const { checkoutRoot, namespace } = await resolveSkillPackageCheckout(
+    source,
+    harnessdeckDir,
+  );
+  const classification = classifyRepo(checkoutRoot);
+  if (classification.primary !== "skill-package") {
+    throw new Error(
+      `Source is not a skill package (detected: ${classification.primary}). Use a repo with skills/ or .agents/skills/ containing SKILL.md files.`,
+    );
+  }
+
+  const discovered = discoverSkillPackage(checkoutRoot);
+  if (discovered.length === 0) {
+    throw new Error(`No skills found in skill package: ${checkoutRoot}`);
+  }
+
+  if (opts.list) {
+    const payload = {
+      source,
+      namespace,
+      primary: classification.primary,
+      skills: discovered,
+    };
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+
+    ui.subheader("DISCOVERED SKILLS");
+    console.log("");
+    for (const skill of discovered) {
+      const description = skill.description.trim();
+      console.log(
+        `  ${ui.theme.accent(skill.name)} ${ui.theme.muted(`[${skill.category}]`)}`,
+      );
+      if (description) {
+        ui.dim(`    ${description}`);
+      }
+    }
+    return;
+  }
+
+  const db = getDb();
+  initializeSchema(db);
+
+  const scopeFromFlags = resolveAddScope({
+    global: opts.global,
+    project: opts.project,
+  });
+  const skillNames = parseCommaSeparatedList(opts.skill);
+  const harnesses = parseCommaSeparatedList(opts.harness);
+  if (harnesses) {
+    assertSupportedHarnessTargets(harnesses);
+  }
+
+  const shouldPrompt = shouldUseWizard({
+    noInteractive: opts.yes,
+    format,
+    missingRequiredArgs:
+      !scopeFromFlags
+      || (!opts.all && (!skillNames || skillNames.length === 0)),
+  });
+
+  const wizard = await runAddPackageWizard({
+    discovered,
+    skillNames,
+    all: opts.all,
+    scope: scopeFromFlags?.scope,
+    projectRoot: scopeFromFlags?.projectRoot,
+    method,
+    harnesses,
+    createLayer: opts.createLayer,
+    layer: opts.layer,
+    sourceLabel: namespace,
+    shouldPrompt,
+  });
+
+  if (!wizard.confirmed) {
+    ui.warn("Installation cancelled.");
+    return;
+  }
+
+  const result = await addSkillPackage({
+    source,
+    skillNames: wizard.skillNames,
+    all: wizard.all,
+    scope: wizard.scope,
+    projectRoot: wizard.projectRoot,
+    method: wizard.method,
+    harnesses: wizard.harnesses,
+    homeRoot,
+    harnessdeckDir,
+    createLayer: wizard.createLayer,
+    layer: wizard.layer,
+    dryRun: opts.dryRun,
+  });
+
+  const payload = {
+    source,
+    namespace: result.namespace,
+    discovered: discovered.map((skill) => skill.name),
+    imported: result.importedSkills,
+    installed: result.installedSkills,
+    snapshot_id: result.snapshotId,
+    ...(result.layer ? { layer: result.layer } : {}),
+  };
+
+  if (format === "json") {
+    printJson(payload);
+    return;
+  }
+
+  if (opts.dryRun) {
+    ui.success(
+      `Dry run ${ui.icons.hint} would install ${result.installedSkills.join(", ")} from ${result.namespace}`,
+    );
+    return;
+  }
+
+  ui.success(
+    `Installed ${formatCount(result.installedSkills.length, "skill")} from ${result.namespace}`,
+  );
+  console.log("");
+  ui.kvBlock([
+    { key: "Skills", value: result.installedSkills.join(", ") },
+    { key: "Scope", value: wizard.scope },
+    ...(wizard.scope === "project"
+      ? [{ key: "Project", value: resolve(wizard.projectRoot ?? ".") }]
+      : []),
+    { key: "Snapshot", value: result.snapshotId },
+  ]);
 }
 
 async function handleInitCommand(opts: {
@@ -3523,6 +3702,47 @@ program
     interactive?: boolean;
   }) => {
     await handleInitCommand(opts);
+  });
+
+program
+  .command("add")
+  .argument("<source>", "GitHub owner/repo, Git URL, or local path")
+  .option("--skill <names>", "Skills to install (comma-separated)")
+  .option("--all", "Install all discovered skills")
+  .option("--harness <slugs>", "Target harnesses")
+  .option("--global", "Install to user home")
+  .option("--project [path]", "Install to project directory")
+  .option("--method <mode>", "symlink or copy", "symlink")
+  .option("--layer <name>", "Combine into existing layer")
+  .option("--create-layer <name>", "Create layer and attach skills")
+  .option("--list", "List discovered skills only")
+  .option("--dry-run", "Show plan without writing")
+  .option("-y, --yes", "Skip prompts")
+  .option("--format <mode>", "human or json", "human")
+  .description("Add skills from a remote or local source")
+  .action(async (source: string, opts: {
+    skill?: string;
+    all?: boolean;
+    harness?: string;
+    global?: boolean;
+    project?: boolean | string;
+    method?: string;
+    layer?: string;
+    createLayer?: string;
+    list?: boolean;
+    dryRun?: boolean;
+    yes?: boolean;
+    format?: string;
+  }) => {
+    try {
+      await handleAddCommand(source, opts);
+    } catch (err) {
+      process.exitCode = 1;
+      if (isPromptCancellationError(err)) {
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
   });
 
 // ── layer ──────────────────────────────────────────────────────────────

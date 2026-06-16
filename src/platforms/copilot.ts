@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import {
+  canonicalAgentFromResource,
+  emitMarkdownAgent,
+} from "../services/agent-bridge.js";
 import type {
+  AgentMetadata,
   PlatformDefinition,
   ResourceCreateInput,
   Resource,
@@ -71,7 +76,19 @@ export class CopilotSerializer extends BaseSerializer {
       );
     }
 
-    // 3. MCP servers
+    // 3. Agents
+    if (this.platform.projectPaths.agents) {
+      const agentsPath = this.platform.projectPaths.agents;
+      resources.push(
+        ...this.scanAgentFilesAt(
+          join(projectRoot, agentsPath),
+          agentsPath.endsWith("/") ? agentsPath : `${agentsPath}/`,
+          [".md"],
+        ),
+      );
+    }
+
+    // 4. MCP servers
     if (this.platform.projectPaths.mcp) {
       const configPathValue = this.platform.projectPaths.mcp;
       const configPath = join(projectRoot, configPathValue);
@@ -171,6 +188,7 @@ export class CopilotSerializer extends BaseSerializer {
     const targetPaths = this.getTargetPaths(target);
     const instructionsPath = this.toTargetRelativePath(targetPaths.instructions, target);
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
+    const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
     const mcpPath = this.toTargetRelativePath(
       target === "global" ? targetPaths.settings : targetPaths.mcp,
       target,
@@ -216,6 +234,26 @@ export class CopilotSerializer extends BaseSerializer {
         files.push({
           path: join(skillsPath, r.name, "SKILL.md"),
           content: this.emitFrontmatter(fm, r.content),
+        });
+      }
+    }
+
+    // Agents
+    const agents = resources.filter((r) => r.type === "agent");
+    if (agentsPath && agents.length > 0) {
+      const agentsDir = agentsPath.endsWith("/") ? agentsPath : `${agentsPath}/`;
+      for (const r of agents) {
+        files.push({
+          path: join(agentsDir, `${r.name}.md`),
+          content: emitMarkdownAgent(
+            canonicalAgentFromResource({
+              name: r.name,
+              description: r.description,
+              content: r.content,
+              metadata: r.metadata as AgentMetadata,
+            }),
+            "generic",
+          ),
         });
       }
     }
