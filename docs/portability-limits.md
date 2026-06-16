@@ -79,6 +79,15 @@ opencode surface .opencode/plugins/foo.js is not mirrored to codex, cursor: Open
 
 Review mirror output with `--dry-run` before writing alias harness files.
 
+**Auto reference merge:** with `--reference auto`, HarnessDeck merges repo-root
+plugin `skills/` into the main-harness scan when the main tree has instructions
+but no on-disk skills (common in superpowers-style layouts). This is separate
+from the empty-main fallback chain (main → plugin → `AGENTS.md`).
+
+**Platform detection:** symlinked `AGENTS.md` (for example pointing at
+`CLAUDE.md`) does not inflate the detected harness count — only real instruction
+files count as distinct AGENTS-based harnesses.
+
 ## Intentional per-host tailoring
 
 Some multi-harness repos hand-tune per-host copies rather than sharing one

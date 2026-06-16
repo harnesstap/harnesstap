@@ -591,6 +591,8 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 **Dual-mode repos:** when a project has both harness files and a plugin manifest, `project scan` automatically merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
 
+**Symlinked `AGENTS.md`:** platform detection ignores symlinked `AGENTS.md` so a link to `CLAUDE.md` does not register a spurious AGENTS-based harness.
+
 When one supported harness already exists in a project, it becomes the default main harness for that project.
 
 ### Apply
@@ -607,7 +609,7 @@ If no `--harness` list is passed, platforms are detected from the target directo
 
 ### Project sync
 
-`project mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing. `--reference auto|main|plugin|agents` selects the on-disk source; `auto` falls back to plugin-source then `AGENTS.md` instructions when the main harness tree is empty.
+`project mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing. `--reference auto|main|plugin|agents` selects the on-disk source; `auto` merges repo-root plugin skills when the main harness has instructions but no on-disk skills, and falls back to plugin-source then `AGENTS.md` instructions when the main harness tree is empty.
 
 ### Project drift
 
