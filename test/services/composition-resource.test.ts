@@ -13,7 +13,7 @@ describe("composition resources", () => {
 
     try {
       const layer = createPlugin({ name: "backend" });
-      const resource = ensurePluginResource("plugin:posthog@cursor-team-kit");
+      const resource = ensurePluginResource("plugin_pin:posthog@cursor-team-kit");
       addResourceToPlugin(layer.id, resource.id);
 
       const pins = listAttachedPluginPins(layer.id);

@@ -57,7 +57,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 | --- | --- |
 | **Scan & import** | Detect Claude Code, Codex, Cursor, GitHub Copilot, Copilot CLI, and related project layouts |
 | **Canonical library** | Store imported configuration as resources in local SQLite |
-| **Plugins & layers** | Group resources into reusable **plugins**; bind plugins and **environments** into **layers** |
+| **Plugins & layers** | Group context-side resources into **layers**; attach host **plugin pins** and **layer** refs; bind **environments** |
 | **Multi-harness apply** | Materialize layers to one or more harnesses with environment cascade (home → layer default → deck active) |
 | **Portable decks** | Ship git repos that work as Claude marketplaces and embed `.harnessdeck/deck.toml` |
 | **Layer tooling** | Create layers from scanned projects, diff layers, run `layer doctor` before apply |
@@ -272,7 +272,7 @@ sequenceDiagram
 
 ## Deck model
 
-HarnessDeck separates **what** your agent loads (skills, MCP, hooks, rules) from **how** it is configured (secrets, env vars, models). The composition chain is **resource → plugin → layer → deck**, with **environment** on the side as the swappable configuration axis.
+HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs). A **layer** is the versioned context package; **plugin pins** and **layer** refs are dependencies; a **deck** is git transport for layer stacks.
 
 | Concept | Role |
 | --- | --- |
@@ -352,11 +352,11 @@ hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
 Plugin references are `plugin` resources attached to a layer like any other composition item.
 
 ```bash
-hd layer combine my-setup plugin:formatter@my-marketplace --version "^2.1.0"
-hd layer combine my-setup plugin:formatter@my-marketplace --sync   # eager sync after combine
-hd resource sync plugin:formatter@my-marketplace
-hd resource show plugin:formatter@my-marketplace
-hd layer uncombine my-setup plugin:formatter@my-marketplace --type plugin
+hd layer combine my-setup plugin_pin:formatter@my-marketplace --version "^2.1.0"
+hd layer combine my-setup plugin_pin:formatter@my-marketplace --sync   # eager sync after combine
+hd resource sync plugin_pin:formatter@my-marketplace
+hd resource show plugin_pin:formatter@my-marketplace
+hd layer uncombine my-setup plugin_pin:formatter@my-marketplace --type plugin_pin
 hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
 hd project apply my-setup --project . --strict-plugin-versions
 ```

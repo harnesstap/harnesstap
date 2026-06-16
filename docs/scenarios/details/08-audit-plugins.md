@@ -13,7 +13,7 @@ There are two related surfaces:
 **Library plugin resources** — what HarnessDeck knows about installed plugins:
 
 ```bash
-harnessdeck resource list --type plugin
+harnessdeck resource list --type plugin_pin_pin
 harnessdeck resource show formatter@team-marketplace
 harnessdeck resource sync --dry-run
 harnessdeck resource sync formatter@team-marketplace --overwrite

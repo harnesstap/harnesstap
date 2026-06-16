@@ -86,7 +86,7 @@ describe("wizard prompts", () => {
         promptCalls.push(prompt);
 
         if (promptCalls.length === 1) {
-          return { value: "plugin" };
+          return { value: "plugin_pin" };
         }
         if (promptCalls.length === 2) {
           return { value: "formatter@marketplace" };
@@ -103,8 +103,8 @@ describe("wizard prompts", () => {
       const result = await runLayerAddWizard({ shouldPrompt: true });
 
       expect(result).toEqual({
-        type: "plugin",
-        selector: "plugin:formatter@marketplace",
+        type: "plugin_pin",
+        selector: "plugin_pin:formatter@marketplace",
         version: "^1.0.0",
         embed: true,
       });

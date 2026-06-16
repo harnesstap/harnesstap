@@ -18,7 +18,7 @@ export function addPluginToLayer(
   versionConstraint: string,
   opts?: { embedOnExport?: boolean; order?: number },
 ): void {
-  const selector = ref.includes(":") ? ref : `plugin:${ref}`;
+  const selector = ref.includes(":") ? ref : `plugin_pin:${ref}`;
   const constraint =
     versionConstraint === "latest" || versionConstraint === "*"
       ? undefined

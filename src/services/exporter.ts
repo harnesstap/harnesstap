@@ -301,7 +301,7 @@ function collectBundlePayload(
         content_hash: r.content_hash,
         content_blob_ref: r.content_blob_ref,
       })),
-    plugins: pins,
+    plugin_pins: pins,
     ...(embeddedRoots.length > 0
       ? { embedded_plugin_refs: embeddedRoots.map((plugin) => plugin.ref) }
       : {}),
@@ -326,7 +326,7 @@ function normalizeLayerExport(bundle: LayerExport): NormalizedLayerExport {
       embedded_plugins: bundle.embedded_plugins ?? [],
       layers: bundle.layers.map((layer) => ({
         ...layer,
-        plugins: [...(layer.plugins ?? [])],
+        plugin_pins: [...(layer.plugin_pins ?? [])],
       })),
       multiLayer: true,
     };
@@ -339,7 +339,7 @@ function normalizeLayerExport(bundle: LayerExport): NormalizedLayerExport {
       layers: [
         {
           ...singleLayer,
-          plugins: [...(layerPayload.plugins ?? [])],
+          plugin_pins: [...(layerPayload.plugin_pins ?? [])],
           resources: layerPayload.resources,
           ...(layerPayload.claude ? { claude: layerPayload.claude } : {}),
           ...(layerPayload.dependencies ? { dependencies: layerPayload.dependencies } : {}),
@@ -354,7 +354,7 @@ function parseLayerExport(raw: string): ParsedLayerExportSummary {
   return {
     layers: multi.layers.map((layer) => ({
       ...layer,
-      plugins: [...(layer.plugins ?? [])],
+      plugin_pins: [...(layer.plugin_pins ?? [])],
     })),
     embedded_plugins: multi.embedded_plugins ?? [],
     multiLayer: multi.layers.length > 1,
@@ -910,7 +910,7 @@ export function exportLayer(
       }),
       resources: payload.resources,
       ...(payload.claude ? { claude: payload.claude } : {}),
-      plugins: payload.plugins,
+      plugin_pins: payload.plugin_pins,
       embedded_plugins: payload.embedded_plugins,
       ...(payload.dependencies ? { dependencies: payload.dependencies } : {}),
     } satisfies LegacyLayerExport;
@@ -931,8 +931,8 @@ export function exportLayer(
     version: LAYER_SCHEMA_VERSION,
     layers: payloads.map(({ embedded_plugins: _embeddedPlugins, ...payload }) => ({
       ...payload,
-      plugins: [
-        ...payload.plugins,
+      plugin_pins: [
+        ...payload.plugin_pins,
         ..._embeddedPlugins.map((plugin) => ({
           ref: plugin.ref,
           version_constraint: plugin.version_constraint,
@@ -1003,16 +1003,16 @@ function importLayerFromBundleParsed(
   const embeddedPluginKeys = new Set(
     useLegacyEmbeddedFallback
       ? embeddedPlugins.map((plugin) => `${plugin.ref}\u0000${plugin.version_constraint}`)
-      : (bundle.plugins ?? [])
-          .map((plugin) => `${plugin.ref}\u0000${plugin.version_constraint}`)
+      : (bundle.plugin_pins ?? [])
+          .map((pluginPin) => `${pluginPin.ref}\u0000${pluginPin.version_constraint}`)
           .filter((key) =>
             embeddedPlugins.some(
               (plugin) => `${plugin.ref}\u0000${plugin.version_constraint}` === key,
             ),
           ),
   );
-  const pluginPins = (bundle.plugins ?? []).filter(
-    (plugin) => !embeddedPluginKeys.has(`${plugin.ref}\u0000${plugin.version_constraint}`),
+  const pluginPins = (bundle.plugin_pins ?? []).filter(
+    (pluginPin) => !embeddedPluginKeys.has(`${pluginPin.ref}\u0000${pluginPin.version_constraint}`),
   );
   const layerEmbeddedPlugins = embeddedPlugins.filter((plugin) =>
     embeddedPluginKeys.has(`${plugin.ref}\u0000${plugin.version_constraint}`),

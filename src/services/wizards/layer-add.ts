@@ -56,22 +56,22 @@ export async function runLayerAddWizard(input: {
           : "What do you want to add?",
         choices: [
           { name: "Resource", value: "resource" },
-          { name: "Plugin reference", value: "plugin" },
+          { name: "Host plugin pin", value: "plugin_pin" },
           { name: "Layer reference", value: "layer" },
         ],
-        default: input.selector?.startsWith("plugin:")
-          ? "plugin"
+        default: input.selector?.startsWith("plugin_pin:")
+          ? "plugin_pin"
           : input.selector?.startsWith("layer:")
             ? "layer"
             : "resource",
       });
 
-      if (kind === "plugin") {
+      if (kind === "plugin_pin") {
         const raw = await promptForValue({
-          message: "Plugin selector (e.g. posthog@cursor-team-kit)",
+          message: "Plugin pin selector (e.g. posthog@cursor-team-kit)",
           default: input.selector,
         });
-        return raw.startsWith("plugin:") ? raw : `plugin:${raw}`;
+        return raw.startsWith("plugin_pin:") ? raw : `plugin_pin:${raw}`;
       }
 
       if (kind === "layer") {
@@ -117,8 +117,8 @@ export async function runLayerAddWizard(input: {
   const attachmentType =
     input.type === "layer-dependency"
       ? "layer"
-      : input.type === "plugin"
-        ? "plugin"
+      : input.type === "plugin_pin"
+        ? "plugin_pin"
         : input.type;
 
   const isMaterialType =
@@ -132,15 +132,15 @@ export async function runLayerAddWizard(input: {
       : selector;
 
   const parsedSelector = parseResourceSelector(normalizedSelector);
-  const isPlugin =
-    normalizedSelector.startsWith("plugin:") || attachmentType === "plugin";
+  const isPluginPin =
+    normalizedSelector.startsWith("plugin_pin:") || attachmentType === "plugin_pin";
   const isLayer =
     normalizedSelector.startsWith("layer:") || attachmentType === "layer";
 
   const version = await resolveOrPrompt({
     value: input.version,
     shouldPrompt:
-      input.shouldPrompt && (isPlugin || isLayer) && !input.version,
+      input.shouldPrompt && (isPluginPin || isLayer) && !input.version,
     prompt: async () =>
       promptForValue({
         message: "Version constraint (leave empty for latest)",
@@ -149,22 +149,22 @@ export async function runLayerAddWizard(input: {
   });
 
   let embed = input.embed;
-  if (isPlugin && input.shouldPrompt && embed === undefined) {
+  if (isPluginPin && input.shouldPrompt && embed === undefined) {
     embed = await promptForConfirmation({
-      message: "Embed plugin on export?",
+      message: "Embed host plugin on export?",
       default: false,
     });
   }
 
   return {
-    selector: normalizedSelector.startsWith("plugin:") && !normalizedSelector.includes("@")
+    selector: normalizedSelector.startsWith("plugin_pin:") && !normalizedSelector.includes("@")
       ? normalizedSelector
-      : isPlugin && !normalizedSelector.startsWith("plugin:")
-        ? `plugin:${normalizedSelector}`
+      : isPluginPin && !normalizedSelector.startsWith("plugin_pin:")
+        ? `plugin_pin:${normalizedSelector}`
         : isLayer && !normalizedSelector.startsWith("layer:")
           ? `layer:${normalizedSelector}`
           : normalizedSelector,
-    type: isPlugin ? "plugin" : isLayer ? "layer" : parsedSelector.type ?? attachmentType,
+    type: isPluginPin ? "plugin_pin" : isLayer ? "layer" : parsedSelector.type ?? attachmentType,
     version: version || undefined,
     embed,
   };

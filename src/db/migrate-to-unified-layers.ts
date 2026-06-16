@@ -139,7 +139,7 @@ function mergePluginRows(
     claude = mergeClaudeConfig(claude, parseClaudeConfig(plugin.claude_config));
 
     for (const resource of loadPluginResources(db, pluginId)) {
-      if (resource.type === "plugin" || resource.type === "layer") {
+      if (resource.type === "plugin_pin" || resource.type === "layer") {
         compositionById.set(resource.id, resource);
         continue;
       }

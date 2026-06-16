@@ -16,7 +16,7 @@
   { "id": 15, "argv": ["harness", "list", "--format", "json"] },
   { "id": 16, "argv": ["layer", "doctor", "--list-checks"] },
   { "id": 17, "argv": ["migrate", "import", "__MISSING_ARCHIVE__", "--format", "json"], "expectFailure": true },
-  { "id": 18, "argv": ["resource", "list", "--type", "plugin", "--format", "json"] },
+  { "id": 18, "argv": ["resource", "list", "--type", "plugin_pin", "--format", "json"] },
   { "id": 19, "argv": ["resource", "sync", "--format", "json", "--dry-run"] },
   { "id": 20, "argv": ["harness", "list", "--format", "json"] },
   { "id": 21, "argv": ["project", "drift", "--project", ".", "--format", "json"], "requiresGitOrigin": true },

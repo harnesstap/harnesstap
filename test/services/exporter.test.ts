@@ -29,7 +29,7 @@ describe("exporter services", () => {
 
       expect(bundle.$schema).toBe("urn:harnessdeck:layer:v1");
       expect(bundle.version).toBe(1);
-      expect(bundle.plugins).toEqual([]);
+      expect(bundle.plugin_pins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
       expect(bundle.layer.name).toBe("bundle");
       expect(bundle.resources[0]).toEqual(
@@ -256,7 +256,7 @@ content = "# Shared"
 
       const bundle = exporter.exportLayer(layer.id);
       expect(bundle.version).toBe(1);
-      expect(bundle.plugins).toEqual([
+      expect(bundle.plugin_pins).toEqual([
         { ref: "fmt@acme-marketplace", version_constraint: ">=2" },
       ]);
       expect(bundle.embedded_plugins).toHaveLength(0);
@@ -292,7 +292,7 @@ content = "# Shared"
       const bundle = exporter.exportLayer(layer.id, {
         projectRoot: context.projectDir,
       });
-      expect(bundle.plugins).toHaveLength(0);
+      expect(bundle.plugin_pins).toHaveLength(0);
       expect(bundle.embedded_plugins).toHaveLength(1);
       expect(bundle.embedded_plugins[0]?.ref).toBe("./plugins/demo");
       expect(bundle.embedded_plugins[0]?.files["README.md"]).toBe("hello");
@@ -341,7 +341,7 @@ content = "# Shared"
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
       });
-      expect(bundle.plugins).toHaveLength(0);
+      expect(bundle.plugin_pins).toHaveLength(0);
       expect(bundle.embedded_plugins).toHaveLength(1);
       expect(bundle.embedded_plugins[0]?.ref).toBe("fmt@acme-marketplace");
 
@@ -385,7 +385,7 @@ content = "# Shared"
         homeRoot: "",
         projectRoot: context.projectDir,
       });
-      expect(bundleAgain.plugins).toEqual([
+      expect(bundleAgain.plugin_pins).toEqual([
         { ref: "fmt@acme-marketplace", version_constraint: "2.x" },
       ]);
       expect(bundleAgain.embedded_plugins).toHaveLength(0);
@@ -550,7 +550,7 @@ content = "# Shared"
           name: "alpha",
           version: "1.0.0",
           resources: expect.any(Array),
-          plugins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
+          plugin_pins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
         }),
       );
       expect(bundle.layers?.[0]).not.toHaveProperty("layer");
@@ -624,16 +624,16 @@ content = "# Shared"
 
       expect(bundle.layers).toHaveLength(2);
       expect(bundle.embedded_plugins).toHaveLength(1);
-      expect(bundle.layers?.[0]?.plugins).toEqual([
+      expect(bundle.layers?.[0]?.plugin_pins).toEqual([
         { ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" },
       ]);
-      expect(bundle.layers?.[1]?.plugins).toEqual([]);
+      expect(bundle.layers?.[1]?.plugin_pins).toEqual([]);
       expect(bundle.layers?.[0]).toEqual(
         expect.objectContaining({
           name: "alpha-only-plugin",
           version: "1.0.0",
           resources: [],
-          plugins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
+          plugin_pins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
         }),
       );
       expect(bundle.layers?.[1]).toEqual(
@@ -641,7 +641,7 @@ content = "# Shared"
           name: "beta-no-plugin",
           version: "1.0.0",
           resources: [],
-          plugins: [],
+          plugin_pins: [],
         }),
       );
       expect(bundle.layers?.[0]).not.toHaveProperty("layer");
@@ -705,11 +705,11 @@ content = "# Shared"
       });
 
       expect(bundle.embedded_plugins).toHaveLength(2);
-      expect(bundle.layers?.[0]?.plugins).toContainEqual({
+      expect(bundle.layers?.[0]?.plugin_pins).toContainEqual({
         ref: "./plugins/shared-plugin",
         version_constraint: "^1.0.0",
       });
-      expect(bundle.layers?.[1]?.plugins).toContainEqual({
+      expect(bundle.layers?.[1]?.plugin_pins).toContainEqual({
         ref: "./plugins/shared-plugin",
         version_constraint: "^2.0.0",
       });

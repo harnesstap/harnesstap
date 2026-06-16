@@ -93,8 +93,8 @@ function parseLayerEntry(value: unknown): LayerExportEntry {
   const resources = Array.isArray(value.resources)
     ? value.resources.map(parseResource)
     : [];
-  const plugins = Array.isArray(value.plugins)
-    ? value.plugins.map(parsePluginPin)
+  const pluginPins = Array.isArray(value.plugin_pins)
+    ? value.plugin_pins.map(parsePluginPin)
     : [];
   const dependencies = Array.isArray(value.dependencies)
     ? value.dependencies.map(parseDependency)
@@ -109,7 +109,7 @@ function parseLayerEntry(value: unknown): LayerExportEntry {
     description: String(value.description ?? ""),
     tags: Array.isArray(value.tags) ? value.tags.map(String) : [],
     resources,
-    plugins,
+    plugin_pins: pluginPins,
     ...(value.claude && isRecord(value.claude)
       ? { claude: value.claude as LayerExportEntry["claude"] }
       : {}),
@@ -127,9 +127,9 @@ export function serializeLayerEntry(layer: LayerExportEntry): Record<string, unk
     description: layer.description,
     tags: [...layer.tags],
     resources: layer.resources.map(serializeResource),
-    plugins: layer.plugins.map((plugin) => ({
-      ref: plugin.ref,
-      version_constraint: plugin.version_constraint,
+    plugin_pins: layer.plugin_pins.map((pluginPin) => ({
+      ref: pluginPin.ref,
+      version_constraint: pluginPin.version_constraint,
     })),
   };
   if (layer.dependencies && layer.dependencies.length > 0) {
@@ -156,7 +156,7 @@ export function normalizeLayerExportForToml(bundle: LayerExport): {
     return {
       layers: bundle.layers.map((layer) => ({
         ...layer,
-        plugins: [...(layer.plugins ?? [])],
+        plugin_pins: [...(layer.plugin_pins ?? [])],
         resources: [...layer.resources],
       })),
       embedded_plugins: bundle.embedded_plugins ?? [],
@@ -168,7 +168,7 @@ export function normalizeLayerExportForToml(bundle: LayerExport): {
       {
         ...bundle.layer,
         resources: bundle.resources,
-        plugins: [...(bundle.plugins ?? [])],
+        plugin_pins: [...(bundle.plugin_pins ?? [])],
         ...(bundle.claude ? { claude: bundle.claude } : {}),
         ...(bundle.dependencies ? { dependencies: bundle.dependencies } : {}),
       },

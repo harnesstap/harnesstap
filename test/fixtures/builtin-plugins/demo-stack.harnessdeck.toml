@@ -8,7 +8,7 @@ version = 1
 [[layers]]
 description = "Demo web stack app with TypeScript, Tailwind, Prisma, and Vitest"
 name = "demo-stack"
-plugins = []
+plugin_pins = []
 tags = [ "nextjs", "typescript", "react", "tailwind", "prisma" ]
 
 [[layers.resources]]

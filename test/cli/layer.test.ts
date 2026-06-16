@@ -777,7 +777,7 @@ describe("CLI layer", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Attachment type required");
       expect(result.stderr).toContain("skill:");
-      expect(result.stderr).toContain("plugin:");
+      expect(result.stderr).toContain("plugin_pin:");
       expect(result.stderr).toContain("layer:");
     } finally {
       await context.cleanup();
@@ -906,7 +906,7 @@ describe("CLI layer", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Attachment type required");
       expect(result.stderr).toContain("skill:");
-      expect(result.stderr).toContain("plugin:");
+      expect(result.stderr).toContain("plugin_pin:");
       expect(result.stderr).toContain("layer:");
     } finally {
       await context.cleanup();
@@ -930,7 +930,7 @@ describe("CLI layer", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Invalid --type. Valid:");
-      expect(result.stderr).toContain("plugin");
+      expect(result.stderr).toContain("plugin_pin");
       expect(result.stderr).toContain("layer-dependency");
     } finally {
       await context.cleanup();
@@ -986,7 +986,7 @@ describe("CLI layer", () => {
         "^1.0.0",
       ]);
       expect(versionResult.exitCode).toBe(1);
-      expect(versionResult.stderr).toContain("--version is only supported for plugin and layer attachments");
+      expect(versionResult.stderr).toContain("--version is only supported for plugin_pin and layer attachments");
 
       const embedResult = await runCli([
         "layer",
@@ -998,7 +998,7 @@ describe("CLI layer", () => {
         "--embed",
       ]);
       expect(embedResult.exitCode).toBe(1);
-      expect(embedResult.stderr).toContain("--embed is only supported for plugin attachments");
+      expect(embedResult.stderr).toContain("--embed is only supported for plugin_pin attachments");
     } finally {
       await context.cleanup();
     }
@@ -1023,7 +1023,7 @@ describe("CLI layer", () => {
       ]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("--embed is only supported for plugin attachments");
+      expect(result.stderr).toContain("--embed is only supported for plugin_pin attachments");
     } finally {
       await context.cleanup();
     }
@@ -1041,7 +1041,7 @@ describe("CLI layer", () => {
         "plugin-test",
         "formatter@marketplace",
         "--type",
-        "plugin",
+        "plugin_pin",
         "--version",
         "^2.1.0",
       ]);
@@ -1056,7 +1056,7 @@ describe("CLI layer", () => {
         "plugin-test",
         "formatter@marketplace",
         "--type",
-        "plugin",
+        "plugin_pin",
       ]);
       expect(removeResult.stdout).toContain("✓ Removed plugin");
       expect(removeResult.stdout).toContain("formatter@marketplace");

@@ -3,7 +3,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI layer plugin pins", () => {
-  it("adds and shows plugin pin on layer through layer combine --type plugin", async () => {
+  it("adds and shows plugin pin on layer through layer combine --type plugin_pin", async () => {
     const context = await createTestContext("cli-layer-plugin");
 
     try {
@@ -15,7 +15,7 @@ describe("CLI layer plugin pins", () => {
         "p1",
         "fmt@acme",
         "--type",
-        "plugin",
+        "plugin_pin",
         "--version",
         ">=2.0.0 <3.0.0",
       ]);
@@ -27,7 +27,7 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("includes plugins in layer show JSON after layer combine --type plugin", async () => {
+  it("includes plugins in layer show JSON after layer combine --type plugin_pin", async () => {
     const context = await createTestContext("cli-layer-plugin-json");
 
     try {
@@ -39,7 +39,7 @@ describe("CLI layer plugin pins", () => {
         "pj",
         "tools@hub",
         "--type",
-        "plugin",
+        "plugin_pin",
         "--version",
         "^1.2.3",
       ]);
@@ -53,15 +53,15 @@ describe("CLI layer plugin pins", () => {
       const data = JSON.parse(show.stdout.trim()) as {
         plugins: Array<{ ref: string; version_constraint: string }>;
       };
-      expect(data.plugins).toHaveLength(1);
-      expect(data.plugins[0]?.ref).toBe("tools@hub");
-      expect(data.plugins[0]?.version_constraint).toBe("^1.2.3");
+      expect(data.plugin_pins).toHaveLength(1);
+      expect(data.plugin_pins[0]?.ref).toBe("tools@hub");
+      expect(data.plugin_pins[0]?.version_constraint).toBe("^1.2.3");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("layer uncombine --type plugin drops pin from show", async () => {
+  it("layer uncombine --type plugin_pin drops pin from show", async () => {
     const context = await createTestContext("cli-layer-plugin-remove");
 
     try {
@@ -73,11 +73,11 @@ describe("CLI layer plugin pins", () => {
         "pr",
         "gone@mp",
         "--type",
-        "plugin",
+        "plugin_pin",
         "--version",
         "1.0.0",
       ]);
-      await runCli(["layer", "uncombine", "pr", "gone@mp", "--type", "plugin"]);
+      await runCli(["layer", "uncombine", "pr", "gone@mp", "--type", "plugin_pin"]);
       const show = await runCli(["layer", "show", "pr"]);
       expect(show.stdout).not.toContain("gone@mp");
     } finally {
@@ -85,7 +85,7 @@ describe("CLI layer plugin pins", () => {
     }
   });
 
-  it("allows lazy layer combine --type plugin without --version", async () => {
+  it("allows lazy layer combine --type plugin_pin without --version", async () => {
     const context = await createTestContext("cli-layer-plugin-lazy");
 
     try {
@@ -98,17 +98,17 @@ describe("CLI layer plugin pins", () => {
         "pv",
         "tools@hub",
         "--type",
-        "plugin",
+        "plugin_pin",
       ]);
 
       expect(result.exitCode ?? 0).toBe(0);
-      expect(result.stdout).toContain("Attached plugin tools@hub");
+      expect(result.stdout).toContain("Attached plugin pin tools@hub");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("persists embed_on_export for layer combine --type plugin --embed", async () => {
+  it("persists embed_on_export for layer combine --type plugin_pin --embed", async () => {
     const context = await createTestContext("cli-layer-plugin-embed");
 
     try {
@@ -123,7 +123,7 @@ describe("CLI layer plugin pins", () => {
         "embed-layer",
         "tools@hub",
         "--type",
-        "plugin",
+        "plugin_pin",
         "--version",
         "^1.2.3",
         "--embed",

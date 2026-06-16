@@ -88,7 +88,7 @@ export async function syncPluginPinsForApply(
       continue;
     }
 
-    const selector = pin.ref.includes(":") ? pin.ref : `plugin:${pin.ref}`;
+    const selector = pin.ref.includes(":") ? pin.ref : `plugin_pin:${pin.ref}`;
     const constraint =
       pin.version_constraint === "latest" || pin.version_constraint === "*"
         ? undefined

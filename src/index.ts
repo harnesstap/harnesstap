@@ -1387,7 +1387,7 @@ async function handleApplyCommand(
       for (const ref of pluginSync.unresolvedPins) {
         console.warn(
           ui.theme.warn(
-            `Plugin ${ref} is not installed locally. Run: harnessdeck resource sync plugin:${ref}`,
+            `Plugin pin ${ref} is not installed locally. Run: harnessdeck resource sync plugin_pin:${ref}`,
           ),
         );
       }
@@ -2005,9 +2005,9 @@ function handleLayerShowCommand(
   }
   const allResources = getPluginResources(layer.id);
   const resources = allResources.filter(
-    (resource) => resource.type !== "plugin" && resource.type !== "layer",
+    (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
   );
-  const plugins = listLayerPlugins(layer.id);
+  const pluginPinRows = listLayerPlugins(layer.id);
   const pluginPins = listAttachedPluginPins(layer.id);
   const dependencies = listPluginDependencies(layer.id);
   const configuredLayer = (() => {
@@ -2035,7 +2035,7 @@ function handleLayerShowCommand(
       created_at: layer.created_at,
       updated_at: layer.updated_at,
       resources,
-      plugins,
+      plugin_pins: pluginPinRows,
       dependencies,
       ...(configuredLayer
         ? {
@@ -2059,7 +2059,7 @@ function handleLayerShowCommand(
       ["Description", layer.description || "—"],
       ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
       ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
-      ["Plugins", plugins.length === 0 ? "(none pinned)" : `${plugins.length}`],
+      ["Plugin pins", pluginPinRows.length === 0 ? "(none pinned)" : `${pluginPinRows.length}`],
       ...(configuredLayer
         ? [[
             "Default environment",
@@ -2094,8 +2094,8 @@ function handleLayerShowCommand(
       rows: formatLayerDependencyRows(dependencies),
     });
   }
-  if (plugins.length > 0) {
-    ui.subheader("PLUGINS");
+  if (pluginPinRows.length > 0) {
+    ui.subheader("PLUGIN PINS");
     ui.table.print({
       columns: [
         { key: "ref", header: "REF", width: 28 },

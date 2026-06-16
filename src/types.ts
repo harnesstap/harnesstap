@@ -13,7 +13,7 @@ export const MATERIAL_RESOURCE_TYPES = [
   "model_config",
 ] as const;
 
-export const COMPOSITION_RESOURCE_TYPES = ["plugin", "layer"] as const;
+export const COMPOSITION_RESOURCE_TYPES = ["plugin_pin", "layer"] as const;
 
 export const RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
@@ -23,7 +23,7 @@ export const RESOURCE_TYPES = [
 /** Resource types shown in default `hd resource list` (excludes layer composition refs). */
 export const LISTABLE_RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
-  "plugin",
+  "plugin_pin",
 ] as const;
 
 export type MaterialResourceType = (typeof MATERIAL_RESOURCE_TYPES)[number];
@@ -93,7 +93,7 @@ export interface ModelConfigMetadata {
   provider?: string;
 }
 
-export interface PluginResourceMetadata {
+export interface PluginPinMetadata {
   source_kind?: "marketplace" | "local" | "git";
   marketplace_name?: string;
   version_constraint?: string;
@@ -105,6 +105,9 @@ export interface PluginResourceMetadata {
     cursor?: Record<string, unknown>;
   };
 }
+
+/** @deprecated Use PluginPinMetadata */
+export type PluginResourceMetadata = PluginPinMetadata;
 
 export interface LayerResourceMetadata {
   version_constraint?: string;
@@ -121,7 +124,7 @@ export type ResourceMetadata =
   | AgentMetadata
   | EnvVarMetadata
   | ModelConfigMetadata
-  | PluginResourceMetadata
+  | PluginPinMetadata
   | LayerResourceMetadata
   | Record<string, unknown>;
 
@@ -489,8 +492,8 @@ export interface LayerExportEntry extends LayerExportLayer {
   resources: LayerExportResource[];
   /** Claude Code marketplace and plugin configuration for this layer. */
   claude?: ClaudeLayerConfig;
-  /** Layer plugin pins (marketplace refs, not inlined in the export file). */
-  plugins: LayerExportPluginPin[];
+  /** Host plugin pins (marketplace refs, not inlined in the export file). */
+  plugin_pins: LayerExportPluginPin[];
   /** Embedded plugin refs used by this layer; payload lives at export root. */
   embedded_plugin_refs?: string[];
   /** Layer composition dependencies (name + version constraint). */
@@ -504,8 +507,8 @@ export interface LegacyLayerExport {
   resources: LayerExportResource[];
   /** Claude Code marketplace and plugin configuration for this layer. */
   claude?: ClaudeLayerConfig;
-  /** Layer plugin pins (marketplace refs, not inlined in the export file). */
-  plugins: LayerExportPluginPin[];
+  /** Host plugin pins (marketplace refs, not inlined in the export file). */
+  plugin_pins: LayerExportPluginPin[];
   /** Layer composition dependencies (name + version constraint). */
   dependencies?: LayerExportDependency[];
   /** Plugin trees inlined in the export file. */
