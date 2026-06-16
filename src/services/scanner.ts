@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
@@ -55,8 +55,22 @@ function existingPaths(paths: PlatformPaths, rootPath: string): string[] {
 
 // ── Platform detection ─────────────────────────────────────────────────
 
+function pathCountsForPlatformDetection(
+  projectRoot: string,
+  configuredPath: string,
+): boolean {
+  const fullPath = join(projectRoot, configuredPath);
+  if (!existsSync(fullPath)) {
+    return false;
+  }
+  if (configuredPath === "AGENTS.md" && lstatSync(fullPath).isSymbolicLink()) {
+    return false;
+  }
+  return true;
+}
+
 function platformHasConfiguredPath(projectRoot: string, configuredPath: string): boolean {
-  return existsSync(join(projectRoot, configuredPath));
+  return pathCountsForPlatformDetection(projectRoot, configuredPath);
 }
 
 /** Check if a platform has any recognizable files in the project. */

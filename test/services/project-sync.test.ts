@@ -127,7 +127,7 @@ describe("syncProject reference strategies", () => {
       });
 
       expect(auto.files_written).toBeGreaterThan(pluginOnly.files_written * 0.5);
-      expect(auto.files_written).toBeGreaterThan(10);
+      expect(auto.files_written).toBeGreaterThan(pluginOnly.files_written);
     } finally {
       await context.cleanup();
     }
