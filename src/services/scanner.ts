@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
@@ -19,6 +19,7 @@ import { getPlatformSerializer } from "./platform-serializers.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
+import { dropHarnessSkillsDuplicatingPluginSource } from "./scan-dedup.js";
 import type { ImportedSnapshot, PluginSourceScanResult } from "../types.js";
 
 function resolveConfiguredPath(
@@ -54,8 +55,22 @@ function existingPaths(paths: PlatformPaths, rootPath: string): string[] {
 
 // ── Platform detection ─────────────────────────────────────────────────
 
+function pathCountsForPlatformDetection(
+  projectRoot: string,
+  configuredPath: string,
+): boolean {
+  const fullPath = join(projectRoot, configuredPath);
+  if (!existsSync(fullPath)) {
+    return false;
+  }
+  if (configuredPath === "AGENTS.md" && lstatSync(fullPath).isSymbolicLink()) {
+    return false;
+  }
+  return true;
+}
+
 function platformHasConfiguredPath(projectRoot: string, configuredPath: string): boolean {
-  return existsSync(join(projectRoot, configuredPath));
+  return pathCountsForPlatformDetection(projectRoot, configuredPath);
 }
 
 /** Check if a platform has any recognizable files in the project. */
@@ -497,10 +512,11 @@ export async function persistMergedProjectScan(
   platformFilter?: string,
   options?: PersistMergedProjectScanOptions,
 ): Promise<PersistMergedProjectScanResults> {
-  const { harness, plugin } = await scanProjectWithPluginSource(
+  const { harness: rawHarness, plugin } = await scanProjectWithPluginSource(
     projectRoot,
     platformFilter,
   );
+  const harness = dropHarnessSkillsDuplicatingPluginSource(rawHarness, plugin);
 
   const harnessPersisted = persistScanResults(harness, {
     ...options,

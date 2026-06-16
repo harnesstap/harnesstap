@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 const ponytailFixture = join(import.meta.dirname, "../fixtures/ponytail/full");
+const superpowersFixture = join(
+  import.meta.dirname,
+  "../fixtures/superpowers/minimal",
+);
 
 describe("syncProject reference strategies", () => {
   it("falls back to plugin-imported skills when main harness scan is empty", async () => {
@@ -99,6 +103,57 @@ describe("syncProject reference strategies", () => {
           referenceStrategy: "auto",
         }),
       ).rejects.toThrow(/harnessdeck project scan/);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("merges plugin skills when main harness has instructions only", async () => {
+    const context = await createInitializedTestContext("project-sync-sp-auto");
+
+    try {
+      const { syncProject } = await import("../../src/services/project-sync.ts");
+      const auto = await syncProject({
+        projectRoot: superpowersFixture,
+        dryRun: true,
+        forceShiftReference: "claude-code",
+        referenceStrategy: "auto",
+      });
+      const pluginOnly = await syncProject({
+        projectRoot: superpowersFixture,
+        dryRun: true,
+        forceShiftReference: "claude-code",
+        referenceStrategy: "plugin",
+      });
+
+      expect(auto.files_written).toBeGreaterThan(pluginOnly.files_written * 0.5);
+      expect(auto.files_written).toBeGreaterThan(pluginOnly.files_written);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("main strategy still uses main harness only", async () => {
+    const context = await createInitializedTestContext("project-sync-sp-main");
+
+    try {
+      const { syncProject } = await import("../../src/services/project-sync.ts");
+      const [main, auto] = await Promise.all([
+        syncProject({
+          projectRoot: superpowersFixture,
+          dryRun: true,
+          forceShiftReference: "claude-code",
+          referenceStrategy: "main",
+        }),
+        syncProject({
+          projectRoot: superpowersFixture,
+          dryRun: true,
+          forceShiftReference: "claude-code",
+          referenceStrategy: "auto",
+        }),
+      ]);
+
+      expect(main.files_written).toBeLessThan(auto.files_written);
     } finally {
       await context.cleanup();
     }

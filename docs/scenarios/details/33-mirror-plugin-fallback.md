@@ -34,7 +34,7 @@ harnessdeck project mirror . --force-shift-reference codex --reference auto
 | Strategy | Behavior |
 | -------- | -------- |
 | `main` (default) | Scan main harness paths only; error if empty. |
-| `auto` | Try main harness, then plugin source, then `AGENTS.md` instruction resources. |
+| `auto` | Use main harness scan; when main has instructions but no on-disk skills and a plugin manifest is present, merge repo-root plugin `skills/` into the reference. If main is empty, fall back to plugin source, then `AGENTS.md` instruction resources. |
 | `plugin` | Use repo-root plugin manifest resources (`skills/`, `commands/`, `hooks/`). |
 | `agents` | Use canonical `AGENTS.md` instruction resources from detected AGENTS-based harnesses. |
 
@@ -45,6 +45,12 @@ Try: harnessdeck project mirror --reference plugin
 or harnessdeck project scan .
 or harnessdeck harness project set --main codex
 ```
+
+**Auto-merge (non-empty main):** repos like [obra/superpowers](https://github.com/obra/superpowers)
+ship `CLAUDE.md` plus repo-root `skills/` under `.claude-plugin/` with no
+`.claude/skills/` tree. `--reference auto` merges plugin skills into the mirror
+reference so alias harnesses receive the full skill set — not only when the main
+harness tree is completely empty.
 
 Pair with [Scenario 31](./31-dual-mode-plugin-import.md) to import plugin
 resources into the local database first. See [Scenario 27](./27-project-sync.md)
