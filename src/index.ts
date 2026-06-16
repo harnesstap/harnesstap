@@ -13,7 +13,6 @@ import {
   persistScanResults,
   applyScanConflicts,
   detectPlatforms,
-  detectHomePlatforms,
   isPluginSourcePath,
   scanProjectWithPluginSource,
   persistMergedProjectScan,
@@ -90,6 +89,12 @@ import {
 } from "./models/harness.js";
 import { listImportedSnapshots } from "./models/imported-snapshot.js";
 import { resolveHarnessSelection } from "./services/harness-config.js";
+import {
+  assertSupportedHarnessTargets,
+  parsePlatformFilter,
+  resolveScanGlobalHarnessTargets,
+  uniqueHarnessTargets,
+} from "./services/harness-targets.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
@@ -2100,10 +2105,6 @@ function handleLayerShowCommand(
   }
 }
 
-function parsePlatformFilter(platform?: string): string[] | undefined {
-  return platform?.split(",").map((p) => p.trim()).filter(Boolean);
-}
-
 function parseHarnessAliases(aliases?: string): string[] | undefined {
   return aliases
     ?.split(",")
@@ -2253,18 +2254,6 @@ function resolveConfiguredLayersForCascade(
   return configuredLayerIds;
 }
 
-function uniqueHarnessTargets(harnesses: string[]): string[] {
-  return [...new Set(harnesses.filter(Boolean))];
-}
-
-function assertSupportedHarnessTargets(harnesses: string[]): void {
-  const supported = new Set(getAllPlatforms().map((platform) => platform.id));
-  const invalid = harnesses.filter((harness) => !supported.has(harness));
-  if (invalid.length > 0) {
-    throw new Error(`Unsupported harness: ${invalid.join(", ")}`);
-  }
-}
-
 function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
   return listImportedSnapshots()
     .filter((candidate) =>
@@ -2357,38 +2346,6 @@ function resolveApplyHarnessTargets(
   }
 
   return uniqueHarnessTargets(detectPlatforms(projectRoot));
-}
-
-function resolveScanGlobalHarnessTargets(
-  harnessOption?: string,
-  homeRoot = resolveHomeRoot(),
-): string[] {
-  const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
-  if (explicitTargets.length > 0) {
-    assertSupportedHarnessTargets(explicitTargets);
-    return explicitTargets;
-  }
-
-  const preference = getHarnessPreference();
-  if (preference) {
-    const preferredTargets = uniqueHarnessTargets([
-      preference.main_harness,
-      ...preference.alias_harnesses,
-    ]);
-    assertSupportedHarnessTargets(preferredTargets);
-    return preferredTargets;
-  }
-
-  const detectedTargets = uniqueHarnessTargets(
-    detectHomePlatforms(homeRoot).map((result) => result.platformId),
-  );
-  if (detectedTargets.length > 0) {
-    return detectedTargets;
-  }
-
-  throw new Error(
-    "No global harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
-  );
 }
 
 async function handleProjectStatusCommand(
