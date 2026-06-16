@@ -67,6 +67,36 @@ interface ValidatedMarketplaceManifest {
 type ResourceInput = ResourceCreateInput;
 type PluginSourceRootKind = Exclude<ImportedSourceKind, "marketplace">;
 
+interface PluginManifestCandidate {
+  relativeManifestPath: string;
+  sourcePluginKind: PluginSourceRootKind;
+}
+
+interface ListedPluginManifest {
+  manifestPath: string;
+  sourcePluginKind: PluginSourceRootKind;
+  manifest: ValidatedPluginManifest;
+}
+
+const PLUGIN_MANIFEST_CANDIDATES: PluginManifestCandidate[] = [
+  {
+    relativeManifestPath: ".cursor-plugin/plugin.json",
+    sourcePluginKind: "cursor-plugin",
+  },
+  {
+    relativeManifestPath: ".claude-plugin/plugin.json",
+    sourcePluginKind: "claude-plugin",
+  },
+  {
+    relativeManifestPath: ".codex-plugin/plugin.json",
+    sourcePluginKind: "codex-plugin",
+  },
+  {
+    relativeManifestPath: ".github/plugin/plugin.json",
+    sourcePluginKind: "copilot-plugin",
+  },
+];
+
 function normalizePath(path: string): string {
   return path.split(sep).join("/");
 }
@@ -209,50 +239,50 @@ function assertSafeImportedResourceName(name: string, filePath: string): string 
   return trimmed;
 }
 
+function listPluginManifests(sourcePath: string): ListedPluginManifest[] {
+  const manifests: ListedPluginManifest[] = [];
+
+  for (const candidate of PLUGIN_MANIFEST_CANDIDATES) {
+    const manifestPath = join(sourcePath, candidate.relativeManifestPath);
+    if (!existsSync(manifestPath)) continue;
+
+    const manifest = validatePluginManifest(
+      readRequiredJson<PluginManifest>(manifestPath, "plugin manifest"),
+      manifestPath,
+    );
+    manifests.push({
+      manifestPath,
+      sourcePluginKind: candidate.sourcePluginKind,
+      manifest,
+    });
+  }
+
+  return manifests;
+}
+
 function resolvePluginRoot(sourcePath: string): {
   rootPath: string;
   manifestPath: string;
   sourcePluginKind: PluginSourceRootKind;
   manifest: ValidatedPluginManifest;
+  allManifests: ListedPluginManifest[];
 } {
-  const manifestCandidates: Array<{
-    manifestPath: string;
-    sourcePluginKind: PluginSourceRootKind;
-  }> = [
-    {
-      manifestPath: join(sourcePath, ".cursor-plugin", "plugin.json"),
-      sourcePluginKind: "cursor-plugin",
-    },
-    {
-      manifestPath: join(sourcePath, ".claude-plugin", "plugin.json"),
-      sourcePluginKind: "claude-plugin",
-    },
-    {
-      manifestPath: join(sourcePath, ".codex-plugin", "plugin.json"),
-      sourcePluginKind: "codex-plugin",
-    },
-    {
-      manifestPath: join(sourcePath, ".github", "plugin", "plugin.json"),
-      sourcePluginKind: "copilot-plugin",
-    },
-  ];
-
-  for (const candidate of manifestCandidates) {
-    if (!existsSync(candidate.manifestPath)) continue;
-
-    const manifest = validatePluginManifest(
-      readRequiredJson<PluginManifest>(candidate.manifestPath, "plugin manifest"),
-      candidate.manifestPath,
-    );
-    return {
-      rootPath: sourcePath,
-      manifestPath: candidate.manifestPath,
-      sourcePluginKind: candidate.sourcePluginKind,
-      manifest,
-    };
+  const allManifests = listPluginManifests(sourcePath);
+  if (allManifests.length === 0) {
+    throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
   }
 
-  throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
+  const primary = allManifests[0];
+  if (!primary) {
+    throw new Error(`Unsupported plugin source layout: ${sourcePath}`);
+  }
+  return {
+    rootPath: sourcePath,
+    manifestPath: primary.manifestPath,
+    sourcePluginKind: primary.sourcePluginKind,
+    manifest: primary.manifest,
+    allManifests,
+  };
 }
 
 export function readPluginVersionFromInstallRoot(
@@ -644,6 +674,32 @@ function scanHooks(
   return resources;
 }
 
+function scanAllManifestHooks(
+  rootPath: string,
+  manifests: ListedPluginManifest[],
+  metadata: {
+    importedAt: string;
+    sourceKind: ImportedSourceKind;
+    sourceLabel: string;
+    pluginName: string;
+    pluginVersion?: string;
+    sourcePluginKind: PluginSourceRootKind;
+  },
+): ResourceInput[] {
+  const seenSources = new Set<string>();
+  const resources: ResourceInput[] = [];
+
+  for (const { manifest } of manifests) {
+    for (const hook of scanHooks(rootPath, manifest, metadata)) {
+      if (seenSources.has(hook.source)) continue;
+      seenSources.add(hook.source);
+      resources.push(hook);
+    }
+  }
+
+  return resources;
+}
+
 function scanPluginRoot(
   sourcePath: string,
   opts?: {
@@ -653,7 +709,7 @@ function scanPluginRoot(
     marketplaceManifestPath?: string;
   },
 ): PluginSourceScanResult {
-  const { rootPath, manifestPath, sourcePluginKind, manifest } =
+  const { rootPath, manifestPath, sourcePluginKind, manifest, allManifests } =
     resolvePluginRoot(sourcePath);
   const importedAt = new Date().toISOString();
   const pluginName = manifest.name;
@@ -706,7 +762,7 @@ function scanPluginRoot(
       pluginVersion,
       sourcePluginKind,
     }),
-    ...scanHooks(rootPath, manifest, {
+    ...scanAllManifestHooks(rootPath, allManifests, {
       importedAt,
       sourceKind,
       sourceLabel,

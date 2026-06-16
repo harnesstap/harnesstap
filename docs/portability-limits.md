@@ -65,7 +65,7 @@ Examples of surfaces that stay on their native harness:
 
 | Surface | Native harness | Mirror behavior |
 | ------- | -------------- | --------------- |
-| **OpenCode server plugins** (`.mjs`) | OpenCode | Registered in `opencode.json`; not copied to alias harnesses. |
+| **OpenCode server plugins** (`.js`, `.mjs`) | OpenCode | Registered in `opencode.json`; not copied to alias harnesses. |
 | **Pi extensions** (`pi-extension/`) | Pi | Installed via Pi CLI; not emitted to other harnesses. |
 | **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
 | **Statusline hooks** | Claude Code (and similar) | Terminal chrome integrations; not part of the shared resource model. |
@@ -74,10 +74,19 @@ Examples of surfaces that stay on their native harness:
 Warnings look like:
 
 ```text
-opencode surface .opencode/plugins/foo.mjs is not mirrored to codex, cursor: OpenCode server plugins must stay registered in opencode.json on OpenCode.
+opencode surface .opencode/plugins/foo.js is not mirrored to codex, cursor: OpenCode server plugins must stay registered in opencode.json on OpenCode.
 ```
 
 Review mirror output with `--dry-run` before writing alias harness files.
+
+**Auto reference merge:** with `--reference auto`, HarnessDeck merges repo-root
+plugin `skills/` into the main-harness scan when the main tree has instructions
+but no on-disk skills (common in superpowers-style layouts). This is separate
+from the empty-main fallback chain (main → plugin → `AGENTS.md`).
+
+**Platform detection:** symlinked `AGENTS.md` (for example pointing at
+`CLAUDE.md`) does not inflate the detected harness count — only real instruction
+files count as distinct AGENTS-based harnesses.
 
 ## Intentional per-host tailoring
 

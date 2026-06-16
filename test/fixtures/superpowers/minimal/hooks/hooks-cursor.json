@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo superpowers-cursor",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
