@@ -1,5 +1,6 @@
 import { getDb } from "../db/connection.js";
 import type {
+  CursorSkillMode,
   HarnessPreference,
   HarnessSelection,
   ProjectHarnessConfig,
@@ -17,7 +18,21 @@ interface ProjectHarnessRow {
   main_harness: string;
   alias_harnesses: string;
   materialization_strategy: string;
+  cursor_skill_mode: string | null;
   updated_at: string;
+}
+
+const CURSOR_SKILL_MODES = new Set<CursorSkillMode>([
+  "agent-requested",
+  "always-on",
+  "agents-skills",
+]);
+
+function parseCursorSkillMode(value: string | null | undefined): CursorSkillMode | undefined {
+  if (!value) return undefined;
+  return CURSOR_SKILL_MODES.has(value as CursorSkillMode)
+    ? (value as CursorSkillMode)
+    : undefined;
 }
 
 function normalizeSelection(selection: HarnessSelection): HarnessSelection {
@@ -45,12 +60,14 @@ function rowToPreference(row: HarnessPreferenceRow): HarnessPreference {
 }
 
 function rowToProjectHarness(row: ProjectHarnessRow): ProjectHarnessConfig {
+  const cursor_skill_mode = parseCursorSkillMode(row.cursor_skill_mode);
   return {
     project_id: row.project_id,
     main_harness: row.main_harness,
     alias_harnesses: JSON.parse(row.alias_harnesses) as string[],
     materialization_strategy:
       row.materialization_strategy === "copy" ? "copy" : "symlink-preferred",
+    ...(cursor_skill_mode ? { cursor_skill_mode } : {}),
     updated_at: row.updated_at,
   };
 }
@@ -104,6 +121,7 @@ export function setProjectHarnessConfig(input: {
   main_harness: string;
   alias_harnesses?: string[];
   materialization_strategy?: "symlink-preferred" | "copy";
+  cursor_skill_mode?: CursorSkillMode;
 }): ProjectHarnessConfig {
   const db = getDb();
   const now = new Date().toISOString();
@@ -113,22 +131,28 @@ export function setProjectHarnessConfig(input: {
   });
   const materialization_strategy =
     input.materialization_strategy ?? "symlink-preferred";
+  const existing = getProjectHarnessConfig(input.project_id);
+  const cursor_skill_mode =
+    input.cursor_skill_mode ?? existing?.cursor_skill_mode;
 
   db.prepare(
     `INSERT INTO project_harnesses (
-       project_id, main_harness, alias_harnesses, materialization_strategy, updated_at
+       project_id, main_harness, alias_harnesses, materialization_strategy,
+       cursor_skill_mode, updated_at
      )
-     VALUES (?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(project_id) DO UPDATE SET
        main_harness = excluded.main_harness,
        alias_harnesses = excluded.alias_harnesses,
        materialization_strategy = excluded.materialization_strategy,
+       cursor_skill_mode = excluded.cursor_skill_mode,
        updated_at = excluded.updated_at`,
   ).run(
     input.project_id,
     normalized.main_harness,
     JSON.stringify(normalized.alias_harnesses),
     materialization_strategy,
+    cursor_skill_mode ?? null,
     now,
   );
 
@@ -136,6 +160,7 @@ export function setProjectHarnessConfig(input: {
     project_id: input.project_id,
     ...normalized,
     materialization_strategy,
+    ...(cursor_skill_mode ? { cursor_skill_mode } : {}),
     updated_at: now,
   };
 }

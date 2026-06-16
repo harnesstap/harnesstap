@@ -57,6 +57,23 @@ describe("platform registry", () => {
     expect(copilotCli?.projectPaths.mcp).toBe(".copilot/mcp-config.json");
   });
 
+  it("includes kiro and pi harness entries", async () => {
+    const registry = await import("../../src/platforms/registry.ts");
+
+    const kiro = registry.getPlatform("kiro");
+    expect(kiro).toBeDefined();
+    expect(kiro?.projectPaths.rules).toBe(".kiro/steering/");
+    expect(kiro?.projectPaths.skills).toBe(".agents/skills/");
+    expect(kiro?.globalPaths.skills).toBe("~/.kiro/skills/");
+    expect(kiro?.supports.has("rules")).toBe(true);
+
+    const pi = registry.getPlatform("pi");
+    expect(pi).toBeDefined();
+    expect(pi?.projectPaths.instructions).toBe("AGENTS.md");
+    expect(pi?.projectPaths.skills).toBe(".agents/skills/");
+    expect(pi?.supports.has("rules")).toBe(false);
+  });
+
   it("detectPlatforms returns empty array (stub)", async () => {
     const registry = await import("../../src/platforms/registry.ts");
     expect(registry.detectPlatforms("/some/path")).toEqual([]);

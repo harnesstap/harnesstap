@@ -1,12 +1,16 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "bun:test";
+import { parse } from "smol-toml";
 import { CodexSerializer } from "../../src/platforms/codex.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 import { makeResource } from "../helpers/resources.ts";
 
 const CODEX_FIXTURE_DIR = fileURLToPath(
   new URL("../fixtures/codex-project", import.meta.url),
+);
+const CODEX_CONFIG_FIXTURE_DIR = fileURLToPath(
+  new URL("../fixtures/platforms/codex-config", import.meta.url),
 );
 
 describe("CodexSerializer", () => {
@@ -103,6 +107,132 @@ describe("CodexSerializer", () => {
         ]),
       );
       expect(resources.find((resource) => resource.type === "skill")).toBeUndefined();
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("scans MCP servers, permissions, env vars, and model config from config.toml", async () => {
+    const serializer = new CodexSerializer();
+    const resources = await serializer.scan(CODEX_CONFIG_FIXTURE_DIR);
+
+    expect(resources.map((resource) => resource.type)).toEqual(
+      expect.arrayContaining([
+        "mcp_server",
+        "permission",
+        "env_var",
+        "model_config",
+      ]),
+    );
+
+    const filesystem = resources.find(
+      (resource) => resource.type === "mcp_server" && resource.name === "filesystem",
+    );
+    expect(filesystem?.metadata).toEqual(
+      expect.objectContaining({
+        transport: "stdio",
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-filesystem"],
+        env: { DIR: "/tmp" },
+      }),
+    );
+
+    const remote = resources.find(
+      (resource) => resource.type === "mcp_server" && resource.name === "remote",
+    );
+    expect(remote?.metadata).toEqual(
+      expect.objectContaining({
+        transport: "http",
+        url: "https://mcp.example.com/mcp",
+      }),
+    );
+
+    const permission = resources.find((resource) => resource.type === "permission");
+    expect(permission?.metadata).toEqual({
+      action: "deny",
+      pattern: "filesystem:project:deny:**/*.env",
+    });
+
+    const envVar = resources.find((resource) => resource.type === "env_var");
+    expect(envVar?.metadata).toEqual({ key: "API_KEY", value: "from-config" });
+
+    const modelConfig = resources.find((resource) => resource.type === "model_config");
+    expect(modelConfig?.metadata).toEqual({
+      model: "gpt-5",
+      provider: "openai",
+    });
+  });
+
+  it("serializes config.toml resources and preserves unrelated keys", async () => {
+    const projectDir = createTempDir("codex-config-serialize");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".codex", "config.toml"),
+        'personality = "pragmatic"\nlegacy_flag = true\n',
+      );
+
+      const serializer = new CodexSerializer();
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "filesystem",
+            metadata: {
+              transport: "stdio",
+              command: "npx",
+              args: ["-y", "server"],
+            },
+          }),
+          makeResource({
+            type: "permission",
+            name: "deny-project-env",
+            metadata: {
+              action: "deny",
+              pattern: "filesystem:project:deny:**/*.env",
+            },
+          }),
+          makeResource({
+            type: "env_var",
+            name: "API_KEY",
+            metadata: { key: "API_KEY", value: "from-config" },
+          }),
+          makeResource({
+            type: "model_config",
+            name: "default",
+            metadata: { model: "gpt-5", provider: "openai" },
+          }),
+        ],
+        projectDir,
+      );
+
+      const config = files.find((file) => file.path === ".codex/config.toml");
+      expect(config).toBeDefined();
+      if (!config) throw new Error("Expected Codex config file");
+
+      const parsed = parse(config.content) as Record<string, unknown>;
+      expect(parsed.personality).toBe("pragmatic");
+      expect(parsed.legacy_flag).toBe(true);
+      expect(parsed.model).toBe("gpt-5");
+      expect(parsed.model_provider).toBe("openai");
+      expect(parsed.mcp_servers).toEqual({
+        filesystem: {
+          command: "npx",
+          args: ["-y", "server"],
+        },
+      });
+      expect(parsed.permissions).toEqual({
+        project: {
+          filesystem: {
+            "**/*.env": "deny",
+          },
+        },
+      });
+      expect(parsed.shell_environment_policy).toEqual({
+        set: {
+          API_KEY: "from-config",
+        },
+      });
     } finally {
       cleanupDir(projectDir);
     }

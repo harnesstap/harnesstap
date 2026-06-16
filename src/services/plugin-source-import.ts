@@ -1,9 +1,11 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
+import { parse as parseToml } from "smol-toml";
 import type {
   ResourceCreateInput,
   AgentMetadata,
+  HookMetadata,
   ImportedResourceProvenance,
   ImportedSourceKind,
   ImportedSnapshotMetadata,
@@ -14,6 +16,8 @@ import type {
 interface PluginManifest {
   name?: string;
   version?: string;
+  commands?: string;
+  hooks?: string;
 }
 
 interface MarketplacePluginEntry {
@@ -28,6 +32,27 @@ interface MarketplaceManifest {
 interface ValidatedPluginManifest {
   name: string;
   version?: string;
+  commands?: string;
+  hooks?: string;
+}
+
+interface PluginHooksConfig {
+  hooks?: Record<string, unknown[]>;
+}
+
+interface PluginHookEntry {
+  type?: string;
+  command?: string;
+  commandWindows?: string;
+  timeout?: number;
+  matcher?: string;
+  statusMessage?: string;
+  hooks?: PluginHookEntry[];
+}
+
+interface PluginCommandToml {
+  description?: string;
+  prompt?: string;
 }
 
 interface ValidatedMarketplacePluginEntry {
@@ -85,7 +110,17 @@ function validatePluginManifest(
 
   const name = manifest.name.trim();
   const version = manifest.version?.trim();
-  return version ? { name, version } : { name };
+  const commands =
+    typeof manifest.commands === "string" && manifest.commands.trim().length > 0
+      ? manifest.commands.trim()
+      : undefined;
+  const hooks =
+    typeof manifest.hooks === "string" && manifest.hooks.trim().length > 0
+      ? manifest.hooks.trim()
+      : undefined;
+  return version
+    ? { name, version, commands, hooks }
+    : { name, commands, hooks };
 }
 
 function validateMarketplaceManifest(
@@ -180,31 +215,39 @@ function resolvePluginRoot(sourcePath: string): {
   sourcePluginKind: PluginSourceRootKind;
   manifest: ValidatedPluginManifest;
 } {
-  const cursorManifestPath = join(sourcePath, ".cursor-plugin", "plugin.json");
-  const claudeManifestPath = join(sourcePath, ".claude-plugin", "plugin.json");
-
-  if (existsSync(cursorManifestPath)) {
-    const manifest = validatePluginManifest(
-      readRequiredJson<PluginManifest>(cursorManifestPath, "plugin manifest"),
-      cursorManifestPath,
-    );
-    return {
-      rootPath: sourcePath,
-      manifestPath: cursorManifestPath,
+  const manifestCandidates: Array<{
+    manifestPath: string;
+    sourcePluginKind: PluginSourceRootKind;
+  }> = [
+    {
+      manifestPath: join(sourcePath, ".cursor-plugin", "plugin.json"),
       sourcePluginKind: "cursor-plugin",
-      manifest,
-    };
-  }
+    },
+    {
+      manifestPath: join(sourcePath, ".claude-plugin", "plugin.json"),
+      sourcePluginKind: "claude-plugin",
+    },
+    {
+      manifestPath: join(sourcePath, ".codex-plugin", "plugin.json"),
+      sourcePluginKind: "codex-plugin",
+    },
+    {
+      manifestPath: join(sourcePath, ".github", "plugin", "plugin.json"),
+      sourcePluginKind: "copilot-plugin",
+    },
+  ];
 
-  if (existsSync(claudeManifestPath)) {
+  for (const candidate of manifestCandidates) {
+    if (!existsSync(candidate.manifestPath)) continue;
+
     const manifest = validatePluginManifest(
-      readRequiredJson<PluginManifest>(claudeManifestPath, "plugin manifest"),
-      claudeManifestPath,
+      readRequiredJson<PluginManifest>(candidate.manifestPath, "plugin manifest"),
+      candidate.manifestPath,
     );
     return {
       rootPath: sourcePath,
-      manifestPath: claudeManifestPath,
-      sourcePluginKind: "claude-plugin",
+      manifestPath: candidate.manifestPath,
+      sourcePluginKind: candidate.sourcePluginKind,
       manifest,
     };
   }
@@ -397,6 +440,210 @@ function scanRules(rootPath: string, metadata: {
   return resources;
 }
 
+function resolveCommandsDir(
+  rootPath: string,
+  manifest: ValidatedPluginManifest,
+): string | null {
+  const commandsDir = manifest.commands
+    ? join(rootPath, manifest.commands)
+    : join(rootPath, "commands");
+  return isDirectory(commandsDir) ? commandsDir : null;
+}
+
+function resolveHooksPath(
+  rootPath: string,
+  manifest: ValidatedPluginManifest,
+): string | null {
+  if (manifest.hooks) {
+    const candidate = join(rootPath, manifest.hooks);
+    if (existsSync(candidate)) {
+      if (isDirectory(candidate)) {
+        const hooksJson = join(candidate, "hooks.json");
+        if (existsSync(hooksJson)) return hooksJson;
+        const copilotHooks = join(candidate, "copilot-hooks.json");
+        if (existsSync(copilotHooks)) return copilotHooks;
+      } else {
+        return candidate;
+      }
+    }
+  }
+
+  const defaultHooks = join(rootPath, "hooks/hooks.json");
+  if (existsSync(defaultHooks)) return defaultHooks;
+
+  const copilotHooks = join(rootPath, "hooks/copilot-hooks.json");
+  if (existsSync(copilotHooks)) return copilotHooks;
+
+  return null;
+}
+
+function scanCommands(
+  rootPath: string,
+  manifest: ValidatedPluginManifest,
+  metadata: {
+    importedAt: string;
+    sourceKind: ImportedSourceKind;
+    sourceLabel: string;
+    pluginName: string;
+    pluginVersion?: string;
+    sourcePluginKind: PluginSourceRootKind;
+  },
+): ResourceInput[] {
+  const commandsDir = resolveCommandsDir(rootPath, manifest);
+  if (!commandsDir) return [];
+
+  const resources: ResourceInput[] = [];
+  for (const entry of listDir(commandsDir)) {
+    const commandPath = join(commandsDir, entry);
+    const name = entry.replace(/\.(md|toml)$/, "");
+    if (name === entry) continue;
+
+    const provenance = buildProvenance({
+      ...metadata,
+      relativePath: relativePath(rootPath, commandPath),
+    });
+
+    if (entry.endsWith(".md")) {
+      const raw = readText(commandPath);
+      if (!raw) continue;
+
+      resources.push({
+        type: "command",
+        name: assertSafeImportedResourceName(name, commandPath),
+        description: "",
+        content: raw.trim(),
+        source: provenance.relative_path,
+        metadata: {
+          imported_from: provenance,
+        },
+      });
+      continue;
+    }
+
+    if (!entry.endsWith(".toml")) continue;
+
+    const raw = readText(commandPath);
+    if (!raw) continue;
+
+    let parsed: PluginCommandToml;
+    try {
+      parsed = parseToml(raw) as PluginCommandToml;
+    } catch {
+      throw new Error(`Malformed command TOML: ${commandPath}`);
+    }
+
+    const description =
+      typeof parsed.description === "string" ? parsed.description : "";
+    const content =
+      typeof parsed.prompt === "string"
+        ? parsed.prompt
+        : raw.trim();
+
+    resources.push({
+      type: "command",
+      name: assertSafeImportedResourceName(name, commandPath),
+      description,
+      content,
+      source: provenance.relative_path,
+      metadata: {
+        format: "toml",
+        imported_from: provenance,
+      },
+    });
+  }
+
+  return resources;
+}
+
+function collectPluginHookEntries(
+  entries: unknown[],
+  matcher: string | undefined,
+  collected: Array<{ entry: PluginHookEntry; matcher?: string }>,
+): void {
+  for (const item of entries) {
+    if (!item || typeof item !== "object") continue;
+    const hookItem = item as PluginHookEntry;
+    const itemMatcher =
+      typeof hookItem.matcher === "string" ? hookItem.matcher : matcher;
+
+    if (Array.isArray(hookItem.hooks)) {
+      collectPluginHookEntries(hookItem.hooks, itemMatcher, collected);
+      continue;
+    }
+
+    if (typeof hookItem.command !== "string") continue;
+    collected.push({ entry: hookItem, matcher: itemMatcher });
+  }
+}
+
+function scanHooks(
+  rootPath: string,
+  manifest: ValidatedPluginManifest,
+  metadata: {
+    importedAt: string;
+    sourceKind: ImportedSourceKind;
+    sourceLabel: string;
+    pluginName: string;
+    pluginVersion?: string;
+    sourcePluginKind: PluginSourceRootKind;
+  },
+): ResourceInput[] {
+  const hooksPath = resolveHooksPath(rootPath, manifest);
+  if (!hooksPath) return [];
+
+  const config = readJson<PluginHooksConfig>(hooksPath);
+  if (!config?.hooks) return [];
+
+  const resources: ResourceInput[] = [];
+  for (const [event, entries] of Object.entries(config.hooks)) {
+    if (!Array.isArray(entries)) continue;
+
+    const hookEntries: Array<{ entry: PluginHookEntry; matcher?: string }> = [];
+    collectPluginHookEntries(entries, undefined, hookEntries);
+
+    hookEntries.forEach(({ entry, matcher }, index) => {
+      const provenance = buildProvenance({
+        ...metadata,
+        relativePath: relativePath(rootPath, hooksPath),
+      });
+      const hookMetadata: HookMetadata & {
+        imported_from: ImportedResourceProvenance;
+      } = {
+        event,
+        script: entry.command ?? "",
+        imported_from: provenance,
+        hook_entry: entry as Record<string, unknown>,
+      };
+
+      if (typeof entry.commandWindows === "string") {
+        hookMetadata.commandWindows = entry.commandWindows;
+      }
+      if (typeof entry.timeout === "number") {
+        hookMetadata.timeout = entry.timeout;
+      }
+      if (typeof matcher === "string" && matcher.length > 0) {
+        hookMetadata.matcher = matcher;
+      }
+
+      const hookName =
+        typeof matcher === "string" && matcher.length > 0
+          ? `${event}-${matcher.replace(/[^a-zA-Z0-9_-]+/g, "-")}`
+          : `${event}-${index + 1}`;
+
+      resources.push({
+        type: "hook",
+        name: assertSafeImportedResourceName(hookName, hooksPath),
+        description: typeof entry.statusMessage === "string" ? entry.statusMessage : "",
+        content: entry.command ?? "",
+        source: provenance.relative_path,
+        metadata: hookMetadata,
+      });
+    });
+  }
+
+  return resources;
+}
+
 function scanPluginRoot(
   sourcePath: string,
   opts?: {
@@ -444,6 +691,22 @@ function scanPluginRoot(
       sourcePluginKind,
     }),
     ...scanRules(rootPath, {
+      importedAt,
+      sourceKind,
+      sourceLabel,
+      pluginName,
+      pluginVersion,
+      sourcePluginKind,
+    }),
+    ...scanCommands(rootPath, manifest, {
+      importedAt,
+      sourceKind,
+      sourceLabel,
+      pluginName,
+      pluginVersion,
+      sourcePluginKind,
+    }),
+    ...scanHooks(rootPath, manifest, {
       importedAt,
       sourceKind,
       sourceLabel,

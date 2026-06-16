@@ -40,7 +40,15 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
+
+      const projectHarnessColumns = context.connection
+        .getDb()
+        .prepare("PRAGMA table_info(project_harnesses)")
+        .all() as Array<{ name: string }>;
+      expect(projectHarnessColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining(["cursor_skill_mode"]),
+      );
 
       const layerColumns = context.connection
         .getDb()
@@ -108,7 +116,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 15 }]);
+      expect(versionRows).toEqual([{ version: 16 }]);
     } finally {
       await context.cleanup();
     }
@@ -136,7 +144,7 @@ describe("initializeSchema", () => {
         .getDb()
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }
@@ -324,7 +332,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
 
       const layerColumns = db
         .prepare("PRAGMA table_info(layers)")
@@ -728,7 +736,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }
@@ -775,7 +783,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }
@@ -842,7 +850,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }
@@ -929,7 +937,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }
@@ -1008,7 +1016,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }
@@ -1166,7 +1174,7 @@ describe("initializeSchema", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(15);
+      expect(versionRow.version).toBe(16);
     } finally {
       await context.cleanup();
     }

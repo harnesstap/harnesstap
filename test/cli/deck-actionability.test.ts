@@ -1,7 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import { ulid } from "ulid";
-import { getDb } from "../../src/db/connection.js";
-import { initializeSchema } from "../../src/db/schema.js";
 import {
   addConfiguredLayerToDeck,
   createDeck,
@@ -10,15 +8,15 @@ import {
 import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-component.js";
 import { createConfiguredLayer } from "../../src/models/configured-layer.js";
 import { createResource } from "../../src/models/resource.js";
-import { createTestContext } from "../helpers/db.ts";
+import { createInitializedTestContext, createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI deck actionability", () => {
   it("deck show lists ordered layers", async () => {
-    const db = getDb();
-    initializeSchema(db);
+    const context = await createInitializedTestContext("cli-deck-show");
 
+    try {
     const suffix = ulid().toLowerCase();
     const plugin = createPlugin({ name: `deck-show-plugin-${suffix}` });
     addResourceToPlugin(
@@ -44,12 +42,15 @@ describe("CLI deck actionability", () => {
     expect(result.stdout).toContain(deck.name);
     expect(result.stdout).toContain(layer.name);
     expect(result.stdout).toContain("ORDER");
+    } finally {
+      await context.cleanup();
+    }
   });
 
   it("deck delete removes the deck record only", async () => {
-    const db = getDb();
-    initializeSchema(db);
+    const context = await createInitializedTestContext("cli-deck-delete");
 
+    try {
     const suffix = ulid().toLowerCase();
     const plugin = createPlugin({ name: `deck-delete-plugin-${suffix}` });
     const layer = createConfiguredLayer({
@@ -62,7 +63,15 @@ describe("CLI deck actionability", () => {
     const result = await runCli(["deck", "delete", deck.name, "--format", "json"]);
     expect(result.exitCode ?? 0).toBe(0);
     expect(getDeckByName(deck.name)).toBeUndefined();
-    expect(getDb().prepare("SELECT id FROM layers WHERE id = ?").get(layer.id)).toBeTruthy();
+    expect(
+      context.connection
+        .getDb()
+        .prepare("SELECT id FROM layers WHERE id = ?")
+        .get(layer.id),
+    ).toBeTruthy();
+    } finally {
+      await context.cleanup();
+    }
   });
 
   it("deck apply materializes the deck layer stack", async () => {

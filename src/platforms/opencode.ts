@@ -41,6 +41,47 @@ export class OpenCodeSerializer extends BaseSerializer {
     this.platform = p;
   }
 
+  private scanCommandsAt(
+    projectRoot: string,
+    relativeDir: string,
+  ): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
+    const commandsDir = join(projectRoot, relativeDir);
+    const sourcePrefix = relativeDir.endsWith("/")
+      ? relativeDir
+      : `${relativeDir}/`;
+
+    for (const file of this.listDir(commandsDir)) {
+      if (!file.endsWith(".md")) continue;
+      const content = this.readFile(join(commandsDir, file));
+      if (!content) continue;
+      const name = file.replace(/\.md$/, "");
+      resources.push(
+        this.makeResource(
+          "command",
+          name,
+          content,
+          `${sourcePrefix}${file}`,
+        ),
+      );
+    }
+
+    return resources;
+  }
+
+  private commandOutputPath(
+    resource: Resource,
+    defaultCommandsPath: string,
+  ): string {
+    if (resource.source.includes(".opencode/command/")) {
+      return `.opencode/command/${resource.name}.md`;
+    }
+    if (resource.source.includes(".opencode/commands/")) {
+      return `.opencode/commands/${resource.name}.md`;
+    }
+    return `${defaultCommandsPath}${resource.name}.md`;
+  }
+
   async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
     const resources: ResourceCreateInput[] = [];
 
@@ -72,21 +113,9 @@ export class OpenCodeSerializer extends BaseSerializer {
       );
     }
 
-    // 2.2 Commands: .opencode/commands/
-    const commandsDir = join(projectRoot, ".opencode", "commands");
-    for (const file of this.listDir(commandsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const content = this.readFile(join(commandsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.md$/, "");
-      resources.push(
-        this.makeResource(
-          "command",
-          name,
-          content,
-          `.opencode/commands/${file}`,
-        ),
-      );
+    // 2.2 Commands: .opencode/commands/ and .opencode/command/
+    for (const commandsDir of [".opencode/commands", ".opencode/command"]) {
+      resources.push(...this.scanCommandsAt(projectRoot, commandsDir));
     }
 
     // 3. MCP servers: opencode.json
@@ -260,11 +289,11 @@ export class OpenCodeSerializer extends BaseSerializer {
       }
     }
 
-    // .opencode/commands/
+    // .opencode/commands/ or .opencode/command/
     if (commandsPath) {
       for (const r of commands) {
         files.push({
-          path: `${commandsPath}${r.name}.md`,
+          path: this.commandOutputPath(r, commandsPath),
           content: r.content,
         });
       }

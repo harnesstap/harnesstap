@@ -1,0 +1,2 @@
+description = "Switch ponytail intensity level (lite/full/ultra/off)"
+prompt = "Switch to ponytail {{args}} mode. If no level specified, use full."
