@@ -3,7 +3,12 @@ import { parse } from "smol-toml";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { formatTransportToml } from "../services/transport/write.js";
+import {
+  canonicalAgentFromResource,
+  emitCodexAgentToml,
+} from "../services/agent-bridge.js";
 import type {
+  AgentMetadata,
   EnvVarMetadata,
   McpServerMetadata,
   ModelConfigMetadata,
@@ -381,16 +386,13 @@ export class CodexSerializer extends BaseSerializer {
     resources.push(...this.scanSkillsDir(projectRoot, ".agents/skills"));
 
     // 3. Agents: .codex/agents/*.toml
-    const agentsDir = join(projectRoot, ".codex", "agents");
-    for (const file of this.listDir(agentsDir)) {
-      if (!file.endsWith(".toml")) continue;
-      const content = this.readFile(join(agentsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.toml$/, "");
-      resources.push(
-        this.makeResource("agent", name, content, `.codex/agents/${file}`),
-      );
-    }
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(projectRoot, ".codex", "agents"),
+        ".codex/agents/",
+        [".toml"],
+      ),
+    );
 
     // 4. Settings: .codex/config.toml
     resources.push(
@@ -426,16 +428,13 @@ export class CodexSerializer extends BaseSerializer {
       ),
     );
 
-    const agentsDir = join(homeRoot, ".codex", "agents");
-    for (const file of this.listDir(agentsDir)) {
-      if (!file.endsWith(".toml")) continue;
-      const content = this.readFile(join(agentsDir, file));
-      if (!content) continue;
-      const name = file.replace(/\.toml$/, "");
-      resources.push(
-        this.makeResource("agent", name, content, `~/.codex/agents/${file}`),
-      );
-    }
+    resources.push(
+      ...this.scanAgentFilesAt(
+        join(homeRoot, ".codex", "agents"),
+        "~/.codex/agents/",
+        [".toml"],
+      ),
+    );
 
     resources.push(
       ...this.scanConfigAt(
@@ -497,9 +496,15 @@ export class CodexSerializer extends BaseSerializer {
     // Agents → .codex/agents/{name}.toml
     for (const r of resources.filter((r) => r.type === "agent")) {
       if (!agentsPath) continue;
+      const agent = canonicalAgentFromResource({
+        name: r.name,
+        description: r.description,
+        content: r.content,
+        metadata: r.metadata as AgentMetadata,
+      });
       files.push({
         path: `${agentsPath}${r.name}.toml`,
-        content: r.content,
+        content: emitCodexAgentToml(agent),
       });
     }
 

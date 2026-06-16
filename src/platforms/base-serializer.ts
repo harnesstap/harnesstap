@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import matter from "gray-matter";
+import { normalizeAgentInput } from "../services/agent-bridge.js";
 import type {
   PlatformSerializer,
   Resource,
@@ -158,6 +159,44 @@ export abstract class BaseSerializer implements PlatformSerializer {
     description = "",
   ): ResourceCreateInput {
     return { type, name, description, content, metadata, source };
+  }
+
+  protected scanAgentFilesAt(
+    fullPath: string,
+    displayPath: string,
+    extensions: string[],
+  ): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
+    if (!displayPath.endsWith("/")) return resources;
+
+    for (const file of this.listDir(fullPath)) {
+      if (!extensions.some((ext) => file.endsWith(ext))) continue;
+      const raw = this.readFile(join(fullPath, file));
+      if (!raw) continue;
+      const source = `${displayPath}${file}`;
+      const fallbackName = file.replace(/\.(agent\.)?(md|toml)$/, "");
+      const normalized = normalizeAgentInput({
+        name: fallbackName,
+        content: raw,
+        source,
+      });
+      if (normalized) {
+        resources.push(
+          this.makeResource(
+            "agent",
+            normalized.name,
+            normalized.content,
+            source,
+            normalized.metadata,
+            normalized.description,
+          ),
+        );
+        continue;
+      }
+      resources.push(this.makeResource("agent", fallbackName, raw, source));
+    }
+
+    return resources;
   }
 
   protected scanSkillsDir(

@@ -177,7 +177,7 @@ describe("migrateToUnifiedLayers", () => {
       const versionRow = db
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
-      expect(versionRow.version).toBe(16);
+      expect(versionRow.version).toBe(17);
     } finally {
       await context.cleanup();
     }
