@@ -4,7 +4,7 @@ import type { Resource } from "../types.js";
 import { inspectLayerExportFile } from "./exporter.js";
 
 export interface LayerDiffEntry {
-  kind: "resource" | "plugin" | "metadata";
+  kind: "resource" | "plugin_pin" | "metadata";
   key: string;
   left?: string;
   right?: string;
@@ -20,7 +20,7 @@ export interface LayerDiffReport {
 interface LayerView {
   label: string;
   resources: Array<{ key: string; order: number; resource: Resource }>;
-  plugins: Array<{ ref: string; version_constraint: string }>;
+  plugin_pins: Array<{ ref: string; version_constraint: string }>;
   description: string;
   tags: string[];
   claudeJson: string;
@@ -74,7 +74,7 @@ function loadLayerView(nameOrPath: string): LayerView {
     return {
       label: nameOrPath,
       resources,
-      plugins: (bundle.plugins ?? []).map((p) => ({
+      plugin_pins: (bundle.plugin_pins ?? []).map((p) => ({
         ref: p.ref,
         version_constraint: p.version_constraint,
       })),
@@ -100,7 +100,7 @@ function loadLayerView(nameOrPath: string): LayerView {
     order,
     resource,
   }));
-  const plugins = listLayerPlugins(layer.id).map((p) => ({
+  const pluginPins = listLayerPlugins(layer.id).map((p) => ({
     ref: p.ref,
     version_constraint: p.version_constraint,
   }));
@@ -108,7 +108,7 @@ function loadLayerView(nameOrPath: string): LayerView {
   return {
     label: layer.name,
     resources,
-    plugins,
+    plugin_pins: pluginPins,
     description: layer.description,
     tags: layer.tags,
     claudeJson: JSON.stringify(layer.claude ?? null),
@@ -198,18 +198,18 @@ export function diffLayers(leftName: string, rightName: string): LayerDiffReport
     }
   }
 
-  const leftPlugins = new Map(left.plugins.map((p) => [p.ref, p]));
-  const rightPlugins = new Map(right.plugins.map((p) => [p.ref, p]));
+  const leftPluginPins = new Map(left.plugin_pins.map((p) => [p.ref, p]));
+  const rightPluginPins = new Map(right.plugin_pins.map((p) => [p.ref, p]));
 
-  for (const [ref, pin] of leftPlugins) {
-    const other = rightPlugins.get(ref);
+  for (const [ref, pin] of leftPluginPins) {
+    const other = rightPluginPins.get(ref);
     if (!other) {
-      changes.push({ kind: "plugin", key: ref, change: "removed" });
+      changes.push({ kind: "plugin_pin", key: ref, change: "removed" });
       continue;
     }
     if (pin.version_constraint !== other.version_constraint) {
       changes.push({
-        kind: "plugin",
+        kind: "plugin_pin",
         key: ref,
         left: pin.version_constraint,
         right: other.version_constraint,
@@ -218,9 +218,9 @@ export function diffLayers(leftName: string, rightName: string): LayerDiffReport
     }
   }
 
-  for (const [ref] of rightPlugins) {
-    if (!leftPlugins.has(ref)) {
-      changes.push({ kind: "plugin", key: ref, change: "added" });
+  for (const [ref] of rightPluginPins) {
+    if (!leftPluginPins.has(ref)) {
+      changes.push({ kind: "plugin_pin", key: ref, change: "added" });
     }
   }
 

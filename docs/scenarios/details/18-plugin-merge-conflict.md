@@ -13,7 +13,7 @@ Typical commands:
 ```bash
 harnessdeck project scan . --harness claude-code --dry-run
 harnessdeck project scan . --harness claude-code
-harnessdeck resource list --type plugin
+harnessdeck resource list --type plugin_pin_pin
 harnessdeck resource show formatter@team-marketplace --all-fields
 harnessdeck layer show my-setup
 ```

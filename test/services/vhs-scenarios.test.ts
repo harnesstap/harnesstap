@@ -196,7 +196,7 @@ describe("VHS scenario manifest", () => {
     expect(readme).toContain("hd layer doctor");
     expect(readme).toContain("hd layer combine my-setup research-helper --type skill");
     expect(readme).toContain(
-      "hd layer combine my-setup plugin:formatter@my-marketplace --version",
+      "hd layer combine my-setup plugin_pin:formatter@my-marketplace --version",
     );
     expect(readme).not.toContain("hd platform list");
     expect(readme).not.toContain("hd layer validate");

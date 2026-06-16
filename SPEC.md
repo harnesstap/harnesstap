@@ -14,7 +14,7 @@ The product currently supports these main workflows:
 - Scan an existing repository (or plugin source) and import agent configuration into a local database.
 - Group imported resources into versioned **local layers** (`name` + `version` only).
 - Diff, doctor, export, import, publish, search, install, or derive layers from a project scan.
-- Compose layers by attaching material resources, `plugin` references, and nested `layer` references through one attachment model.
+- Compose layers by attaching context-side material resources, **`plugin_pin`** references (host marketplace/local plugins), and nested **`layer`** references through one attachment model.
 - Apply one or more layers, a local bundle file, or a layer export URL to a project.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
@@ -35,7 +35,7 @@ flowchart TB
 
   subgraph Local["local workspace"]
     LL[local layer]
-    Res[plugin-side resources]
+    Res[context-side resources]
     LL --> Res
   end
 
@@ -52,10 +52,12 @@ flowchart TB
 
 The CLI uses a small set of concepts consistently across commands.
 
-- `resource`: a single canonical item of kind `plugin` (what) or `environment` (how).
-   - Plugin-side types: instruction, skill, rule, MCP server, hook, agent, command.
+- `resource`: a single canonical item on the **context-side** (what the model sees) or **environment-side** (how it runs).
+   - Context-side material types: instruction, skill, rule, MCP server, hook, agent, command.
    - Environment-side types: env var, model config, permission, secret references.
-- `layer`: a versioned, composable capability — an ordered bundle of plugin-side resources, composition attachments (`plugin` and `layer` resource refs), optional Claude marketplace/plugin config, a `needs` config contract satisfied by environment resources, and an optional default **environment**. Layers are what `project apply` targets. See [Layer identity & scope](#layer-identity--scope).
+- `layer`: a versioned **context package** — material resources plus optional **`plugin_pin`** and **`layer`** composition refs, optional Claude host-plugin config, a `needs` contract satisfied by environment resources, and an optional default **environment**. Layers are what `project apply` targets. See [Layer identity & scope](#layer-identity--scope).
+- `host plugin`: an installable bundle in the host harness world (Claude/Cursor/Codex marketplace plugin): manifest + tree. Not a HarnessDeck storage row; materialized as namespaced resources after `resource sync` on a **plugin pin**.
+- `plugin_pin`: a layer dependency on a host plugin (`plugin_pin:ref@marketplace`), with version constraint and sync metadata. Stored as `type=plugin_pin` in SQLite.
 - `environment`: a named, swappable bundle of environment-side resources. Non-secret values can travel in a deck; secrets are referenced, not embedded.
 - `organization`: a Cloud tenant boundary (members, roles, billing). Required to publish layers for multiplayer use.
 - `catalog`: a named collection of layers within an organization — the browse, search, and install scope in Cloud and the CLI. Required alongside an organization when publishing; omitted for purely local layers.
@@ -97,15 +99,18 @@ Examples:
 
 ### Naming map (homonyms)
 
-The words **plugin** and **layer** each appear in more than one role. Use this table to disambiguate.
+Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.md).
 
-| Concept | CLI | Storage (SQLite v15) |
+| Term | Meaning | CLI / storage |
 | --- | --- | --- |
-| **Layer** (versioned capability: resources + refs + optional default environment) | `hd layer …`, `project apply <layer>` | `layers` + `layer_resources` |
-| **`plugin` resource** (marketplace/local reference attached to a layer) | `layer combine plugin:ref` or `--type plugin` | `resources` (`type=plugin`) + layer combinement rows |
-| **`layer` resource** (composition ref to another layer) | `layer combine layer:name` or `--type layer` | `resources` (`type=layer`) + layer combinement rows |
-| **Catalog** (org-scoped layer collection) | `layer catalog …`, `layer search`, `layer pull` | Cloud catalog APIs; `catalog` in `config.jsonc` |
-| **Deck** | `.harnessdeck/deck.toml`, deck doctor | `decks`, `deck_layers` |
+| **Layer** | Versioned context package (material resources + deps + optional default environment) | `hd layer …`, `project apply <layer>` · `layers` + `layer_resources` |
+| **Host plugin** | Claude/Cursor/Codex installable bundle (manifest + tree) | Host commands (`claude plugin install`, …) — not a HarnessDeck row |
+| **`plugin_pin`** | Dependency on a host plugin attached to a layer | `layer combine plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
+| **`layer` ref** | Dependency on another HarnessDeck layer (catalog/local) | `layer combine layer:name@^1.0` · `resources.type=layer` |
+| **Deck** | Git-transport bundle of layers + environments | `.harnessdeck/deck.toml` · `decks`, `deck_layers` |
+| **Catalog** | Org-scoped published layer collection | `layer search`, `layer pull` · Cloud APIs |
+
+**Package.json analogy:** a **layer** is the package; **context-side resources** are source files; **`plugin_pin`** / **`layer` ref** are dependencies; **`environment`** is runtime config (.env).
 
 Compat shims (`configured-layer.ts`, `listDeckConfiguredLayers`) delegate to `layer-model.ts` / `deck_layers` and are deprecated.
 
@@ -113,13 +118,13 @@ Layer freshness and composition use `resource sync`, `layer doctor`, and `projec
 
 ### Resource classification
 
-| Plugin (*what*) | Environment (*how*) | Composition |
+| Context-side (*what*) | Environment-side (*how*) | Composition |
 | --- | --- | --- |
-| `instruction`, `skill`, `rule`, `mcp_server`, `hook`, `agent`, `command` | `env_var`, `model_config`, `permission` | `plugin`, `layer` |
+| `instruction`, `skill`, `rule`, `mcp_server`, `hook`, `agent`, `command` | `env_var`, `model_config`, `permission` | `plugin_pin`, `layer` |
 
 An `mcp_server` **definition** lives on the layer; tokens and URLs are contract keys (`needs`) filled by an environment.
 
-`layer` composition resources are hidden from default `resource list`; `plugin` resources are listed.
+`layer` composition resources are hidden from default `resource list`; `plugin_pin` resources are listed.
 
 ### Environment values
 
@@ -148,7 +153,7 @@ Selector grammar:
 selector ::= [ type ":" ] name [ "@" namespace ]
 ```
 
-Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `plugin:posthog@cursor-team-kit`, `layer:backend-oncall`, `01J…` (ULID id).
+Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `plugin_pin:posthog@cursor-team-kit`, `layer:backend-oncall`, `01J…` (ULID id).
 
 - **Display** commands (`resource show`, `resource delete`): bare names prefer the unnamespaced row when present; otherwise list ambiguous matches.
 - **Compose** commands (`layer combine`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
@@ -162,17 +167,17 @@ A layer is an ordered list of attachments:
 | Attachment | `resource list` | Attach example | Refresh |
 | --- | --- | --- | --- |
 | Material (`skill`, …) | yes | `layer combine L skill:foo@ns` | via `resource sync` when `origin_kind=marketplace_link` |
-| `plugin` | yes | `layer combine L plugin:posthog@cursor-team-kit` | `resource sync plugin:posthog@cursor-team-kit` |
+| `plugin_pin` | yes | `layer combine L plugin_pin:posthog@cursor-team-kit` | `resource sync plugin_pin:posthog@cursor-team-kit` |
 | `layer` | no | `layer combine L layer:backend-oncall@^1.0` | resolves to another local or published layer version |
 
 Nested `layer` refs expand depth-first with cycle detection at apply time.
 
-**Lazy plugin attach:** `layer combine plugin:…` links only. Sync is explicit via `resource sync`, `layer combine --sync`, or `project apply --sync-plugins`.
+**Lazy plugin pin attach:** `layer combine plugin_pin:…` links only. Sync is explicit via `resource sync`, `layer combine --sync`, or `project apply --sync-plugins`.
 
-**Plugin resource metadata** (harness-agnostic):
+**Plugin pin metadata** (harness-agnostic):
 
 ```ts
-interface PluginResourceMetadata {
+interface PluginPinMetadata {
   source_kind: "marketplace" | "local" | "git";
   marketplace_name?: string;
   version_constraint?: string;   // absent = floating latest
@@ -268,7 +273,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer create` | Creates a local layer with optional description, tags, and version. |
 | `layer list` | Lists layers (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
 | `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
-| `layer combine` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
+| `layer combine` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer uncombine` | Removes a typed attachment. |
 | `layer delete` | Deletes a layer by selector. |
 | `layer export` | Writes a portable JSONC layer export (`urn:harnessdeck:layer:v1`). |
@@ -311,7 +316,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `resource list` | Lists canonical resources; shows `name@namespace` when namespace is non-empty. Hides `type=layer` composition refs by default; use `--all` to disable per-type caps. |
 | `resource show` | Prints the full stored resource (supports selector grammar). |
-| `resource sync` | Refreshes `plugin` resources and `marketplace_link` children from install roots. Supports `--on-conflict`, `--prune`, `--force`, `--dry-run`. |
+| `resource sync` | Refreshes `plugin_pin` resources and `marketplace_link` children from install roots. Supports `--on-conflict`, `--prune`, `--force`, `--dry-run`. |
 | `resource delete` | Deletes a resource by selector or ID. |
 
 ### `project` subcommands
@@ -481,7 +486,7 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 - `environments`, `environment_resources`, `environment_secret_refs` — named how-value bundles.
 - `decks`, `deck_layers` — deck metadata and layer membership.
 - `projects`, `project_layers` — tracked directories and applied layers.
-- `resources` — canonical configuration items (including `plugin` and `layer` composition resource types).
+- `resources` — canonical configuration items (including `plugin_pin` and `layer` composition resource types).
 - `harness_preferences`, `project_harnesses`, `snapshots`, `schema_version`.
 
 ### Project tracking
@@ -498,7 +503,7 @@ Snapshots are created during `project apply` and `project mirror` when the targe
 
 ### Resource types
 
-`instruction`, `skill`, `rule`, `mcp_server`, `permission`, `hook`, `agent`, `command`, `env_var`, `model_config`, `plugin`, `layer`.
+`instruction`, `skill`, `rule`, `mcp_server`, `permission`, `hook`, `agent`, `command`, `env_var`, `model_config`, `plugin_pin`, `layer`.
 
 Metadata varies by type. See [Unified composition model](#unified-composition-model).
 
@@ -528,8 +533,8 @@ A **layer** is the primary composable unit.
 
 **Body:**
 
-- Ordered plugin-side **resources** (instructions, skills, rules, MCP servers, hooks, agents, commands).
-- Composition attachments: `plugin` resource refs (marketplace/local) and `layer` resource refs (other layers, local or published).
+- Ordered context-side **resources** (instructions, skills, rules, MCP servers, hooks, agents, commands).
+- Composition attachments: **`plugin_pin`** refs (host marketplace/local) and **`layer`** refs (other layers, local or published).
 - Optional Claude marketplace/plugin config and `needs[]` contract keys.
 - Optional `default_environment_id` for environment cascade on apply.
 
@@ -621,7 +626,7 @@ If no `--harness` list is passed, platforms are detected from the target directo
 
 ### `resource sync`
 
-For `type=plugin` resources:
+For `type=plugin_pin` resources:
 
 1. Resolve marketplace or local install path.
 2. Fetch or re-scan via `plugin-source-import`.
@@ -639,7 +644,7 @@ See [TOML transport design](docs/superpowers/specs/2026-06-14-toml-transport-des
 
 ### Layer v1
 
-`urn:harnessdeck:layer:v1` in `*.harnessdeck.toml`. Each file contains one or more `[[layers]]` rows with nested `[[layers.resources]]`, optional `[[layers.plugins]]`, optional root `embedded_plugins`, and optional `claude` configuration. Multiline resource and plugin file bodies use TOML `"""` strings.
+`urn:harnessdeck:layer:v1` in `*.harnessdeck.toml`. Each file contains one or more `[[layers]]` rows with nested `[[layers.resources]]`, optional `plugin_pins` (or `[[layers.plugin_pins]]` tables), optional root `embedded_plugins`, and optional `claude` configuration. Multiline resource and host-plugin file bodies use TOML `"""` strings.
 
 Default export path: `<name>.harnessdeck.toml`.
 

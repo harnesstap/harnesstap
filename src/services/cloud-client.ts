@@ -68,15 +68,15 @@ function exportLayerExportToCloudPayload(layerExportToml: string): { layers: Arr
   const parsed = parseLayerExportToml(layerExportToml);
   return {
     layers: parsed.layers.map((layer) => {
-      const pluginPins = layer.plugins.map((plugin) => {
-        const ref = plugin.ref;
+      const pluginPins = layer.plugin_pins.map((pluginPin) => {
+        const ref = pluginPin.ref;
         const at = ref.lastIndexOf("@");
         const id = at >= 0 ? ref.slice(0, at) : ref;
         const author = at >= 0 ? ref.slice(at + 1) : "";
         return {
           id,
           author,
-          version: plugin.version_constraint,
+          version: pluginPin.version_constraint,
         };
       });
       return {

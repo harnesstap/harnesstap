@@ -8,7 +8,7 @@ version = 1
 [[layers]]
 description = "Demo API service with SQLAlchemy, Pydantic v2, and pytest"
 name = "demo-api"
-plugins = []
+plugin_pins = []
 tags = [ "python", "fastapi", "sqlalchemy", "pydantic" ]
 
 [[layers.resources]]

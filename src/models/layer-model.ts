@@ -169,7 +169,7 @@ export function mergeLayersById(layerIds: string[]): MergedLayerContent {
     layers.push(layer);
 
     for (const resource of getLayerResources(layer.id)) {
-      if (resource.type === "plugin" || resource.type === "layer") {
+      if (resource.type === "plugin_pin" || resource.type === "layer") {
         continue;
       }
       const key = resourceKey(resource);
@@ -238,7 +238,7 @@ function copyLayerCompositionFromSources(
       .all(sourceLayerId) as Array<{ id: string; type: string; name: string }>;
 
     for (const row of rows) {
-      if (row.type !== "plugin" && row.type !== "layer") continue;
+      if (row.type !== "plugin_pin" && row.type !== "layer") continue;
       const key = `${row.type}:${row.id}`;
       if (seenComposition.has(key)) continue;
       seenComposition.add(key);

@@ -365,7 +365,7 @@ describe("CLI apply", () => {
       ]);
 
       expect(applyResult.stderr).not.toContain("has no resolved version");
-      expect(applyResult.stderr).not.toContain("Plugin version mismatch:");
+      expect(applyResult.stderr).not.toContain("Plugin pin version mismatch:");
       expect(applyResult.exitCode ?? 0).toBe(0);
     } finally {
       await context.cleanup();
@@ -406,7 +406,7 @@ describe("CLI apply", () => {
         "claude-code",
       ]);
 
-      expect(applyResult.stderr).toContain("Plugin version mismatch:");
+      expect(applyResult.stderr).toContain("Plugin pin version mismatch:");
       expect(applyResult.stderr).toContain("formatter@acme-marketplace");
       expect(applyResult.stderr).toContain("1.9.0");
       expect(applyResult.exitCode ?? 0).toBe(0);
@@ -451,7 +451,7 @@ describe("CLI apply", () => {
       ]);
 
       expect(applyResult.exitCode).toBe(2);
-      expect(applyResult.stderr).toContain("Plugin version mismatch:");
+      expect(applyResult.stderr).toContain("Plugin pin version mismatch:");
       // Files must NOT have been written — strict mode aborts before any write.
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
     } finally {
@@ -493,7 +493,7 @@ describe("CLI apply", () => {
         "--ignore-plugin-versions",
       ]);
 
-      expect(applyResult.stderr).not.toContain("Plugin version mismatch:");
+      expect(applyResult.stderr).not.toContain("Plugin pin version mismatch:");
       expect(applyResult.exitCode ?? 0).toBe(0);
     } finally {
       await context.cleanup();
@@ -694,7 +694,7 @@ describe("CLI apply", () => {
       ]);
 
       expect(applyResult.exitCode).toBe(2);
-      expect(applyResult.stderr).toContain("Plugin version mismatch:");
+      expect(applyResult.stderr).toContain("Plugin pin version mismatch:");
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
     } finally {
       await context.cleanup();
