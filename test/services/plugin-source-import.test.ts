@@ -4,6 +4,7 @@ import { scanPluginSource } from "../../src/services/plugin-source-import.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const fixtureRoot = join(import.meta.dirname, "../fixtures/plugin-import");
+const superpowersFixture = join(import.meta.dirname, "../fixtures/superpowers/minimal");
 
 describe("plugin-source-import service", () => {
   it("scans a cursor plugin root into canonical resources", async () => {
@@ -103,6 +104,14 @@ describe("plugin-source-import service", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]?.metadata.source_plugin_kind).toBe("copilot-plugin");
     expect(entries[0]?.resources.some((r) => r.type === "skill")).toBe(true);
+  });
+
+  it("imports hooks from all plugin manifests at repo root", async () => {
+    const entries = await scanPluginSource(superpowersFixture);
+    const hooks = entries.flatMap((e) => e.resources).filter((r) => r.type === "hook");
+    const sources = hooks.map((h) => h.source);
+    expect(sources).toContain("hooks/hooks-cursor.json");
+    expect(sources).toContain("hooks/hooks.json");
   });
 
   it("imports TOML commands and JSON hooks from plugin manifest pointers", async () => {
