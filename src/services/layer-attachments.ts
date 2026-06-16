@@ -30,7 +30,7 @@ export class LayerAttachmentHintError extends Error {
 
 export const LAYER_ATTACHMENT_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
-  "plugin",
+  "plugin_pin",
   "layer",
 ] as const;
 
@@ -42,7 +42,7 @@ export function attachmentTypeRequiredHints(
   return [
     `hd layer combine ${exampleLayer} ${selector} --type skill`,
     `Valid types: ${LAYER_ATTACHMENT_TYPES.join(", ")}`,
-    "Or use a typed selector: skill:name, plugin:ref@marketplace, layer:dep",
+    "Or use a typed selector: skill:name, plugin_pin:ref@marketplace, layer:dep",
   ];
 }
 
@@ -121,8 +121,8 @@ function normalizeAttachmentSelector(selector: string, explicitType?: string): s
     return selector.replace(/^layer-dependency:/, "layer:");
   }
   const type = normalizeLegacyType(explicitType);
-  if (type === "plugin") {
-    return `plugin:${selector}`;
+  if (type === "plugin_pin") {
+    return `plugin_pin:${selector}`;
   }
   if (type === "layer") {
     return `layer:${selector}`;
@@ -146,7 +146,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
     layerName: input.layer.name,
   });
 
-  if (attachmentType === "plugin") {
+  if (attachmentType === "plugin_pin") {
     if (input.version) {
       parseVersionConstraint(input.version);
     }
@@ -163,12 +163,12 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
       await syncPluginResource(resource, { policy: "overwrite" });
     }
     const versionLabel = input.version ? ` (${input.version})` : "";
-    return `Attached plugin ${ref}${versionLabel} to layer ${input.layer.name}`;
+    return `Attached plugin pin ${ref}${versionLabel} to layer ${input.layer.name}`;
   }
 
   if (attachmentType === "layer") {
     if (input.embed) {
-      throw new Error("--embed is only supported for plugin attachments");
+      throw new Error("--embed is only supported for plugin_pin attachments");
     }
     if (input.version) {
       parseVersionConstraint(input.version);
@@ -182,13 +182,13 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
   }
 
   if (input.version) {
-    throw new Error("--version is only supported for plugin and layer attachments");
+    throw new Error("--version is only supported for plugin_pin and layer attachments");
   }
   if (input.embed) {
-    throw new Error("--embed is only supported for plugin attachments");
+    throw new Error("--embed is only supported for plugin_pin attachments");
   }
   if (input.sync) {
-    throw new Error("--sync is only supported for plugin attachments");
+    throw new Error("--sync is only supported for plugin_pin attachments");
   }
 
   const resource = resolveTypedResource(selector, attachmentType);
@@ -206,7 +206,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     layerName: input.layer.name,
   });
 
-  if (attachmentType === "plugin") {
+  if (attachmentType === "plugin_pin") {
     const parsed = parseResourceSelector(selector);
     const ref = parsed.namespace ? `${parsed.name}@${parsed.namespace}` : parsed.name;
     const pin = listAttachedPluginPins(input.layer.id).find((entry) => entry.ref === ref);
@@ -217,7 +217,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     syncClaudeLayerPluginsAfterRemove(input.layer, pin.ref);
     return {
       removed: true,
-      message: `Removed plugin ${pin.ref} from layer ${input.layer.name}`,
+      message: `Removed plugin pin ${pin.ref} from layer ${input.layer.name}`,
     };
   }
 

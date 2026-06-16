@@ -6,9 +6,9 @@ For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins,
 
 ## Resource types
 
-HarnessDeck separates **what** (layer/plugin resources) from **how** (environment resources).
+HarnessDeck separates **context-side** resources (what the model sees) from **environment-side** resources (how it runs).
 
-### Layer and plugin resources
+### Context-side material resources
 
 These are the atomic resources you scan, curate, attach to layers, and re-emit during `layer apply` / `project apply`:
 
@@ -23,11 +23,11 @@ These are the atomic resources you scan, curate, attach to layers, and re-emit d
 | **agents** | Agent manifest files under harness `agents/` directories |
 | **commands** | Static command definitions (markdown, TOML, or manifest pointers) |
 
-**Plugin composition** adds two attachment kinds on top of material resources:
+**Layer composition** adds two attachment kinds on top of material resources:
 
 | Attachment | Role |
 | ---------- | ---- |
-| **plugin** | Lazy link to a marketplace or local plugin (`plugin:name@marketplace`); materializes after `resource sync` or `layer apply --sync-plugins` |
+| **plugin_pin** | Lazy link to a host marketplace or local plugin (`plugin_pin:name@marketplace`); materializes after `resource sync` or `layer apply --sync-plugins` |
 | **layer** | Nested layer reference expanded depth-first at apply time |
 
 ### Environment resources

@@ -14,7 +14,7 @@ import {
 } from "./layer-attachments.js";
 import type {
   LayerResourceMetadata,
-  PluginResourceMetadata,
+  PluginPinMetadata,
   Resource,
   ResourceType,
 } from "../types.js";
@@ -72,7 +72,7 @@ export function findPluginResourceByPin(
 ): Resource | undefined {
   const identity = parsePluginRef(ref);
   const withConstraint = findResourceByKey(
-    "plugin",
+    "plugin_pin",
     identity.name,
     pluginResourceNamespace(identity, versionConstraint),
   );
@@ -80,7 +80,7 @@ export function findPluginResourceByPin(
     return withConstraint;
   }
   if (!versionConstraint) {
-    return findResourceByKey("plugin", identity.name, identity.namespace);
+    return findResourceByKey("plugin_pin", identity.name, identity.namespace);
   }
   return undefined;
 }
@@ -112,7 +112,7 @@ function pluginMetadataFromRef(
     versionConstraint?: string;
     portable?: "reference" | "embed";
   },
-): PluginResourceMetadata {
+): PluginPinMetadata {
   const parsed = parsePluginRef(ref);
   const isLocal = parsed.namespace === "" && parsed.origin_ref.startsWith(".");
   return {
@@ -132,19 +132,19 @@ export function ensurePluginResource(
   },
 ): Resource {
   const parsed = parseResourceSelector(selector);
-  const type = parsed.type ?? "plugin";
-  if (type !== "plugin") {
-    throw new Error(`Expected plugin selector, got type: ${type}`);
+  const type = parsed.type ?? "plugin_pin";
+  if (type !== "plugin_pin") {
+    throw new Error(`Expected plugin_pin selector, got type: ${type}`);
   }
 
   const ref = parsed.namespace ? `${parsed.name}@${parsed.namespace}` : parsed.name;
   const identity = parsePluginRef(ref);
   const namespace = pluginResourceNamespace(identity, opts?.versionConstraint);
-  const existing = findResourceByKey("plugin", identity.name, namespace);
+  const existing = findResourceByKey("plugin_pin", identity.name, namespace);
   if (existing) {
     if (opts?.versionConstraint) {
       const metadata = {
-        ...(existing.metadata as PluginResourceMetadata),
+        ...(existing.metadata as PluginPinMetadata),
         version_constraint: opts.versionConstraint,
       };
       if (opts.portable) {
@@ -165,13 +165,13 @@ export function ensurePluginResource(
 
   const result = upsertResource(
     normalizeResourceInput({
-      type: "plugin",
+      type: "plugin_pin",
       name: identity.name,
       namespace,
-      description: `Plugin reference: ${ref}`,
+      description: `Plugin pin: ${ref}`,
       content: "{}",
       metadata,
-      source: "composition:plugin",
+      source: "composition:plugin_pin",
       origin_kind: identity.namespace ? "marketplace_link" : "manual",
       origin_ref: identity.origin_ref,
     }),
@@ -236,9 +236,9 @@ export function ensureLayerResource(
 
 export function listAttachedPluginPins(pluginId: string): PluginPinView[] {
   return getPluginResources(pluginId)
-    .filter((resource) => resource.type === "plugin")
+    .filter((resource) => resource.type === "plugin_pin")
     .map((resource) => {
-      const metadata = resource.metadata as PluginResourceMetadata;
+      const metadata = resource.metadata as PluginPinMetadata;
       const ref = formatPluginRef(resource);
       return {
         ref,
@@ -309,7 +309,7 @@ export function migrationUpsertPluginResource(input: {
     input.version_constraint === "latest" || input.version_constraint === "*"
       ? undefined
       : input.version_constraint;
-  return ensurePluginResource(`plugin:${input.ref}`, {
+  return ensurePluginResource(`plugin_pin:${input.ref}`, {
     versionConstraint: constraint,
     portable,
   });

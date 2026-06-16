@@ -3,7 +3,7 @@ import { migrateToUnifiedLayers } from "./migrate-to-unified-layers.js";
 import { hashResourceBody } from "../services/resource-hash.js";
 import type { ResourceMetadata, ResourceType } from "../types.js";
 
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 const LEGACY_LOCAL_ID_PREFIX = "legacy-local:";
 
 const MIGRATIONS: Record<number, string> = {
@@ -397,6 +397,64 @@ function applyMigration17(db: SqliteDatabase): void {
   `);
 }
 
+/** Migration 18: rename composition resource type plugin → plugin_pin. */
+function applyMigration18(db: SqliteDatabase): void {
+  const hasResources = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'resources'")
+    .get();
+  if (!hasResources) return;
+
+  const tableSql = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'resources'")
+    .get() as { sql: string } | undefined;
+  if (tableSql?.sql?.includes("'plugin_pin'")) return;
+
+  db.exec(`
+    CREATE TABLE resources_new (
+      id          TEXT PRIMARY KEY,
+      type        TEXT NOT NULL CHECK(type IN (
+        'instruction','skill','rule','mcp_server','permission',
+        'hook','agent','command','env_var','model_config',
+        'plugin_pin','layer'
+      )),
+      name        TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      content     TEXT NOT NULL DEFAULT '',
+      metadata    TEXT NOT NULL DEFAULT '{}',
+      source      TEXT NOT NULL DEFAULT 'manual',
+      namespace   TEXT NOT NULL DEFAULT '',
+      origin_kind TEXT NOT NULL DEFAULT 'manual'
+        CHECK(origin_kind IN ('local_snapshot','marketplace_link','manual')),
+      origin_ref  TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '',
+      content_blob_ref TEXT NOT NULL DEFAULT '',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    );
+
+    INSERT INTO resources_new (
+      id, type, name, description, content, metadata, source,
+      namespace, origin_kind, origin_ref, content_hash, content_blob_ref,
+      created_at, updated_at
+    )
+    SELECT
+      id,
+      CASE WHEN type = 'plugin' THEN 'plugin_pin' ELSE type END,
+      name, description, content, metadata, source,
+      namespace, origin_kind, origin_ref, content_hash, content_blob_ref,
+      created_at, updated_at
+    FROM resources;
+
+    DROP TABLE resources;
+    ALTER TABLE resources_new RENAME TO resources;
+
+    CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
+    CREATE INDEX IF NOT EXISTS idx_resources_name ON resources(name);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_type_name_namespace
+      ON resources(type, name, namespace);
+  `);
+}
+
 function ensurePluginsTableRenamed(db: SqliteDatabase): void {
   const hasPlugins = db
     .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'plugins'")
@@ -635,7 +693,7 @@ function migrationLayerMetadata(versionConstraint: string): string {
 function ensureCompositionResourceOnMigration(
   db: SqliteDatabase,
   input: {
-    type: "plugin" | "layer";
+    type: "plugin" | "plugin_pin" | "layer";
     name: string;
     namespace: string;
     origin_ref: string;
@@ -653,8 +711,10 @@ function ensureCompositionResourceOnMigration(
   }
 
   const id = `migrate:${input.type}:${input.name}:${input.namespace}`;
+  const resourceType: ResourceType =
+    input.type === "plugin" ? "plugin_pin" : input.type;
   const contentHash = hashResourceBody({
-    type: input.type,
+    type: resourceType,
     content: "{}",
     metadata: JSON.parse(input.metadata) as ResourceMetadata,
   });
@@ -669,14 +729,16 @@ function ensureCompositionResourceOnMigration(
     id,
     input.type,
     input.name,
-    input.type === "plugin"
-      ? `Plugin reference: ${input.origin_ref}`
+    input.type === "plugin" || input.type === "plugin_pin"
+      ? `Plugin pin: ${input.origin_ref}`
       : `Layer reference: ${input.name}`,
     "{}",
     input.metadata,
     `migration:${input.type}`,
     input.namespace,
-    input.type === "plugin" && input.namespace ? "marketplace_link" : "manual",
+    (input.type === "plugin" || input.type === "plugin_pin") && input.namespace
+      ? "marketplace_link"
+      : "manual",
     input.origin_ref,
     contentHash,
     "",
@@ -1006,6 +1068,10 @@ export function initializeSchema(db: SqliteDatabase): void {
         }
         if (v === 17) {
           applyMigration17(db);
+          continue;
+        }
+        if (v === 18) {
+          applyMigration18(db);
           continue;
         }
         const migration = MIGRATIONS[v];

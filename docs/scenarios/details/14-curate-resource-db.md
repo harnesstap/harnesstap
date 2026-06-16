@@ -12,7 +12,7 @@ Typical commands:
 ```bash
 harnessdeck resource list --type skill
 harnessdeck resource list --type instruction --search legacy
-harnessdeck resource list --type plugin
+harnessdeck resource list --type plugin_pin_pin
 harnessdeck resource show skill:legacy-helper
 harnessdeck resource delete legacy-helper
 harnessdeck layer delete <stale-layer-name>
