@@ -54,7 +54,8 @@ describe("addSkillPackage integration", () => {
       const { getPlugin, getPluginResources } = await import("../../src/models/plugin-component.ts");
       const layer = getPlugin("mattpocock-skills");
       expect(layer).toBeDefined();
-      const attached = getPluginResources(layer!.id);
+      if (!layer) throw new Error("Expected mattpocock-skills layer");
+      const attached = getPluginResources(layer.id);
       expect(attached.some((r) => r.type === "skill" && r.name === "caveman")).toBe(true);
     } finally {
       await context.cleanup();

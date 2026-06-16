@@ -202,7 +202,7 @@ export async function addSkillPackage(
   if (layerName) {
     const targetLayer = options.createLayer
       ? createPlugin({ name: options.createLayer })
-      : getPlugin(options.layer!);
+      : getPlugin(layerName);
     if (!targetLayer) {
       throw new Error(`Layer not found: ${options.layer}`);
     }

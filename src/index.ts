@@ -9,8 +9,8 @@ import {
   projectNameFromUrl,
 } from "./services/git.js";
 import {
-  scanProject,
-  persistScanResults,
+  type scanProject,
+  type persistScanResults,
   applyScanConflicts,
   detectPlatforms,
   isPluginSourcePath,

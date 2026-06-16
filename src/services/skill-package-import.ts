@@ -68,7 +68,6 @@ function listRelativeFiles(dirPath: string): string[] {
         files.push(entry);
       }
     } catch {
-      continue;
     }
   }
   return files.sort();
@@ -77,7 +76,12 @@ function listRelativeFiles(dirPath: string): string[] {
 function buildCategoriesMap(skills: DiscoveredSkill[]): Record<string, string[]> {
   const categories: Record<string, string[]> = {};
   for (const skill of skills) {
-    (categories[skill.category] ??= []).push(skill.name);
+    let bucket = categories[skill.category];
+    if (!bucket) {
+      bucket = [];
+      categories[skill.category] = bucket;
+    }
+    bucket.push(skill.name);
   }
   for (const names of Object.values(categories)) {
     names.sort((a, b) => a.localeCompare(b));

@@ -44,7 +44,7 @@ export function resolveDeckLayerSelectors(deckSelector: string): string[] {
   if (links.length === 0) {
     throw new DeckResolveError(
       `Deck has no layers: ${deck.name}`,
-      ["hd deck show " + deck.name, "hd deck import <path>"],
+      [`hd deck show ${deck.name}`, "hd deck import <path>"],
     );
   }
 
@@ -54,7 +54,7 @@ export function resolveDeckLayerSelectors(deckSelector: string): string[] {
     if (!layer) {
       throw new DeckResolveError(
         `Layer not found for deck ${deck.name}: ${link.layer_id}`,
-        ["hd deck show " + deck.name, "hd layer list"],
+        [`hd deck show ${deck.name}`, "hd layer list"],
       );
     }
     selectors.push(layerToApplySelector(layer));
