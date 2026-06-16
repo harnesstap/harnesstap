@@ -1,5 +1,5 @@
 import { cpSync, existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { DiscoveredSkill } from "./skill-discovery.js";
 
@@ -30,7 +30,7 @@ function ensureSymlink(linkPath: string, targetPath: string): void {
   if (existsSync(linkPath)) {
     rmSync(linkPath, { recursive: true, force: true });
   }
-  symlinkSync(relative(dirname(linkPath), targetPath), linkPath);
+  symlinkSync(resolve(targetPath), linkPath);
 }
 
 function installSkillAtPath(
