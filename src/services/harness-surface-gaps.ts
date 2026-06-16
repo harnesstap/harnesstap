@@ -32,6 +32,15 @@ function readJson(filePath: string): Record<string, unknown> | undefined {
   }
 }
 
+function isOpencodeServerPluginFile(file: string): boolean {
+  return file.endsWith(".mjs") || file.endsWith(".js");
+}
+
+function isOpencodePluginConfigEntry(entry: string): boolean {
+  if (isOpencodeServerPluginFile(entry)) return true;
+  return entry.includes("@") || entry.includes("git+") || entry.startsWith(".");
+}
+
 /**
  * Harness-specific surfaces that may exist on disk but are not emitted to every
  * alias harness when mirroring canonical resources.
@@ -41,7 +50,7 @@ export function detectHarnessSurfaces(projectRoot: string): HarnessSurface[] {
 
   const opencodePluginsDir = join(projectRoot, ".opencode", "plugins");
   for (const file of listFiles(opencodePluginsDir)) {
-    if (!file.endsWith(".mjs")) continue;
+    if (!isOpencodeServerPluginFile(file)) continue;
     surfaces.push({
       harness: "opencode",
       path: `.opencode/plugins/${file}`,
@@ -55,7 +64,9 @@ export function detectHarnessSurfaces(projectRoot: string): HarnessSurface[] {
   const pluginEntries = opencodeConfig?.["plugin"];
   if (Array.isArray(pluginEntries)) {
     for (const entry of pluginEntries) {
-      if (typeof entry !== "string" || !entry.endsWith(".mjs")) continue;
+      if (typeof entry !== "string" || !isOpencodePluginConfigEntry(entry)) {
+        continue;
+      }
       const normalized = entry.replace(/^\.\//, "");
       if (surfaces.some((surface) => surface.path === normalized)) continue;
       surfaces.push({

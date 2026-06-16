@@ -21,4 +21,16 @@ describe("harness-surface-gaps", () => {
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings[0]?.alias_harnesses).toContain("codex");
   });
+
+  it("detects OpenCode .js server plugins", () => {
+    const surfaces = detectHarnessSurfaces(
+      join(import.meta.dirname, "../fixtures/superpowers/minimal"),
+    );
+    expect(
+      surfaces.some(
+        (s) =>
+          s.category === "opencode-server-plugin" && s.path.endsWith(".js"),
+      ),
+    ).toBe(true);
+  });
 });
