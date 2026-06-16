@@ -7,10 +7,10 @@ configuration round-trips faithfully. Some surfaces are runtime-only, host-speci
 or require a plugin install tree — HarnessDeck imports metadata where possible
 but does not claim full fidelity for those cases.
 
-This document summarizes what transfers well, what transfers partially, what
-cannot be auto-bridged, and practical workarounds. It was informed by stress-testing
-against [ponytail](https://github.com/DietrichGebert/ponytail), a multi-harness
-plugin repo that mixes `.claude-plugin/` layouts with per-harness project files.
+This document summarizes what transfers well, what transfers partially, how
+harness-specific surfaces are handled during mirror, and practical workarounds.
+It was informed by stress-testing against multi-harness plugin repos that mix
+`.claude-plugin/` (and similar) layouts with per-harness project files.
 
 ## Fully bridgeable
 
@@ -27,8 +27,8 @@ paths for supported harnesses:
 | **Agents** | Agent manifest files under harness-specific `agents/` directories. |
 
 Plugin-source discovery covers `.cursor-plugin/`, `.claude-plugin/`, `.codex-plugin/`,
-and `.github/plugin/` manifests. Use `project scan --include-plugin-source` to
-merge repo-root plugin trees with harness project files in dual-mode repos.
+and `.github/plugin/` manifests. `project scan` automatically merges repo-root
+plugin trees with harness project files when a recognized manifest is present.
 
 ## Partially bridgeable
 
@@ -54,26 +54,36 @@ Copilot's runtime may require specific naming conventions or a
 `github-copilot` uses `skillEmission: instruction-only` — skills merge into
 `.github/copilot-instructions.md` rather than `.agents/skills/`.
 
-## Not bridgeable
+## Harness-specific surfaces and mirror warnings
 
-HarnessDeck does not materialize or emulate these surfaces:
+HarnessDeck scans as much as possible from every supported layout. When a
+surface is native to one harness and cannot be transposed to the main harness
+or alias harnesses during `project mirror`, HarnessDeck emits a warning per
+surface (human output and `surface_warnings` in JSON).
 
-| Surface | Why |
-| ------- | --- |
-| **OpenCode server plugins** (`.mjs`) | OpenCode loads JavaScript server plugins at runtime; file copy does not register them. |
-| **Pi extensions** (`pi-extension/`) | Pi installs extensions via `pi install git:…`, not project file copy. HarnessDeck can scan `.agents/skills/` but cannot write `pi-extension/index.js`. |
-| **Runtime mode state** | Environment variables such as `PONYTAIL_DEFAULT_MODE` and config under `~/.config/ponytail/` are session/host state, not layer resources. |
-| **Statusline hooks** | Host-specific statusline integrations (terminal chrome, prompt injection) are outside the resource model. |
-| **Gemini → Antigravity command conversion** | Antigravity uses a different command surface; HarnessDeck does not translate Gemini TOML commands into Antigravity equivalents. |
+Examples of surfaces that stay on their native harness:
 
-When `layer apply` or `project mirror` completes without error, absence of these
-artifacts is expected — not a sync failure.
+| Surface | Native harness | Mirror behavior |
+| ------- | -------------- | --------------- |
+| **OpenCode server plugins** (`.mjs`) | OpenCode | Registered in `opencode.json`; not copied to alias harnesses. |
+| **Pi extensions** (`pi-extension/`) | Pi | Installed via Pi CLI; not emitted to other harnesses. |
+| **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
+| **Statusline hooks** | Claude Code (and similar) | Terminal chrome integrations; not part of the shared resource model. |
+| **Runtime mode / session config** | Host-specific | Environment variables and `~/.config/…` state are outside layer resources. |
+
+Warnings look like:
+
+```text
+opencode surface .opencode/plugins/foo.mjs is not mirrored to codex, cursor: OpenCode server plugins must stay registered in opencode.json on OpenCode.
+```
+
+Review mirror output with `--dry-run` before writing alias harness files.
 
 ## Intentional per-host tailoring
 
 Some multi-harness repos hand-tune per-host copies rather than sharing one
-canonical file. Ponytail's `check-rule-copies.js` pattern validates that
-adapter-specific rule files stay in sync with the canonical source.
+canonical file. Consistency scripts (for example validating adapter-specific
+rule files against a canonical source) are a repo maintenance pattern.
 
 HarnessDeck takes a different approach: **merge and canonicalize** resources in
 the local database, then emit per-harness output through serializers. It does
@@ -129,10 +139,10 @@ This re-imports skills, commands, and hooks from install trees under
 ### Dual-mode scan for plugin-only repos
 
 Repos with `AGENTS.md` plus `.claude-plugin/plugin.json` but no `.claude/` tree
-need plugin-source import:
+are scanned automatically — plugin-source resources merge with harness files:
 
 ```bash
-harnessdeck project scan . --include-plugin-source always
+harnessdeck project scan . --dry-run
 harnessdeck layer from-project my-layer --project .
 ```
 

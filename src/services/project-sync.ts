@@ -12,6 +12,11 @@ import { detectPlatforms, hasPluginSourceLayout, scanPlatform } from "./scanner.
 import { scanPluginSource } from "./plugin-source-import.js";
 import { generateFiles, writeFiles } from "./applier.js";
 import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "./git.js";
+import {
+  detectHarnessSurfaces,
+  mirrorSurfaceWarnings,
+  type MirrorSurfaceWarning,
+} from "./harness-surface-gaps.js";
 import type { Resource, ResourceCreateInput, SerializedFile } from "../types.js";
 
 export type ProjectReferenceStrategy = "main" | "plugin" | "agents" | "auto";
@@ -30,6 +35,7 @@ export interface ProjectSyncResult {
   materialization_strategy: "symlink-preferred" | "copy";
   platforms_synced: string[];
   files_written: number;
+  surface_warnings: MirrorSurfaceWarning[];
 }
 
 function resolveSyncHarnesses(
@@ -191,7 +197,7 @@ function emptyReferenceError(
   return new Error(
     `Main harness "${mainHarness}" has no on-disk resources in ${projectRoot}. ` +
       "Try: harnessdeck project mirror --reference plugin " +
-      "or harnessdeck project scan --include-plugin-source always " +
+      "or harnessdeck project scan . " +
       "or harnessdeck harness project set --main codex",
   );
 }
@@ -206,7 +212,7 @@ async function resolveReferenceResources(
     if (pluginResources.length === 0) {
       throw new Error(
         `No plugin-source resources found in ${projectRoot}. ` +
-          "Try: harnessdeck project scan --include-plugin-source always",
+          "Try: harnessdeck project scan .",
       );
     }
     return toSyncResources(pluginResources);
@@ -312,11 +318,17 @@ export async function syncProject(
 
   const allGenerated = [...mainGenerated, ...aliasGenerated];
 
+  const surfaceWarnings = mirrorSurfaceWarnings(
+    detectHarnessSurfaces(projectRoot),
+    aliasPlatforms,
+  );
+
   if (dryRun) {
     return {
       ...harnesses,
       platforms_synced: allGenerated.map((r) => r.platformId),
       files_written: allGenerated.reduce((n, r) => n + r.files.length, 0),
+      surface_warnings: surfaceWarnings,
     };
   }
 
@@ -356,5 +368,6 @@ export async function syncProject(
     ...harnesses,
     platforms_synced: aliasGenerated.map((r) => r.platformId),
     files_written: filesWritten,
+    surface_warnings: surfaceWarnings,
   };
 }

@@ -42,11 +42,12 @@ When mirror fails with an empty main harness, the error suggests:
 
 ```text
 Try: harnessdeck project mirror --reference plugin
-or harnessdeck project scan --include-plugin-source always
+or harnessdeck project scan .
 or harnessdeck harness project set --main codex
 ```
 
 Pair with [Scenario 31](./31-dual-mode-plugin-import.md) to import plugin
 resources into the local database first. See [Scenario 27](./27-project-sync.md)
 for the baseline mirror workflow and [portability limits](../portability-limits.md)
-for surfaces mirror cannot reproduce (runtime plugins, pi extensions, mode state).
+for harness-specific surfaces that emit mirror warnings (runtime plugins, pi
+extensions, Gemini manifests).

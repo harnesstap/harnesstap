@@ -480,34 +480,7 @@ export async function scanAndPersistPluginSource(
   return persistPluginSourceScanResults(imports);
 }
 
-export type IncludePluginSourceMode = "auto" | "always" | "never";
-
-export function shouldIncludePluginSource(
-  mode: IncludePluginSourceMode,
-  projectRoot: string,
-  detectedPlatformCount: number,
-): boolean {
-  if (!hasPluginSourceLayout(projectRoot)) {
-    return false;
-  }
-
-  switch (mode) {
-    case "never":
-      return false;
-    case "always":
-      return true;
-    case "auto":
-      return detectedPlatformCount > 0;
-    default: {
-      const _exhaustive: never = mode;
-      return _exhaustive;
-    }
-  }
-}
-
-export interface PersistMergedProjectScanOptions extends PersistScanOptions {
-  includePluginSource?: IncludePluginSourceMode;
-}
+export interface PersistMergedProjectScanOptions extends PersistScanOptions {}
 
 export interface PersistMergedProjectScanResults {
   harness: PersistedScanResults;
@@ -524,7 +497,6 @@ export async function persistMergedProjectScan(
   platformFilter?: string,
   options?: PersistMergedProjectScanOptions,
 ): Promise<PersistMergedProjectScanResults> {
-  const includeMode = options?.includePluginSource ?? "always";
   const { harness, plugin } = await scanProjectWithPluginSource(
     projectRoot,
     platformFilter,
@@ -536,11 +508,7 @@ export async function persistMergedProjectScan(
   });
 
   const pluginPersisted =
-    shouldIncludePluginSource(
-      includeMode,
-      projectRoot,
-      detectPlatforms(projectRoot).length,
-    ) && plugin.length > 0
+    plugin.length > 0
       ? persistPluginSourceScanResults(plugin)
       : { imports: [], resources: [], snapshots: [] };
 

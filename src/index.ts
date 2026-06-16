@@ -15,12 +15,10 @@ import {
   detectPlatforms,
   detectHomePlatforms,
   isPluginSourcePath,
-  shouldIncludePluginSource,
   scanProjectWithPluginSource,
   persistMergedProjectScan,
   scanAndPersistPluginSource,
   scanAndPersistHomeDefaults,
-  type IncludePluginSourceMode,
 } from "./services/scanner.js";
 import { syncLinkedResources } from "./services/resource-sync.js";
 import type { ImportConflictPolicy } from "./models/resource.js";
@@ -836,22 +834,6 @@ function parseReferenceStrategy(
   }
 }
 
-function parseIncludePluginSourceMode(
-  value: string | undefined,
-): IncludePluginSourceMode {
-  const mode = value ?? "auto";
-  switch (mode) {
-    case "auto":
-    case "always":
-    case "never":
-      return mode;
-    default:
-      throw new Error(
-        `Invalid --include-plugin-source value: ${value}. Expected auto, always, or never.`,
-      );
-  }
-}
-
 function printHarnessScanDryRun(
   results: Awaited<ReturnType<typeof scanProject>>,
 ): void {
@@ -914,14 +896,12 @@ async function handleScanCommand(
     skipExisting?: boolean;
     namespace?: string;
     noInteractive?: boolean;
-    includePluginSource?: string;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const projectRoot = resolve(path);
   const detected = detectPlatforms(projectRoot);
-  const includePluginSource = parseIncludePluginSourceMode(opts.includePluginSource);
   const pluginSourcePath = detected.length === 0 && isPluginSourcePath(projectRoot);
   const scanHarnessFilter = opts.global ? undefined : opts.harness;
 
@@ -1002,9 +982,7 @@ async function handleScanCommand(
       scanHarnessFilter,
     );
     printHarnessScanDryRun(harness);
-    if (
-      shouldIncludePluginSource(includePluginSource, projectRoot, detected.length)
-    ) {
+    if (plugin.length > 0) {
       printPluginScanDryRun(plugin);
     }
     return;
@@ -1016,7 +994,6 @@ async function handleScanCommand(
     conflictPolicy,
     namespace: opts.namespace ?? "",
     originRef: projectRoot,
-    includePluginSource,
   });
   spin.stop();
 
@@ -1046,9 +1023,7 @@ async function handleScanCommand(
     }
   }
 
-  if (
-    shouldIncludePluginSource(includePluginSource, projectRoot, detected.length)
-  ) {
+  if (merged.scan.plugin.length > 0) {
     for (const result of merged.scan.plugin) {
       ui.success(`${result.plugin_name} ${ui.icons.bullet} ${formatCount(result.resources.length, "resource")}`);
       for (const resource of result.resources) {
@@ -3315,6 +3290,16 @@ async function handleLayerFromProjectCommand(
   }
 }
 
+function printMirrorSurfaceWarnings(
+  warnings: Awaited<ReturnType<typeof syncProject>>["surface_warnings"],
+): void {
+  for (const warning of warnings) {
+    ui.warn(
+      `${warning.harness} surface ${warning.path} is not mirrored to ${warning.alias_harnesses.join(", ")}: ${warning.message}`,
+    );
+  }
+}
+
 async function handleProjectSyncCommand(
   path: string,
   opts: {
@@ -3349,6 +3334,7 @@ async function handleProjectSyncCommand(
         spin.succeed(
           `Synced ${r.platforms_synced.join(", ") || "(none)"} from ${r.main_harness} ${ui.icons.bullet} ${formatCount(r.files_written, "file")}`,
         );
+        printMirrorSurfaceWarnings(r.surface_warnings);
         return r;
       }
       return syncProject({
@@ -3362,6 +3348,7 @@ async function handleProjectSyncCommand(
       printJson(result);
       return;
     }
+    printMirrorSurfaceWarnings(result.surface_warnings);
     if (opts.dryRun) {
       const dryTag = ui.theme.muted("[dry run] ");
       const verdict = ui.theme.success(
@@ -4874,11 +4861,6 @@ projectCmd
   .option("--overwrite", "Overwrite library resources when scan content differs")
   .option("--skip-existing", "Keep existing library resources when scan content differs")
   .option("--namespace <name>", "Namespace for imported project resources")
-  .option(
-    "--include-plugin-source <mode>",
-    "Merge plugin-source imports with project scan: auto, always, or never",
-    "auto",
-  )
   .description(
     "Scan a project directory or plugin source and import configurations into the database",
   )

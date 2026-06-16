@@ -98,7 +98,27 @@ describe("syncProject reference strategies", () => {
           forceShiftReference: "claude-code",
           referenceStrategy: "auto",
         }),
-      ).rejects.toThrow(/project scan --include-plugin-source/);
+      ).rejects.toThrow(/harnessdeck project scan/);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports harness-specific surface warnings for alias harnesses", async () => {
+    const context = await createInitializedTestContext("project-sync-warnings");
+    const geminiFixture = join(import.meta.dirname, "../fixtures/ponytail/gemini");
+
+    try {
+      const { syncProject } = await import("../../src/services/project-sync.ts");
+      const result = await syncProject({
+        projectRoot: geminiFixture,
+        dryRun: true,
+        forceShiftReference: "gemini-cli",
+        referenceStrategy: "auto",
+      });
+
+      expect(result.surface_warnings.length).toBeGreaterThan(0);
+      expect(result.surface_warnings[0]?.category).toBe("gemini-extension");
     } finally {
       await context.cleanup();
     }

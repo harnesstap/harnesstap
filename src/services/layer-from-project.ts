@@ -111,7 +111,6 @@ export async function createLayerFromProject(input: {
       conflictPolicy: input.conflictStrategy === "skip" ? "skip" : "overwrite",
       originRef: input.projectRoot,
       namespace,
-      includePluginSource: "always",
     })
   ).resources;
 

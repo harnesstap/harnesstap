@@ -589,7 +589,7 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 **Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
 
-**Dual-mode repos:** when a project has both harness files and a plugin manifest, `project scan --include-plugin-source auto` (default) merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
+**Dual-mode repos:** when a project has both harness files and a plugin manifest, `project scan` automatically merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
 
 When one supported harness already exists in a project, it becomes the default main harness for that project.
 
