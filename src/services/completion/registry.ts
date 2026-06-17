@@ -1,4 +1,8 @@
+import { LAYER_ATTACHMENT_TYPES } from "../layer-composition.js";
 import type { CompletionContext, CompletionProvider } from "./types.js";
+import { completeCatalogConnectValue } from "./providers/catalog-connect-value.js";
+import { completeCatalogLayers } from "./providers/catalog-layer.js";
+import { completeCatalogOrgs } from "./providers/catalog-org.js";
 import { completeCloudProfiles } from "./providers/cloud-profile.js";
 import {
   completeDirectoryPath,
@@ -6,34 +10,67 @@ import {
   completeLayerImportPath,
 } from "./providers/file-path.js";
 import { completeHarnessSlugs } from "./providers/harness-slug.js";
+import { completeLayerAttachment } from "./providers/layer-attachment.js";
 import { completeLocalDecks } from "./providers/local-deck.js";
+import { completeLocalEnvironments } from "./providers/local-environment.js";
 import { completeLocalLayers } from "./providers/local-layer.js";
+import { completeLocalResources } from "./providers/local-resource.js";
+import { completeResourceTypes } from "./providers/resource-type.js";
+import { completeSnapshotIds } from "./providers/snapshot-id.js";
 import { staticEnumProvider } from "./providers/static-enum.js";
 import { flagsMatch } from "./utils.js";
 
 type PositionalRegistry = Record<string, CompletionProvider[]>;
 type FlagRegistry = Record<string, CompletionProvider[]>;
 
+const LOCAL_LAYER_OR_FILE: CompletionProvider[] = [
+  completeLocalLayers,
+  completeFilePath,
+];
+
 const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer show:0": [completeLocalLayers],
   "layer delete:0": [completeLocalLayers],
   "layer export:0": [completeLocalLayers],
+  "layer import:0": [completeLayerImportPath],
   "layer apply:0": [completeLocalLayers],
   "layer combine:0": [completeLocalLayers],
+  "layer combine:1": [completeLayerAttachment],
   "layer uncombine:0": [completeLocalLayers],
-  "layer publish:0": [completeLocalLayers],
+  "layer uncombine:1": [completeLayerAttachment],
+  "layer diff:0": LOCAL_LAYER_OR_FILE,
+  "layer diff:1": LOCAL_LAYER_OR_FILE,
   "layer set-environment:0": [completeLocalLayers],
+  "layer set-environment:1": [completeLocalEnvironments],
   "layer unset-environment:0": [completeLocalLayers],
-  "layer diff:0": [completeLocalLayers],
-  "layer diff:1": [completeLocalLayers],
+  "layer pull:0": [completeCatalogLayers],
+  "layer publish:0": [completeLocalLayers],
+  "layer catalog connect:1": [completeCatalogConnectValue],
+  "layer catalog disconnect:1": [completeCatalogConnectValue],
   "deck show:0": [completeLocalDecks],
   "deck delete:0": [completeLocalDecks],
   "deck export:0": [completeLocalDecks],
   "deck apply:0": [completeLocalDecks],
-  "project apply:0": [completeLocalLayers],
-  "auth login:0": [completeCloudProfiles],
-  "layer import:0": [completeLayerImportPath],
   "deck import:0": [completeDirectoryPath],
+  "resource show:0": [completeLocalResources],
+  "resource delete:0": [completeLocalResources],
+  "resource list:0": [completeResourceTypes],
+  "resource sync:0": [completeLocalResources],
+  "environment show:0": [completeLocalEnvironments],
+  "environment delete:0": [completeLocalEnvironments],
+  "environment set:0": [completeLocalEnvironments],
+  "environment unset:0": [completeLocalEnvironments],
+  "environment use:0": [completeLocalEnvironments],
+  "environment capture:0": [completeLocalEnvironments],
+  "environment refresh:0": [completeLocalEnvironments],
+  "environment import:0": [completeFilePath],
+  "environment export:0": [completeLocalEnvironments],
+  "environment export:1": [completeFilePath],
+  "project apply:0": [completeLocalLayers, completeCatalogLayers],
+  "project revert:0": [completeSnapshotIds],
+  "migrate export:0": [completeFilePath],
+  "migrate import:0": [completeFilePath],
+  "auth login:0": [completeCloudProfiles],
 };
 
 const FLAG_PROVIDERS: FlagRegistry = {
@@ -44,6 +81,8 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "harness project set:main": [completeHarnessSlugs],
   "harness project set:aliases": [completeHarnessSlugs],
   "layer export:file": [completeFilePath],
+  "layer combine:type": [staticEnumProvider(LAYER_ATTACHMENT_TYPES)],
+  "layer publish:org": [completeCatalogOrgs],
   "project apply:project": [completeDirectoryPath],
   "add:layer": [completeLocalLayers],
   "add:create-layer": [completeLocalLayers],
@@ -52,6 +91,7 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "auth status:profile": [completeCloudProfiles],
   "auth logout:profile": [completeCloudProfiles],
   "auth orgs:profile": [completeCloudProfiles],
+  "auth orgs:switch": [completeCatalogOrgs],
 };
 
 const GLOBAL_FLAG_PROVIDERS: Record<string, CompletionProvider[]> = {
@@ -90,13 +130,12 @@ export function lookupProviders(ctx: CompletionContext): CompletionProvider[] {
   const providers: CompletionProvider[] = [];
 
   if (ctx.slot === "flag-value" && ctx.flag) {
-    const normalizedFlag = ctx.flag;
-    const specific = FLAG_PROVIDERS[flagKey(ctx.commandPath, normalizedFlag)];
+    const specific = FLAG_PROVIDERS[flagKey(ctx.commandPath, ctx.flag)];
     if (specific) {
       providers.push(...specific);
     }
 
-    const global = GLOBAL_FLAG_PROVIDERS[normalizedFlag];
+    const global = GLOBAL_FLAG_PROVIDERS[ctx.flag];
     if (global) {
       providers.push(...global);
     }

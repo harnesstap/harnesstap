@@ -126,12 +126,14 @@ interface WalkResult {
   command: Command;
   commandPath: string[];
   positionalIndex: number;
+  consumedPositionals: string[];
 }
 
 function walkConsumedTokens(command: Command, tokens: string[]): WalkResult {
   let currentCommand = command;
   const commandPath: string[] = [];
   let positionalIndex = 0;
+  const consumedPositionals: string[] = [];
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
@@ -155,9 +157,11 @@ function walkConsumedTokens(command: Command, tokens: string[]): WalkResult {
       currentCommand = subcommand;
       commandPath.push(subcommand.name());
       positionalIndex = 0;
+      consumedPositionals.length = 0;
       continue;
     }
 
+    consumedPositionals.push(token);
     positionalIndex += 1;
   }
 
@@ -165,6 +169,7 @@ function walkConsumedTokens(command: Command, tokens: string[]): WalkResult {
     command: currentCommand,
     commandPath,
     positionalIndex,
+    consumedPositionals,
   };
 }
 
@@ -229,6 +234,7 @@ export function parseCompletionContext(
 
   return {
     commandPath: walked.commandPath,
+    consumedPositionals: walked.consumedPositionals,
     prefix,
     localDataAvailable: existsSync(getHarnessdeckDir()),
     ...slotInfo,

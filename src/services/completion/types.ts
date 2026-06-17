@@ -5,6 +5,7 @@ export type CompletionContext = {
   slot: CompletionSlot;
   flag?: string;
   positionalIndex?: number;
+  consumedPositionals?: string[];
   prefix: string;
   profile?: string;
   localDataAvailable: boolean;
