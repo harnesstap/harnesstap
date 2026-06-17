@@ -52,13 +52,23 @@ hd concepts --format json
 
 ## completion
 
-Generate shell completion for bash, zsh, or fish.
+Generate shell completion scripts for bash, zsh, or fish. After installation, Tab completes:
+
+- subcommands and flags for every `hd` command
+- dynamic values such as local layer, deck, and resource names
+- harness slugs, cloud profiles, and catalog layers (when authenticated) for supported commands
+
+Install by appending or saving the script for your shell:
 
 ```bash
 hd completion bash >> ~/.bashrc
 hd completion zsh >> ~/.zshrc
 hd completion fish > ~/.config/fish/completions/hd.fish
 ```
+
+Restart your shell or source the file, then try `hd layer show <Tab>` to list local layers.
+
+Both `hd` and `harnessdeck` invocations are supported.
 
 ## init
 

@@ -270,6 +270,12 @@ describe("CLI help and command organization", () => {
   it("generates bash completion", async () => {
     const result = await runCli(["completion", "bash"]);
     expect(result.stdout).toContain("complete -F _harnessdeck_completions");
-    expect(result.stdout).toContain("layer apply");
+    expect(result.stdout).toContain("hd __complete bash");
+    expect(result.stdout).toContain("hd harnessdeck");
+  });
+
+  it("hides __complete from top-level help", async () => {
+    const result = await runCli(["--help"]);
+    expect(result.stdout).not.toContain("__complete");
   });
 });
