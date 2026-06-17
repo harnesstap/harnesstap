@@ -19,10 +19,12 @@ interface PluginManifest {
   version?: string;
   commands?: string;
   hooks?: string;
+  skills?: string;
 }
 
 interface MarketplacePluginEntry {
   path?: string;
+  source?: string;
 }
 
 interface MarketplaceManifest {
@@ -35,6 +37,7 @@ interface ValidatedPluginManifest {
   version?: string;
   commands?: string;
   hooks?: string;
+  skills?: string;
 }
 
 interface PluginHooksConfig {
@@ -149,9 +152,13 @@ function validatePluginManifest(
     typeof manifest.hooks === "string" && manifest.hooks.trim().length > 0
       ? manifest.hooks.trim()
       : undefined;
+  const skills =
+    typeof manifest.skills === "string" && manifest.skills.trim().length > 0
+      ? manifest.skills.trim()
+      : undefined;
   return version
-    ? { name, version, commands, hooks }
-    : { name, commands, hooks };
+    ? { name, version, commands, hooks, skills }
+    : { name, commands, hooks, skills };
 }
 
 function validateMarketplaceManifest(
@@ -166,10 +173,11 @@ function validateMarketplaceManifest(
   }
 
   const plugins = manifest.plugins.map((entry) => {
-    if (typeof entry?.path !== "string") {
+    const rawPath = entry?.path ?? entry?.source;
+    if (typeof rawPath !== "string") {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
-    const path = normalizeMarketplaceEntryPath(entry.path);
+    const path = normalizeMarketplaceEntryPath(rawPath);
     if (path.length === 0) {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
@@ -316,16 +324,19 @@ function buildProvenance(input: {
   };
 }
 
-function scanSkills(rootPath: string, metadata: {
+function scanSkills(
+  rootPath: string,
+  skillsDir: string | null,
+  metadata: {
   importedAt: string;
   sourceKind: ImportedSourceKind;
   sourceLabel: string;
   pluginName: string;
   pluginVersion?: string;
   sourcePluginKind: PluginSourceRootKind;
-}): ResourceInput[] {
-  const skillsDir = join(rootPath, "skills");
-  if (!isDirectory(skillsDir)) return [];
+},
+): ResourceInput[] {
+  if (!skillsDir) return [];
 
   const resources: ResourceInput[] = [];
   for (const entry of listDir(skillsDir)) {
@@ -504,6 +515,16 @@ function resolveCommandsDir(
     ? join(rootPath, manifest.commands)
     : join(rootPath, "commands");
   return isDirectory(commandsDir) ? commandsDir : null;
+}
+
+function resolveSkillsDir(
+  rootPath: string,
+  manifest: ValidatedPluginManifest,
+): string | null {
+  const skillsDir = manifest.skills
+    ? join(rootPath, manifest.skills)
+    : join(rootPath, "skills");
+  return isDirectory(skillsDir) ? skillsDir : null;
 }
 
 function resolveHooksPath(
@@ -756,7 +777,7 @@ function scanPluginRoot(
   }
 
   const resources = [
-    ...scanSkills(rootPath, {
+    ...scanSkills(rootPath, resolveSkillsDir(rootPath, manifest), {
       importedAt,
       sourceKind,
       sourceLabel,
@@ -810,6 +831,22 @@ function scanPluginRoot(
     metadata,
     resources,
   };
+}
+
+export async function scanPluginSourceForMerge(
+  sourcePath: string,
+): Promise<PluginSourceScanResult[]> {
+  try {
+    return await scanPluginSource(sourcePath);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith("No supported plugin resources found in")
+    ) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function scanPluginSource(

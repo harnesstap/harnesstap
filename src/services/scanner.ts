@@ -16,7 +16,7 @@ import {
   createImportedSnapshot,
 } from "../models/imported-snapshot.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
-import { scanPluginSource } from "./plugin-source-import.js";
+import { scanPluginSource, scanPluginSourceForMerge } from "./plugin-source-import.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadScanIgnore } from "./scanner-ignore.js";
 import { dropHarnessSkillsDuplicatingPluginSource } from "./scan-dedup.js";
@@ -208,7 +208,7 @@ export async function scanProjectWithPluginSource(
 }> {
   const harness = await scanProject(projectRoot, platformFilter);
   const plugin = hasPluginSourceLayout(projectRoot)
-    ? await scanPluginSource(projectRoot)
+    ? await scanPluginSourceForMerge(projectRoot)
     : [];
   return { harness, plugin };
 }

@@ -4,6 +4,10 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 
 const fixture = join(import.meta.dirname, "../fixtures/ponytail/minimal");
 const superpowersFixture = join(import.meta.dirname, "../fixtures/superpowers/minimal");
+const impeccableFixture = join(
+  import.meta.dirname,
+  "../fixtures/plugin-import/impeccable-layout",
+);
 
 describe("scanProjectWithPluginSource", () => {
   it("imports repo-root skills when harness files are also present", async () => {
@@ -20,6 +24,17 @@ describe("scanProjectWithPluginSource", () => {
   it("hasPluginSourceLayout detects claude plugin manifest at repo root", async () => {
     const scanner = await import("../../src/services/scanner.ts");
     expect(scanner.hasPluginSourceLayout(fixture)).toBe(true);
+  });
+
+  it("merges harness scan when repo-root plugin uses manifest skills pointer", async () => {
+    const scanner = await import("../../src/services/scanner.ts");
+    const result = await scanner.scanProjectWithPluginSource(impeccableFixture);
+    const harnessResources = result.harness.flatMap((h) => h.resources);
+    const pluginResources = result.plugin.flatMap((p) => p.resources);
+    expect(harnessResources.some((r) => r.type === "instruction")).toBe(true);
+    expect(
+      pluginResources.some((r) => r.type === "skill" && r.name === "impeccable"),
+    ).toBe(true);
   });
 });
 

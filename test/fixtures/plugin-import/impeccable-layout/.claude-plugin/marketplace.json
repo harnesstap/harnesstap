@@ -4,7 +4,7 @@
     {
       "name": "impeccable-fixture",
       "version": "1.0.0",
-      "source": "./plugin"
+      "source": "../plugin"
     }
   ]
 }

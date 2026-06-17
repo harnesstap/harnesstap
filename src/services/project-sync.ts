@@ -9,7 +9,7 @@ import { upsertProject } from "../models/project.js";
 import { createSnapshot } from "../models/snapshot.js";
 import type { CursorSkillMode, SnapshotState } from "../types.js";
 import { detectPlatforms, hasPluginSourceLayout, scanPlatform } from "./scanner.js";
-import { scanPluginSource } from "./plugin-source-import.js";
+import { scanPluginSourceForMerge } from "./plugin-source-import.js";
 import {
   mainScanLacksPluginSkills,
   mergeReferenceResourceInputs,
@@ -169,7 +169,7 @@ async function scanPluginReferenceResources(
   if (!hasPluginSourceLayout(projectRoot)) {
     return [];
   }
-  const imports = await scanPluginSource(projectRoot);
+  const imports = await scanPluginSourceForMerge(projectRoot);
   return imports.flatMap((entry) => entry.resources);
 }
 
