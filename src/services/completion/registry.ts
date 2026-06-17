@@ -44,6 +44,7 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer set-environment:1": [completeLocalEnvironments],
   "layer unset-environment:0": [completeLocalLayers],
   "layer pull:0": [completeCatalogLayers],
+  "layer search:0": [completeCatalogLayers],
   "layer publish:0": [completeLocalLayers],
   "layer catalog connect:1": [completeCatalogConnectValue],
   "layer catalog disconnect:1": [completeCatalogConnectValue],

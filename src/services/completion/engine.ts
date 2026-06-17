@@ -122,6 +122,42 @@ function optionFlagNames(option: Option): string[] {
     .map((flag) => flag.replace(/=<.*>$/, ""));
 }
 
+function splitFlagToken(token: string): { flag: string; value?: string } {
+  const equalsIndex = token.indexOf("=");
+  if (equalsIndex > 0 && token.startsWith("-")) {
+    return {
+      flag: token.slice(0, equalsIndex),
+      value: token.slice(equalsIndex + 1),
+    };
+  }
+  return { flag: token };
+}
+
+function tokenHasEmbeddedFlagValue(token: string): boolean {
+  return token.startsWith("-") && token.includes("=") && token.indexOf("=") > 0;
+}
+
+function extractProfile(consumed: string[]): string | undefined {
+  for (let index = 0; index < consumed.length; index += 1) {
+    const token = consumed[index];
+    if (!token) {
+      continue;
+    }
+
+    const split = splitFlagToken(token);
+    if (normalizeFlagName(split.flag) === "profile") {
+      if (split.value !== undefined) {
+        return split.value.length > 0 ? split.value : undefined;
+      }
+      const next = consumed[index + 1];
+      if (next && !next.startsWith("-")) {
+        return next;
+      }
+    }
+  }
+  return undefined;
+}
+
 interface WalkResult {
   command: Command;
   commandPath: string[];
@@ -142,6 +178,9 @@ function walkConsumedTokens(command: Command, tokens: string[]): WalkResult {
     }
 
     if (token.startsWith("-")) {
+      if (tokenHasEmbeddedFlagValue(token)) {
+        continue;
+      }
       const option = findOption(currentCommand, token);
       if (option && optionTakesValue(option)) {
         const next = tokens[index + 1];
@@ -193,7 +232,7 @@ function resolveSlot(
   }
 
   const lastConsumed = consumed[consumed.length - 1];
-  if (lastConsumed?.startsWith("-")) {
+  if (lastConsumed?.startsWith("-") && !tokenHasEmbeddedFlagValue(lastConsumed)) {
     const option = findOption(command, lastConsumed);
     if (option && optionTakesValue(option)) {
       return {
@@ -222,9 +261,9 @@ export function parseCompletionContext(
   const endsWithSpace = /[ \t]$/.test(line);
   const tokens = stripInvocationName(tokenizeCompletionLine(line.trimStart()));
   const consumed = endsWithSpace ? tokens : tokens.slice(0, -1);
-  const prefix = endsWithSpace ? "" : (tokens[tokens.length - 1] ?? "");
+  let prefix = endsWithSpace ? "" : (tokens[tokens.length - 1] ?? "");
   const walked = walkConsumedTokens(program, consumed);
-  const slotInfo = resolveSlot(
+  let slotInfo = resolveSlot(
     walked.command,
     walked.positionalIndex,
     consumed,
@@ -232,10 +271,26 @@ export function parseCompletionContext(
     endsWithSpace,
   );
 
+  if (prefix.startsWith("-") && prefix.includes("=")) {
+    const equalsIndex = prefix.indexOf("=");
+    const flagToken = prefix.slice(0, equalsIndex);
+    const valuePrefix = prefix.slice(equalsIndex + 1);
+    const option = findOption(walked.command, flagToken);
+    if (option && optionTakesValue(option)) {
+      slotInfo = {
+        slot: "flag-value",
+        flag: normalizeFlagName(flagToken),
+        positionalIndex: walked.positionalIndex,
+      };
+      prefix = valuePrefix;
+    }
+  }
+
   return {
     commandPath: walked.commandPath,
     consumedPositionals: walked.consumedPositionals,
     prefix,
+    profile: extractProfile(consumed),
     localDataAvailable: existsSync(getHarnessdeckDir()),
     ...slotInfo,
   };
