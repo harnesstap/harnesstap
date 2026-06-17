@@ -1,15 +1,12 @@
-import { listLayers } from "../../models/layer-model.js";
-import { promptForChoice, promptForValue } from "./shared.js";
+import { toLayerChoices } from "../completion/choices.js";
+import { promptForSearchableChoice, promptForValue } from "./shared.js";
 
 export async function runProjectApplyWizard(): Promise<string> {
-  const layers = listLayers();
-  if (layers.length > 0) {
-    return promptForChoice({
+  const choices = toLayerChoices();
+  if (choices.length > 0) {
+    return promptForSearchableChoice({
       message: "Which layer should be applied?",
-      choices: layers.map((layer) => ({
-        name: `${layer.name}@${layer.version}`,
-        value: layer.name,
-      })),
+      choices,
     });
   }
 

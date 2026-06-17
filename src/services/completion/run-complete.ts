@@ -2,6 +2,16 @@ import type { Command } from "commander";
 import { completeLine } from "./engine.js";
 import type { CompletionCandidate } from "./types.js";
 
+const COMPLETE_CACHE_TTL_MS = 100;
+
+type CompleteCacheEntry = {
+  key: string;
+  expiresAt: number;
+  candidates: CompletionCandidate[];
+};
+
+let completeCache: CompleteCacheEntry | undefined;
+
 function formatCandidates(
   candidates: CompletionCandidate[],
   shell: string,
@@ -30,7 +40,21 @@ export async function runCompleteCommand(
 
   try {
     const line = lineParts.filter((part) => part !== "--").join(" ");
-    const candidates = await completeLine(program, line);
+    const now = Date.now();
+    const cacheKey = line;
+    const cached =
+      completeCache?.key === cacheKey && completeCache.expiresAt > now
+        ? completeCache.candidates
+        : undefined;
+    const candidates =
+      cached ?? (await completeLine(program, line));
+    if (!cached) {
+      completeCache = {
+        key: cacheKey,
+        expiresAt: now + COMPLETE_CACHE_TTL_MS,
+        candidates,
+      };
+    }
     process.stdout.write(formatCandidates(candidates, shell));
   } catch {
     // Errors produce empty completion output.
