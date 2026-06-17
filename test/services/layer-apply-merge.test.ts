@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-component.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createConfiguredLayer } from "../../src/models/configured-layer.ts";
-import { mergeConfiguredLayers } from "../../src/services/configured-layer-merge.ts";
+import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { mergeLayersForApply } from "../../src/services/layer-apply-merge.ts";
 
-describe("configured layer merge", () => {
-  it("merges plugins and default environment resources from configured layers", async () => {
-    const context = await createInitializedTestContext("configured-layer-merge");
+describe("layer apply merge", () => {
+  it("merges source layers and default environment resources", async () => {
+    const context = await createInitializedTestContext("layer-apply-merge");
 
     try {
-      const plugin = createPlugin({ name: "pagerduty" });
-      addResourceToPlugin(
+      const plugin = createLayer({ name: "pagerduty" });
+      addResourceToLayer(
         plugin.id,
         createResource({
           type: "instruction",
@@ -37,13 +37,13 @@ describe("configured layer merge", () => {
         }),
       );
 
-      const layer = createConfiguredLayer({
+      const layer = createLayerFromSources({
         name: "backend-oncall",
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
         environmentId: env.id,
       });
 
-      const merged = mergeConfiguredLayers([layer.id]);
+      const merged = mergeLayersForApply([layer.id]);
       expect(merged.resources.map((r) => r.name)).toEqual(["oncall", "PD_REGION"]);
     } finally {
       await context.cleanup();

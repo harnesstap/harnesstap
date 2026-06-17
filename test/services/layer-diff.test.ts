@@ -207,7 +207,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
     const context = await createInitializedTestContext("diff-db-vs-bundle-version");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { diffLayers } = await import("../../src/services/layer-diff.ts");
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-db-vs-bundle-version");
@@ -236,7 +236,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
     const context = await createInitializedTestContext("diff-multi-bundle-rejected");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { diffLayers } = await import("../../src/services/layer-diff.ts");
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-multi-bundle-rejected");

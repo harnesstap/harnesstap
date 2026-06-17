@@ -59,7 +59,7 @@ export interface EnvironmentLookupResult {
 }
 
 export interface EnvironmentReferenceSummary {
-  configured_layers: Array<{ id: string; name: string }>;
+  layers: Array<{ id: string; name: string }>;
   decks: Array<{ id: string; name: string }>;
 }
 
@@ -351,14 +351,14 @@ export function listEnvironmentReferences(
     )
     .all(environmentId) as EnvironmentReferenceRow[];
   return {
-    configured_layers: configuredLayerRows,
+    layers: configuredLayerRows,
     decks: deckRows,
   };
 }
 
 export function hasEnvironmentReferences(environmentId: string): boolean {
   const refs = listEnvironmentReferences(environmentId);
-  return refs.configured_layers.length > 0 || refs.decks.length > 0;
+  return refs.layers.length > 0 || refs.decks.length > 0;
 }
 
 export function addResourceToEnvironment(

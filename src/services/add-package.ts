@@ -17,14 +17,14 @@ import {
   installSkillsToProject,
 } from "./skill-install.js";
 import {
-  createPlugin,
-  getPlugin,
-} from "../models/plugin-component.js";
+  createLayer,
+  getLayer,
+} from "../models/layer-model.js";
 import {
   resolveRemoteSource,
   sourceCacheDir,
 } from "./source-resolver.js";
-import { addLayerAttachment } from "./layer-attachments.js";
+import { addLayerAttachment } from "./layer-composition.js";
 
 export interface AddSkillPackageOptions {
   source: string;
@@ -201,8 +201,8 @@ export async function addSkillPackage(
   const layerName = options.createLayer ?? options.layer;
   if (layerName) {
     const targetLayer = options.createLayer
-      ? createPlugin({ name: options.createLayer })
-      : getPlugin(layerName);
+      ? createLayer({ name: options.createLayer })
+      : getLayer(layerName);
     if (!targetLayer) {
       throw new Error(`Layer not found: ${options.layer}`);
     }

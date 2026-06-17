@@ -6,16 +6,16 @@ describe("plugin model", () => {
     const context = await createInitializedTestContext("plugin-layer-plugins");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
-      const pinModel = await import("../../src/models/plugin-pins.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const pinModel = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "with-plugins-row" });
 
-      pinModel.addPluginToLayer(layer.id, "@m/a", ">=1 <2");
-      pinModel.addPluginToLayer(layer.id, "@m/b", "=3.4.5", {
+      pinModel.attachPluginPinToLayer(layer.id, "@m/a", ">=1 <2");
+      pinModel.attachPluginPinToLayer(layer.id, "@m/b", "=3.4.5", {
         embedOnExport: true,
       });
-      pinModel.addPluginToLayer(layer.id, "@m/c", "*");
+      pinModel.attachPluginPinToLayer(layer.id, "@m/c", "*");
 
       const rows = pinModel.listLayerPlugins(layer.id);
 
@@ -37,7 +37,7 @@ describe("plugin model", () => {
 
       expect(rows.map((r) => r.order)).toEqual(expect.arrayContaining([0, 1, 2]));
 
-      pinModel.removePluginFromLayer(layer.id, "@m/b");
+      pinModel.detachPluginPinFromLayer(layer.id, "@m/b");
 
       const afterRemove = pinModel.listLayerPlugins(layer.id).map((r) => r.ref);
       expect(afterRemove).toEqual(expect.arrayContaining(["@m/a", "@m/c"]));

@@ -126,7 +126,7 @@ describe("wizard prompts", () => {
     searchableMultiSelectMock.mockResolvedValueOnce(["team@1.0.0", "baseline@2.0.0"]);
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       layerModel.createLayer({ name: "team" });
       layerModel.createLayer({ name: "baseline", version: "2.0.0" });
 
@@ -262,7 +262,7 @@ describe("wizard prompts", () => {
     });
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       layerModel.createLayer({ name: "apply-layer" });
 
       const { runProjectApplyWizard } = await import("../../src/services/wizards/project-apply.ts");

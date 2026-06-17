@@ -26,7 +26,7 @@ describe("CLI output format", () => {
       expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
 
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-output.git");
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "dry-run-layer" });
       const resource = resourceModel.createResource(

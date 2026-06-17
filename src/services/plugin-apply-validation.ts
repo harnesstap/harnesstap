@@ -1,7 +1,6 @@
-import { listLayerPlugins } from "../models/plugin-pins.js";
-import { findPluginResourceByPin } from "./composition-resource.js";
+import { findPluginResourceByPin } from "./layer-composition.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
-import type { PluginResourceMetadata } from "../types.js";
+import type { PluginPinMetadata } from "../types.js";
 
 export interface PluginValidationIssue {
   ref: string;
@@ -26,7 +25,7 @@ function validatePluginConstraintPins(
     }
 
     const resource = findPluginResourceByPin(row.ref, row.version_constraint);
-    const metadata = (resource?.metadata ?? {}) as PluginResourceMetadata;
+    const metadata = (resource?.metadata ?? {}) as PluginPinMetadata;
     const resolved = metadata.resolved_version;
 
     if (!resolved) {
@@ -52,10 +51,6 @@ function validatePluginConstraintPins(
   }
 
   return issues;
-}
-
-export function validateLayerPluginConstraints(layerId: string): PluginValidationIssue[] {
-  return validatePluginConstraintPins(listLayerPlugins(layerId));
 }
 
 export function validatePluginPinsAgainstInventory(

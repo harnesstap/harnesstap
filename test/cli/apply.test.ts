@@ -6,7 +6,7 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeLayerExportToml, makeSingleLayerExport } from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
-import { findPluginResourceByPin } from "../../src/services/composition-resource.ts";
+import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
 import { getDb } from "../../src/db/connection.ts";
 
 function setPluginResolvedVersion(
@@ -78,7 +78,7 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-default-harness.git");
       await runCli(["init", "--main", "claude-code", "--aliases", "codex"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "default-harness-layer" });
       const resource = resourceModel.createResource(
@@ -115,7 +115,7 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-apply.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
@@ -178,12 +178,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugin-only.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "foundation-only" });
-      pluginPins.addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
-      pluginPins.addPluginToLayer(layer.id, "context7@anthropics", "1.0.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "context7@anthropics", "1.0.0");
 
       const applyResult = await runCli([
         "project",
@@ -218,12 +218,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-exact-pin.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "catalog-like" });
-      pluginPins.addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -259,8 +259,8 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugin-materialize.git");
       await runCli(["init", "--main", "claude-code", "--aliases", "cursor"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
       const { cpSync } = await import("node:fs");
 
       cpSync(join(fixtureHome, ".claude"), join(context.homeDir, ".claude"), {
@@ -268,7 +268,7 @@ describe("CLI apply", () => {
       });
 
       const layer = layerModel.createLayer({ name: "plugin-skills" });
-      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
 
       const applyResult = await runCli([
         "project",
@@ -339,12 +339,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-auto-sync.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "auto-sync-plugins" });
-      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", "1.9.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.9.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -380,12 +380,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugins.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "with-plugins" });
-      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
@@ -423,12 +423,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-strict.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "strict-plugins" });
-      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
@@ -467,12 +467,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-ignore.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "ignore-plugins" });
-      pluginPins.addPluginToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -508,12 +508,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-conflict.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "conflict-plugins" });
-      pluginPins.addPluginToLayer(
+      pluginPins.attachPluginPinToLayer(
         layer.id,
         "formatter@acme-marketplace",
         ">=2.1.0 <3.0.0",
@@ -555,7 +555,7 @@ describe("CLI apply", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "non-git-apply" });
@@ -637,7 +637,7 @@ describe("CLI apply", () => {
       expect(firstApply.exitCode).toBeUndefined();
       expect(secondApply.exitCode).toBeUndefined();
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const layers = layerModel
         .listLayers()
         .filter((layer) => layer.name === "bundle-reuse" && layer.version === "1.0.0");
@@ -655,12 +655,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-merged-strict.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const base = layerModel.createLayer({ name: "base-plugins" });
-      pluginPins.addPluginToLayer(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      pluginPins.attachPluginPinToLayer(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const baseResource = resourceModel.createResource(
         makeResourceInput({

@@ -6,7 +6,7 @@ import {
   ensureLayerResource,
   listAttachedLayerRefs,
   listAttachedPluginPins,
-} from "../services/composition-resource.js";
+} from "../services/layer-composition.js";
 import { claudeConfigFromPluginPins } from "../services/claude-plugin-pins.js";
 import type {
   ClaudePluginEntry,

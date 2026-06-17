@@ -7,13 +7,21 @@ import {
   writeLayerExportToml,
 } from "../helpers/transport-fixtures.ts";
 
+async function loadLayerTransportServices() {
+  const [layerExport, layerImport] = await Promise.all([
+    import("../../src/services/layer-export.ts"),
+    import("../../src/services/layer-import.ts"),
+  ]);
+  return { ...layerExport, ...layerImport };
+}
+
 describe("layer marketplace configuration", () => {
   it("round-trips claude config through export and import", async () => {
     const context = await createInitializedTestContext("layer-marketplace-export");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({
         name: "with-plugins",
@@ -31,10 +39,10 @@ describe("layer marketplace configuration", () => {
       const bundle = exporter.exportLayer(layer.id);
 
       expect(bundle.version).toBe(1);
-      expect(bundle.claude?.marketplaces?.["team-plugins"]).toEqual({
+      expect(bundle.layers[0]?.claude?.marketplaces?.["team-plugins"]).toEqual({
         source: { source: "github", repo: "org/plugins" },
       });
-      expect(bundle.claude?.plugins?.[0]?.id).toBe("fmt@team-plugins");
+      expect(bundle.layers[0]?.claude?.plugins?.[0]?.id).toBe("fmt@team-plugins");
 
       const bundlePath = join(context.projectDir, "with-plugins.harnessdeck.toml");
       exporter.exportToFile(layer.id, bundlePath);
@@ -52,7 +60,7 @@ describe("layer marketplace configuration", () => {
     const context = await createInitializedTestContext("layer-marketplace-apply");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const applier = await import("../../src/services/applier.ts");
 
       const layer = layerModel.createLayer({
@@ -101,8 +109,8 @@ describe("layer marketplace configuration", () => {
     const context = await createInitializedTestContext("layer-marketplace-import");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const exporter = await loadLayerTransportServices();
+      const layerModel = await import("../../src/models/layer-model.ts");
 
       const bundlePath = join(context.projectDir, "team-stack.harnessdeck.toml");
       writeLayerExportToml(

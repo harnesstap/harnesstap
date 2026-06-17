@@ -1,4 +1,4 @@
-import { listPlugins } from "../../models/plugin-component.js";
+import { listLayers } from "../../models/layer-model.js";
 import { listResources } from "../../models/resource.js";
 import { LISTABLE_RESOURCE_TYPES, MATERIAL_RESOURCE_TYPES } from "../../types.js";
 import { parseResourceSelector } from "../resource-selector.js";
@@ -18,7 +18,7 @@ export interface LayerAddWizardResult {
 }
 
 function getLayerChoices(currentLayerName: string | undefined) {
-  return listPlugins()
+  return listLayers()
     .filter((layer) => layer.name !== currentLayerName)
     .map((layer) => ({
       name: `${layer.name}@${layer.version}`,

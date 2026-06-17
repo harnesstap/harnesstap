@@ -1,4 +1,4 @@
-import { listPlugins } from "../../models/plugin-component.js";
+import { listLayers } from "../../models/layer-model.js";
 import { getHarnessPreference } from "../../models/harness.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
 import type { DiscoveredSkill } from "../skill-discovery.js";
@@ -199,7 +199,7 @@ export async function runAddPackageWizard(input: {
         default: input.sourceLabel?.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || undefined,
       });
     } else if (layerChoice === "existing") {
-      const layers = listPlugins();
+      const layers = listLayers();
       if (layers.length > 0) {
         layer = await promptForChoice({
           message: "Which layer?",

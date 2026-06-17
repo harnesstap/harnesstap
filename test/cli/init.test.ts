@@ -10,7 +10,7 @@ describe("CLI init", () => {
 
     try {
       const result = await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
 
       expect(result.stdout).toContain("Harnessdeck initialized");
       expect(result.stdout).toContain("Database");

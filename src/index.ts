@@ -28,7 +28,8 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile, exportLayer, inspectLayerExportFile } from "./services/exporter.js";
+import { exportToFile, exportLayer, inspectLayerExportFile } from "./services/layer-export.js";
+import { importFromFile } from "./services/layer-import.js";
 import { formatLayerExportToml } from "./services/transport/index.js";
 import {
   listResources,
@@ -36,14 +37,17 @@ import {
   resolveResource,
 } from "./models/resource.js";
 import {
-  createPlugin,
-  getPlugin,
-  listPlugins as listDesignPlugins,
-  deletePlugin,
-  getPluginResources,
-  listPluginDependencies,
-  parsePluginSelector,
-} from "./models/plugin-component.js";
+  createLayer,
+  getLayer,
+  listLayers,
+  deleteLayer,
+  getLayerResources,
+  listLayerDependencies,
+  parseLayerSelectorString,
+  getLayerById,
+  resolveLayerSelector,
+  mergeLayersById,
+} from "./models/layer-model.js";
 import {
   upsertProject,
   getProject,
@@ -52,11 +56,6 @@ import {
   applyConfiguredLayerToProject,
   getProjectConfiguredLayers,
 } from "./models/project.js";
-import {
-  getConfiguredLayer,
-  ensureImplicitConfiguredLayer,
-  resolveConfiguredLayerSelector,
-} from "./models/configured-layer.js";
 import { getEnvironment } from "./models/environment.js";
 import {
   createSnapshot,
@@ -79,9 +78,8 @@ import type {
   SnapshotState,
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
-import { listLayerPlugins } from "./models/plugin-pins.js";
-import { listAttachedPluginPins } from "./services/composition-resource.js";
-import type { PluginResourceMetadata } from "./types.js";
+import { listAttachedPluginPins } from "./services/layer-composition.js";
+import type { PluginPinMetadata } from "./types.js";
 import {
   getHarnessPreference,
   setHarnessPreference,
@@ -133,22 +131,16 @@ import {
   resolveRemoteLayerSelector,
 } from "./services/layer-selector.js";
 import {
-  syncPluginPinsForApply,
+  preparePluginPinsForApply,
   type SyncPluginPinsForApplyResult,
-} from "./services/plugin-apply-sync.js";
-import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
-import {
-  countPluginMaterialResources,
-  expandPluginMaterialResources,
-} from "./services/plugin-materialize.js";
+} from "./services/plugin-pin-apply.js";
 import { resolvePluginInstallScope, type InstallPluginPinResult } from "./services/plugin-install.js";
 import { resolveClaudeEnabledPluginRef } from "./plugins/claude-plugin-ref.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
-import { mergePlugins } from "./services/layer-merge.js";
-import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
-import { resolveLayerSelector, updateLayerPublishedIdentity } from "./models/layer-model.js";
+import { mergeLayersForApply } from "./services/layer-apply-merge.js";
+import { updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -216,7 +208,7 @@ import {
   LayerAttachmentHintError,
   removeLayerAttachment,
   validateLayerAttachmentType,
-} from "./services/layer-attachments.js";
+} from "./services/layer-composition.js";
 import {
   exportMigrationState,
   importMigrationState,
@@ -361,7 +353,7 @@ async function resolveLayerMutationTarget(input: {
     return undefined;
   }
 
-  const layers = listDesignPlugins();
+  const layers = listLayers();
   if (layers.length === 0) {
     return undefined;
   }
@@ -403,7 +395,7 @@ function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
 }
 
 function dependencyLayerName(dependencyName: string): string {
-  const parsed = parsePluginSelector(dependencyName);
+  const parsed = parseLayerSelectorString(dependencyName);
   if (parsed.kind === "id") return dependencyName;
   return parsed.name;
 }
@@ -413,7 +405,7 @@ function resolveDependencyLayerVersion(
   versionConstraint: string,
 ): string {
   const name = dependencyLayerName(dependencyName);
-  const resolved = getPlugin(`${name}@${versionConstraint}`);
+  const resolved = getLayer(`${name}@${versionConstraint}`);
   return resolved?.version ?? "—";
 }
 
@@ -1071,7 +1063,7 @@ async function resolveApplyLayers(
     onFetched?: (sourceLabel: string) => void;
   } = {},
 ): Promise<{
-  layers: ReturnType<typeof getPlugin>[];
+  layers: ReturnType<typeof getLayer>[];
   resources: Resource[];
   claude?: import("./types.js").ClaudeLayerConfig;
   configuredLayerIds: string[];
@@ -1083,14 +1075,15 @@ async function resolveApplyLayers(
     if (!primaryLayer) {
       throw new Error("Bundle contains no layers.");
     }
-    const merged = mergePlugins(layers.map((layer) => layer.id));
-    const configuredLayer = ensureImplicitConfiguredLayer(primaryLayer.id);
+    const merged = mergeLayersById(layers.map((layer) => layer.id));
+    const layer = getLayerById(primaryLayer.id);
+    if (!layer) throw new Error(`Layer not found: ${primaryLayer.id}`);
     return {
       layers: merged.layers,
       resources: merged.resources,
       claude: merged.claude,
-      configuredLayerIds: [configuredLayer.id],
-      primaryConfiguredLayerId: configuredLayer.id,
+      configuredLayerIds: [layer.id],
+      primaryConfiguredLayerId: layer.id,
     };
   }
 
@@ -1113,14 +1106,15 @@ async function resolveApplyLayers(
         : primarySummary.name;
       const existingLayer = resolveLayerSelector(selector);
       if (existingLayer) {
-        const configuredLayer = ensureImplicitConfiguredLayer(existingLayer.id);
-        const merged = mergeConfiguredLayers([configuredLayer.id]);
+        const layer = getLayerById(existingLayer.id);
+        if (!layer) throw new Error(`Layer not found: ${existingLayer.id}`);
+        const merged = mergeLayersForApply([layer.id]);
         return {
           layers: merged.layers,
           resources: merged.resources,
           claude: merged.claude,
-          configuredLayerIds: [configuredLayer.id],
-          primaryConfiguredLayerId: configuredLayer.id,
+          configuredLayerIds: [layer.id],
+          primaryConfiguredLayerId: layer.id,
         };
       }
     }
@@ -1136,9 +1130,11 @@ async function resolveApplyLayers(
     if (source.kind === "layer-export") {
       throw new Error("Layer export paths and URLs cannot be mixed with layer selectors.");
     }
-    return ensureImplicitConfiguredLayer(source.layerId).id;
+    const layer = getLayerById(source.layerId);
+    if (!layer) throw new Error(`Layer not found: ${source.layerId}`);
+    return layer.id;
   });
-  const merged = mergeConfiguredLayers(configuredLayerIds);
+  const merged = mergeLayersForApply(configuredLayerIds);
   return {
     layers: merged.layers,
     resources: merged.resources,
@@ -1337,7 +1333,7 @@ async function handleApplyCommand(
     const pins = new Map<string, { ref: string; version_constraint: string }>();
     for (const layer of applyBundle.layers) {
       if (!layer) continue;
-      for (const plugin of listLayerPlugins(layer.id)) {
+      for (const plugin of listAttachedPluginPins(layer.id)) {
         pins.set(plugin.ref, {
           ref: plugin.ref,
           version_constraint: plugin.version_constraint,
@@ -1347,44 +1343,58 @@ async function handleApplyCommand(
     return [...pins.values()];
   })();
 
-  let pluginSync: SyncPluginPinsForApplyResult | undefined;
-  if (!opts.ignorePluginVersions && mergedPluginPins.length > 0 && !opts.dryRun) {
+  const skipPluginSync =
+    opts.ignorePluginVersions || mergedPluginPins.length === 0 || opts.dryRun;
+  let applyResources = resources;
+  let pluginValidationIssues: Awaited<
+    ReturnType<typeof preparePluginPinsForApply>
+  >["validationIssues"] = [];
+
+  if (!skipPluginSync) {
     console.log(ui.theme.muted("Plugins"));
-    const pluginProgressState: { current: ProgressHandle | null } = { current: null };
+  }
+  const pluginProgressState: { current: ProgressHandle | null } = { current: null };
 
-    pluginSync = await syncPluginPinsForApply({
-      pins: mergedPluginPins,
-      syncAll: opts.syncPlugins,
-      projectRoot,
-      scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
-      ignoreMissingInstall: opts.ignorePluginVersions,
-      progress: {
-        onInstallStart: (ref) => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Installing ${ref}…`);
+  const pluginPrepare = await preparePluginPinsForApply({
+    pins: mergedPluginPins,
+    baseResources: resources,
+    projectRoot,
+    skipSync: skipPluginSync,
+    syncAll: opts.syncPlugins,
+    scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
+    ignoreMissingInstall: opts.ignorePluginVersions,
+    progress: skipPluginSync
+      ? undefined
+      : {
+          onInstallStart: (ref) => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = createProgress(`Installing ${ref}…`);
+          },
+          onInstallComplete: (install) => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = null;
+            printPluginInstallLine(install);
+          },
+          onSyncStart: (ref) => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = createProgress(`Syncing ${ref}…`);
+          },
+          onSyncComplete: () => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = null;
+          },
         },
-        onInstallComplete: (install) => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = null;
-          printPluginInstallLine(install);
-        },
-        onSyncStart: (ref) => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
-        },
-        onSyncComplete: () => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = null;
-        },
-      },
-    });
-    pluginProgressState.current?.stop();
+  });
+  pluginProgressState.current?.stop();
 
-    const extraMaterialized = countPluginMaterialResources(mergedPluginPins, resources);
-    printPluginApplyPostSyncSummary(pluginSync, extraMaterialized);
+  applyResources = pluginPrepare.applyResources;
+  pluginValidationIssues = pluginPrepare.validationIssues;
 
-    if (pluginSync.unresolvedPins.length > 0) {
-      for (const ref of pluginSync.unresolvedPins) {
+  if (!skipPluginSync) {
+    printPluginApplyPostSyncSummary(pluginPrepare, pluginPrepare.extraMaterialized);
+
+    if (pluginPrepare.unresolvedPins.length > 0) {
+      for (const ref of pluginPrepare.unresolvedPins) {
         console.warn(
           ui.theme.warn(
             `Plugin pin ${ref} is not installed locally. Run: harnessdeck resource sync plugin_pin:${ref}`,
@@ -1398,8 +1408,6 @@ async function handleApplyCommand(
       }
     }
   }
-
-  const applyResources = expandPluginMaterialResources(mergedPluginPins, resources);
 
   const homeRoot = resolveHomeRoot();
   const resolvedClaude =
@@ -1446,9 +1454,8 @@ async function handleApplyCommand(
     !opts.ignorePluginVersions &&
     mergedPluginPins.length > 0
   ) {
-    const issues = validatePluginPinsAgainstInventory(mergedPluginPins);
-    if (issues.length > 0) {
-      for (const issue of issues) {
+    if (pluginValidationIssues.length > 0) {
+      for (const issue of pluginValidationIssues) {
         console.warn(ui.theme.warn(issue.message));
       }
       ui.danger("Plugin pin violations — apply aborted");
@@ -1569,8 +1576,7 @@ async function handleApplyCommand(
     !opts.strictPluginVersions &&
     mergedPluginPins.length > 0
   ) {
-    const issues = validatePluginPinsAgainstInventory(mergedPluginPins);
-    for (const issue of issues) {
+    for (const issue of pluginValidationIssues) {
       console.warn(ui.theme.warn(issue.message));
     }
   }
@@ -1819,7 +1825,7 @@ async function handleLayerInstallCommand(
   }
 
   const localName = opts.as ?? parsed.layer_slug;
-  const existing = getPlugin(localName);
+  const existing = getLayer(localName);
   if (existing && !opts.as) {
     process.exitCode = 1;
     ui.danger(`Layer name already exists: ${localName}. Use --as to install under a different name.`);
@@ -1860,7 +1866,7 @@ async function handleLayerPublishCommand(
 ) {
   const db = getDb();
   initializeSchema(db);
-  const layer = getPlugin(layerName);
+  const layer = getLayer(layerName);
   if (!layer) {
     process.exitCode = 1;
     ui.danger(`Layer not found: ${layerName}`);
@@ -1998,27 +2004,33 @@ function handleLayerShowCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const layer = getPlugin(name);
+  const layer = getLayer(name);
   if (!layer) {
     ui.danger(`Layer not found: ${name}`);
     return;
   }
-  const allResources = getPluginResources(layer.id);
+  const allResources = getLayerResources(layer.id);
   const resources = allResources.filter(
     (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
   );
-  const pluginPinRows = listLayerPlugins(layer.id);
   const pluginPins = listAttachedPluginPins(layer.id);
-  const dependencies = listPluginDependencies(layer.id);
+  const pluginPinRows = pluginPins.map((pin, index) => ({
+    layer_id: layer.id,
+    ref: pin.ref,
+    version_constraint: pin.version_constraint,
+    order: index,
+    embed_on_export: pin.embed_on_export,
+  }));
+  const dependencies = listLayerDependencies(layer.id);
   const configuredLayer = (() => {
     if (/^[0-9A-Z]{26}$/.test(name)) {
-      return getConfiguredLayer(name);
+      return getLayerById(name);
     }
     const atIdx = name.lastIndexOf("@");
     if (atIdx > 0) {
-      return resolveConfiguredLayerSelector(name);
+      return resolveLayerSelector(name);
     }
-    return resolveConfiguredLayerSelector(`${layer.name}@${layer.version}`);
+    return resolveLayerSelector(`${layer.name}@${layer.version}`);
   })();
   const configuredLayerDefaultEnvironment = configuredLayer?.default_environment_id
     ? getEnvironment(configuredLayer.default_environment_id)
@@ -2104,7 +2116,7 @@ function handleLayerShowCommand(
         { key: "sync", header: "SYNC", width: 14 },
       ],
       rows: pluginPins.map((pin) => {
-        const metadata = pin.resource.metadata as PluginResourceMetadata;
+        const metadata = pin.resource.metadata as PluginPinMetadata;
         return {
           ref: pin.ref,
           version: metadata.resolved_version ?? "—",
@@ -2243,7 +2255,7 @@ function resolveConfiguredLayersForCascade(
 ): string[] {
   if (selectors && selectors.length > 0) {
     return selectors.map((selector) => {
-      const configuredLayer = resolveConfiguredLayerSelector(selector);
+      const configuredLayer = resolveLayerSelector(selector);
       if (!configuredLayer) {
         throw new Error(`Configured layer not found: ${selector}`);
       }
@@ -2255,7 +2267,7 @@ function resolveConfiguredLayersForCascade(
     throw new Error(`No tracked project found at ${projectRoot}; pass --layers explicitly`);
   }
   const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
-    (row) => row.configured_layer_id,
+    (row) => row.layer_id,
   );
   if (configuredLayerIds.length === 0) {
     throw new Error(
@@ -2371,7 +2383,7 @@ async function handleProjectStatusCommand(
   const detected = detectPlatforms(projectRoot);
   const projectByPath = getProjectByLocalPath(projectRoot);
   const configuredLayerIds = projectByPath
-    ? getProjectConfiguredLayers(projectByPath.id).map((row) => row.configured_layer_id)
+    ? getProjectConfiguredLayers(projectByPath.id).map((row) => row.layer_id)
     : [];
   const environmentCascade = environmentActivePayload({
     projectRoot,
@@ -2542,7 +2554,7 @@ async function handleEnvironmentUseCommand(
         return;
       }
       const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
-        (row) => row.configured_layer_id,
+        (row) => row.layer_id,
       );
       if (configuredLayerIds.length === 0) {
         ui.warn(`Reapply skipped: no configured layers recorded for ${projectRoot}.`);
@@ -3006,7 +3018,7 @@ async function handleInitCommand(opts: {
     && Boolean(process.stdin.isTTY && process.stdout.isTTY)
     && !["1", "true", "yes"].includes(process.env.CI?.trim().toLowerCase() ?? "")
     && (opts.interactive === true || useWizard)
-    && listDesignPlugins().length === 0;
+    && listLayers().length === 0;
 
   if (canPromptCatalog) {
     try {
@@ -3550,7 +3562,7 @@ function handleMigrateExportCommand(
   },
 ): void {
   const db = getDb();
-  initializeSchema(db);
+  initializeSchema(db, { allowLegacyRead: true });
   const format = parseOutputFormat(opts.format);
   try {
     const manifest = exportMigrationState({
@@ -3768,7 +3780,7 @@ layerCmd
       const db = getDb();
       initializeSchema(db);
       const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
-      const layer = createPlugin({
+      const layer = createLayer({
         name,
         version: opts.version,
         description: opts.description,
@@ -3787,7 +3799,7 @@ layerCmd
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const layers = listDesignPlugins();
+    const layers = listLayers();
     if (format === "json") {
       printJson(layers);
       return;
@@ -3822,7 +3834,7 @@ layerCmd
     if (!resolvedName) {
       process.exitCode = 1;
       ui.danger(
-        listDesignPlugins().length > 0
+        listLayers().length > 0
           ? "error: missing required argument 'name'"
           : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
       );
@@ -3856,14 +3868,14 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listDesignPlugins().length > 0
+          listLayers().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const layer = getPlugin(layerTarget);
+      const layer = getLayer(layerTarget);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${layerTarget}`);
@@ -3930,14 +3942,14 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listDesignPlugins().length > 0
+          listLayers().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const layer = getPlugin(layerTarget);
+      const layer = getLayer(layerTarget);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${layerTarget}`);
@@ -4014,13 +4026,13 @@ layerCmd
       }
 
       for (const resolvedName of selectors) {
-        const layer = getPlugin(resolvedName);
+        const layer = getLayer(resolvedName);
         if (!layer) {
           process.exitCode = 1;
           ui.danger(`Layer not found: ${resolvedName}`);
           return;
         }
-        if (!deletePlugin(layer.id)) {
+        if (!deleteLayer(layer.id)) {
           throw new Error(`Failed to delete layer ${formatLayerLabel(layer)}`);
         }
         ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
@@ -4502,7 +4514,7 @@ environmentCmd
       const project = getProjectByLocalPath(projectRoot);
       if (!project) return [] as string[];
       return getProjectConfiguredLayers(project.id).map(
-        (row) => row.configured_layer_id,
+        (row) => row.layer_id,
       );
     })();
     const payload = environmentActivePayload({
