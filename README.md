@@ -365,7 +365,7 @@ On `project apply`, harnessdeck compares layer plugin pins to library `resolved_
 
 Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer combine` is the **plugin semver pin or range**, not the global version flag.
 
-Layer export bundles use schema `urn:harnessdeck:layer:v1` and include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
+Layer export bundles use schema `urn:harnessdeck:layer:v1` with one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
 Refresh policy for marketplace metadata is configured in `~/.harnessdeck/config.jsonc`:
 
