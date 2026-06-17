@@ -10,10 +10,18 @@ import {
   type InstallPluginPinsProgress,
 } from "./plugin-install.js";
 import { syncPluginResource } from "./resource-sync.js";
-import type { PluginConstraintPin } from "./plugin-apply-validation.js";
+import {
+  validatePluginPinsAgainstInventory,
+  type PluginConstraintPin,
+  type PluginValidationIssue,
+} from "./plugin-apply-validation.js";
+import { listResources } from "../models/resource.js";
+import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
 import type { PluginResourceMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+
+export type { PluginConstraintPin, PluginValidationIssue };
 
 export interface SyncPluginPinsForApplyProgress extends InstallPluginPinsProgress {
   onSyncStart?: (ref: string) => void;
@@ -37,6 +45,32 @@ export interface SyncPluginPinsForApplyResult {
   installs: InstallPluginPinResult[];
   syncedResourceCount: number;
   unresolvedPins: string[];
+}
+
+export interface PreparePluginPinsForApplyOptions {
+  pins: PluginConstraintPin[];
+  baseResources: Resource[];
+  projectRoot: string;
+  /** When true, skip install/sync and only expand resources + validate pins. */
+  skipSync?: boolean;
+  syncAll?: boolean;
+  homeRoot?: string;
+  scope?: PluginScope;
+  installPlatformId?: string;
+  ignoreMissingInstall?: boolean;
+  progress?: SyncPluginPinsForApplyProgress;
+}
+
+export interface PreparePluginPinsForApplyResult extends SyncPluginPinsForApplyResult {
+  applyResources: Resource[];
+  extraMaterialized: number;
+  validationIssues: PluginValidationIssue[];
+}
+
+const materialTypes = new Set<string>(MATERIAL_RESOURCE_TYPES);
+
+function materialResourceKey(resource: Pick<Resource, "type" | "name">): string {
+  return `${resource.type}:${resource.name}`;
 }
 
 function stampResolvedVersionFromExactConstraint(
@@ -129,4 +163,92 @@ export async function syncPluginPinsForApply(
   }
 
   return { installs, syncedResourceCount, unresolvedPins };
+}
+
+/** Collect marketplace-linked material resources imported from pinned plugin install trees. */
+export function expandPluginPinMaterialResources(
+  pins: PluginConstraintPin[],
+  baseResources: Resource[] = [],
+): Resource[] {
+  if (pins.length === 0) {
+    return baseResources;
+  }
+
+  const pinRefs = new Set(pins.map((pin) => pin.ref));
+  const order: string[] = [];
+  const byKey = new Map<string, Resource>();
+
+  for (const resource of baseResources) {
+    const key = materialResourceKey(resource);
+    if (!byKey.has(key)) {
+      order.push(key);
+    }
+    byKey.set(key, resource);
+  }
+
+  for (const resource of listResources({ origin_kind: "marketplace_link" })) {
+    if (!resource.origin_ref || !pinRefs.has(resource.origin_ref)) {
+      continue;
+    }
+    if (!materialTypes.has(resource.type)) {
+      continue;
+    }
+    const key = materialResourceKey(resource);
+    if (!byKey.has(key)) {
+      order.push(key);
+    }
+    byKey.set(key, resource);
+  }
+
+  return order
+    .map((key) => byKey.get(key))
+    .filter((resource): resource is Resource => resource !== undefined);
+}
+
+export function countPluginPinMaterialResources(
+  pins: PluginConstraintPin[],
+  baseResources: Resource[] = [],
+): number {
+  const expanded = expandPluginPinMaterialResources(pins, baseResources);
+  return Math.max(0, expanded.length - baseResources.length);
+}
+
+export async function preparePluginPinsForApply(
+  options: PreparePluginPinsForApplyOptions,
+): Promise<PreparePluginPinsForApplyResult> {
+  let syncResult: SyncPluginPinsForApplyResult = {
+    installs: [],
+    syncedResourceCount: 0,
+    unresolvedPins: [],
+  };
+
+  if (!options.skipSync && options.pins.length > 0) {
+    syncResult = await syncPluginPinsForApply({
+      pins: options.pins,
+      syncAll: options.syncAll,
+      homeRoot: options.homeRoot,
+      projectRoot: options.projectRoot,
+      scope: options.scope,
+      installPlatformId: options.installPlatformId,
+      ignoreMissingInstall: options.ignoreMissingInstall,
+      progress: options.progress,
+    });
+  }
+
+  const applyResources = expandPluginPinMaterialResources(
+    options.pins,
+    options.baseResources,
+  );
+  const extraMaterialized = countPluginPinMaterialResources(
+    options.pins,
+    options.baseResources,
+  );
+  const validationIssues = validatePluginPinsAgainstInventory(options.pins);
+
+  return {
+    ...syncResult,
+    applyResources,
+    extraMaterialized,
+    validationIssues,
+  };
 }

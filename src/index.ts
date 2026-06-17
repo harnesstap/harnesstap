@@ -131,14 +131,9 @@ import {
   resolveRemoteLayerSelector,
 } from "./services/layer-selector.js";
 import {
-  syncPluginPinsForApply,
+  preparePluginPinsForApply,
   type SyncPluginPinsForApplyResult,
-} from "./services/plugin-apply-sync.js";
-import { validatePluginPinsAgainstInventory } from "./services/plugin-apply-validation.js";
-import {
-  countPluginMaterialResources,
-  expandPluginMaterialResources,
-} from "./services/plugin-materialize.js";
+} from "./services/plugin-pin-apply.js";
 import { resolvePluginInstallScope, type InstallPluginPinResult } from "./services/plugin-install.js";
 import { resolveClaudeEnabledPluginRef } from "./plugins/claude-plugin-ref.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
@@ -1348,44 +1343,58 @@ async function handleApplyCommand(
     return [...pins.values()];
   })();
 
-  let pluginSync: SyncPluginPinsForApplyResult | undefined;
-  if (!opts.ignorePluginVersions && mergedPluginPins.length > 0 && !opts.dryRun) {
+  const skipPluginSync =
+    opts.ignorePluginVersions || mergedPluginPins.length === 0 || opts.dryRun;
+  let applyResources = resources;
+  let pluginValidationIssues: Awaited<
+    ReturnType<typeof preparePluginPinsForApply>
+  >["validationIssues"] = [];
+
+  if (!skipPluginSync) {
     console.log(ui.theme.muted("Plugins"));
-    const pluginProgressState: { current: ProgressHandle | null } = { current: null };
+  }
+  const pluginProgressState: { current: ProgressHandle | null } = { current: null };
 
-    pluginSync = await syncPluginPinsForApply({
-      pins: mergedPluginPins,
-      syncAll: opts.syncPlugins,
-      projectRoot,
-      scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
-      ignoreMissingInstall: opts.ignorePluginVersions,
-      progress: {
-        onInstallStart: (ref) => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Installing ${ref}…`);
+  const pluginPrepare = await preparePluginPinsForApply({
+    pins: mergedPluginPins,
+    baseResources: resources,
+    projectRoot,
+    skipSync: skipPluginSync,
+    syncAll: opts.syncPlugins,
+    scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
+    ignoreMissingInstall: opts.ignorePluginVersions,
+    progress: skipPluginSync
+      ? undefined
+      : {
+          onInstallStart: (ref) => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = createProgress(`Installing ${ref}…`);
+          },
+          onInstallComplete: (install) => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = null;
+            printPluginInstallLine(install);
+          },
+          onSyncStart: (ref) => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = createProgress(`Syncing ${ref}…`);
+          },
+          onSyncComplete: () => {
+            pluginProgressState.current?.stop();
+            pluginProgressState.current = null;
+          },
         },
-        onInstallComplete: (install) => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = null;
-          printPluginInstallLine(install);
-        },
-        onSyncStart: (ref) => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
-        },
-        onSyncComplete: () => {
-          pluginProgressState.current?.stop();
-          pluginProgressState.current = null;
-        },
-      },
-    });
-    pluginProgressState.current?.stop();
+  });
+  pluginProgressState.current?.stop();
 
-    const extraMaterialized = countPluginMaterialResources(mergedPluginPins, resources);
-    printPluginApplyPostSyncSummary(pluginSync, extraMaterialized);
+  applyResources = pluginPrepare.applyResources;
+  pluginValidationIssues = pluginPrepare.validationIssues;
 
-    if (pluginSync.unresolvedPins.length > 0) {
-      for (const ref of pluginSync.unresolvedPins) {
+  if (!skipPluginSync) {
+    printPluginApplyPostSyncSummary(pluginPrepare, pluginPrepare.extraMaterialized);
+
+    if (pluginPrepare.unresolvedPins.length > 0) {
+      for (const ref of pluginPrepare.unresolvedPins) {
         console.warn(
           ui.theme.warn(
             `Plugin pin ${ref} is not installed locally. Run: harnessdeck resource sync plugin_pin:${ref}`,
@@ -1399,8 +1408,6 @@ async function handleApplyCommand(
       }
     }
   }
-
-  const applyResources = expandPluginMaterialResources(mergedPluginPins, resources);
 
   const homeRoot = resolveHomeRoot();
   const resolvedClaude =
@@ -1447,9 +1454,8 @@ async function handleApplyCommand(
     !opts.ignorePluginVersions &&
     mergedPluginPins.length > 0
   ) {
-    const issues = validatePluginPinsAgainstInventory(mergedPluginPins);
-    if (issues.length > 0) {
-      for (const issue of issues) {
+    if (pluginValidationIssues.length > 0) {
+      for (const issue of pluginValidationIssues) {
         console.warn(ui.theme.warn(issue.message));
       }
       ui.danger("Plugin pin violations — apply aborted");
@@ -1570,8 +1576,7 @@ async function handleApplyCommand(
     !opts.strictPluginVersions &&
     mergedPluginPins.length > 0
   ) {
-    const issues = validatePluginPinsAgainstInventory(mergedPluginPins);
-    for (const issue of issues) {
+    for (const issue of pluginValidationIssues) {
       console.warn(ui.theme.warn(issue.message));
     }
   }
