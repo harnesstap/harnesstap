@@ -525,7 +525,7 @@ An environment has a unique `name`, description, ordered **environment values** 
 
 Permissions are captured only with `--include-permissions`.
 
-Design detail: [docs/superpowers/specs/2026-06-07-environment-commands-design.md](docs/superpowers/specs/2026-06-07-environment-commands-design.md).
+Design detail: [docs/internal/superpowers/specs/2026-06-07-environment-commands-design.md](docs/internal/superpowers/specs/2026-06-07-environment-commands-design.md).
 
 ### Layer model
 
@@ -640,7 +640,7 @@ Orphans are removed only with `--prune`.
 
 All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport files are rejected. Toolkit config (`~/.harnessdeck/config.jsonc`) remains JSONC.
 
-See [TOML transport design](docs/superpowers/specs/2026-06-14-toml-transport-design.md) for the full schema family.
+See [TOML transport design](docs/internal/superpowers/specs/2026-06-14-toml-transport-design.md) for the full schema family.
 
 ### Layer v1
 

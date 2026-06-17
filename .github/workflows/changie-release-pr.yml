@@ -54,4 +54,4 @@ jobs:
           body: |
             Release ${{ steps.latest.outputs.output }}.
 
-            After merge, the [Tag release](https://github.com/bqbooster/harnessdeck/actions/workflows/tag-release.yml) workflow will push the Git tag; that tag triggers npm publish and the GitHub release.
+            After merge, the [Tag release](https://github.com/harnessdeck/harnessdeck/actions/workflows/tag-release.yml) workflow will push the Git tag; that tag triggers npm publish and the GitHub release.

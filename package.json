@@ -45,12 +45,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bqbooster/harnessdeck.git"
+    "url": "git+https://github.com/harnessdeck/harnessdeck.git"
   },
   "bugs": {
-    "url": "https://github.com/bqbooster/harnessdeck/issues"
+    "url": "https://github.com/harnessdeck/harnessdeck/issues"
   },
-  "homepage": "https://github.com/bqbooster/harnessdeck#readme",
+  "homepage": "https://github.com/harnessdeck/harnessdeck#readme",
   "engines": {
     "node": ">=20.0.0"
   },
