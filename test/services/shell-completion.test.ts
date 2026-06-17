@@ -8,5 +8,6 @@ describe("renderShellCompletion", () => {
 
     expect(script).toContain("compadd -d descr -a args");
     expect(script).toContain("*$'\\t'*");
+    expect(script).toContain("${BUFFER[1,$CURSOR]}");
   });
 });
