@@ -14,9 +14,31 @@ function zshCompletion(): string {
   return `#compdef hd harnessdeck
 
 _harnessdeck() {
-  local -a suggestions
+  local -a suggestions args descr
+  local line has_descr=0
   suggestions=("\${(@f)\$(hd __complete zsh -- "\$BUFFER" 2>/dev/null)}")
-  compadd -a suggestions
+  if (( \${#suggestions} )); then
+    for line in \$suggestions; do
+      if [[ \$line == *$'\\t'* ]]; then
+        args+=(\${line%%$'\\t'*})
+        descr+=(\${line#*$'\\t'})
+      else
+        args+=(\$line)
+        descr+=("")
+      fi
+    done
+    for line in \$descr; do
+      if [[ -n \$line ]]; then
+        has_descr=1
+        break
+      fi
+    done
+    if (( has_descr )); then
+      compadd -d descr -a args
+    else
+      compadd -a args
+    fi
+  fi
 }
 _harnessdeck
 `;

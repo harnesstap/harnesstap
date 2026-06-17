@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { closeDb } from "../../db/connection.js";
 import { completeLine } from "./engine.js";
 import type { CompletionCandidate } from "./types.js";
 
@@ -35,6 +36,8 @@ export async function runCompleteCommand(
   lineParts: string[],
   program: Command,
 ): Promise<void> {
+  const previousComplete = process.env.HARNESSDECK_COMPLETE;
+  closeDb();
   process.env.HARNESSDECK_COMPLETE = "1";
   process.exitCode = 0;
 
@@ -58,5 +61,12 @@ export async function runCompleteCommand(
     process.stdout.write(formatCandidates(candidates, shell));
   } catch {
     // Errors produce empty completion output.
+  } finally {
+    closeDb();
+    if (previousComplete === undefined) {
+      delete process.env.HARNESSDECK_COMPLETE;
+    } else {
+      process.env.HARNESSDECK_COMPLETE = previousComplete;
+    }
   }
 }

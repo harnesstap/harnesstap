@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -78,8 +78,13 @@ export function getLegacyConfigPath(): string {
   return resolveLegacyConfigPath();
 }
 
+function isCompletionMode(): boolean {
+  return process.env.HARNESSDECK_COMPLETE === "1";
+}
+
 export function getDb(): SqliteDatabase {
   const dbPath = resolveDbPath();
+  const completionMode = isCompletionMode();
 
   if (instance && instancePath === dbPath) {
     return instance;
@@ -91,13 +96,23 @@ export function getDb(): SqliteDatabase {
     instancePath = null;
   }
 
-  mkdirSync(resolveHarnessdeckDir(), { recursive: true });
+  if (completionMode) {
+    if (!existsSync(dbPath)) {
+      throw new Error(`HarnessDeck database not found: ${dbPath}`);
+    }
+  } else {
+    mkdirSync(resolveHarnessdeckDir(), { recursive: true });
+  }
 
   const Database = resolveDatabaseConstructor();
-  const rawDb = new Database(dbPath);
+  const rawDb = completionMode
+    ? new Database(dbPath, { readonly: true })
+    : new Database(dbPath);
   instance = usesBunSqlite() ? wrapDatabase(rawDb) : rawDb;
   instancePath = dbPath;
-  instance.exec("PRAGMA journal_mode = WAL");
+  if (!completionMode) {
+    instance.exec("PRAGMA journal_mode = WAL");
+  }
   instance.exec("PRAGMA foreign_keys = ON");
 
   return instance;
