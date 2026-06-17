@@ -17,7 +17,7 @@ import {
   DECK_SCHEMA,
   type DeckJson,
   type DeckJsonEnvironment,
-  type Plugin,
+  type Layer,
 } from "../../src/types.ts";
 import { makeResource } from "../helpers/resources.ts";
 import type { MaterializeDeckPlugin } from "../../src/services/deck-materializer.ts";
@@ -30,7 +30,6 @@ const minimalDeckJson: DeckJson = {
     {
       name: "oncall",
       version: "1.0.0",
-      plugins: [{ name: "pagerduty", version: "1.0.0" }],
       environment: "prod",
     },
   ],
@@ -51,7 +50,7 @@ const samplePlugin: MaterializeDeckPlugin = {
     needs: ["PD_TOKEN", "PD_REGION"],
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
-  } satisfies Plugin,
+  } satisfies Layer,
   resources: [
     makeResource({
       type: "skill",

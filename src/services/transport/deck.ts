@@ -94,17 +94,6 @@ function parseDeckLayer(value: unknown): DeckJsonLayer {
   if (typeof value.environment === "string" && value.environment.length > 0) {
     layer.environment = value.environment;
   }
-  if (Array.isArray(value.plugins)) {
-    layer.plugins = value.plugins.map((plugin) => {
-      if (!isRecord(plugin)) {
-        throw new Error("Deck layer plugin ref must be a table");
-      }
-      return {
-        name: String(plugin.name ?? ""),
-        version: String(plugin.version ?? "1.0.0"),
-      };
-    });
-  }
   return layer;
 }
 
@@ -116,12 +105,6 @@ function serializeDeckLayer(layer: DeckJsonLayer): Record<string, unknown> {
   if (layer.org) row.org = layer.org;
   if (layer.catalog) row.catalog = layer.catalog;
   if (layer.environment) row.environment = layer.environment;
-  if (layer.plugins && layer.plugins.length > 0) {
-    row.plugins = layer.plugins.map((plugin) => ({
-      name: plugin.name,
-      version: plugin.version,
-    }));
-  }
   return row;
 }
 

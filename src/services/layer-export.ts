@@ -29,8 +29,8 @@ import {
   DECK_SCHEMA,
 } from "../types.js";
 import {
+  CONTEXT_SIDE_RESOURCE_TYPES,
   ENVIRONMENT_RESOURCE_TYPES,
-  PLUGIN_RESOURCE_TYPES,
 } from "./resource-classification.js";
 import { collectEmbeddedPluginFiles } from "./plugin-layer-export.js";
 import {
@@ -255,8 +255,8 @@ function isEnvironmentResourceType(type: string): boolean {
   return (ENVIRONMENT_RESOURCE_TYPES as readonly string[]).includes(type);
 }
 
-function isPluginResourceType(type: string): boolean {
-  return (PLUGIN_RESOURCE_TYPES as readonly string[]).includes(type);
+function isContextSideResourceType(type: string): boolean {
+  return (CONTEXT_SIDE_RESOURCE_TYPES as readonly string[]).includes(type);
 }
 
 function splitLayerExportResources(resources: LayerExportResource[]): {
@@ -269,7 +269,7 @@ function splitLayerExportResources(resources: LayerExportResource[]): {
   for (const resource of resources) {
     if (isEnvironmentResourceType(resource.type)) {
       environmentResources.push(resource);
-    } else if (isPluginResourceType(resource.type)) {
+    } else if (isContextSideResourceType(resource.type)) {
       pluginResources.push(resource);
     } else {
       pluginResources.push(resource);
@@ -303,35 +303,23 @@ function defaultEnvironmentNameForLayer(layerName: string): string {
   return `${layerName}-env`;
 }
 
-function isSelectorOnlyExport(options?: DeckJsonExportOptions): boolean {
-  return options?.selectorOnly !== false;
-}
-
 function layerToDeckJsonEntry(
   layer: Layer,
   layerEnvironment: string | undefined,
-  selectorOnly: boolean,
 ): DeckJsonLayer {
-  const entry: DeckJsonLayer = {
+  return {
     name: layer.name,
     version: layer.version,
     ...(layer.org_slug ? { org: layer.org_slug } : {}),
     ...(layer.catalog_slug ? { catalog: layer.catalog_slug } : {}),
     ...(layerEnvironment ? { environment: layerEnvironment } : {}),
   };
-
-  if (!selectorOnly) {
-    entry.plugins = [{ name: layer.name, version: layer.version }];
-  }
-
-  return entry;
 }
 
 export function parsedLayerExportToDeckJson(
   normalized: ParsedLayerExportSummary,
   options?: DeckJsonExportOptions,
 ): DeckJson {
-  const selectorOnly = isSelectorOnlyExport(options);
   const environmentsByName = new Map<string, DeckJsonEnvironment>();
   const deckLayers: DeckJsonLayer[] = [];
 
@@ -366,7 +354,6 @@ export function parsedLayerExportToDeckJson(
           updated_at: "",
         },
         layerEnvironment,
-        selectorOnly,
       ),
     );
   }

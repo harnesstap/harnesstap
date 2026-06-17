@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import type {
   DeckJson,
   DeckJsonEnvironment,
-  Plugin,
+  Layer,
   Resource,
 } from "../types.js";
 import { generateFiles, writeFiles } from "./applier.js";
@@ -11,10 +11,10 @@ import { formatDeckToml } from "./transport/index.js";
 import {
   getDedicatedSerializerPlatformIds,
 } from "./platform-serializers.js";
-import { PLUGIN_RESOURCE_TYPES } from "./resource-classification.js";
+import { CONTEXT_SIDE_RESOURCE_TYPES } from "./resource-classification.js";
 
 export interface MaterializeDeckPlugin {
-  plugin: Plugin;
+  plugin: Layer;
   resources: Resource[];
 }
 
@@ -47,7 +47,7 @@ interface MarketplaceManifest {
   plugins: MarketplacePluginEntry[];
 }
 
-const pluginResourceTypes = new Set<string>(PLUGIN_RESOURCE_TYPES);
+const pluginResourceTypes = new Set<string>(CONTEXT_SIDE_RESOURCE_TYPES);
 
 /** Recursively sort object keys for deterministic JSON output (deck doctor diffs). */
 export function sortKeysDeep<T>(value: T): T {
@@ -78,7 +78,7 @@ function filterPluginResources(resources: Resource[]): Resource[] {
   return resources.filter((resource) => pluginResourceTypes.has(resource.type));
 }
 
-function buildPluginManifest(plugin: Plugin): ClaudePluginManifest {
+function buildPluginManifest(plugin: Layer): ClaudePluginManifest {
   const manifest: ClaudePluginManifest = {
     name: plugin.name,
     version: plugin.version,

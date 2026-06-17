@@ -18,7 +18,7 @@ import {
 import { listResources } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
-import type { PluginResourceMetadata, Resource } from "../types.js";
+import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
@@ -83,8 +83,8 @@ function stampResolvedVersionFromExactConstraint(
       return null;
     }
 
-    const metadata: PluginResourceMetadata = {
-      ...(resource.metadata as PluginResourceMetadata),
+    const metadata: PluginPinMetadata = {
+      ...(resource.metadata as PluginPinMetadata),
       resolved_version: parsed.version,
       sync_status: "synced",
     };
@@ -132,7 +132,7 @@ export async function syncPluginPinsForApply(
       findPluginResourceByPin(pin.ref, pin.version_constraint) ??
       ensurePluginResource(selector, { versionConstraint: constraint });
 
-    const metadata = (resource.metadata ?? {}) as PluginResourceMetadata;
+    const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const needsSync = options.syncAll || !metadata.resolved_version;
     if (!needsSync) {
       continue;
@@ -149,7 +149,7 @@ export async function syncPluginPinsForApply(
 
     resource =
       findPluginResourceByPin(pin.ref, pin.version_constraint) ?? resource;
-    const syncedMetadata = (resource.metadata ?? {}) as PluginResourceMetadata;
+    const syncedMetadata = (resource.metadata ?? {}) as PluginPinMetadata;
     if (syncedMetadata.resolved_version) {
       continue;
     }

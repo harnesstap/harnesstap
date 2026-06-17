@@ -4,7 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { materializeDeckRepo } from "../../src/services/deck-materializer.ts";
 import { runDeckDoctor } from "../../src/services/deck-doctor.ts";
 import { parseDeckToml } from "../../src/services/transport/deck.ts";
-import type { DeckJson, Plugin } from "../../src/types.ts";
+import type { DeckJson, Layer } from "../../src/types.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const minimalDeckFixturePath = join(
@@ -21,7 +21,7 @@ const backendOncallPlugin = {
     tags: [],
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
-  } satisfies Plugin,
+  } satisfies Layer,
   resources: [],
 };
 

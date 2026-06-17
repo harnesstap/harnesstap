@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { getLayerByName, getLayerById, resolveLayerSelector } from "../models/layer-model.js";
 import { getDeckByRootPath } from "../models/deck.js";
 import { getEnvironment, resolveEnvironmentSelector } from "../models/environment.js";
-import type { ConfiguredLayer, Deck, Environment } from "../types.js";
+import type { Layer, Deck, Environment } from "../types.js";
 
 function isUlid(value: string): boolean {
   return /^[0-9A-Z]{26}$/.test(value);
@@ -25,7 +25,7 @@ export function maybeResolveEnvironment(selector: string): Environment | undefin
   return result.status === "found" ? result.environment : undefined;
 }
 
-export function resolveConfiguredLayerOrThrow(selector: string): ConfiguredLayer {
+export function resolveConfiguredLayerOrThrow(selector: string): Layer {
   const layer = resolveLayerSelector(selector);
   if (!layer) {
     throw new Error(`Configured layer not found: ${selector}`);
@@ -35,7 +35,7 @@ export function resolveConfiguredLayerOrThrow(selector: string): ConfiguredLayer
 
 export function resolveConfiguredLayerByNameOrId(
   selector: string,
-): ConfiguredLayer | undefined {
+): Layer | undefined {
   if (isUlid(selector)) {
     return getLayerById(selector);
   }

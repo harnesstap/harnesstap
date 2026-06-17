@@ -235,38 +235,6 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("exports legacy plugins[] when selectorOnly is false", async () => {
-    const context = await createInitializedTestContext("deck-toml-legacy-export");
-
-    try {
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
-      const deckModel = await import("../../src/models/deck.ts");
-      const exporter = await loadDeckTransportServices();
-
-      const plugin = pluginModel.createLayer({
-        name: "pagerduty",
-        version: "1.0.0",
-      });
-      const configuredLayer = configuredLayerModel.createLayerFromSources({
-        name: "backend-oncall",
-        version: "1.0.0",
-        sourceLayerIds: [plugin.id],
-      });
-      const deck = deckModel.createDeck({ name: "team-deck" });
-      deckModel.addConfiguredLayerToDeck(deck.id, configuredLayer.id);
-
-      const deckJson = exporter.exportDeckToDeckJson(deck.id, {
-        selectorOnly: false,
-      });
-      expect(deckJson.layers[0]?.plugins).toEqual([
-        { name: "backend-oncall", version: "1.0.0" },
-      ]);
-    } finally {
-      await context.cleanup();
-    }
-  });
-
   it("imports selector-only deck.toml from minimal fixture", async () => {
     const context = await createInitializedTestContext("deck-toml-minimal-import");
 
@@ -295,7 +263,7 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("imports selector-only deck.toml without plugins[]", async () => {
+  it("imports selector-only deck.toml without legacy layer plugins[]", async () => {
     const context = await createInitializedTestContext("deck-toml-selector-import");
 
     try {

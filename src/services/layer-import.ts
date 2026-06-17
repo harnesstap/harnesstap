@@ -20,14 +20,12 @@ import {
   getDeck,
 } from "../models/deck.js";
 import type {
-  ConfiguredLayer,
   Deck,
   DeckJson,
   Environment,
   LayerExportEntry,
   MultiLayerExport,
   Layer,
-  Plugin,
   Resource,
 } from "../types.js";
 import { writeEmbeddedPluginsOnImport } from "./plugin-layer-export.js";
@@ -65,8 +63,8 @@ export interface ImportedLayerBundle {
 export interface ImportLayerExportAsDeckResult {
   deck: Deck;
   deckJson: DeckJson;
-  plugins: Plugin[];
-  configuredLayers: ConfiguredLayer[];
+  plugins: Layer[];
+  configuredLayers: Layer[];
   environments: Environment[];
 }
 
@@ -232,7 +230,7 @@ export function importLayerExportAsDeck(
     environments.map((environment) => [environment.name, environment.id]),
   );
 
-  const configuredLayers: ConfiguredLayer[] = [];
+  const configuredLayers: Layer[] = [];
   for (const entry of imported.layers) {
     const deckLayer = deckJson.layers.find(
       (layer) =>

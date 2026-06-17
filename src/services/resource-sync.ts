@@ -9,7 +9,7 @@ import {
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
-import type { PluginResourceMetadata, Resource } from "../types.js";
+import type { PluginPinMetadata, Resource } from "../types.js";
 import {
   readPluginVersionFromInstallRoot,
   scanPluginSource,
@@ -139,12 +139,12 @@ export async function syncPluginResource(
     }
 
     if (!options.dryRun) {
-      const metadata: PluginResourceMetadata = {
-        ...(pluginResource.metadata as PluginResourceMetadata),
+      const metadata: PluginPinMetadata = {
+        ...(pluginResource.metadata as PluginPinMetadata),
         resolved_version: manifestVersion,
         sync_status: "synced",
         manifests: {
-          ...(pluginResource.metadata as PluginResourceMetadata).manifests,
+          ...(pluginResource.metadata as PluginPinMetadata).manifests,
         },
       };
       const db = getDb();
@@ -160,12 +160,12 @@ export async function syncPluginResource(
   }
 
   if (!options.dryRun) {
-    const metadata: PluginResourceMetadata = {
-      ...(pluginResource.metadata as PluginResourceMetadata),
+    const metadata: PluginPinMetadata = {
+      ...(pluginResource.metadata as PluginPinMetadata),
       resolved_version: scan.plugin_version,
       sync_status: "synced",
       manifests: {
-        ...(pluginResource.metadata as PluginResourceMetadata).manifests,
+        ...(pluginResource.metadata as PluginPinMetadata).manifests,
       },
     };
     const db = getDb();

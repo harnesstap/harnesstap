@@ -106,9 +106,6 @@ export interface PluginPinMetadata {
   };
 }
 
-/** @deprecated Use PluginPinMetadata */
-export type PluginResourceMetadata = PluginPinMetadata;
-
 export interface LayerResourceMetadata {
   version_constraint?: string;
   resolved_version?: string;
@@ -201,9 +198,6 @@ export interface Layer {
   updated_at: string;
 }
 
-/** @deprecated Use Layer */
-export type Plugin = Layer;
-
 export type EnvironmentSecretProvider = "keychain" | "env" | "file";
 
 export interface Environment {
@@ -248,18 +242,9 @@ export interface Project {
   created_at: string;
 }
 
-/** @deprecated Use Layer */
-export type ConfiguredLayer = Layer;
-
-export interface ConfiguredLayerPlugin {
-  configured_layer_id: string;
-  plugin_id: string;
-  order: number;
-}
-
-export interface ProjectConfiguredLayer {
+export interface ProjectLayer {
   project_id: string;
-  configured_layer_id: string;
+  layer_id: string;
   platforms: string[];
   applied_at: string;
 }
@@ -285,25 +270,16 @@ export const DECK_JSON_VERSION = 1 as const;
 export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
 export const BUNDLE_SCHEMA_VERSION = 1 as const;
 
-export interface DeckJsonLayerPluginRef {
-  name: string;
-  version: string;
-}
-
 export interface DeckJsonLayer {
   name: string;
   version: string;
   org?: string;
   catalog?: string;
-  /** @deprecated Import only — resolve layers by name, version, and optional org/catalog. */
-  plugins?: DeckJsonLayerPluginRef[];
   environment?: string;
 }
 
 export interface DeckJsonExportOptions {
   deckName?: string;
-  /** When true (default), emit layer selectors only without legacy `plugins[]`. */
-  selectorOnly?: boolean;
 }
 
 export type DeckJsonSecretProvider = "keychain" | "env" | "file";
@@ -326,14 +302,6 @@ export interface DeckJson {
   layers: DeckJsonLayer[];
   environments: DeckJsonEnvironment[];
   active_environment?: string;
-}
-
-/** @deprecated Use ProjectConfiguredLayer */
-export interface ProjectLayer {
-  project_id: string;
-  layer_id: string;
-  platforms: string[];
-  applied_at: string;
 }
 
 export interface HarnessSelection {

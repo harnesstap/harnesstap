@@ -23,7 +23,6 @@ import {
   getEnvironmentSecretRefs,
 } from "../models/environment.js";
 import type {
-  ConfiguredLayer,
   Deck,
   DeckJson,
   DeckJsonEnvironment,
@@ -33,7 +32,6 @@ import type {
   EnvVarMetadata,
   Environment,
   Layer,
-  Plugin,
 } from "../types.js";
 import { getLayerById } from "../models/layer-model.js";
 import {
@@ -50,8 +48,8 @@ import {
 
 export interface ImportDeckJsonResult {
   deck: Deck;
-  plugins: Plugin[];
-  configuredLayers: ConfiguredLayer[];
+  plugins: Layer[];
+  configuredLayers: Layer[];
   environments: Environment[];
 }
 
@@ -61,8 +59,17 @@ export interface ImportDeckJsonOptions {
   deckNameOverride?: string;
 }
 
-function isSelectorOnlyExport(options?: DeckJsonExportOptions): boolean {
-  return options?.selectorOnly !== false;
+function layerToDeckJsonEntry(
+  layer: Layer,
+  layerEnvironment: string | undefined,
+): DeckJsonLayer {
+  return {
+    name: layer.name,
+    version: layer.version,
+    ...(layer.org_slug ? { org: layer.org_slug } : {}),
+    ...(layer.catalog_slug ? { catalog: layer.catalog_slug } : {}),
+    ...(layerEnvironment ? { environment: layerEnvironment } : {}),
+  };
 }
 
 function environmentToDeckJson(environmentId: string): DeckJsonEnvironment {
@@ -100,39 +107,18 @@ function environmentToDeckJson(environmentId: string): DeckJsonEnvironment {
   };
 }
 
-function layerToDeckJsonEntry(
-  layer: Layer,
-  layerEnvironment: string | undefined,
-  selectorOnly: boolean,
-): DeckJsonLayer {
-  const entry: DeckJsonLayer = {
-    name: layer.name,
-    version: layer.version,
-    ...(layer.org_slug ? { org: layer.org_slug } : {}),
-    ...(layer.catalog_slug ? { catalog: layer.catalog_slug } : {}),
-    ...(layerEnvironment ? { environment: layerEnvironment } : {}),
-  };
-
-  if (!selectorOnly) {
-    entry.plugins = [{ name: layer.name, version: layer.version }];
-  }
-
-  return entry;
-}
-
 /**
  * Serialize a deck row and its layers to deck.json.
  */
 export function exportDeckToDeckJson(
   deckId: string,
-  options?: DeckJsonExportOptions,
+  _options?: DeckJsonExportOptions,
 ): DeckJson {
   const deck = getDeck(deckId);
   if (!deck) {
     throw new Error(`Deck not found: ${deckId}`);
   }
 
-  const selectorOnly = isSelectorOnlyExport(options);
   const environmentsByName = new Map<string, DeckJsonEnvironment>();
   const deckLayers: DeckJsonLayer[] = [];
 
@@ -156,7 +142,7 @@ export function exportDeckToDeckJson(
 
     const layerEnvironment = rememberEnvironment(layer.default_environment_id);
 
-    deckLayers.push(layerToDeckJsonEntry(layer, layerEnvironment, selectorOnly));
+    deckLayers.push(layerToDeckJsonEntry(layer, layerEnvironment));
   }
 
   const activeEnvironment = deck.active_environment_id
@@ -270,8 +256,8 @@ export function importDeckToml(
     environmentIdsByName.set(imported.name, imported.id);
   }
 
-  const configuredLayers: ConfiguredLayer[] = [];
-  const plugins: Plugin[] = [];
+  const configuredLayers: Layer[] = [];
+  const plugins: Layer[] = [];
 
   for (const layer of deckJson.layers) {
     const environmentId = layer.environment

@@ -110,7 +110,7 @@ export function listEnvironmentsCommand(): Array<{
       environment,
       value_count: getEnvironmentResources(environment.id).length,
       secret_ref_count: getEnvironmentSecretRefs(environment.id).length,
-      reference_count: refs.configured_layers.length + refs.decks.length,
+      reference_count: refs.layers.length + refs.decks.length,
     };
   });
 }

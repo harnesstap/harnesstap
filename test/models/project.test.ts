@@ -57,7 +57,7 @@ describe("project model", () => {
       expect(projectModel.getProjectConfiguredLayers(project.id)).toEqual([
         expect.objectContaining({
           project_id: project.id,
-          configured_layer_id: configuredLayer.id,
+          layer_id: configuredLayer.id,
           platforms: ["claude-code", "cursor"],
         }),
       ]);

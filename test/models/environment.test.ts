@@ -121,7 +121,7 @@ describe("environment model", () => {
       setDeckActiveEnvironment(deck.id, env.id);
 
       const references = listEnvironmentReferences(env.id);
-      expect(references.configured_layers).toEqual([
+      expect(references.layers).toEqual([
         expect.objectContaining({ id: configuredLayer.id, name: "backend" }),
       ]);
       expect(references.decks).toEqual([
@@ -132,7 +132,7 @@ describe("environment model", () => {
       setLayerDefaultEnvironment(configuredLayer.id, null);
       setDeckActiveEnvironment(deck.id, null);
       expect(listEnvironmentReferences(env.id)).toEqual({
-        configured_layers: [],
+        layers: [],
         decks: [],
       });
       expect(hasEnvironmentReferences(env.id)).toBe(false);

@@ -79,7 +79,7 @@ import type {
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import { listAttachedPluginPins } from "./services/layer-composition.js";
-import type { PluginResourceMetadata } from "./types.js";
+import type { PluginPinMetadata } from "./types.js";
 import {
   getHarnessPreference,
   setHarnessPreference,
@@ -2116,7 +2116,7 @@ function handleLayerShowCommand(
         { key: "sync", header: "SYNC", width: 14 },
       ],
       rows: pluginPins.map((pin) => {
-        const metadata = pin.resource.metadata as PluginResourceMetadata;
+        const metadata = pin.resource.metadata as PluginPinMetadata;
         return {
           ref: pin.ref,
           version: metadata.resolved_version ?? "—",
@@ -2267,7 +2267,7 @@ function resolveConfiguredLayersForCascade(
     throw new Error(`No tracked project found at ${projectRoot}; pass --layers explicitly`);
   }
   const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
-    (row) => row.configured_layer_id,
+    (row) => row.layer_id,
   );
   if (configuredLayerIds.length === 0) {
     throw new Error(
@@ -2383,7 +2383,7 @@ async function handleProjectStatusCommand(
   const detected = detectPlatforms(projectRoot);
   const projectByPath = getProjectByLocalPath(projectRoot);
   const configuredLayerIds = projectByPath
-    ? getProjectConfiguredLayers(projectByPath.id).map((row) => row.configured_layer_id)
+    ? getProjectConfiguredLayers(projectByPath.id).map((row) => row.layer_id)
     : [];
   const environmentCascade = environmentActivePayload({
     projectRoot,
@@ -2554,7 +2554,7 @@ async function handleEnvironmentUseCommand(
         return;
       }
       const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
-        (row) => row.configured_layer_id,
+        (row) => row.layer_id,
       );
       if (configuredLayerIds.length === 0) {
         ui.warn(`Reapply skipped: no configured layers recorded for ${projectRoot}.`);
@@ -4514,7 +4514,7 @@ environmentCmd
       const project = getProjectByLocalPath(projectRoot);
       if (!project) return [] as string[];
       return getProjectConfiguredLayers(project.id).map(
-        (row) => row.configured_layer_id,
+        (row) => row.layer_id,
       );
     })();
     const payload = environmentActivePayload({

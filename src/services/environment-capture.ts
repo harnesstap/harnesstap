@@ -106,7 +106,7 @@ function resolveScopedConfiguredLayerIds(
   }
 
   const applied = getProjectConfiguredLayers(project.id);
-  const configuredLayerIds = unique(applied.map((row) => row.configured_layer_id));
+  const configuredLayerIds = unique(applied.map((row) => row.layer_id));
   if (configuredLayerIds.length === 0) {
     throw new Error(
       `Project ${projectRoot} has no applied configured layers; pass --layers explicitly`,
