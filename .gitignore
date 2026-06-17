@@ -58,6 +58,9 @@ temp/
 # scratchpad
 scratchpad.md
 
+# Maintainer-only docs (kept locally, never committed)
+docs/internal/
+
 #workspaces
 *.code-workspace
 

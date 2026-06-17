@@ -525,8 +525,6 @@ An environment has a unique `name`, description, ordered **environment values** 
 
 Permissions are captured only with `--include-permissions`.
 
-Design detail: [docs/internal/superpowers/specs/2026-06-07-environment-commands-design.md](docs/internal/superpowers/specs/2026-06-07-environment-commands-design.md).
-
 ### Layer model
 
 A **layer** is the primary composable unit.
@@ -639,8 +637,6 @@ Orphans are removed only with `--prune`.
 ## Transport formats
 
 All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport files are rejected. Toolkit config (`~/.harnessdeck/config.jsonc`) remains JSONC.
-
-See [TOML transport design](docs/internal/superpowers/specs/2026-06-14-toml-transport-design.md) for the full schema family.
 
 ### Layer v1
 

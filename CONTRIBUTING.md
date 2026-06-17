@@ -112,10 +112,6 @@ npm publish runs only in CI on tag push. Configure the `NPM_TOKEN` repository se
 
 Report vulnerabilities privately — see [SECURITY.md](../SECURITY.md). Do not open public issues for security reports.
 
-### Internal documentation
-
-Design specs, implementation plans, and maintainer notes live under [docs/internal/](docs/internal/). They supplement [SPEC.md](../SPEC.md) but are not required reading for typical contributions.
-
 Local verification before a release:
 
 ```bash
