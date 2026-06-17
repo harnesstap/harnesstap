@@ -5,7 +5,7 @@ import { createLayer, createLayerFromSources, getLayerResources } from "../../sr
 
 describe("layer from sources", () => {
   it("binds multiple plugins and a default environment", async () => {
-    const context = await createInitializedTestContext("configured-layer-bind");
+    const context = await createInitializedTestContext("layer-from-sources-bind");
 
     try {
       const p1 = createLayer({ name: "pagerduty" });

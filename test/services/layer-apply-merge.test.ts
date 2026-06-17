@@ -6,9 +6,9 @@ import { createResource } from "../../src/models/resource.ts";
 import { createLayerFromSources } from "../../src/models/layer-model.ts";
 import { mergeLayersForApply } from "../../src/services/layer-apply-merge.ts";
 
-describe("configured layer merge", () => {
-  it("merges plugins and default environment resources from configured layers", async () => {
-    const context = await createInitializedTestContext("configured-layer-merge");
+describe("layer apply merge", () => {
+  it("merges source layers and default environment resources", async () => {
+    const context = await createInitializedTestContext("layer-apply-merge");
 
     try {
       const plugin = createLayer({ name: "pagerduty" });
