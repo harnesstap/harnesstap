@@ -108,6 +108,10 @@ Commit the generated fragment with your PR.
 
 npm publish runs only in CI on tag push. Configure the `NPM_TOKEN` repository secret (npm automation token with publish access).
 
+### Security
+
+Report vulnerabilities privately — see [SECURITY.md](../SECURITY.md). Do not open public issues for security reports.
+
 Local verification before a release:
 
 ```bash

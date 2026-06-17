@@ -218,12 +218,12 @@ describe("CLI help and command organization", () => {
     );
     expect(result.stdout).toContain("concepts");
     expect(result.stdout).toContain("DOCUMENTATION");
-    expect(result.stdout).toContain("https://github.com/bqbooster/harnessdeck#quick-start");
+    expect(result.stdout).toContain("https://github.com/harnessdeck/harnessdeck#quick-start");
     expect(result.stdout).toContain(
-      "https://github.com/bqbooster/harnessdeck/blob/main/docs/cli/command-reference.md",
+      "https://github.com/harnessdeck/harnessdeck/blob/main/docs/cli/command-reference.md",
     );
     expect(result.stdout).toContain(
-      "https://github.com/bqbooster/harnessdeck/blob/main/docs/scenarios/scenarios.md",
+      "https://github.com/harnessdeck/harnessdeck/blob/main/docs/scenarios/scenarios.md",
     );
   });
 

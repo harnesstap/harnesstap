@@ -265,11 +265,11 @@ function formatCommand(path: string): string {
 }
 
 const GUIDE_QUICK_START_URL =
-  "https://github.com/bqbooster/harnessdeck#quick-start";
+  "https://github.com/harnessdeck/harnessdeck#quick-start";
 const GUIDE_CLI_REFERENCE_URL =
-  "https://github.com/bqbooster/harnessdeck/blob/main/docs/cli/command-reference.md";
+  "https://github.com/harnessdeck/harnessdeck/blob/main/docs/cli/command-reference.md";
 const GUIDE_SCENARIOS_URL =
-  "https://github.com/bqbooster/harnessdeck/blob/main/docs/scenarios/scenarios.md";
+  "https://github.com/harnessdeck/harnessdeck/blob/main/docs/scenarios/scenarios.md";
 
 const GIT_ORIGIN_HINTS = [
   "Add a remote: git remote add origin <url>",

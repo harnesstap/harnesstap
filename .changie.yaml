@@ -13,7 +13,7 @@ changeFormat: |-
     {{- $changes := splitList " " (printf "%s" $.Custom.Issue) }}
     {{- if ne (len $changes) 0 }}
       {{- range $issueNbr := $changes }}
-        {{- $changeLink := "[#nbr](https://github.com/bqbooster/harnessdeck/issues/nbr)" | replace "nbr" $issueNbr }}
+        {{- $changeLink := "[#nbr](https://github.com/harnessdeck/harnessdeck/issues/nbr)" | replace "nbr" $issueNbr }}
         {{- $IssueList = append $IssueList $changeLink }}
       {{- end }}
     - {{.Body}} ({{ range $index, $element := $IssueList }}{{if $index}}, {{end}}{{$element}}{{end}})
