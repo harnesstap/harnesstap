@@ -3,8 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-component.ts";
-import { createConfiguredLayer } from "../../src/models/configured-layer.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
+import { createLayerFromSources } from "../../src/models/layer-model.ts";
 import { setHarnessPreference } from "../../src/models/harness.ts";
 import { getEnvironmentByName } from "../../src/models/environment.ts";
 
@@ -53,7 +53,7 @@ describe("environment capture service", () => {
       process.env.PROC_REGION = "process-value";
       process.env.PROC_TOKEN = "process-secret";
 
-      const plugin = createPlugin({
+      const plugin = createLayer({
         name: "capture-test-plugin",
         needs: ["SCAN_KEY", "LIB_KEY", "PROC_TOKEN", "MISSING_KEY"],
       });
@@ -79,12 +79,12 @@ describe("environment capture service", () => {
         metadata: { model: "gpt-5" },
         source: "manual",
       });
-      addResourceToPlugin(plugin.id, mcpServer.id);
-      addResourceToPlugin(plugin.id, agent.id);
+      addResourceToLayer(plugin.id, mcpServer.id);
+      addResourceToLayer(plugin.id, agent.id);
 
-      const configuredLayer = createConfiguredLayer({
+      const configuredLayer = createLayerFromSources({
         name: "capture-test-layer",
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
 
       const captureService = await import("../../src/services/environment-capture.ts");
@@ -136,13 +136,13 @@ describe("environment capture service", () => {
         "utf-8",
       );
 
-      const plugin = createPlugin({
+      const plugin = createLayer({
         name: "strict-plugin",
         needs: ["MISSING_STRICT_KEY"],
       });
-      const configuredLayer = createConfiguredLayer({
+      const configuredLayer = createLayerFromSources({
         name: "strict-layer",
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
 
       const captureService = await import("../../src/services/environment-capture.ts");

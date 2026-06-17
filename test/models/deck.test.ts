@@ -8,8 +8,8 @@ import {
   listDeckConfiguredLayers,
   setDeckActiveEnvironment,
 } from "../../src/models/deck.ts";
-import { createConfiguredLayer } from "../../src/models/configured-layer.ts";
-import { createPlugin } from "../../src/models/plugin-component.ts";
+import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/layer-model.ts";
 
 describe("deck model", () => {
   it("sets active environment on deck", async () => {
@@ -29,15 +29,15 @@ describe("deck model", () => {
     const context = await createInitializedTestContext("deck-layers");
 
     try {
-      const p1 = createPlugin({ name: "pagerduty" });
-      const p2 = createPlugin({ name: "slack" });
-      const layer1 = createConfiguredLayer({
+      const p1 = createLayer({ name: "pagerduty" });
+      const p2 = createLayer({ name: "slack" });
+      const layer1 = createLayerFromSources({
         name: "oncall",
-        pluginIds: [p1.id],
+        sourceLayerIds: [p1.id],
       });
-      const layer2 = createConfiguredLayer({
+      const layer2 = createLayerFromSources({
         name: "comms",
-        pluginIds: [p2.id],
+        sourceLayerIds: [p2.id],
       });
       const deck = createDeck({ name: "team-deck" });
       addConfiguredLayerToDeck(deck.id, layer1.id);

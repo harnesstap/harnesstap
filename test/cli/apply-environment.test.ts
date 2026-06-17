@@ -5,9 +5,9 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-component.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createConfiguredLayer } from "../../src/models/configured-layer.ts";
+import { createLayerFromSources } from "../../src/models/layer-model.ts";
 import { createDeck, setDeckActiveEnvironment } from "../../src/models/deck.ts";
 
 describe("CLI apply with environment cascade", () => {
@@ -18,8 +18,8 @@ describe("CLI apply with environment cascade", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-env.git");
       await runCli(["init"]);
 
-      const plugin = createPlugin({ name: "env-demo" });
-      addResourceToPlugin(
+      const plugin = createLayer({ name: "env-demo" });
+      addResourceToLayer(
         plugin.id,
         createResource({
           type: "instruction",
@@ -59,9 +59,9 @@ describe("CLI apply with environment cascade", () => {
         }),
       );
 
-      createConfiguredLayer({
+      createLayerFromSources({
         name: "env-layer",
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
         environmentId: prod.id,
       });
 

@@ -51,11 +51,11 @@ describe("addSkillPackage integration", () => {
         harnessdeckDir: join(context.homeDir, ".harnessdeck"),
         createLayer: "mattpocock-skills",
       });
-      const { getPlugin, getPluginResources } = await import("../../src/models/plugin-component.ts");
-      const layer = getPlugin("mattpocock-skills");
+      const { getLayer, getLayerResources } = await import("../../src/models/layer-model.ts");
+      const layer = getLayer("mattpocock-skills");
       expect(layer).toBeDefined();
       if (!layer) throw new Error("Expected mattpocock-skills layer");
-      const attached = getPluginResources(layer.id);
+      const attached = getLayerResources(layer.id);
       expect(attached.some((r) => r.type === "skill" && r.name === "caveman")).toBe(true);
     } finally {
       await context.cleanup();

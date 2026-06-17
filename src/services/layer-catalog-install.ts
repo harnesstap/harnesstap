@@ -1,6 +1,6 @@
 import { downloadCatalogBundle } from "./catalog-client.js";
-import { importFromFile } from "./exporter.js";
-import { getPlugin } from "../models/plugin-component.js";
+import { importFromFile } from "./layer-import.js";
+import { getLayer } from "../models/layer-model.js";
 import { updateLayerPublishedIdentity } from "../models/layer-model.js";
 import {
   formatPublishedSelectorWithVersion,
@@ -26,7 +26,7 @@ export async function installLayerFromCatalog(
   opts: InstallLayerFromCatalogOptions = {},
 ): Promise<InstallLayerFromCatalogResult> {
   const localName = opts.as ?? parsed.layer_slug;
-  const existing = getPlugin(localName);
+  const existing = getLayer(localName);
   if (existing && !opts.as) {
     throw new Error(
       `Layer name already exists: ${localName}. Use --as to install under a different name.`,

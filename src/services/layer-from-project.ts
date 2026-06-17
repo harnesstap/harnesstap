@@ -1,10 +1,10 @@
 import {
-  createPlugin,
-  addResourceToPlugin,
-  getPlugin,
-  getPluginResources,
-  deletePlugin,
-} from "../models/plugin-component.js";
+  createLayer,
+  addResourceToLayer,
+  getLayer,
+  getLayerResources,
+  deleteLayer,
+} from "../models/layer-model.js";
 import {
   scanProjectWithPluginSource,
   persistMergedProjectScan,
@@ -40,7 +40,7 @@ export async function previewLayerFromProject(input: {
   projectRoot: string;
   platform?: string;
 }): Promise<LayerFromProjectPreview> {
-  const existingLayer = getPlugin(input.name);
+  const existingLayer = getLayer(input.name);
   const { harness, plugin } = await scanProjectWithPluginSource(
     input.projectRoot,
     input.platform,
@@ -59,7 +59,7 @@ export async function previewLayerFromProject(input: {
     };
   }
 
-  const existingResources = getPluginResources(existingLayer.id);
+  const existingResources = getLayerResources(existingLayer.id);
   const conflicts: ConflictInfo[] = [];
   const newResources: Resource[] = [];
 
@@ -98,7 +98,7 @@ export async function createLayerFromProject(input: {
   platform?: string;
   conflictStrategy?: "overwrite" | "skip";
 }): Promise<LayerFromProjectResult> {
-  const existing = getPlugin(input.name);
+  const existing = getLayer(input.name);
 
   if (existing && input.conflictStrategy !== "overwrite") {
     throw new Error(`Layer already exists: ${input.name}`);
@@ -117,28 +117,28 @@ export async function createLayerFromProject(input: {
   let layer: Layer;
   if (existing && input.conflictStrategy === "overwrite") {
     const oldDescription = existing.description;
-    deletePlugin(existing.id);
+    deleteLayer(existing.id);
 
-    layer = createPlugin({
+    layer = createLayer({
       name: input.name,
       description: input.description ?? oldDescription,
     });
 
     for (const resource of resources) {
-      addResourceToPlugin(layer.id, resource.id);
+      addResourceToLayer(layer.id, resource.id);
     }
   } else {
-    layer = createPlugin({
+    layer = createLayer({
       name: input.name,
       description: input.description ?? `Inferred from ${input.projectRoot}`,
     });
 
     for (const resource of resources) {
-      addResourceToPlugin(layer.id, resource.id);
+      addResourceToLayer(layer.id, resource.id);
     }
   }
 
-  const finalized = getPlugin(layer.id);
+  const finalized = getLayer(layer.id);
   if (!finalized) {
     throw new Error(`Failed to create layer: ${input.name}`);
   }

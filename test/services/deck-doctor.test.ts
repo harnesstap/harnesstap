@@ -4,7 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { materializeDeckRepo } from "../../src/services/deck-materializer.ts";
 import { runDeckDoctor } from "../../src/services/deck-doctor.ts";
 import { parseDeckToml } from "../../src/services/transport/deck.ts";
-import type { DeckJson, Plugin } from "../../src/types.ts";
+import type { DeckJson, Layer } from "../../src/types.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
 const minimalDeckFixturePath = join(
@@ -12,16 +12,16 @@ const minimalDeckFixturePath = join(
   "../fixtures/decks/minimal-deck.toml",
 );
 
-const pagerdutyPlugin = {
+const backendOncallPlugin = {
   plugin: {
-    id: "plugin-pagerduty",
-    name: "pagerduty",
+    id: "plugin-backend-oncall",
+    name: "backend-oncall",
     version: "1.0.0",
     description: "",
     tags: [],
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
-  } satisfies Plugin,
+  } satisfies Layer,
   resources: [],
 };
 
@@ -34,7 +34,7 @@ async function writeDeckRepoWithDriftedMarketplace(repoRoot: string): Promise<vo
   await materializeDeckRepo(
     {
       deckJson,
-      plugins: [pagerdutyPlugin],
+      plugins: [backendOncallPlugin],
       environments: deckJson.environments,
     },
     repoRoot,
@@ -73,7 +73,7 @@ describe("deck doctor", () => {
       await materializeDeckRepo(
         {
           deckJson,
-          plugins: [pagerdutyPlugin],
+          plugins: [backendOncallPlugin],
           environments: deckJson.environments,
         },
         fixturesDir,

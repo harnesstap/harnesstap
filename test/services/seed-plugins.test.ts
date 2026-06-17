@@ -17,7 +17,7 @@ describe("seed plugins service", () => {
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
 
       const count = seedPlugins.seedBuiltInPlugins();
 
@@ -40,7 +40,7 @@ describe("seed plugins service", () => {
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
 
       // First seed
       seedPlugins.seedBuiltInPlugins();
@@ -64,7 +64,7 @@ describe("seed plugins service", () => {
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
       // Remove existing layers
@@ -93,7 +93,7 @@ describe("seed plugins service", () => {
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
       // Remove existing layers
@@ -130,7 +130,7 @@ describe("seed plugins service", () => {
         );
 
         const seedPlugins = await import("../../src/services/seed-plugins.ts");
-        const layerModel = await import("../../src/models/layer.ts");
+        const layerModel = await import("../../src/models/layer-model.ts");
 
         const before = new Set(layerModel.listLayers().map((layer) => layer.name));
         const seededCount = seedPlugins.seedBuiltInPlugins();
@@ -174,7 +174,7 @@ describe("seed plugins service", () => {
         );
 
         const seedPlugins = await import("../../src/services/seed-plugins.ts");
-        const layerModel = await import("../../src/models/layer.ts");
+        const layerModel = await import("../../src/models/layer-model.ts");
 
         layerModel.createLayer({ name: "partial-one", version: "1.0.0" });
 

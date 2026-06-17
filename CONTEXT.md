@@ -40,3 +40,11 @@ Terms and meanings agreed during design discussions. Implementation details belo
 | **context-side** | The *what* axis (skills, rules, …) | Runtime secrets/env (that's **environment-side**) |
 
 No backward-compatibility requirement pre-release: rename `type=plugin` → `plugin_pin` and `plugin-side` → `context-side` throughout spec, CLI, and storage.
+
+## Consolidated modules (2026-06)
+
+- `layer-composition` — composition resources (plugin_pin, layer refs) and attachments
+- `layer-model` — layer CRUD
+- `plugin-pin-apply` — apply-time pin install, sync, expand, validate
+- `layer-export`, `layer-import`, `deck-export-import` — transport round-trips (replaces monolithic exporter)
+- Schema v19 — fresh DDL only; upgrade via `hd migrate export` / `import`

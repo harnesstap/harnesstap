@@ -1,5 +1,5 @@
-import { getPlugin, getPluginResources } from "../models/plugin-component.js";
-import { listLayerPlugins } from "../models/plugin-pins.js";
+import { getLayer, getLayerResources } from "../models/layer-model.js";
+import { listLayerPlugins } from "../services/layer-composition.js";
 import { duplicateResourcesCheck } from "./layer-doctor/checks/duplicate-resources.js";
 import { emptyContentCheck } from "./layer-doctor/checks/empty-content.js";
 import { emptyLayerCheck } from "./layer-doctor/checks/empty-layer.js";
@@ -22,14 +22,14 @@ const layerDoctorChecks: LayerDoctorCheck[] = [
 ];
 
 function createLayerDoctorContext(nameOrId: string): LayerDoctorContext {
-  const layer = getPlugin(nameOrId);
+  const layer = getLayer(nameOrId);
   if (!layer) {
     throw new Error(`Layer not found: ${nameOrId}`);
   }
 
   return {
     layer,
-    resources: getPluginResources(layer.id),
+    resources: getLayerResources(layer.id),
     plugins: listLayerPlugins(layer.id),
   };
 }

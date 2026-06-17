@@ -1,4 +1,4 @@
-import { listPlugins } from "../../models/plugin-component.js";
+import { listLayers } from "../../models/layer-model.js";
 import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
 import { promptForValue } from "./shared.js";
 
@@ -23,7 +23,7 @@ function filterLayersBySearch<T extends {
 export async function runLayerDeleteWizard(input?: {
   search?: string;
 }): Promise<string[]> {
-  const layers = filterLayersBySearch(listPlugins(), input?.search);
+  const layers = filterLayersBySearch(listLayers(), input?.search);
   if (layers.length > 0) {
     return promptForSearchableMultiSelect({
       message: "Which layers do you want to delete?",

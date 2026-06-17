@@ -1,7 +1,7 @@
 import { getDb } from "../db/connection.js";
 import { resolve } from "node:path";
 import { ulid } from "ulid";
-import type { Project, ProjectConfiguredLayer, ProjectLayer } from "../types.js";
+import type { Project, ProjectLayer } from "../types.js";
 
 export function createProject(input: {
   git_origin: string;
@@ -104,13 +104,6 @@ export function getProjectLayers(projectId: string): ProjectLayer[] {
 }
 
 /** @deprecated Use getProjectLayers */
-export function getProjectConfiguredLayers(
-  projectId: string,
-): ProjectConfiguredLayer[] {
-  return getProjectLayers(projectId).map((row) => ({
-    project_id: row.project_id,
-    configured_layer_id: row.layer_id,
-    platforms: row.platforms,
-    applied_at: row.applied_at,
-  }));
+export function getProjectConfiguredLayers(projectId: string): ProjectLayer[] {
+  return getProjectLayers(projectId);
 }

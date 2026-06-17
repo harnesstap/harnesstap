@@ -10,13 +10,16 @@ import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 const FOUNDATION_CATALOG_BUNDLE = formatLayerExportToml({
   $schema: "urn:harnessdeck:layer:v1",
   version: 1,
-  layer: {
-    name: "engineering-foundation",
-    description: "Shared engineering baseline",
-    tags: ["foundation"],
-  },
-  resources: [],
-  plugins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
+  layers: [
+    {
+      name: "engineering-foundation",
+      version: "1.0.0",
+      description: "Shared engineering baseline",
+      tags: ["foundation"],
+      resources: [],
+      plugin_pins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
+    },
+  ],
   embedded_plugins: [],
 });
 
@@ -80,7 +83,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-status.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "tracked" });
       const resource = resourceModel.createResource(

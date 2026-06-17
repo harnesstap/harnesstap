@@ -16,14 +16,13 @@ import {
   upsertEnvironmentPermission,
 } from "../models/environment.js";
 import {
-  setConfiguredLayerDefaultEnvironment,
-  unsetConfiguredLayerDefaultEnvironment,
-} from "../models/configured-layer.js";
+  setLayerDefaultEnvironment,
+} from "../models/layer-model.js";
 import { setDeckActiveEnvironment } from "../models/deck.js";
 import { DECK_JSON_VERSION, DECK_SCHEMA } from "../types.js";
 import { existsSync, mkdirSync } from "node:fs";
 import { basename, join } from "node:path";
-import { readDeckToml, writeDeckToml } from "./exporter.js";
+import { readDeckToml, writeDeckToml } from "./deck-export-import.js";
 import { loadDeckActiveEnvironmentFragment, loadHomeEnvironmentFragment, resolveEnvironmentCascade, loadLayerDefaultFragments } from "./environment-cascade.js";
 import { resolveConfiguredLayerOrThrow, resolveDeckByProjectRoot, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import type {
@@ -111,7 +110,7 @@ export function listEnvironmentsCommand(): Array<{
       environment,
       value_count: getEnvironmentResources(environment.id).length,
       secret_ref_count: getEnvironmentSecretRefs(environment.id).length,
-      reference_count: refs.configured_layers.length + refs.decks.length,
+      reference_count: refs.layers.length + refs.decks.length,
     };
   });
 }
@@ -226,7 +225,7 @@ export function setLayerEnvironmentCommand(
 ): { configured_layer_id: string; environment_id: string } {
   const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
   const environment = resolveEnvironmentOrThrow(environmentSelector);
-  const updated = setConfiguredLayerDefaultEnvironment(
+  const updated = setLayerDefaultEnvironment(
     configuredLayer.id,
     environment.id,
   );
@@ -243,7 +242,7 @@ export function unsetLayerEnvironmentCommand(layerSelector: string): {
   configured_layer_id: string;
 } {
   const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
-  const updated = unsetConfiguredLayerDefaultEnvironment(configuredLayer.id);
+  const updated = setLayerDefaultEnvironment(configuredLayer.id, null);
   if (!updated) {
     throw new Error(`Configured layer not found: ${configuredLayer.id}`);
   }

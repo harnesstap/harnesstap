@@ -44,6 +44,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 - [Project maintenance and machine transfer](#project-maintenance-and-machine-transfer)
 - [Supported harnesses](#supported-harnesses)
 - [Where data lives](#where-data-lives)
+- [Upgrading from schema v18](#upgrading-from-schema-v18)
 - [HarnessDeck Cloud](#harnessdeck-cloud)
 - [Contributing](#contributing)
 
@@ -365,7 +366,7 @@ On `project apply`, harnessdeck compares layer plugin pins to library `resolved_
 
 Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer combine` is the **plugin semver pin or range**, not the global version flag.
 
-Layer export bundles use schema `urn:harnessdeck:layer:v1` and include `plugins` and `embedded_plugins` arrays (empty when unused). `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
+Layer export bundles use schema `urn:harnessdeck:layer:v1` with one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
 Refresh policy for marketplace metadata is configured in `~/.harnessdeck/config.jsonc`:
 
@@ -439,6 +440,22 @@ Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, plugins, 
 When you run `hd init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
 Override the base directory with `HARNESSDECK_HOME`; cloud profiles live under `<HARNESSDECK_HOME>/cloud-profiles.json` when set.
+
+---
+
+## Upgrading from schema v18
+
+After upgrading the CLI, export your existing database before removing it:
+
+```bash
+hd migrate export backup.tar
+# remove the old database (see `hd config path`)
+hd migrate import backup.tar
+```
+
+`migrate export` opens legacy v18 databases read-only so you can export after upgrading the CLI. Other commands require a v19 database.
+
+**Note:** `migrate export` archives layers (as TOML), harness preferences, and config — not projects, snapshots, decks, or standalone environments. Back those up separately if you need them.
 
 ---
 

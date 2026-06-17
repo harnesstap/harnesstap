@@ -22,7 +22,7 @@ export function makeSingleLayerExport(input: {
   description?: string;
   tags?: string[];
   resources?: LayerExportResource[];
-  plugins?: LayerExportEntry["plugins"];
+  plugin_pins?: LayerExportEntry["plugin_pins"];
   dependencies?: LayerExportEntry["dependencies"];
   claude?: LayerExportEntry["claude"];
   org?: string;
@@ -31,19 +31,21 @@ export function makeSingleLayerExport(input: {
   return {
     $schema: "urn:harnessdeck:layer:v1",
     version: 1,
-    layer: {
-      name: input.name,
-      version: input.version ?? "1.0.0",
-      description: input.description ?? "",
-      tags: input.tags ?? [],
-      ...(input.org ? { org_slug: input.org } : {}),
-      ...(input.catalog ? { catalog_slug: input.catalog } : {}),
-    },
-    resources: input.resources ?? [],
-    plugins: input.plugins ?? [],
+    layers: [
+      {
+        name: input.name,
+        version: input.version ?? "1.0.0",
+        description: input.description ?? "",
+        tags: input.tags ?? [],
+        resources: input.resources ?? [],
+        plugin_pins: input.plugin_pins ?? [],
+        ...(input.org ? { org_slug: input.org } : {}),
+        ...(input.catalog ? { catalog_slug: input.catalog } : {}),
+        ...(input.dependencies ? { dependencies: input.dependencies } : {}),
+        ...(input.claude ? { claude: input.claude } : {}),
+      },
+    ],
     embedded_plugins: [],
-    ...(input.dependencies ? { dependencies: input.dependencies } : {}),
-    ...(input.claude ? { claude: input.claude } : {}),
   };
 }
 
@@ -54,7 +56,7 @@ export function makeMultiLayerExport(
     description?: string;
     tags?: string[];
     resources?: LayerExportResource[];
-    plugins?: LayerExportEntry["plugins"];
+    plugin_pins?: LayerExportEntry["plugin_pins"];
   }>,
 ): LayerExport {
   return {
@@ -66,7 +68,7 @@ export function makeMultiLayerExport(
       description: layer.description ?? "",
       tags: layer.tags ?? [],
       resources: layer.resources ?? [],
-      plugins: layer.plugins ?? [],
+      plugin_pins: layer.plugin_pins ?? [],
     })),
     embedded_plugins: [],
   };

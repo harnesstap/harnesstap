@@ -1,9 +1,9 @@
 import type { Layer } from "../types.js";
 import {
-  getPlugin,
-  listPluginDependencies,
-  parsePluginSelector,
-} from "../models/plugin-component.js";
+  getLayer,
+  listLayerDependencies,
+  parseLayerSelectorString,
+} from "../models/layer-model.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 
 export interface LayerResolutionResult {
@@ -47,14 +47,14 @@ export function resolveLayerGraph(rootSelectors: string[]): LayerResolutionResul
     visiting.add(name);
 
     const selector = constraint ? `${name}@${constraint}` : name;
-    const layer = getPlugin(selector);
+    const layer = getLayer(selector);
     if (!layer) {
       throw new Error(
         `No compatible version found for layer "${name}"${constraint ? ` matching "${constraint}"` : ""} (required by "${requestedBy}")`,
       );
     }
 
-    const deps = listPluginDependencies(layer.id);
+    const deps = listLayerDependencies(layer.id);
     const depIds: string[] = [];
 
     for (const dep of deps) {
@@ -71,11 +71,11 @@ export function resolveLayerGraph(rootSelectors: string[]): LayerResolutionResul
   }
 
   function resolveSelector(selector: string): void {
-    const parsed = parsePluginSelector(selector);
+    const parsed = parseLayerSelectorString(selector);
 
     if (parsed.kind === "id") {
       // id-based lookup — if already resolved (by name), skip
-      const layer = getPlugin(selector);
+      const layer = getLayer(selector);
       if (!layer) {
         throw new Error(`No layer found with id "${selector}"`);
       }
@@ -91,7 +91,7 @@ export function resolveLayerGraph(rootSelectors: string[]): LayerResolutionResul
       }
 
       visiting.add(layer.name);
-      const deps = listPluginDependencies(layer.id);
+      const deps = listLayerDependencies(layer.id);
       const depIds: string[] = [];
       for (const dep of deps) {
         const depLayer = resolveByName(dep.dependency_name, dep.version_constraint, layer.name);

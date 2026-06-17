@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Plugin } from "../../../types.js";
+import type { Layer } from "../../../types.js";
 import {
   materializeDeckRepo,
   sortKeysDeep,
@@ -66,17 +66,12 @@ function collectDeckJsonPluginRefs(
   const seen = new Set<string>();
 
   for (const layer of context.deckJson.layers) {
-    const layerRefs =
-      layer.plugins && layer.plugins.length > 0
-        ? layer.plugins
-        : [{ name: layer.name, version: layer.version }];
-    for (const ref of layerRefs) {
-      if (seen.has(ref.name)) {
-        continue;
-      }
-      seen.add(ref.name);
-      refs.push(ref);
+    const ref = { name: layer.name, version: layer.version };
+    if (seen.has(ref.name)) {
+      continue;
     }
+    seen.add(ref.name);
+    refs.push(ref);
   }
 
   if (refs.length === 0) {
@@ -104,7 +99,7 @@ function buildMaterializeInput(context: DeckDoctorContext): MaterializeDeckRepoI
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([name, version]) => {
       const manifest = readRepoPluginManifest(context.repoRoot, name);
-      const plugin: Plugin = {
+      const plugin: Layer = {
         id: name,
         name,
         version,

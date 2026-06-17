@@ -5,8 +5,8 @@ import {
   createDeck,
   getDeckByName,
 } from "../../src/models/deck.js";
-import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-component.js";
-import { createConfiguredLayer } from "../../src/models/configured-layer.js";
+import { createLayer, addResourceToLayer } from "../../src/models/layer-model.js";
+import { createLayerFromSources } from "../../src/models/layer-model.js";
 import { createResource } from "../../src/models/resource.js";
 import { createInitializedTestContext, createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
@@ -18,8 +18,8 @@ describe("CLI deck actionability", () => {
 
     try {
     const suffix = ulid().toLowerCase();
-    const plugin = createPlugin({ name: `deck-show-plugin-${suffix}` });
-    addResourceToPlugin(
+    const plugin = createLayer({ name: `deck-show-plugin-${suffix}` });
+    addResourceToLayer(
       plugin.id,
       createResource({
         type: "instruction",
@@ -30,9 +30,9 @@ describe("CLI deck actionability", () => {
         source: "manual",
       }).id,
     );
-    const layer = createConfiguredLayer({
+    const layer = createLayerFromSources({
       name: `deck-show-layer-${suffix}`,
-      pluginIds: [plugin.id],
+      sourceLayerIds: [plugin.id],
     });
     const deck = createDeck({ name: `deck-show-${suffix}`, rootPath: "/tmp/deck" });
     addConfiguredLayerToDeck(deck.id, layer.id);
@@ -52,10 +52,10 @@ describe("CLI deck actionability", () => {
 
     try {
     const suffix = ulid().toLowerCase();
-    const plugin = createPlugin({ name: `deck-delete-plugin-${suffix}` });
-    const layer = createConfiguredLayer({
+    const plugin = createLayer({ name: `deck-delete-plugin-${suffix}` });
+    const layer = createLayerFromSources({
       name: `deck-delete-layer-${suffix}`,
-      pluginIds: [plugin.id],
+      sourceLayerIds: [plugin.id],
     });
     const deck = createDeck({ name: `deck-delete-${suffix}` });
     addConfiguredLayerToDeck(deck.id, layer.id);
@@ -82,8 +82,8 @@ describe("CLI deck actionability", () => {
       await runCli(["init", "--main", "claude-code"]);
 
       const suffix = ulid().toLowerCase();
-      const plugin = createPlugin({ name: `deck-apply-plugin-${suffix}` });
-      addResourceToPlugin(
+      const plugin = createLayer({ name: `deck-apply-plugin-${suffix}` });
+      addResourceToLayer(
         plugin.id,
         createResource({
           type: "instruction",
@@ -94,9 +94,9 @@ describe("CLI deck actionability", () => {
           source: "manual",
         }).id,
       );
-      const layer = createConfiguredLayer({
+      const layer = createLayerFromSources({
         name: `deck-apply-layer-${suffix}`,
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
       const deck = createDeck({ name: `deck-apply-${suffix}` });
       addConfiguredLayerToDeck(deck.id, layer.id);
@@ -126,8 +126,8 @@ describe("CLI deck actionability", () => {
       await runCli(["init", "--main", "claude-code"]);
 
       const suffix = ulid().toLowerCase();
-      const plugin = createPlugin({ name: `layer-apply-plugin-${suffix}` });
-      addResourceToPlugin(
+      const plugin = createLayer({ name: `layer-apply-plugin-${suffix}` });
+      addResourceToLayer(
         plugin.id,
         createResource({
           type: "instruction",
@@ -138,9 +138,9 @@ describe("CLI deck actionability", () => {
           source: "manual",
         }).id,
       );
-      const layer = createConfiguredLayer({
+      const layer = createLayerFromSources({
         name: `layer-apply-${suffix}`,
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
 
       const layerApply = await runCli([

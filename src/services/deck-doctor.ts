@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { DeckJson } from "../types.js";
-import { readDeckToml } from "./exporter.js";
+import { readDeckToml } from "./deck-export-import.js";
 import { generatedManifestsCheck } from "./deck-doctor/checks/generated-manifests.js";
 import type {
   DeckDoctorCheck,

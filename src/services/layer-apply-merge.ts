@@ -87,6 +87,3 @@ export function mergeLayersForApply(layerIds: string[]): MergedLayerContent {
 
   return merged;
 }
-
-/** @deprecated Use mergeLayersForApply */
-export const mergeConfiguredLayers = mergeLayersForApply;
