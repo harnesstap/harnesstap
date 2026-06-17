@@ -48,6 +48,67 @@ describe("CLI __complete", () => {
       await context.cleanup();
     }
   });
+
+  it("returns harness slugs for project apply --harness completion", async () => {
+    const context = await createInitializedTestContext("cli-complete-project-harness");
+    try {
+      const result = await runCli([
+        "__complete",
+        "zsh",
+        "--",
+        "hd",
+        "project",
+        "apply",
+        "--harness",
+        "cur",
+      ]);
+
+      expect(result.stdout).toContain("cursor");
+      expect(result.stdout).not.toContain("engineering-foundation");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("returns empty catalog layer completion without auth for layer pull", async () => {
+    const context = await createInitializedTestContext("cli-complete-layer-pull");
+    try {
+      const result = await runCli([
+        "__complete",
+        "zsh",
+        "--",
+        "hd",
+        "layer",
+        "pull",
+        "eng",
+      ]);
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stdout.trim()).toBe("");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("completes global --format flag values", async () => {
+    const context = await createInitializedTestContext("cli-complete-format-flag");
+    try {
+      const result = await runCli([
+        "__complete",
+        "zsh",
+        "--",
+        "hd",
+        "layer",
+        "show",
+        "--for",
+      ]);
+
+      expect(result.stdout).toContain("human");
+      expect(result.stdout).toContain("json");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
 
 async function createTestContextWithoutHarnessdeck(): Promise<{
