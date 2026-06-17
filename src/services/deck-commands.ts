@@ -3,7 +3,7 @@ import {
   deleteDeck,
   listDecks,
 } from "../models/deck.js";
-import { exportDeckToDeckJson } from "./exporter.js";
+import { exportDeckToDeckJson } from "./deck-export-import.js";
 import { resolveDeckOrThrow } from "./resolve-deck-layers.js";
 import { ui } from "../ui/index.js";
 

@@ -12,10 +12,10 @@ const minimalDeckFixturePath = join(
   "../fixtures/decks/minimal-deck.toml",
 );
 
-const pagerdutyPlugin = {
+const backendOncallPlugin = {
   plugin: {
-    id: "plugin-pagerduty",
-    name: "pagerduty",
+    id: "plugin-backend-oncall",
+    name: "backend-oncall",
     version: "1.0.0",
     description: "",
     tags: [],
@@ -34,7 +34,7 @@ async function writeDeckRepoWithDriftedMarketplace(repoRoot: string): Promise<vo
   await materializeDeckRepo(
     {
       deckJson,
-      plugins: [pagerdutyPlugin],
+      plugins: [backendOncallPlugin],
       environments: deckJson.environments,
     },
     repoRoot,
@@ -73,7 +73,7 @@ describe("deck doctor", () => {
       await materializeDeckRepo(
         {
           deckJson,
-          plugins: [pagerdutyPlugin],
+          plugins: [backendOncallPlugin],
           environments: deckJson.environments,
         },
         fixturesDir,

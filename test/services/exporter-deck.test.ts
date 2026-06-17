@@ -20,12 +20,21 @@ const selectorOnlyDeckFixturePath = join(
   "../fixtures/decks/selector-only-deck.toml",
 );
 
+async function loadDeckTransportServices() {
+  const [layerExport, layerImport, deckExportImport] = await Promise.all([
+    import("../../src/services/layer-export.ts"),
+    import("../../src/services/layer-import.ts"),
+    import("../../src/services/deck-export-import.ts"),
+  ]);
+  return { ...layerExport, ...layerImport, ...deckExportImport };
+}
+
 describe("exporter deck adapters", () => {
   it("imports layer v1 single layer as one plugin + implicit configured layer", async () => {
     const context = await createInitializedTestContext("import-bundle-v1-deck");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
       const bundlePath = join(context.projectDir, "single-layer.harnessdeck.toml");
       writeLayerExportToml(
         bundlePath,
@@ -64,32 +73,34 @@ describe("exporter deck adapters", () => {
   });
 
   it("converts layer v1 env vars into deck.toml environments", async () => {
-    const exporter = await import("../../src/services/exporter.ts");
+    const exporter = await loadDeckTransportServices();
 
     const deckJson = exporter.layerExportToDeckJson({
       $schema: "urn:harnessdeck:layer:v1",
       version: 1,
-      layer: {
-        name: "pagerduty",
-        version: "1.0.0",
-        description: "",
-        tags: [],
-      },
-      resources: [
+      layers: [
         {
-          type: "env_var",
-          name: "pd-region",
+          name: "pagerduty",
+          version: "1.0.0",
           description: "",
-          content: "",
-          metadata: { key: "PD_REGION", value: "eu" },
-          namespace: "",
-          origin_kind: "manual",
-          origin_ref: "",
-          content_hash: "",
-          content_blob_ref: "",
+          tags: [],
+          resources: [
+            {
+              type: "env_var",
+              name: "pd-region",
+              description: "",
+              content: "",
+              metadata: { key: "PD_REGION", value: "eu" },
+              namespace: "",
+              origin_kind: "manual",
+              origin_ref: "",
+              content_hash: "",
+              content_blob_ref: "",
+            },
+          ],
+          plugin_pins: [],
         },
       ],
-      plugins: [],
       embedded_plugins: [],
     });
 
@@ -108,7 +119,7 @@ describe("exporter deck adapters", () => {
       const configuredLayerModel = await import("../../src/models/layer-model.ts");
       const deckModel = await import("../../src/models/deck.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
 
       const plugin = pluginModel.createLayer({
         name: "pagerduty",
@@ -191,7 +202,7 @@ describe("exporter deck adapters", () => {
       const configuredLayerModel = await import("../../src/models/layer-model.ts");
       const deckModel = await import("../../src/models/deck.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
 
       const plugin = pluginModel.createLayer({
         name: "pagerduty",
@@ -231,7 +242,7 @@ describe("exporter deck adapters", () => {
       const pluginModel = await import("../../src/models/layer-model.ts");
       const configuredLayerModel = await import("../../src/models/layer-model.ts");
       const deckModel = await import("../../src/models/deck.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
 
       const plugin = pluginModel.createLayer({
         name: "pagerduty",
@@ -256,16 +267,22 @@ describe("exporter deck adapters", () => {
     }
   });
 
-  it("imports deck.toml with legacy plugins[] arrays", async () => {
-    const context = await createInitializedTestContext("deck-toml-legacy-import");
+  it("imports selector-only deck.toml from minimal fixture", async () => {
+    const context = await createInitializedTestContext("deck-toml-minimal-import");
 
     try {
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const exporter = await import("../../src/services/deck-export-import.ts");
 
-      pluginModel.createLayer({
-        name: "pagerduty",
+      layerModel.createLayerFromSources({
+        name: "backend-oncall",
         version: "1.0.0",
+        sourceLayerIds: [
+          layerModel.createLayer({
+            name: "pagerduty",
+            version: "1.0.0",
+          }).id,
+        ],
       });
 
       const imported = exporter.importDeckToml(minimalDeckFixturePath, {
@@ -284,7 +301,7 @@ describe("exporter deck adapters", () => {
     try {
       const pluginModel = await import("../../src/models/layer-model.ts");
       const configuredLayerModel = await import("../../src/models/layer-model.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
 
       const plugin = pluginModel.createLayer({
         name: "pagerduty",
@@ -316,7 +333,7 @@ describe("exporter deck adapters", () => {
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
 
       layerModel.createLayer({
         name: "backend-oncall",
@@ -357,7 +374,7 @@ describe("exporter deck adapters", () => {
     const context = await createInitializedTestContext("bundle-v1-adapter");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadDeckTransportServices();
       const bundlePath = join(context.projectDir, "legacy.harnessdeck.toml");
       writeLayerExportToml(
         bundlePath,

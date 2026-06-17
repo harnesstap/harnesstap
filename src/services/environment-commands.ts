@@ -22,7 +22,7 @@ import { setDeckActiveEnvironment } from "../models/deck.js";
 import { DECK_JSON_VERSION, DECK_SCHEMA } from "../types.js";
 import { existsSync, mkdirSync } from "node:fs";
 import { basename, join } from "node:path";
-import { readDeckToml, writeDeckToml } from "./exporter.js";
+import { readDeckToml, writeDeckToml } from "./deck-export-import.js";
 import { loadDeckActiveEnvironmentFragment, loadHomeEnvironmentFragment, resolveEnvironmentCascade, loadLayerDefaultFragments } from "./environment-cascade.js";
 import { resolveConfiguredLayerOrThrow, resolveDeckByProjectRoot, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import type {

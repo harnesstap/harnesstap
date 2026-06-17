@@ -7,12 +7,12 @@ import {
 } from "../models/layer-model.js";
 import {
   exportDeckToDeckJson,
-  exportToFile,
   importDeckToml,
-  importFromFile,
   readDeckToml,
-  type ImportDeckJsonResult,
-} from "./exporter.js";
+} from "./deck-export-import.js";
+import { exportToFile } from "./layer-export.js";
+import { importFromFile } from "./layer-import.js";
+import type { ImportDeckJsonResult } from "./deck-export-import.js";
 import { formatDeckToml } from "./transport/index.js";
 import type { DeckJsonLayer } from "../types.js";
 

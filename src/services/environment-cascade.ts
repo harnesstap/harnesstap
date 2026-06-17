@@ -17,7 +17,7 @@ import type {
   ResourceType,
 } from "../types.js";
 import { ENVIRONMENT_RESOURCE_TYPES } from "./resource-classification.js";
-import { readDeckToml } from "./exporter.js";
+import { readDeckToml } from "./deck-export-import.js";
 import { resolveSecretRefs } from "./secret-resolver.js";
 
 export interface EnvironmentFragment {
