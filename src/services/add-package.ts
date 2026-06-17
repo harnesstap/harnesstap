@@ -24,7 +24,7 @@ import {
   resolveRemoteSource,
   sourceCacheDir,
 } from "./source-resolver.js";
-import { addLayerAttachment } from "./layer-attachments.js";
+import { addLayerAttachment } from "./layer-composition.js";
 
 export interface AddSkillPackageOptions {
   source: string;

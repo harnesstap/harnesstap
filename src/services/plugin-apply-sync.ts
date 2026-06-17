@@ -2,7 +2,7 @@ import { getDb } from "../db/connection.js";
 import {
   ensurePluginResource,
   findPluginResourceByPin,
-} from "./composition-resource.js";
+} from "./layer-composition.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
 import {
   installPluginPins,

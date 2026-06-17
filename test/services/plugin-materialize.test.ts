@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { createTestContext } from "../helpers/db.ts";
-import { findPluginResourceByPin } from "../../src/services/composition-resource.ts";
+import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
 import { expandPluginMaterialResources } from "../../src/services/plugin-materialize.ts";
 import { syncPluginPinsForApply } from "../../src/services/plugin-apply-sync.ts";
 import { createLayer } from "../../src/models/layer.ts";

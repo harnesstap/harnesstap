@@ -5,7 +5,7 @@ import { createPlugin } from "../../src/models/plugin-component.ts";
 import {
   ensurePluginResource,
   listAttachedPluginPins,
-} from "../../src/services/composition-resource.ts";
+} from "../../src/services/layer-composition.ts";
 
 describe("composition resources", () => {
   it("creates lazy plugin resources without syncing", async () => {

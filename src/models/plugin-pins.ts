@@ -2,7 +2,7 @@ import { addResourceToPlugin, removeResourceFromPlugin } from "./plugin-componen
 import {
   ensurePluginResource,
   listAttachedPluginPins,
-} from "../services/composition-resource.js";
+} from "../services/layer-composition.js";
 
 export interface LayerPluginRow {
   layer_id: string;

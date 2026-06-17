@@ -78,8 +78,7 @@ import type {
   SnapshotState,
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
-import { listLayerPlugins } from "./models/plugin-pins.js";
-import { listAttachedPluginPins } from "./services/composition-resource.js";
+import { listAttachedPluginPins } from "./services/layer-composition.js";
 import type { PluginResourceMetadata } from "./types.js";
 import {
   getHarnessPreference,
@@ -215,7 +214,7 @@ import {
   LayerAttachmentHintError,
   removeLayerAttachment,
   validateLayerAttachmentType,
-} from "./services/layer-attachments.js";
+} from "./services/layer-composition.js";
 import {
   exportMigrationState,
   importMigrationState,
@@ -1340,7 +1339,7 @@ async function handleApplyCommand(
     const pins = new Map<string, { ref: string; version_constraint: string }>();
     for (const layer of applyBundle.layers) {
       if (!layer) continue;
-      for (const plugin of listLayerPlugins(layer.id)) {
+      for (const plugin of listAttachedPluginPins(layer.id)) {
         pins.set(plugin.ref, {
           ref: plugin.ref,
           version_constraint: plugin.version_constraint,
@@ -2010,8 +2009,14 @@ function handleLayerShowCommand(
   const resources = allResources.filter(
     (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
   );
-  const pluginPinRows = listLayerPlugins(layer.id);
   const pluginPins = listAttachedPluginPins(layer.id);
+  const pluginPinRows = pluginPins.map((pin, index) => ({
+    layer_id: layer.id,
+    ref: pin.ref,
+    version_constraint: pin.version_constraint,
+    order: index,
+    embed_on_export: pin.embed_on_export,
+  }));
   const dependencies = listPluginDependencies(layer.id);
   const configuredLayer = (() => {
     if (/^[0-9A-Z]{26}$/.test(name)) {

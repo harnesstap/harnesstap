@@ -17,7 +17,7 @@ import {
 import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
-import { formatPluginRef } from "./composition-resource.js";
+import { formatPluginRef } from "./layer-composition.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;

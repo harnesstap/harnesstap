@@ -10,7 +10,7 @@ import {
   addDependencyToPlugin,
 } from "../models/plugin-component.js";
 import { listLayerPlugins, addPluginToLayer } from "../models/plugin-pins.js";
-import { isCompositionResourceType } from "./composition-resource.js";
+import { isCompositionResourceType } from "./layer-composition.js";
 import type { LayerPluginRow } from "../models/plugin-pins.js";
 import {
   normalizeResourceInput,

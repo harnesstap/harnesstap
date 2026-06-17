@@ -6,7 +6,7 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeLayerExportToml, makeSingleLayerExport } from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
-import { findPluginResourceByPin } from "../../src/services/composition-resource.ts";
+import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
 import { getDb } from "../../src/db/connection.ts";
 
 function setPluginResolvedVersion(
