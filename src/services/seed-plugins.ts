@@ -2,7 +2,8 @@ import { readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getLayer } from "../models/layer-model.js";
-import { importFromFile, inspectLayerExportFile } from "./exporter.js";
+import { importFromFile } from "./layer-import.js";
+import { inspectLayerExportFile } from "./layer-export.js";
 
 function normalizePluginVersion(version: string | undefined): string {
   return typeof version === "string" && version.length > 0 ? version : "";

@@ -1,7 +1,7 @@
 import { getLayer, getLayerResources, listLayerDependencies } from "../models/layer-model.js";
 import { listLayerPlugins } from "../services/layer-composition.js";
 import type { Resource } from "../types.js";
-import { inspectLayerExportFile } from "./exporter.js";
+import { inspectLayerExportFile } from "./layer-export.js";
 
 export interface LayerDiffEntry {
   kind: "resource" | "plugin_pin" | "metadata";

@@ -1,5 +1,5 @@
 import { downloadCatalogBundle } from "./catalog-client.js";
-import { importFromFile } from "./exporter.js";
+import { importFromFile } from "./layer-import.js";
 import { getLayer } from "../models/layer-model.js";
 import { updateLayerPublishedIdentity } from "../models/layer-model.js";
 import {

@@ -28,7 +28,8 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, importFromFile, exportLayer, inspectLayerExportFile } from "./services/exporter.js";
+import { exportToFile, exportLayer, inspectLayerExportFile } from "./services/layer-export.js";
+import { importFromFile } from "./services/layer-import.js";
 import { formatLayerExportToml } from "./services/transport/index.js";
 import {
   listResources,
