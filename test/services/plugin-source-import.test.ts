@@ -318,6 +318,49 @@ developer_instructions = "Design contracts."
     }
   });
 
+  it("scans skills from manifest skills pointer (impeccable-style layout)", async () => {
+    const entries = await scanPluginSource(join(fixtureRoot, "impeccable-layout"));
+    expect(entries).toHaveLength(1);
+    const skill = entries[0]?.resources.find((r) => r.type === "skill");
+    expect(skill?.name).toBe("impeccable");
+    expect(skill?.source).toBe(".claude/skills/impeccable/SKILL.md");
+    expect(skill?.metadata).toMatchObject({
+      scripts: expect.arrayContaining(["context.mjs"]),
+      references: expect.arrayContaining(["polish.md"]),
+    });
+  });
+
+  it("accepts marketplace entry source as alias for path", async () => {
+    const entries = await scanPluginSource(
+      join(fixtureRoot, "impeccable-layout/.claude-plugin/marketplace.json"),
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.plugin_name).toBe("impeccable-fixture");
+    expect(entries[0]?.resources.some((r) => r.type === "hook")).toBe(true);
+  });
+
+  it("imports skill sub-commands from command-metadata.json", async () => {
+    const entries = await scanPluginSource(join(fixtureRoot, "impeccable-layout"));
+    const commands = entries[0]?.resources.filter((r) => r.type === "command") ?? [];
+
+    expect(commands.map((command) => command.name)).toEqual(
+      expect.arrayContaining(["impeccable:audit", "impeccable:polish"]),
+    );
+    expect(
+      commands.find((command) => command.name === "impeccable:polish")?.content,
+    ).toContain("Fixture reference doc");
+  });
+
+  it("falls back to marketplace plugin pack when root manifest has no resources", async () => {
+    const entries = await scanPluginSource(
+      join(fixtureRoot, "impeccable-marketplace-fallback"),
+    );
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.resources.some((r) => r.type === "skill")).toBe(true);
+    expect(entries[0]?.resources.some((r) => r.type === "hook")).toBe(true);
+  });
+
   it("rejects imported agent names that escape the target directory", async () => {
     const pluginRoot = createTempDir("plugin-source-agent-traversal");
 

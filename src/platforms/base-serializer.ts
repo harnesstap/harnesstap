@@ -1,7 +1,9 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { normalizeAgentInput } from "../services/agent-bridge.js";
+import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../services/skill-auxiliary.js";
+import { scanSkillCommandMetadataResources } from "../services/skill-command-metadata.js";
 import type {
   PlatformSerializer,
   Resource,
@@ -13,6 +15,7 @@ import type {
   PlatformPaths,
   SerializerTarget,
   SerializeOptions,
+  SkillMetadata,
 } from "../types.js";
 
 /**
@@ -204,7 +207,37 @@ export abstract class BaseSerializer implements PlatformSerializer {
     skillsDir: string,
   ): ResourceCreateInput[] {
     const fullPath = join(projectRoot, skillsDir);
-    return this.scanSkillsDirAt(fullPath, skillsDir.replace(/\/$/, ""));
+    const sourcePrefix = skillsDir.replace(/\/$/, "");
+    const resources = this.scanSkillsDirAt(fullPath, sourcePrefix);
+
+    if (!this.isDirectory(fullPath)) {
+      return resources;
+    }
+
+    for (const entry of this.listDir(fullPath)) {
+      const entryPath = join(fullPath, entry);
+      const skillMd = join(entryPath, "SKILL.md");
+      if (!this.isDirectory(entryPath) || !this.fileExists(skillMd)) continue;
+
+      const raw = this.readFile(skillMd);
+      if (!raw) continue;
+
+      const parsed = this.tryParseFrontmatter(raw);
+      if (!parsed) continue;
+
+      const skillName = (parsed.data["name"] as string) || entry;
+      resources.push(
+        ...scanSkillCommandMetadataResources({
+          skillDir: entryPath,
+          skillName,
+          rootPath: projectRoot,
+          relativePath: (rootPath, filePath) =>
+            relative(rootPath, filePath).split(sep).join("/"),
+        }),
+      );
+    }
+
+    return resources;
   }
 
   protected scanSkillsDirAt(
@@ -227,6 +260,7 @@ export abstract class BaseSerializer implements PlatformSerializer {
         if (!parsed) continue;
 
         const { data, content } = parsed;
+        const { scripts, references } = listSkillAuxiliaryFiles(entryPath);
         resources.push(
           this.makeResource(
             "skill",
@@ -234,8 +268,8 @@ export abstract class BaseSerializer implements PlatformSerializer {
             content.trim(),
             this.prefixedRelativePath(fullPath, skillMd, sourcePrefix),
             {
-              scripts: [],
-              references: [],
+              scripts,
+              references,
             },
             (data["description"] as string) || "",
           ),
@@ -244,5 +278,55 @@ export abstract class BaseSerializer implements PlatformSerializer {
     }
 
     return resources;
+  }
+
+  protected resolveSkillSourceDir(
+    resource: Resource,
+    sourceRoot: string,
+  ): string | undefined {
+    const dir = dirname(join(sourceRoot, resource.source));
+    return existsSync(dir) ? dir : undefined;
+  }
+
+  protected emitSkillWithAuxiliary(
+    resource: Resource,
+    skillMdPath: string,
+    options: SerializeOptions,
+  ): SerializedFile[] {
+    const fm: Record<string, unknown> = {
+      name: resource.name,
+      description: resource.description,
+    };
+    const files: SerializedFile[] = [
+      {
+        path: skillMdPath,
+        content: this.emitFrontmatter(fm, resource.content),
+      },
+    ];
+
+    const meta = resource.metadata as SkillMetadata;
+    if (
+      !options.skillSourceRoot ||
+      (!meta.scripts?.length && !meta.references?.length)
+    ) {
+      return files;
+    }
+
+    const sourceSkillDir = this.resolveSkillSourceDir(
+      resource,
+      options.skillSourceRoot,
+    );
+    if (!sourceSkillDir) return files;
+
+    const targetPrefix = skillMdPath.replace(/\/SKILL\.md$/, "");
+    files.push(
+      ...emitSkillAuxiliaryFiles({
+        sourceSkillDir,
+        targetPrefix,
+        scripts: meta.scripts ?? [],
+        references: meta.references ?? [],
+      }),
+    );
+    return files;
   }
 }

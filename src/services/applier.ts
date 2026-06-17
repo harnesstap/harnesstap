@@ -146,7 +146,8 @@ function isGenerateFilesOptions(
       ("target" in value ||
         "claudeConfig" in value ||
         "resolvedEnvironment" in value ||
-        "skillCursorMode" in value),
+        "skillCursorMode" in value ||
+        "skillSourceRoot" in value),
   );
 }
 
@@ -176,12 +177,16 @@ export async function generateFiles(
   const serializedResources = options.resolvedEnvironment
     ? mergeResolvedEnvironmentIntoResources(resources, options.resolvedEnvironment)
     : resources;
+  const skillSourceRoot =
+    options.skillSourceRoot ??
+    resources.find((r) => r.type === "skill" && r.origin_ref)?.origin_ref;
 
   for (const pid of platforms) {
     const serializer = getPlatformSerializer(pid);
     let files = await serializer.serialize(serializedResources, projectRoot, {
       target,
       skillCursorMode: options.skillCursorMode,
+      skillSourceRoot,
     });
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudeLayerExtensions(files, claudeConfig, projectRoot);

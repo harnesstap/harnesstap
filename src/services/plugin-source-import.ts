@@ -3,6 +3,9 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { parse as parseToml } from "smol-toml";
 import { normalizeAgentInput } from "./agent-bridge.js";
+import { collectHookEntries } from "./hook-serialization.js";
+import { scanSkillCommandMetadataResources } from "./skill-command-metadata.js";
+import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
 import type {
   ResourceCreateInput,
   AgentMetadata,
@@ -19,10 +22,12 @@ interface PluginManifest {
   version?: string;
   commands?: string;
   hooks?: string;
+  skills?: string;
 }
 
 interface MarketplacePluginEntry {
   path?: string;
+  source?: string;
 }
 
 interface MarketplaceManifest {
@@ -35,6 +40,7 @@ interface ValidatedPluginManifest {
   version?: string;
   commands?: string;
   hooks?: string;
+  skills?: string;
 }
 
 interface PluginHooksConfig {
@@ -149,9 +155,13 @@ function validatePluginManifest(
     typeof manifest.hooks === "string" && manifest.hooks.trim().length > 0
       ? manifest.hooks.trim()
       : undefined;
+  const skills =
+    typeof manifest.skills === "string" && manifest.skills.trim().length > 0
+      ? manifest.skills.trim()
+      : undefined;
   return version
-    ? { name, version, commands, hooks }
-    : { name, commands, hooks };
+    ? { name, version, commands, hooks, skills }
+    : { name, commands, hooks, skills };
 }
 
 function validateMarketplaceManifest(
@@ -166,10 +176,11 @@ function validateMarketplaceManifest(
   }
 
   const plugins = manifest.plugins.map((entry) => {
-    if (typeof entry?.path !== "string") {
+    const rawPath = entry?.path ?? entry?.source;
+    if (typeof rawPath !== "string") {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
-    const path = normalizeMarketplaceEntryPath(entry.path);
+    const path = normalizeMarketplaceEntryPath(rawPath);
     if (path.length === 0) {
       throw new Error(`Marketplace entry path must be a string: ${manifestPath}`);
     }
@@ -316,16 +327,19 @@ function buildProvenance(input: {
   };
 }
 
-function scanSkills(rootPath: string, metadata: {
+function scanSkills(
+  rootPath: string,
+  skillsDir: string | null,
+  metadata: {
   importedAt: string;
   sourceKind: ImportedSourceKind;
   sourceLabel: string;
   pluginName: string;
   pluginVersion?: string;
   sourcePluginKind: PluginSourceRootKind;
-}): ResourceInput[] {
-  const skillsDir = join(rootPath, "skills");
-  if (!isDirectory(skillsDir)) return [];
+},
+): ResourceInput[] {
+  if (!skillsDir) return [];
 
   const resources: ResourceInput[] = [];
   for (const entry of listDir(skillsDir)) {
@@ -339,22 +353,34 @@ function scanSkills(rootPath: string, metadata: {
       ...metadata,
       relativePath: relativePath(rootPath, skillPath),
     });
+    const { scripts, references } = listSkillAuxiliaryFiles(skillDir);
+
+    const skillName = assertSafeImportedResourceName(
+      (parsed.data["name"] as string) || entry,
+      skillPath,
+    );
 
     resources.push({
       type: "skill",
-      name: assertSafeImportedResourceName(
-        (parsed.data["name"] as string) || entry,
-        skillPath,
-      ),
+      name: skillName,
       description: (parsed.data["description"] as string) || "",
       content: parsed.content,
       source: provenance.relative_path,
       metadata: {
-        scripts: [],
-        references: [],
+        scripts,
+        references,
         imported_from: provenance,
       },
     });
+    resources.push(
+      ...scanSkillCommandMetadataResources({
+        skillDir,
+        skillName,
+        rootPath,
+        relativePath,
+        importedFrom: provenance,
+      }),
+    );
   }
 
   return resources;
@@ -506,6 +532,16 @@ function resolveCommandsDir(
   return isDirectory(commandsDir) ? commandsDir : null;
 }
 
+function resolveSkillsDir(
+  rootPath: string,
+  manifest: ValidatedPluginManifest,
+): string | null {
+  const skillsDir = manifest.skills
+    ? join(rootPath, manifest.skills)
+    : join(rootPath, "skills");
+  return isDirectory(skillsDir) ? skillsDir : null;
+}
+
 function resolveHooksPath(
   rootPath: string,
   manifest: ValidatedPluginManifest,
@@ -611,27 +647,6 @@ function scanCommands(
   return resources;
 }
 
-function collectPluginHookEntries(
-  entries: unknown[],
-  matcher: string | undefined,
-  collected: Array<{ entry: PluginHookEntry; matcher?: string }>,
-): void {
-  for (const item of entries) {
-    if (!item || typeof item !== "object") continue;
-    const hookItem = item as PluginHookEntry;
-    const itemMatcher =
-      typeof hookItem.matcher === "string" ? hookItem.matcher : matcher;
-
-    if (Array.isArray(hookItem.hooks)) {
-      collectPluginHookEntries(hookItem.hooks, itemMatcher, collected);
-      continue;
-    }
-
-    if (typeof hookItem.command !== "string") continue;
-    collected.push({ entry: hookItem, matcher: itemMatcher });
-  }
-}
-
 function scanHooks(
   rootPath: string,
   manifest: ValidatedPluginManifest,
@@ -655,7 +670,7 @@ function scanHooks(
     if (!Array.isArray(entries)) continue;
 
     const hookEntries: Array<{ entry: PluginHookEntry; matcher?: string }> = [];
-    collectPluginHookEntries(entries, undefined, hookEntries);
+    collectHookEntries(entries, undefined, hookEntries);
 
     hookEntries.forEach(({ entry, matcher }, index) => {
       const provenance = buildProvenance({
@@ -726,7 +741,47 @@ function scanAllManifestHooks(
   return resources;
 }
 
-function scanPluginRoot(
+const REPO_MARKETPLACE_MANIFESTS = [
+  ".claude-plugin/marketplace.json",
+  ".cursor-plugin/marketplace.json",
+  ".codex-plugin/marketplace.json",
+  ".github/plugin/marketplace.json",
+] as const;
+
+function listMarketplacePluginRoots(repoRoot: string): string[] {
+  const seen = new Set<string>();
+  const roots: string[] = [];
+
+  for (const relativeManifestPath of REPO_MARKETPLACE_MANIFESTS) {
+    const manifestPath = join(repoRoot, relativeManifestPath);
+    if (!existsSync(manifestPath)) continue;
+
+    let manifest: ValidatedMarketplaceManifest;
+    try {
+      manifest = validateMarketplaceManifest(
+        readRequiredJson<MarketplaceManifest>(
+          manifestPath,
+          "marketplace manifest",
+        ),
+        manifestPath,
+      );
+    } catch {
+      continue;
+    }
+
+    const manifestDir = dirname(manifestPath);
+    for (const entry of manifest.plugins) {
+      const pluginRoot = normalizePath(join(manifestDir, entry.path));
+      if (seen.has(pluginRoot)) continue;
+      seen.add(pluginRoot);
+      roots.push(join(manifestDir, entry.path));
+    }
+  }
+
+  return roots;
+}
+
+function scanPluginRootAt(
   sourcePath: string,
   opts?: {
     sourceKind?: ImportedSourceKind;
@@ -756,7 +811,7 @@ function scanPluginRoot(
   }
 
   const resources = [
-    ...scanSkills(rootPath, {
+    ...scanSkills(rootPath, resolveSkillsDir(rootPath, manifest), {
       importedAt,
       sourceKind,
       sourceLabel,
@@ -798,10 +853,6 @@ function scanPluginRoot(
     }),
   ];
 
-  if (resources.length === 0) {
-    throw new Error(`No supported plugin resources found in ${rootPath}`);
-  }
-
   return {
     source_kind: sourceKind,
     source_label: sourceLabel,
@@ -810,6 +861,54 @@ function scanPluginRoot(
     metadata,
     resources,
   };
+}
+
+function scanPluginRoot(
+  sourcePath: string,
+  opts?: {
+    sourceKind?: ImportedSourceKind;
+    sourceLabel?: string;
+    marketplaceName?: string;
+    marketplaceManifestPath?: string;
+  },
+): PluginSourceScanResult {
+  const primary = scanPluginRootAt(sourcePath, opts);
+  if (primary.resources.length > 0) {
+    return primary;
+  }
+
+  for (const pluginRoot of listMarketplacePluginRoots(sourcePath)) {
+    if (normalizePath(pluginRoot) === normalizePath(sourcePath)) {
+      continue;
+    }
+
+    try {
+      const fallback = scanPluginRootAt(pluginRoot, opts);
+      if (fallback.resources.length > 0) {
+        return fallback;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(`No supported plugin resources found in ${sourcePath}`);
+}
+
+export async function scanPluginSourceForMerge(
+  sourcePath: string,
+): Promise<PluginSourceScanResult[]> {
+  try {
+    return await scanPluginSource(sourcePath);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith("No supported plugin resources found in")
+    ) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function scanPluginSource(

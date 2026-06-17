@@ -1,0 +1,6 @@
+{
+  "name": "impeccable-fixture",
+  "version": "1.0.0",
+  "description": "Canonical plugin pack",
+  "hooks": "hooks/hooks.json"
+}

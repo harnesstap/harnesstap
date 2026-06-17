@@ -1,0 +1,10 @@
+{
+  "polish": {
+    "description": "Final quality pass before shipping.",
+    "argumentHint": "[target]"
+  },
+  "audit": {
+    "description": "Run technical quality checks across accessibility and performance.",
+    "argumentHint": "[area]"
+  }
+}

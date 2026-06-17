@@ -1,0 +1,6 @@
+{
+  "name": "impeccable-fixture",
+  "version": "1.0.0",
+  "description": "Broken root manifest that should fall back to marketplace plugin pack",
+  "skills": "./missing-skills/"
+}

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import matter from "gray-matter";
 import { createImportedSnapshot } from "../models/imported-snapshot.js";
@@ -11,6 +11,7 @@ import type {
   SkillMetadata,
 } from "../types.js";
 import { discoverSkillPackage, type DiscoveredSkill } from "./skill-discovery.js";
+import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
 
 export interface ImportSkillPackageResult {
   snapshot: ImportedSnapshot;
@@ -49,28 +50,6 @@ function resolvePluginDisplayName(
   }
   const segment = sourceLabel.split("/").pop();
   return segment?.trim() || sourceLabel;
-}
-
-function listRelativeFiles(dirPath: string): string[] {
-  if (!existsSync(dirPath)) return [];
-  try {
-    if (!statSync(dirPath).isDirectory()) return [];
-  } catch {
-    return [];
-  }
-
-  const files: string[] = [];
-  for (const entry of readdirSync(dirPath)) {
-    if (entry.startsWith(".")) continue;
-    const entryPath = join(dirPath, entry);
-    try {
-      if (statSync(entryPath).isFile()) {
-        files.push(entry);
-      }
-    } catch {
-    }
-  }
-  return files.sort();
 }
 
 function buildCategoriesMap(skills: DiscoveredSkill[]): Record<string, string[]> {
@@ -131,9 +110,10 @@ function buildSkillResource(input: {
     pluginName: input.pluginName,
     relativePath: input.skill.skillMdRelative,
   });
+  const { scripts, references } = listSkillAuxiliaryFiles(skillDir);
   const metadata: SkillMetadata & { imported_from: ImportedResourceProvenance } = {
-    scripts: listRelativeFiles(join(skillDir, "scripts")),
-    references: listRelativeFiles(join(skillDir, "references")),
+    scripts,
+    references,
     imported_from: provenance,
   };
 

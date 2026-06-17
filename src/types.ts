@@ -506,6 +506,8 @@ export type SerializerTarget = "project" | "global";
 export interface SerializeOptions {
   target?: SerializerTarget;
   skillCursorMode?: CursorSkillMode;
+  /** When set, skill auxiliary files are read from this tree (scan origin). */
+  skillSourceRoot?: string;
 }
 
 export interface PlatformSerializer {
