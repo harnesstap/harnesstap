@@ -3,6 +3,7 @@ import { parse } from "smol-toml";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { formatTransportToml } from "../services/transport/write.js";
+import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import {
   canonicalAgentFromResource,
   emitCodexAgentToml,
@@ -10,6 +11,7 @@ import {
 import type {
   AgentMetadata,
   EnvVarMetadata,
+  HookMetadata,
   McpServerMetadata,
   ModelConfigMetadata,
   PermissionMetadata,
@@ -402,6 +404,14 @@ export class CodexSerializer extends BaseSerializer {
       ),
     );
 
+    // 5. Hooks: .codex/hooks.json
+    resources.push(
+      ...scanHooksFile(
+        join(projectRoot, ".codex", "hooks.json"),
+        ".codex/hooks.json",
+      ),
+    );
+
     return resources;
   }
 
@@ -465,6 +475,7 @@ export class CodexSerializer extends BaseSerializer {
       targetPaths.settings ?? targetPaths.mcp,
       target,
     );
+    const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
 
     const instructions = resources.filter((r) => r.type === "instruction");
     const mcps = resources.filter((r) => r.type === "mcp_server");
@@ -483,14 +494,13 @@ export class CodexSerializer extends BaseSerializer {
     // Skills → .agents/skills/{name}/SKILL.md
     for (const r of resources.filter((r) => r.type === "skill")) {
       if (!skillsPath) continue;
-      const fm: Record<string, unknown> = {
-        name: r.name,
-        description: r.description,
-      };
-      files.push({
-        path: `${skillsPath}${r.name}/SKILL.md`,
-        content: this.emitFrontmatter(fm, r.content),
-      });
+      files.push(
+        ...this.emitSkillWithAuxiliary(
+          r,
+          `${skillsPath}${r.name}/SKILL.md`,
+          options,
+        ),
+      );
     }
 
     // Agents → .codex/agents/{name}.toml
@@ -563,6 +573,23 @@ export class CodexSerializer extends BaseSerializer {
       files.push({
         path: configPath,
         content: formatTransportToml(mergeConfigDocuments(existing, overlay)),
+      });
+    }
+
+    const hooks = resources.filter((r) => r.type === "hook");
+    if (hooksPath && hooks.length > 0) {
+      files.push({
+        path: hooksPath,
+        content: JSON.stringify(
+          buildHooksJson(
+            hooks.map((r) => ({
+              ...(r.metadata as HookMetadata),
+              name: r.name,
+            })),
+          ),
+          null,
+          2,
+        ),
       });
     }
 

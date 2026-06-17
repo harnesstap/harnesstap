@@ -324,6 +324,10 @@ developer_instructions = "Design contracts."
     const skill = entries[0]?.resources.find((r) => r.type === "skill");
     expect(skill?.name).toBe("impeccable");
     expect(skill?.source).toBe(".claude/skills/impeccable/SKILL.md");
+    expect(skill?.metadata).toMatchObject({
+      scripts: expect.arrayContaining(["context.mjs"]),
+      references: expect.arrayContaining(["polish.md"]),
+    });
   });
 
   it("accepts marketplace entry source as alias for path", async () => {

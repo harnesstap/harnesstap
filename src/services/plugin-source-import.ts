@@ -3,6 +3,8 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { parse as parseToml } from "smol-toml";
 import { normalizeAgentInput } from "./agent-bridge.js";
+import { collectHookEntries } from "./hook-serialization.js";
+import { listSkillAuxiliaryFiles } from "./skill-auxiliary.js";
 import type {
   ResourceCreateInput,
   AgentMetadata,
@@ -350,6 +352,7 @@ function scanSkills(
       ...metadata,
       relativePath: relativePath(rootPath, skillPath),
     });
+    const { scripts, references } = listSkillAuxiliaryFiles(skillDir);
 
     resources.push({
       type: "skill",
@@ -361,8 +364,8 @@ function scanSkills(
       content: parsed.content,
       source: provenance.relative_path,
       metadata: {
-        scripts: [],
-        references: [],
+        scripts,
+        references,
         imported_from: provenance,
       },
     });
@@ -632,27 +635,6 @@ function scanCommands(
   return resources;
 }
 
-function collectPluginHookEntries(
-  entries: unknown[],
-  matcher: string | undefined,
-  collected: Array<{ entry: PluginHookEntry; matcher?: string }>,
-): void {
-  for (const item of entries) {
-    if (!item || typeof item !== "object") continue;
-    const hookItem = item as PluginHookEntry;
-    const itemMatcher =
-      typeof hookItem.matcher === "string" ? hookItem.matcher : matcher;
-
-    if (Array.isArray(hookItem.hooks)) {
-      collectPluginHookEntries(hookItem.hooks, itemMatcher, collected);
-      continue;
-    }
-
-    if (typeof hookItem.command !== "string") continue;
-    collected.push({ entry: hookItem, matcher: itemMatcher });
-  }
-}
-
 function scanHooks(
   rootPath: string,
   manifest: ValidatedPluginManifest,
@@ -676,7 +658,7 @@ function scanHooks(
     if (!Array.isArray(entries)) continue;
 
     const hookEntries: Array<{ entry: PluginHookEntry; matcher?: string }> = [];
-    collectPluginHookEntries(entries, undefined, hookEntries);
+    collectHookEntries(entries, undefined, hookEntries);
 
     hookEntries.forEach(({ entry, matcher }, index) => {
       const provenance = buildProvenance({

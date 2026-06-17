@@ -5,8 +5,10 @@ import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
+import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import type {
   AgentMetadata,
+  HookMetadata,
   PlatformDefinition,
   Resource,
   ResourceCreateInput,
@@ -113,6 +115,14 @@ export class CursorSerializer extends BaseSerializer {
       ),
     );
 
+    // 6. Hooks: .cursor/hooks.json
+    resources.push(
+      ...scanHooksFile(
+        join(projectRoot, ".cursor", "hooks.json"),
+        ".cursor/hooks.json",
+      ),
+    );
+
     return resources;
   }
 
@@ -195,6 +205,7 @@ export class CursorSerializer extends BaseSerializer {
     const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
     const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
+    const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
 
     for (const r of resources) {
       switch (r.type) {
@@ -229,14 +240,13 @@ export class CursorSerializer extends BaseSerializer {
         }
         case "skill": {
           if ((target === "global" || skillCursorMode === "agents-skills") && skillsPath) {
-            const fm: Record<string, unknown> = {
-              name: r.name,
-              description: r.description,
-            };
-            files.push({
-              path: join(skillsPath, r.name, "SKILL.md"),
-              content: this.emitFrontmatter(fm, r.content),
-            });
+            files.push(
+              ...this.emitSkillWithAuxiliary(
+                r,
+                join(skillsPath, r.name, "SKILL.md"),
+                options,
+              ),
+            );
             break;
           }
           if (!rulesPath) break;
@@ -267,10 +277,29 @@ export class CursorSerializer extends BaseSerializer {
           });
           break;
         }
-        // mcp_server, permission, hook, command — not supported in Cursor
+        case "hook":
+          break;
         default:
           break;
       }
+    }
+
+    const hooks = resources.filter((r) => r.type === "hook");
+    if (hooksPath && hooks.length > 0) {
+      files.push({
+        path: hooksPath,
+        content: JSON.stringify(
+          buildHooksJson(
+            hooks.map((r) => ({
+              ...(r.metadata as HookMetadata),
+              name: r.name,
+            })),
+            { version: 1 },
+          ),
+          null,
+          2,
+        ),
+      });
     }
 
     return files;

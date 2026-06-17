@@ -261,14 +261,13 @@ export class OpenCodeSerializer extends BaseSerializer {
     // .opencode/skills/
     if (skillsPath) {
       for (const r of skills) {
-        const fm: Record<string, unknown> = {
-          name: r.name,
-          description: r.description,
-        };
-        files.push({
-          path: `${skillsPath}${r.name}/SKILL.md`,
-          content: this.emitFrontmatter(fm, r.content),
-        });
+        files.push(
+          ...this.emitSkillWithAuxiliary(
+            r,
+            `${skillsPath}${r.name}/SKILL.md`,
+            options,
+          ),
+        );
       }
     }
 

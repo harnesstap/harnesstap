@@ -5,8 +5,10 @@ import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
+import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import type {
   AgentMetadata,
+  HookMetadata,
   PlatformDefinition,
   ResourceCreateInput,
   Resource,
@@ -152,6 +154,14 @@ export class ClaudeCodeSerializer extends BaseSerializer {
             }),
           );
         }
+
+        // Hooks
+        resources.push(
+          ...scanHooksFile(
+            join(projectRoot, ".claude", "settings.json"),
+            ".claude/settings.json",
+          ),
+        );
       } catch {
         // invalid JSON — skip
       }
@@ -356,12 +366,13 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     // Skills → .claude/skills/{name}/SKILL.md
     for (const r of byType.get("skill") ?? []) {
       if (!skillsPath) continue;
-      const fm: Record<string, unknown> = {
-        name: r.name,
-        description: r.description,
-      };
-      const content = this.emitFrontmatter(fm, r.content);
-      files.push({ path: `${skillsPath}${r.name}/SKILL.md`, content });
+      files.push(
+        ...this.emitSkillWithAuxiliary(
+          r,
+          `${skillsPath}${r.name}/SKILL.md`,
+          options,
+        ),
+      );
     }
 
     // MCP servers → .mcp.json
@@ -391,7 +402,11 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     // Permissions + env + hooks → .claude/settings.json
     const permissions = byType.get("permission") ?? [];
     const envVars = byType.get("env_var") ?? [];
-    if ((permissions.length > 0 || envVars.length > 0) && settingsPath) {
+    const hooks = byType.get("hook") ?? [];
+    if (
+      (permissions.length > 0 || envVars.length > 0 || hooks.length > 0) &&
+      settingsPath
+    ) {
       const settings: Record<string, unknown> = {};
       if (permissions.length > 0) {
         const allow: string[] = [];
@@ -412,6 +427,14 @@ export class ClaudeCodeSerializer extends BaseSerializer {
           env[meta.key] = meta.value;
         }
         settings["env"] = env;
+      }
+      if (hooks.length > 0) {
+        settings["hooks"] = buildHooksJson(
+          hooks.map((r) => ({
+            ...(r.metadata as HookMetadata),
+            name: r.name,
+          })),
+        ).hooks;
       }
       if (Object.keys(settings).length > 0) {
         files.push({

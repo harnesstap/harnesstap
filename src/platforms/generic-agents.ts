@@ -5,6 +5,7 @@ import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
+import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -17,14 +18,6 @@ import type {
   SerializeOptions,
 } from "../types.js";
 
-interface GenericHookCommand {
-  command?: string;
-}
-
-interface GenericHooksConfig {
-  hooks?: Record<string, GenericHookCommand[]>;
-}
-
 interface GenericMcpServerConfigEntry {
   url?: string;
   protocol?: string;
@@ -35,10 +28,6 @@ interface GenericMcpServerConfigEntry {
 
 interface GenericMcpConfig {
   mcpServers?: Record<string, GenericMcpServerConfigEntry>;
-}
-
-interface GenericSerializedHookEntry {
-  command: string;
 }
 
 interface GenericSerializedMcpEntry {
@@ -117,33 +106,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
   }
 
   private scanHooksAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
-    const resources: ResourceCreateInput[] = [];
-    const content = this.readFile(fullPath);
-    if (content) {
-      try {
-        const config = JSON.parse(content) as GenericHooksConfig;
-        for (const [event, cmds] of Object.entries(config.hooks || {})) {
-          if (Array.isArray(cmds)) {
-            for (const cmd of cmds) {
-              if (cmd && typeof cmd === "object" && cmd.command) {
-                resources.push(
-                  this.makeResource(
-                    "hook",
-                    `${event}-hook`,
-                    "",
-                    displayPath,
-                    { event, script: cmd.command } satisfies HookMetadata,
-                  ),
-                );
-              }
-            }
-          }
-        }
-      } catch {
-        // skip invalid json
-      }
-    }
-    return resources;
+    return scanHooksFile(fullPath, displayPath);
   }
 
   private scanMcpAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
@@ -394,17 +357,19 @@ export class GenericAgentsSerializer extends BaseSerializer {
     // Hooks
     const hooks = resources.filter((r) => r.type === "hook");
     if (hooksPath && hooks.length > 0) {
-      const hooksConfig: Record<string, GenericSerializedHookEntry[]> = {};
-      for (const r of hooks) {
-        const meta = r.metadata as HookMetadata;
-        if (!meta) continue;
-        const eventHooks = hooksConfig[meta.event] ?? [];
-        eventHooks.push({ command: meta.script });
-        hooksConfig[meta.event] = eventHooks;
-      }
       files.push({
         path: hooksPath,
-        content: JSON.stringify({ version: 1, hooks: hooksConfig }, null, 2),
+        content: JSON.stringify(
+          buildHooksJson(
+            hooks.map((r) => ({
+              ...(r.metadata as HookMetadata),
+              name: r.name,
+            })),
+            { version: 1 },
+          ),
+          null,
+          2,
+        ),
       });
     }
 
@@ -438,14 +403,13 @@ export class GenericAgentsSerializer extends BaseSerializer {
       skills.length > 0
     ) {
       for (const r of skills) {
-        const fm: Record<string, unknown> = {
-          name: r.name,
-          description: r.description,
-        };
-        files.push({
-          path: `${skillsPath}${r.name}/SKILL.md`,
-          content: this.emitFrontmatter(fm, r.content),
-        });
+        files.push(
+          ...this.emitSkillWithAuxiliary(
+            r,
+            `${skillsPath}${r.name}/SKILL.md`,
+            options,
+          ),
+        );
       }
     }
 
