@@ -60,6 +60,7 @@ scratchpad.md
 
 # Maintainer-only docs (kept locally, never committed)
 docs/internal/
+docs/superpowers/
 
 #workspaces
 *.code-workspace
