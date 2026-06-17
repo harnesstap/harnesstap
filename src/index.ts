@@ -573,8 +573,15 @@ function relativeDiscoveredPaths(
     .join(", ");
 }
 
+function isHiddenHelpCommand(command: Command): boolean {
+  return (
+    command.name() === "__complete"
+    || (command.description() as unknown) === false
+  );
+}
+
 function renderGroupedCommandHelp(cmd: Command): string {
-  const commands = cmd.commands;
+  const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
 
   if (commands.length === 0) {
     return "";
