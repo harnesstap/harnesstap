@@ -44,7 +44,7 @@ describe("CLI export and import", () => {
       const raw = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
       expect(raw.version).toBe(1);
       expect(raw.$schema).toBe("urn:harnessdeck:layer:v1");
-      expect(raw.layers[0]?.plugins ?? []).toEqual([]);
+      expect(raw.layers[0]?.plugin_pins ?? []).toEqual([]);
       expect(raw.embedded_plugins ?? []).toEqual([]);
 
       const importContext = await createTestContext("cli-import");
@@ -119,7 +119,11 @@ describe("CLI export and import", () => {
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
         ]),
       );
-      expect(parsed.layers[0]?.plugins ?? []).toEqual([]);
+      expect(parsed.layers[0]?.plugin_pins).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
+        ]),
+      );
     } finally {
       await context.cleanup();
     }
@@ -208,7 +212,7 @@ plugins = []
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw).toContain("[[layers]]");
 
-      const parsed = await import("../../src/services/exporter.ts");
+      const parsed = await import("../../src/services/layer-export.ts");
       const bundle = parsed.inspectLayerExportFile(bundlePath);
       expect(bundle.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
     } finally {

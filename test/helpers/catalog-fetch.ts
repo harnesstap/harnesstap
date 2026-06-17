@@ -3,9 +3,29 @@ import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 const DEFAULT_BUNDLE = formatLayerExportToml({
   $schema: "urn:harnessdeck:layer:v1",
   version: 1,
-  layer: { name: "remote-team", description: "from cloud", tags: [] },
-  resources: [{ type: "instruction", name: "r", description: "", content: "#x", metadata: {}, namespace: "", origin_kind: "manual", origin_ref: "", content_hash: "", content_blob_ref: "" }],
-  plugins: [],
+  layers: [
+    {
+      name: "remote-team",
+      version: "1.0.0",
+      description: "from cloud",
+      tags: [],
+      resources: [
+        {
+          type: "instruction",
+          name: "r",
+          description: "",
+          content: "#x",
+          metadata: {},
+          namespace: "",
+          origin_kind: "manual",
+          origin_ref: "",
+          content_hash: "",
+          content_blob_ref: "",
+        },
+      ],
+      plugin_pins: [],
+    },
+  ],
   embedded_plugins: [],
 });
 

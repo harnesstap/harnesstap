@@ -185,9 +185,16 @@ describe("CLI cloud layer workflows", () => {
       const foundationBundle = formatLayerExportToml({
         $schema: "urn:harnessdeck:layer:v1",
         version: 1,
-        layer: { name: "engineering-foundation", description: "Shared baseline", tags: ["foundation"] },
-        resources: [],
-        plugins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
+        layers: [
+          {
+            name: "engineering-foundation",
+            version: "1.0.0",
+            description: "Shared baseline",
+            tags: ["foundation"],
+            resources: [],
+            plugin_pins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
+          },
+        ],
         embedded_plugins: [],
       });
 

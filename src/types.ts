@@ -500,21 +500,6 @@ export interface LayerExportEntry extends LayerExportLayer {
   dependencies?: LayerExportDependency[];
 }
 
-export interface LegacyLayerExport {
-  $schema: typeof LAYER_SCHEMA;
-  version: typeof LAYER_SCHEMA_VERSION;
-  layer: LayerExportLayer;
-  resources: LayerExportResource[];
-  /** Claude Code marketplace and plugin configuration for this layer. */
-  claude?: ClaudeLayerConfig;
-  /** Host plugin pins (marketplace refs, not inlined in the export file). */
-  plugin_pins: LayerExportPluginPin[];
-  /** Layer composition dependencies (name + version constraint). */
-  dependencies?: LayerExportDependency[];
-  /** Plugin trees inlined in the export file. */
-  embedded_plugins: LayerExportEmbeddedPlugin[];
-}
-
 export interface MultiLayerExport {
   $schema: typeof LAYER_SCHEMA;
   version: typeof LAYER_SCHEMA_VERSION;
@@ -523,7 +508,7 @@ export interface MultiLayerExport {
   embedded_plugins: LayerExportEmbeddedPlugin[];
 }
 
-export type LayerExport = LegacyLayerExport | MultiLayerExport;
+export type LayerExport = MultiLayerExport;
 
 /** Plugin pin carried in layer exports (non-embedded). */
 export interface LayerExportPluginPin {

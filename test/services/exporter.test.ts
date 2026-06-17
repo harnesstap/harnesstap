@@ -10,6 +10,14 @@ import {
 } from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
+async function loadLayerTransportServices() {
+  const [layerExport, layerImport] = await Promise.all([
+    import("../../src/services/layer-export.ts"),
+    import("../../src/services/layer-import.ts"),
+  ]);
+  return { ...layerExport, ...layerImport };
+}
+
 describe("exporter services", () => {
   it("exports a layer bundle without internal fields", async () => {
     const context = await createInitializedTestContext("export-bundle");
@@ -17,7 +25,7 @@ describe("exporter services", () => {
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "bundle" });
       const resource = resourceModel.createResource(
@@ -29,10 +37,10 @@ describe("exporter services", () => {
 
       expect(bundle.$schema).toBe("urn:harnessdeck:layer:v1");
       expect(bundle.version).toBe(1);
-      expect(bundle.plugin_pins).toEqual([]);
+      expect(bundle.layers[0]?.plugin_pins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
-      expect(bundle.layer.name).toBe("bundle");
-      expect(bundle.resources[0]).toEqual(
+      expect(bundle.layers[0]?.name).toBe("bundle");
+      expect(bundle.layers[0]?.resources[0]).toEqual(
         expect.not.objectContaining({ id: expect.anything(), source: expect.anything() }),
       );
     } finally {
@@ -46,7 +54,7 @@ describe("exporter services", () => {
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "bundle" });
       const resource = resourceModel.createResource(
@@ -65,7 +73,7 @@ describe("exporter services", () => {
       const importContext = await createInitializedTestContext("export-import-import");
 
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         const imported = importedExporter.importFromFile(bundlePath);
 
         expect(imported.layer.name).toBe("bundle");
@@ -84,7 +92,7 @@ describe("exporter services", () => {
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "commented-export" });
       const bundlePath = join(exportContext.projectDir, "commented-export.harnessdeck.toml");
@@ -97,7 +105,7 @@ describe("exporter services", () => {
 
       const importContext = await createInitializedTestContext("import-toml-comment-block");
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         expect(() => importedExporter.importFromFile(bundlePath)).not.toThrow();
       } finally {
         await importContext.cleanup();
@@ -111,7 +119,7 @@ describe("exporter services", () => {
     const context = await createInitializedTestContext("export-not-found");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       expect(() => exporter.exportLayer("non-existent-layer")).toThrow(
         "Layer not found: non-existent-layer",
@@ -125,7 +133,7 @@ describe("exporter services", () => {
     const context = await createInitializedTestContext("export-bad-version");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
       const tempDir = createTempDir("export-bad-version");
 
       try {
@@ -156,7 +164,7 @@ plugins = []
     const context = await createInitializedTestContext("export-malformed");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
       const tempDir = createTempDir("export-malformed");
 
       try {
@@ -176,7 +184,7 @@ plugins = []
     const context = await createInitializedTestContext("export-truncated-toml");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
       const tempDir = createTempDir("export-truncated-toml");
 
       try {
@@ -204,7 +212,7 @@ name = "truncated-bundle"
     const context = await createInitializedTestContext("export-toml-import");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
       const tempDir = createTempDir("export-toml-import");
 
       try {
@@ -249,14 +257,14 @@ content = "# Shared"
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "plugs" });
       pluginPins.attachPluginPinToLayer(layer.id, "fmt@acme-marketplace", ">=2");
 
       const bundle = exporter.exportLayer(layer.id);
       expect(bundle.version).toBe(1);
-      expect(bundle.plugin_pins).toEqual([
+      expect(bundle.layers[0]?.plugin_pins).toEqual([
         { ref: "fmt@acme-marketplace", version_constraint: ">=2" },
       ]);
       expect(bundle.embedded_plugins).toHaveLength(0);
@@ -284,7 +292,7 @@ content = "# Shared"
 
       const layerModel = await import("../../src/models/layer-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "local-plug" });
       pluginPins.attachPluginPinToLayer(layer.id, "./plugins/demo", "1.x");
@@ -292,7 +300,9 @@ content = "# Shared"
       const bundle = exporter.exportLayer(layer.id, {
         projectRoot: context.projectDir,
       });
-      expect(bundle.plugin_pins).toHaveLength(0);
+      expect(bundle.layers[0]?.plugin_pins).toEqual([
+        { ref: "./plugins/demo", version_constraint: "1.x" },
+      ]);
       expect(bundle.embedded_plugins).toHaveLength(1);
       expect(bundle.embedded_plugins[0]?.ref).toBe("./plugins/demo");
       expect(bundle.embedded_plugins[0]?.files["README.md"]).toBe("hello");
@@ -331,7 +341,7 @@ content = "# Shared"
 
       const layerModel = await import("../../src/models/layer-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "mkt-plug" });
       pluginPins.attachPluginPinToLayer(layer.id, "fmt@acme-marketplace", "2.x");
@@ -341,7 +351,9 @@ content = "# Shared"
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
       });
-      expect(bundle.plugin_pins).toHaveLength(0);
+      expect(bundle.layers[0]?.plugin_pins).toEqual([
+        { ref: "fmt@acme-marketplace", version_constraint: "2.x" },
+      ]);
       expect(bundle.embedded_plugins).toHaveLength(1);
       expect(bundle.embedded_plugins[0]?.ref).toBe("fmt@acme-marketplace");
 
@@ -385,7 +397,7 @@ content = "# Shared"
         homeRoot: "",
         projectRoot: context.projectDir,
       });
-      expect(bundleAgain.plugin_pins).toEqual([
+      expect(bundleAgain.layers[0]?.plugin_pins).toEqual([
         { ref: "fmt@acme-marketplace", version_constraint: "2.x" },
       ]);
       expect(bundleAgain.embedded_plugins).toHaveLength(0);
@@ -399,19 +411,19 @@ content = "# Shared"
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "versioned", version: "2.3.1" });
 
       const bundle = exporter.exportLayer(layer.id);
-      expect(bundle.layer.version).toBe("2.3.1");
+      expect(bundle.layers[0]?.version).toBe("2.3.1");
 
       const bundlePath = `${exportContext.projectDir}/versioned.harnessdeck.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-version-rt");
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         const imported = importedExporter.importFromFile(bundlePath);
         expect(imported.layer.version).toBe("2.3.1");
       } finally {
@@ -427,14 +439,14 @@ content = "# Shared"
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "with-deps" });
       layerModel.addDependencyToLayer(layer.id, "base-layer", "^1.0.0");
       layerModel.addDependencyToLayer(layer.id, "extra-layer", ">=2.0.0");
 
       const bundle = exporter.exportLayer(layer.id);
-      expect(bundle.dependencies).toEqual([
+      expect(bundle.layers[0]?.dependencies).toEqual([
         { dependency_name: "base-layer", version_constraint: "^1.0.0", order: 0 },
         { dependency_name: "extra-layer", version_constraint: ">=2.0.0", order: 1 },
       ]);
@@ -444,7 +456,7 @@ content = "# Shared"
 
       const importContext = await createInitializedTestContext("import-deps-rt");
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         const imported = importedExporter.importFromFile(bundlePath);
         const importedDeps = layerModel.listLayerDependencies(imported.layer.id);
         expect(importedDeps.map((d) => ({ name: d.dependency_name, vc: d.version_constraint }))).toEqual([
@@ -465,7 +477,7 @@ content = "# Shared"
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "multi" });
       const r1 = resourceModel.createResource(makeResourceInput({ name: "skill-a" }));
@@ -499,7 +511,7 @@ content = "# Shared"
     const exportContext = await createInitializedTestContext("export-override");
 
     try {
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
       const bundlePath = require("node:path").join(exportContext.projectDir, "override.harnessdeck.toml");
       writeLayerExportToml(
         bundlePath,
@@ -528,7 +540,7 @@ content = "# Shared"
       const layerModel = await import("../../src/models/layer-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const alpha = layerModel.createLayer({ name: "alpha", version: "1.0.0" });
       const beta = layerModel.createLayer({ name: "beta", version: "2.0.0" });
@@ -564,7 +576,7 @@ content = "# Shared"
       const importContext = await createInitializedTestContext("import-multi-layer");
 
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         const importedLayerModel = await import("../../src/models/layer-model.ts");
         const importedPluginModel = await import("../../src/services/layer-composition.ts");
 
@@ -612,7 +624,7 @@ content = "# Shared"
 
       const layerModel = await import("../../src/models/layer-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const alpha = layerModel.createLayer({ name: "alpha-only-plugin", version: "1.0.0" });
       const beta = layerModel.createLayer({ name: "beta-no-plugin", version: "1.0.0" });
@@ -654,7 +666,7 @@ content = "# Shared"
       const importContext = await createInitializedTestContext("import-multi-layer-selective-plugin");
 
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         const importedLayerModel = await import("../../src/models/layer-model.ts");
         const importedPluginModel = await import("../../src/services/layer-composition.ts");
 
@@ -693,7 +705,7 @@ content = "# Shared"
 
       const layerModel = await import("../../src/models/layer-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
-      const exporter = await import("../../src/services/exporter.ts");
+      const exporter = await loadLayerTransportServices();
 
       const alpha = layerModel.createLayer({ name: "alpha-shared-ref", version: "1.0.0" });
       const beta = layerModel.createLayer({ name: "beta-shared-ref", version: "1.0.0" });
@@ -721,7 +733,7 @@ content = "# Shared"
 
       const importContext = await createInitializedTestContext("import-shared-ref-different-constraints");
       try {
-        const importedExporter = await import("../../src/services/exporter.ts");
+        const importedExporter = await loadLayerTransportServices();
         const importedLayerModel = await import("../../src/models/layer-model.ts");
         const importedPluginModel = await import("../../src/services/layer-composition.ts");
 

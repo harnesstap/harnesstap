@@ -152,27 +152,12 @@ export function normalizeLayerExportForToml(bundle: LayerExport): {
   layers: LayerExportEntry[];
   embedded_plugins: MultiLayerExport["embedded_plugins"];
 } {
-  if ("layers" in bundle) {
-    return {
-      layers: bundle.layers.map((layer) => ({
-        ...layer,
-        plugin_pins: [...(layer.plugin_pins ?? [])],
-        resources: [...layer.resources],
-      })),
-      embedded_plugins: bundle.embedded_plugins ?? [],
-    };
-  }
-
   return {
-    layers: [
-      {
-        ...bundle.layer,
-        resources: bundle.resources,
-        plugin_pins: [...(bundle.plugin_pins ?? [])],
-        ...(bundle.claude ? { claude: bundle.claude } : {}),
-        ...(bundle.dependencies ? { dependencies: bundle.dependencies } : {}),
-      },
-    ],
+    layers: bundle.layers.map((layer) => ({
+      ...layer,
+      plugin_pins: [...(layer.plugin_pins ?? [])],
+      resources: [...layer.resources],
+    })),
     embedded_plugins: bundle.embedded_plugins ?? [],
   };
 }
