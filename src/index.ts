@@ -126,6 +126,7 @@ import {
   parseScenarioId,
 } from "./services/scenario-guide.js";
 import { renderShellCompletion } from "./services/shell-completion.js";
+import { runCompleteCommand } from "./services/completion/run-complete.js";
 import {
   formatPublishedSelector,
   resolveRemoteLayerSelector,
@@ -3683,14 +3684,21 @@ program
   });
 
 program
+  .command("__complete")
+  .argument("<shell>", "bash | zsh | fish")
+  .argument("[line...]", "Partial command line")
+  .description(false as unknown as string)
+  .action(async (shell: string, line: string[]) => {
+    await runCompleteCommand(shell, line, program);
+  });
+
+program
   .command("completion")
   .argument("<shell>", "Shell: bash, zsh, or fish")
   .description("Generate shell completion script")
   .action((shell: string) => {
     try {
-      process.stdout.write(
-        renderShellCompletion(shell, program, resolveInvocationName()),
-      );
+      process.stdout.write(renderShellCompletion(shell, program));
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
