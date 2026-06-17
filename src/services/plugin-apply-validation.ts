@@ -1,4 +1,3 @@
-import { listLayerPlugins } from "../models/plugin-pins.js";
 import { findPluginResourceByPin } from "./composition-resource.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 import type { PluginResourceMetadata } from "../types.js";
@@ -52,10 +51,6 @@ function validatePluginConstraintPins(
   }
 
   return issues;
-}
-
-export function validateLayerPluginConstraints(layerId: string): PluginValidationIssue[] {
-  return validatePluginConstraintPins(listLayerPlugins(layerId));
 }
 
 export function validatePluginPinsAgainstInventory(

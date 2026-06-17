@@ -54,7 +54,6 @@ import {
 } from "./models/project.js";
 import {
   getConfiguredLayer,
-  ensureImplicitConfiguredLayer,
   resolveConfiguredLayerSelector,
 } from "./models/configured-layer.js";
 import { getEnvironment } from "./models/environment.js";
@@ -148,7 +147,7 @@ import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergePlugins } from "./services/layer-merge.js";
 import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
-import { resolveLayerSelector, updateLayerPublishedIdentity } from "./models/layer-model.js";
+import { getLayerById, resolveLayerSelector, updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -1084,13 +1083,14 @@ async function resolveApplyLayers(
       throw new Error("Bundle contains no layers.");
     }
     const merged = mergePlugins(layers.map((layer) => layer.id));
-    const configuredLayer = ensureImplicitConfiguredLayer(primaryLayer.id);
+    const layer = getLayerById(primaryLayer.id);
+    if (!layer) throw new Error(`Layer not found: ${primaryLayer.id}`);
     return {
       layers: merged.layers,
       resources: merged.resources,
       claude: merged.claude,
-      configuredLayerIds: [configuredLayer.id],
-      primaryConfiguredLayerId: configuredLayer.id,
+      configuredLayerIds: [layer.id],
+      primaryConfiguredLayerId: layer.id,
     };
   }
 
@@ -1113,14 +1113,15 @@ async function resolveApplyLayers(
         : primarySummary.name;
       const existingLayer = resolveLayerSelector(selector);
       if (existingLayer) {
-        const configuredLayer = ensureImplicitConfiguredLayer(existingLayer.id);
-        const merged = mergeConfiguredLayers([configuredLayer.id]);
+        const layer = getLayerById(existingLayer.id);
+        if (!layer) throw new Error(`Layer not found: ${existingLayer.id}`);
+        const merged = mergeConfiguredLayers([layer.id]);
         return {
           layers: merged.layers,
           resources: merged.resources,
           claude: merged.claude,
-          configuredLayerIds: [configuredLayer.id],
-          primaryConfiguredLayerId: configuredLayer.id,
+          configuredLayerIds: [layer.id],
+          primaryConfiguredLayerId: layer.id,
         };
       }
     }
@@ -1136,7 +1137,9 @@ async function resolveApplyLayers(
     if (source.kind === "layer-export") {
       throw new Error("Layer export paths and URLs cannot be mixed with layer selectors.");
     }
-    return ensureImplicitConfiguredLayer(source.layerId).id;
+    const layer = getLayerById(source.layerId);
+    if (!layer) throw new Error(`Layer not found: ${source.layerId}`);
+    return layer.id;
   });
   const merged = mergeConfiguredLayers(configuredLayerIds);
   return {

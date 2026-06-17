@@ -1,4 +1,3 @@
-import { ulid } from "ulid";
 import { getDb } from "../db/connection.js";
 import { getPluginResources, addResourceToPlugin } from "../models/plugin-component.js";
 import {
@@ -297,37 +296,4 @@ export function resolveAttachmentType(
     `Attachment type required for selector "${selector}"`,
     attachmentTypeRequiredHints(selector, context?.layerName),
   );
-}
-
-export function migrationUpsertPluginResource(input: {
-  ref: string;
-  version_constraint: string;
-  embed_on_export: boolean;
-}): Resource {
-  const portable = input.embed_on_export ? "embed" : "reference";
-  const constraint =
-    input.version_constraint === "latest" || input.version_constraint === "*"
-      ? undefined
-      : input.version_constraint;
-  return ensurePluginResource(`plugin_pin:${input.ref}`, {
-    versionConstraint: constraint,
-    portable,
-  });
-}
-
-export function migrationUpsertLayerResource(input: {
-  dependency_name: string;
-  version_constraint: string;
-}): Resource {
-  const constraint =
-    input.version_constraint === "latest" || input.version_constraint === "*"
-      ? undefined
-      : input.version_constraint;
-  return ensureLayerResource(`layer:${input.dependency_name}`, {
-    versionConstraint: constraint,
-  });
-}
-
-export function createMigrationResourceId(): string {
-  return ulid();
 }

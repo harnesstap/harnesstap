@@ -65,14 +65,6 @@ export function findConfiguredLayerForPlugin(
   return getLayerById(pluginId);
 }
 
-export function ensureImplicitConfiguredLayer(pluginId: string): ConfiguredLayer {
-  const layer = getLayerById(pluginId);
-  if (!layer) {
-    throw new Error(`Layer not found: ${pluginId}`);
-  }
-  return layer;
-}
-
 export function resolveConfiguredLayerSelector(
   selector: string,
 ): ConfiguredLayer | undefined {
