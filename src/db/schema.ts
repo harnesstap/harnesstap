@@ -182,12 +182,23 @@ const MIGRATIONS: Record<number, string> = {
   `,
 };
 
-export function initializeSchema(db: SqliteDatabase): void {
+export interface InitializeSchemaOptions {
+  /** Allow opening a pre-v19 database for read-only export (migrate export). */
+  allowLegacyRead?: boolean;
+}
+
+export function initializeSchema(
+  db: SqliteDatabase,
+  options: InitializeSchemaOptions = {},
+): void {
   const currentVersion = getSchemaVersion(db);
 
   if (currentVersion >= SCHEMA_VERSION) return;
 
   if (currentVersion > 0) {
+    if (options.allowLegacyRead) {
+      return;
+    }
     throw new Error(
       `Database schema v${currentVersion} cannot be upgraded in place. ` +
         "Export with `hd migrate export backup.tar`, remove the old database, " +

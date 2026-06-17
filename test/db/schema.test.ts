@@ -334,6 +334,29 @@ describe("initializeSchema", () => {
     }
   });
 
+  it("allows legacy schema read for migrate export", async () => {
+    const context = await createTestContext("schema-legacy-export-read");
+
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (18);
+      `);
+
+      expect(() =>
+        context.schema.initializeSchema(db, { allowLegacyRead: true }),
+      ).not.toThrow();
+
+      const versionRow = db
+        .prepare("SELECT version FROM schema_version LIMIT 1")
+        .get() as { version: number };
+      expect(versionRow.version).toBe(18);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("rejects in-place upgrade from legacy schema versions", async () => {
     const context = await createTestContext("schema-legacy-upgrade-rejected");
 

@@ -445,11 +445,17 @@ Override the base directory with `HARNESSDECK_HOME`; cloud profiles live under `
 
 ## Upgrading from schema v18
 
-Export: `hd migrate export backup.tar`
+After upgrading the CLI, export your existing database before removing it:
 
-Remove old database
+```bash
+hd migrate export backup.tar
+# remove the old database (see `hd config path`)
+hd migrate import backup.tar
+```
 
-Import: `hd migrate import backup.tar`
+`migrate export` opens legacy v18 databases read-only so you can export after upgrading the CLI. Other commands require a v19 database.
+
+**Note:** `migrate export` archives layers (as TOML), harness preferences, and config — not projects, snapshots, decks, or standalone environments. Back those up separately if you need them.
 
 ---
 

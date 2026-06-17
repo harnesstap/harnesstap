@@ -3562,7 +3562,7 @@ function handleMigrateExportCommand(
   },
 ): void {
   const db = getDb();
-  initializeSchema(db);
+  initializeSchema(db, { allowLegacyRead: true });
   const format = parseOutputFormat(opts.format);
   try {
     const manifest = exportMigrationState({
