@@ -44,6 +44,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 - [Project maintenance and machine transfer](#project-maintenance-and-machine-transfer)
 - [Supported harnesses](#supported-harnesses)
 - [Where data lives](#where-data-lives)
+- [Upgrading from schema v18](#upgrading-from-schema-v18)
 - [HarnessDeck Cloud](#harnessdeck-cloud)
 - [Contributing](#contributing)
 
@@ -439,6 +440,16 @@ Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, plugins, 
 When you run `hd init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
 Override the base directory with `HARNESSDECK_HOME`; cloud profiles live under `<HARNESSDECK_HOME>/cloud-profiles.json` when set.
+
+---
+
+## Upgrading from schema v18
+
+Export: `hd migrate export backup.tar`
+
+Remove old database
+
+Import: `hd migrate import backup.tar`
 
 ---
 
