@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { createTestContext } from "../helpers/db.ts";
 import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
 import { syncPluginPinsForApply } from "../../src/services/plugin-apply-sync.ts";
-import { createLayer } from "../../src/models/layer.ts";
-import { addPluginToLayer } from "../../src/models/plugin-pins.ts";
+import { createLayer } from "../../src/models/layer-model.ts";
+import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
 import type { RunCommand } from "../../src/plugins/run-command.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
@@ -15,7 +15,7 @@ describe("syncPluginPinsForApply", () => {
     try {
       context.schema.initializeSchema(context.connection.getDb());
       const layer = createLayer({ name: "sync-me" });
-      addPluginToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
 
       const result = await syncPluginPinsForApply({
         pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
@@ -40,7 +40,7 @@ describe("syncPluginPinsForApply", () => {
     try {
       context.schema.initializeSchema(context.connection.getDb());
       const layer = createLayer({ name: "catalog-layer" });
-      addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
+      attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
 
       const failingRun: RunCommand = () => ({
         stdout: "",
@@ -82,7 +82,7 @@ describe("syncPluginPinsForApply", () => {
     try {
       context.schema.initializeSchema(context.connection.getDb());
       const layer = createLayer({ name: "catalog-layer" });
-      addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
+      attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
 
       const failingRun: RunCommand = () => ({
         stdout: "",

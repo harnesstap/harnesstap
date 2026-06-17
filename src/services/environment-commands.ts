@@ -16,9 +16,8 @@ import {
   upsertEnvironmentPermission,
 } from "../models/environment.js";
 import {
-  setConfiguredLayerDefaultEnvironment,
-  unsetConfiguredLayerDefaultEnvironment,
-} from "../models/configured-layer.js";
+  setLayerDefaultEnvironment,
+} from "../models/layer-model.js";
 import { setDeckActiveEnvironment } from "../models/deck.js";
 import { DECK_JSON_VERSION, DECK_SCHEMA } from "../types.js";
 import { existsSync, mkdirSync } from "node:fs";
@@ -226,7 +225,7 @@ export function setLayerEnvironmentCommand(
 ): { configured_layer_id: string; environment_id: string } {
   const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
   const environment = resolveEnvironmentOrThrow(environmentSelector);
-  const updated = setConfiguredLayerDefaultEnvironment(
+  const updated = setLayerDefaultEnvironment(
     configuredLayer.id,
     environment.id,
   );
@@ -243,7 +242,7 @@ export function unsetLayerEnvironmentCommand(layerSelector: string): {
   configured_layer_id: string;
 } {
   const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
-  const updated = unsetConfiguredLayerDefaultEnvironment(configuredLayer.id);
+  const updated = setLayerDefaultEnvironment(configuredLayer.id, null);
   if (!updated) {
     throw new Error(`Configured layer not found: ${configuredLayer.id}`);
   }

@@ -6,7 +6,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-single");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -27,7 +27,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-highest");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -49,7 +49,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-chain");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -76,7 +76,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-diamond");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -115,7 +115,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-multi-root");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -137,7 +137,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-cycle");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -158,7 +158,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-trans-cycle");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -181,7 +181,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-missing-root");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -200,7 +200,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-missing-dep");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -222,7 +222,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-nonexistent");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -242,7 +242,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-cycle-msg");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -263,7 +263,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-by-id");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -283,7 +283,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-conflict-roots");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -304,7 +304,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-conflict-trans");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -332,7 +332,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-compat-constraints");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -363,7 +363,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-id-conflict");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );
@@ -385,7 +385,7 @@ describe("resolveLayerGraph", () => {
     const context = await createInitializedTestContext("resolver-id-same");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const { resolveLayerGraph } = await import(
         "../../src/services/layer-resolver.ts"
       );

@@ -1,4 +1,4 @@
-import { resolveConfiguredLayerSelector } from "../models/configured-layer.js";
+import { resolveLayerSelector } from "../models/layer-model.js";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -8,7 +8,7 @@ import {
   upsertEnvironmentPermission,
 } from "../models/environment.js";
 import { getHarnessPreference, getProjectHarnessConfig } from "../models/harness.js";
-import { getPluginResources, getPlugin } from "../models/plugin-component.js";
+import { getLayerResources, getLayer } from "../models/layer-model.js";
 import { getProjectByLocalPath, getProjectConfiguredLayers } from "../models/project.js";
 import { listResources } from "../models/resource.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
@@ -90,7 +90,7 @@ function resolveScopedConfiguredLayerIds(
 ): string[] {
   if (layerSelectors && layerSelectors.length > 0) {
     return layerSelectors.map((selector) => {
-      const configuredLayer = resolveConfiguredLayerSelector(selector);
+      const configuredLayer = resolveLayerSelector(selector);
       if (!configuredLayer) {
         throw new Error(`Configured layer not found: ${selector}`);
       }
@@ -136,14 +136,14 @@ function collectRequirementsFromPlugins(
   };
 
   for (const pluginId of pluginIds) {
-    const plugin = getPlugin(pluginId);
+    const plugin = getLayer(pluginId);
     if (!plugin) continue;
 
     for (const need of plugin.needs ?? []) {
       rememberKey(need, "plugin_needs");
     }
 
-    for (const resource of getPluginResources(pluginId)) {
+    for (const resource of getLayerResources(pluginId)) {
       if (resource.type === "mcp_server") {
         const metadata = resource.metadata as McpServerMetadata;
         for (const key of Object.keys(metadata.env ?? {})) {

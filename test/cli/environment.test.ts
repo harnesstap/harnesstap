@@ -126,13 +126,13 @@ describe("CLI environment", () => {
     try {
       await runCli(["init"]);
 
-      const pluginModel = await import("../../src/models/plugin-component.ts");
-      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
-      const plugin = pluginModel.createPlugin({ name: "app-layer" });
-      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+      const pluginModel = await import("../../src/models/layer-model.ts");
+      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const plugin = pluginModel.createLayer({ name: "app-layer" });
+      const configuredLayer = configuredLayerModel.createLayerFromSources({
         name: plugin.name,
         version: plugin.version,
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
 
       await runCli(["environment", "create", "staging"]);
@@ -179,15 +179,15 @@ describe("CLI environment", () => {
         "utf-8",
       );
 
-      const pluginModel = await import("../../src/models/plugin-component.ts");
-      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
-      const plugin = pluginModel.createPlugin({
+      const pluginModel = await import("../../src/models/layer-model.ts");
+      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const plugin = pluginModel.createLayer({
         name: "capture-layer-plugin",
         needs: ["CAPTURE_KEY", "MISSING_KEY"],
       });
-      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+      const configuredLayer = configuredLayerModel.createLayerFromSources({
         name: "capture-layer",
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
 
       const captureResult = await runCli([
@@ -243,8 +243,8 @@ describe("CLI environment", () => {
       await runCli(["init"]);
 
       const projectModel = await import("../../src/models/project.ts");
-      const pluginModel = await import("../../src/models/plugin-component.ts");
-      const configuredLayerModel = await import("../../src/models/configured-layer.ts");
+      const pluginModel = await import("../../src/models/layer-model.ts");
+      const configuredLayerModel = await import("../../src/models/layer-model.ts");
       const deckModel = await import("../../src/models/deck.ts");
 
       const project = projectModel.createProject({
@@ -252,11 +252,11 @@ describe("CLI environment", () => {
         name: "acme/cascade",
         local_path: context.projectDir,
       });
-      const plugin = pluginModel.createPlugin({ name: "cascade-layer" });
-      const configuredLayer = configuredLayerModel.createConfiguredLayer({
+      const plugin = pluginModel.createLayer({ name: "cascade-layer" });
+      const configuredLayer = configuredLayerModel.createLayerFromSources({
         name: plugin.name,
         version: plugin.version,
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
       });
       projectModel.applyConfiguredLayerToProject({
         project_id: project.id,

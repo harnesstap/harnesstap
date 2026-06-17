@@ -1,11 +1,11 @@
 import { getDb } from "../db/connection.js";
 import {
-  addResourceToPlugin,
-  getPluginResources,
-  removeResourceFromPlugin,
+  addResourceToLayer,
+  getLayerResources,
+  removeResourceFromLayer,
   syncClaudeLayerPluginsAfterAdd,
   syncClaudeLayerPluginsAfterRemove,
-} from "../models/plugin-component.js";
+} from "../models/layer-model.js";
 import {
   findResourceByKey,
   normalizeResourceInput,
@@ -239,7 +239,7 @@ export function ensureLayerResource(
 }
 
 export function listAttachedPluginPins(pluginId: string): PluginPinView[] {
-  return getPluginResources(pluginId)
+  return getLayerResources(pluginId)
     .filter((resource) => resource.type === "plugin_pin")
     .map((resource) => {
       const metadata = resource.metadata as PluginPinMetadata;
@@ -253,8 +253,50 @@ export function listAttachedPluginPins(pluginId: string): PluginPinView[] {
     });
 }
 
+export interface LayerPluginRow {
+  layer_id: string;
+  ref: string;
+  version_constraint: string;
+  order: number;
+  embed_on_export: boolean;
+}
+
+export function attachPluginPinToLayer(
+  layerId: string,
+  ref: string,
+  versionConstraint: string,
+  opts?: { embedOnExport?: boolean; order?: number },
+): void {
+  const selector = ref.includes(":") ? ref : `plugin_pin:${ref}`;
+  const constraint =
+    versionConstraint === "latest" || versionConstraint === "*"
+      ? undefined
+      : versionConstraint;
+  const resource = ensurePluginResource(selector, {
+    versionConstraint: constraint,
+    portable: opts?.embedOnExport ? "embed" : "reference",
+  });
+  addResourceToLayer(layerId, resource.id);
+}
+
+export function detachPluginPinFromLayer(layerId: string, ref: string): void {
+  const pin = listAttachedPluginPins(layerId).find((entry) => entry.ref === ref);
+  if (!pin) return;
+  removeResourceFromLayer(layerId, pin.resource.id);
+}
+
+export function listLayerPlugins(layerId: string): LayerPluginRow[] {
+  return listAttachedPluginPins(layerId).map((pin, index) => ({
+    layer_id: layerId,
+    ref: pin.ref,
+    version_constraint: pin.version_constraint,
+    order: index,
+    embed_on_export: pin.embed_on_export,
+  }));
+}
+
 export function listAttachedLayerRefs(pluginId: string): LayerRefView[] {
-  return getPluginResources(pluginId)
+  return getLayerResources(pluginId)
     .filter((resource) => resource.type === "layer")
     .map((resource) => {
       const metadata = resource.metadata as LayerResourceMetadata;
@@ -271,7 +313,7 @@ export function attachCompositionResource(
   pluginId: string,
   resource: Resource,
 ): void {
-  addResourceToPlugin(pluginId, resource.id);
+  addResourceToLayer(pluginId, resource.id);
 }
 
 export function resolveAttachmentType(
@@ -439,7 +481,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
       versionConstraint: input.version,
       portable: input.embed ? "embed" : undefined,
     });
-    addResourceToPlugin(input.layer.id, resource.id);
+    addResourceToLayer(input.layer.id, resource.id);
     const ref = formatPluginRef(resource);
     if (input.version) {
       syncClaudeLayerPluginsAfterAdd(input.layer, ref, input.version);
@@ -461,7 +503,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
     const resource = ensureLayerResource(selector, {
       versionConstraint: input.version,
     });
-    addResourceToPlugin(input.layer.id, resource.id);
+    addResourceToLayer(input.layer.id, resource.id);
     const versionLabel = input.version ? ` (${input.version})` : "";
     return `Attached layer ${resource.name}${versionLabel} to layer ${input.layer.name}`;
   }
@@ -477,7 +519,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
   }
 
   const resource = resolveTypedResource(selector, attachmentType);
-  addResourceToPlugin(input.layer.id, resource.id);
+  addResourceToLayer(input.layer.id, resource.id);
   return `Added ${resource.type} "${resource.name}" to layer ${input.layer.name}`;
 }
 
@@ -498,7 +540,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     if (!pin) {
       throw new Error(`Plugin pin not found: ${ref}`);
     }
-    removeResourceFromPlugin(input.layer.id, pin.resource.id);
+    removeResourceFromLayer(input.layer.id, pin.resource.id);
     syncClaudeLayerPluginsAfterRemove(input.layer, pin.ref);
     return {
       removed: true,
@@ -523,7 +565,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
         `Type mismatch: selector "${selector}" resolved to ${resourceResult.resource.type}, expected layer`,
       );
     }
-    removeResourceFromPlugin(input.layer.id, resourceResult.resource.id);
+    removeResourceFromLayer(input.layer.id, resourceResult.resource.id);
     return {
       removed: true,
       message: `Removed layer ${resourceResult.resource.name} from layer ${input.layer.name}`,
@@ -531,7 +573,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
   }
 
   const resource = resolveTypedResource(selector, attachmentType);
-  removeResourceFromPlugin(input.layer.id, resource.id);
+  removeResourceFromLayer(input.layer.id, resource.id);
   return {
     removed: true,
     message: `Removed ${resource.type} "${resource.name}" from layer ${input.layer.name}`,

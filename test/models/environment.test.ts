@@ -16,9 +16,9 @@ import {
   upsertEnvironmentPermission,
 } from "../../src/models/environment.ts";
 import {
-  createConfiguredLayer,
-  setConfiguredLayerDefaultEnvironment,
-} from "../../src/models/configured-layer.ts";
+  createLayerFromSources,
+  setLayerDefaultEnvironment,
+} from "../../src/models/layer-model.ts";
 import { createDeck, setDeckActiveEnvironment } from "../../src/models/deck.ts";
 
 describe("environment model", () => {
@@ -109,9 +109,9 @@ describe("environment model", () => {
 
     try {
       const env = createEnvironment({ name: "prod" });
-      const configuredLayer = createConfiguredLayer({
+      const configuredLayer = createLayerFromSources({
         name: "backend",
-        pluginIds: [],
+        sourceLayerIds: [],
         environmentId: env.id,
       });
       const deck = createDeck({
@@ -129,7 +129,7 @@ describe("environment model", () => {
       ]);
       expect(hasEnvironmentReferences(env.id)).toBe(true);
 
-      setConfiguredLayerDefaultEnvironment(configuredLayer.id, null);
+      setLayerDefaultEnvironment(configuredLayer.id, null);
       setDeckActiveEnvironment(deck.id, null);
       expect(listEnvironmentReferences(env.id)).toEqual({
         configured_layers: [],

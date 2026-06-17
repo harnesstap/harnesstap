@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { getHarnessdeckDir } from "../db/connection.js";
-import { getConfiguredLayer } from "../models/configured-layer.js";
+import { getLayerById } from "../models/layer-model.js";
 import {
   getEnvironmentByName,
   getEnvironmentResources,
@@ -195,7 +195,7 @@ export function loadLayerDefaultFragments(
   configuredLayerIds: string[],
 ): EnvironmentFragment[] {
   return configuredLayerIds.flatMap((configuredLayerId) => {
-    const configuredLayer = getConfiguredLayer(configuredLayerId);
+    const configuredLayer = getLayerById(configuredLayerId);
     if (!configuredLayer?.default_environment_id) {
       return [];
     }

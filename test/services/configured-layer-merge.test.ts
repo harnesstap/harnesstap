@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-component.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createConfiguredLayer } from "../../src/models/configured-layer.ts";
+import { createLayerFromSources } from "../../src/models/layer-model.ts";
 import { mergeConfiguredLayers } from "../../src/services/configured-layer-merge.ts";
 
 describe("configured layer merge", () => {
@@ -11,8 +11,8 @@ describe("configured layer merge", () => {
     const context = await createInitializedTestContext("configured-layer-merge");
 
     try {
-      const plugin = createPlugin({ name: "pagerduty" });
-      addResourceToPlugin(
+      const plugin = createLayer({ name: "pagerduty" });
+      addResourceToLayer(
         plugin.id,
         createResource({
           type: "instruction",
@@ -37,9 +37,9 @@ describe("configured layer merge", () => {
         }),
       );
 
-      const layer = createConfiguredLayer({
+      const layer = createLayerFromSources({
         name: "backend-oncall",
-        pluginIds: [plugin.id],
+        sourceLayerIds: [plugin.id],
         environmentId: env.id,
       });
 

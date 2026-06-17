@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { getConfiguredLayerByName, getConfiguredLayer, resolveConfiguredLayerSelector } from "../models/configured-layer.js";
+import { getLayerByName, getLayerById, resolveLayerSelector } from "../models/layer-model.js";
 import { getDeckByRootPath } from "../models/deck.js";
 import { getEnvironment, resolveEnvironmentSelector } from "../models/environment.js";
 import type { ConfiguredLayer, Deck, Environment } from "../types.js";
@@ -26,7 +26,7 @@ export function maybeResolveEnvironment(selector: string): Environment | undefin
 }
 
 export function resolveConfiguredLayerOrThrow(selector: string): ConfiguredLayer {
-  const layer = resolveConfiguredLayerSelector(selector);
+  const layer = resolveLayerSelector(selector);
   if (!layer) {
     throw new Error(`Configured layer not found: ${selector}`);
   }
@@ -37,9 +37,9 @@ export function resolveConfiguredLayerByNameOrId(
   selector: string,
 ): ConfiguredLayer | undefined {
   if (isUlid(selector)) {
-    return getConfiguredLayer(selector);
+    return getLayerById(selector);
   }
-  return getConfiguredLayerByName(selector);
+  return getLayerByName(selector);
 }
 
 export function resolveDeckByProjectRoot(projectRoot: string): Deck | undefined {

@@ -1,4 +1,4 @@
-import { listPlugins } from "../models/plugin-component.js";
+import { listLayers } from "../models/layer-model.js";
 import { formatCatalogScopeLabel, resolveCatalogScope } from "../config/catalog.js";
 import { listLayersInScope } from "./catalog-client.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
@@ -15,7 +15,7 @@ export async function maybePromptInitCatalogInstall(input: {
   if (input.format !== "human" || !input.interactive) {
     return;
   }
-  if (listPlugins().length > 0) {
+  if (listLayers().length > 0) {
     return;
   }
 

@@ -36,14 +36,16 @@ import {
   resolveResource,
 } from "./models/resource.js";
 import {
-  createPlugin,
-  getPlugin,
-  listPlugins as listDesignPlugins,
-  deletePlugin,
-  getPluginResources,
-  listPluginDependencies,
-  parsePluginSelector,
-} from "./models/plugin-component.js";
+  createLayer,
+  getLayer,
+  listLayers,
+  deleteLayer,
+  getLayerResources,
+  listLayerDependencies,
+  parseLayerSelectorString,
+  getLayerById,
+  resolveLayerSelector,
+} from "./models/layer-model.js";
 import {
   upsertProject,
   getProject,
@@ -52,10 +54,6 @@ import {
   applyConfiguredLayerToProject,
   getProjectConfiguredLayers,
 } from "./models/project.js";
-import {
-  getConfiguredLayer,
-  resolveConfiguredLayerSelector,
-} from "./models/configured-layer.js";
 import { getEnvironment } from "./models/environment.js";
 import {
   createSnapshot,
@@ -146,7 +144,7 @@ import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergePlugins } from "./services/layer-merge.js";
 import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
-import { getLayerById, resolveLayerSelector, updateLayerPublishedIdentity } from "./models/layer-model.js";
+import { updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -359,7 +357,7 @@ async function resolveLayerMutationTarget(input: {
     return undefined;
   }
 
-  const layers = listDesignPlugins();
+  const layers = listLayers();
   if (layers.length === 0) {
     return undefined;
   }
@@ -401,7 +399,7 @@ function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
 }
 
 function dependencyLayerName(dependencyName: string): string {
-  const parsed = parsePluginSelector(dependencyName);
+  const parsed = parseLayerSelectorString(dependencyName);
   if (parsed.kind === "id") return dependencyName;
   return parsed.name;
 }
@@ -411,7 +409,7 @@ function resolveDependencyLayerVersion(
   versionConstraint: string,
 ): string {
   const name = dependencyLayerName(dependencyName);
-  const resolved = getPlugin(`${name}@${versionConstraint}`);
+  const resolved = getLayer(`${name}@${versionConstraint}`);
   return resolved?.version ?? "—";
 }
 
@@ -1069,7 +1067,7 @@ async function resolveApplyLayers(
     onFetched?: (sourceLabel: string) => void;
   } = {},
 ): Promise<{
-  layers: ReturnType<typeof getPlugin>[];
+  layers: ReturnType<typeof getLayer>[];
   resources: Resource[];
   claude?: import("./types.js").ClaudeLayerConfig;
   configuredLayerIds: string[];
@@ -1821,7 +1819,7 @@ async function handleLayerInstallCommand(
   }
 
   const localName = opts.as ?? parsed.layer_slug;
-  const existing = getPlugin(localName);
+  const existing = getLayer(localName);
   if (existing && !opts.as) {
     process.exitCode = 1;
     ui.danger(`Layer name already exists: ${localName}. Use --as to install under a different name.`);
@@ -1862,7 +1860,7 @@ async function handleLayerPublishCommand(
 ) {
   const db = getDb();
   initializeSchema(db);
-  const layer = getPlugin(layerName);
+  const layer = getLayer(layerName);
   if (!layer) {
     process.exitCode = 1;
     ui.danger(`Layer not found: ${layerName}`);
@@ -2000,12 +1998,12 @@ function handleLayerShowCommand(
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const layer = getPlugin(name);
+  const layer = getLayer(name);
   if (!layer) {
     ui.danger(`Layer not found: ${name}`);
     return;
   }
-  const allResources = getPluginResources(layer.id);
+  const allResources = getLayerResources(layer.id);
   const resources = allResources.filter(
     (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
   );
@@ -2017,16 +2015,16 @@ function handleLayerShowCommand(
     order: index,
     embed_on_export: pin.embed_on_export,
   }));
-  const dependencies = listPluginDependencies(layer.id);
+  const dependencies = listLayerDependencies(layer.id);
   const configuredLayer = (() => {
     if (/^[0-9A-Z]{26}$/.test(name)) {
-      return getConfiguredLayer(name);
+      return getLayerById(name);
     }
     const atIdx = name.lastIndexOf("@");
     if (atIdx > 0) {
-      return resolveConfiguredLayerSelector(name);
+      return resolveLayerSelector(name);
     }
-    return resolveConfiguredLayerSelector(`${layer.name}@${layer.version}`);
+    return resolveLayerSelector(`${layer.name}@${layer.version}`);
   })();
   const configuredLayerDefaultEnvironment = configuredLayer?.default_environment_id
     ? getEnvironment(configuredLayer.default_environment_id)
@@ -2251,7 +2249,7 @@ function resolveConfiguredLayersForCascade(
 ): string[] {
   if (selectors && selectors.length > 0) {
     return selectors.map((selector) => {
-      const configuredLayer = resolveConfiguredLayerSelector(selector);
+      const configuredLayer = resolveLayerSelector(selector);
       if (!configuredLayer) {
         throw new Error(`Configured layer not found: ${selector}`);
       }
@@ -3014,7 +3012,7 @@ async function handleInitCommand(opts: {
     && Boolean(process.stdin.isTTY && process.stdout.isTTY)
     && !["1", "true", "yes"].includes(process.env.CI?.trim().toLowerCase() ?? "")
     && (opts.interactive === true || useWizard)
-    && listDesignPlugins().length === 0;
+    && listLayers().length === 0;
 
   if (canPromptCatalog) {
     try {
@@ -3776,7 +3774,7 @@ layerCmd
       const db = getDb();
       initializeSchema(db);
       const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
-      const layer = createPlugin({
+      const layer = createLayer({
         name,
         version: opts.version,
         description: opts.description,
@@ -3795,7 +3793,7 @@ layerCmd
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const layers = listDesignPlugins();
+    const layers = listLayers();
     if (format === "json") {
       printJson(layers);
       return;
@@ -3830,7 +3828,7 @@ layerCmd
     if (!resolvedName) {
       process.exitCode = 1;
       ui.danger(
-        listDesignPlugins().length > 0
+        listLayers().length > 0
           ? "error: missing required argument 'name'"
           : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
       );
@@ -3864,14 +3862,14 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listDesignPlugins().length > 0
+          listLayers().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const layer = getPlugin(layerTarget);
+      const layer = getLayer(layerTarget);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${layerTarget}`);
@@ -3938,14 +3936,14 @@ layerCmd
       if (!layerTarget) {
         process.exitCode = 1;
         ui.danger(
-          listDesignPlugins().length > 0
+          listLayers().length > 0
             ? "error: missing required argument 'layer'"
             : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
         );
         return;
       }
 
-      const layer = getPlugin(layerTarget);
+      const layer = getLayer(layerTarget);
       if (!layer) {
         process.exitCode = 1;
         ui.danger(`Layer not found: ${layerTarget}`);
@@ -4022,13 +4020,13 @@ layerCmd
       }
 
       for (const resolvedName of selectors) {
-        const layer = getPlugin(resolvedName);
+        const layer = getLayer(resolvedName);
         if (!layer) {
           process.exitCode = 1;
           ui.danger(`Layer not found: ${resolvedName}`);
           return;
         }
-        if (!deletePlugin(layer.id)) {
+        if (!deleteLayer(layer.id)) {
           throw new Error(`Failed to delete layer ${formatLayerLabel(layer)}`);
         }
         ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);

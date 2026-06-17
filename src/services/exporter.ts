@@ -1,17 +1,21 @@
 import { existsSync, statSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import {
-  getPlugin,
-  getPluginResources,
-  createPlugin,
-  addResourceToPlugin,
+  getLayer,
+  getLayerResources,
+  createLayer,
+  addResourceToLayer,
   syncClaudeLayerPluginsAfterAdd,
-  listPluginDependencies,
-  addDependencyToPlugin,
-} from "../models/plugin-component.js";
-import { listLayerPlugins, addPluginToLayer } from "../models/plugin-pins.js";
+  listLayerDependencies,
+  addDependencyToLayer,
+  createLayerFromSources,
+  getLayerById,
+  getLayerByPublishedIdentity,
+  setLayerDefaultEnvironment,
+} from "../models/layer-model.js";
+import { listLayerPlugins, attachPluginPinToLayer } from "./layer-composition.js";
 import { isCompositionResourceType } from "./layer-composition.js";
-import type { LayerPluginRow } from "../models/plugin-pins.js";
+import type { LayerPluginRow } from "./layer-composition.js";
 import {
   normalizeResourceInput,
   upsertResource,
@@ -23,12 +27,6 @@ import {
   listDeckLayers,
   setDeckActiveEnvironment,
 } from "../models/deck.js";
-import { createConfiguredLayer } from "../models/configured-layer.js";
-import {
-  getLayerById,
-  getLayerByPublishedIdentity,
-  setLayerDefaultEnvironment,
-} from "../models/layer-model.js";
 import {
   addResourceToEnvironment,
   addSecretRefToEnvironment,
@@ -273,9 +271,9 @@ function collectBundlePayload(
   layer: Layer,
   exportOpts?: ExportLayerOptions,
 ): LayerExportPayloadWithEmbedded {
-  const resources = getPluginResources(layer.id);
+  const resources = getLayerResources(layer.id);
   const layerRows = listLayerPlugins(layer.id);
-  const deps = listPluginDependencies(layer.id);
+  const deps = listLayerDependencies(layer.id);
   const { pins, embeddedRoots } = classifyLayerPluginsForExport(
     layerRows,
     exportOpts,
@@ -616,7 +614,7 @@ export const readDeckJson = readDeckToml;
 
 function resolvePluginRef(ref: DeckJsonLayerPluginRef): Plugin {
   const plugin =
-    getPlugin(`${ref.name}@${ref.version}`) ?? getPlugin(ref.name);
+    getLayer(`${ref.name}@${ref.version}`) ?? getLayer(ref.name);
   if (!plugin) {
     throw new Error(
       `Plugin not found for deck import: ${ref.name}@${ref.version}`,
@@ -640,15 +638,15 @@ function formatDeckJsonLayerSelector(layer: DeckJsonLayer): string {
 
 function resolveDeckJsonLayerSelector(layer: DeckJsonLayer): Layer {
   if (layer.plugins && layer.plugins.length > 0) {
-    const pluginIds: string[] = [];
+    const sourceLayerIds: string[] = [];
     for (const ref of layer.plugins) {
       const plugin = resolvePluginRef(ref);
-      pluginIds.push(plugin.id);
+      sourceLayerIds.push(plugin.id);
     }
-    return createConfiguredLayer({
+    return createLayerFromSources({
       name: layer.name,
       version: layer.version,
-      pluginIds,
+      sourceLayerIds,
     });
   }
 
@@ -882,7 +880,7 @@ export function exportLayer(
   );
   const selectors = Array.isArray(layerNameOrId) ? layerNameOrId : [layerNameOrId];
   const layers = selectors.map((selector) => {
-    const layer = getPlugin(selector);
+    const layer = getLayer(selector);
     if (!layer) throw new Error(`Layer not found: ${selector}`);
     return layer;
   });
@@ -965,7 +963,7 @@ function importLayerFromBundleParsed(
 ): { layer: Layer; resources: Resource[] } {
   const claude = bundle.claude;
 
-  const layer = createPlugin({
+  const layer = createLayer({
     name: opts?.layerNameOverride ?? bundle.name,
     version: bundle.version,
     description: bundle.description,
@@ -995,7 +993,7 @@ function importLayerFromBundleParsed(
     if (upserted.action === "skipped") {
       throw new Error(`Failed to import resource: ${r.type}:${r.name}`);
     }
-    addResourceToPlugin(layer.id, upserted.resource.id);
+    addResourceToLayer(layer.id, upserted.resource.id);
     resources.push(upserted.resource);
   }
 
@@ -1019,7 +1017,7 @@ function importLayerFromBundleParsed(
   );
 
   function syncPinsAfterMutation(ref: string, versionConstraint: string): void {
-    const refreshed = getPlugin(layerId);
+    const refreshed = getLayer(layerId);
     if (!refreshed) {
       throw new Error(`Layer ${layerId} not found during bundle import`);
     }
@@ -1027,7 +1025,7 @@ function importLayerFromBundleParsed(
   }
 
   for (const p of pluginPins) {
-    addPluginToLayer(layerId, p.ref, p.version_constraint, {
+    attachPluginPinToLayer(layerId, p.ref, p.version_constraint, {
       embedOnExport: false,
     });
     syncPinsAfterMutation(p.ref, p.version_constraint);
@@ -1037,7 +1035,7 @@ function importLayerFromBundleParsed(
   if (layerEmbeddedPlugins.length > 0) {
     writeEmbeddedPluginsOnImport(embeddedDir, layerEmbeddedPlugins);
     for (const e of layerEmbeddedPlugins) {
-      addPluginToLayer(layerId, e.ref, e.version_constraint, {
+      attachPluginPinToLayer(layerId, e.ref, e.version_constraint, {
         /** Pin only; inlined trees live in `embedded_plugins` on the bundle, not persisted as “always embed”. */
         embedOnExport: false,
       });
@@ -1046,10 +1044,10 @@ function importLayerFromBundleParsed(
   }
 
   for (const dep of bundle.dependencies ?? []) {
-    addDependencyToPlugin(layer.id, dep.dependency_name, dep.version_constraint);
+    addDependencyToLayer(layer.id, dep.dependency_name, dep.version_constraint);
   }
 
-  const finalized = getPlugin(layer.id);
+  const finalized = getLayer(layer.id);
   if (!finalized) {
     throw new Error(`Layer ${layer.id} not found after bundle import`);
   }

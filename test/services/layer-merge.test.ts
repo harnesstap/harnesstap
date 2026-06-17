@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer } from "../../src/models/layer.ts";
-import { addPluginToLayer } from "../../src/models/plugin-pins.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
+import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
 import { mergePlugins } from "../../src/services/layer-merge.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createResource } from "../../src/models/resource.ts";
@@ -12,8 +12,8 @@ describe("mergePlugins", () => {
     try {
       context.schema.initializeSchema(context.connection.getDb());
       const layer = createLayer({ name: "foundation" });
-      addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
-      addPluginToLayer(layer.id, "context7@anthropics", "1.0.0");
+      attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
+      attachPluginPinToLayer(layer.id, "context7@anthropics", "1.0.0");
 
       const merged = mergePlugins([layer.id]);
 
@@ -37,7 +37,7 @@ describe("mergePlugins", () => {
           plugins: [{ id: "legacy@market", enabled: false }],
         },
       });
-      addPluginToLayer(layer.id, "superpowers@obra", "5.1.0");
+      attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
       const resource = createResource(
         makeResourceInput({
           type: "instruction",

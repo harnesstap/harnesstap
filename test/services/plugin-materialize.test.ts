@@ -4,8 +4,8 @@ import { createTestContext } from "../helpers/db.ts";
 import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
 import { expandPluginMaterialResources } from "../../src/services/plugin-materialize.ts";
 import { syncPluginPinsForApply } from "../../src/services/plugin-apply-sync.ts";
-import { createLayer } from "../../src/models/layer.ts";
-import { addPluginToLayer } from "../../src/models/plugin-pins.ts";
+import { createLayer } from "../../src/models/layer-model.ts";
+import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
@@ -15,7 +15,7 @@ describe("expandPluginMaterialResources", () => {
     try {
       context.schema.initializeSchema(context.connection.getDb());
       const layer = createLayer({ name: "with-plugin-skills" });
-      addPluginToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
 
       await syncPluginPinsForApply({
         pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],

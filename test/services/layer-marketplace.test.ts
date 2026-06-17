@@ -12,7 +12,7 @@ describe("layer marketplace configuration", () => {
     const context = await createInitializedTestContext("layer-marketplace-export");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const exporter = await import("../../src/services/exporter.ts");
 
       const layer = layerModel.createLayer({
@@ -52,7 +52,7 @@ describe("layer marketplace configuration", () => {
     const context = await createInitializedTestContext("layer-marketplace-apply");
 
     try {
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
       const applier = await import("../../src/services/applier.ts");
 
       const layer = layerModel.createLayer({
@@ -102,7 +102,7 @@ describe("layer marketplace configuration", () => {
 
     try {
       const exporter = await import("../../src/services/exporter.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
 
       const bundlePath = join(context.projectDir, "team-stack.harnessdeck.toml");
       writeLayerExportToml(

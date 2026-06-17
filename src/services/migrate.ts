@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { getHarnessdeckDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
-import { listPlugins } from "../models/plugin-component.js";
+import { listLayers } from "../models/layer-model.js";
 import { exportToFile, importFromFile } from "./exporter.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnessdeckSettings } from "../config/settings.js";
@@ -94,7 +94,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   const layersDir = join(workDir, "layers");
   mkdirSync(layersDir, { recursive: true });
 
-  const layers = listPlugins();
+  const layers = listLayers();
   for (const layer of layers) {
     exportToFile(layer.name, join(layersDir, `${layer.name}.harnessdeck.toml`), {
       embedPlugins: opts.includePlugins ?? false,

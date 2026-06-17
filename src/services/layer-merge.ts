@@ -7,8 +7,8 @@ export type { MergedLayerContent } from "../models/layer-model.js";
  * Merge multiple design layers by id in order.
  * @deprecated Prefer mergeLayersForApply for project apply.
  */
-export function mergePlugins(pluginIds: string[]): MergedLayerContent {
-  return mergeLayersById(pluginIds);
+export function mergePlugins(sourceLayerIds: string[]): MergedLayerContent {
+  return mergeLayersById(sourceLayerIds);
 }
 
 /**

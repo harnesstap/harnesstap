@@ -114,8 +114,8 @@ describe("CLI layer plugin pins", () => {
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "embed-layer"]);
-      const pluginPins = await import("../../src/models/plugin-pins.ts");
-      const layerModel = await import("../../src/models/layer.ts");
+      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const layerModel = await import("../../src/models/layer-model.ts");
 
       const result = await runCli([
         "layer",

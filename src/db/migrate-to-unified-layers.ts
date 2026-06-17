@@ -99,7 +99,7 @@ function loadPluginResources(
 
 function mergePluginRows(
   db: SqliteDatabase,
-  pluginIds: string[],
+  sourceLayerIds: string[],
 ): {
   tags: string[];
   claude_config: string;
@@ -124,7 +124,7 @@ function mergePluginRows(
     };
   }
 
-  for (const pluginId of pluginIds) {
+  for (const pluginId of sourceLayerIds) {
     const plugin = db
       .prepare("SELECT * FROM plugins WHERE id = ?")
       .get(pluginId) as PluginRow | undefined;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { addResourceToPlugin } from "../../src/models/plugin-component.ts";
-import { createPlugin } from "../../src/models/plugin-component.ts";
+import { addResourceToLayer } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/layer-model.ts";
 import {
   ensurePluginResource,
   listAttachedPluginPins,
@@ -12,9 +12,9 @@ describe("composition resources", () => {
     const context = await createInitializedTestContext("composition-plugin-lazy");
 
     try {
-      const layer = createPlugin({ name: "backend" });
+      const layer = createLayer({ name: "backend" });
       const resource = ensurePluginResource("plugin_pin:posthog@cursor-team-kit");
-      addResourceToPlugin(layer.id, resource.id);
+      addResourceToLayer(layer.id, resource.id);
 
       const pins = listAttachedPluginPins(layer.id);
       expect(pins).toHaveLength(1);
