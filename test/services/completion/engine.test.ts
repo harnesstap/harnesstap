@@ -1,0 +1,119 @@
+import { Command } from "commander";
+import { describe, expect, it } from "bun:test";
+import {
+  parseCompletionContext,
+  resolveCompletions,
+} from "../../../src/services/completion/engine.js";
+
+function buildProgram(): Command {
+  const program = new Command();
+  program
+    .option("-v, --verbose", "verbose")
+    .option("--no-color", "no color")
+    .option("--no-interactive", "no interactive")
+    .option("--format <mode>", "format");
+
+  const layer = program.command("layer").description("layer");
+  layer.command("show").argument("[name]", "name").description("show");
+  layer.command("delete").argument("[name]", "name").description("delete");
+  layer
+    .command("pull")
+    .argument("[selector]", "selector")
+    .option("--profile <name>", "profile")
+    .description("pull");
+
+  const deck = program.command("deck").description("deck");
+  deck.command("show").argument("[name]", "name").description("show");
+
+  const project = program.command("project").description("project");
+  project
+    .command("apply")
+    .argument("[layers...]", "layers")
+    .option("--project <path>", "project")
+    .option("--harness <slugs>", "harness")
+    .description("apply");
+
+  program
+    .command("init")
+    .option("--main <slug>", "main harness")
+    .option("--aliases <slugs>", "aliases")
+    .description("init");
+
+  return program;
+}
+
+describe("completion engine", () => {
+  const program = buildProgram();
+
+  it("resolves subcommand slot for partial top-level command", async () => {
+    const ctx = parseCompletionContext(program, "hd lay");
+    expect(ctx.slot).toBe("subcommand");
+    expect(ctx.commandPath).toEqual([]);
+    expect(ctx.prefix).toBe("lay");
+
+    const candidates = await resolveCompletions(program, ctx);
+    expect(candidates.map((entry) => entry.value)).toContain("layer");
+  });
+
+  it("resolves positional slot for layer show", async () => {
+    const ctx = parseCompletionContext(program, "hd layer show eng");
+    expect(ctx.slot).toBe("positional");
+    expect(ctx.commandPath).toEqual(["layer", "show"]);
+    expect(ctx.positionalIndex).toBe(0);
+    expect(ctx.prefix).toBe("eng");
+  });
+
+  it("resolves flag slot for partial global flag", async () => {
+    const ctx = parseCompletionContext(program, "hd --ver");
+    expect(ctx.slot).toBe("flag");
+    expect(ctx.prefix).toBe("--ver");
+
+    const candidates = await resolveCompletions(program, ctx);
+    expect(candidates.map((entry) => entry.value)).toContain("--verbose");
+  });
+
+  it("resolves flag-value slot for init --main", async () => {
+    const ctx = parseCompletionContext(program, "hd init --main cur");
+    expect(ctx.slot).toBe("flag-value");
+    expect(ctx.commandPath).toEqual(["init"]);
+    expect(ctx.flag).toBe("main");
+    expect(ctx.prefix).toBe("cur");
+  });
+
+  it("resolves deck show positional slot", async () => {
+    const ctx = parseCompletionContext(program, "hd deck show my");
+    expect(ctx.slot).toBe("positional");
+    expect(ctx.commandPath).toEqual(["deck", "show"]);
+    expect(ctx.positionalIndex).toBe(0);
+  });
+
+  it("resolves project apply positional slot", async () => {
+    const ctx = parseCompletionContext(program, "hd project apply eng");
+    expect(ctx.slot).toBe("positional");
+    expect(ctx.commandPath).toEqual(["project", "apply"]);
+    expect(ctx.positionalIndex).toBe(0);
+  });
+
+  it("resolves positional slot after inline --profile=value", async () => {
+    const ctx = parseCompletionContext(program, "hd layer pull --profile=work eng");
+    expect(ctx.slot).toBe("positional");
+    expect(ctx.commandPath).toEqual(["layer", "pull"]);
+    expect(ctx.positionalIndex).toBe(0);
+    expect(ctx.prefix).toBe("eng");
+    expect(ctx.profile).toBe("work");
+  });
+
+  it("resolves flag-value slot for inline --profile=partial", async () => {
+    const ctx = parseCompletionContext(program, "hd layer pull --profile=wo");
+    expect(ctx.slot).toBe("flag-value");
+    expect(ctx.flag).toBe("profile");
+    expect(ctx.prefix).toBe("wo");
+  });
+
+  it("extracts --profile from separate tokens", async () => {
+    const ctx = parseCompletionContext(program, "hd layer pull --profile work eng");
+    expect(ctx.profile).toBe("work");
+    expect(ctx.slot).toBe("positional");
+    expect(ctx.prefix).toBe("eng");
+  });
+});

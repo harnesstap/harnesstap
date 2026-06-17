@@ -126,6 +126,7 @@ import {
   parseScenarioId,
 } from "./services/scenario-guide.js";
 import { renderShellCompletion } from "./services/shell-completion.js";
+import { runCompleteCommand } from "./services/completion/run-complete.js";
 import {
   formatPublishedSelector,
   resolveRemoteLayerSelector,
@@ -218,9 +219,16 @@ import {
   isPromptCancellationError,
   promptForChoice,
   promptForConfirmation,
+  promptForSearchableChoice,
   promptForValue,
+  resolveOrPrompt,
   shouldUseWizard,
 } from "./services/wizards/shared.js";
+import {
+  toDeckChoices,
+  toLayerChoices,
+  toResourceChoices,
+} from "./services/completion/choices.js";
 import { runLayerAddWizard } from "./services/wizards/layer-add.js";
 import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
@@ -338,32 +346,26 @@ async function resolveLayerMutationTarget(input: {
   format?: string;
   message: string;
 }): Promise<string | undefined> {
-  if (input.layerName) {
-    return input.layerName;
-  }
+  const format = parseOutputFormat(input.format);
+  const choices = toLayerChoices();
 
-  const shouldPrompt = shouldUseWizard({
-    interactive: input.interactive,
-    noInteractive: input.noInteractive,
-    format: parseOutputFormat(input.format),
-    missingRequiredArgs: true,
-  });
-
-  if (!shouldPrompt) {
-    return undefined;
-  }
-
-  const layers = listLayers();
-  if (layers.length === 0) {
-    return undefined;
-  }
-
-  return promptForChoice({
-    message: input.message,
-    choices: layers.map((layer) => ({
-      name: formatLayerLabel(layer),
-      value: formatLayerLabel(layer),
-    })),
+  return resolveOrPrompt({
+    value: input.layerName,
+    shouldPrompt: shouldUseWizard({
+      interactive: input.interactive,
+      noInteractive: input.noInteractive,
+      format,
+      missingRequiredArgs: !input.layerName,
+    }),
+    prompt: async () => {
+      if (choices.length === 0) {
+        return undefined;
+      }
+      return promptForSearchableChoice({
+        message: input.message,
+        choices,
+      });
+    },
   });
 }
 
@@ -571,8 +573,15 @@ function relativeDiscoveredPaths(
     .join(", ");
 }
 
+function isHiddenHelpCommand(command: Command): boolean {
+  return (
+    command.name() === "__complete"
+    || (command.description() as unknown) === false
+  );
+}
+
 function renderGroupedCommandHelp(cmd: Command): string {
-  const commands = cmd.commands;
+  const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
 
   if (commands.length === 0) {
     return "";
@@ -2588,6 +2597,7 @@ function printQuickStartGuide(): void {
   );
   console.log(`  ${formatCommand("concepts")}`);
   console.log(`  ${formatCommand("guide")}`);
+  ui.dim(`Enable tab completion: ${formatCommand("completion zsh >> ~/.zshrc")}`);
 }
 
 function handleGuideCommand(): void {
@@ -2608,6 +2618,7 @@ function handleGuideCommand(): void {
     `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("project status .")}`);
+  console.log(`  ${formatCommand("completion zsh >> ~/.zshrc")}`);
   console.log("");
   ui.subheader("EXPLORE");
   console.log("");
@@ -3683,14 +3694,21 @@ program
   });
 
 program
+  .command("__complete")
+  .argument("<shell>", "bash | zsh | fish")
+  .argument("[line...]", "Partial command line")
+  .description(false as unknown as string)
+  .action(async (shell: string, line: string[]) => {
+    await runCompleteCommand(shell, line, program);
+  });
+
+program
   .command("completion")
   .argument("<shell>", "Shell: bash, zsh, or fish")
   .description("Generate shell completion script")
   .action((shell: string) => {
     try {
-      process.stdout.write(
-        renderShellCompletion(shell, program, resolveInvocationName()),
-      );
+      process.stdout.write(renderShellCompletion(shell, program));
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));
@@ -4655,16 +4673,53 @@ deckCmd
 
 deckCmd
   .command("show")
-  .argument("<name>", "Deck name or ID")
+  .argument("[name]", "Deck name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show deck ID in human output")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Show deck metadata, layer stack, and environments")
-  .action((name: string, opts: { format?: string; showId?: boolean }) => {
+  .action(async (
+    name: string | undefined,
+    opts: {
+      format?: string;
+      showId?: boolean;
+      interactive?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
     const db = getDb();
     initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const resolvedName = await resolveOrPrompt({
+      value: name,
+      shouldPrompt: shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format,
+        missingRequiredArgs: !name,
+      }),
+      prompt: async () => {
+        const choices = toDeckChoices();
+        if (choices.length === 0) {
+          return undefined;
+        }
+        return promptForSearchableChoice({
+          message: "Which deck do you want to show?",
+          choices,
+        });
+      },
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger(
+        listDecks().length > 0
+          ? "error: missing required argument 'name'"
+          : `No decks found. Create one with \`${formatCommand("deck create <name>")}\` first.`,
+      );
+      return;
+    }
     try {
-      const payload = buildDeckShowPayload(name);
-      const format = parseOutputFormat(opts.format);
+      const payload = buildDeckShowPayload(resolvedName);
       if (format === "json") {
         printJson({
           id: payload.id,
@@ -4944,19 +4999,57 @@ resourceCmd
 
 resourceCmd
   .command("show")
-  .argument("<resource>", "Resource name or ID")
+  .argument("[resource]", "Resource name or ID")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
   .option("--all-fields", "Show all resource metadata fields")
-  .action((resource: string, opts: { format?: string; showId?: boolean; allFields?: boolean }) => {
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .action(async (
+    resource: string | undefined,
+    opts: {
+      format?: string;
+      showId?: boolean;
+      allFields?: boolean;
+      interactive?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
-    const result = resolveResource(resource);
+    const resolvedResource = await resolveOrPrompt({
+      value: resource,
+      shouldPrompt: shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format,
+        missingRequiredArgs: !resource,
+      }),
+      prompt: async () => {
+        const choices = toResourceChoices();
+        if (choices.length === 0) {
+          return undefined;
+        }
+        return promptForSearchableChoice({
+          message: "Which resource do you want to show?",
+          choices,
+        });
+      },
+    });
+    if (!resolvedResource) {
+      process.exitCode = 1;
+      ui.danger(
+        listResources().length > 0
+          ? "error: missing required argument 'resource'"
+          : `No resources found. Scan or import resources first (e.g. \`${formatCommand("init")}\`).`,
+      );
+      return;
+    }
+    const result = resolveResource(resolvedResource);
     if (result.status === "ambiguous" && format === "json") {
       printJson({
         error: "ambiguous_resource_name",
-        input: resource,
+        input: resolvedResource,
         matches: result.matches,
       });
       return;
@@ -4966,11 +5059,11 @@ resourceCmd
       return;
     }
     if (result.status === "not_found") {
-      ui.danger(`Resource not found: ${resource}`);
+      ui.danger(`Resource not found: ${resolvedResource}`);
       return;
     }
     if (result.status === "ambiguous") {
-      ui.danger(`Ambiguous resource selector: ${resource}`);
+      ui.danger(`Ambiguous resource selector: ${resolvedResource}`);
       ui.table.print({
         columns: [
           ...makeIdColumn(Boolean(opts.showId)),

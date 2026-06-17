@@ -253,25 +253,39 @@ describe("wizard prompts", () => {
     }
   });
 
-  it("uses a list prompt when project apply needs a layer choice", async () => {
+  it("uses a searchable choice prompt when project apply needs a layer choice", async () => {
     const context = await createInitializedTestContext("wizard-project-apply-prompts");
-    const promptCalls: CapturedPrompt[] = [];
-    const promptSpy = spyOn(inquirer, "prompt").mockImplementation(async (questions) => {
-      promptCalls.push(firstPrompt(questions));
-      return { value: "apply-layer" };
-    });
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
       layerModel.createLayer({ name: "apply-layer" });
 
-      const { runProjectApplyWizard } = await import("../../src/services/wizards/project-apply.ts");
-      const result = await runProjectApplyWizard();
+      const shared = await import("../../src/services/wizards/shared.ts");
+      const choiceSpy = spyOn(shared, "promptForSearchableChoice").mockResolvedValue(
+        "apply-layer@1.0.0",
+      );
 
-      expect(result).toBe("apply-layer");
-      expect(promptCalls[0]?.type).toBe("list");
+      try {
+        const { runProjectApplyWizard } = await import("../../src/services/wizards/project-apply.ts");
+        const result = await runProjectApplyWizard();
+
+        expect(result).toBe("apply-layer@1.0.0");
+        expect(choiceSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Which layer should be applied?",
+            choices: [
+              {
+                name: "apply-layer@1.0.0",
+                value: "apply-layer@1.0.0",
+                description: undefined,
+              },
+            ],
+          }),
+        );
+      } finally {
+        choiceSpy.mockRestore();
+      }
     } finally {
-      promptSpy.mockRestore();
       await context.cleanup();
     }
   });

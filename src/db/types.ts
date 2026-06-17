@@ -16,6 +16,10 @@ export interface SqliteDatabase {
   close(): void;
 }
 
+export interface SqliteDatabaseOptions {
+  readonly?: boolean;
+}
+
 export interface SqliteDatabaseConstructor {
-  new (path: string): SqliteDatabase;
+  new (path: string, options?: SqliteDatabaseOptions): SqliteDatabase;
 }

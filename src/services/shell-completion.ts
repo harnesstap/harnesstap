@@ -1,110 +1,67 @@
 import type { Command } from "commander";
 
-function collectCommandPaths(cmd: Command, prefix: string[] = []): string[] {
-  const name = cmd.name();
-  const path = name === "harnessdeck" || name === "hd" ? prefix : [...prefix, name];
-  const paths: string[] = [];
-
-  if (path.length > 0) {
-    paths.push(path.join(" "));
-  }
-
-  for (const subcommand of cmd.commands) {
-    if (!subcommand.name()) {
-      continue;
-    }
-    paths.push(...collectCommandPaths(subcommand, path));
-  }
-
-  return paths;
-}
-
-function bashCompletion(program: Command, programName: string): string {
-  const commands = [...new Set(collectCommandPaths(program))].sort();
-  const commandList = commands.map((entry) => `"${entry}"`).join(" ");
-
+function bashCompletion(): string {
   return `# harnessdeck bash completion
 _harnessdeck_completions() {
-  local current previous
-  current="\${COMP_WORDS[COMP_CWORD]}"
-  previous="\${COMP_WORDS[COMP_CWORD-1]}"
-  local commands=(${commandList})
-
-  if [[ "\${COMP_CWORD}" -eq 1 ]]; then
-    COMPREPLY=( $(compgen -W "\${commands[*]}" -- "\${current}") )
-    return 0
-  fi
-
-  COMPREPLY=( $(compgen -W "\${commands[*]}" -- "\${current}") )
+  local line="\${COMP_LINE:0:\$COMP_POINT}"
+  mapfile -t COMPREPLY < <(hd __complete bash -- "\$line" 2>/dev/null)
 }
-
-complete -F _harnessdeck_completions ${programName}
+complete -F _harnessdeck_completions hd harnessdeck
 `;
 }
 
-function zshCompletion(program: Command, programName: string): string {
-  const commands = [...new Set(collectCommandPaths(program))].sort();
-
-  return `#compdef ${programName}
+function zshCompletion(): string {
+  return `#compdef hd harnessdeck
 
 _harnessdeck() {
-  local -a commands
-  commands=(
-${commands.map((entry) => `    "${entry.replace(/"/g, '\\"')}"`).join("\n")}
-  )
-
-  _arguments -C \\
-    '1: :->command' \\
-    '*::arg:->args'
-
-  case $state in
-    command)
-      _describe 'command' commands
-      ;;
-    args)
-      _describe 'command' commands
-      ;;
-  esac
+  local -a suggestions args descr
+  local line has_descr=0
+  suggestions=("\${(@f)\$(hd __complete zsh -- "\${BUFFER[1,\$CURSOR]}" 2>/dev/null)}")
+  if (( \${#suggestions} )); then
+    for line in \$suggestions; do
+      if [[ \$line == *$'\\t'* ]]; then
+        args+=(\${line%%$'\\t'*})
+        descr+=(\${line#*$'\\t'})
+      else
+        args+=(\$line)
+        descr+=("")
+      fi
+    done
+    for line in \$descr; do
+      if [[ -n \$line ]]; then
+        has_descr=1
+        break
+      fi
+    done
+    if (( has_descr )); then
+      compadd -d descr -a args
+    else
+      compadd -a args
+    fi
+  fi
 }
-
 _harnessdeck
 `;
 }
 
-function fishCompletion(program: Command, programName: string): string {
-  const commands = [...new Set(collectCommandPaths(program))].sort();
-  const lines = [
-    `# harnessdeck fish completion`,
-    `complete -c ${programName} -f`,
-  ];
-
-  for (const entry of commands) {
-    const parts = entry.split(" ");
-    const sub = parts.slice(1).join(" ");
-    if (parts.length === 1) {
-      lines.push(`complete -c ${programName} -n "__fish_use_subcommand" -a "${parts[0]}"`);
-      continue;
-    }
-    lines.push(
-      `complete -c ${programName} -n "__fish_seen_subcommand_from ${parts[0]}" -a "${sub}"`,
-    );
-  }
-
-  return `${lines.join("\n")}\n`;
+function fishCompletion(): string {
+  return `# harnessdeck fish completion
+function __harnessdeck_complete
+  hd __complete fish -- (commandline -cp) 2>/dev/null
+end
+complete -c hd -f -a "(__harnessdeck_complete)"
+complete -c harnessdeck -f -a "(__harnessdeck_complete)"
+`;
 }
 
-export function renderShellCompletion(
-  shell: string,
-  program: Command,
-  programName: string,
-): string {
+export function renderShellCompletion(shell: string, _program: Command): string {
   switch (shell) {
     case "bash":
-      return bashCompletion(program, programName);
+      return bashCompletion();
     case "zsh":
-      return zshCompletion(program, programName);
+      return zshCompletion();
     case "fish":
-      return fishCompletion(program, programName);
+      return fishCompletion();
     default:
       throw new Error(`Unsupported shell: ${shell}. Use bash, zsh, or fish.`);
   }
