@@ -45,6 +45,7 @@ import {
   parseLayerSelectorString,
   getLayerById,
   resolveLayerSelector,
+  mergeLayersById,
 } from "./models/layer-model.js";
 import {
   upsertProject,
@@ -142,8 +143,7 @@ import { resolveClaudeEnabledPluginRef } from "./plugins/claude-plugin-ref.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
-import { mergePlugins } from "./services/layer-merge.js";
-import { mergeConfiguredLayers } from "./services/layer-apply-merge.js";
+import { mergeLayersForApply } from "./services/layer-apply-merge.js";
 import { updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
@@ -1079,7 +1079,7 @@ async function resolveApplyLayers(
     if (!primaryLayer) {
       throw new Error("Bundle contains no layers.");
     }
-    const merged = mergePlugins(layers.map((layer) => layer.id));
+    const merged = mergeLayersById(layers.map((layer) => layer.id));
     const layer = getLayerById(primaryLayer.id);
     if (!layer) throw new Error(`Layer not found: ${primaryLayer.id}`);
     return {
@@ -1112,7 +1112,7 @@ async function resolveApplyLayers(
       if (existingLayer) {
         const layer = getLayerById(existingLayer.id);
         if (!layer) throw new Error(`Layer not found: ${existingLayer.id}`);
-        const merged = mergeConfiguredLayers([layer.id]);
+        const merged = mergeLayersForApply([layer.id]);
         return {
           layers: merged.layers,
           resources: merged.resources,
@@ -1138,7 +1138,7 @@ async function resolveApplyLayers(
     if (!layer) throw new Error(`Layer not found: ${source.layerId}`);
     return layer.id;
   });
-  const merged = mergeConfiguredLayers(configuredLayerIds);
+  const merged = mergeLayersForApply(configuredLayerIds);
   return {
     layers: merged.layers,
     resources: merged.resources,

@@ -4,7 +4,7 @@ import { createEnvironment, addResourceToEnvironment } from "../../src/models/en
 import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createLayerFromSources } from "../../src/models/layer-model.ts";
-import { mergeConfiguredLayers } from "../../src/services/configured-layer-merge.ts";
+import { mergeLayersForApply } from "../../src/services/layer-apply-merge.ts";
 
 describe("configured layer merge", () => {
   it("merges plugins and default environment resources from configured layers", async () => {
@@ -43,7 +43,7 @@ describe("configured layer merge", () => {
         environmentId: env.id,
       });
 
-      const merged = mergeConfiguredLayers([layer.id]);
+      const merged = mergeLayersForApply([layer.id]);
       expect(merged.resources.map((r) => r.name)).toEqual(["oncall", "PD_REGION"]);
     } finally {
       await context.cleanup();

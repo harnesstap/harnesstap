@@ -1,12 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, mergeLayersById } from "../../src/models/layer-model.ts";
 import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
-import { mergePlugins } from "../../src/services/layer-merge.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createResource } from "../../src/models/resource.ts";
 
-describe("mergePlugins", () => {
+describe("mergeLayersById", () => {
   it("derives Claude config from plugin pins when the layer has no claude block", async () => {
     const context = await createTestContext("layer-merge-plugin-pins");
     try {
@@ -15,7 +14,7 @@ describe("mergePlugins", () => {
       attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
       attachPluginPinToLayer(layer.id, "context7@anthropics", "1.0.0");
 
-      const merged = mergePlugins([layer.id]);
+      const merged = mergeLayersById([layer.id]);
 
       expect(merged.resources).toHaveLength(0);
       expect(merged.claude?.plugins).toEqual([
@@ -47,7 +46,7 @@ describe("mergePlugins", () => {
       );
       addResourceToLayer(layer.id, resource.id);
 
-      const merged = mergePlugins([layer.id]);
+      const merged = mergeLayersById([layer.id]);
 
       expect(merged.resources).toHaveLength(1);
       expect(merged.claude?.plugins).toEqual([
