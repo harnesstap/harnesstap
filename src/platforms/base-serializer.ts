@@ -3,6 +3,7 @@ import { dirname, join, relative, sep } from "node:path";
 import matter from "gray-matter";
 import { normalizeAgentInput } from "../services/agent-bridge.js";
 import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../services/skill-auxiliary.js";
+import { scanSkillCommandMetadataResources } from "../services/skill-command-metadata.js";
 import type {
   PlatformSerializer,
   Resource,
@@ -206,7 +207,37 @@ export abstract class BaseSerializer implements PlatformSerializer {
     skillsDir: string,
   ): ResourceCreateInput[] {
     const fullPath = join(projectRoot, skillsDir);
-    return this.scanSkillsDirAt(fullPath, skillsDir.replace(/\/$/, ""));
+    const sourcePrefix = skillsDir.replace(/\/$/, "");
+    const resources = this.scanSkillsDirAt(fullPath, sourcePrefix);
+
+    if (!this.isDirectory(fullPath)) {
+      return resources;
+    }
+
+    for (const entry of this.listDir(fullPath)) {
+      const entryPath = join(fullPath, entry);
+      const skillMd = join(entryPath, "SKILL.md");
+      if (!this.isDirectory(entryPath) || !this.fileExists(skillMd)) continue;
+
+      const raw = this.readFile(skillMd);
+      if (!raw) continue;
+
+      const parsed = this.tryParseFrontmatter(raw);
+      if (!parsed) continue;
+
+      const skillName = (parsed.data["name"] as string) || entry;
+      resources.push(
+        ...scanSkillCommandMetadataResources({
+          skillDir: entryPath,
+          skillName,
+          rootPath: projectRoot,
+          relativePath: (rootPath, filePath) =>
+            relative(rootPath, filePath).split(sep).join("/"),
+        }),
+      );
+    }
+
+    return resources;
   }
 
   protected scanSkillsDirAt(

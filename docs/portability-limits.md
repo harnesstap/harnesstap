@@ -24,7 +24,7 @@ paths for supported harnesses:
 | **Instructions** | `AGENTS.md`, `CLAUDE.md`, `.windsurfrules`, `.github/copilot-instructions.md`, and similar always-on context files. Shared `AGENTS.md` is canonicalized once during scan. |
 | **Rules** | `.cursor/rules/*.mdc`, `.claude/rules/`, `.windsurf/rules/`, `.clinerules/`, `.kiro/steering/`, and directory-based rule trees. |
 | **MCP servers** | stdio and HTTP transports from `.mcp.json`, `.codex/config.toml`, and harness-specific MCP config files. |
-| **Static commands** | Markdown (`.md`) and TOML (`.toml`) command definitions from `commands/` trees and plugin manifest pointers. |
+| **Static commands** | Markdown (`.md`) and TOML (`.toml`) command definitions from `commands/` trees, plugin manifest pointers, and skill `scripts/command-metadata.json` sub-commands. |
 | **Agents** | Subagent manifests under harness `agents/` dirs. Codex uses `.toml` (`developer_instructions`); Claude/Cursor/Copilot use markdown + YAML. Cross-harness apply maps `model`, `reasoning_effort`, and read-only semantics; see [supported-harnesses — agent bridging](supported-harnesses.md#agent--subagent-bridging). |
 
 Plugin-source discovery covers `.cursor-plugin/`, `.claude-plugin/`, `.codex-plugin/`,
@@ -36,7 +36,9 @@ manifests may use `"source"` instead of `"path"` for plugin entry locations.
 `project scan` automatically merges repo-root plugin trees with harness project
 files when a recognized manifest is present. If the manifest exists but the
 conventional `skills/` tree is absent, harness scan still proceeds (dual-mode
-merge no longer aborts the import).
+merge no longer aborts the import). When the root manifest yields no resources,
+HarnessDeck falls back to the first plugin pack listed in a repo-root
+`marketplace.json` when present.
 
 ## Partially bridgeable
 
@@ -61,11 +63,12 @@ must run on every host.
 
 ### Skill sub-commands vs slash commands
 
-Plugins that expose sub-commands via `reference/*.md` and `user-invocable` skills
-(for example Impeccable's `/impeccable polish`) are imported as a single skill
-resource, not as separate `command` resources. Cross-harness apply will not
-create native slash-command files unless the plugin ships a `commands/` tree or
-HarnessDeck adds explicit `command-metadata.json` support.
+Plugins that expose sub-commands via `scripts/command-metadata.json` and
+`reference/*.md` (for example Impeccable's `/impeccable polish`) are imported as
+`command` resources named `{skill}:{subcommand}` and emitted to harness-native
+command paths (for example `.claude/commands/impeccable:polish.md`). Commands
+without a matching reference file get a generated prompt that points back to the
+skill reference doc.
 
 ### Hooks with `PLUGIN_ROOT` paths
 

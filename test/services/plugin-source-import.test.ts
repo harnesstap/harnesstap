@@ -339,6 +339,28 @@ developer_instructions = "Design contracts."
     expect(entries[0]?.resources.some((r) => r.type === "hook")).toBe(true);
   });
 
+  it("imports skill sub-commands from command-metadata.json", async () => {
+    const entries = await scanPluginSource(join(fixtureRoot, "impeccable-layout"));
+    const commands = entries[0]?.resources.filter((r) => r.type === "command") ?? [];
+
+    expect(commands.map((command) => command.name)).toEqual(
+      expect.arrayContaining(["impeccable:audit", "impeccable:polish"]),
+    );
+    expect(
+      commands.find((command) => command.name === "impeccable:polish")?.content,
+    ).toContain("Fixture reference doc");
+  });
+
+  it("falls back to marketplace plugin pack when root manifest has no resources", async () => {
+    const entries = await scanPluginSource(
+      join(fixtureRoot, "impeccable-marketplace-fallback"),
+    );
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.resources.some((r) => r.type === "skill")).toBe(true);
+    expect(entries[0]?.resources.some((r) => r.type === "hook")).toBe(true);
+  });
+
   it("rejects imported agent names that escape the target directory", async () => {
     const pluginRoot = createTempDir("plugin-source-agent-traversal");
 

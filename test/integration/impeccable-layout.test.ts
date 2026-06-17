@@ -82,4 +82,32 @@ describe("impeccable-layout integration", () => {
       await context.cleanup();
     }
   });
+
+  it("generateFiles emits skill sub-commands from command-metadata scan", async () => {
+    const context = await createInitializedTestContext("impeccable-layout-commands");
+    try {
+      const entries = await scanPluginSource(fixture);
+      const commands = entries[0]?.resources
+        .filter((resource) => resource.type === "command")
+        .map((resource, index) =>
+          makeResource({
+            ...resource,
+            id: `command-${index + 1}`,
+          }),
+        );
+      expect(commands?.some((command) => command.name === "impeccable:polish")).toBe(
+        true,
+      );
+
+      const generated = await generateFiles(
+        commands ?? [],
+        ["claude-code"],
+        context.projectDir,
+      );
+      const paths = generated.flatMap((result) => result.files).map((file) => file.path);
+      expect(paths).toContain(".claude/commands/impeccable:polish.md");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
