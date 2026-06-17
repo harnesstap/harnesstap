@@ -16,9 +16,9 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 ## Concepts
 
-**Layer** — The primary user-facing unit of reusable agent configuration. A versioned **context package**: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Persona A installs, stacks, publishes, and applies *layers*.
+**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; combine and apply at project or machine level with `layer apply`.
 
-**Deck** — Git-transport packaging for one or more layers plus optional environments (`.harnessdeck/deck.toml`). Not a peer hero noun: daily work is `layer apply`; `deck apply` is for adopting a pre-curated repo bundle.
+**Deck** — A personal collection of layers, importable and exportable to stay aligned across machines and teammates. Extend it by creating layers or pulling from cloud catalogs. Deck sections recap the full model: resources, context, environment, layers, and the deck itself.
 
 **Resource** — A stored row in the canonical library. Two families:
 - **Material resources** (context-side or environment-side atoms): `skill`, `rule`, `instruction`, `mcp_server`, `hook`, `agent`, `command`, `env_var`, `model_config`, `permission`.
