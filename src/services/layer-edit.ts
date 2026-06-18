@@ -66,6 +66,7 @@ function layerRowFromLayer(
     origin_kind: "manual",
     origin_ref: layer.name,
     content_hash: "",
+    content_blob_ref: "",
     content: "{}",
     metadata: { version_constraint: constraint },
     created_at: layer.created_at,
