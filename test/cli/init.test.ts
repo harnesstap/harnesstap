@@ -87,11 +87,29 @@ describe("CLI init", () => {
         ]),
       );
 
+      const layerShow = await runCli(["layer", "show", "default"]);
+      expect(layerShow.stdout).toContain("instruction");
+      expect(layerShow.stdout).not.toContain("No resources in this layer.");
+
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const defaultLayer = layerModel.listLayers().find(
+        (layer) => layer.name === "default",
+      );
+      expect(defaultLayer).toBeDefined();
+      const db = context.connection.getDb();
+      db.prepare("DELETE FROM layer_resources WHERE layer_id = ?").run(
+        defaultLayer!.id,
+      );
+
       const rerun = await runCli(["init"]);
 
       expect(rerun.stdout).toContain("1 instruction, 1 skill");
       expect(rerun.stdout).toContain("already tracked");
       expect(homeResources()).toHaveLength(2);
+
+      const backfilledShow = await runCli(["layer", "show", "default"]);
+      expect(backfilledShow.stdout).toContain("instruction");
+      expect(backfilledShow.stdout).not.toContain("No resources in this layer.");
     } finally {
       await context.cleanup();
     }

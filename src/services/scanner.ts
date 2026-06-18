@@ -608,6 +608,7 @@ export async function scanAndPersistHomeDefaults(
   detected: DetectedHomePlatform[];
   results: Array<HomeScanResult & { importedCount: number }>;
   resources: Resource[];
+  resolved: Resource[];
 }> {
   const detected = detectHomePlatforms(homeRoot);
   const results = await scanHomeDefaults(platformFilter, homeRoot);
@@ -625,5 +626,6 @@ export async function scanAndPersistHomeDefaults(
       importedCount: persisted.importedCounts.get(result.platformId) ?? 0,
     })),
     resources: persisted.resources,
+    resolved: persisted.resolved,
   };
 }

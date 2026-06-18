@@ -41,6 +41,7 @@ import {
   getLayer,
   listLayers,
   deleteLayer,
+  addResourceToLayer,
   getLayerResources,
   listLayerDependencies,
   parseLayerSelectorString,
@@ -1000,7 +1001,10 @@ async function handleScanCommand(
   }
 
   if (detected.length === 0) {
-    ui.warn("No coding CLI configurations detected in this directory.");
+    ui.warn("No harness resources found in this directory.");
+    ui.hint(
+      `Scans project files on disk (skills, rules, instructions), not your harness setup — see \`${formatCommand("harness status")}\`.`,
+    );
     return;
   }
   if (opts.dryRun) {
@@ -3022,17 +3026,33 @@ async function handleInitCommand(opts: {
   }
   const homeDefaults = await scanAndPersistHomeDefaults();
   if (opts.defaultProfile !== false) {
-    const existingDefaultProfile = listLayers().find(
+    const homeProfileResources = homeDefaults.resolved.filter(
+      (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+    );
+    let defaultProfileLayer = listLayers().find(
       (layer) => layer.name === "default" && isProfileLayer(layer),
     );
-    if (!existingDefaultProfile) {
-      createLayer({
+    const shouldSeedDefaultProfile =
+      !defaultProfileLayer
+      || getLayerResources(defaultProfileLayer.id).filter(
+        (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+      ).length === 0;
+
+    if (!defaultProfileLayer) {
+      defaultProfileLayer = createLayer({
         name: "default",
         version: "1.0.0",
         description: "Bootstrap profile from init",
         tags: [PROFILE_LAYER_TAG],
       });
     }
+
+    if (shouldSeedDefaultProfile) {
+      for (const resource of homeProfileResources) {
+        addResourceToLayer(defaultProfileLayer.id, resource.id);
+      }
+    }
+
     setActiveProfileName("default");
   }
   const useWizard = shouldUseWizard({
