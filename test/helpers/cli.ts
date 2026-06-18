@@ -4,7 +4,7 @@ import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
 import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
-import type { runInteractiveCatalogBrowser as RunInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.js";
+import type { runLayerEditWizard as RunLayerEditWizard } from "../../src/services/wizards/layer-edit.js";
 
 export interface CliResult {
   stdout: string;
@@ -133,6 +133,28 @@ const resourceListWizardMock = mock(async (
 
 mock.module("../../src/services/wizards/resource-list.js", () => ({
   runResourceListWizard: resourceListWizardMock,
+}));
+
+const layerEditWizardMock = mock(async (
+  ...args: Parameters<typeof RunLayerEditWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/layer-edit.ts?actual"
+    );
+    return actualWizard.runLayerEditWizard(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (!Array.isArray(value)) {
+    throw new Error(
+      "Layer edit wizard responses must resolve to an array of rows in runCli test harness",
+    );
+  }
+  return value;
+});
+
+mock.module("../../src/services/wizards/layer-edit.js", () => ({
+  runLayerEditWizard: layerEditWizardMock,
 }));
 
 const interactiveCatalogBrowserMock = mock(async (

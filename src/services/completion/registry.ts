@@ -33,6 +33,7 @@ const LOCAL_LAYER_OR_FILE: CompletionProvider[] = [
 
 const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer show:0": [completeLocalLayers],
+  "layer edit:0": [completeLocalLayers],
   "layer delete:0": [completeLocalLayers],
   "layer export:0": [completeLocalLayers],
   "layer import:0": [completeLayerImportPath],
@@ -90,6 +91,7 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "harness project set:aliases": [completeHarnessSlugs],
   "layer export:file": [completeFilePath],
   "layer combine:type": [staticEnumProvider(LAYER_ATTACHMENT_TYPES)],
+  "layer edit:type": [staticEnumProvider(LAYER_ATTACHMENT_TYPES)],
   "layer publish:org": [completeCatalogOrgs],
   "add:layer": [completeLocalLayers],
   "add:create-layer": [completeLocalLayers],

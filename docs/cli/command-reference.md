@@ -155,6 +155,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer create <name>`
 - `layer list`
 - `layer show <name>`
+- `layer edit [name]` — interactively add/remove attachments (resources, plugin pins, layer refs)
 - `layer combine [layer] [selector] --type <type>`
 - `layer uncombine [layer] [selector] --type <type>`
 - `layer delete [name]`
@@ -183,6 +184,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer list --format json`
 - `layer list --show-id`
 - `layer show --format json`
+- `layer edit --type <type>` — restrict tables to one attachment type
+- `layer edit --search <query>` — pre-fill the interactive search filter
+- `layer edit --show-id`
+- `layer edit --all` — show every resource per type (default caps at 10)
+- `layer edit --dry-run` — preview membership changes without writing
+- `layer edit --format json --no-interactive` — read-only membership snapshot
 - `layer combine --type <resource|skill|instruction|plugin|layer>`
 - `layer combine --version <constraint>` — plugin or layer references only
 - `layer combine --sync` — sync a plugin resource immediately after combine (default: lazy)

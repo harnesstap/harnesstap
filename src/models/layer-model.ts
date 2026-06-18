@@ -501,6 +501,26 @@ export function removeResourceFromLayer(layerId: string, resourceId: string): vo
   ).run(layerId, resourceId);
 }
 
+export function setLayerResourceOrder(layerId: string, resourceIds: string[]): void {
+  const db = getDb();
+  const applyOrder = db.transaction((ids: string[]) => {
+    for (let order = 0; order < ids.length; order += 1) {
+      db.prepare(
+        'UPDATE layer_resources SET "order" = ? WHERE layer_id = ? AND resource_id = ?',
+      ).run(order, layerId, ids[order]);
+    }
+  });
+  applyOrder(resourceIds);
+}
+
+export function touchLayerUpdatedAt(layerId: string): void {
+  const db = getDb();
+  db.prepare("UPDATE layers SET updated_at = ? WHERE id = ?").run(
+    new Date().toISOString(),
+    layerId,
+  );
+}
+
 export function getLayerResources(layerId: string): Resource[] {
   const db = getDb();
   const rows = db
