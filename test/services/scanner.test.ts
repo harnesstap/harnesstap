@@ -217,6 +217,73 @@ describe("scanner services", () => {
     }
   });
 
+  it("does not detect cline from shared ~/.agents/skills/ alone", async () => {
+    const context = await createInitializedTestContext("scanner-home-shared-agents");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.agents/skills/shared/SKILL.md`,
+        "---\nname: shared\ndescription: Shared skill\n---\n# Shared",
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const detected = scanner.detectHomePlatforms();
+      const platformIds = detected.map((result) => result.platformId);
+
+      expect(platformIds).toContain("warp");
+      expect(platformIds).not.toContain("cline");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("detects cline when platform-specific home paths exist", async () => {
+    const context = await createInitializedTestContext("scanner-home-cline-specific");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.agents/skills/shared/SKILL.md`,
+        "---\nname: shared\ndescription: Shared skill\n---\n# Shared",
+      );
+      writeTextFile(
+        `${context.homeDir}/.cline/data/settings/cline_mcp_settings.json`,
+        "{}",
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const detected = scanner.detectHomePlatforms();
+      const platformIds = detected.map((result) => result.platformId);
+
+      expect(platformIds).toContain("cline");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("detects codex from ~/.codex/ paths without requiring cline", async () => {
+    const context = await createInitializedTestContext("scanner-home-codex-specific");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.agents/skills/shared/SKILL.md`,
+        "---\nname: shared\ndescription: Shared skill\n---\n# Shared",
+      );
+      writeTextFile(
+        `${context.homeDir}/.codex/config.toml`,
+        'model = "gpt-5"\n',
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const detected = scanner.detectHomePlatforms();
+      const platformIds = detected.map((result) => result.platformId);
+
+      expect(platformIds).toContain("codex");
+      expect(platformIds).not.toContain("cline");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("does not import overlapping home defaults on later runs", async () => {
     const context = await createInitializedTestContext("scanner-home-dedup");
 

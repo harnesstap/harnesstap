@@ -95,14 +95,57 @@ export interface DetectedHomePlatform {
   discoveredPaths: string[];
 }
 
+function buildSharedGlobalPathSet(): Set<string> {
+  const counts = new Map<string, number>();
+  for (const platform of getAllPlatforms()) {
+    for (const path of configuredProjectPaths(platform.globalPaths)) {
+      counts.set(path, (counts.get(path) ?? 0) + 1);
+    }
+  }
+
+  return new Set(
+    [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([path]) => path),
+  );
+}
+
+/**
+ * Detect harnesses with home-directory configuration.
+ *
+ * Platforms that share a global path (e.g. codex, warp, and cline all use
+ * `~/.agents/skills/`) are only reported when they have platform-specific
+ * evidence on disk, unless shared paths are the only paths they configure.
+ */
 export function detectHomePlatforms(
   homeRoot = resolveHomeRoot(),
 ): DetectedHomePlatform[] {
+  const sharedGlobalPaths = buildSharedGlobalPathSet();
+
   return getAllPlatforms()
-    .map((platform) => ({
-      platformId: platform.id,
-      discoveredPaths: existingPaths(platform.globalPaths, homeRoot),
-    }))
+    .map((platform) => {
+      const configured = configuredProjectPaths(platform.globalPaths);
+      const discoveredPaths = existingPaths(platform.globalPaths, homeRoot);
+      if (discoveredPaths.length === 0) {
+        return { platformId: platform.id, discoveredPaths: [] };
+      }
+
+      const discriminativePaths = discoveredPaths.filter(
+        (path) => !sharedGlobalPaths.has(path),
+      );
+      const onlySharedPathsConfigured =
+        configured.length > 0
+        && configured.every((path) => sharedGlobalPaths.has(path));
+
+      const isDetected =
+        discriminativePaths.length > 0
+        || (onlySharedPathsConfigured && discoveredPaths.length > 0);
+
+      return {
+        platformId: platform.id,
+        discoveredPaths: isDetected ? discoveredPaths : [],
+      };
+    })
     .filter((result) => result.discoveredPaths.length > 0);
 }
 

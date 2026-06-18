@@ -40,7 +40,8 @@ _harnessdeck() {
     fi
   fi
 }
-_harnessdeck
+
+compdef _harnessdeck hd harnessdeck
 `;
 }
 
