@@ -12,7 +12,6 @@ export interface ApplyCommandOpts {
   noInteractive?: boolean;
   onConflict?: string;
   deckId?: string;
-  deprecateProjectApply?: boolean;
 }
 
 export function addApplyCommandOptions(command: Command): Command {

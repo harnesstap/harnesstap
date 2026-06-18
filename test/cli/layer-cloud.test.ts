@@ -102,8 +102,7 @@ describe("CLI cloud layer workflows", () => {
       // applying a cloud-installed layer through project apply
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
       const dryRun = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "team-cloud",
         "--project",
         context.projectDir,
@@ -216,8 +215,7 @@ describe("CLI cloud layer workflows", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/demo.git");
 
       const dryRun = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "engineering-foundation",
         "--harness",
         "claude-code",
@@ -263,8 +261,7 @@ describe("CLI cloud layer workflows", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
 
       const humanRun = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "harnessdeck-cloud/default/team@1.0",
         "--project",
         context.projectDir,
@@ -275,8 +272,7 @@ describe("CLI cloud layer workflows", () => {
       expect(humanRun.stdout).toContain("Fetched harnessdeck-cloud/team@1.0 from catalog");
 
       const dryRun = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "harnessdeck-cloud/default/team@1.0",
         "--project",
         context.projectDir,

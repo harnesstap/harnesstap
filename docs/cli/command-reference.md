@@ -103,50 +103,43 @@ hd add ./local/skills-repo --project .
 
 Scope rule: exactly one of `--global` or `--project` must be resolved before install (the wizard asks if neither is set). Import to the library always runs on a successful add except with `--list` or `--dry-run`.
 
-## project (`p`)
+## Project-local verbs
 
-Manage project scanning, apply state, snapshots, drift, and mirror.
+Git-style commands for working in a project directory. Each defaults to the current directory when `[path]` is omitted.
 
 ### Commands
 
-- `project scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
-- `project apply <layer...>` — **deprecated** alias for `layer apply`
-- `project drift [path]` — compare the working tree against the latest apply/mirror snapshot
-- `project mirror [path]` — mirror alias harness outputs from the main harness state
-- `project history --project <path>` — list snapshots for a tracked project
-- `project revert [snapshot-id]` — restore files from a previous snapshot
-- `project status [path]` — show the current project status
+- `scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
+- `mirror [path]` — mirror alias harness outputs from the main harness state
+- `status [path]` — show project status with drift summary
+- `history [path]` — list snapshots for a tracked project
+- `revert [snapshot-id]` — restore files from a previous snapshot
+
+Apply layers or decks with `layer apply` / `deck apply` (not under this group).
 
 ### Important options
 
-- `project scan -h, --harness <slug>` — scan only one harness
-- `project scan --dry-run` — preview imports without writing to the DB
-- `project scan --overwrite` — replace library rows when scan content differs
-- `project scan --skip-existing` — keep existing rows when scan content differs
-- `project scan --namespace <name>` — namespace for imported project resources
-- `project scan --global` — install imported plugin sources into global harness locations
-- `project scan --harness <slugs>` — harness targets for `--global` plugin installs
-- `project apply --project <path>` — explicit target directory (prefer `layer apply`)
-- `project apply --harness <slugs>` — comma-separated harness slugs
-- `project apply --dry-run` — show planned file writes only
-- `project apply --format json`
-- `project apply --strict-plugin-versions` — fail with exit code `2` on plugin pin mismatch
-- `project apply --ignore-plugin-versions` — skip plugin pin validation entirely
-- `project apply --sync-plugins` — refresh stale plugin resources before materialize
-- `project drift --format json` — exits `1` when drift exists
-- `project mirror --dry-run` — preview alias mirror writes
-- `project mirror --force-shift-reference <slug>` — set the project main harness before mirroring
-- `project mirror --format json`
-- `project history --format json`
-- `project status --format json`
-
-`project apply --strict-plugin-versions` and `project apply --ignore-plugin-versions` are mutually exclusive.
+- `scan -h, --harness <slug>` — scan only one harness
+- `scan --dry-run` — preview imports without writing to the DB
+- `scan --overwrite` — replace library rows when scan content differs
+- `scan --skip-existing` — keep existing rows when scan content differs
+- `scan --namespace <name>` — namespace for imported project resources
+- `scan --global` — install imported plugin sources into global harness locations
+- `scan --harness <slugs>` — harness targets for `--global` plugin installs
+- `mirror --dry-run` — preview alias mirror writes
+- `mirror --force-shift-reference <slug>` — set the project main harness before mirroring
+- `mirror --reference <strategy>` — reference source: main, plugin, agents, or auto
+- `mirror --format json`
+- `status --check` — exit `1` when drift exists since the last snapshot (CI)
+- `status --format json` — includes a `drift` object when git-backed
+- `history --format json`
+- `history --show-id` — show full snapshot IDs in human tables
 
 ### Preconditions and side effects
 
-- `project history`, `project drift`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
-- `project apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
-- `project revert` requires a snapshot ID from `project history`.
+- `history`, `status --check`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
+- `layer apply` / `deck apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
+- `revert` requires a snapshot ID from `history`.
 - `layer apply` and `deck apply` resolve environment values through the cascade: home environment ◂ configured-layer default ◂ deck active environment (last wins).
 
 ## layer (`l`)

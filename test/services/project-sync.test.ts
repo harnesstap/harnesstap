@@ -102,7 +102,7 @@ describe("syncProject reference strategies", () => {
           forceShiftReference: "claude-code",
           referenceStrategy: "auto",
         }),
-      ).rejects.toThrow(/harnessdeck project scan/);
+      ).rejects.toThrow(/harnessdeck scan/);
     } finally {
       await context.cleanup();
     }

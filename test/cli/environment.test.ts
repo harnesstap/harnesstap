@@ -330,7 +330,6 @@ describe("CLI environment", () => {
       );
 
       const status = await runCli([
-        "project",
         "status",
         context.projectDir,
         "--format",

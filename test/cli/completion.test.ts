@@ -49,16 +49,15 @@ describe("CLI __complete", () => {
     }
   });
 
-  it("returns harness slugs for project apply --harness completion", async () => {
-    const context = await createInitializedTestContext("cli-complete-project-harness");
+  it("returns harness slugs for layer apply --harness completion", async () => {
+    const context = await createInitializedTestContext("cli-complete-layer-apply-harness");
     try {
       const result = await runCli([
         "__complete",
         "zsh",
         "--",
         "hd",
-        "project",
-        "apply",
+        "layer", "apply",
         "--harness",
         "cur",
       ]);

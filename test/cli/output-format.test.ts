@@ -39,8 +39,7 @@ describe("CLI output format", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const dryRun = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "dry-run-layer",
         "--project",
         context.projectDir,
@@ -59,8 +58,7 @@ describe("CLI output format", () => {
       );
 
       await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "dry-run-layer",
         "--project",
         context.projectDir,
@@ -69,7 +67,6 @@ describe("CLI output format", () => {
       ]);
 
       const status = await runCli([
-        "project",
         "status",
         context.projectDir,
         "--format",
@@ -83,11 +80,7 @@ describe("CLI output format", () => {
         }),
       );
 
-      const history = await runCli([
-        "project",
-        "history",
-        "--project",
-        context.projectDir,
+      const history = await runCli(["history", context.projectDir,
         "--format",
         "json",
       ]);

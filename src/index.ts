@@ -544,7 +544,7 @@ async function handleResourceListCommand(
 
   if (sortedResources.length === 0) {
     console.log(
-      `No resources found.\n  → Run \`${formatCommand("project scan")}\` to import some.`,
+      `No resources found.\n  → Run \`${formatCommand("scan")}\` to import some.`,
     );
     return;
   }
@@ -585,6 +585,23 @@ function isHiddenHelpCommand(command: Command): boolean {
     command.name() === "__complete"
     || (command.description() as unknown) === false
   );
+}
+
+function isCommandGroup(command: Command): boolean {
+  return command.commands.some((sub) => !isHiddenHelpCommand(sub));
+}
+
+function renderTopLevelCommandHelp(cmd: Command): string {
+  const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
+  const groups = commands.filter(isCommandGroup);
+  const direct = commands.filter((command) => !isCommandGroup(command));
+
+  const sections = [
+    renderCommandSection("COMMAND GROUPS", groups),
+    renderCommandSection("PROJECT", direct),
+  ].filter((section) => section.length > 0);
+
+  return sections.join("\n\n");
 }
 
 function renderGroupedCommandHelp(cmd: Command): string {
@@ -733,7 +750,7 @@ function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|project|plugin|auth|migrate|harness|environment)'/i.test(candidate.message);
+    && /too many arguments for '(layer|resource|plugin|auth|migrate|harness|environment|deck|profile)'/i.test(candidate.message);
 }
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
@@ -818,8 +835,7 @@ program
         `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
         `  ${ui.theme.flag("-h, --help")}               display help for command`,
         "",
-        ui.theme.heading("COMMANDS"),
-        renderGroupedCommandHelp(cmd),
+        renderTopLevelCommandHelp(cmd),
         "",
       ];
       
@@ -1247,13 +1263,8 @@ async function handleApplyCommand(
   initializeSchema(db);
 
   const outputFormat = parseOutputFormat(opts.format);
-  if (opts.deprecateProjectApply && outputFormat === "human") {
-    ui.warn(
-      `\`${formatCommand("project apply")}\` is deprecated; use \`${formatCommand("layer apply")}\` instead.`,
-    );
-  }
 
-   const resolvedLayerNames = layerNames.length > 0
+  const resolvedLayerNames = layerNames.length > 0
     ? layerNames
     : await (shouldUseWizard({
         interactive: opts.interactive,
@@ -1601,14 +1612,17 @@ async function handleApplyCommand(
   }
 }
 
-function handleHistoryCommand(opts: { project: string; format?: string; showId?: boolean }): void {
+function handleHistoryCommand(
+  path: string,
+  opts: { format?: string; showId?: boolean },
+): void {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(opts.project);
+  const projectRoot = resolve(path);
   const gitOrigin = getGitOrigin(projectRoot);
   if (!gitOrigin) {
-    reportNoGitOrigin(`${formatCommand("project history --project .")}`);
+    reportNoGitOrigin(formatCommand("history"));
     return;
   }
   const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
@@ -1617,7 +1631,7 @@ function handleHistoryCommand(opts: { project: string; format?: string; showId?:
       printJson({ snapshots: [] });
       return;
     }
-    ui.warn(`No project record found. Run \`${formatCommand("project scan")}\` first.`);
+    ui.warn(`No project record found. Run \`${formatCommand("scan")}\` first.`);
     return;
   }
   const snapshots = listSnapshots(project.id);
@@ -1662,7 +1676,7 @@ function handleRevertCommand(snapshotId?: string): void {
   if (!snapshotId) {
     process.exitCode = 1;
     ui.danger(
-      `Please provide a snapshot ID. Use \`${formatCommand("project history --show-id")}\` or \`${formatCommand("project history --format json")}\` to list them.`,
+      `Please provide a snapshot ID. Use \`${formatCommand("history --show-id")}\` or \`${formatCommand("history --format json")}\` to list them.`,
     );
     return;
   }
@@ -2485,9 +2499,25 @@ function resolveApplyHarnessTargets(
   return uniqueHarnessTargets(detectPlatforms(projectRoot));
 }
 
+function formatDriftSummaryLabel(
+  project: ReturnType<typeof getProjectByOrigin>,
+  driftReport: ReturnType<typeof detectProjectDriftFromLatest>,
+): string {
+  if (!project) {
+    return "(not tracked — run layer apply first)";
+  }
+  if (!driftReport?.snapshot_id) {
+    return "(no snapshots)";
+  }
+  if (!driftReport.has_drift) {
+    return "none";
+  }
+  return `${driftReport.changes.length} change(s) since snapshot ${driftReport.snapshot_id}`;
+}
+
 async function handleProjectStatusCommand(
   path: string,
-  opts: { format?: string },
+  opts: { format?: string; check?: boolean },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
@@ -2504,6 +2534,54 @@ async function handleProjectStatusCommand(
     configuredLayerIds,
   });
 
+  if (opts.check) {
+    if (!gitOrigin) {
+      reportNoGitOrigin(formatCommand("status --check"));
+      return;
+    }
+    const normalizedOrigin = normalizeGitUrl(gitOrigin);
+    const project = getProjectByOrigin(normalizedOrigin);
+    if (!project) {
+      if (format === "json") {
+        printJson({
+          project_root: projectRoot,
+          snapshot_id: null,
+          has_drift: false,
+          changes: [],
+          message: `No project record. Run ${formatCommand("layer apply")} first.`,
+        });
+        return;
+      }
+      ui.warn(`No project record found. Run \`${formatCommand("layer apply")}\` first.`);
+      return;
+    }
+
+    const report = detectProjectDriftFromLatest(projectRoot, project.id);
+    if (!report) {
+      return;
+    }
+    if (format === "json") {
+      printJson(report);
+      if (report.has_drift) {
+        process.exitCode = 1;
+      }
+      return;
+    }
+    if (!report.snapshot_id) {
+      ui.dim("No snapshots found. Drift detection requires a prior apply or mirror.");
+      return;
+    }
+    if (!report.has_drift) {
+      ui.success("No drift detected since last snapshot.");
+      return;
+    }
+    ui.danger(
+      `Drift detected: ${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   if (!gitOrigin) {
     if (format === "json") {
       printJson({
@@ -2511,6 +2589,7 @@ async function handleProjectStatusCommand(
         git_origin: null,
         platforms: detected,
         environment_cascade: environmentCascade,
+        drift: null,
       });
       return;
     }
@@ -2534,6 +2613,9 @@ async function handleProjectStatusCommand(
   const project = getProjectByOrigin(normalizedOrigin);
   const layers = project ? getProjectConfiguredLayers(project.id) : [];
   const snapshots = project ? listSnapshots(project.id) : [];
+  const driftReport = project
+    ? detectProjectDriftFromLatest(projectRoot, project.id)
+    : null;
 
   if (format === "json") {
     const payload: Record<string, unknown> = {
@@ -2541,6 +2623,7 @@ async function handleProjectStatusCommand(
       git_origin: normalizedOrigin,
       platforms: detected,
       environment_cascade: environmentCascade,
+      drift: driftReport,
     };
     if (project) {
       payload.applied_layers = layers.length;
@@ -2558,6 +2641,7 @@ async function handleProjectStatusCommand(
   if (project) {
     rows.push(["Applied layers", `${layers.length}`]);
     rows.push(["Snapshots", `${snapshots.length}`]);
+    rows.push(["Drift", formatDriftSummaryLabel(project, driftReport)]);
   }
   rows.push(["Environment vars", `${Object.keys(environmentCascade.resolved.vars).length}`]);
   rows.push([
@@ -3255,72 +3339,6 @@ async function handleHarnessProjectSetCommand(opts: {
       : {}),
   });
   ui.success(`Set project harness preference ${ui.icons.hint} main: ${ui.theme.accent(saved.main_harness)}`);
-}
-
-function handleProjectDriftCommand(opts: {
-  project: string;
-  format?: string;
-}): void {
-  const db = getDb();
-  initializeSchema(db);
-  const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(opts.project);
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (!gitOrigin) {
-    reportNoGitOrigin(`${formatCommand("project drift --project .")}`);
-    return;
-  }
-  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
-  if (!project) {
-    if (format === "json") {
-      printJson({
-        project_root: projectRoot,
-        snapshot_id: null,
-        has_drift: false,
-        changes: [],
-        message: `No project record. Run ${formatCommand("project apply")} first.`,
-      });
-      return;
-    }
-    ui.warn(`No project record found. Run \`${formatCommand("project apply")}\` first.`);
-    return;
-  }
-
-  const report = detectProjectDriftFromLatest(projectRoot, project.id);
-  if (!report) {
-    return;
-  }
-  if (format === "json") {
-    printJson(report);
-    if (report.has_drift) process.exitCode = 1;
-    return;
-  }
-  if (!report.snapshot_id) {
-    ui.dim("No snapshots found. Drift detection requires a prior apply or sync.");
-    return;
-  }
-  if (!report.has_drift) {
-    ui.success("No drift detected since last snapshot.");
-    return;
-  }
-  console.log(`DRIFT  ${projectRoot}`);
-  console.log("");
-  const changeEntries = report.changes.map((c) => ({
-    // Drift reports "deleted", but the shared renderer vocabulary uses "removed".
-    kind:
-      c.type === "deleted"
-        ? ("removed" as const)
-        : c.type,
-    scope: c.type,
-    key: c.path,
-    detail: c.platform ?? "",
-  }));
-  console.log(ui.renderChangeList(changeEntries));
-  console.log("");
-  console.log(
-    `${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
-  );
-  process.exitCode = 1;
 }
 
 function handleLayerDiffCommand(
@@ -5542,15 +5560,9 @@ resourceCmd
     }
   });
 
-// ── project ─────────────────────────────────────────────────────────────
+// ── project-local verbs ─────────────────────────────────────────────────
 
-const projectCmd = configureCommandGroup(
-  program
-    .command("project")
-    .description("Manage project scanning, apply state, and snapshots"),
-);
-
-projectCmd
+program
   .command("scan")
   .argument("[path]", "Project directory or plugin source to scan", ".")
   .option("-h, --harness <slugs>", "Harness slug(s): scan filter, or install targets with --global")
@@ -5564,48 +5576,7 @@ projectCmd
   )
   .action(handleScanCommand);
 
-const projectApplyCmd = projectCmd
-  .command("apply")
-  .argument(
-    "[layers...]",
-    "Layer name(s), layer export path, or URL (multiple layers are merged in order)",
-  )
-  .option(
-    "--deck <name>",
-    "Deprecated — use deck apply instead",
-  )
-  .description(
-    "Deprecated alias for layer apply",
-  );
-
-addApplyCommandOptions(projectApplyCmd).action(async (
-  layers: string[],
-  opts: ApplyCommandOpts & { deck?: string },
-) => {
-  if (opts.deck) {
-    process.exitCode = 1;
-    ui.danger(
-      `Use \`${formatCommand("deck apply <deck>")}\` instead of --deck on project apply.`,
-      { hints: [formatCommand("deck apply <deck>")] },
-    );
-    return;
-  }
-  await handleApplyCommand(layers as [string, ...string[]] | [], {
-    ...opts,
-    deprecateProjectApply: true,
-  });
-});
-
-projectCmd
-  .command("drift")
-  .option("--project <path>", "Project directory", ".")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description(
-    "Detect drift between project files and the latest apply/mirror snapshot",
-  )
-  .action(handleProjectDriftCommand);
-
-projectCmd
+program
   .command("mirror")
   .argument("[path]", "Project directory", ".")
   .option("--dry-run", "Show what would be written without writing files")
@@ -5624,26 +5595,27 @@ projectCmd
   )
   .action(handleProjectSyncCommand);
 
-projectCmd
+program
   .command("history")
-  .option("--project <path>", "Project directory", ".")
+  .argument("[path]", "Project directory", ".")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show snapshot IDs in human-readable tables")
   .description("List configuration snapshots for a project")
   .action(handleHistoryCommand);
 
-projectCmd
+program
   .command("revert")
   .argument("[snapshot-id]", "Snapshot ID to revert to")
   .description("Revert a project to a previous configuration snapshot")
   .action(handleRevertCommand);
 
-projectCmd
+program
   .command("status")
   .argument("[path]", "Project directory", ".")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Show current project status")
-  .action(async (path: string, opts: { format?: string }) => {
+  .option("--check", "Exit with code 1 when drift exists since the last snapshot")
+  .description("Show current project status and drift summary")
+  .action(async (path: string, opts: { format?: string; check?: boolean }) => {
     await handleProjectStatusCommand(path, opts);
   });
 

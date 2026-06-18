@@ -45,7 +45,6 @@ describe("CLI harness", () => {
       expect(Array.isArray(JSON.parse(resourceList.stdout))).toBe(true);
 
       const projectStatus = await runCli([
-        "project",
         "status",
         context.projectDir,
         "--format",
@@ -68,7 +67,7 @@ describe("CLI harness", () => {
     const context = await createTestContext("cli-project-status-panel");
     try {
       await runCli(["init"]);
-      const result = await runCli(["project", "status", context.projectDir]);
+      const result = await runCli(["status", context.projectDir]);
       expect(result.stdout).toContain("PROJECT");
       expect(result.stdout).toContain("Platforms");
       expect(result.stdout).toContain("Plugin refs");

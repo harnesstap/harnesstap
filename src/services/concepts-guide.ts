@@ -49,7 +49,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
         purpose: "Materialize a deck's layer stack onto a project",
       },
       {
-        command: "project mirror .",
+        command: "mirror .",
         purpose: "Sync alias harnesses from on-disk main",
       },
       {

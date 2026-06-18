@@ -17,6 +17,12 @@ function buildProgram(): Command {
   layer.command("show").argument("[name]", "name").description("show");
   layer.command("delete").argument("[name]", "name").description("delete");
   layer
+    .command("apply")
+    .argument("[layers...]", "layers")
+    .option("--project <path>", "project")
+    .option("--harness <slugs>", "harness")
+    .description("apply");
+  layer
     .command("pull")
     .argument("[selector]", "selector")
     .option("--account <name>", "account")
@@ -24,14 +30,6 @@ function buildProgram(): Command {
 
   const deck = program.command("deck").description("deck");
   deck.command("show").argument("[name]", "name").description("show");
-
-  const project = program.command("project").description("project");
-  project
-    .command("apply")
-    .argument("[layers...]", "layers")
-    .option("--project <path>", "project")
-    .option("--harness <slugs>", "harness")
-    .description("apply");
 
   program
     .command("init")
@@ -87,10 +85,10 @@ describe("completion engine", () => {
     expect(ctx.positionalIndex).toBe(0);
   });
 
-  it("resolves project apply positional slot", async () => {
-    const ctx = parseCompletionContext(program, "hd project apply eng");
+  it("resolves layer apply positional slot", async () => {
+    const ctx = parseCompletionContext(program, "hd layer apply eng");
     expect(ctx.slot).toBe("positional");
-    expect(ctx.commandPath).toEqual(["project", "apply"]);
+    expect(ctx.commandPath).toEqual(["layer", "apply"]);
     expect(ctx.positionalIndex).toBe(0);
   });
 
