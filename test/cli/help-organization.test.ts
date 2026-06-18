@@ -197,14 +197,12 @@ describe("CLI help and command organization", () => {
     expect(layerHelp.stdout).not.toContain("export [options]");
   });
 
-  it("exposes combine/uncombine commands with updated descriptions in layer help", async () => {
+  it("exposes layer edit with scripting flags in layer help", async () => {
     const layerHelp = await runCli(["layer", "--help"]);
     
-    // Should show combine and uncombine commands
-    expect(layerHelp.stdout).toContain("combine");
-    expect(layerHelp.stdout).toContain("uncombine");
+    expect(layerHelp.stdout).toContain("edit");
+    expect(layerHelp.stdout).toContain("scripting");
     
-    // Should describe from-project correctly
     expect(layerHelp.stdout).toContain("from-project");
     expect(layerHelp.stdout).toContain("Scan current folder and create a layer from its resources");
   });
@@ -237,7 +235,7 @@ describe("CLI help and command organization", () => {
     const result = await runCli(["layer", "--help"]);
     expect(result.stdout).toContain("LOCAL LIBRARY");
     expect(result.stdout).toContain("REMOTE CATALOG");
-    expect(result.stdout).toContain("combine");
+    expect(result.stdout).toContain("edit");
     expect(result.stdout).toContain("pull");
   });
 

@@ -154,9 +154,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer create <name>`
 - `layer list`
 - `layer show <name>`
-- `layer edit [name]` — interactively add/remove attachments (resources, plugin pins, layer refs)
-- `layer combine [layer] [selector] --type <type>`
-- `layer uncombine [layer] [selector] --type <type>`
+- `layer edit [name]` — interactively add/remove attachments, or script changes with `--add` / `--remove` / `--apply`
 - `layer delete [name]`
 - `layer export <layer>`
 - `layer import <file>` — import a local bundle file (`urn:harnessdeck:layer:v1`)
@@ -189,10 +187,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer edit --all` — show every resource per type (default caps at 10)
 - `layer edit --dry-run` — preview membership changes without writing
 - `layer edit --format json --no-interactive` — read-only membership snapshot
-- `layer combine --type <resource|skill|instruction|plugin|layer>`
-- `layer combine --version <constraint>` — plugin or layer references only
-- `layer combine --sync` — sync a plugin resource immediately after combine (default: lazy)
-- `layer combine --embed` — mark plugin resource as embed-on-export
+- `layer edit --add <selector>` — add attachment (repeatable; use `--type` when selector omits prefix)
+- `layer edit --remove <selector>` — remove attachment (repeatable)
+- `layer edit --apply <file.json>` — apply membership from JSON spec
+- `layer edit --version <constraint>` — plugin or layer references only (scripting adds)
+- `layer edit --sync` — sync a plugin resource immediately after add (default: lazy)
+- `layer edit --embed` — mark plugin pin as embed-on-export when adding
 - `layer export -f, --file <path>` — output bundle path
 - `layer export --embed-plugins`
 - `layer apply --project <path>` — target project directory (default `.`)
@@ -304,7 +304,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource sync --prune` — remove orphaned child resources after sync
 - `resource list` shows material resources plus `plugin` resources; `layer` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
-- `layer combine` selectors accept `type:name@namespace` for compose-safe resolution
+- `layer edit` selectors accept `type:name@namespace` for compose-safe resolution
 - There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, and `layer apply --strict-plugin-versions` for plugin workflows
 
 ## environment (`e`)

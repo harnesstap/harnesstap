@@ -37,7 +37,7 @@ The command:
 5. Optionally creates or updates a layer with namespaced skill refs such as
    `skill:caveman@mattpocock/skills` for downstream `layer apply` workflows.
 
-After install, combine or apply the layer:
+After install, edit or apply the layer:
 
 ```bash
 harnessdeck layer show mattpocock-skills

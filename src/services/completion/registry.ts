@@ -11,7 +11,7 @@ import {
   completeLayerImportPath,
 } from "./providers/file-path.js";
 import { completeHarnessSlugs } from "./providers/harness-slug.js";
-import { completeLayerAttachment } from "./providers/layer-attachment.js";
+import { completeLayerEditAddAttachment, completeLayerEditRemoveAttachment } from "./providers/layer-attachment.js";
 import { completeLocalEnvironments } from "./providers/local-environment.js";
 import { completeLocalLayers } from "./providers/local-layer.js";
 import { completeProfileLayers } from "./providers/profile-layer.js";
@@ -37,10 +37,6 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer export:0": [completeLocalLayers],
   "layer import:0": [completeLayerImportPath],
   "layer apply:0": [completeLocalLayers],
-  "layer combine:0": [completeLocalLayers],
-  "layer combine:1": [completeLayerAttachment],
-  "layer uncombine:0": [completeLocalLayers],
-  "layer uncombine:1": [completeLayerAttachment],
   "layer diff:0": LOCAL_LAYER_OR_FILE,
   "layer diff:1": LOCAL_LAYER_OR_FILE,
   "layer set-environment:0": [completeLocalLayers],
@@ -84,8 +80,9 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "harness project set:main": [completeHarnessSlugs],
   "harness project set:aliases": [completeHarnessSlugs],
   "layer export:file": [completeFilePath],
-  "layer combine:type": [staticEnumProvider(LAYER_ATTACHMENT_TYPES)],
   "layer edit:type": [staticEnumProvider(LAYER_ATTACHMENT_TYPES)],
+  "layer edit:add": [completeLayerEditAddAttachment],
+  "layer edit:remove": [completeLayerEditRemoveAttachment],
   "layer publish:org": [completeCatalogOrgs],
   "add:layer": [completeLocalLayers],
   "add:create-layer": [completeLocalLayers],

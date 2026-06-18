@@ -16,7 +16,7 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 ## Concepts
 
-**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; combine and apply at project level with `layer apply`.
+**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; edit membership and apply at project level with `layer apply`.
 
 **Profile** — A layer tagged `profile`; presented as a switchable global preset. Not a separate storage type — profiles are layers with the reserved tag `profile`. Switch with `profile use` (or root shorthand `hd <name>`); applies to machine home harness paths only.
 

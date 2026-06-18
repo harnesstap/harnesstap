@@ -21,7 +21,30 @@ export type LayerEditRow = Resource & {
   display_name: string;
   checked: boolean;
   version_constraint?: string;
+  embed_on_export?: boolean;
+  sync?: boolean;
 };
+
+export interface LayerEditApplyAttachment {
+  key: string;
+  type?: Resource["type"];
+  version_constraint?: string | null;
+  embed?: boolean;
+  sync?: boolean;
+}
+
+export interface LayerEditScriptAdd {
+  selector: string;
+  type?: string;
+  version?: string;
+  embed?: boolean;
+  sync?: boolean;
+}
+
+export interface LayerEditScriptRemove {
+  selector: string;
+  type?: string;
+}
 
 export interface LayerEditDiff {
   added: LayerEditRow[];
@@ -216,6 +239,95 @@ function computePersistedResourceOrder(resources: Resource[]): string[] {
   return ordered.map((resource) => resource.id);
 }
 
+function finalizeLayerMembership(layer: Layer): void {
+  const remaining = getLayerResources(layer.id);
+  setLayerResourceOrder(layer.id, computePersistedResourceOrder(remaining));
+  touchLayerUpdatedAt(layer.id);
+}
+
+export function parseLayerEditApplyFile(raw: string): LayerEditApplyAttachment[] {
+  const parsed = JSON.parse(raw) as { attachments?: LayerEditApplyAttachment[] };
+  if (!Array.isArray(parsed.attachments)) {
+    throw new Error('Invalid apply file: expected { "attachments": [ ... ] }');
+  }
+  return parsed.attachments;
+}
+
+export function buildPendingFromApplySpec(
+  candidates: LayerEditRow[],
+  attachments: LayerEditApplyAttachment[],
+): LayerEditRow[] {
+  const specByKey = new Map(attachments.map((item) => [item.key, item]));
+  return candidates.map((row) => {
+    const key = attachmentKey(row);
+    const spec = specByKey.get(key);
+    if (!spec) {
+      return {
+        ...row,
+        checked: false,
+        version_constraint: undefined,
+        embed_on_export: undefined,
+        sync: undefined,
+      };
+    }
+    return {
+      ...row,
+      checked: true,
+      version_constraint: spec.version_constraint ?? row.version_constraint ?? "latest",
+      embed_on_export: spec.embed,
+      sync: spec.sync,
+    };
+  });
+}
+
+export async function applyLayerEditScripting(input: {
+  layer: Layer;
+  adds: LayerEditScriptAdd[];
+  removes: LayerEditScriptRemove[];
+  dryRun?: boolean;
+}): Promise<LayerEditApplyResult & { messages: string[] }> {
+  const messages: string[] = [];
+  const added: string[] = [];
+  const removed: string[] = [];
+
+  if (input.dryRun) {
+    return {
+      added: input.adds.map((item) => item.selector),
+      removed: input.removes.map((item) => item.selector),
+      messages: [],
+    };
+  }
+
+  for (const rem of input.removes) {
+    const result = removeLayerAttachment({
+      layer: input.layer,
+      selector: rem.selector,
+      type: rem.type,
+    });
+    if (!result.removed) {
+      throw new Error(result.message);
+    }
+    messages.push(result.message);
+    removed.push(rem.selector);
+  }
+
+  for (const add of input.adds) {
+    const message = await addLayerAttachment({
+      layer: input.layer,
+      selector: add.selector,
+      type: add.type,
+      version: add.version,
+      embed: add.embed,
+      sync: add.sync,
+    });
+    messages.push(message);
+    added.push(add.selector);
+  }
+
+  finalizeLayerMembership(input.layer);
+  return { added, removed, messages };
+}
+
 export async function applyLayerEdit(input: {
   layer: Layer;
   initial: LayerEditRow[];
@@ -247,6 +359,8 @@ export async function applyLayerEdit(input: {
         selector: resolveAttachmentSelector(row),
         type: row.type,
         version: row.version_constraint ?? "latest",
+        embed: row.embed_on_export,
+        sync: row.sync,
       });
       continue;
     }
@@ -258,12 +372,7 @@ export async function applyLayerEdit(input: {
     });
   }
 
-  const remaining = getLayerResources(input.layer.id);
-  setLayerResourceOrder(
-    input.layer.id,
-    computePersistedResourceOrder(remaining),
-  );
-  touchLayerUpdatedAt(input.layer.id);
+  finalizeLayerMembership(input.layer);
 
   return {
     added: diff.added.map(attachmentKey),

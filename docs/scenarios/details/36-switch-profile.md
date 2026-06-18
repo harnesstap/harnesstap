@@ -34,7 +34,7 @@ materialize home harness files.
 
 Create additional profiles with `profile create <name>` or tag an existing
 layer with `profile tag <layer>`. Combine stack layers with
-`layer combine` before switching.
+`layer edit` before switching.
 
 For project-specific baselines, use `layer apply` instead
 (see [Scenario 7](./07-preview-apply-layer.md) and

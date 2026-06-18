@@ -185,10 +185,10 @@ After the baseline fits, build and share your own layers:
    hd resource list
    ```
 
-2. **Create** a reusable layer and combine resources.
+2. **Create** a reusable layer and add resources.
    ```bash
    hd layer create my-setup --description "Shared project assistant setup"
-   hd layer combine my-setup research-helper --type skill
+   hd layer edit my-setup --add research-helper --type skill
    ```
 
 3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
@@ -257,7 +257,7 @@ sequenceDiagram
   User->>CLI: hd project scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
-  User->>CLI: hd layer create / combine
+  User->>CLI: hd layer create / edit
   CLI->>DB: Save reusable layer
   User->>CLI: hd layer apply layer --harness ...
   CLI->>Project: Snapshot tracked files
@@ -312,10 +312,10 @@ To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: fals
 
 ## More layer workflows
 
-Compare, diagnose, or derive plugin bundles beyond the basic create/combine/apply loop:
+Compare, diagnose, or derive plugin bundles beyond the basic create/edit/apply loop:
 
 ```bash
-hd layer combine team-stack layer:shared-baseline --version "^1.2.0"
+hd layer edit team-stack --add layer:shared-baseline --version "^1.2.0"
 hd layer doctor team-stack
 hd layer diff team-stack ./team-stack.harnessdeck.toml
 hd layer from-project inferred-stack --project .
@@ -342,18 +342,18 @@ hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
 Plugin references are `plugin` resources attached to a layer like any other composition item.
 
 ```bash
-hd layer combine my-setup plugin_pin:formatter@my-marketplace --version "^2.1.0"
-hd layer combine my-setup plugin_pin:formatter@my-marketplace --sync   # eager sync after combine
+hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
+hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --sync   # eager sync after add
 hd resource sync plugin_pin:formatter@my-marketplace
 hd resource show plugin_pin:formatter@my-marketplace
-hd layer uncombine my-setup plugin_pin:formatter@my-marketplace --type plugin_pin
+hd layer edit my-setup --remove plugin_pin:formatter@my-marketplace --type plugin_pin
 hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
 hd layer apply my-setup --project . --strict-plugin-versions
 ```
 
 On `layer apply`, harnessdeck compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
 
-Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer combine` is the **plugin semver pin or range**, not the global version flag.
+Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer edit --add` is the **plugin semver pin or range**, not the global version flag.
 
 Layer export bundles use schema `urn:harnessdeck:layer:v1` with one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 

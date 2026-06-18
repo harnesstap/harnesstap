@@ -12,11 +12,11 @@ Typical commands:
 ```bash
 harnessdeck layer create my-setup --description "Shared project assistant setup"
 harnessdeck resource list --search auth        # find what to add
-harnessdeck layer combine my-setup auth-helper --type skill
+harnessdeck layer edit my-setup --add auth-helper --type skill
 harnessdeck layer show my-setup
 ```
 
-`layer combine` is for local resources and plugin pins. `layer pull` installs a
+`layer edit` is for local resources and plugin pins. `layer pull` installs a
 layer from the remote catalog instead — do not confuse the two.
 
 This is where HarnessDeck becomes useful as a setup optimizer rather than just
