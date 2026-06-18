@@ -13,8 +13,8 @@ import {
   getLayerById,
   getLayerByPublishedIdentity,
   resolveLayerSelector,
-  type Layer,
 } from "../models/layer-model.js";
+import type { Layer } from "../types.js";
 import {
   createGlobalApplySnapshot,
   recordGlobalApplySnapshotInstall,

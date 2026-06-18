@@ -4325,7 +4325,9 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Pull a layer from the remote catalog into the local DB")
-  .action(handleLayerInstallCommand);
+  .action(async (selector, opts) => {
+    await handleLayerInstallCommand(selector, opts);
+  });
 
 layerCmd
   .command("publish")
