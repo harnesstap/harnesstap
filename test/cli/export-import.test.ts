@@ -269,8 +269,7 @@ plugins = []
       );
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         bundlePath,
         "--project",
         context.projectDir,

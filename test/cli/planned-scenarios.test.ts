@@ -194,8 +194,7 @@ describe("CLI planned scenarios", () => {
       ]);
 
       await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "sync-layer",
         "--project",
         context.projectDir,
@@ -210,10 +209,9 @@ describe("CLI planned scenarios", () => {
       );
 
       const drift = await runCli([
-        "project",
-        "drift",
-        "--project",
+        "status",
         context.projectDir,
+        "--check",
         "--format",
         "json",
       ]);
@@ -235,22 +233,15 @@ describe("CLI planned scenarios", () => {
         });
 
       const driftHuman = await runCli([
-        "project",
-        "drift",
-        "--project",
+        "status",
         context.projectDir,
+        "--check",
       ]);
       driftSpy.mockRestore();
-      expect(driftHuman.stdout).toContain("DRIFT");
-      expect(driftHuman.stdout).toMatch(/^\s+\+\s+added\s+NEW\.md\s+claude-code$/m);
-      expect(driftHuman.stdout).toMatch(
-        /^\s+~\s+modified\s+CLAUDE\.md\s+claude-code$/m,
-      );
-      expect(driftHuman.stdout).toMatch(/^\s+−\s+deleted\s+OLD\.md\s+claude-code$/m);
+      expect(driftHuman.stderr + driftHuman.stdout).toContain("Drift detected: 3 change(s)");
       expect(driftHuman.exitCode).toBe(1);
 
       const syncDry = await runCli([
-        "project",
         "mirror",
         context.projectDir,
         "--dry-run",
@@ -261,7 +252,6 @@ describe("CLI planned scenarios", () => {
 
       // Human-mode sync: spinner resolves to a Synced verdict
       const syncHuman = await runCli([
-        "project",
         "mirror",
         context.projectDir,
       ]);
@@ -272,7 +262,7 @@ describe("CLI planned scenarios", () => {
     }
   });
 
-  it("auto-prompts project apply on a TTY when layers are missing", async () => {
+  it("auto-prompts layer apply on a TTY when layers are missing", async () => {
     const context = await createTestContext("cli-project-apply-wizard");
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/apply-wizard.git");
@@ -292,7 +282,7 @@ describe("CLI planned scenarios", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const result = await runCli([
-        "project",
+        "layer",
         "apply",
         "--project",
         context.projectDir,
@@ -310,13 +300,13 @@ describe("CLI planned scenarios", () => {
     }
   });
 
-  it("keeps project apply non-interactive when json or no-interactive suppress prompting", async () => {
+  it("keeps layer apply non-interactive when json or no-interactive suppress prompting", async () => {
     const context = await createTestContext("cli-project-apply-wizard-suppressed");
     try {
       await runCli(["init"]);
 
       const jsonSuppressed = await runCli([
-        "project",
+        "layer",
         "apply",
         "--project",
         context.projectDir,
@@ -329,7 +319,7 @@ describe("CLI planned scenarios", () => {
 
       const disabled = await runCli([
         "--no-interactive",
-        "project",
+        "layer",
         "apply",
         "--project",
         context.projectDir,
@@ -366,17 +356,16 @@ describe("CLI planned scenarios", () => {
 
       const result = await runCli(
         [
-          "project",
-          "drift",
-          "--project",
+          "status",
           context.projectDir,
+          "--check",
           "--format",
           "json",
         ],
         { commandName: "hd" },
       );
 
-      expect(result.stdout).toContain('"message": "No project record. Run hd project apply first."');
+      expect(result.stdout).toContain('"message": "No project record. Run hd layer apply first."');
     } finally {
       await context.cleanup();
     }

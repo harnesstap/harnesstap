@@ -21,7 +21,7 @@ describe("CLI scan", () => {
       );
 
       await runCli(["init"]);
-      const result = await runCli(["project", "scan", context.projectDir]);
+      const result = await runCli(["scan", context.projectDir]);
 
       const resourceModel = await import("../../src/models/resource.ts");
       const projectModel = await import("../../src/models/project.ts");
@@ -50,7 +50,7 @@ describe("CLI scan", () => {
       writeTextFile(`${context.projectDir}/CLAUDE.md`, "# Dry run test");
 
       await runCli(["init"]);
-      const result = await runCli(["project", "scan", context.projectDir, "--dry-run"]);
+      const result = await runCli(["scan", context.projectDir, "--dry-run"]);
 
       // Dry-run uses [dry run] prefix
       expect(result.stdout).toContain("[dry run]");
@@ -90,7 +90,7 @@ describe("CLI scan", () => {
         }),
       );
 
-      await runCli(["project", "scan", context.projectDir]);
+      await runCli(["scan", context.projectDir]);
 
       const names = resourceModel
         .listResources()
@@ -110,7 +110,6 @@ describe("CLI scan", () => {
       await runCli(["init"]);
 
       await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "marketplace/.cursor-plugin/marketplace.json"),
       ]);
@@ -141,7 +140,6 @@ describe("CLI scan", () => {
       await runCli(["init"]);
 
       const result = await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--dry-run",
@@ -177,7 +175,6 @@ describe("CLI scan", () => {
       ]);
 
       const result = await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--global",
@@ -222,7 +219,6 @@ describe("CLI scan", () => {
       ]);
 
       const result = await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--global",
@@ -267,13 +263,11 @@ describe("CLI scan", () => {
       ]);
 
       await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--global",
       ]);
       const secondResult = await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--global",
@@ -324,13 +318,11 @@ describe("CLI scan", () => {
       ]);
 
       await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--global",
       ]);
       await runCli([
-        "project",
         "scan",
         join(pluginImportFixtureRoot, "cursor-team-kit"),
         "--global",
@@ -367,7 +359,6 @@ describe("CLI scan", () => {
 
       await expect(
         runCli([
-          "project",
           "scan",
           join(pluginImportFixtureRoot, "marketplace/.cursor-plugin/marketplace.json"),
           "--global",
@@ -412,7 +403,7 @@ describe("CLI scan", () => {
       );
 
       await runCli(["init"]);
-      const result = await runCli(["project", "scan", context.projectDir]);
+      const result = await runCli(["scan", context.projectDir]);
 
       const importedSnapshotModel = await import(
         "../../src/models/imported-snapshot.ts"
@@ -437,7 +428,7 @@ describe("CLI scan", () => {
       await runCli(["init"]);
 
       await expect(
-        runCli(["project", "scan", context.projectDir, "--global"]),
+        runCli(["scan", context.projectDir, "--global"]),
       ).rejects.toThrow(/plugin source/i);
     } finally {
       await context.cleanup();
@@ -452,7 +443,6 @@ describe("CLI scan", () => {
 
       await expect(
         runCli([
-          "project",
           "scan",
           join(pluginImportFixtureRoot, "cursor-team-kit"),
           "--harness",

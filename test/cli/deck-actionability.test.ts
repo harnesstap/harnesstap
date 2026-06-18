@@ -118,8 +118,8 @@ describe("CLI deck actionability", () => {
     }
   });
 
-  it("layer apply works and project apply remains compatible", async () => {
-    const context = await createTestContext("cli-layer-apply-alias");
+  it("layer apply works", async () => {
+    const context = await createTestContext("cli-layer-apply");
 
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-layer-apply.git");
@@ -153,27 +153,8 @@ describe("CLI deck actionability", () => {
         "claude-code",
       ]);
       expect(layerApply.exitCode ?? 0).toBe(0);
-
-      const projectApply = await runCli([
-        "project",
-        "apply",
-        layer.name,
-        "--project",
-        context.projectDir,
-        "--harness",
-        "claude-code",
-        "--dry-run",
-      ]);
-      expect(projectApply.exitCode ?? 0).toBe(0);
-      expect(projectApply.stderr + projectApply.stdout).toContain("deprecated");
     } finally {
       await context.cleanup();
     }
-  });
-
-  it("rejects project apply --deck with a hint", async () => {
-    const result = await runCli(["project", "apply", "--deck", "missing"]);
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr + result.stdout).toContain("deck apply");
   });
 });

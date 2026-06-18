@@ -46,8 +46,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
 
       const platforms = await runCli(["harness", "list"]);
       const applied = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "engineering-foundation",
         "--project",
         context.projectDir,
@@ -96,8 +95,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "tracked",
         "--project",
         context.projectDir,
@@ -105,7 +103,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
         "claude-code",
       ]);
 
-      const status = await runCli(["project", "status", context.projectDir]);
+      const status = await runCli(["status", context.projectDir]);
       expect(status.stdout).toContain("Platforms");
       expect(status.stdout).toContain("Applied layers");
       expect(status.stdout).toContain("Snapshots");

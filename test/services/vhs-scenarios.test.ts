@@ -145,11 +145,11 @@ describe("VHS scenario manifest", () => {
     expect(firstTypedCommand).toMatch(/^Type "harnessdeck init"/);
 
     // Tape contains the visible commands from the approved story
-    expect(tape).toContain('Type "harnessdeck project scan ."');
+    expect(tape).toContain('Type "harnessdeck scan ."');
     expect(tape).toContain('Type "harnessdeck resource list"');
     expect(tape).toContain('Type "harnessdeck layer search foundation"');
-    expect(tape).toContain('Type "harnessdeck project apply engineering-foundation"');
-    expect(tape).toContain('Type "harnessdeck project status ."');
+    expect(tape).toContain('Type "harnessdeck layer apply engineering-foundation"');
+    expect(tape).toContain('Type "harnessdeck status ."');
 
     // Tape does not use --format json
     expect(tape).not.toContain("--format json");

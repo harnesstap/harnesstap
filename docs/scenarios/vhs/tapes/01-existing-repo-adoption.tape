@@ -6,7 +6,7 @@ Type "harnessdeck init"
 Enter
 Sleep 1500ms
 
-Type "harnessdeck project scan ."
+Type "harnessdeck scan ."
 Enter
 Sleep 3000ms
 
@@ -18,10 +18,10 @@ Type "harnessdeck layer search foundation"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck project apply engineering-foundation"
+Type "harnessdeck layer apply engineering-foundation"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck project status ."
+Type "harnessdeck status ."
 Enter
 Sleep 20000ms

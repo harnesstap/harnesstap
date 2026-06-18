@@ -200,8 +200,8 @@ function emptyReferenceError(
 ): Error {
   return new Error(
     `Main harness "${mainHarness}" has no on-disk resources in ${projectRoot}. ` +
-      "Try: harnessdeck project mirror --reference plugin " +
-      "or harnessdeck project scan . " +
+      "Try: harnessdeck mirror --reference plugin " +
+      "or harnessdeck scan . " +
       "or harnessdeck harness project set --main codex",
   );
 }
@@ -216,7 +216,7 @@ async function resolveReferenceResources(
     if (pluginResources.length === 0) {
       throw new Error(
         `No plugin-source resources found in ${projectRoot}. ` +
-          "Try: harnessdeck project scan .",
+          "Try: harnessdeck scan .",
       );
     }
     return toSyncResources(pluginResources);

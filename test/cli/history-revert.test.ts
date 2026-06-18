@@ -30,8 +30,7 @@ describe("CLI history and revert", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "history-layer",
         "--project",
         context.projectDir,
@@ -41,11 +40,7 @@ describe("CLI history and revert", () => {
 
       writeFileSync(`${context.projectDir}/CLAUDE.md`, "# Modified", "utf-8");
 
-      const history = await runCli([
-        "project",
-        "history",
-        "--project",
-        context.projectDir,
+      const history = await runCli(["history", context.projectDir,
       ]);
       expect(history.stdout).toContain("Before applying: history-layer");
       expect(history.stdout).toContain("WHEN");
@@ -66,7 +61,7 @@ describe("CLI history and revert", () => {
         throw new Error("Expected a snapshot to be available for revert");
       }
 
-      const revertResult = await runCli(["project", "revert", snapshot.id]);
+      const revertResult = await runCli(["revert", snapshot.id]);
       expect(revertResult.stdout).toContain("✓ Restored");
       expect(revertResult.stdout).toContain("from snapshot");
       // Verify proper pluralization (1 file, not 1 files)
@@ -102,8 +97,7 @@ describe("CLI history and revert", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
       await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "history-layer",
         "--project",
         context.projectDir,
@@ -111,11 +105,7 @@ describe("CLI history and revert", () => {
         "claude-code",
       ]);
 
-      const history = await runCli([
-        "project",
-        "history",
-        "--project",
-        context.projectDir,
+      const history = await runCli(["history", context.projectDir,
         "--show-id",
       ]);
       const project = projectModel.getProjectByOrigin(
@@ -138,11 +128,7 @@ describe("CLI history and revert", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli([
-        "project",
-        "history",
-        "--project",
-        context.projectDir,
+      const result = await runCli(["history", context.projectDir,
       ]);
 
       expect(result.exitCode).toBe(1);
@@ -159,11 +145,11 @@ describe("CLI history and revert", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["project", "revert"]);
+      const result = await runCli(["revert"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Please provide a snapshot ID.");
-      expect(result.stderr).toContain("project history --show-id");
+      expect(result.stderr).toContain("history --show-id");
     } finally {
       await context.cleanup();
     }
@@ -175,7 +161,7 @@ describe("CLI history and revert", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["project", "revert", "missing-snapshot"]);
+      const result = await runCli(["revert", "missing-snapshot"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Snapshot not found: missing-snapshot");

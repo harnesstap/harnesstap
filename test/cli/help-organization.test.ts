@@ -8,7 +8,6 @@ describe("CLI help and command organization", () => {
     const groupedCommands = [
       ["layer"],
       ["resource"],
-      ["project"],
       ["auth"],
       ["migrate"],
       ["harness"],
@@ -39,8 +38,8 @@ describe("CLI help and command organization", () => {
       const result = await runCli(["--help"]);
       // Should contain section headers
       expect(result.stdout).toContain("USAGE");
-      expect(result.stdout).toContain("COMMANDS");
-      expect(result.stdout).toContain("OPTIONS");
+      expect(result.stdout).toContain("COMMAND GROUPS");
+      expect(result.stdout).toContain("PROJECT");
       // Should contain flags
       expect(result.stdout).toContain("--no-color");
       expect(result.stdout).toContain("--no-interactive");
@@ -68,13 +67,15 @@ describe("CLI help and command organization", () => {
     expect(result.exitCode).toBeUndefined();
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("USAGE");
-    expect(result.stdout).toContain("COMMANDS");
+    expect(result.stdout).toContain("COMMAND GROUPS");
+    expect(result.stdout).toContain("PROJECT");
   });
 
   it("renders grouped themed help and exposes --no-color", async () => {
     const result = await runCli(["--help"]);
     expect(result.stdout).toContain("USAGE");
-    expect(result.stdout).toContain("COMMANDS");
+    expect(result.stdout).toContain("COMMAND GROUPS");
+    expect(result.stdout).toContain("PROJECT");
     expect(result.stdout).toContain(
       "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
     );
@@ -110,7 +111,8 @@ describe("CLI help and command organization", () => {
       const ansiEscapeRegex = new RegExp(`${String.fromCharCode(27)}\\[`);
       expect(result.stdout).not.toMatch(ansiEscapeRegex);
       expect(result.stdout).toContain("USAGE");
-      expect(result.stdout).toContain("COMMANDS");
+      expect(result.stdout).toContain("COMMAND GROUPS");
+      expect(result.stdout).toContain("PROJECT");
     } finally {
       if (originalForceColor === undefined) {
         delete process.env.FORCE_COLOR;
@@ -145,15 +147,19 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("shows grouped commands in help and hides legacy top-level verbs", async () => {
+  it("shows project-local verbs in top-level help", async () => {
     const help = await runCli(["-h"]);
-    const projectHelp = await runCli(["project", "-h"]);
     const layerHelp = await runCli(["layer", "-h"]);
-
     const harnessHelp = await runCli(["harness", "-h"]);
 
-    expect(help.stdout).toContain("project");
+    expect(help.stdout).toContain("COMMAND GROUPS");
+    expect(help.stdout).toContain("PROJECT");
     expect(help.stdout).toContain("layer");
+    expect(help.stdout).toContain("scan");
+    expect(help.stdout).toContain("mirror");
+    expect(help.stdout).toContain("status");
+    expect(help.stdout).toContain("history");
+    expect(help.stdout).toContain("revert");
     expect(help.stdout).toContain("resource");
     expect(help.stdout).toContain("harness");
     expect(help.stdout).not.toContain("\n  platform");
@@ -163,14 +169,10 @@ describe("CLI help and command organization", () => {
     expect(harnessHelp.stdout).toContain("project");
     expect(help.stdout).not.toContain("help [command]");
     expect(help.stdout).not.toContain("apply [options] <layer>");
-    expect(help.stdout).not.toContain("history [options]");
-    expect(help.stdout).not.toContain("revert [snapshot-id]");
     expect(help.stdout).not.toContain("export [options] <layer>");
     expect(help.stdout).not.toContain("import <file>");
     expect(help.stdout).not.toContain("\n  platforms");
-    expect(help.stdout).not.toContain("status [path]");
-    expect(help.stdout).not.toContain("scan [options] [path]");
-    expect(projectHelp.stdout).not.toContain("help [command]");
+    expect(help.stdout).not.toContain("\n  project ");
     expect(layerHelp.stdout).not.toContain("help [command]");
     // auth command group should exist in top-level help
     expect(help.stdout).toContain("auth");
@@ -215,7 +217,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("resource");
     expect(result.stdout).toContain("layer");
     expect(result.stdout).toContain("layer apply");
-    expect(result.stdout).toContain("project mirror");
+    expect(result.stdout).toContain("mirror .");
     expect(result.stdout).toContain("layer search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
     expect(result.stdout).toContain("hd help scenario");

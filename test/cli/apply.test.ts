@@ -91,8 +91,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "default-harness-layer",
         "--project",
         context.projectDir,
@@ -131,8 +130,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const dryRun = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "applied",
         "--project",
         context.projectDir,
@@ -144,8 +142,7 @@ describe("CLI apply", () => {
       expect(dryRun.stdout).toContain("CLAUDE.md");
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "applied",
         "--project",
         context.projectDir,
@@ -186,8 +183,7 @@ describe("CLI apply", () => {
       pluginPins.attachPluginPinToLayer(layer.id, "context7@anthropics", "1.0.0");
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "foundation-only",
         "--project",
         context.projectDir,
@@ -234,8 +230,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "catalog-like",
         "--project",
         context.projectDir,
@@ -271,8 +266,7 @@ describe("CLI apply", () => {
       pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "plugin-skills",
         "--project",
         context.projectDir,
@@ -355,8 +349,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "auto-sync-plugins",
         "--project",
         context.projectDir,
@@ -397,8 +390,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "with-plugins",
         "--project",
         context.projectDir,
@@ -440,8 +432,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "strict-plugins",
         "--project",
         context.projectDir,
@@ -483,8 +474,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "ignore-plugins",
         "--project",
         context.projectDir,
@@ -528,8 +518,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "conflict-plugins",
         "--project",
         context.projectDir,
@@ -569,8 +558,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "non-git-apply",
         "--project",
         context.projectDir,
@@ -616,8 +604,7 @@ describe("CLI apply", () => {
       );
 
       const firstApply = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         bundlePath,
         "--project",
         context.projectDir,
@@ -625,8 +612,7 @@ describe("CLI apply", () => {
         "codex",
       ]);
       const secondApply = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         bundlePath,
         "--project",
         context.projectDir,
@@ -682,8 +668,7 @@ describe("CLI apply", () => {
       layerModel.addResourceToLayer(overlay.id, overlayResource.id);
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "base-plugins",
         "overlay-no-plugins",
         "--project",

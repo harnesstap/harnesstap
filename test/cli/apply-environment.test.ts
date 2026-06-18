@@ -86,8 +86,7 @@ describe("CLI apply with environment cascade", () => {
       );
 
       const applyResult = await runCli([
-        "project",
-        "apply",
+        "layer", "apply",
         "env-layer",
         "--project",
         context.projectDir,
