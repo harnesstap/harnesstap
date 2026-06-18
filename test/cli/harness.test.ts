@@ -45,7 +45,7 @@ describe("CLI harness", () => {
       expect(Array.isArray(JSON.parse(resourceList.stdout))).toBe(true);
 
       const projectStatus = await runCli([
-        "p",
+        "project",
         "status",
         context.projectDir,
         "--format",
@@ -175,7 +175,6 @@ describe("CLI harness", () => {
         promptResponses: [
           { main_harness: "claude-code" },
           { alias_harnesses: ["cursor"] },
-          { value: "no" },
         ],
       });
 

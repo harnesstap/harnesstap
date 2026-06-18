@@ -137,7 +137,7 @@ function tokenHasEmbeddedFlagValue(token: string): boolean {
   return token.startsWith("-") && token.includes("=") && token.indexOf("=") > 0;
 }
 
-function extractProfile(consumed: string[]): string | undefined {
+function extractAccount(consumed: string[]): string | undefined {
   for (let index = 0; index < consumed.length; index += 1) {
     const token = consumed[index];
     if (!token) {
@@ -145,7 +145,7 @@ function extractProfile(consumed: string[]): string | undefined {
     }
 
     const split = splitFlagToken(token);
-    if (normalizeFlagName(split.flag) === "profile") {
+    if (normalizeFlagName(split.flag) === "account") {
       if (split.value !== undefined) {
         return split.value.length > 0 ? split.value : undefined;
       }
@@ -290,7 +290,7 @@ export function parseCompletionContext(
     commandPath: walked.commandPath,
     consumedPositionals: walked.consumedPositionals,
     prefix,
-    profile: extractProfile(consumed),
+    account: extractAccount(consumed),
     localDataAvailable: existsSync(getHarnessdeckDir()),
     ...slotInfo,
   };

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { runCli } from "../helpers/cli.ts";
-import * as cloudProfiles from "../../src/config/cloud-profiles";
+import * as cloudAccounts from "../../src/config/cloud-accounts";
 
 describe("auth CLI flow", () => {
   let originalFetch: typeof globalThis.fetch;
@@ -25,33 +25,33 @@ describe("auth CLI flow", () => {
     const login = await runCli(["auth", "login", "testprofile", "--base-url", "https://api.example"]);
     expect(login.stdout).toContain("UC-ABC");
 
-    const got = await cloudProfiles.getCloudProfile("testprofile");
-    expect(got.profile?.refreshToken).toBe("RT-XYZ");
+    const got = await cloudAccounts.getCloudAccount("testprofile");
+    expect(got.account?.refreshToken).toBe("RT-XYZ");
 
     // whoami JSON
     globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ user_email: "user@example.com", user_name: "User" }) }) as unknown as typeof fetch;
-    const who = await runCli(["auth", "status", "--profile", "testprofile", "--format", "json"]);
+    const who = await runCli(["auth", "status", "--account", "testprofile", "--format", "json"]);
     expect(JSON.parse(who.stdout).user_email).toBe("user@example.com");
 
     // orgs list JSON
     globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ orgs: [{ id: "org1", slug: "org-slug", name: "Org" }] }) }) as unknown as typeof fetch;
-    const orgs = await runCli(["auth", "orgs", "--profile", "testprofile", "--format", "json"]);
+    const orgs = await runCli(["auth", "orgs", "--account", "testprofile", "--format", "json"]);
     expect(Array.isArray(JSON.parse(orgs.stdout))).toBe(true);
 
     // switch org
     globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ orgs: [{ id: "org1", slug: "org-slug", name: "Org" }] }) }) as unknown as typeof fetch;
-    const _switched = await runCli(["auth", "orgs", "--profile", "testprofile", "--switch", "org-slug"]);
-    const afterSwitch = await cloudProfiles.getCloudProfile("testprofile");
-    expect(afterSwitch.profile?.orgSlug).toBe("org-slug");
+    const _switched = await runCli(["auth", "orgs", "--account", "testprofile", "--switch", "org-slug"]);
+    const afterSwitch = await cloudAccounts.getCloudAccount("testprofile");
+    expect(afterSwitch.account?.orgSlug).toBe("org-slug");
 
     // logout (revoke)
     globalThis.fetch = mock().mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) }) as unknown as typeof fetch;
-    const _out = await runCli(["auth", "logout", "--profile", "testprofile"]);
-    const afterLogout = await cloudProfiles.getCloudProfile("testprofile");
-    expect(afterLogout.profile).toBeUndefined();
+    const _out = await runCli(["auth", "logout", "--account", "testprofile"]);
+    const afterLogout = await cloudAccounts.getCloudAccount("testprofile");
+    expect(afterLogout.account).toBeUndefined();
   });
 
-  it("returns empty JSON payloads when no cloud profile is configured", async () => {
+  it("returns empty JSON payloads when no cloud account is configured", async () => {
     const whoami = await runCli(["auth", "status", "--format", "json"]);
     const orgs = await runCli(["auth", "orgs", "--format", "json"]);
 
@@ -60,7 +60,7 @@ describe("auth CLI flow", () => {
   });
 
   it("reports missing orgs when switching to an unknown organization", async () => {
-    await cloudProfiles.saveCloudProfile("testprofile", {
+    await cloudAccounts.saveCloudAccount("testprofile", {
       cloudBaseUrl: "https://api.example",
       accessToken: "AT-XYZ",
       refreshToken: "RT-XYZ",
@@ -77,7 +77,7 @@ describe("auth CLI flow", () => {
     const result = await runCli([
       "auth",
       "orgs",
-      "--profile",
+      "--account",
       "testprofile",
       "--switch",
       "missing-org",

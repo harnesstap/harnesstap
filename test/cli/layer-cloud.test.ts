@@ -13,16 +13,16 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      // configure cloud profile and stub fetch
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      // configure cloud account and stub fetch
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
@@ -43,7 +43,7 @@ describe("CLI cloud layer workflows", () => {
         "layer",
         "search",
         "team",
-        "--profile",
+        "--account",
         "test",
         "--base-url",
         "https://mock",
@@ -65,7 +65,7 @@ describe("CLI cloud layer workflows", () => {
         "harnessdeck-cloud/default/team@1.0",
         "--as",
         "team-cloud",
-        "--profile",
+        "--account",
         "test",
         "--base-url",
         "https://mock",
@@ -94,7 +94,7 @@ describe("CLI cloud layer workflows", () => {
 
       const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
-      const publish = await runCli(["layer", "publish", "pubtest", "--profile", "test", "--format", "json"]);
+      const publish = await runCli(["layer", "publish", "pubtest", "--account", "test", "--format", "json"]);
       expect(JSON.parse(publish.stdout)).toEqual(expect.objectContaining({ id: expect.any(String), version: "1.0.0", url: expect.any(String) }));
 
       restorePublishFetch();
@@ -236,15 +236,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
@@ -306,15 +306,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
 
@@ -327,7 +327,7 @@ describe("CLI cloud layer workflows", () => {
         "harnessdeck-cloud",
         "--as",
         "installed-with-org",
-        "--profile",
+        "--account",
         "test",
         "--base-url",
         "https://mock",
@@ -362,7 +362,7 @@ describe("CLI cloud layer workflows", () => {
         "^1.0.0",
         "--as",
         "installed-with-version",
-        "--profile",
+        "--account",
         "test",
         "--base-url",
         "https://mock",
@@ -398,7 +398,7 @@ describe("CLI cloud layer workflows", () => {
         "~2.0.0",
         "--as",
         "installed-with-both",
-        "--profile",
+        "--account",
         "test",
         "--base-url",
         "https://mock",
@@ -509,20 +509,20 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
 
       const result = await runCli(
-        ["layer", "pull", "--profile", "test", "--base-url", "https://mock"],
+        ["layer", "pull", "--account", "test", "--base-url", "https://mock"],
         {
           isTTY: true,
           promptResponses: [{ choice: "harnessdeck-cloud/default/team" }],
@@ -543,19 +543,19 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       // Non-TTY environment
       const result = await runCli(
-        ["layer", "pull", "--profile", "test"],
+        ["layer", "pull", "--account", "test"],
         { isTTY: false }
       );
 
@@ -573,15 +573,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
@@ -599,7 +599,7 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const result = await runCli(["layer", "publish", "my-layer", "--profile", "test", "--format", "json"]);
+      const result = await runCli(["layer", "publish", "my-layer", "--account", "test", "--format", "json"]);
 
       expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
       const payload = JSON.parse(result.stdout);
@@ -616,15 +616,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restorePublishFetch = createCloudPublishFetchMock({
         baseUrl: "https://mock",
@@ -649,7 +649,7 @@ describe("CLI cloud layer workflows", () => {
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const result = await runCli(
-        ["layer", "publish", "multi-org-layer", "--profile", "test"],
+        ["layer", "publish", "multi-org-layer", "--account", "test"],
         {
           isTTY: true,
           promptResponses: [{ value: "widgets" }]
@@ -675,15 +675,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restorePublishFetch = createCloudPublishFetchMock({
         baseUrl: "https://mock",
@@ -704,7 +704,7 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const result = await runCli(["layer", "publish", "zero-org-layer", "--profile", "test"]);
+      const result = await runCli(["layer", "publish", "zero-org-layer", "--account", "test"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("No organizations found");
@@ -720,15 +720,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restorePublishFetch = createCloudPublishFetchMock({
         baseUrl: "https://mock",
@@ -750,7 +750,7 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const result = await runCli(["layer", "publish", "existing-slug", "--profile", "test"]);
+      const result = await runCli(["layer", "publish", "existing-slug", "--account", "test"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("already exists");
@@ -766,15 +766,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
@@ -797,7 +797,7 @@ describe("CLI cloud layer workflows", () => {
         "acme/personas/frontend@2.0.0",
         "--as",
         "persona-frontend",
-        "--profile",
+        "--account",
         "test",
         "--base-url",
         "https://mock",
@@ -827,15 +827,15 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
@@ -861,7 +861,7 @@ describe("CLI cloud layer workflows", () => {
         "acme",
         "--catalog",
         "platform-personas",
-        "--profile",
+        "--account",
         "test",
         "--format",
         "json",
@@ -881,7 +881,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer pull installs a public default-catalog layer without a cloud profile", async () => {
+  it("layer pull installs a public default-catalog layer without a cloud account", async () => {
     const context = await createTestContext("cli-layer-add-anonymous");
     try {
       await runCli(["init"]);

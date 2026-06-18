@@ -7,7 +7,7 @@ export type CompletionContext = {
   positionalIndex?: number;
   consumedPositionals?: string[];
   prefix: string;
-  profile?: string;
+  account?: string;
   localDataAvailable: boolean;
 };
 

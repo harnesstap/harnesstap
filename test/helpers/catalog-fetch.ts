@@ -67,6 +67,7 @@ export function createCatalogFetchMock(input?: {
       const parsed = new URL(url);
       const orgFilters = parsed.searchParams.getAll("org");
       const query = parsed.searchParams.get("q")?.trim().toLowerCase() ?? "";
+      const tag = parsed.searchParams.get("tag")?.trim().toLowerCase();
       let filtered = orgFilters.length === 0
         ? layers
         : layers.filter((layer) =>
@@ -77,6 +78,12 @@ export function createCatalogFetchMock(input?: {
           const slug = String(layer.slug ?? "").toLowerCase();
           const name = String(layer.name ?? "").toLowerCase();
           return slug.includes(query) || name.includes(query);
+        });
+      }
+      if (tag) {
+        filtered = filtered.filter((layer) => {
+          const layerTags = Array.isArray(layer.tags) ? layer.tags : [];
+          return layerTags.some((entry) => String(entry).toLowerCase() === tag);
         });
       }
       return {

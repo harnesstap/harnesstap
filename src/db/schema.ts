@@ -1,9 +1,9 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 
 const MIGRATIONS: Record<number, string> = {
-  19: `
+  20: `
     CREATE TABLE IF NOT EXISTS resources (
       id          TEXT PRIMARY KEY,
       type        TEXT NOT NULL CHECK(type IN (
@@ -174,16 +174,37 @@ const MIGRATIONS: Record<number, string> = {
     CREATE INDEX IF NOT EXISTS idx_imported_snapshot_installs_installed_at
       ON imported_snapshot_installs(installed_at DESC);
 
+    CREATE TABLE IF NOT EXISTS global_apply_snapshots (
+      id           TEXT PRIMARY KEY,
+      profile_name TEXT NOT NULL,
+      layer_ids    TEXT NOT NULL,
+      created_at   TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS global_apply_snapshot_installs (
+      snapshot_id  TEXT NOT NULL REFERENCES global_apply_snapshots(id) ON DELETE CASCADE,
+      platform_id  TEXT NOT NULL,
+      files        TEXT NOT NULL DEFAULT '[]',
+      installed_at TEXT NOT NULL,
+      PRIMARY KEY (snapshot_id, platform_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_global_apply_snapshots_created_at
+      ON global_apply_snapshots(created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_global_apply_snapshot_installs_installed_at
+      ON global_apply_snapshot_installs(installed_at DESC);
+
     CREATE TABLE IF NOT EXISTS schema_version (
       version INTEGER NOT NULL
     );
 
-    INSERT INTO schema_version (version) VALUES (19);
+    INSERT INTO schema_version (version) VALUES (20);
   `,
 };
 
 export interface InitializeSchemaOptions {
-  /** Allow opening a pre-v19 database for read-only export (migrate export). */
+  /** Allow opening a pre-v20 database for read-only export (migrate export). */
   allowLegacyRead?: boolean;
 }
 

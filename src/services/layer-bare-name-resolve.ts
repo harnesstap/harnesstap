@@ -53,7 +53,7 @@ function formatCatalogSelector(layer: CatalogLayer, version?: string): string {
 
 export async function resolveBareNameFromCatalog(
   selector: string,
-  options: { profile?: string; baseUrl?: string } = {},
+  options: { account?: string; baseUrl?: string } = {},
 ): Promise<ResolvedRemoteLayerSelector> {
   if (!isPublicCatalogEnabled()) {
     throw new LayerResolveError(
@@ -72,7 +72,7 @@ export async function resolveBareNameFromCatalog(
 
   const catalogResults = await listLayersInScope(
     { q: parsed.name, limit: 100, sort: "name" },
-    { profile: options.profile, baseUrl: options.baseUrl },
+    { account: options.account, baseUrl: options.baseUrl },
   );
   const matches = exactCatalogMatches(catalogResults, parsed.name);
 

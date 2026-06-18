@@ -1,4 +1,4 @@
-import { getCloudProfile } from "../config/cloud-profiles.js";
+import { getCloudAccount } from "../config/cloud-accounts.js";
 import {
   formatOutOfScopeMessage,
   isSelectorInCatalogScope,
@@ -109,12 +109,12 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
 }
 
 export async function resolveCatalogAccess(input?: {
-  profile?: string;
+  account?: string;
   baseUrl?: string;
 }) {
   const scope = resolveCatalogScope({ baseUrl: input?.baseUrl });
-  const profileInfo = await getCloudProfile(input?.profile);
-  const accessToken = profileInfo.profile?.accessToken;
+  const accountInfo = await getCloudAccount(input?.account);
+  const accessToken = accountInfo.account?.accessToken;
   const publicClient = createPublicCatalogClient(scope.cloudBaseUrl);
   const authenticatedClient = accessToken
     ? await createAuthenticatedCatalogClient(scope.cloudBaseUrl, accessToken)
@@ -130,7 +130,7 @@ export async function resolveCatalogAccess(input?: {
 
 export async function listLayersInScope(
   options: CatalogListOptions = {},
-  input?: { profile?: string; baseUrl?: string },
+  input?: { account?: string; baseUrl?: string },
 ): Promise<CatalogLayer[]> {
   const access = await resolveCatalogAccess(input);
   const scopedOptions = buildScopeParams(access.scope, options);
@@ -181,12 +181,12 @@ export async function downloadCatalogBundle(input: {
   catalogSlug?: string;
   layerSlug: string;
   version?: string;
-  profile?: string;
+  account?: string;
   baseUrl?: string;
 }): Promise<{ version: string; body: string }> {
   const catalogSlug = input.catalogSlug ?? "default";
   const access = await resolveCatalogAccess({
-    profile: input.profile,
+    account: input.account,
     baseUrl: input.baseUrl,
   });
   const version = input.version ?? "latest";
@@ -208,8 +208,8 @@ export async function downloadCatalogBundle(input: {
     throw new Error(formatOutOfScopeMessage(selector));
   }
 
-  const profileInfo = await getCloudProfile(input.profile);
-  const accessToken = profileInfo.profile?.accessToken;
+  const accountInfo = await getCloudAccount(input.account);
+  const accessToken = accountInfo.account?.accessToken;
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
     const url = catalogSlug === "default"

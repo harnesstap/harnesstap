@@ -2,8 +2,9 @@ import { LAYER_ATTACHMENT_TYPES } from "../layer-composition.js";
 import type { CompletionContext, CompletionProvider } from "./types.js";
 import { completeCatalogConnectValue } from "./providers/catalog-connect-value.js";
 import { completeCatalogLayers } from "./providers/catalog-layer.js";
+import { completeCatalogProfiles } from "./providers/catalog-profile.js";
 import { completeCatalogOrgs } from "./providers/catalog-org.js";
-import { completeCloudProfiles } from "./providers/cloud-profile.js";
+import { completeCloudAccounts } from "./providers/cloud-account.js";
 import {
   completeDirectoryPath,
   completeFilePath,
@@ -14,6 +15,7 @@ import { completeLayerAttachment } from "./providers/layer-attachment.js";
 import { completeLocalDecks } from "./providers/local-deck.js";
 import { completeLocalEnvironments } from "./providers/local-environment.js";
 import { completeLocalLayers } from "./providers/local-layer.js";
+import { completeProfileLayers } from "./providers/profile-layer.js";
 import { completeLocalResources } from "./providers/local-resource.js";
 import { completeResourceTypes } from "./providers/resource-type.js";
 import { completeSnapshotIds } from "./providers/snapshot-id.js";
@@ -46,6 +48,10 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer pull:0": [completeCatalogLayers],
   "layer search:0": [completeCatalogLayers],
   "layer publish:0": [completeLocalLayers],
+  "profile use:0": [completeProfileLayers],
+  "profile pull:0": [completeCatalogProfiles],
+  "profile search:0": [completeCatalogProfiles],
+  ":0": [completeProfileLayers],
   "layer catalog connect:1": [completeCatalogConnectValue],
   "layer catalog disconnect:1": [completeCatalogConnectValue],
   "deck show:0": [completeLocalDecks],
@@ -71,7 +77,7 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "project revert:0": [completeSnapshotIds],
   "migrate export:0": [completeFilePath],
   "migrate import:0": [completeFilePath],
-  "auth login:0": [completeCloudProfiles],
+  "auth login:0": [completeCloudAccounts],
 };
 
 const FLAG_PROVIDERS: FlagRegistry = {
@@ -89,9 +95,9 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "add:create-layer": [completeLocalLayers],
   "add:harness": [completeHarnessSlugs],
   "add:project": [completeDirectoryPath],
-  "auth status:profile": [completeCloudProfiles],
-  "auth logout:profile": [completeCloudProfiles],
-  "auth orgs:profile": [completeCloudProfiles],
+  "auth status:account": [completeCloudAccounts],
+  "auth logout:account": [completeCloudAccounts],
+  "auth orgs:account": [completeCloudAccounts],
   "auth orgs:switch": [completeCatalogOrgs],
 };
 
@@ -99,10 +105,10 @@ const GLOBAL_FLAG_PROVIDERS: Record<string, CompletionProvider[]> = {
   format: [staticEnumProvider(["human", "json"])],
   harness: [completeHarnessSlugs],
   h: [completeHarnessSlugs],
-  profile: [completeCloudProfiles],
+  account: [completeCloudAccounts],
 };
 
-const LAYER_PROFILE_FLAGS = new Set(["profile"]);
+const LAYER_ACCOUNT_FLAGS = new Set(["account"]);
 
 function positionalKey(commandPath: string[], index: number): string {
   return `${commandPath.join(" ")}:${index}`;
@@ -120,8 +126,8 @@ function resolveLayerWildcardProviders(
     return [];
   }
 
-  if (slot === "flag-value" && ctx.flag && LAYER_PROFILE_FLAGS.has(ctx.flag)) {
-    return [completeCloudProfiles];
+  if (slot === "flag-value" && ctx.flag && LAYER_ACCOUNT_FLAGS.has(ctx.flag)) {
+    return [completeCloudAccounts];
   }
 
   return [];

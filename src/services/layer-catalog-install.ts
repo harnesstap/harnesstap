@@ -10,7 +10,7 @@ import { writeLayerExportToTempFile } from "./layer-source.js";
 
 export interface InstallLayerFromCatalogOptions {
   as?: string;
-  profile?: string;
+  account?: string;
   baseUrl?: string;
 }
 
@@ -38,7 +38,7 @@ export async function installLayerFromCatalog(
     catalogSlug: parsed.catalog_slug,
     layerSlug: parsed.layer_slug,
     version: parsed.version,
-    profile: opts.profile,
+    account: opts.account,
     baseUrl: opts.baseUrl,
   });
   const tempPath = writeLayerExportToTempFile(downloaded.body);

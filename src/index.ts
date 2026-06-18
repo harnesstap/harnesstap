@@ -78,7 +78,7 @@ import type {
   SnapshotState,
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
-import { listAttachedPluginPins } from "./services/layer-composition.js";
+import { listAttachedLayerRefs, listAttachedPluginPins } from "./services/layer-composition.js";
 import type { PluginPinMetadata } from "./types.js";
 import {
   getHarnessPreference,
@@ -95,7 +95,7 @@ import {
   uniqueHarnessTargets,
 } from "./services/harness-targets.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
-import { getCloudProfile, saveCloudProfile, setDefaultCloudProfile, updateCloudProfile, removeCloudProfile } from "./config/cloud-profiles.js";
+import { getCloudAccount, saveCloudAccount, setDefaultCloudAccount, updateCloudAccount, removeCloudAccount } from "./config/cloud-accounts.js";
 import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
 import {
   listLayersInScope,
@@ -117,6 +117,7 @@ import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "./constants/onboarding.js";
+import { PROFILE_LAYER_TAG, isProfileLayer } from "./constants/profile.js";
 import { buildConceptsGuidePayload, printConceptsGuide } from "./services/concepts-guide.js";
 import { catalogAliasHint } from "./services/catalog-aliases.js";
 import { maybePromptInitCatalogInstall } from "./services/init-catalog-prompt.js";
@@ -214,6 +215,16 @@ import {
   exportMigrationState,
   importMigrationState,
 } from "./services/migrate.js";
+import {
+  createProfileCommand,
+  getActiveProfilePayload,
+  listProfileLayersCommand,
+  showProfileCommand,
+  tagProfileCommand,
+  untagProfileCommand,
+  useProfileCommand,
+} from "./services/profile-commands.js";
+import { setActiveProfileName } from "./services/active-profile.js";
 import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
   isPromptCancellationError,
@@ -1725,27 +1736,27 @@ function handleLayerImportCommand(file: string): void {
   );
 }
 
-async function resolveCloudClientForLayerCommand(profileName?: string) {
-  const profileInfo = await getCloudProfile(profileName);
-  const { profile } = profileInfo;
-  if (!profile || !profile.cloudBaseUrl) return undefined;
-  const token = profile.accessToken ? {
-    access_token: profile.accessToken,
-    refresh_token: profile.refreshToken,
-    expires_at: typeof profile.accessTokenExpiresAt === 'string' ? Number(profile.accessTokenExpiresAt) : (profile.accessTokenExpiresAt as number | undefined),
+async function resolveCloudClientForLayerCommand(accountName?: string) {
+  const accountInfo = await getCloudAccount(accountName);
+  const { account } = accountInfo;
+  if (!account || !account.cloudBaseUrl) return undefined;
+  const token = account.accessToken ? {
+    access_token: account.accessToken,
+    refresh_token: account.refreshToken,
+    expires_at: typeof account.accessTokenExpiresAt === 'string' ? Number(account.accessTokenExpiresAt) : (account.accessTokenExpiresAt as number | undefined),
   } : undefined;
-  return createCloudClient({ baseUrl: profile.cloudBaseUrl, token });
+  return createCloudClient({ baseUrl: account.cloudBaseUrl, token });
 }
 
 async function handleLayerSearchCommand(
   query: string,
-  opts: { profile?: string; format?: string; baseUrl?: string },
+  opts: { account?: string; format?: string; baseUrl?: string; tag?: string },
 ) {
   const format = parseOutputFormat(opts.format);
   try {
     const results = await listLayersInScope(
-      { q: query, limit: 25, sort: "updated" },
-      { profile: opts.profile, baseUrl: opts.baseUrl },
+      { q: query, tag: opts.tag, limit: 25, sort: "updated" },
+      { account: opts.account, baseUrl: opts.baseUrl },
     );
     if (format === "json") {
       printJson(results);
@@ -1764,6 +1775,16 @@ async function handleLayerSearchCommand(
   }
 }
 
+async function handleProfileSearchCommand(
+  query: string,
+  opts: { account?: string; format?: string; baseUrl?: string },
+) {
+  await handleLayerSearchCommand(query, {
+    ...opts,
+    tag: PROFILE_LAYER_TAG,
+  });
+}
+
 async function handleLayerInstallCommand(
   selector: string | undefined,
   opts: {
@@ -1771,13 +1792,13 @@ async function handleLayerInstallCommand(
     org?: string;
     catalog?: string;
     version?: string;
-    profile?: string;
+    account?: string;
     baseUrl?: string;
     format?: string;
     interactive?: boolean;
     noInteractive?: boolean;
   },
-) {
+): Promise<{ layerName: string; layerId: string } | undefined> {
   const db = getDb();
   initializeSchema(db);
   const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
@@ -1793,7 +1814,7 @@ async function handleLayerInstallCommand(
     if (!canPrompt) {
       process.exitCode = 1;
       ui.danger("error: selector is required in non-interactive mode. Use: layer pull org/catalog/layer[@version]");
-      return;
+      return undefined;
     }
 
     try {
@@ -1803,7 +1824,7 @@ async function handleLayerInstallCommand(
         listLayers: ({ q, limit }) =>
           listLayersInScope(
             { q, limit, sort: "updated" },
-            { profile: opts.profile, baseUrl: opts.baseUrl },
+            { account: opts.account, baseUrl: opts.baseUrl },
           ),
       });
       selector = selected.selector;
@@ -1813,10 +1834,10 @@ async function handleLayerInstallCommand(
     } catch (err) {
       process.exitCode = 1;
       if (isPromptCancellationError(err)) {
-        return;
+        return undefined;
       }
       ui.danger(err instanceof Error ? err.message : String(err));
-      return;
+      return undefined;
     }
   }
 
@@ -1830,7 +1851,7 @@ async function handleLayerInstallCommand(
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
-    return;
+    return undefined;
   }
 
   const localName = opts.as ?? parsed.layer_slug;
@@ -1838,13 +1859,13 @@ async function handleLayerInstallCommand(
   if (existing && !opts.as) {
     process.exitCode = 1;
     ui.danger(`Layer name already exists: ${localName}. Use --as to install under a different name.`);
-    return;
+    return undefined;
   }
 
   try {
     const installed = await installLayerFromCatalog(parsed, {
       as: opts.as,
-      profile: opts.profile,
+      account: opts.account,
       baseUrl: opts.baseUrl,
     });
     if (parseOutputFormat(opts.format) === "json") {
@@ -1855,7 +1876,7 @@ async function handleLayerInstallCommand(
         layer_slug: parsed.layer_slug,
         version: installed.version,
       });
-      return;
+      return { layerName: installed.layerName, layerId: installed.layerId };
     }
     const sourceLabel = formatPublishedSelector({
       org: parsed.org_slug,
@@ -1863,15 +1884,44 @@ async function handleLayerInstallCommand(
       name: parsed.layer_slug,
     });
     ui.success(`Installed layer ${installed.layerName} from ${sourceLabel}`);
+    return { layerName: installed.layerName, layerId: installed.layerId };
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
+    return undefined;
   }
+}
+
+async function handleProfilePullCommand(
+  selector: string,
+  opts: {
+    as?: string;
+    org?: string;
+    catalog?: string;
+    version?: string;
+    account?: string;
+    baseUrl?: string;
+    format?: string;
+  },
+): Promise<void> {
+  const installed = await handleLayerInstallCommand(selector, opts);
+  if (!installed || process.exitCode) {
+    return;
+  }
+
+  const installedLayer = getLayer(installed.layerName);
+  if (!installedLayer || isProfileLayer(installedLayer)) {
+    return;
+  }
+
+  ui.warn(
+    `Installed layer ${ui.theme.accent(installed.layerName)} is not tagged as a profile.`,
+  );
 }
 
 async function handleLayerPublishCommand(
   layerName: string,
-  opts: { org?: string; catalog?: string; profile?: string; format?: string },
+  opts: { org?: string; catalog?: string; account?: string; format?: string },
 ) {
   const db = getDb();
   initializeSchema(db);
@@ -1883,10 +1933,10 @@ async function handleLayerPublishCommand(
   }
 
   try {
-    const client = await resolveCloudClientForLayerCommand(opts.profile);
+    const client = await resolveCloudClientForLayerCommand(opts.account);
     if (!client) {
       process.exitCode = 1;
-      ui.danger("No cloud profile configured. Use `auth login` to create one or pass --profile.");
+      ui.danger("No cloud account configured. Use `auth login` to create one or pass --account.");
       return;
     }
 
@@ -1976,6 +2026,62 @@ async function handleLayerPublishCommand(
       ui.danger(errorMsg);
     }
   }
+}
+
+function countMaterialLayerResources(layerId: string): number {
+  return getLayerResources(layerId).filter(
+    (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+  ).length;
+}
+
+function warnProfilePublishValidation(layer: Layer): void {
+  const refs = listAttachedLayerRefs(layer.id);
+  const materialCount = countMaterialLayerResources(layer.id);
+  if (refs.length === 0 && materialCount === 0) {
+    ui.warn(
+      `Profile ${ui.theme.accent(layer.name)} has no layer references and no material resources.`,
+    );
+  }
+
+  const unresolvedLocalRefs: string[] = [];
+  for (const ref of refs) {
+    const local = resolveLayerSelector(
+      ref.version_constraint
+        ? `${ref.dependency_name}@${ref.version_constraint}`
+        : ref.dependency_name,
+    );
+    if (!local) {
+      continue;
+    }
+    if (!local.org_slug || !local.catalog_slug) {
+      unresolvedLocalRefs.push(ref.dependency_name);
+    }
+  }
+
+  if (unresolvedLocalRefs.length > 0) {
+    ui.warn(
+      `Profile ${ui.theme.accent(layer.name)} references unpublished local layers: ${unresolvedLocalRefs.join(", ")}`,
+    );
+  }
+}
+
+async function handleProfilePublishCommand(
+  layerName: string,
+  opts: { org?: string; catalog?: string; account?: string; format?: string },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const layer = getLayer(layerName);
+  if (!layer) {
+    process.exitCode = 1;
+    ui.danger(`Layer not found: ${layerName}`);
+    return;
+  }
+  if (!isProfileLayer(layer)) {
+    ui.warn(`Layer "${layer.name}" is not tagged as a profile.`);
+  }
+  warnProfilePublishValidation(layer);
+  await handleLayerPublishCommand(layerName, opts);
 }
 
 function handleHarnessListCommand(
@@ -2895,6 +3001,7 @@ async function handleInitCommand(opts: {
   aliases?: string;
   interactive?: boolean;
   noInteractive?: boolean;
+  defaultProfile?: boolean;
 } = {}): Promise<void> {
   const dbPath = getDbPath();
   const hadExistingStore = existsSync(dbPath);
@@ -2914,6 +3021,20 @@ async function handleInitCommand(opts: {
     console.log("");
   }
   const homeDefaults = await scanAndPersistHomeDefaults();
+  if (opts.defaultProfile !== false) {
+    const existingDefaultProfile = listLayers().find(
+      (layer) => layer.name === "default" && isProfileLayer(layer),
+    );
+    if (!existingDefaultProfile) {
+      createLayer({
+        name: "default",
+        version: "1.0.0",
+        description: "Bootstrap profile from init",
+        tags: [PROFILE_LAYER_TAG],
+      });
+    }
+    setActiveProfileName("default");
+  }
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
     noInteractive: opts.noInteractive,
@@ -3721,6 +3842,7 @@ program
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--main <slug>", "Default main harness slug")
   .option("--aliases <slugs>", "Comma-separated alias harness slugs")
+  .option("--no-default-profile", "Skip creating and activating the default profile layer")
   .option(
     "--interactive",
     "Prompt for harness selection instead of relying on explicit flags",
@@ -3730,6 +3852,7 @@ program
     main?: string;
     aliases?: string;
     interactive?: boolean;
+    defaultProfile?: boolean;
   }) => {
     await handleInitCommand(opts);
   });
@@ -4095,7 +4218,7 @@ addApplyCommandOptions(
 layerCmd
   .command("search")
   .argument("<query>", "Search query for layers on the cloud catalog")
-  .option("--profile <name>", "Cloud profile to use")
+  .option("--account <name>", "Cloud account to use")
   .option("--base-url <url>", "HarnessDeck Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Search remote layer libraries")
@@ -4197,19 +4320,21 @@ layerCmd
   .option("--org <slug>", "Organization slug (when selector omits org)")
   .option("--catalog <slug>", "Catalog slug (default: default)")
   .option("--version <constraint>", "Version constraint (when selector omits version)")
-  .option("--profile <name>", "Cloud profile to use")
+  .option("--account <name>", "Cloud account to use")
   .option("--base-url <url>", "HarnessDeck Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Pull a layer from the remote catalog into the local DB")
-  .action(handleLayerInstallCommand);
+  .action(async (selector, opts) => {
+    await handleLayerInstallCommand(selector, opts);
+  });
 
 layerCmd
   .command("publish")
   .argument("<layer>", "Local layer name to publish")
   .option("--org <slug>", "Organization slug to publish under")
   .option("--catalog <slug>", "Catalog slug to publish under (default: default)")
-  .option("--profile <name>", "Cloud profile to use")
+  .option("--account <name>", "Cloud account to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Publish a local layer to the cloud catalog")
   .action(handleLayerPublishCommand);
@@ -4275,6 +4400,282 @@ layerCmd
       return;
     }
     ui.success(`Cleared default environment on ${ui.theme.accent(layer)}`);
+  });
+
+// ── profile ──────────────────────────────────────────────────────────────
+
+const profileCmd = configureCommandGroup(
+  program
+    .command("profile")
+    .alias("p")
+    .description("Manage profile layers and global profile switching"),
+);
+
+profileCmd
+  .command("list")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const profiles = listProfileLayersCommand();
+    const active = getActiveProfilePayload().active_profile;
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson({
+        profiles: profiles.map((profile) => ({
+          ...profile,
+          active: active === profile.name,
+        })),
+      });
+      return;
+    }
+    ui.table.print({
+      columns: [
+        { key: "name", header: "NAME", width: 24 },
+        { key: "version", header: "VERSION", width: 12 },
+        { key: "active", header: "ACTIVE", width: 8 },
+        { key: "description", header: "DESCRIPTION", width: 50 },
+      ],
+      rows: profiles.map((profile) => ({
+        name: profile.name,
+        version: profile.version,
+        active: active === profile.name ? "yes" : "",
+        description: profile.description || "—",
+      })),
+      empty: "No profile layers found.",
+    });
+  });
+
+profileCmd
+  .command("show")
+  .argument("<name>", "Profile layer name or selector")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const payload = showProfileCommand(name);
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+    console.log(`${ui.theme.muted("Profile:")} ${ui.theme.accent(payload.profile.name)}`);
+    console.log(`${ui.theme.muted("Version:")} ${payload.profile.version}`);
+    console.log(`${ui.theme.muted("Active:")} ${payload.active ? "yes" : "no"}`);
+    console.log("");
+    ui.table.print({
+      columns: [
+        { key: "dependency_name", header: "DEPENDENCY", width: 28 },
+        { key: "version_constraint", header: "VERSION", width: 16 },
+      ],
+      rows: payload.dependencies,
+      empty: "No attached layer dependencies.",
+    });
+  });
+
+profileCmd
+  .command("active")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const payload = getActiveProfilePayload();
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+    if (!payload.active_profile) {
+      ui.info("No active profile set.");
+      return;
+    }
+    ui.success(`Active profile: ${ui.theme.accent(payload.active_profile)}`);
+  });
+
+profileCmd
+  .command("use")
+  .argument("<name>", "Profile layer name or selector")
+  .option("--dry-run", "Show what would be written")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to global harness preference)",
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt",
+  )
+  .option("--account <name>", "Cloud account name for dependency pulls")
+  .option("--base-url <url>", "Cloud base URL for dependency pulls")
+  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(async (name: string, opts: {
+    dryRun?: boolean;
+    harness?: string;
+    onConflict?: string;
+    account?: string;
+    baseUrl?: string;
+    pull?: boolean;
+    format?: string;
+  }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: opts.onConflict,
+    });
+    try {
+      const payload = await useProfileCommand(name, {
+        dryRun: opts.dryRun,
+        harness: opts.harness,
+        pull: opts.pull,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        conflictPolicy,
+        ...(conflictPolicy === "prompt"
+          ? { conflictResolver: promptMaterializationConflict }
+          : {}),
+      });
+      if (format === "json") {
+        printJson(payload);
+        return;
+      }
+      if (payload.cancelled) {
+        process.exitCode = 1;
+        ui.warn("Profile apply cancelled.");
+        return;
+      }
+      const dryPrefix = payload.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      ui.success(
+        `${dryPrefix}Applied profile ${ui.theme.accent(payload.profile_name)} to ${payload.harnesses.join(", ") || "(none)"}`,
+      );
+      if (payload.default_environment_name) {
+        ui.info(`Default environment: ${payload.default_environment_name}`);
+      }
+      if ((payload.pulled_layers?.length ?? 0) > 0) {
+        ui.info(
+          `Pulled ${payload.pulled_layers?.length ?? 0} missing layer dependencies:`,
+        );
+        for (const pulled of payload.pulled_layers ?? []) {
+          console.log(`  - ${pulled.layer_name} (${pulled.source})`);
+        }
+      }
+      ui.kvBlock([
+        { key: "Files", value: `${payload.files.length}` },
+        { key: "Written", value: `${payload.written_files.length}` },
+        { key: "Skipped", value: `${payload.skipped_files.length}` },
+        ...(payload.snapshot_id ? [{ key: "Snapshot", value: payload.snapshot_id }] : []),
+      ]);
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+profileCmd
+  .command("create")
+  .argument("<name>", "Profile layer name")
+  .option("-d, --description <text>", "Profile description")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((name: string, opts: { description?: string; format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const layer = createProfileCommand({
+      name,
+      description: opts.description,
+    });
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(layer);
+      return;
+    }
+    ui.success(`Created profile ${ui.theme.accent(layer.name)}`);
+  });
+
+profileCmd
+  .command("tag")
+  .argument("<layer>", "Layer selector")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((layer: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const payload = tagProfileCommand(layer);
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+    ui.success(`Tagged layer ${ui.theme.accent(layer)} as profile`);
+  });
+
+profileCmd
+  .command("untag")
+  .argument("<layer>", "Layer selector")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((layer: string, opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const payload = untagProfileCommand(layer);
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson(payload);
+      return;
+    }
+    ui.success(`Removed profile tag from ${ui.theme.accent(layer)}`);
+  });
+
+profileCmd
+  .command("search")
+  .argument("<query>", "Search query")
+  .option("--account <name>", "Cloud account name")
+  .option("--base-url <url>", "Cloud base URL")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Search catalog profile layers (tag=profile)")
+  .action(async (query: string, opts: {
+    account?: string;
+    baseUrl?: string;
+    format?: string;
+  }) => {
+    await handleProfileSearchCommand(query, opts);
+  });
+
+profileCmd
+  .command("pull")
+  .argument("<selector>", "Catalog profile selector")
+  .option("--as <name>", "Install as local layer name")
+  .option("--org <slug>", "Organization slug helper for short selectors")
+  .option("--catalog <slug>", "Catalog slug helper for short selectors")
+  .option("--version <version>", "Layer version helper for short selectors")
+  .option("--account <name>", "Cloud account name")
+  .option("--base-url <url>", "Cloud base URL")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Pull a profile layer from catalog")
+  .action(async (selector: string, opts: {
+    as?: string;
+    org?: string;
+    catalog?: string;
+    version?: string;
+    account?: string;
+    baseUrl?: string;
+    format?: string;
+  }) => {
+    await handleProfilePullCommand(selector, opts);
+  });
+
+profileCmd
+  .command("publish")
+  .argument("<name>", "Profile layer name")
+  .option("--org <slug>", "Organization slug")
+  .option("--catalog <slug>", "Catalog slug")
+  .option("--account <name>", "Cloud account name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Publish a profile layer with validation warnings")
+  .action(async (name: string, opts: {
+    org?: string;
+    catalog?: string;
+    account?: string;
+    format?: string;
+  }) => {
+    await handleProfilePublishCommand(name, opts);
   });
 
 // ── environment ──────────────────────────────────────────────────────────
@@ -5175,7 +5576,6 @@ resourceCmd
 const projectCmd = configureCommandGroup(
   program
     .command("project")
-    .alias("p")
     .description("Manage project scanning, apply state, and snapshots"),
 );
 
@@ -5339,8 +5739,8 @@ process.on("exit", () => closeDb());
 
 // ── cloud ───────────────────────────────────────────────────────────────
 
-async function handleCloudLoginCommand(profileName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
-  const name = profileName ?? "default";
+async function handleCloudLoginCommand(accountName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
+  const name = accountName ?? "default";
   const baseUrl = opts.baseUrl ?? "https://harnessdeck.kayrnt.fr";
   try {
     const device = await requestDeviceCode(baseUrl);
@@ -5348,7 +5748,7 @@ async function handleCloudLoginCommand(profileName: string | undefined, opts: { 
     console.log(`Code:  ${device.user_code}`);
     const token = await pollDeviceToken(baseUrl, device.device_code, { interval: 0.1, maxPolls: 300 });
     const now = Math.floor(Date.now() / 1000);
-    const profile = {
+    const account = {
       cloudBaseUrl: baseUrl,
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
@@ -5358,18 +5758,18 @@ async function handleCloudLoginCommand(profileName: string | undefined, opts: { 
       orgSlug: token.orgSlug,
       scopes: token.scopes ?? [],
     };
-    await saveCloudProfile(name, profile);
-    await setDefaultCloudProfile(name);
-    ui.success(`Saved cloud profile: ${name}`);
+    await saveCloudAccount(name, account);
+    await setDefaultCloudAccount(name);
+    ui.success(`Saved cloud account: ${name}`);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
-async function handleCloudWhoamiCommand(opts: { profile?: string; format?: string } = {}): Promise<void> {
+async function handleCloudWhoamiCommand(opts: { account?: string; format?: string } = {}): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const { profile } = await getCloudProfile(opts.profile);
-  if (!profile || !profile.accessToken) {
+  const { account } = await getCloudAccount(opts.account);
+  if (!account || !account.accessToken) {
     if (format === "json") {
       printJson({});
       return;
@@ -5379,12 +5779,12 @@ async function handleCloudWhoamiCommand(opts: { profile?: string; format?: strin
   }
   try {
     const client = createCloudClient({
-      baseUrl: profile.cloudBaseUrl,
+      baseUrl: account.cloudBaseUrl,
       token: {
-        access_token: profile.accessToken as string,
-        refresh_token: profile.refreshToken as string | undefined,
-        expires_at: typeof profile.accessTokenExpiresAt === "number"
-          ? (profile.accessTokenExpiresAt as number)
+        access_token: account.accessToken as string,
+        refresh_token: account.refreshToken as string | undefined,
+        expires_at: typeof account.accessTokenExpiresAt === "number"
+          ? (account.accessTokenExpiresAt as number)
           : undefined,
       },
     });
@@ -5399,10 +5799,10 @@ async function handleCloudWhoamiCommand(opts: { profile?: string; format?: strin
   }
 }
 
-async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string; format?: string } = {}): Promise<void> {
+async function handleCloudOrgsCommand(opts: { account?: string; switch?: string; format?: string } = {}): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const { profileName, profile } = await getCloudProfile(opts.profile);
-  if (!profile || !profile.accessToken) {
+  const { accountName, account } = await getCloudAccount(opts.account);
+  if (!account || !account.accessToken) {
     if (format === "json") {
       printJson([]);
       return;
@@ -5412,12 +5812,12 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
   }
   try {
     const client = createCloudClient({
-      baseUrl: profile.cloudBaseUrl,
+      baseUrl: account.cloudBaseUrl,
       token: {
-        access_token: profile.accessToken as string,
-        refresh_token: profile.refreshToken as string | undefined,
-        expires_at: typeof profile.accessTokenExpiresAt === "number"
-          ? (profile.accessTokenExpiresAt as number)
+        access_token: account.accessToken as string,
+        refresh_token: account.refreshToken as string | undefined,
+        expires_at: typeof account.accessTokenExpiresAt === "number"
+          ? (account.accessTokenExpiresAt as number)
           : undefined,
       },
     });
@@ -5429,8 +5829,8 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
         ui.danger(`Organization not found: ${opts.switch}`);
         return;
       }
-      if (profileName) {
-      await updateCloudProfile(profileName, { orgId: String((target as Record<string, unknown>)['id']), orgSlug: String((target as Record<string, unknown>)['slug']) });
+      if (accountName) {
+      await updateCloudAccount(accountName, { orgId: String((target as Record<string, unknown>)['id']), orgSlug: String((target as Record<string, unknown>)['slug']) });
       }
       ui.success(`Switched to org: ${String((target as Record<string, unknown>)["slug"])}`);
       if (format === "json") {
@@ -5450,22 +5850,22 @@ async function handleCloudOrgsCommand(opts: { profile?: string; switch?: string;
   }
 }
 
-async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promise<void> {
-  const { profileName, profile } = await getCloudProfile(opts.profile);
-  if (!profileName) {
-    ui.warn("No cloud profile configured.");
+async function handleCloudLogoutCommand(opts: { account?: string } = {}): Promise<void> {
+  const { accountName, account } = await getCloudAccount(opts.account);
+  if (!accountName) {
+    ui.warn("No cloud account configured.");
     return;
   }
   try {
-    if (profile?.refreshToken) {
+    if (account?.refreshToken) {
       try {
         const client = createCloudClient({
-          baseUrl: profile.cloudBaseUrl,
+          baseUrl: account.cloudBaseUrl,
           token: {
-            access_token: profile.accessToken as string || "",
-            refresh_token: profile.refreshToken as string,
-            expires_at: typeof profile.accessTokenExpiresAt === "number"
-              ? (profile.accessTokenExpiresAt as number)
+            access_token: account.accessToken as string || "",
+            refresh_token: account.refreshToken as string,
+            expires_at: typeof account.accessTokenExpiresAt === "number"
+              ? (account.accessTokenExpiresAt as number)
               : undefined,
           },
         });
@@ -5474,8 +5874,8 @@ async function handleCloudLogoutCommand(opts: { profile?: string } = {}): Promis
         // ignore revoke errors
       }
     }
-    await removeCloudProfile(profileName);
-    ui.success(`Logged out: ${profileName}`);
+    await removeCloudAccount(accountName);
+    ui.success(`Logged out: ${accountName}`);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
   }
@@ -5487,43 +5887,83 @@ const authCmd = configureCommandGroup(
   program
     .command("auth")
     .alias("a")
-    .description("Authenticate with HarnessDeck Cloud and manage cloud profiles"),
+    .description("Authenticate with HarnessDeck Cloud and manage cloud accounts"),
 );
 
 authCmd
-  .command("login [profile]")
+  .command("login [account]")
   .option("--base-url <url>", "Cloud base URL")
   .description("Log into HarnessDeck Cloud via device authentication")
-  .action(async (profile: string | undefined, opts: { baseUrl?: string }) => {
-    await handleCloudLoginCommand(profile, opts);
+  .action(async (account: string | undefined, opts: { baseUrl?: string }) => {
+    await handleCloudLoginCommand(account, opts);
   });
 
 authCmd
   .command("status")
-  .option("--profile <name>", "Profile name")
+  .option("--account <name>", "Account name")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Show authenticated user and profile context")
-  .action(async (opts: { profile?: string; format?: string }) => {
+  .description("Show authenticated user and account context")
+  .action(async (opts: { account?: string; format?: string }) => {
     await handleCloudWhoamiCommand(opts);
   });
 
 authCmd
   .command("orgs")
-  .option("--profile <name>", "Profile name")
+  .option("--account <name>", "Account name")
   .option("--switch <org_slug>", "Switch to the given organization slug")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("List organizations and optionally switch")
-  .action(async (opts: { profile?: string; switch?: string; format?: string }) => {
+  .action(async (opts: { account?: string; switch?: string; format?: string }) => {
     await handleCloudOrgsCommand(opts);
   });
 
 authCmd
   .command("logout")
-  .option("--profile <name>", "Profile name")
-  .description("Log out and remove local cloud profile")
-  .action(async (opts: { profile?: string }) => {
+  .option("--account <name>", "Account name")
+  .description("Log out and remove local cloud account")
+  .action(async (opts: { account?: string }) => {
     await handleCloudLogoutCommand(opts);
   });
+
+function knownTopLevelCommandTokens(): Set<string> {
+  const reserved = new Set<string>();
+  for (const command of program.commands) {
+    reserved.add(command.name());
+    for (const alias of command.aliases()) {
+      reserved.add(alias);
+    }
+  }
+  return reserved;
+}
+
+function rewriteProfileShorthandArgv(argv: string[]): string[] {
+  const candidate = argv[2];
+  if (!candidate || candidate.startsWith("-")) {
+    return argv;
+  }
+
+  // Top-level command names and aliases are reserved and always win.
+  if (knownTopLevelCommandTokens().has(candidate)) {
+    return argv;
+  }
+
+  let profileNames: Set<string>;
+  try {
+    const db = getDb();
+    initializeSchema(db);
+    profileNames = new Set(
+      listProfileLayersCommand().map((profile) => profile.name),
+    );
+  } catch {
+    return argv;
+  }
+
+  if (!profileNames.has(candidate)) {
+    return argv;
+  }
+
+  return [argv[0] ?? "node", argv[1] ?? "harnessdeck", "profile", "use", candidate, ...argv.slice(3)];
+}
 
 export async function runHarnessdeckCli(
   argv: string[] = process.argv,
@@ -5534,8 +5974,9 @@ export async function runHarnessdeckCli(
     program.outputHelp();
     return;
   }
+  const effectiveArgv = rewriteProfileShorthandArgv(argv);
   try {
-    await program.parseAsync(argv);
+    await program.parseAsync(effectiveArgv);
   } catch (error) {
     if (isPromptCancellationError(error)) {
       return;
@@ -5548,11 +5989,11 @@ export async function runHarnessdeckCli(
     if (isGroupedCommandFallbackError(error)) {
       const match = error.message.match(/too many arguments for '([^']+)'\. Expected 0 arguments but got \d+\./i);
       const commandName = match?.[1] ?? "command";
-      const commandIndex = argv.findIndex(
+      const commandIndex = effectiveArgv.findIndex(
         (value, index) => index >= 2 && value === commandName,
       );
       const attemptedSubcommand =
-        commandIndex >= 0 ? argv[commandIndex + 1] : undefined;
+        commandIndex >= 0 ? effectiveArgv[commandIndex + 1] : undefined;
       error.code = "commander.unknownCommand";
       error.message = attemptedSubcommand
         ? `error: unknown command '${commandName} ${attemptedSubcommand}'`

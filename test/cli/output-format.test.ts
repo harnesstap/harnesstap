@@ -106,15 +106,15 @@ describe("CLI output format", () => {
       const cloudOrgs = await runCli(["auth", "orgs", "--format", "json"]);
       expect(Array.isArray(JSON.parse(cloudOrgs.stdout))).toBe(true);
 
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const { createCatalogFetchMock } = await import("../helpers/catalog-fetch.ts");
       const { createCloudPublishFetchMock } = await import("../helpers/cloud-fetch.ts");
@@ -138,7 +138,7 @@ describe("CLI output format", () => {
           "layer",
           "search",
           "x",
-          "--profile",
+          "--account",
           "test",
           "--base-url",
           "https://mock",
@@ -153,7 +153,7 @@ describe("CLI output format", () => {
           "harnessdeck-cloud/default/lib@1.0",
           "--as",
           "lib-local",
-          "--profile",
+          "--account",
           "test",
           "--base-url",
           "https://mock",
@@ -179,7 +179,7 @@ describe("CLI output format", () => {
           "layer",
           "publish",
           "pub1",
-          "--profile",
+          "--account",
           "test",
           "--format",
           "json",
