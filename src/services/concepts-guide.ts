@@ -2,6 +2,10 @@ import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "../constants/onboarding.js";
+import {
+  listScenarioSummaries,
+  type ScenarioSummary,
+} from "./scenario-guide.js";
 import { ui } from "../ui/index.js";
 
 export interface ConceptsGuidePayload {
@@ -9,6 +13,11 @@ export interface ConceptsGuidePayload {
   harness_roles: Array<{ term: string; definition: string }>;
   commands: Array<{ command: string; purpose: string }>;
   environment_cascade: string;
+}
+
+export interface HelpCommandPayload {
+  concepts: ConceptsGuidePayload;
+  scenarios: ScenarioSummary[];
 }
 
 export function buildConceptsGuidePayload(): ConceptsGuidePayload {
@@ -60,12 +69,18 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
   };
 }
 
+export function buildHelpCommandPayload(): HelpCommandPayload {
+  return {
+    concepts: buildConceptsGuidePayload(),
+    scenarios: listScenarioSummaries(),
+  };
+}
+
 function formatCommand(command: string): string {
   return ui.theme.command(command);
 }
 
-export function printConceptsGuide(): void {
-  const payload = buildConceptsGuidePayload();
+function printConceptSections(payload: ConceptsGuidePayload): void {
   console.log("");
   ui.subheader("CORE CONCEPTS");
   console.log("");
@@ -88,6 +103,30 @@ export function printConceptsGuide(): void {
   ui.subheader("ENVIRONMENT CASCADE");
   console.log("");
   console.log(`  ${payload.environment_cascade}`);
+}
+
+function printScenarioIndex(scenarios: ScenarioSummary[]): void {
   console.log("");
-  ui.dim("Run hd guide for quick-start commands and documentation links.");
+  ui.subheader("SCENARIOS");
+  console.log("");
+
+  const maxIdWidth = Math.max(
+    ...scenarios.map((scenario) => String(scenario.id).length),
+  );
+
+  for (const scenario of scenarios) {
+    const idStr = String(scenario.id).padStart(maxIdWidth);
+    const meta = [scenario.frequency, scenario.status].filter(Boolean).join(" · ");
+    const metaSuffix = meta.length > 0 ? `  ${ui.theme.muted(meta)}` : "";
+    console.log(`  ${idStr}  ${scenario.title}${metaSuffix}`);
+  }
+
+  console.log("");
+  ui.dim("Run hd help scenario <id> for a scenario playbook.");
+}
+
+export function printHelpCommand(): void {
+  const payload = buildHelpCommandPayload();
+  printConceptSections(payload.concepts);
+  printScenarioIndex(payload.scenarios);
 }

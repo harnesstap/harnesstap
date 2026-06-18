@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { loadScenarioGuide, listScenarioIds, parseScenarioId } from "../../src/services/scenario-guide.js";
+import {
+  listScenarioIds,
+  listScenarioSummaries,
+  loadScenarioGuide,
+  parseScenarioId,
+} from "../../src/services/scenario-guide.js";
 
 describe("scenario guide", () => {
   it("lists all scenario ids", () => {
@@ -7,6 +12,14 @@ describe("scenario guide", () => {
     expect(ids.length).toBeGreaterThanOrEqual(30);
     expect(ids).toContain(11);
     expect(ids).toContain(29);
+  });
+
+  it("lists scenario summaries with titles", () => {
+    const summaries = listScenarioSummaries();
+    expect(summaries.length).toBeGreaterThanOrEqual(30);
+    const scenario11 = summaries.find((summary) => summary.id === 11);
+    expect(scenario11?.title.toLowerCase()).toContain("catalog");
+    expect(scenario11?.frequency).toBeTruthy();
   });
 
   it("loads scenario 11 with commands", () => {

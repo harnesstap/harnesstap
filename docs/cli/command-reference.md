@@ -23,31 +23,15 @@ Available on `harnessdeck` / `hd`:
 | `profile` | `p` |
 | `auth` | `a` |
 
-## guide
+## help
 
-Print quick-start commands and documentation links.
-
-```bash
-hd guide
-hd guide --scenario 11
-```
-
-## scenario
-
-Show a numbered scenario playbook from `docs/scenarios/details/`.
+Core HarnessDeck concepts and a numbered scenario index. Scenario playbooks live in `docs/scenarios/details/`.
 
 ```bash
-hd scenario 11
-hd scenario 7 --format json
-```
-
-## concepts
-
-Explain core HarnessDeck concepts (resource, layer, deck, environment, harness) and when to use common commands.
-
-```bash
-hd concepts
-hd concepts --format json
+hd help
+hd help --format json
+hd help scenario 11
+hd help scenario 7 --format json
 ```
 
 ## completion

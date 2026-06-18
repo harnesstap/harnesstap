@@ -142,6 +142,22 @@ describe("CLI __complete", () => {
       await context.cleanup();
     }
   });
+
+  it("returns scenario ids for help scenario completion", async () => {
+    const result = await runCli([
+      "__complete",
+      "zsh",
+      "--",
+      "hd",
+      "help",
+      "scenario",
+      "1",
+    ]);
+
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain("11");
+    expect(result.stdout).toContain("7");
+  });
 });
 
 async function createTestContextWithoutHarnessdeck(): Promise<{

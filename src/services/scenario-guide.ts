@@ -6,12 +6,15 @@ const SCENARIOS_DETAILS_DIR = resolve(
   "../../docs/scenarios/details",
 );
 
-export interface ScenarioGuide {
+export interface ScenarioSummary {
   id: number;
-  filename: string;
   title: string;
   frequency: string | null;
   status: string | null;
+}
+
+export interface ScenarioGuide extends ScenarioSummary {
+  filename: string;
   summaryLines: string[];
   commands: string[];
 }
@@ -25,6 +28,23 @@ function scenarioDetailPath(id: number): string | undefined {
     return undefined;
   }
   return join(SCENARIOS_DETAILS_DIR, match);
+}
+
+function parseScenarioMetadata(
+  id: number,
+  markdown: string,
+): Pick<ScenarioSummary, "title" | "frequency" | "status"> {
+  const titleMatch = /^# Scenario \d+:\s*(.+)$/m.exec(markdown);
+  const metaMatch =
+    /^\*\*Frequency:\s*([^*]+)\*\*\s*·\s*\*\*Status:\s*([^*]+)\*\*/m.exec(
+      markdown,
+    );
+
+  return {
+    title: titleMatch?.[1]?.trim() ?? `Scenario ${id}`,
+    frequency: metaMatch?.[1]?.trim() ?? null,
+    status: metaMatch?.[2]?.trim() ?? null,
+  };
 }
 
 function extractBashCommands(markdown: string): string[] {
@@ -56,6 +76,26 @@ export function listScenarioIds(): number[] {
     .sort((left, right) => left - right);
 }
 
+export function listScenarioSummaries(): ScenarioSummary[] {
+  return listScenarioIds().map((id) => {
+    const path = scenarioDetailPath(id);
+    if (!path || !existsSync(path)) {
+      return {
+        id,
+        title: `Scenario ${id}`,
+        frequency: null,
+        status: null,
+      };
+    }
+
+    const markdown = readFileSync(path, "utf-8");
+    return {
+      id,
+      ...parseScenarioMetadata(id, markdown),
+    };
+  });
+}
+
 export function loadScenarioGuide(id: number): ScenarioGuide {
   const path = scenarioDetailPath(id);
   if (!path || !existsSync(path)) {
@@ -63,12 +103,6 @@ export function loadScenarioGuide(id: number): ScenarioGuide {
   }
 
   const markdown = readFileSync(path, "utf-8");
-  const titleMatch = /^# Scenario \d+:\s*(.+)$/m.exec(markdown);
-  const metaMatch =
-    /^\*\*Frequency:\s*([^*]+)\*\*\s*·\s*\*\*Status:\s*([^*]+)\*\*/m.exec(
-      markdown,
-    );
-
   const summaryBlock = markdown
     .slice(0, markdown.indexOf("Typical commands:"))
     .split("\n")
@@ -79,9 +113,7 @@ export function loadScenarioGuide(id: number): ScenarioGuide {
   return {
     id,
     filename: path.split("/").pop() ?? String(id),
-    title: titleMatch?.[1]?.trim() ?? `Scenario ${id}`,
-    frequency: metaMatch?.[1]?.trim() ?? null,
-    status: metaMatch?.[2]?.trim() ?? null,
+    ...parseScenarioMetadata(id, markdown),
     summaryLines: summaryBlock,
     commands: extractBashCommands(markdown),
   };

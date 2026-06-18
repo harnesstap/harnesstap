@@ -207,43 +207,28 @@ describe("CLI help and command organization", () => {
     expect(layerHelp.stdout).toContain("Scan current folder and create a layer from its resources");
   });
 
-  it("prints an expanded quick-start guide with documentation links", async () => {
-    const result = await runCli(["guide"]);
-
-    expect(result.stdout).toContain("WHAT HARNESSDECK DOES");
-    expect(result.stdout).toContain("QUICK START");
-    expect(result.stdout).toContain("layer search foundation");
-    expect(result.stdout).toContain(
-      "layer apply engineering-foundation",
-    );
-    expect(result.stdout).toContain("concepts");
-    expect(result.stdout).toContain("DOCUMENTATION");
-    expect(result.stdout).toContain("https://github.com/harnessdeck/harnessdeck#quick-start");
-    expect(result.stdout).toContain(
-      "https://github.com/harnessdeck/harnessdeck/blob/main/docs/cli/command-reference.md",
-    );
-    expect(result.stdout).toContain(
-      "https://github.com/harnessdeck/harnessdeck/blob/main/docs/scenarios/scenarios.md",
-    );
-  });
-
-  it("prints core concepts and command guidance", async () => {
-    const result = await runCli(["concepts"]);
+  it("prints help with concepts and scenario index", async () => {
+    const result = await runCli(["help"]);
 
     expect(result.stdout).toContain("CORE CONCEPTS");
+    expect(result.stdout).toContain("SCENARIOS");
     expect(result.stdout).toContain("resource");
     expect(result.stdout).toContain("layer");
     expect(result.stdout).toContain("layer apply");
     expect(result.stdout).toContain("project mirror");
     expect(result.stdout).toContain("layer search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
+    expect(result.stdout).toContain("hd help scenario");
+    expect(result.stdout).toMatch(/11\s+Start from a catalog baseline/);
   });
 
-  it("shows concepts in top-level help", async () => {
+  it("shows help in top-level help", async () => {
     const result = await runCli(["--help"]);
-    expect(result.stdout).toContain("concepts");
+    expect(result.stdout).toContain("help");
     expect(result.stdout).toContain("completion");
-    expect(result.stdout).toContain("scenario");
+    expect(result.stdout).not.toMatch(/\n  concepts/);
+    expect(result.stdout).not.toMatch(/\n  guide/);
+    expect(result.stdout).not.toMatch(/\n  scenario /);
   });
 
   it("shows grouped layer help sections", async () => {
@@ -255,16 +240,20 @@ describe("CLI help and command organization", () => {
   });
 
   it("prints scenario guide output", async () => {
-    const result = await runCli(["guide", "--scenario", "11"]);
+    const result = await runCli(["help", "scenario", "11"]);
     expect(result.stdout).toContain("SCENARIO 11");
     expect(result.stdout).toContain("engineering-foundation");
   });
 
-  it("prints concepts as json", async () => {
-    const result = await runCli(["concepts", "--format", "json"]);
+  it("prints help as json", async () => {
+    const result = await runCli(["help", "--format", "json"]);
     const payload = JSON.parse(result.stdout);
-    expect(payload.concepts).toBeArray();
-    expect(payload.commands).toBeArray();
+    expect(payload.concepts.concepts).toBeArray();
+    expect(payload.concepts.commands).toBeArray();
+    expect(payload.scenarios).toBeArray();
+    expect(payload.scenarios.some((scenario: { id: number }) => scenario.id === 11)).toBe(
+      true,
+    );
   });
 
   it("generates bash completion", async () => {
