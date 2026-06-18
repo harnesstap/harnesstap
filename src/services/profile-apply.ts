@@ -130,7 +130,7 @@ async function ensureProfileDependenciesAvailable(
         continue;
       }
 
-      let parsed;
+      let parsed: ReturnType<typeof parseLayerSelector>;
       try {
         parsed = parseLayerSelector(ref.dependency_name);
       } catch {
