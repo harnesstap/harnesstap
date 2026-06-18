@@ -64,7 +64,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `organization`: a Cloud tenant boundary (members, roles, billing). Required to publish layers for multiplayer use.
 - `catalog`: a named collection of layers within an organization — the browse, search, and install scope in Cloud and the CLI. Required alongside an organization when publishing; omitted for purely local layers.
 - `profile`: a layer whose `tags` include the reserved string `profile`; switchable global preset. `profile use` merges the profile stack (including transitive `layer` refs) and applies to machine home harness paths. Stored as a normal layer row — not a separate entity type.
-- `workspace`: the single implicit local library in `~/.harnessdeck/harnessdeck.db` — all layers, resources, and environments. Share offline with `migrate export` / `import`, or share individual layers with `layer export` / `import`.
+- `workspace`: the single implicit local library in `~/.harnessdeck/harnessdeck.db` — all layers, resources, and environments. Share offline with `migrate export` / `import` (`--workspace`, `--layer`, or `--resource`).
 - `account`: a named HarnessDeck Cloud login identity in `~/.harnessdeck/cloud-accounts.json` (access tokens, refresh tokens, active org). Use `--account <name>` on catalog commands; distinct from a profile layer.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
@@ -206,7 +206,7 @@ Switching the home active environment re-materializes how-values without reloadi
 
 ### Offline workspace sharing
 
-Share the full local workspace between machines with `migrate export` / `migrate import`. Archives include layer bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. For surgical sharing, use `layer export` / `layer import` on individual layers. For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud catalogs.
+Share the full local workspace between machines with `migrate export` / `migrate import`. Archives include layer bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. For surgical sharing, use `migrate export --layer` or `migrate export --resource`. For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud catalogs.
 
 ### Progressive enhancement
 
@@ -268,8 +268,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
 | `layer edit` | Add or remove composition attachments (interactive checkbox UI, or `--add` / `--remove` / `--apply` scripting). Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer delete` | Deletes a layer by selector. |
-| `layer export` | Writes a portable JSONC layer export (`urn:harnessdeck:layer:v1`). |
-| `layer import` | Imports a layer v1 file into the local database. |
+| `migrate export` | Export workspace archive, layer bundle, or resource TOML. |
+| `migrate import` | Import workspace archive, layer bundle, or resource TOML. |
 | `layer apply` | Applies layer selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
 | `layer search` | Searches remote catalogs through the configured cloud account and connected org scopes. |
 | `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
@@ -377,7 +377,7 @@ A **profile** is a layer whose `tags` include the reserved string `profile`. Pro
 Remote catalog workflows live on **`layer`**, not `cloud`:
 
 - `layer search` — search catalogs in scope
-- `layer pull` — fetch a published layer + local import (distinct from `layer import` on a local file)
+- `layer pull` — fetch a published layer + local import (distinct from `migrate import` on a local file)
 - `layer publish` — export bundle + upload a versioned layer to an org catalog
 
 `layer apply` resolves local layer names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `layer pull`).
@@ -585,7 +585,7 @@ A **layer** is the primary composable unit.
 
 ### Workspace model
 
-The local workspace is the single SQLite library at `~/.harnessdeck/harnessdeck.db`. All layers, resources, and environments live here. Share the full workspace offline with `migrate export` / `import`, or share individual layers with `layer export` / `import`.
+The local workspace is the single SQLite library at `~/.harnessdeck/harnessdeck.db`. All layers, resources, and environments live here. Share offline with `migrate export` / `import`.
 
 ## Agent harness model
 
@@ -688,7 +688,7 @@ Default export path: `<name>.harnessdeck.toml`.
 
 `migrate export` writes layer bundles and environment definitions inside a tar.gz archive with JSON metadata. `migrate import` restores them into the local workspace. Archives include harness preferences, config, and `active-profile.json` when present. Environment secret refs are preserved; secret values are not embedded. They do not include tracked project records, project snapshots, or cloud accounts.
 
-Use `migrate` for full workspace handoff; use `layer export` / `layer import` for sharing individual layers.
+Use `migrate export` / `import` for workspace, layer, or resource sharing.
 
 ## HarnessDeck Cloud
 
@@ -753,5 +753,5 @@ bun run build
 ## Known gaps and non-goals
 
 - Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
-- `layer export` / `layer import` operate on one layer at a time; use `migrate export` / `import` for full workspace handoff.
+- `migrate export --layer` / `migrate import` operate on layer TOML bundles; full workspace handoff uses archive paths (`.tar.gz`).
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.

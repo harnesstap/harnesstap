@@ -13,13 +13,13 @@ Manual workflow with current commands:
 # On the old machine
 mkdir -p ./bundles
 for p in $(harnessdeck layer list --format json | jq -r '.[].name'); do
-  harnessdeck layer export "$p" --file "./bundles/$p.harnessdeck.json" --embed-plugins
+  harnessdeck migrate export "./bundles/$p.harnessdeck.toml" --layer "$p" --embed-plugins
 done
 
 # Copy ./bundles/ to the new machine, then:
 harnessdeck init
-for f in ./bundles/*.harnessdeck.json; do
-  harnessdeck layer import "$f"
+for f in ./bundles/*.harnessdeck.toml; do
+  harnessdeck migrate import "$f"
 done
 harnessdeck harness set --main claude-code --aliases cursor,codex   # restore selection
 ```

@@ -424,7 +424,7 @@ export function exportLayer(
   exportOpts?: ExportLayerOptions,
 ): MultiLayerExport {
   process.stderr.write(
-    "Warning: exportLayer writes layer v1 (urn:harnessdeck:layer:v1). Prefer layer export for sharing.\n",
+    "Warning: exportLayer writes layer v1 (urn:harnessdeck:layer:v1). Prefer migrate export --layer for sharing.\n",
   );
   const selectors = Array.isArray(layerNameOrId) ? layerNameOrId : [layerNameOrId];
   const layers = selectors.map((selector) => {

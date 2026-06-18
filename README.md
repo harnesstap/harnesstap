@@ -282,7 +282,7 @@ HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules 
 
 **Cascade (last wins):** `home env ◂ layer default env`. Switch the home active environment to change how-values without reloading the same layer stack.
 
-**Offline sharing:** export the whole workspace with `hd migrate export` / `import`, or share individual layers with `hd layer export` / `import`. For multiplayer distribution, publish to HarnessDeck Cloud with `layer publish` / `pull`.
+**Offline sharing:** export the whole workspace, individual layers, or resources with `hd migrate export` / `import`. For multiplayer distribution, publish to HarnessDeck Cloud with `layer publish` / `pull`.
 
 Full specification: [SPEC.md](SPEC.md).
 
@@ -327,12 +327,12 @@ Layer dependencies are stored with semver constraints and round-trip through bun
 
 ## Import and export
 
-**Layer v1** — layers move between machines as TOML files (`hd layer export` / `import`). Default path: `<name>.harnessdeck.toml`. For a full workspace handoff, use `hd migrate export` / `import` (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
+**Layer v1** — layers move between machines as TOML files via `hd migrate export --layer` / `hd migrate import`. Default path: `<name>.harnessdeck.toml`. For a full workspace handoff, use `hd migrate export` with a `.tar.gz` archive (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
 
 ```bash
-hd layer export my-setup --file ./my-setup.harnessdeck.toml
-hd layer import ./my-setup.harnessdeck.toml
-hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
+hd migrate export ./my-setup.harnessdeck.toml --layer my-setup
+hd migrate import ./my-setup.harnessdeck.toml
+hd migrate export ./team.harnessdeck.toml --layer my-setup --embed-plugins
 ```
 
 ---
@@ -347,7 +347,7 @@ hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --sync   # eage
 hd resource sync plugin_pin:formatter@my-marketplace
 hd resource show plugin_pin:formatter@my-marketplace
 hd layer edit my-setup --remove plugin_pin:formatter@my-marketplace --type plugin_pin
-hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
+hd migrate export ./team.harnessdeck.toml --layer my-setup --embed-plugins
 hd layer apply my-setup --project . --strict-plugin-versions
 ```
 

@@ -477,6 +477,21 @@ export interface MultiLayerExport {
 
 export type LayerExport = MultiLayerExport;
 
+// ── Resource export format ──────────────────────────────────────────────
+
+export const RESOURCE_SCHEMA = "urn:harnessdeck:resource:v1" as const;
+export const RESOURCE_SCHEMA_VERSION = 1 as const;
+
+export type ResourceExportPayload = Omit<
+  Resource,
+  "id" | "created_at" | "updated_at" | "source"
+>;
+
+export interface ResourceExport extends ResourceExportPayload {
+  $schema: typeof RESOURCE_SCHEMA;
+  version: typeof RESOURCE_SCHEMA_VERSION;
+}
+
 /** Plugin pin carried in layer exports (non-embedded). */
 export interface LayerExportPluginPin {
   ref: string;

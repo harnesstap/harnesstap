@@ -30,11 +30,11 @@ describe("CLI export and import", () => {
 
       const bundlePath = `${exportContext.projectDir}/bundle.harnessdeck.toml`;
       const exportResult = await runCli([
-        "layer",
+        "migrate",
         "export",
-        "bundle-layer",
-        "--file",
         bundlePath,
+        "--layer",
+        "bundle-layer",
       ]);
 
       expect(exportResult.stdout).toContain("Exported layer");
@@ -51,7 +51,7 @@ describe("CLI export and import", () => {
 
       try {
         await runCli(["init"]);
-        const importResult = await runCli(["layer", "import", bundlePath]);
+        const importResult = await runCli(["migrate", "import", bundlePath]);
         const importedLayerModel = await import("../../src/models/layer-model.ts");
 
         expect(importResult.stdout).toContain("Imported layer");
@@ -102,12 +102,12 @@ describe("CLI export and import", () => {
 
       const bundlePath = join(context.projectDir, "embedded-cli.harnessdeck.toml");
       const exportResult = await runCli([
-        "layer",
+        "migrate",
         "export",
+        bundlePath,
+        "--layer",
         "embed-flag",
         "--embed-plugins",
-        "--file",
-        bundlePath,
       ]);
 
       expect(exportResult.stderr).not.toContain("ENOENT");
@@ -140,11 +140,11 @@ describe("CLI export and import", () => {
 
       const bundlePath = join(context.projectDir, "bundle.harnessdeck.toml");
       const exportResult = await runCli([
-        "layer",
+        "migrate",
         "export",
-        "toml-export",
-        "--file",
         bundlePath,
+        "--layer",
+        "toml-export",
       ]);
 
       expect(exportResult.stdout).toContain("Exported layer");
@@ -179,7 +179,7 @@ plugins = []
 `,
       );
 
-      const importResult = await runCli(["layer", "import", bundlePath]);
+      const importResult = await runCli(["migrate", "import", bundlePath]);
       const layerModel = await import("../../src/models/layer-model.ts");
 
       expect(importResult.stdout).toContain("Imported layer");
@@ -201,11 +201,11 @@ plugins = []
 
       const bundlePath = join(context.projectDir, "multi-export.harnessdeck.toml");
       const exportResult = await runCli([
-        "layer",
+        "migrate",
         "export",
-        "alpha,beta",
-        "--file",
         bundlePath,
+        "--layer",
+        "alpha,beta",
       ]);
 
       expect(exportResult.stdout).toContain("Exported layer");
@@ -217,6 +217,34 @@ plugins = []
       expect(bundle.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
     } finally {
       await context.cleanup();
+    }
+  });
+
+  it("exports and imports a resource via migrate", async () => {
+    const exportContext = await createTestContext("cli-resource-export");
+    try {
+      await runCli(["init"]);
+      const resourceModel = await import("../../src/models/resource.ts");
+      resourceModel.createResource(
+        makeResourceInput({ name: "portable", content: "# R" }),
+      );
+
+      const outPath = `${exportContext.projectDir}/portable.harnessdeck.toml`;
+      await runCli(["migrate", "export", outPath, "--resource", "skill:portable"]);
+
+      const importContext = await createTestContext("cli-resource-import");
+      try {
+        await runCli(["init"]);
+        await runCli(["migrate", "import", outPath]);
+        const importedResourceModel = await import("../../src/models/resource.ts");
+        expect(
+          importedResourceModel.resolveResource("skill:portable").status,
+        ).toBe("found");
+      } finally {
+        await importContext.cleanup();
+      }
+    } finally {
+      await exportContext.cleanup();
     }
   });
 

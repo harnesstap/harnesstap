@@ -32,7 +32,7 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportToFile, exportLayer, inspectLayerExportFile } from "./services/layer-export.js";
+import { exportLayer, inspectLayerExportFile } from "./services/layer-export.js";
 import { importFromFile } from "./services/layer-import.js";
 import { formatLayerExportToml } from "./services/transport/index.js";
 import {
@@ -200,9 +200,15 @@ import {
   validateLayerAttachmentType,
 } from "./services/layer-composition.js";
 import {
-  exportMigrationState,
-  importMigrationState,
-} from "./services/migrate.js";
+  exportScopedMigration,
+  importScopedMigration,
+  resolveExportScope,
+  resolveImportScope,
+  type ScopedExportResult,
+  type ScopedImportResult,
+} from "./services/migrate-scope.js";
+import { runMigrateExportWizard } from "./services/wizards/migrate-export.js";
+import { runMigrateImportWizard } from "./services/wizards/migrate-import.js";
 import {
   createProfileCommand,
   getActiveProfilePayload,
@@ -1692,48 +1698,82 @@ function handleRevertCommand(snapshotId?: string): void {
   );
 }
 
-function handleLayerExportCommand(
-  layerSelector: string,
-  opts: { file?: string; embedPlugins?: boolean },
-): void {
-  const db = getDb();
-  initializeSchema(db);
-  const layerNames = layerSelector
-    .split(",")
-    .map((name) => name.trim())
-    .filter((name) => name.length > 0);
-  if (layerNames.length === 0) {
-    ui.danger("Provide at least one layer name or ID to export.");
-    return;
-  }
-  const [firstLayerName] = layerNames;
-  if (!firstLayerName) {
-    ui.danger("Provide at least one layer name or ID to export.");
-    return;
-  }
-  const filePath = opts.file ?? `${firstLayerName}.harnessdeck.toml`;
-  const exportSelector = layerNames.length === 1 ? firstLayerName : layerNames;
-  try {
-    exportToFile(exportSelector, filePath, {
-      embedPlugins: opts.embedPlugins,
-    });
-  } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-    process.exitCode = 1;
-    return;
-  }
-  ui.success(
-    `Exported layer ${ui.theme.accent(layerNames.join(", "))} ${ui.icons.hint} ${filePath}`,
-  );
+function printRemovedLayerTransportCommand(command: "export" | "import"): void {
+  const lines =
+    command === "export"
+      ? [
+          "layer export was removed. Use migrate export instead:",
+          "",
+          "  hd migrate export ./my-layer.harnessdeck.toml --layer my-layer",
+          "  hd migrate export ./team.harnessdeck.toml --layer a,b --embed-plugins",
+          "",
+          "See: docs/cli/command-reference.md#migrate",
+        ]
+      : [
+          "layer import was removed. Use migrate import instead:",
+          "",
+          "  hd migrate import ./my-layer.harnessdeck.toml",
+          "",
+          "Layer TOML files are auto-detected. See: docs/cli/command-reference.md#migrate",
+        ];
+  console.error(lines.join("\n"));
+  process.exitCode = 1;
 }
 
-function handleLayerImportCommand(file: string): void {
-  const db = getDb();
-  initializeSchema(db);
-  const { layer, resources } = importFromFile(file);
-  ui.success(
-    `Imported layer ${ui.theme.accent(layer.name)} ${ui.icons.bullet} ${formatCount(resources.length, "resource")}`,
-  );
+function printMigrateExportHuman(result: ScopedExportResult): void {
+  switch (result.scope) {
+    case "workspace":
+      ui.success(
+        `Exported migration archive ${ui.icons.hint} ${result.output} ${ui.icons.bullet} ${result.manifest.layer_count} layers, ${result.manifest.environment_count} environments`,
+      );
+      return;
+    case "layer":
+      ui.success(
+        `Exported layer ${ui.theme.accent(result.layers.join(", "))} ${ui.icons.hint} ${result.output}`,
+      );
+      return;
+    case "resource":
+      ui.success(
+        `Exported resource ${ui.theme.accent(result.resource)} ${ui.icons.hint} ${result.output}`,
+      );
+      return;
+    default: {
+      const neverResult: never = result;
+      throw new Error(`Unsupported export result: ${String(neverResult)}`);
+    }
+  }
+}
+
+function printMigrateImportHuman(result: ScopedImportResult): void {
+  switch (result.scope) {
+    case "workspace":
+      ui.success(
+        `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}, ${formatCount(result.environments_imported, "environment")}`,
+      );
+      return;
+    case "layer":
+      ui.success(
+        `Imported layer ${ui.theme.accent(result.layer)} ${ui.icons.bullet} ${formatCount(result.resources_imported, "resource")}`,
+      );
+      return;
+    case "resource":
+      ui.success(
+        `Imported resource ${ui.theme.accent(result.resource)} ${ui.icons.bullet} ${result.action}`,
+      );
+      return;
+    default: {
+      const neverResult: never = result;
+      throw new Error(`Unsupported import result: ${String(neverResult)}`);
+    }
+  }
+}
+
+function handleLayerExportCommand(): void {
+  printRemovedLayerTransportCommand("export");
+}
+
+function handleLayerImportCommand(): void {
+  printRemovedLayerTransportCommand("import");
 }
 
 async function resolveCloudClientForLayerCommand(accountName?: string) {
@@ -3828,50 +3868,115 @@ async function handleProjectSyncCommand(
   }
 }
 
-function handleMigrateExportCommand(
-  file: string,
+async function handleMigrateExportCommand(
+  file: string | undefined,
   opts: {
+    file?: string;
+    workspace?: boolean;
+    layer?: string;
+    resource?: string;
     includePlugins?: boolean;
+    embedPlugins?: boolean;
     format?: string;
+    noInteractive?: boolean;
+    interactive?: boolean;
   },
-): void {
+): Promise<void> {
   const db = getDb();
   initializeSchema(db, { allowLegacyRead: true });
   const format = parseOutputFormat(opts.format);
+
+  let exportOpts = {
+    ...opts,
+    file: opts.file ?? file,
+  };
+
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    format: opts.format,
+    missingRequiredArgs:
+      !exportOpts.file
+      && !exportOpts.layer
+      && !exportOpts.resource
+      && !exportOpts.workspace,
+  });
+
+  if (useWizard) {
+    const wizard = await runMigrateExportWizard();
+    exportOpts = {
+      ...exportOpts,
+      file: wizard.outputPath,
+      workspace: wizard.scope === "workspace" ? true : undefined,
+      layer: wizard.layer,
+      resource: wizard.resource,
+      includePlugins: wizard.embedPlugins,
+    };
+  }
+
   try {
-    const manifest = exportMigrationState({
-      outputPath: file,
-      includePlugins: opts.includePlugins,
-    });
+    const resolved = resolveExportScope(exportOpts);
+    const result = exportScopedMigration(resolved, exportOpts);
     if (format === "json") {
-      printJson({ ...manifest, output: file });
+      if (result.scope === "workspace") {
+        printJson({ ...result.manifest, output: result.output, scope: result.scope });
+        return;
+      }
+      printJson(result);
       return;
     }
-    ui.success(
-      `Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.layer_count} layers, ${manifest.environment_count} environments`,
-    );
+    printMigrateExportHuman(result);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   }
 }
 
-function handleMigrateImportCommand(
-  file: string,
-  opts: { format?: string } = {},
-): void {
+async function handleMigrateImportCommand(
+  file: string | undefined,
+  opts: {
+    workspace?: boolean;
+    layer?: boolean;
+    resource?: boolean;
+    format?: string;
+    noInteractive?: boolean;
+    interactive?: boolean;
+  } = {},
+): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
+
+  let importFile = file;
+  let scopeOverride: ReturnType<typeof resolveImportScope> | undefined;
+
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    format: opts.format,
+    missingRequiredArgs: !importFile,
+  });
+
+  if (useWizard) {
+    const wizard = await runMigrateImportWizard();
+    importFile = wizard.file;
+    scopeOverride = wizard.scope;
+  }
+
+  if (!importFile) {
+    ui.danger("Import file path is required.");
+    process.exitCode = 1;
+    return;
+  }
+
   try {
-    const result = importMigrationState({ archivePath: file });
+    const scope = scopeOverride ?? resolveImportScope({ ...opts, file: importFile });
+    const result = importScopedMigration(scope, importFile);
     if (format === "json") {
       printJson(result);
       return;
     }
-    ui.success(
-      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}, ${formatCount(result.environments_imported, "environment")}`,
-    );
+    printMigrateImportHuman(result);
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -4205,19 +4310,14 @@ layerCmd
 
 layerCmd
   .command("export")
-  .argument("<layer>", "Layer name/ID, or comma-separated layer list")
-  .option("-f, --file <path>", "Output file path")
-  .option(
-    "--embed-plugins",
-    "Also inline Claude marketplace-installed plugin trees when their install paths resolve from HOME",
-  )
-  .description("Export a layer as a shareable TOML layer export")
+  .description("Removed — use migrate export --layer")
+  .allowExcessArguments()
   .action(handleLayerExportCommand);
 
 layerCmd
   .command("import")
-  .argument("<file>", "TOML layer export file to import")
-  .description("Import a layer from a TOML layer export file")
+  .description("Removed — use migrate import")
+  .allowExcessArguments()
   .action(handleLayerImportCommand);
 
 addApplyCommandOptions(
@@ -5062,22 +5162,30 @@ const migrateCmd = configureCommandGroup(
   program
     .command("migrate")
     .alias("m")
-    .description("Export or import full HarnessDeck state for machine migration"),
+    .description("Export or import workspace, layers, or resources for offline sharing"),
 );
 
 migrateCmd
   .command("export")
-  .argument("<file>", "Output archive path (.tar.gz or .json)")
-  .option("--include-plugins", "Embed plugin trees in layer exports")
+  .argument("[file]", "Output path (.tar.gz, .json, or .harnessdeck.toml)")
+  .option("--workspace", "Export full workspace archive")
+  .option("--layer <name>", "Export layer(s); comma-separated names or IDs")
+  .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")
+  .option("-o, --file <path>", "Output path (overrides positional)")
+  .option("--include-plugins", "Embed plugin trees (workspace and layer scope)")
+  .option("--embed-plugins", "Alias for --include-plugins")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Export all layers, harness preferences, and config")
+  .description("Export workspace, layer, or resource for offline sharing")
   .action(handleMigrateExportCommand);
 
 migrateCmd
   .command("import")
-  .argument("<file>", "Migration archive from migrate export")
+  .argument("[file]", "Archive or TOML export file")
+  .option("--workspace", "Force workspace archive import")
+  .option("--layer", "Force layer bundle import")
+  .option("--resource", "Force resource document import")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Import a migration archive on this machine")
+  .description("Import workspace, layer, or resource from file")
   .action(handleMigrateImportCommand);
 
 // ── resource ────────────────────────────────────────────────────────────
