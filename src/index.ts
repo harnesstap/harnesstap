@@ -1012,7 +1012,7 @@ async function handleScanCommand(
   }
 
   if (detected.length === 0) {
-    ui.warn("No harness resources found in this directory.");
+    ui.warn(`No harness resources found in this directory (${projectRoot}).`);
     ui.hint(
       `Scans project files on disk (skills, rules, instructions), not your harness setup — see \`${formatCommand("harness status")}\`.`,
     );
