@@ -1,7 +1,7 @@
 import { toLayerChoices } from "../completion/choices.js";
 import { promptForSearchableChoice, promptForValue } from "./shared.js";
 
-export async function runProjectApplyWizard(): Promise<string> {
+export async function runLayerApplyWizard(): Promise<string> {
   const choices = toLayerChoices();
   if (choices.length > 0) {
     return promptForSearchableChoice({

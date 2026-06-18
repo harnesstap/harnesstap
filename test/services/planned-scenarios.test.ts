@@ -208,6 +208,7 @@ describe("planned scenarios services", () => {
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const harnessModel = await import("../../src/models/harness.ts");
+      const environmentModel = await import("../../src/models/environment.ts");
       const migrate = await import("../../src/services/migrate.ts");
 
       const layer = layerModel.createLayer({ name: "migrate-me" });
@@ -215,6 +216,8 @@ describe("planned scenarios services", () => {
         makeResourceInput({ type: "instruction", name: "m", content: "x" }),
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
+      const environment = environmentModel.createEnvironment({ name: "migrate-env" });
+      environmentModel.upsertEnvironmentEnvVar(environment.id, "PD_REGION", "eu");
       harnessModel.setHarnessPreference({
         main_harness: "claude-code",
         alias_harnesses: ["cursor"],
@@ -232,13 +235,17 @@ describe("planned scenarios services", () => {
         includePlugins: false,
       });
       expect(exported.layer_count).toBe(1);
+      expect(exported.environment_count).toBe(1);
       expect(existsSync(archivePath)).toBe(true);
 
       context.connection.closeDb();
       const context2 = await createInitializedTestContext("migrate-import");
       try {
-        migrate.importMigrationState({ archivePath });
+        const imported = migrate.importMigrationState({ archivePath });
+        expect(imported.layers_imported).toBe(1);
+        expect(imported.environments_imported).toBe(1);
         expect(layerModel.getLayer("migrate-me")).toBeDefined();
+        expect(environmentModel.getEnvironmentByName("migrate-env")).toBeDefined();
         expect(harnessModel.getHarnessPreference()?.main_harness).toBe(
           "claude-code",
         );

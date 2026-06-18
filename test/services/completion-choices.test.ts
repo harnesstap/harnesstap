@@ -1,9 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { createDeck } from "../../src/models/deck.js";
 import { createLayer } from "../../src/models/layer-model.js";
 import { createResource } from "../../src/models/resource.js";
 import {
-  toDeckChoices,
   toLayerChoices,
   toResourceChoices,
 } from "../../src/services/completion/choices.js";
@@ -21,23 +19,6 @@ describe("completion choice builders", () => {
           name: "engineering-foundation@1.2.0",
           value: "engineering-foundation@1.2.0",
           description: "Base layer",
-        },
-      ]);
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("maps local decks to searchable picker choices", async () => {
-    const context = await createInitializedTestContext("completion-deck-choices");
-    try {
-      createDeck({ name: "team-deck", rootPath: "/tmp/deck-root" });
-
-      expect(toDeckChoices()).toEqual([
-        {
-          name: "team-deck",
-          value: "team-deck",
-          description: "/tmp/deck-root",
         },
       ]);
     } finally {

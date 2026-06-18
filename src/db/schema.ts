@@ -1,9 +1,9 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 const MIGRATIONS: Record<number, string> = {
-  20: `
+  21: `
     CREATE TABLE IF NOT EXISTS resources (
       id          TEXT PRIMARY KEY,
       type        TEXT NOT NULL CHECK(type IN (
@@ -129,23 +129,6 @@ const MIGRATIONS: Record<number, string> = {
       PRIMARY KEY (environment_id, key)
     );
 
-    CREATE TABLE IF NOT EXISTS decks (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      root_path TEXT NOT NULL DEFAULT '',
-      active_environment_id TEXT REFERENCES environments(id),
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      UNIQUE(name)
-    );
-
-    CREATE TABLE IF NOT EXISTS deck_layers (
-      deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
-      layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
-      "order" INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (deck_id, layer_id)
-    );
-
     CREATE TABLE IF NOT EXISTS imported_snapshots (
       id              TEXT PRIMARY KEY,
       source_kind     TEXT NOT NULL CHECK(source_kind IN (
@@ -199,7 +182,7 @@ const MIGRATIONS: Record<number, string> = {
       version INTEGER NOT NULL
     );
 
-    INSERT INTO schema_version (version) VALUES (20);
+    INSERT INTO schema_version (version) VALUES (21);
   `,
 };
 

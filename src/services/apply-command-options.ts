@@ -11,7 +11,6 @@ export interface ApplyCommandOpts {
   interactive?: boolean;
   noInteractive?: boolean;
   onConflict?: string;
-  deckId?: string;
 }
 
 export function addApplyCommandOptions(command: Command): Command {

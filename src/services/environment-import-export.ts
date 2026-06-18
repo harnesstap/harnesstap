@@ -6,12 +6,13 @@ import {
   getEnvironmentByName,
   getEnvironmentResources,
   getEnvironmentSecretRefs,
+  listEnvironments,
   upsertEnvironmentEnvVar,
 } from "../models/environment.js";
 import { resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import { assertTransportExtension } from "./transport/validate.js";
 import { formatTransportToml } from "./transport/write.js";
-import { deckJsonToTomlDocument } from "./transport/deck.js";
+import { environmentToTomlDocument } from "./transport/environment-document.js";
 import type {
   DeckJsonEnvironment,
   DeckJsonEnvironmentSecretRef,
@@ -24,11 +25,19 @@ export interface EnvironmentImportExportPayload {
   toml: string;
 }
 
-function toDeckJsonEnvironment(environment: Environment): DeckJsonEnvironment {
+function secretRefKeys(environmentId: string): Set<string> {
+  return new Set(getEnvironmentSecretRefs(environmentId).map((ref) => ref.key));
+}
+
+function toEnvironmentDocument(environment: Environment): DeckJsonEnvironment {
+  const secretKeys = secretRefKeys(environment.id);
   const values: Record<string, string> = {};
   for (const resource of getEnvironmentResources(environment.id)) {
     if (resource.type !== "env_var") continue;
     const metadata = resource.metadata as EnvVarMetadata;
+    if (secretKeys.has(metadata.key)) {
+      continue;
+    }
     values[metadata.key] = metadata.value;
   }
 
@@ -49,25 +58,11 @@ function toDeckJsonEnvironment(environment: Environment): DeckJsonEnvironment {
   };
 }
 
-function environmentToTomlDocument(environment: DeckJsonEnvironment): Record<string, unknown> {
-  const deckDocument = deckJsonToTomlDocument({
-    $schema: "urn:harnessdeck:deck:v1",
-    version: 1,
-    name: environment.name,
-    layers: [],
-    environments: [environment],
-  });
-  return {
-    name: environment.name,
-    environments: deckDocument.environments,
-  };
-}
-
 export function exportEnvironmentToml(
   selector: string,
 ): EnvironmentImportExportPayload {
   const environment = resolveEnvironmentOrThrow(selector);
-  const payload = toDeckJsonEnvironment(environment);
+  const payload = toEnvironmentDocument(environment);
   return {
     environment: payload,
     toml: formatTransportToml(environmentToTomlDocument(payload)),
@@ -76,6 +71,16 @@ export function exportEnvironmentToml(
 
 /** @deprecated Use exportEnvironmentToml */
 export const exportEnvironmentJsonc = exportEnvironmentToml;
+
+export function exportEnvironmentDocument(
+  environment: Environment,
+): DeckJsonEnvironment {
+  return toEnvironmentDocument(environment);
+}
+
+export function listEnvironmentDocuments(): DeckJsonEnvironment[] {
+  return listEnvironments().map((environment) => toEnvironmentDocument(environment));
+}
 
 function parseEnvironmentToml(raw: string): DeckJsonEnvironment {
   const document = parse(raw) as Record<string, unknown>;
@@ -131,6 +136,7 @@ export function importEnvironmentToml(
   options?: { createIfMissing?: boolean },
 ): { environment: Environment; imported_keys: string[]; imported_secret_refs: string[] } {
   const payload = parseEnvironmentToml(raw);
+  const secretKeys = new Set(Object.keys(payload.secret_refs ?? {}));
   const existing = getEnvironmentByName(payload.name);
   const environment =
     existing ??
@@ -146,6 +152,9 @@ export function importEnvironmentToml(
   }
 
   for (const [key, value] of Object.entries(payload.values)) {
+    if (secretKeys.has(key)) {
+      continue;
+    }
     upsertEnvironmentEnvVar(environment.id, key, value);
   }
   for (const [key, secretRef] of Object.entries(payload.secret_refs ?? {})) {
@@ -159,7 +168,7 @@ export function importEnvironmentToml(
 
   return {
     environment,
-    imported_keys: Object.keys(payload.values).sort(),
+    imported_keys: Object.keys(payload.values).filter((key) => !secretKeys.has(key)).sort(),
     imported_secret_refs: Object.keys(payload.secret_refs ?? {}).sort(),
   };
 }
@@ -170,4 +179,8 @@ export const importEnvironmentJsonc = importEnvironmentToml;
 export function importEnvironmentFile(filePath: string): ReturnType<typeof importEnvironmentToml> {
   assertTransportExtension(filePath);
   return importEnvironmentToml(readFileSync(filePath, "utf-8"));
+}
+
+export function formatEnvironmentToml(document: DeckJsonEnvironment): string {
+  return formatTransportToml(environmentToTomlDocument(document));
 }

@@ -90,10 +90,7 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
   subheader("APPLIED LAYERS");
   if (payload.applied_layers.length === 0) {
     console.log("  (none applied)");
-    status.dim("  Run `hd layer apply <layer>` or `hd deck apply <deck>`");
-    if (payload.deck_hint) {
-      status.hint(payload.deck_hint);
-    }
+    status.dim("  Run `hd layer apply <layer>`");
   } else {
     for (const row of payload.applied_layers) {
       const summary = formatResourceCountLine(row.resource_count, row.resource_summary);
@@ -205,6 +202,5 @@ export function projectStatusPayloadToJson(payload: ProjectStatusPayload): Recor
           snapshots: payload.snapshots_count,
         }
       : {}),
-    ...(payload.deck_hint ? { deck_hint: payload.deck_hint } : {}),
   };
 }

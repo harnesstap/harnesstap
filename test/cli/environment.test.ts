@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-import { parseDeckToml } from "../../src/services/transport/deck.ts";
 
 describe("CLI environment", () => {
   it("supports create/list/show/delete plus var and secret mutation commands", async () => {
@@ -245,7 +244,6 @@ describe("CLI environment", () => {
       const projectModel = await import("../../src/models/project.ts");
       const pluginModel = await import("../../src/models/layer-model.ts");
       const configuredLayerModel = await import("../../src/models/layer-model.ts");
-      const deckModel = await import("../../src/models/deck.ts");
 
       const project = projectModel.createProject({
         git_origin: "git@github.com:acme/cascade.git",
@@ -263,21 +261,17 @@ describe("CLI environment", () => {
         configured_layer_id: configuredLayer.id,
         platforms: ["claude-code"],
       });
-      deckModel.createDeck({
-        name: "project-deck",
-        rootPath: context.projectDir,
-      });
 
       await runCli(["environment", "create", "default-env"]);
       await runCli(["environment", "set", "default-env", "--var", "PD_REGION=layer"]);
-      await runCli(["environment", "create", "deck-env"]);
-      await runCli(["environment", "set", "deck-env", "--var", "PD_REGION=deck"]);
+      await runCli(["environment", "create", "project-env"]);
+      await runCli(["environment", "set", "project-env", "--var", "PD_REGION=project"]);
       await runCli(["layer", "set-environment", configuredLayer.id, "default-env"]);
 
       const useResult = await runCli([
         "environment",
         "use",
-        "deck-env",
+        "project-env",
         "--project",
         context.projectDir,
         "--format",
@@ -285,7 +279,7 @@ describe("CLI environment", () => {
       ]);
       expect(JSON.parse(useResult.stdout)).toEqual(
         expect.objectContaining({
-          environment_name: "deck-env",
+          environment_name: "project-env",
           updated: true,
         }),
       );
@@ -301,7 +295,7 @@ describe("CLI environment", () => {
       expect(JSON.parse(active.stdout)).toEqual(
         expect.objectContaining({
           resolved: expect.objectContaining({
-            vars: expect.objectContaining({ PD_REGION: "deck" }),
+            vars: expect.objectContaining({ PD_REGION: "project" }),
           }),
         }),
       );
@@ -324,7 +318,7 @@ describe("CLI environment", () => {
             }),
           ]),
           resolved: expect.objectContaining({
-            vars: expect.objectContaining({ PD_REGION: "deck" }),
+            vars: expect.objectContaining({ PD_REGION: "project" }),
           }),
         }),
       );
@@ -339,7 +333,7 @@ describe("CLI environment", () => {
         expect.objectContaining({
           environment_cascade: expect.objectContaining({
             resolved: expect.objectContaining({
-              vars: expect.objectContaining({ PD_REGION: "deck" }),
+              vars: expect.objectContaining({ PD_REGION: "project" }),
             }),
           }),
         }),
@@ -349,16 +343,16 @@ describe("CLI environment", () => {
     }
   });
 
-  it("writes deck active environment for untracked project roots", async () => {
+  it("writes project active environment for untracked project roots", async () => {
     const context = await createTestContext("cli-environment-use-untracked");
     try {
       await runCli(["init"]);
-      await runCli(["environment", "create", "deck-env"]);
+      await runCli(["environment", "create", "project-env"]);
 
       const useResult = await runCli([
         "environment",
         "use",
-        "deck-env",
+        "project-env",
         "--project",
         context.projectDir,
         "--format",
@@ -366,16 +360,23 @@ describe("CLI environment", () => {
       ]);
       expect(JSON.parse(useResult.stdout)).toEqual(
         expect.objectContaining({
-          environment_name: "deck-env",
-          deck_tracked: false,
+          environment_name: "project-env",
+          active_environment_file: join(
+            context.projectDir,
+            ".harnessdeck",
+            "active-environment.json",
+          ),
           updated: true,
         }),
       );
 
-      const deckJson = parseDeckToml(
-        readFileSync(join(context.projectDir, ".harnessdeck", "deck.toml"), "utf-8"),
-      );
-      expect(deckJson.active_environment).toBe("deck-env");
+      const activeEnvironment = JSON.parse(
+        readFileSync(
+          join(context.projectDir, ".harnessdeck", "active-environment.json"),
+          "utf-8",
+        ),
+      ) as { name: string };
+      expect(activeEnvironment.name).toBe("project-env");
     } finally {
       await context.cleanup();
     }

@@ -28,8 +28,8 @@ function buildProgram(): Command {
     .option("--account <name>", "account")
     .description("pull");
 
-  const deck = program.command("deck").description("deck");
-  deck.command("show").argument("[name]", "name").description("show");
+  const environment = program.command("environment").description("environment");
+  environment.command("show").argument("[name]", "name").description("show");
 
   program
     .command("init")
@@ -78,10 +78,10 @@ describe("completion engine", () => {
     expect(ctx.prefix).toBe("cur");
   });
 
-  it("resolves deck show positional slot", async () => {
-    const ctx = parseCompletionContext(program, "hd deck show my");
+  it("resolves environment show positional slot", async () => {
+    const ctx = parseCompletionContext(program, "hd environment show my");
     expect(ctx.slot).toBe("positional");
-    expect(ctx.commandPath).toEqual(["deck", "show"]);
+    expect(ctx.commandPath).toEqual(["environment", "show"]);
     expect(ctx.positionalIndex).toBe(0);
   });
 

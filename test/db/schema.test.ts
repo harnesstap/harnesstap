@@ -25,8 +25,6 @@ describe("initializeSchema", () => {
           "environment_secret_refs",
           "environments",
           "project_harnesses",
-          "deck_layers",
-          "decks",
           "layer_resources",
           "layers",
           "project_layers",
@@ -42,7 +40,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(20);
+      expect(versionRow.version).toBe(21);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -137,7 +135,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 20 }]);
+      expect(versionRows).toEqual([{ version: 21 }]);
     } finally {
       await context.cleanup();
     }

@@ -28,7 +28,7 @@ Stale rows are reported when the install path cannot be resolved.
 ```bash
 harnessdeck layer show my-setup
 harnessdeck layer doctor my-setup --check plugin-metadata
-harnessdeck project apply my-setup --project . --dry-run --strict-plugin-versions
+harnessdeck layer apply my-setup --project . --dry-run --strict-plugin-versions
 ```
 
 Use **library sync** when chasing *"is this plugin resource up to date?"* and

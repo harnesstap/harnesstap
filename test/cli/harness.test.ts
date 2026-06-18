@@ -59,10 +59,10 @@ describe("CLI harness", () => {
       });
       expect(JSON.parse(authStatus.stdout)).toEqual({});
 
-      const deckList = await runCli(["d", "ls", "--format", "json"], {
+      const envList = await runCli(["e", "ls", "--format", "json"], {
         commandName: "hd",
       });
-      expect(Array.isArray(JSON.parse(deckList.stdout))).toBe(true);
+      expect(Array.isArray(JSON.parse(envList.stdout))).toBe(true);
 
       const migrateHelp = await runCli(["m", "--help"], {
         commandName: "hd",

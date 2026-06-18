@@ -22,13 +22,9 @@ harnessdeck layer apply my-setup --strict-plugin-versions   # exit 2 on pin viol
 harnessdeck layer apply my-setup --ignore-plugin-versions   # skip validation
 ```
 
-`layer apply` is the canonical write path for one or more layers. For a
-pre-curated stack stored as a deck, use [`deck apply`](./29-apply-deck.md)
-instead.
+`layer apply` is the canonical write path for one or more layers. Stack multiple layers in one command (see [Scenario 25](./25-stack-layers.md)).
 
 Important distinction: applying a layer writes a known baseline onto disk. If
 you later want to sync alias harness outputs from the current on-disk main
 harness without re-specifying the layer, use
 [`harnessdeck project mirror`](./27-project-sync.md) instead.
-
-`project apply` still works as a deprecated alias for `layer apply`.

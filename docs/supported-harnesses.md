@@ -10,7 +10,7 @@ HarnessDeck separates **context-side** resources (what the model sees) from **en
 
 ### Context-side material resources
 
-These are the atomic resources you scan, curate, attach to layers, and re-emit during `layer apply` / `project apply`:
+These are the atomic resources you scan, curate, attach to layers, and re-emit during `layer apply`:
 
 | Type | Description |
 | ---- | ----------- |

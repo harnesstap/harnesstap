@@ -8,10 +8,9 @@ import { createEnvironment, addResourceToEnvironment } from "../../src/models/en
 import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createLayerFromSources } from "../../src/models/layer-model.ts";
-import { createDeck, setDeckActiveEnvironment } from "../../src/models/deck.ts";
 
 describe("CLI apply with environment cascade", () => {
-  it("materializes deck active environment over layer default", async () => {
+  it("materializes project active environment over layer default", async () => {
     const context = await createTestContext("cli-apply-environment");
 
     try {
@@ -65,23 +64,10 @@ describe("CLI apply with environment cascade", () => {
         environmentId: prod.id,
       });
 
-      const deck = createDeck({
-        name: "project-deck",
-        rootPath: context.projectDir,
-      });
-      setDeckActiveEnvironment(deck.id, staging.id);
-
-      mkdirSync(join(context.projectDir, ".harnessdeck", "environments"), {
-        recursive: true,
-      });
+      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
       writeFileSync(
-        join(context.projectDir, ".harnessdeck", "environments", "staging.json"),
-        JSON.stringify({ values: { PD_REGION: "staging-file" } }),
-        "utf-8",
-      );
-      writeFileSync(
-        join(context.projectDir, ".harnessdeck", "environments", "prod.json"),
-        JSON.stringify({ values: { PD_REGION: "prod-file" } }),
+        join(context.projectDir, ".harnessdeck", "active-environment.json"),
+        JSON.stringify({ name: "staging" }),
         "utf-8",
       );
 

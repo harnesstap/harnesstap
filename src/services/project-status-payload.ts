@@ -7,7 +7,6 @@ import { validatePluginPinsAgainstInventory } from "./plugin-apply-validation.js
 import { listAttachedPluginPins } from "./layer-composition.js";
 import { getLayerById, getLayerResources, resolveLayerSelector } from "../models/layer-model.js";
 import { getProjectByLocalPath, getProjectByOrigin, getProjectConfiguredLayers } from "../models/project.js";
-import { listDeckLayers, listDecks } from "../models/deck.js";
 import { detectProjectDriftFromLatest, type ProjectDriftReport } from "./project-drift.js";
 import { detectPlatforms } from "./scanner.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
@@ -48,7 +47,6 @@ export interface ProjectStatusPayload {
     warning?: string;
   };
   applied_layers: AppliedLayerStatusRow[];
-  deck_hint?: string;
   resolved: {
     resource_count: number;
     resource_summary: string;
@@ -152,24 +150,6 @@ function buildAppliedLayers(project: Project | null): AppliedLayerStatusRow[] {
       applied_at: row.applied_at,
     }];
   });
-}
-
-function buildDeckHint(projectRoot: string, appliedLayerCount: number): string | undefined {
-  if (appliedLayerCount > 0) {
-    return undefined;
-  }
-  const resolvedRoot = resolve(projectRoot);
-  const deck = listDecks().find(
-    (candidate) => candidate.root_path && resolve(candidate.root_path) === resolvedRoot,
-  );
-  if (!deck) {
-    return undefined;
-  }
-  const deckLayers = listDeckLayers(deck.id);
-  if (deckLayers.length === 0) {
-    return undefined;
-  }
-  return `Deck "${deck.name}" has ${deckLayers.length} layer(s) — run hd deck apply ${deck.name}`;
 }
 
 function buildResolvedSection(
@@ -282,7 +262,6 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
     environment_cascade: environmentCascade,
     profile: buildProfileSection(),
     applied_layers: appliedLayers,
-    deck_hint: buildDeckHint(resolvedRoot, appliedLayers.length),
     resolved,
     project_resources: projectResources,
   };

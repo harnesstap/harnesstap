@@ -12,15 +12,36 @@ import {
   resolveEnvironmentCascade,
   resolveEnvironmentCascadeForApply,
 } from "../../src/services/environment-cascade.ts";
-import { writeDeckToml } from "../helpers/transport-fixtures.ts";
-import { createDeck, setDeckActiveEnvironment } from "../../src/models/deck.ts";
+
+function writeProjectActiveEnvironment(
+  projectDir: string,
+  name: string,
+  values: Record<string, string> = {},
+  secretRefs: Record<string, { provider: string; ref: string }> = {},
+): void {
+  const harnessdeckDir = join(projectDir, ".harnessdeck");
+  mkdirSync(harnessdeckDir, { recursive: true });
+  mkdirSync(join(harnessdeckDir, "environments"), { recursive: true });
+  writeFileSync(
+    join(harnessdeckDir, "active-environment.json"),
+    JSON.stringify({ name }),
+    "utf-8",
+  );
+  if (Object.keys(values).length > 0 || Object.keys(secretRefs).length > 0) {
+    writeFileSync(
+      join(harnessdeckDir, "environments", `${name}.json`),
+      JSON.stringify({ values, secret_refs: secretRefs }),
+      "utf-8",
+    );
+  }
+}
 
 describe("environment cascade", () => {
-  it("last wins: home < layer default < deck active", () => {
+  it("last wins: home < layer default < project active", () => {
     const resolved = resolveEnvironmentCascade({
       home: { vars: { PD_REGION: "us" }, secretRefs: {} },
       layerDefaults: [{ vars: { PD_REGION: "eu" }, secretRefs: {} }],
-      deckActive: { vars: { PD_REGION: "staging" }, secretRefs: {} },
+      projectActive: { vars: { PD_REGION: "staging" }, secretRefs: {} },
     });
     expect(resolved.vars.PD_REGION).toBe("staging");
   });
@@ -37,18 +58,18 @@ describe("environment cascade", () => {
           secretRefs: { PD_TOKEN: { provider: "keychain", ref: "layer-token" } },
         },
       ],
-      deckActive: {
+      projectActive: {
         vars: {},
-        secretRefs: { PD_TOKEN: { provider: "env", ref: "DECK_TOKEN" } },
+        secretRefs: { PD_TOKEN: { provider: "env", ref: "PROJECT_TOKEN" } },
       },
     });
     expect(resolved.secretRefs.PD_TOKEN).toEqual({
       provider: "env",
-      ref: "DECK_TOKEN",
+      ref: "PROJECT_TOKEN",
     });
   });
 
-  it("loads home and deck fragments from harnessdeck files", async () => {
+  it("loads home and project active fragments from harnessdeck files", async () => {
     const context = await createInitializedTestContext("env-cascade-files");
 
     try {
@@ -66,16 +87,8 @@ describe("environment cascade", () => {
         "utf-8",
       );
 
-      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
-      writeDeckToml(join(context.projectDir, ".harnessdeck", "deck.toml"), {
-        $schema: "urn:harnessdeck:deck:v1",
-        version: 1,
-        name: "repo-deck",
-        layers: [],
-        environments: [
-          { name: "staging", values: { PD_REGION: "staging" } },
-        ],
-        active_environment: "staging",
+      writeProjectActiveEnvironment(context.projectDir, "staging", {
+        PD_REGION: "staging",
       });
 
       const home = loadHomeEnvironmentFragment();
@@ -91,8 +104,8 @@ describe("environment cascade", () => {
     }
   });
 
-  it("prefers deck active environment from DB over repo deck.toml", async () => {
-    const context = await createInitializedTestContext("env-cascade-db-deck");
+  it("prefers project active environment file over layer default", async () => {
+    const context = await createInitializedTestContext("env-cascade-project-active");
 
     try {
       const staging = createEnvironment({ name: "staging" });
@@ -128,21 +141,7 @@ describe("environment cascade", () => {
         environmentId: prod.id,
       });
 
-      const deck = createDeck({
-        name: "team-deck",
-        rootPath: context.projectDir,
-      });
-      setDeckActiveEnvironment(deck.id, staging.id);
-
-      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
-      writeDeckToml(join(context.projectDir, ".harnessdeck", "deck.toml"), {
-        $schema: "urn:harnessdeck:deck:v1",
-        version: 1,
-        name: "repo-deck",
-        layers: [],
-        environments: [{ name: "prod", values: { PD_REGION: "prod-file" } }],
-        active_environment: "prod",
-      });
+      writeProjectActiveEnvironment(context.projectDir, "staging");
 
       const cascadeInput = buildEnvironmentCascadeInput({
         configuredLayerIds: [layer.id],
@@ -163,21 +162,12 @@ describe("environment cascade", () => {
     process.env[envKey] = "resolved-token";
 
     try {
-      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
-      writeDeckToml(join(context.projectDir, ".harnessdeck", "deck.toml"), {
-        $schema: "urn:harnessdeck:deck:v1",
-        version: 1,
-        name: "repo-deck",
-        layers: [],
-        environments: [
-          {
-            name: "staging",
-            values: { PD_TOKEN: "plain-token" },
-            secret_refs: { PD_TOKEN: { provider: "env", ref: envKey } },
-          },
-        ],
-        active_environment: "staging",
-      });
+      writeProjectActiveEnvironment(
+        context.projectDir,
+        "staging",
+        { PD_TOKEN: "plain-token" },
+        { PD_TOKEN: { provider: "env", ref: envKey } },
+      );
 
       const resolved = resolveEnvironmentCascadeForApply({
         configuredLayerIds: [],

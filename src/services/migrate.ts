@@ -20,16 +20,33 @@ import { loadSettings } from "../config/settings.js";
 import type { HarnessdeckSettings } from "../config/settings.js";
 import type { HarnessPreference, LayerExport } from "../types.js";
 import { formatLayerExportToml, parseLayerExportToml } from "./transport/layer.js";
+import {
+  formatEnvironmentToml,
+  importEnvironmentToml,
+  listEnvironmentDocuments,
+} from "./environment-import-export.js";
 
-export const MIGRATE_MANIFEST_VERSION = 1 as const;
+export const MIGRATE_MANIFEST_VERSION_V1 = 1 as const;
+export const MIGRATE_MANIFEST_VERSION = 2 as const;
 
-export interface MigrateManifest {
-  version: typeof MIGRATE_MANIFEST_VERSION;
+export interface MigrateManifestV1 {
+  version: typeof MIGRATE_MANIFEST_VERSION_V1;
   exported_at: string;
   layer_count: number;
   include_plugins: boolean;
   includes_active_profile: boolean;
 }
+
+export interface MigrateManifest {
+  version: typeof MIGRATE_MANIFEST_VERSION;
+  exported_at: string;
+  layer_count: number;
+  environment_count: number;
+  include_plugins: boolean;
+  includes_active_profile: boolean;
+}
+
+export type AnyMigrateManifest = MigrateManifestV1 | MigrateManifest;
 
 export interface MigrateExportOptions {
   outputPath: string;
@@ -61,8 +78,9 @@ function createArchive(sourceDir: string, outputPath: string): void {
       join(sourceDir, "manifest.json"),
       "utf-8",
     );
-    const state = {
-      manifest: JSON.parse(manifest) as MigrateManifest,
+    const environmentsDir = join(sourceDir, "environments");
+    const state: Record<string, unknown> = {
+      manifest: JSON.parse(manifest) as AnyMigrateManifest,
       harness: existsSync(join(sourceDir, "harness.json"))
         ? JSON.parse(readFileSync(join(sourceDir, "harness.json"), "utf-8"))
         : null,
@@ -80,6 +98,11 @@ function createArchive(sourceDir: string, outputPath: string): void {
           ),
         ),
     };
+    if (existsSync(environmentsDir)) {
+      state.environments = readdirSync(environmentsDir)
+        .filter((f) => f.endsWith(".toml"))
+        .map((f) => readFileSync(join(environmentsDir, f), "utf-8"));
+    }
     writeFileSync(resolved, JSON.stringify(state, null, 2), "utf-8");
     return;
   }
@@ -91,19 +114,34 @@ function dirnameSafe(path: string): string {
   return idx >= 0 ? path.slice(0, idx) : ".";
 }
 
+function isMigrateManifestV1(manifest: AnyMigrateManifest): manifest is MigrateManifestV1 {
+  return manifest.version === MIGRATE_MANIFEST_VERSION_V1;
+}
+
 /**
- * Export all layers, harness preferences, and config into an archive.
+ * Export all layers, environments, harness preferences, and config into an archive.
  */
 export function exportMigrationState(opts: MigrateExportOptions): MigrateManifest {
   const workDir = mkdtempSync(join(tmpdir(), "harnessdeck-migrate-"));
   const layersDir = join(workDir, "layers");
+  const environmentsDir = join(workDir, "environments");
   mkdirSync(layersDir, { recursive: true });
+  mkdirSync(environmentsDir, { recursive: true });
 
   const layers = listLayers();
   for (const layer of layers) {
     exportToFile(layer.name, join(layersDir, `${layer.name}.harnessdeck.toml`), {
       embedPlugins: opts.includePlugins ?? false,
     });
+  }
+
+  const environments = listEnvironmentDocuments();
+  for (const environment of environments) {
+    writeFileSync(
+      join(environmentsDir, `${environment.name}.toml`),
+      formatEnvironmentToml(environment),
+      "utf-8",
+    );
   }
 
   const harness = getHarnessPreference();
@@ -124,6 +162,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
     version: MIGRATE_MANIFEST_VERSION,
     exported_at: new Date().toISOString(),
     layer_count: layers.length,
+    environment_count: environments.length,
     include_plugins: opts.includePlugins ?? false,
     includes_active_profile: includesActiveProfile,
   };
@@ -136,20 +175,35 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   return manifest;
 }
 
+function importEnvironmentsFromDir(environmentsDir: string): number {
+  if (!existsSync(environmentsDir)) {
+    return 0;
+  }
+  let imported = 0;
+  for (const file of readdirSync(environmentsDir)) {
+    if (!file.endsWith(".toml")) continue;
+    importEnvironmentToml(readFileSync(join(environmentsDir, file), "utf-8"));
+    imported++;
+  }
+  return imported;
+}
+
 /**
  * Import a migration archive produced by exportMigrationState.
  */
 export function importMigrationState(opts: MigrateImportOptions): {
-  manifest: MigrateManifest;
+  manifest: AnyMigrateManifest;
   layers_imported: number;
+  environments_imported: number;
 } {
   const workDir = mkdtempSync(join(tmpdir(), "harnessdeck-migrate-import-"));
 
   try {
     extractArchive(opts.archivePath, workDir);
 
-    let manifest: MigrateManifest;
+    let manifest: AnyMigrateManifest;
     let layersDir: string;
+    let environmentsDir: string;
     let harnessPath: string;
     let configPath: string;
 
@@ -157,21 +211,33 @@ export function importMigrationState(opts: MigrateImportOptions): {
       const state = JSON.parse(
         readFileSync(join(workDir, "state", "migrate.json"), "utf-8"),
       ) as {
-        manifest: MigrateManifest;
+        manifest: AnyMigrateManifest;
         harness: HarnessPreference | null;
         config: HarnessdeckSettings;
         active_profile: { name?: string } | null;
         layers: unknown[];
+        environments?: string[];
       };
       manifest = state.manifest;
       layersDir = join(workDir, "import-layers");
+      environmentsDir = join(workDir, "import-environments");
       mkdirSync(layersDir, { recursive: true });
+      mkdirSync(environmentsDir, { recursive: true });
       for (let i = 0; i < state.layers.length; i++) {
         writeFileSync(
           join(layersDir, `layer-${i}.harnessdeck.toml`),
           formatLayerExportToml(state.layers[i] as LayerExport),
           "utf-8",
         );
+      }
+      if (state.environments) {
+        for (let i = 0; i < state.environments.length; i++) {
+          writeFileSync(
+            join(environmentsDir, `environment-${i}.toml`),
+            state.environments[i] ?? "",
+            "utf-8",
+          );
+        }
       }
       if (state.harness) {
         writeJson(join(workDir, "harness.json"), state.harness);
@@ -185,15 +251,20 @@ export function importMigrationState(opts: MigrateImportOptions): {
     } else {
       manifest = JSON.parse(
         readFileSync(join(workDir, "manifest.json"), "utf-8"),
-      ) as MigrateManifest;
+      ) as AnyMigrateManifest;
       layersDir = join(workDir, "layers");
+      environmentsDir = join(workDir, "environments");
       harnessPath = join(workDir, "harness.json");
       configPath = join(workDir, "config.json");
     }
     const activeProfilePath = join(workDir, "active-profile.json");
 
-    if (manifest.version !== MIGRATE_MANIFEST_VERSION) {
-      throw new Error(`Unsupported migration manifest version: ${manifest.version}`);
+    const manifestVersion = manifest.version;
+    if (
+      manifestVersion !== MIGRATE_MANIFEST_VERSION
+      && manifestVersion !== MIGRATE_MANIFEST_VERSION_V1
+    ) {
+      throw new Error(`Unsupported migration manifest version: ${manifestVersion}`);
     }
 
     let layersImported = 0;
@@ -204,6 +275,10 @@ export function importMigrationState(opts: MigrateImportOptions): {
         layersImported++;
       }
     }
+
+    const environmentsImported = isMigrateManifestV1(manifest)
+      ? 0
+      : importEnvironmentsFromDir(environmentsDir);
 
     if (existsSync(harnessPath)) {
       const harness = JSON.parse(
@@ -232,7 +307,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       writeJson(join(targetDir, "active-profile.json"), activeProfile);
     }
 
-    return { manifest, layers_imported: layersImported };
+    return { manifest, layers_imported: layersImported, environments_imported: environmentsImported };
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }

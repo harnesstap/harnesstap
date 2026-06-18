@@ -22,7 +22,6 @@ Available on `harnessdeck` / `hd`:
 | `environment` | `e` |
 | `profile` | `p` |
 | `auth` | `a` |
-| `deck` | `d` |
 | `migrate` | `m` |
 
 ## help
@@ -41,7 +40,7 @@ hd help scenario 7 --format json
 Generate shell completion scripts for bash, zsh, or fish. After installation, Tab completes:
 
 - subcommands and flags for every `hd` command
-- dynamic values such as local layer, deck, profile layer, and resource names
+- dynamic values such as local layer, profile layer, and resource names
 - harness slugs, cloud accounts, and catalog layers (when authenticated) for supported commands
 
 Install by appending or saving the script for your shell:
@@ -117,7 +116,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 - `history [path]` — list snapshots for a tracked project
 - `revert [snapshot-id]` — restore files from a previous snapshot
 
-Apply layers or decks with `layer apply` / `deck apply` (not under this group).
+Apply layers with `layer apply` (not under this group).
 
 ### Important options
 
@@ -140,9 +139,9 @@ Apply layers or decks with `layer apply` / `deck apply` (not under this group).
 ### Preconditions and side effects
 
 - `history`, `status --check`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
-- `layer apply` / `deck apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
+- `layer apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
 - `revert` requires a snapshot ID from `history`.
-- `layer apply` and `deck apply` resolve environment values through the cascade: home environment ◂ configured-layer default ◂ deck active environment (last wins).
+- `layer apply` resolves environment values through the cascade: home environment ◂ configured-layer default (last wins).
 
 ## layer (`l`)
 
@@ -212,27 +211,6 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 
 `layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
 
-## deck
-
-Curate and apply portable deck repositories (`.harnessdeck/deck.toml`).
-
-### Commands
-
-- `deck list` — list deck records in the local database
-- `deck show <name>` — ordered layer stack, environments, active environment
-- `deck apply <deck> [layer...]` — apply a deck's layers; optional override layers append after the stack
-- `deck delete [name]` — remove deck record (layers and on-disk repos unchanged)
-- `deck export <deck> --output <dir>` — write portable hybrid deck repo
-- `deck import <path>` — import deck repo into the local database
-- `deck doctor <path>` — validate generated marketplace files against `deck.toml`
-
-### Important options
-
-- `deck show --format json` / `--show-id`
-- `deck apply` accepts the same flags as `layer apply` (`--project`, `--harness`, `--dry-run`, plugin strictness, `--sync-plugins`)
-- `deck delete --force` — skip confirmation when `root_path` is set
-- `deck export --with-layer-exports` — include portable layer exports under `.harnessdeck/layers/`
-
 ## auth (`a`)
 
 Manage HarnessDeck Cloud authentication and cloud account state.
@@ -257,7 +235,7 @@ Token refresh runs before remote calls. The CLI does not silently switch account
 
 ## profile (`p`)
 
-Manage profile layers (layers tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `layer apply` or `deck apply` for projects.
+Manage profile layers (layers tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `layer apply` for projects.
 
 Root shorthand: when the first argument is not a known command and matches a local profile layer name, `hd <name>` runs `profile use <name>` (e.g. `hd work`).
 
@@ -338,7 +316,7 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 - `environment unset <name>`
 - `environment secret set <name>` / `environment secret unset <name>`
 - `environment import <file>` / `environment export <name>`
-- `environment use <name>` — set home or deck active environment; `--reapply` opt-in re-runs last applied layers
+- `environment use <name>` — set home active environment; `--reapply` opt-in re-runs last applied layers
 - `environment active` — show active environment and cascade preview
 - `environment resolve` — dry-run merged environment values per cascade tier
 - `environment capture <name>` — create an environment from scoped project capture
@@ -355,7 +333,6 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 - `environment capture --strict` — exit non-zero when required keys are missing
 - `environment capture --include-permissions`
 - `environment capture --dry-run --format json`
-- `environment use --project <path>` — deck-scoped active environment
 - `environment use --reapply`
 
 ## harness (`h`)
@@ -379,19 +356,29 @@ Manage global harness preferences and git-backed project overrides.
 - `harness project set --materialization-strategy <symlink-preferred|copy>`
 - `harness project status --format json`
 
-## migrate
+## migrate (`m`)
 
-Move full HarnessDeck state between machines.
+Move full HarnessDeck workspace state between machines — the offline sharing path when you want to hand off layers, environments, harness preferences, and config without publishing to the cloud catalog.
+
+Use `migrate` when:
+
+- setting up a new laptop from an existing HarnessDeck install
+- sharing a curated layer library with a teammate offline (USB, internal file share, git LFS)
+- backing up your local workspace before a reinstall
+
+For surgical sharing of one layer, prefer `layer export` / `layer import`. For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud.
 
 ### Commands
 
-- `migrate export <file>`
-- `migrate import <file>`
+- `migrate export <file>` — write a portable archive of the local workspace
+- `migrate import <file>` — restore layers, environments, harness preferences, and config from an archive
 
 ### Important options
 
-- `migrate export --include-plugins`
-- `migrate export --format json`
-- `migrate import --format json`
+- `migrate export --include-plugins` — embed plugin trees in exported layer bundles for offline portability
+- `migrate export --format json` — machine-readable export summary
+- `migrate import --format json` — machine-readable import summary
 
-Archives include exported layer bundles, harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
+Archives include exported layer bundles, named environments (secret refs only — not secret values), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts (`cloud-accounts.json` remains local per machine).
+
+See [Scenario 28](../scenarios/details/28-machine-migration.md) for a one-command workflow and [Scenario 17](../scenarios/details/17-migrate-state.md) for a manual layer-by-layer alternative.

@@ -183,30 +183,9 @@ import {
   resolveApplyConflictPolicy,
 } from "./services/materialization-conflicts.js";
 import {
-  exportDeckRepo,
-  importDeckRepo,
-} from "./services/deck-transport.js";
-import { listDecks } from "./models/deck.js";
-import { runDeckDoctor } from "./services/deck-doctor.js";
-import {
-  buildDeckShowPayload,
-  deleteDeckCommand,
-  printDeckShowHuman,
-} from "./services/deck-commands.js";
-import {
-  DeckResolveError,
-  resolveDeckOrThrow,
-  resolveDeckLayerSelectors,
-} from "./services/resolve-deck-layers.js";
-import {
   addApplyCommandOptions,
   type ApplyCommandOpts,
 } from "./services/apply-command-options.js";
-import {
-  isLayerExportFilePath,
-  isLayerUrl,
-} from "./services/layer-source.js";
-import { runDeckDeleteWizard } from "./services/wizards/deck-delete.js";
 import { syncProject, type ProjectReferenceStrategy } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
@@ -234,21 +213,19 @@ import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
   isPromptCancellationError,
   promptForChoice,
-  promptForConfirmation,
   promptForSearchableChoice,
   promptForValue,
   resolveOrPrompt,
   shouldUseWizard,
 } from "./services/wizards/shared.js";
 import {
-  toDeckChoices,
   toLayerChoices,
   toResourceChoices,
 } from "./services/completion/choices.js";
 import { runLayerAddWizard } from "./services/wizards/layer-add.js";
 import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
-import { runProjectApplyWizard } from "./services/wizards/project-apply.js";
+import { runLayerApplyWizard } from "./services/wizards/layer-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
 import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
@@ -755,7 +732,7 @@ function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|plugin|auth|migrate|harness|environment|deck|profile)'/i.test(candidate.message);
+    && /too many arguments for '(layer|resource|plugin|auth|migrate|harness|environment|profile)'/i.test(candidate.message);
 }
 
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
@@ -1223,42 +1200,6 @@ function printPluginApplyPostSyncSummary(
   }
 }
 
-async function handleDeckApplyCommand(
-  deckName: string,
-  overrideLayers: string[],
-  opts: ApplyCommandOpts,
-): Promise<void> {
-  try {
-    const deck = resolveDeckOrThrow(deckName);
-    const deckLayers = resolveDeckLayerSelectors(deckName);
-    for (const layer of overrideLayers) {
-      if (isLayerUrl(layer) || isLayerExportFilePath(layer)) {
-        process.exitCode = 1;
-        ui.danger(
-          "Deck apply override layers must be layer selectors, not export paths or URLs.",
-        );
-        return;
-      }
-    }
-    const combined = [...deckLayers, ...overrideLayers];
-    if (combined.length === 0) {
-      process.exitCode = 1;
-      ui.danger(`Deck has no layers: ${deck.name}`);
-      return;
-    }
-    await handleApplyCommand(
-      combined as [string, ...string[]],
-      { ...opts, deckId: deck.id },
-    );
-  } catch (err) {
-    if (err instanceof DeckResolveError) {
-      process.exitCode = 1;
-      ui.danger(err.message, { hints: err.hints });
-      return;
-    }
-    throw err;
-  }
-}
 
 async function handleApplyCommand(
   layerNames: [string, ...string[]] | [],
@@ -1277,7 +1218,7 @@ async function handleApplyCommand(
         format: parseOutputFormat(opts.format),
         missingRequiredArgs: true,
       })
-        ? runProjectApplyWizard().then((layerName) => [layerName] as [string])
+        ? runLayerApplyWizard().then((layerName) => [layerName] as [string])
         : Promise.resolve([] as []));
 
   if (resolvedLayerNames.length === 0) {
@@ -1287,7 +1228,6 @@ async function handleApplyCommand(
       {
         hints: [
           formatCommand("layer apply <layer>"),
-          formatCommand("deck apply <deck>"),
         ],
       },
     );
@@ -1362,7 +1302,6 @@ async function handleApplyCommand(
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
     configuredLayerIds: applyBundle.configuredLayerIds,
     projectRoot,
-    deckId: opts.deckId,
   });
   const mergedPluginPins = (() => {
     const pins = new Map<string, { ref: string; version_constraint: string }>();
@@ -2651,13 +2590,9 @@ async function handleEnvironmentUseCommand(
     const payload = useEnvironmentForProjectCommand(name, projectRoot);
     if (format === "json") {
       printJson(payload);
-    } else if (payload.deck_tracked) {
-      ui.success(
-        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot}`,
-      );
     } else {
       ui.success(
-        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot} ${ui.icons.bullet} wrote ${payload.deck_file}`,
+        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot}`,
       );
     }
 
@@ -3628,7 +3563,9 @@ function handleMigrateExportCommand(
       printJson({ ...manifest, output: file });
       return;
     }
-    ui.success(`Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.layer_count} layers`);
+    ui.success(
+      `Exported migration archive ${ui.icons.hint} ${file} ${ui.icons.bullet} ${manifest.layer_count} layers, ${manifest.environment_count} environments`,
+    );
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
@@ -3649,7 +3586,7 @@ function handleMigrateImportCommand(
       return;
     }
     ui.success(
-      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}`,
+      `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}, ${formatCount(result.environments_imported, "environment")}`,
     );
   } catch (err) {
     ui.danger(err instanceof Error ? err.message : String(err));
@@ -4940,308 +4877,6 @@ environmentCmd
       return;
     }
     console.log(payload.toml);
-  });
-
-// ── deck ────────────────────────────────────────────────────────────────
-
-const deckCmd = configureCommandGroup(
-  program
-    .command("deck")
-    .alias("d")
-    .description("Curate, apply, export, import, and validate portable deck repositories"),
-);
-
-deckCmd
-  .command("list")
-  .alias("ls")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("List deck records in the local database")
-  .action((opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const decks = listDecks();
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(decks);
-      return;
-    }
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 24 },
-        { key: "root_path", header: "ROOT", width: 40 },
-      ],
-      rows: decks.map((deck) => ({
-        name: deck.name,
-        root_path: deck.root_path || ui.theme.muted("(not set)"),
-      })),
-      empty: "No decks found.",
-    });
-  });
-
-deckCmd
-  .command("show")
-  .argument("[name]", "Deck name or ID")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option("--show-id", "Show deck ID in human output")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Show deck metadata, layer stack, and environments")
-  .action(async (
-    name: string | undefined,
-    opts: {
-      format?: string;
-      showId?: boolean;
-      interactive?: boolean;
-      noInteractive?: boolean;
-    },
-  ) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const resolvedName = await resolveOrPrompt({
-      value: name,
-      shouldPrompt: shouldUseWizard({
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format,
-        missingRequiredArgs: !name,
-      }),
-      prompt: async () => {
-        const choices = toDeckChoices();
-        if (choices.length === 0) {
-          return undefined;
-        }
-        return promptForSearchableChoice({
-          message: "Which deck do you want to show?",
-          choices,
-        });
-      },
-    });
-    if (!resolvedName) {
-      process.exitCode = 1;
-      ui.danger(
-        listDecks().length > 0
-          ? "error: missing required argument 'name'"
-          : `No decks found. Create one with \`${formatCommand("deck create <name>")}\` first.`,
-      );
-      return;
-    }
-    try {
-      const payload = buildDeckShowPayload(resolvedName);
-      if (format === "json") {
-        printJson({
-          id: payload.id,
-          name: payload.name,
-          root_path: payload.root_path,
-          active_environment: payload.active_environment,
-          layers: payload.layers,
-          environments_referenced: payload.environments_referenced,
-          deck: payload.deck_json,
-        });
-        return;
-      }
-      printDeckShowHuman(payload, Boolean(opts.showId));
-    } catch (err) {
-      process.exitCode = 1;
-      if (err instanceof DeckResolveError) {
-        ui.danger(err.message, { hints: err.hints });
-        return;
-      }
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-addApplyCommandOptions(
-  deckCmd
-    .command("apply")
-    .argument("<deck>", "Deck name or ID")
-    .argument(
-      "[layers...]",
-      "Optional override layers appended after the deck stack",
-    )
-    .description("Apply a deck's layer stack to a project"),
-).action(async (
-  deck: string,
-  layers: string[],
-  opts: ApplyCommandOpts,
-) => {
-  await handleDeckApplyCommand(deck, layers, opts);
-});
-
-deckCmd
-  .command("delete")
-  .argument("[name]", "Deck name or ID")
-  .option("-s, --search <query>", "Filter decks in the delete wizard")
-  .option("--force", "Skip confirmation when the deck has a root path")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Delete a deck record from the local database")
-  .action(async (
-    name: string | undefined,
-    opts: {
-      search?: string;
-      force?: boolean;
-      interactive?: boolean;
-      noInteractive?: boolean;
-      format?: string;
-    },
-  ) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const useWizard = shouldUseWizard({
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format: parseOutputFormat(opts.format),
-        missingRequiredArgs: !name,
-      });
-      const selectors = name
-        ? [name]
-        : useWizard
-          ? await runDeckDeleteWizard({ search: opts.search })
-          : [];
-
-      if (selectors.length === 0) {
-        throw new Error(
-          !name && useWizard
-            ? "No decks selected for deletion"
-            : "Deck name is required",
-        );
-      }
-
-      for (const selector of selectors) {
-        const deck = resolveDeckOrThrow(selector);
-        const format = parseOutputFormat(opts.format);
-        const needsConfirm =
-          !opts.force
-          && format === "human"
-          && shouldUseWizard({
-            interactive: opts.interactive,
-            noInteractive: opts.noInteractive,
-            format,
-            missingRequiredArgs: false,
-          })
-          && deck.root_path.trim().length > 0;
-
-        if (needsConfirm) {
-          const confirmed = await promptForConfirmation({
-            message:
-              `Delete deck record ${deck.name}? Files at ${deck.root_path} will not be removed.`,
-            default: false,
-          });
-          if (!confirmed) {
-            ui.warn(`Skipped deleting deck ${deck.name}`);
-            continue;
-          }
-        }
-
-        const result = deleteDeckCommand(selector);
-        if (format === "json") {
-          printJson(result);
-          continue;
-        }
-        ui.success(
-          `Deleted deck ${ui.theme.accent(result.name)} (layers and files unchanged)`,
-        );
-      }
-    } catch (err) {
-      process.exitCode = 1;
-      if (err instanceof DeckResolveError) {
-        ui.danger(err.message, { hints: err.hints });
-        return;
-      }
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-deckCmd
-  .command("export")
-  .argument("<deck>", "Deck name or ID")
-  .requiredOption("--output <path>", "Directory to write the deck repo")
-  .option("--with-layer-exports", "Include portable layer exports under .harnessdeck/layers/")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Export a deck to a portable hybrid deck repo directory")
-  .action((deck: string, opts: { output: string; withLayerExports?: boolean; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const result = exportDeckRepo(deck, opts.output, {
-        withLayerExports: opts.withLayerExports,
-      });
-      const format = parseOutputFormat(opts.format);
-      if (format === "json") {
-        printJson(result);
-        return;
-      }
-      ui.success(`Exported deck to ${ui.theme.accent(resolve(opts.output))}`);
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${result.deckTomlPath}`));
-      for (const layerExportPath of result.layerExportPaths) {
-        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${layerExportPath}`));
-      }
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-deckCmd
-  .command("import")
-  .argument("<path>", "Deck repo directory containing .harnessdeck/deck.toml")
-  .option("--as <name>", "Override imported deck name")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Import a deck repo into the local database")
-  .action((path: string, opts: { as?: string; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const imported = importDeckRepo(path, { deckNameOverride: opts.as });
-      const format = parseOutputFormat(opts.format);
-      if (format === "json") {
-        printJson({
-          deck: imported.deck,
-          layers: imported.configuredLayers.map((layer) => ({
-            name: layer.name,
-            version: layer.version,
-          })),
-          environments: imported.environments.map((environment) => environment.name),
-        });
-        return;
-      }
-      ui.success(`Imported deck ${ui.theme.accent(imported.deck.name)}`);
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-deckCmd
-  .command("doctor")
-  .argument("<path>", "Deck repo directory")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Validate generated marketplace and native files against deck.toml")
-  .action(async (path: string, opts: { format?: string }) => {
-    try {
-      const result = await runDeckDoctor({ repoRoot: resolve(path) });
-      const format = parseOutputFormat(opts.format);
-      if (format === "json") {
-        printJson(result);
-        return;
-      }
-      if (result.valid) {
-        ui.success("Deck doctor passed");
-        return;
-      }
-      process.exitCode = 1;
-      ui.danger("Deck doctor found issues");
-      for (const issue of result.results) {
-        console.log(ui.theme.warn(`  ${issue.message}`));
-        if (issue.fix) {
-          console.log(ui.theme.muted(`    fix: ${issue.fix}`));
-        }
-      }
-    } catch (err) {
-      process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
   });
 
 // ── migrate ─────────────────────────────────────────────────────────────
