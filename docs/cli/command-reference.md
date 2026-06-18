@@ -22,6 +22,8 @@ Available on `harnessdeck` / `hd`:
 | `environment` | `e` |
 | `profile` | `p` |
 | `auth` | `a` |
+| `deck` | `d` |
+| `migrate` | `m` |
 
 ## help
 

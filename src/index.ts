@@ -5031,6 +5031,7 @@ environmentCmd
 const deckCmd = configureCommandGroup(
   program
     .command("deck")
+    .alias("d")
     .description("Curate, apply, export, import, and validate portable deck repositories"),
 );
 
@@ -5332,6 +5333,7 @@ deckCmd
 const migrateCmd = configureCommandGroup(
   program
     .command("migrate")
+    .alias("m")
     .description("Export or import full HarnessDeck state for machine migration"),
 );
 
