@@ -74,14 +74,15 @@ describe("CLI harness", () => {
     }
   });
 
-  it("renders project status as a detail panel with plugin state", async () => {
+  it("renders project status as a structured dashboard", async () => {
     const context = await createTestContext("cli-project-status-panel");
     try {
       await runCli(["init"]);
       const result = await runCli(["status", context.projectDir]);
       expect(result.stdout).toContain("PROJECT");
       expect(result.stdout).toContain("Platforms");
-      expect(result.stdout).toContain("Plugin refs");
+      expect(result.stdout).toContain("PROFILE");
+      expect(result.stdout).toContain("SCAN");
     } finally {
       await context.cleanup();
     }

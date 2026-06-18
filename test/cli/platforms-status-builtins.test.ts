@@ -105,8 +105,9 @@ describe("CLI platforms, status, and catalog baselines", () => {
 
       const status = await runCli(["status", context.projectDir]);
       expect(status.stdout).toContain("Platforms");
-      expect(status.stdout).toContain("Applied layers");
-      expect(status.stdout).toContain("Snapshots");
+      expect(status.stdout).toContain("APPLIED LAYERS");
+      expect(status.stdout).toContain("tracked@");
+      expect(status.stdout).toContain("RESOLVED");
     } finally {
       await context.cleanup();
     }

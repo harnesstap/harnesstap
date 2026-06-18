@@ -506,6 +506,19 @@ export function updateResource(
   return getResource(resource.id);
 }
 
+export function listResourcesByOriginRef(
+  originRef: string,
+  originKind: OriginKind = "local_snapshot",
+): Resource[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT * FROM resources WHERE origin_ref = ? AND origin_kind = ? ORDER BY updated_at DESC",
+    )
+    .all(originRef, originKind) as ResourceRow[];
+  return rows.map(mapResourceRow);
+}
+
 export function deleteResource(nameOrId: string): boolean {
   const db = getDb();
   const result = resolveResource(nameOrId);
