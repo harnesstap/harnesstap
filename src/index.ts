@@ -4,6 +4,10 @@ import { getDb, closeDb, getDbPath, getHarnessdeckDir } from "./db/connection.js
 import { initializeSchema } from "./db/schema.js";
 import { ui } from "./ui/index.js";
 import {
+  projectStatusPayloadToJson,
+  renderProjectStatusHuman,
+} from "./ui/project-status-render.js";
+import {
   getGitOrigin,
   normalizeGitUrl,
   projectNameFromUrl,
@@ -139,6 +143,7 @@ import {
 import { resolvePluginInstallScope, type InstallPluginPinResult } from "./services/plugin-install.js";
 import { resolveClaudeEnabledPluginRef } from "./plugins/claude-plugin-ref.js";
 import { detectProjectDriftFromLatest } from "./services/project-drift.js";
+import { buildProjectStatusPayload } from "./services/project-status-payload.js";
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergeLayersForApply } from "./services/layer-apply-merge.js";
@@ -2499,22 +2504,6 @@ function resolveApplyHarnessTargets(
   return uniqueHarnessTargets(detectPlatforms(projectRoot));
 }
 
-function formatDriftSummaryLabel(
-  project: ReturnType<typeof getProjectByOrigin>,
-  driftReport: ReturnType<typeof detectProjectDriftFromLatest>,
-): string {
-  if (!project) {
-    return "(not tracked — run layer apply first)";
-  }
-  if (!driftReport?.snapshot_id) {
-    return "(no snapshots)";
-  }
-  if (!driftReport.has_drift) {
-    return "none";
-  }
-  return `${driftReport.changes.length} change(s) since snapshot ${driftReport.snapshot_id}`;
-}
-
 async function handleProjectStatusCommand(
   path: string,
   opts: { format?: string; check?: boolean },
@@ -2523,18 +2512,9 @@ async function handleProjectStatusCommand(
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
   const projectRoot = resolve(path);
-  const gitOrigin = getGitOrigin(projectRoot);
-  const detected = detectPlatforms(projectRoot);
-  const projectByPath = getProjectByLocalPath(projectRoot);
-  const configuredLayerIds = projectByPath
-    ? getProjectConfiguredLayers(projectByPath.id).map((row) => row.layer_id)
-    : [];
-  const environmentCascade = environmentActivePayload({
-    projectRoot,
-    configuredLayerIds,
-  });
 
   if (opts.check) {
+    const gitOrigin = getGitOrigin(projectRoot);
     if (!gitOrigin) {
       reportNoGitOrigin(formatCommand("status --check"));
       return;
@@ -2582,77 +2562,12 @@ async function handleProjectStatusCommand(
     return;
   }
 
-  if (!gitOrigin) {
-    if (format === "json") {
-      printJson({
-        project_root: projectRoot,
-        git_origin: null,
-        platforms: detected,
-        environment_cascade: environmentCascade,
-        drift: null,
-      });
-      return;
-    }
-    ui.panel({
-      title: ["PROJECT"],
-      rows: [
-        ["Root", projectRoot],
-        ["Git origin", "(none)"],
-        ["Platforms", detected.join(", ") || "(none detected)"],
-        ["Environment vars", `${Object.keys(environmentCascade.resolved.vars).length}`],
-        ["Environment secrets", `${Object.keys(environmentCascade.resolved.secretRefs).length}`],
-        ["Plugin refs", "use `hd resource sync` on library plugin resources"],
-      ],
-    });
-    ui.subheader("ENVIRONMENT CASCADE");
-    ui.info(JSON.stringify(environmentCascade, null, 2));
-    return;
-  }
-
-  const normalizedOrigin = normalizeGitUrl(gitOrigin);
-  const project = getProjectByOrigin(normalizedOrigin);
-  const layers = project ? getProjectConfiguredLayers(project.id) : [];
-  const snapshots = project ? listSnapshots(project.id) : [];
-  const driftReport = project
-    ? detectProjectDriftFromLatest(projectRoot, project.id)
-    : null;
-
+  const payload = await buildProjectStatusPayload(projectRoot);
   if (format === "json") {
-    const payload: Record<string, unknown> = {
-      project_root: projectRoot,
-      git_origin: normalizedOrigin,
-      platforms: detected,
-      environment_cascade: environmentCascade,
-      drift: driftReport,
-    };
-    if (project) {
-      payload.applied_layers = layers.length;
-      payload.snapshots = snapshots.length;
-    }
-    printJson(payload);
+    printJson(projectStatusPayloadToJson(payload));
     return;
   }
-
-  const rows: [string, string][] = [
-    ["Root", projectRoot],
-    ["Git origin", gitOrigin],
-    ["Platforms", detected.join(", ") || "(none detected)"],
-  ];
-  if (project) {
-    rows.push(["Applied layers", `${layers.length}`]);
-    rows.push(["Snapshots", `${snapshots.length}`]);
-    rows.push(["Drift", formatDriftSummaryLabel(project, driftReport)]);
-  }
-  rows.push(["Environment vars", `${Object.keys(environmentCascade.resolved.vars).length}`]);
-  rows.push([
-    "Environment secrets",
-    `${Object.keys(environmentCascade.resolved.secretRefs).length}`,
-  ]);
-  rows.push(["Plugin refs", "sync library resources with `hd resource sync`"]);
-
-  ui.panel({ title: ["PROJECT"], rows });
-  ui.subheader("ENVIRONMENT CASCADE");
-  ui.info(JSON.stringify(environmentCascade, null, 2));
+  renderProjectStatusHuman(payload);
 }
 
 function printEnvironmentMutationResult(
@@ -5031,6 +4946,7 @@ environmentCmd
 const deckCmd = configureCommandGroup(
   program
     .command("deck")
+    .alias("d")
     .description("Curate, apply, export, import, and validate portable deck repositories"),
 );
 
@@ -5332,6 +5248,7 @@ deckCmd
 const migrateCmd = configureCommandGroup(
   program
     .command("migrate")
+    .alias("m")
     .description("Export or import full HarnessDeck state for machine migration"),
 );
 

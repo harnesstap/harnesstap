@@ -58,19 +58,31 @@ describe("CLI harness", () => {
         commandName: "hd",
       });
       expect(JSON.parse(authStatus.stdout)).toEqual({});
+
+      const deckList = await runCli(["d", "ls", "--format", "json"], {
+        commandName: "hd",
+      });
+      expect(Array.isArray(JSON.parse(deckList.stdout))).toBe(true);
+
+      const migrateHelp = await runCli(["m", "--help"], {
+        commandName: "hd",
+      });
+      expect(migrateHelp.stdout).toContain("export");
+      expect(migrateHelp.stdout).toContain("import");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("renders project status as a detail panel with plugin state", async () => {
+  it("renders project status as a structured dashboard", async () => {
     const context = await createTestContext("cli-project-status-panel");
     try {
       await runCli(["init"]);
       const result = await runCli(["status", context.projectDir]);
       expect(result.stdout).toContain("PROJECT");
       expect(result.stdout).toContain("Platforms");
-      expect(result.stdout).toContain("Plugin refs");
+      expect(result.stdout).toContain("PROFILE");
+      expect(result.stdout).toContain("SCAN");
     } finally {
       await context.cleanup();
     }
