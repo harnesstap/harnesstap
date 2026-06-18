@@ -223,6 +223,12 @@ import {
   toResourceChoices,
 } from "./services/completion/choices.js";
 import { runLayerAddWizard } from "./services/wizards/layer-add.js";
+import {
+  applyLayerEdit,
+  attachmentKey,
+  buildLayerEditCandidates,
+} from "./services/layer-edit.js";
+import { runLayerEditWizard } from "./services/wizards/layer-edit.js";
 import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
 import { runLayerApplyWizard } from "./services/wizards/layer-apply.js";
@@ -776,6 +782,24 @@ program
         if (cmd.description()) {
           lines.push(cmd.description(), "");
         }
+
+        const args = cmd.registeredArguments?.filter((arg) => arg.description) ?? [];
+        if (args.length > 0) {
+          lines.push(ui.theme.heading("ARGUMENTS"));
+          for (const arg of args) {
+            const name = arg.required ? `<${arg.name()}>` : `[${arg.name()}]`;
+            lines.push(`  ${ui.theme.flag(name)}  ${arg.description}`);
+          }
+          lines.push("");
+        }
+
+        if (cmd.name() === "completion") {
+          lines.push(ui.theme.heading("EXAMPLES"));
+          lines.push(`  ${formatCommand("completion bash >> ~/.bashrc")}`);
+          lines.push(`  ${formatCommand("completion zsh >> ~/.zshrc")}`);
+          lines.push(`  ${formatCommand("completion fish > ~/.config/fish/completions/hd.fish")}`);
+          lines.push("");
+        }
         
         const opts = cmd.options.filter((opt) => !opt.hidden);
         if (opts.length > 0) {
@@ -996,7 +1020,7 @@ async function handleScanCommand(
   if (detected.length === 0) {
     ui.warn(`No harness resources found in this directory (${projectRoot}).`);
     ui.hint(
-      `Scans project files on disk (skills, rules, instructions), not your harness setup — see \`${formatCommand("harness status")}\`.`,
+      `If you need to scan your global harness configuration, use \`${formatCommand("harness init")}\`.`,
     );
     return;
   }
@@ -2197,6 +2221,137 @@ function handleLayerShowCommand(
         };
       }),
     });
+  }
+}
+
+function shouldUseInteractiveLayerEdit(input: {
+  noInteractive?: boolean;
+  format?: string;
+}): boolean {
+  return shouldUseWizard({
+    interactive: true,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+}
+
+function printLayerEditJsonSnapshot(layer: Layer, rows: ReturnType<typeof buildLayerEditCandidates>): void {
+  printJson({
+    layer: {
+      id: layer.id,
+      name: layer.name,
+      version: layer.version,
+    },
+    attachments: rows
+      .filter((row) => row.checked)
+      .map((row) => ({
+        key: attachmentKey(row),
+        type: row.type,
+        id: row.id.startsWith("layer-candidate:") ? null : row.id,
+        version_constraint: row.version_constraint ?? null,
+      })),
+  });
+}
+
+async function handleLayerEditCommand(
+  name: string | undefined,
+  opts: {
+    type?: string;
+    search?: string;
+    showId?: boolean;
+    all?: boolean;
+    dryRun?: boolean;
+    format?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const resolvedType = resolveResourceListType(undefined, opts.type);
+  if (resolvedType === "conflict") {
+    ui.danger(`Conflicting type filters: ${opts.type}`);
+    return;
+  }
+  if (resolvedType === "invalid") {
+    ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+    return;
+  }
+
+  const resolvedName = name ?? await resolveLayerMutationTarget({
+    layerName: name,
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    format: opts.format,
+    message: "Which layer do you want to edit?",
+  });
+  if (!resolvedName) {
+    process.exitCode = 1;
+    ui.danger(
+      listLayers().length > 0
+        ? "error: missing required argument 'name'"
+        : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
+    );
+    return;
+  }
+
+  const layer = getLayer(resolvedName);
+  if (!layer) {
+    process.exitCode = 1;
+    ui.danger(`Layer not found: ${resolvedName}`);
+    return;
+  }
+
+  const candidates = buildLayerEditCandidates(layer);
+
+  if (format === "json" && !shouldUseInteractiveLayerEdit(opts)) {
+    printLayerEditJsonSnapshot(layer, candidates);
+    return;
+  }
+
+  if (!shouldUseInteractiveLayerEdit(opts)) {
+    process.exitCode = 1;
+    ui.danger(
+      `layer edit is interactive only. Use \`${formatCommand("layer combine")}\` / \`${formatCommand("layer uncombine")}\` for scripting.`,
+    );
+    return;
+  }
+
+  try {
+    const pending = await runLayerEditWizard({
+      layer,
+      typeFilter: resolvedType,
+      search: opts.search,
+      showId: opts.showId,
+      showAll: opts.all,
+    });
+    if (!pending) {
+      process.exitCode = 1;
+      return;
+    }
+
+    const result = await applyLayerEdit({
+      layer,
+      initial: candidates,
+      pending,
+      dryRun: opts.dryRun,
+    });
+
+    const label = formatLayerLabel(layer);
+    const summary = `+${result.added.length} added, −${result.removed.length} removed`;
+    if (opts.dryRun) {
+      ui.success(`Dry run for layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary} (no changes written)`);
+      return;
+    }
+    ui.success(`Updated layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary}`);
+  } catch (error) {
+    if (isPromptCancellationError(error)) {
+      process.exitCode = 1;
+      return;
+    }
+    throw error;
   }
 }
 
@@ -3667,8 +3822,8 @@ program
 
 program
   .command("completion")
-  .argument("<shell>", "Shell: bash, zsh, or fish")
-  .description("Generate shell completion script")
+  .argument("<shell>", "Target shell: bash, zsh, or fish (must match your interactive shell)")
+  .description("Print shell completion script to stdout (redirect into ~/.bashrc, ~/.zshrc, or fish completions)")
   .action((shell: string) => {
     try {
       process.stdout.write(renderShellCompletion(shell, program));
@@ -3824,6 +3979,35 @@ layerCmd
       return;
     }
     handleLayerShowCommand(resolvedName, opts);
+  });
+
+layerCmd
+  .command("edit")
+  .argument("[name]", "Layer name or ID")
+  .option("-t, --type <type>", `Restrict to one resource type (${RESOURCE_TYPES.join(", ")})`)
+  .option("-s, --search <query>", "Pre-fill search filter")
+  .option("--show-id", "Show IDs in tables")
+  .option("--all", "Show all resources per type (default: first 10 per type)")
+  .option("--dry-run", "Preview changes without writing")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Interactively add or remove layer attachments")
+  .action(async (name: string | undefined, opts: {
+    type?: string;
+    search?: string;
+    showId?: boolean;
+    all?: boolean;
+    dryRun?: boolean;
+    format?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  }) => {
+    try {
+      await handleLayerEditCommand(name, opts);
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
   });
 
 layerCmd

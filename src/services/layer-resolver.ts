@@ -118,3 +118,35 @@ export function resolveLayerGraph(rootSelectors: string[]): LayerResolutionResul
 
   return { resolved: order, dependencyMap };
 }
+
+export function validateLayerDependencyGraph(
+  rootName: string,
+  rootDependencyNames: string[],
+): void {
+  const visiting = new Set<string>();
+
+  function resolveDeps(layerName: string): string[] {
+    if (layerName === rootName) {
+      return rootDependencyNames;
+    }
+    const layer = getLayer(layerName);
+    if (!layer) {
+      return [];
+    }
+    return listLayerDependencies(layer.id).map((dep) => dep.dependency_name);
+  }
+
+  function visit(name: string): void {
+    if (visiting.has(name)) {
+      const path = [...visiting, name].join(" → ");
+      throw new Error(`Layer dependency cycle detected: ${path}`);
+    }
+    visiting.add(name);
+    for (const dep of resolveDeps(name)) {
+      visit(dep);
+    }
+    visiting.delete(name);
+  }
+
+  visit(rootName);
+}
