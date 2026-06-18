@@ -15,11 +15,19 @@ A few CLI renames matter up front:
 - `harnessdeck layer pull` installs a layer from the remote catalog
   ([Scenario 5](./details/05-build-layer-from-resources.md)).
 - `harnessdeck init` initializes `~/.harnessdeck`, imports supported
-  home-directory defaults, and can choose the default main harness (plus alias
-  harnesses) during init. Catalog baselines are applied with `layer apply`, not
-  seeded at init. [Scenario 2](./details/02-default-harness-aliases.md) is for
-  changing that preference later.
-- **Layers vs decks:** use `layer apply` for one or more layers ([Scenarios 7](./details/07-preview-apply-layer.md), [25](./details/25-stack-layers.md)); use `deck apply` for a curated stack imported from a deck repo ([Scenario 29](./details/29-apply-deck.md)). `project apply` remains a deprecated alias for `layer apply`.
+  home-directory defaults, seeds a `default` profile layer and active pointer,
+  and can choose the default main harness (plus alias harnesses) during init.
+  Global apply does not run at init — use `profile use default`. Catalog
+  baselines for projects are applied with `layer apply`, not seeded at init.
+  [Scenario 2](./details/02-default-harness-aliases.md) is for changing harness
+  preference later; [Scenario 36](./details/36-switch-profile.md) covers
+  profile switching.
+- **Profiles vs projects:** use `profile use` (or `hd <name>`) for machine
+  home harness files; use `layer apply` for one or more layers in a repo
+  ([Scenarios 7](./details/07-preview-apply-layer.md), [25](./details/25-stack-layers.md));
+  use `deck apply` for a curated stack imported from a deck repo
+  ([Scenario 29](./details/29-apply-deck.md)). `project apply` remains a
+  deprecated alias for `layer apply`.
 - The current CLI exposes `harnessdeck project mirror`
   command ([Scenario 27](./details/27-project-sync.md)). Use it when you want to mirror alias harness outputs from the on-disk main
   harness. Re-applying a layer to selected harnesses ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
@@ -52,6 +60,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer        | Common     | Shipped |
 | [27](./details/27-project-sync.md) | True cross-harness `project mirror`                 | Common     | Shipped |
 | [29](./details/29-apply-deck.md) | Apply a curated deck to a project                   | Common     | Shipped |
+| [36](./details/36-switch-profile.md) | Switch global profile presets                    | Common     | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
 | [5](./details/05-build-layer-from-resources.md)  | Build a reusable layer from imported resources     | Occasional | Shipped |
@@ -67,6 +76,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing               | Occasional | Shipped |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL                  | Occasional | Shipped |
 | [30](./details/30-manage-deck-records.md) | Import, inspect, and remove deck records        | Occasional | Shipped |
+| [37](./details/37-publish-profile-layer.md) | Publish a profile layer to the catalog        | Occasional | Shipped |
 | [32](./details/32-instruction-tier-apply.md) | Apply to instruction-tier harnesses          | Occasional | Shipped |
 | [33](./details/33-mirror-plugin-fallback.md) | Mirror with plugin-source fallback           | Occasional | Shipped |
 | [34](./details/34-portability-limits.md) | Understand portability limits                  | Occasional | Shipped |
@@ -102,6 +112,7 @@ one repo needs different harness defaults than your machine-wide setup.
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer |
 | [27](./details/27-project-sync.md) | True cross-harness `project mirror` |
 | [29](./details/29-apply-deck.md) | Apply a curated deck stack in one command |
+| [36](./details/36-switch-profile.md) | Switch global profile presets on the machine |
 
 ---
 
@@ -127,6 +138,7 @@ baselines, or when integrating HarnessDeck into tooling.
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing to disk |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL |
 | [30](./details/30-manage-deck-records.md) | Import, show, export, and delete deck records |
+| [37](./details/37-publish-profile-layer.md) | Publish and install profile-tagged catalog layers |
 | [32](./details/32-instruction-tier-apply.md) | Apply layers to instruction-tier harnesses (windsurf, cline, copilot, …) |
 | [33](./details/33-mirror-plugin-fallback.md) | Mirror alias harnesses when main harness tree is empty |
 | [34](./details/34-portability-limits.md) | Review what transfers across harnesses and what does not |

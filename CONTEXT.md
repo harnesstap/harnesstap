@@ -16,9 +16,15 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 ## Concepts
 
-**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; combine and apply at project or machine level with `layer apply`.
+**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; combine and apply at project level with `layer apply` / `deck apply`.
 
-**Deck** — A personal collection of layers, importable and exportable to stay aligned across machines and teammates. Extend it by creating layers or pulling from cloud catalogs. Deck sections recap the full model: resources, context, environment, layers, and the deck itself.
+**Profile** — A layer tagged `profile`; presented as a switchable global preset. Not a separate storage type — profiles are layers with the reserved tag `profile`. Switch with `profile use` (or root shorthand `hd <name>`); applies to machine home harness paths only.
+
+**Deck** — Your personal ordered collection of layers (and optional environments); git transport optional. Cherry-pick catalog layers and local layers into a deck; apply the stack to **projects** with `deck apply`. Not an org team baseline — that lives in **catalogs**.
+
+**Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer search`, `layer pull`). Users cherry-pick catalog layers into their personal deck or profile stack.
+
+**Account** — Local HarnessDeck Cloud login identity (tokens, org context) stored in `cloud-accounts.json`. Distinct from a **profile** layer (global agent preset).
 
 **Resource** — A stored row in the canonical library. Two families:
 - **Material resources** (context-side or environment-side atoms): `skill`, `rule`, `instruction`, `mcp_server`, `hook`, `agent`, `command`, `env_var`, `model_config`, `permission`.
@@ -36,7 +42,11 @@ Terms and meanings agreed during design discussions. Implementation details belo
 | --- | --- | --- |
 | **plugin** | Host plugin (manifest + tree on disk / in marketplace) | A HarnessDeck storage row or layer attachment |
 | **plugin_pin** | Composition reference attached to a layer | The host plugin bundle itself |
-| **layer** | HarnessDeck versioned context package; catalog publish unit | Git-transport repo (that's a **deck**) |
+| **layer** | HarnessDeck versioned context package; catalog publish unit | Git-transport repo (that's a **deck**) or global preset (that's a **profile**) |
+| **profile** | Tagged layer (`tags` includes `profile`); global switch UX | Cloud login identity (that's an **account**) |
+| **deck** | Personal curated layer stack; git transport optional | Org-published multiplayer baseline (that's **catalog**) |
+| **catalog** | Org-scoped published layers; browse/search/pull | Personal layer collection (that's a **deck**) |
+| **account** | HarnessDeck Cloud auth identity (`cloud-accounts.json`, `--account`) | Profile layer or `active-profile.json` pointer |
 | **context-side** | The *what* axis (skills, rules, …) | Runtime secrets/env (that's **environment-side**) |
 
 No backward-compatibility requirement pre-release: rename `type=plugin` → `plugin_pin` and `plugin-side` → `context-side` throughout spec, CLI, and storage.

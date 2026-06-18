@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
@@ -219,6 +219,12 @@ describe("planned scenarios services", () => {
         main_harness: "claude-code",
         alias_harnesses: ["cursor"],
       });
+      mkdirSync(join(context.homeDir, ".harnessdeck"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, ".harnessdeck", "active-profile.json"),
+        JSON.stringify({ name: "default" }),
+        "utf-8",
+      );
 
       const archivePath = join(context.rootDir, "state.json");
       const exported = migrate.exportMigrationState({
@@ -236,6 +242,14 @@ describe("planned scenarios services", () => {
         expect(harnessModel.getHarnessPreference()?.main_harness).toBe(
           "claude-code",
         );
+        expect(
+          JSON.parse(
+            readFileSync(
+              join(context2.homeDir, ".harnessdeck", "active-profile.json"),
+              "utf-8",
+            ),
+          ),
+        ).toEqual({ name: "default" });
       } finally {
         await context2.cleanup();
       }

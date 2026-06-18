@@ -18,9 +18,9 @@ Available on `harnessdeck` / `hd`:
 | --- | --- |
 | `layer` | `l` |
 | `resource` | `r` |
-| `project` | `p` |
 | `harness` | `h` |
 | `environment` | `e` |
+| `profile` | `p` |
 | `auth` | `a` |
 
 ## guide
@@ -55,8 +55,8 @@ hd concepts --format json
 Generate shell completion scripts for bash, zsh, or fish. After installation, Tab completes:
 
 - subcommands and flags for every `hd` command
-- dynamic values such as local layer, deck, and resource names
-- harness slugs, cloud profiles, and catalog layers (when authenticated) for supported commands
+- dynamic values such as local layer, deck, profile layer, and resource names
+- harness slugs, cloud accounts, and catalog layers (when authenticated) for supported commands
 
 Install by appending or saving the script for your shell:
 
@@ -84,8 +84,11 @@ Key options:
 
 - `--main <slug>` — set the default main harness
 - `--aliases <slugs>` — comma-separated alias harnesses
+- `--no-default-profile` — skip seeding the `default` profile layer and `active-profile.json` pointer
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
+
+`init` seeds a local `default` profile layer (tagged `profile`) and writes `active-profile.json` unless `--no-default-profile` is passed. Global apply does **not** run automatically — run `hd profile use default` to materialize home harness files.
 
 ## add
 
@@ -221,11 +224,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer pull --org <slug>`
 - `layer pull --catalog <slug>` — catalog slug when selector omits catalog (default `default`)
 - `layer pull --version <constraint>`
+- `layer pull --account <name>`
 - `layer pull --base-url <url>`
-- `layer search --profile <name>`
+- `layer search --account <name>`
 - `layer search --base-url <url>`
 - `layer publish --catalog <slug>` — target catalog slug (default `default`)
-- `layer publish --profile <name>`
+- `layer publish --account <name>`
 
 `layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
 
@@ -252,11 +256,11 @@ Curate and apply portable deck repositories (`.harnessdeck/deck.toml`).
 
 ## auth (`a`)
 
-Manage HarnessDeck Cloud authentication and profile-local account state.
+Manage HarnessDeck Cloud authentication and cloud account state.
 
 ### Commands
 
-- `auth login [profile]`
+- `auth login [account]`
 - `auth status`
 - `auth orgs`
 - `auth logout`
@@ -264,11 +268,51 @@ Manage HarnessDeck Cloud authentication and profile-local account state.
 ### Important options
 
 - `auth login --base-url <url>`
-- `auth status --profile <name> --format json`
+- `auth status --account <name> --format json`
 - `auth orgs --switch <slug>`
-- `auth logout --profile <name>`
+- `auth logout --account <name>`
 
-Token refresh runs before remote calls. The CLI does not silently switch profiles or organizations during other commands.
+Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands.
+
+Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag — use `--account`.
+
+## profile (`p`)
+
+Manage profile layers (layers tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `layer apply` or `deck apply` for projects.
+
+Root shorthand: when the first argument is not a known command and matches a local profile layer name, `hd <name>` runs `profile use <name>` (e.g. `hd work`).
+
+### Commands
+
+- `profile list` — list local layers tagged `profile`; marks active profile
+- `profile show <name>` — profile metadata, layer dependencies, active marker
+- `profile active` — print active profile from `~/.harnessdeck/active-profile.json`
+- `profile use <name>` — merge profile stack, apply globally, set active pointer
+- `profile create <name>` — create empty layer with `tags: [profile]`
+- `profile tag <layer>` — add `profile` tag to an existing layer
+- `profile untag <layer>` — remove `profile` tag (clears active pointer if needed)
+- `profile search <query>` — catalog search with `tag=profile` filter
+- `profile pull <selector>` — install from catalog (`layer pull` alias; warns if not profile-tagged)
+- `profile publish <name>` — publish with profile validation warnings (`layer publish` alias)
+
+### Important options
+
+- `profile list --format json`
+- `profile show --format json`
+- `profile active --format json`
+- `profile create -d, --description <text>`
+- `profile use --dry-run` — preview global file writes
+- `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)
+- `profile use --on-conflict <replace|skip|prompt>`
+- `profile use --account <name>` — cloud account for auto-pull of missing published dependencies
+- `profile use --base-url <url>`
+- `profile use --no-pull` — fail when composition refs are missing locally
+- `profile use --format json`
+- `profile search --account <name>` / `--base-url <url>` / `--format json`
+- `profile pull` — same flags as `layer pull` (`--as`, `--org`, `--catalog`, `--version`, `--account`, `--base-url`)
+- `profile publish --org <slug>` / `--catalog <slug>` / `--account <name>` / `--format json`
+
+`profile use` auto-pulls missing published `layer` composition refs by default. If the profile layer defines `default_environment_id`, the home active environment pointer is updated on switch.
 
 ## resource (`r`)
 
@@ -371,4 +415,4 @@ Move full HarnessDeck state between machines.
 - `migrate export --format json`
 - `migrate import --format json`
 
-Archives include exported layer bundles, harness preferences, and config. They do not include tracked project records, snapshots, or cloud profiles.
+Archives include exported layer bundles, harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.

@@ -600,6 +600,20 @@ export function setLayerDefaultEnvironment(
   return result.changes > 0;
 }
 
+export function setLayerTags(
+  layerId: string,
+  tags: string[],
+): boolean {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `UPDATE layers SET tags = ?, updated_at = ? WHERE id = ?`,
+    )
+    .run(JSON.stringify([...new Set(tags)]), now, layerId);
+  return result.changes > 0;
+}
+
 export function createLayerFromSources(input: {
   name: string;
   version?: string;

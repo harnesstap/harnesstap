@@ -407,7 +407,7 @@ hd migrate export ./harnessdeck-migrate.tar.gz
 hd migrate import ./harnessdeck-migrate.tar.gz
 ```
 
-`project drift` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud profiles remain in `cloud-profiles.json`.
+`project drift` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud accounts remain in `cloud-accounts.json`.
 
 **Project command preconditions**
 
@@ -439,7 +439,7 @@ Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, plugins, 
 
 When you run `hd init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
-Override the base directory with `HARNESSDECK_HOME`; cloud profiles live under `<HARNESSDECK_HOME>/cloud-profiles.json` when set.
+Override the base directory with `HARNESSDECK_HOME`; cloud accounts live under `<HARNESSDECK_HOME>/cloud-accounts.json` when set.
 
 ---
 
@@ -461,43 +461,43 @@ hd migrate import backup.tar
 
 ## HarnessDeck Cloud
 
-HarnessDeck Cloud supports publishing, searching, and installing shared layers. Local cloud profiles default to `~/.harnessdeck/cloud-profiles.json`.
+HarnessDeck Cloud supports publishing, searching, and installing shared layers. Local cloud accounts default to `~/.harnessdeck/cloud-accounts.json`.
 
-1. **Authenticate** and create a profile.
+1. **Authenticate** and create an account.
    ```bash
-   harnessdeck auth login [profile] [--base-url <url>]
+   harnessdeck auth login [account] [--base-url <url>]
    ```
-   Device-code authentication in the browser/terminal. Default profile name: `default`. Default base URL: `https://harnessdeck.kayrnt.fr`.
+   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://harnessdeck.kayrnt.fr`.
 
 2. **Inspect** the authenticated user.
    ```bash
-   harnessdeck auth status [--profile <name>] [--format human|json]
+   harnessdeck auth status [--account <name>] [--format human|json]
    ```
 
 3. **List organizations** or switch the active organization.
    ```bash
-   harnessdeck auth orgs [--profile <name>] [--switch <slug>]
+   harnessdeck auth orgs [--account <name>] [--switch <slug>]
    ```
 
-4. **Log out** and remove a local profile.
+4. **Log out** and remove a local account.
    ```bash
-   harnessdeck auth logout [--profile <name>]
+   harnessdeck auth logout [--account <name>]
    ```
 
 5. **Search** the remote layer catalog.
    ```bash
-   harnessdeck layer search <query> [--profile <name>] [--format human|json]
+   harnessdeck layer search <query> [--account <name>] [--format human|json]
    ```
 
 6. **Add** a layer from the cloud.
    ```bash
-   harnessdeck layer pull <org>/<library>[@version] [--as <name>] [--profile <name>]
+   harnessdeck layer pull <org>/<library>[@version] [--as <name>] [--account <name>]
    ```
    Downloads a layer bundle and imports it locally. Use `--as` to avoid name conflicts.
 
 7. **Publish** a local layer.
    ```bash
-   harnessdeck layer publish <layer> [--profile <name>]
+   harnessdeck layer publish <layer> [--account <name>]
    ```
 
 8. **Apply** an installed layer to a project.

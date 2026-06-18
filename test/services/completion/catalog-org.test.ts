@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, mock } from "bun:test";
 import { completeCatalogOrgs } from "../../../src/services/completion/providers/catalog-org.ts";
 
 const listOrgsMock = mock(() => Promise.resolve([]));
-const getCloudProfileMock = mock(() =>
-  Promise.resolve({ profileName: undefined, profile: undefined }),
+const getCloudAccountMock = mock(() =>
+  Promise.resolve({ accountName: undefined, account: undefined }),
 );
 
 mock.module("../../../src/services/cloud-client.js", () => ({
@@ -12,17 +12,17 @@ mock.module("../../../src/services/cloud-client.js", () => ({
   }),
 }));
 
-mock.module("../../../src/config/cloud-profiles.js", () => ({
-  getCloudProfile: getCloudProfileMock,
+mock.module("../../../src/config/cloud-accounts.js", () => ({
+  getCloudAccount: getCloudAccountMock,
 }));
 
 afterEach(() => {
   listOrgsMock.mockClear();
-  getCloudProfileMock.mockClear();
+  getCloudAccountMock.mockClear();
 });
 
 describe("completeCatalogOrgs", () => {
-  it("returns empty output without an authenticated profile", async () => {
+  it("returns empty output without an authenticated account", async () => {
     const candidates = await completeCatalogOrgs({
       commandPath: ["layer", "publish"],
       slot: "flag-value",
@@ -37,10 +37,10 @@ describe("completeCatalogOrgs", () => {
   });
 
   it("maps catalog orgs to slug candidates when authenticated", async () => {
-    getCloudProfileMock.mockImplementationOnce(() =>
+    getCloudAccountMock.mockImplementationOnce(() =>
       Promise.resolve({
-        profileName: "work",
-        profile: {
+        accountName: "work",
+        account: {
           cloudBaseUrl: "https://example.test",
           accessToken: "token",
           scopes: [],

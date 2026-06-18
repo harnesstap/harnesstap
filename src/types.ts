@@ -367,6 +367,20 @@ export interface ImportedSnapshotInstall {
   installed_at: string;
 }
 
+export interface GlobalApplySnapshot {
+  id: string;
+  profile_name: string;
+  layer_ids: string[];
+  created_at: string;
+}
+
+export interface GlobalApplySnapshotInstall {
+  snapshot_id: string;
+  platform_id: string;
+  files: string[];
+  installed_at: string;
+}
+
 export interface ImportedResourceProvenance {
   source_kind: ImportedSourceKind;
   source_label: string;

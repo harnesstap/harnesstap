@@ -11,15 +11,15 @@ describe("resolveApplyLayerSource", () => {
   it("installs a published selector from the catalog when missing locally", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-remote");
     try {
-      const cloudProfiles = await import("../../src/config/cloud-profiles.ts");
-      await cloudProfiles.saveCloudProfile("test", {
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
         cloudBaseUrl: "https://mock",
         accessToken: "tok",
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
         refreshToken: "r",
         scopes: [],
       });
-      await cloudProfiles.setDefaultCloudProfile("test");
+      await cloudAccounts.setDefaultCloudAccount("test");
 
       const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
       const fetchedLabels: string[] = [];

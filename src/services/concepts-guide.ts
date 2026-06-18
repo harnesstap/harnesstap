@@ -16,7 +16,9 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
     concepts: [
       { term: "resource", definition: "Single canonical item (skill, rule, MCP, hook, agent, …)" },
       { term: "layer", definition: "Named bundle of resources you apply to projects" },
-      { term: "deck", definition: "Curated layer stack; apply with deck apply" },
+      { term: "profile", definition: "Layer tagged profile; apply globally with profile use" },
+      { term: "deck", definition: "Personal curated layer stack; apply with deck apply" },
+      { term: "account", definition: "HarnessDeck Cloud login identity stored locally" },
       { term: "environment", definition: "Named how-values (vars, secrets, model config)" },
       { term: "harness", definition: "Target CLI (claude-code, codex, cursor, …)" },
     ],
@@ -28,6 +30,10 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
       {
         command: "layer apply <layer>",
         purpose: "Materialize layer(s) onto a project",
+      },
+      {
+        command: "profile use <profile>",
+        purpose: "Apply a profile layer globally to home harness files",
       },
       {
         command: "deck apply <deck>",

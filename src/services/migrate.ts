@@ -28,6 +28,7 @@ export interface MigrateManifest {
   exported_at: string;
   layer_count: number;
   include_plugins: boolean;
+  includes_active_profile: boolean;
 }
 
 export interface MigrateExportOptions {
@@ -67,6 +68,9 @@ function createArchive(sourceDir: string, outputPath: string): void {
         : null,
       config: existsSync(join(sourceDir, "config.json"))
         ? JSON.parse(readFileSync(join(sourceDir, "config.json"), "utf-8"))
+        : null,
+      active_profile: existsSync(join(sourceDir, "active-profile.json"))
+        ? JSON.parse(readFileSync(join(sourceDir, "active-profile.json"), "utf-8"))
         : null,
       layers: readdirSync(join(sourceDir, "layers"))
         .filter((f) => f.endsWith(".toml"))
@@ -109,12 +113,19 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
 
   const config = loadSettings(getHarnessdeckDir());
   writeJson(join(workDir, "config.json"), config);
+  const harnessdeckDir = getHarnessdeckDir();
+  const activeProfilePath = join(harnessdeckDir, "active-profile.json");
+  const includesActiveProfile = existsSync(activeProfilePath);
+  if (includesActiveProfile) {
+    cpSync(activeProfilePath, join(workDir, "active-profile.json"));
+  }
 
   const manifest: MigrateManifest = {
     version: MIGRATE_MANIFEST_VERSION,
     exported_at: new Date().toISOString(),
     layer_count: layers.length,
     include_plugins: opts.includePlugins ?? false,
+    includes_active_profile: includesActiveProfile,
   };
   writeJson(join(workDir, "manifest.json"), manifest);
 
@@ -149,6 +160,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
         manifest: MigrateManifest;
         harness: HarnessPreference | null;
         config: HarnessdeckSettings;
+        active_profile: { name?: string } | null;
         layers: unknown[];
       };
       manifest = state.manifest;
@@ -165,6 +177,9 @@ export function importMigrationState(opts: MigrateImportOptions): {
         writeJson(join(workDir, "harness.json"), state.harness);
       }
       writeJson(join(workDir, "config.json"), state.config);
+      if (state.active_profile) {
+        writeJson(join(workDir, "active-profile.json"), state.active_profile);
+      }
       harnessPath = join(workDir, "harness.json");
       configPath = join(workDir, "config.json");
     } else {
@@ -175,6 +190,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       harnessPath = join(workDir, "harness.json");
       configPath = join(workDir, "config.json");
     }
+    const activeProfilePath = join(workDir, "active-profile.json");
 
     if (manifest.version !== MIGRATE_MANIFEST_VERSION) {
       throw new Error(`Unsupported migration manifest version: ${manifest.version}`);
@@ -206,6 +222,14 @@ export function importMigrationState(opts: MigrateImportOptions): {
       const targetDir = getHarnessdeckDir();
       mkdirSync(targetDir, { recursive: true });
       writeJson(join(targetDir, "config.json"), config);
+    }
+    if (existsSync(activeProfilePath)) {
+      const activeProfile = JSON.parse(
+        readFileSync(activeProfilePath, "utf-8"),
+      ) as { name?: string };
+      const targetDir = getHarnessdeckDir();
+      mkdirSync(targetDir, { recursive: true });
+      writeJson(join(targetDir, "active-profile.json"), activeProfile);
     }
 
     return { manifest, layers_imported: layersImported };

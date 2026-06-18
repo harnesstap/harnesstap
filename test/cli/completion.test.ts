@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer, setLayerTags } from "../../src/models/layer-model.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
@@ -105,6 +105,39 @@ describe("CLI __complete", () => {
 
       expect(result.stdout).toContain("human");
       expect(result.stdout).toContain("json");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("completes local profile layers for profile use and root shorthand", async () => {
+    const context = await createInitializedTestContext("cli-complete-profile-layer");
+    try {
+      const work = createLayer({ name: "work" });
+      setLayerTags(work.id, ["profile"]);
+      createLayer({ name: "foundation" });
+
+      const profileUse = await runCli([
+        "__complete",
+        "zsh",
+        "--",
+        "hd",
+        "profile",
+        "use",
+        "wo",
+      ]);
+      expect(profileUse.stdout).toContain("work");
+      expect(profileUse.stdout).not.toContain("foundation");
+
+      const root = await runCli([
+        "__complete",
+        "zsh",
+        "--",
+        "hd",
+        "wo",
+      ]);
+      expect(root.stdout).toContain("work");
+      expect(root.stdout).not.toContain("foundation");
     } finally {
       await context.cleanup();
     }

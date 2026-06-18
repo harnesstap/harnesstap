@@ -1,11 +1,11 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it, test } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("CLI init", () => {
-  test("initializes the database without seeding built-in layers", async () => {
+  test("initializes the database and seeds default profile layer", async () => {
     const context = await createTestContext("cli-init");
 
     try {
@@ -20,7 +20,21 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("layer apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
-      expect(layerModel.listLayers()).toEqual([]);
+      expect(layerModel.listLayers()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "default",
+            tags: expect.arrayContaining(["profile"]),
+          }),
+        ]),
+      );
+      const activeProfile = JSON.parse(
+        readFileSync(
+          `${context.homeDir}/.harnessdeck/active-profile.json`,
+          "utf-8",
+        ),
+      ) as { name: string };
+      expect(activeProfile.name).toBe("default");
     } finally {
       await context.cleanup();
     }
@@ -162,12 +176,12 @@ describe("CLI init", () => {
     }
   });
 
-  it("recovers from a malformed cloud profile store during init", async () => {
+  it("recovers from a malformed cloud account store during init", async () => {
     const context = await createTestContext("cli-init-malformed-cloud-store");
 
     try {
       writeTextFile(
-        `${context.homeDir}/.harnessdeck/cloud-profiles.json`,
+        `${context.homeDir}/.harnessdeck/cloud-accounts.json`,
         "{not-valid-json",
       );
 

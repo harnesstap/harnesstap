@@ -21,6 +21,8 @@ The product currently supports these main workflows:
 - Export or import a machine-transfer archive of local layers, harness preferences, and config.
 - Authenticate with HarnessDeck Cloud; search, install, and publish layers into org **catalogs**.
 - Create, capture, and refresh **environments**; bind default environments to layers; switch home or deck active environment; resolve the home → layer default → deck-active cascade on `project apply`.
+- Manage **profiles** (layers tagged `profile`) for global machine presets; switch active profile and apply to home harness paths with `profile use`.
+- Authenticate HarnessDeck Cloud with named **accounts** (`cloud-accounts.json`, `--account` on catalog commands).
 
 ## Core concepts
 
@@ -30,23 +32,30 @@ flowchart TB
     Org[organization]
     Cat[catalog]
     PubL[published layer versions]
+    PubP["published layers tagged profile"]
     Org --> Cat --> PubL
+    PubL --> PubP
   end
 
   subgraph Local["local workspace"]
     LL[local layer]
     Res[context-side resources]
+    PL["profile layers (tag profile)"]
+    AP[active-profile.json]
     LL --> Res
+    PL --> AP
   end
 
-  subgraph Deck["deck — git transport"]
+  subgraph Deck["deck — personal git transport"]
     DL1[layer + optional default environment]
     DL2[layer]
   end
 
   PubL -->|layer pull| Local
+  PubP -->|profile pull| PL
   Deck --> Cascade["home env ◂ layer default env ◂ deck active env"]
   Local --> Cascade
+  AP -->|profile use| Global["global harness files ~/.claude …"]
   Cascade --> Out[Harness outputs in the project]
 ```
 
@@ -61,7 +70,9 @@ The CLI uses a small set of concepts consistently across commands.
 - `environment`: a named, swappable bundle of environment-side resources. Non-secret values can travel in a deck; secrets are referenced, not embedded.
 - `organization`: a Cloud tenant boundary (members, roles, billing). Required to publish layers for multiplayer use.
 - `catalog`: a named collection of layers within an organization — the browse, search, and install scope in Cloud and the CLI. Required alongside an organization when publishing; omitted for purely local layers.
-- `deck`: a curated bundle of layers and environments, importable as a git repo and described by `.harnessdeck/deck.toml`. Decks are the portable transport format; day-to-day multiplayer distribution flows through **catalogs**, not deck repos.
+- `profile`: a layer whose `tags` include the reserved string `profile`; switchable global preset. `profile use` merges the profile stack (including transitive `layer` refs) and applies to machine home harness paths. Stored as a normal layer row — not a separate entity type.
+- `deck`: your personal curated bundle of layers and environments, importable as a git repo and described by `.harnessdeck/deck.toml`. `deck apply` targets **projects**. Day-to-day multiplayer distribution flows through **catalogs** (cherry-pick into deck or profile), not shared deck repos as org baselines.
+- `account`: a named HarnessDeck Cloud login identity in `~/.harnessdeck/cloud-accounts.json` (access tokens, refresh tokens, active org). Use `--account <name>` on catalog commands; distinct from a profile layer.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
@@ -107,8 +118,10 @@ Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.
 | **Host plugin** | Claude/Cursor/Codex installable bundle (manifest + tree) | Host commands (`claude plugin install`, …) — not a HarnessDeck row |
 | **`plugin_pin`** | Dependency on a host plugin attached to a layer | `layer combine plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
 | **`layer` ref** | Dependency on another HarnessDeck layer (catalog/local) | `layer combine layer:name@^1.0` · `resources.type=layer` |
-| **Deck** | Git-transport bundle of layers + environments | `.harnessdeck/deck.toml` · `decks`, `deck_layers` |
-| **Catalog** | Org-scoped published layer collection | `layer search`, `layer pull` · Cloud APIs |
+| **Profile** | Layer tagged `profile`; global switch preset | `hd profile use <name>` · `layers.tags` includes `profile` |
+| **Deck** | Personal git-transport bundle of layers + environments | `.harnessdeck/deck.toml` · `decks`, `deck_layers` |
+| **Catalog** | Org-scoped published layer collection (multiplayer) | `layer search`, `layer pull` · Cloud APIs |
+| **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
 
 **Package.json analogy:** a **layer** is the package; **context-side resources** are source files; **`plugin_pin`** / **`layer` ref** are dependencies; **`environment`** is runtime config (.env).
 
@@ -246,6 +259,7 @@ Global options:
 | `project` | `p` |
 | `harness` | `h` |
 | `environment` | `e` |
+| `profile` | `p` |
 | `cloud` | `c` |
 
 ## Command surface
@@ -264,7 +278,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnessdeck project ...` | Scans projects, drift, mirror, snapshots, and status (`project apply` is a deprecated alias for `layer apply`). |
 | `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
 | `harnessdeck environment ...` | Creates and manages environments, environment values, secret refs, active-environment pointers, scoped capture/refresh, and cascade preview. |
-| `harnessdeck cloud ...` | Authenticates with HarnessDeck Cloud and manages local cloud profiles. |
+| `harnessdeck profile ...` | Lists, shows, creates, tags, and switches profile layers; global apply via `profile use`. |
+| `harnessdeck cloud ...` | Authenticates with HarnessDeck Cloud and manages local cloud accounts. |
 
 ### `layer` subcommands
 
@@ -278,7 +293,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer delete` | Deletes a layer by selector. |
 | `layer export` | Writes a portable JSONC layer export (`urn:harnessdeck:layer:v1`). |
 | `layer import` | Imports a layer v1 file into the local database. |
-| `layer search` | Searches remote catalogs through the configured cloud profile and connected org scopes. |
+| `layer search` | Searches remote catalogs through the configured cloud account and connected org scopes. |
 | `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
 | `layer publish` | Publishes a local layer to a Cloud org **catalog** (requires organization, catalog name, and publish scope). |
 | `layer catalog list` | Shows default catalog, connected orgs, connected layers, and effective cloud base URL. |
@@ -345,10 +360,42 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 
 | Command | Current behavior |
 | --- | --- |
-| `auth login [profile]` | Device authentication; saves a named local cloud profile. |
-| `auth status` | Shows authenticated user/profile context. |
+| `auth login [account]` | Device authentication; saves a named local cloud account. |
+| `auth status` | Shows authenticated user/account context. |
 | `auth orgs` | Lists organizations; `--switch` updates the active org. |
-| `auth logout` | Removes a local cloud profile. |
+| `auth logout` | Removes a local cloud account. |
+
+### `profile` subcommands
+
+A **profile** is a layer whose `tags` include the reserved string `profile`. Profiles are not a separate storage type — they use the same `layers` table and publish pipeline as any layer.
+
+| Command | Current behavior |
+| --- | --- |
+| `profile list` | Lists local layers where `tags` includes `profile`; marks the active profile from `active-profile.json`. |
+| `profile show <name>` | Layer metadata plus profile summary (stack refs, active marker). |
+| `profile active` | Prints the active profile name from `~/.harnessdeck/active-profile.json`. |
+| `profile use <name>` | Resolves and merges the profile stack (transitive `layer` refs), optionally auto-pulls missing published dependencies, applies to **global** harness paths, writes `active-profile.json`, and records a global apply snapshot. If the profile layer has `default_environment_id`, updates the home active environment pointer. |
+| `profile create <name>` | Creates an empty local layer with `tags: ["profile"]`. |
+| `profile tag <layer>` | Adds the `profile` tag to an existing layer. |
+| `profile untag <layer>` | Removes the `profile` tag; clears `active-profile.json` when untagging the active profile. |
+| `profile search <query>` | Catalog search filtered to `tag=profile` (alias over `layer search`). |
+| `profile pull <selector>` | Alias for `layer pull`; warns when the installed layer is not profile-tagged. |
+| `profile publish <name>` | Alias for `layer publish` with profile validation warnings (empty stack, unpublished local deps). |
+
+`profile use` flags:
+
+| Flag | Purpose |
+| --- | --- |
+| `--dry-run` | Preview global diff without writing |
+| `--harness <slugs>` | Override harness targets (default: global harness preference) |
+| `--on-conflict <policy>` | `replace` \| `skip` \| `prompt` |
+| `--account <name>` | Cloud account for catalog resolution during dependency pull |
+| `--base-url <url>` | Cloud base URL for dependency pull |
+| `--no-pull` | Fail when composition refs are missing locally instead of auto-pull |
+
+**Scope:** `profile use` applies to machine **home** harness paths only. Project apply remains `layer apply` / `deck apply`.
+
+**Root shorthand:** when `argv[2]` is not a registered top-level command or alias and matches a local profile layer name, the CLI rewrites to `profile use <name>`. Reserved names always win — e.g. `hd init` stays `init`, `hd work` becomes `profile use work` when `work` is a profile-tagged layer.
 
 Remote catalog workflows live on **`layer`**, not `cloud`:
 
@@ -376,7 +423,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|active|use`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -443,9 +490,10 @@ JSON output is unchanged by the visual layer.
 
 1. Initializes the local database.
 2. Discovers supported harness configuration in the user's home directory and imports findings.
-3. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
+3. Seeds a local **`default` profile layer** (tagged `profile`) when none exists and writes `active-profile.json` → `{ "name": "default" }`. Does **not** run global apply — switch explicitly with `hd profile use default`. Pass `--no-default-profile` to skip.
+4. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
 
-Starter layers are **not** seeded locally. Apply catalog baselines with `project apply <name>` (bare names resolve against the public catalog) or install bundles with `layer pull`.
+Catalog baselines are not auto-applied at init. Apply them to projects with `layer apply <name>` (bare names resolve against the public catalog) or cache them with `layer pull`.
 
 The main harness may differ from the first harness discovered on disk. Every later mirror operation uses one reference harness and a defined set of alias outputs.
 
@@ -460,7 +508,8 @@ Persistent operational state lives in SQLite at `~/.harnessdeck/harnessdeck.db` 
 | Path | Purpose |
 | --- | --- |
 | `~/.harnessdeck/config.jsonc` | Toolkit configuration (JSONC comments allowed) |
-| `~/.harnessdeck/cloud-profiles.json` | HarnessDeck Cloud profiles and tokens |
+| `~/.harnessdeck/cloud-accounts.json` | HarnessDeck Cloud accounts and tokens |
+| `~/.harnessdeck/active-profile.json` | Active profile pointer (`{ "name": "<layer-name>" }`) |
 | `~/.harnessdeck/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
 | `~/.harnessdeck/environments/<name>.json` | Named environment fragments (JSONC) |
 | `~/.harnessdeck/blobs/sha256/…` | Content-addressed resource bodies |
@@ -487,7 +536,9 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 - `decks`, `deck_layers` — deck metadata and layer membership.
 - `projects`, `project_layers` — tracked directories and applied layers.
 - `resources` — canonical configuration items (including `plugin_pin` and `layer` composition resource types).
-- `harness_preferences`, `project_harnesses`, `snapshots`, `schema_version`.
+- `harness_preferences`, `project_harnesses`, `snapshots`, `global_apply_snapshots`, `global_apply_snapshot_installs`, `schema_version`.
+
+**Global apply snapshots** (schema v20): each `profile use` records a `global_apply_snapshots` row plus per-harness file maps in `global_apply_snapshot_installs` for conflict tracking and future revert support. Project-bound `snapshots` remain separate.
 
 ### Project tracking
 
@@ -612,7 +663,20 @@ Plugin resources with `never_synced` or `stale` status warn by default; pass `--
 
 When generated files already exist, `project apply` uses `--on-conflict replace|skip|prompt` (default: `prompt` on TTY, otherwise `replace`).
 
-If no `--harness` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
+### Global profile apply
+
+`profile use` applies merged profile layer resources to **machine home** harness paths (e.g. `~/.claude/`, `~/.codex/`). Flow:
+
+1. Resolve profile layer by selector; require `tags` includes `profile`.
+2. `mergeLayersForApply` for the profile layer plus transitive `layer` refs (auto-pull missing published refs unless `--no-pull`).
+3. Resolve harness targets from global `harness_preferences` when `--harness` is omitted.
+4. `resolveEnvironmentCascadeForApply` with `projectRoot: homedir()`, configured layer IDs from the merged stack, no deck.
+5. `preparePluginPinsForApply` at global/home scope.
+6. `applyToGlobal` with conflict policy; record `global_apply_snapshots`.
+
+`environment use` without `--project` remains valid for env-only switches; prefer `profile use` when changing both stack and default environment.
+
+For `project apply`, when no `--harness` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
 
 ### Project sync
 
@@ -677,17 +741,18 @@ Environments are inlined under `[environments.<name>]`. Deck doctor materializes
 
 ### Machine transfer archives
 
-`migrate export` writes TOML layer exports inside JSON metadata or tar.gz archives. `migrate import` restores them. Archives do not include tracked project records, snapshots, or cloud profiles.
+`migrate export` writes TOML layer exports inside JSON metadata or tar.gz archives. `migrate import` restores them. Archives include `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
 
 ## HarnessDeck Cloud
 
 HarnessDeck Cloud is the multiplayer control plane for **published layers**. An **organization** owns **catalogs**; each catalog holds versioned layers teams can search, review, and install. Deck repos remain the git transport format; catalogs are the default distribution surface.
 
-Authentication stores named profiles in `~/.harnessdeck/cloud-profiles.json`.
+Authentication stores named accounts in `~/.harnessdeck/cloud-accounts.json`. There is no `cloud-profiles.json` and no `--profile` flag — use `--account` on catalog and auth commands. Re-run `auth login` after upgrading from pre-account CLI builds.
 
-- `auth login` performs device authentication.
-- `auth status`, `auth orgs`, and `auth logout` manage profiles and active org context.
-- `layer search`, `layer pull`, and `layer publish` use the selected cloud profile.
+- `auth login [account]` performs device authentication and saves a named cloud account.
+- `auth status`, `auth orgs`, and `auth logout` manage accounts and active org context.
+- `layer search`, `layer pull`, and `layer publish` use the selected cloud account (`--account`).
+- `profile search` and `profile pull` filter or validate profile-tagged layers (`tag=profile`).
 
 ### Catalog scope
 
@@ -715,7 +780,7 @@ The CLI builds a **catalog scope** from:
 Local integration behavior:
 
 - Token refresh before remote calls; re-login guidance on refresh failure.
-- No silent profile/org switching during other commands.
+- No silent account/org switching during other commands.
 - `layer pull` fails on local name conflict instead of overwriting.
 
 ## Terminal demos (VHS)

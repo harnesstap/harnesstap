@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { completeCatalogLayers } from "../../../src/services/completion/providers/catalog-layer.ts";
+import { completeCatalogProfiles } from "../../../src/services/completion/providers/catalog-profile.ts";
 
 const listLayersInScopeMock = mock(() => Promise.resolve([]));
 const getCloudAccountMock = mock(() =>
@@ -19,10 +19,10 @@ afterEach(() => {
   getCloudAccountMock.mockClear();
 });
 
-describe("completeCatalogLayers", () => {
+describe("completeCatalogProfiles", () => {
   it("returns empty output without an authenticated account", async () => {
-    const candidates = await completeCatalogLayers({
-      commandPath: ["layer", "pull"],
+    const candidates = await completeCatalogProfiles({
+      commandPath: ["profile", "pull"],
       slot: "positional",
       positionalIndex: 0,
       prefix: "",
@@ -33,7 +33,7 @@ describe("completeCatalogLayers", () => {
     expect(listLayersInScopeMock).not.toHaveBeenCalled();
   });
 
-  it("maps catalog layers to published selectors when authenticated", async () => {
+  it("requests catalog results with profile tag filter", async () => {
     getCloudAccountMock.mockImplementationOnce(() =>
       Promise.resolve({
         accountName: "work",
@@ -49,27 +49,32 @@ describe("completeCatalogLayers", () => {
         {
           orgSlug: "acme",
           catalogSlug: "default",
-          slug: "foundation",
-          name: "Foundation",
+          slug: "work",
+          name: "Work Profile",
           summary: "",
           latestVersion: "1.2.0",
           updatedAt: null,
-          tags: [],
+          tags: ["profile"],
           visibility: "public" as const,
         },
       ]),
     );
 
-    const candidates = await completeCatalogLayers({
-      commandPath: ["layer", "pull"],
+    const candidates = await completeCatalogProfiles({
+      commandPath: ["profile", "pull"],
       slot: "positional",
       positionalIndex: 0,
       prefix: "ac",
       localDataAvailable: true,
     });
 
-    expect(listLayersInScopeMock).toHaveBeenCalled();
-    expect(candidates.map((entry) => entry.value)).toContain("acme/foundation");
-    expect(candidates.map((entry) => entry.value)).toContain("acme/foundation@1.2.0");
+    expect(listLayersInScopeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tag: "profile",
+      }),
+      { account: "work" },
+    );
+    expect(candidates.map((entry) => entry.value)).toContain("acme/work");
+    expect(candidates.map((entry) => entry.value)).toContain("acme/work@1.2.0");
   });
 });

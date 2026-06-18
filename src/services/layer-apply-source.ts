@@ -25,7 +25,7 @@ export type ResolvedApplyLayerSource =
   | { kind: "layer-export"; path: string };
 
 export interface ResolveApplyLayerSourceOptions {
-  profile?: string;
+  account?: string;
   baseUrl?: string;
   onFetched?: (sourceLabel: string) => void;
 }
@@ -98,7 +98,7 @@ export async function resolveApplyLayerSource(
   if (isBareLayerName(selector)) {
     const parsed = await resolveBareNameFromCatalog(selector, options);
     const installed = await installLayerFromCatalog(parsed, {
-      profile: options.profile,
+      account: options.account,
       baseUrl: options.baseUrl,
     });
     options.onFetched?.(installed.sourceLabel);
@@ -115,7 +115,7 @@ export async function resolveApplyLayerSource(
 
   const parsed = resolveRemoteLayerSelector(selector, {});
   const installed = await installLayerFromCatalog(parsed, {
-    profile: options.profile,
+    account: options.account,
     baseUrl: options.baseUrl,
   });
   options.onFetched?.(installed.sourceLabel);

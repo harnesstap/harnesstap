@@ -1,3 +1,4 @@
+import { PROFILE_LAYER_TAG } from "../../../constants/profile.js";
 import { getCloudAccount } from "../../../config/cloud-accounts.js";
 import { listLayersInScope } from "../../catalog-client.js";
 import {
@@ -8,7 +9,7 @@ import type { CompletionCandidate, CompletionContext } from "../types.js";
 import { filterByPrefix } from "../utils.js";
 import { runWithCatalogTimeout } from "./catalog-timeout.js";
 
-export async function completeCatalogLayers(
+export async function completeCatalogProfiles(
   ctx: CompletionContext,
 ): Promise<CompletionCandidate[]> {
   const accountInfo = await getCloudAccount(ctx.account);
@@ -20,6 +21,7 @@ export async function completeCatalogLayers(
     const layers = await listLayersInScope(
       {
         q: ctx.prefix.trim() || undefined,
+        tag: PROFILE_LAYER_TAG,
         limit: 25,
         sort: "updated",
       },

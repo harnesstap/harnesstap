@@ -19,6 +19,8 @@ describe("initializeSchema", () => {
           "harness_preferences",
           "imported_snapshot_installs",
           "imported_snapshots",
+          "global_apply_snapshots",
+          "global_apply_snapshot_installs",
           "environment_resources",
           "environment_secret_refs",
           "environments",
@@ -40,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(19);
+      expect(versionRow.version).toBe(20);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -135,7 +137,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 19 }]);
+      expect(versionRows).toEqual([{ version: 20 }]);
     } finally {
       await context.cleanup();
     }
