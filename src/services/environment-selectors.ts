@@ -1,8 +1,6 @@
-import { resolve } from "node:path";
 import { getLayerByName, getLayerById, resolveLayerSelector } from "../models/layer-model.js";
-import { getDeckByRootPath } from "../models/deck.js";
 import { getEnvironment, resolveEnvironmentSelector } from "../models/environment.js";
-import type { Layer, Deck, Environment } from "../types.js";
+import type { Layer, Environment } from "../types.js";
 
 function isUlid(value: string): boolean {
   return /^[0-9A-Z]{26}$/.test(value);
@@ -40,10 +38,6 @@ export function resolveConfiguredLayerByNameOrId(
     return getLayerById(selector);
   }
   return getLayerByName(selector);
-}
-
-export function resolveDeckByProjectRoot(projectRoot: string): Deck | undefined {
-  return getDeckByRootPath(resolve(projectRoot));
 }
 
 export function resolveEnvironmentByIdOrThrow(environmentId: string): Environment {

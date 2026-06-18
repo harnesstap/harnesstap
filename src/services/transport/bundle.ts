@@ -1,12 +1,22 @@
-import type { DeckJson, LayerExport, MultiLayerExport } from "../../types.js";
+import type {
+  DeckJson,
+  DeckJsonLayer,
+  LayerExport,
+  MultiLayerExport,
+} from "../../types.js";
 import {
   BUNDLE_SCHEMA,
   BUNDLE_SCHEMA_VERSION,
+  DECK_JSON_VERSION,
+  DECK_SCHEMA,
 } from "../../types.js";
-import { deckJsonFromTomlDocument, deckJsonToTomlDocument } from "./deck.js";
 import {
   embeddedPluginsToTomlRecord,
 } from "./embedded-plugins.js";
+import {
+  environmentsFromTomlRecord,
+  environmentsToTomlRecord,
+} from "./environment-document.js";
 import {
   layerExportFromTomlDocument,
   normalizeLayerExportForToml,
@@ -29,17 +39,81 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function parseDeckLayer(value: unknown): DeckJsonLayer {
+  if (!isRecord(value)) {
+    throw new Error("Bundle layer selector must be a table");
+  }
+  const layer: DeckJsonLayer = {
+    name: String(value.name ?? ""),
+    version: String(value.version ?? "1.0.0"),
+  };
+  if (typeof value.org === "string" && value.org.length > 0) {
+    layer.org = value.org;
+  }
+  if (typeof value.catalog === "string" && value.catalog.length > 0) {
+    layer.catalog = value.catalog;
+  }
+  if (typeof value.environment === "string" && value.environment.length > 0) {
+    layer.environment = value.environment;
+  }
+  return layer;
+}
+
+function serializeDeckLayer(layer: DeckJsonLayer): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    name: layer.name,
+    version: layer.version,
+  };
+  if (layer.org) row.org = layer.org;
+  if (layer.catalog) row.catalog = layer.catalog;
+  if (layer.environment) row.environment = layer.environment;
+  return row;
+}
+
+function deckSectionToTomlDocument(
+  deck: Pick<DeckJson, "name" | "active_environment" | "layers">,
+  environments: DeckJson["environments"],
+): Record<string, unknown> {
+  const document: Record<string, unknown> = {
+    schema: DECK_SCHEMA,
+    version: DECK_JSON_VERSION,
+    name: deck.name,
+    layers: deck.layers
+      .map(serializeDeckLayer)
+      .sort((left, right) => String(left.name).localeCompare(String(right.name))),
+  };
+  if (deck.active_environment) {
+    document.active_environment = deck.active_environment;
+  }
+  if (environments.length > 0) {
+    document.environments = environmentsToTomlRecord(environments);
+  }
+  return document;
+}
+
+function deckSectionFromTomlDocument(document: Record<string, unknown>): {
+  deck: Pick<DeckJson, "name" | "active_environment" | "layers">;
+  environments: DeckJson["environments"];
+} {
+  const layersRaw = document.layers;
+  const layers = Array.isArray(layersRaw)
+    ? layersRaw.map(parseDeckLayer)
+    : [];
+
+  return {
+    deck: {
+      name: String(document.name ?? ""),
+      layers,
+      ...(typeof document.active_environment === "string"
+        ? { active_environment: document.active_environment }
+        : {}),
+    },
+    environments: environmentsFromTomlRecord(document.environments),
+  };
+}
+
 export function bundleExportToTomlDocument(bundle: BundleExport): Record<string, unknown> {
-  const deckDocument = deckJsonToTomlDocument({
-    $schema: "urn:harnessdeck:deck:v1",
-    version: 1,
-    name: bundle.deck.name,
-    layers: bundle.deck.layers,
-    environments: bundle.environments,
-    ...(bundle.deck.active_environment
-      ? { active_environment: bundle.deck.active_environment }
-      : {}),
-  });
+  const deckDocument = deckSectionToTomlDocument(bundle.deck, bundle.environments);
 
   const document: Record<string, unknown> = {
     schema: BUNDLE_SCHEMA,
@@ -74,9 +148,9 @@ export function bundleExportFromTomlDocument(
     throw new Error("Bundle export must include a [deck] table");
   }
 
-  const deckJson = deckJsonFromTomlDocument({
-    schema: "urn:harnessdeck:deck:v1",
-    version: 1,
+  const deckSection = deckSectionFromTomlDocument({
+    schema: DECK_SCHEMA,
+    version: DECK_JSON_VERSION,
     name: deckRaw.name,
     active_environment: deckRaw.active_environment,
     layers: deckRaw.layers,
@@ -93,14 +167,8 @@ export function bundleExportFromTomlDocument(
   return {
     schema: BUNDLE_SCHEMA,
     version: BUNDLE_SCHEMA_VERSION,
-    deck: {
-      name: deckJson.name,
-      layers: deckJson.layers,
-      ...(deckJson.active_environment
-        ? { active_environment: deckJson.active_environment }
-        : {}),
-    },
-    environments: deckJson.environments,
+    deck: deckSection.deck,
+    environments: deckSection.environments,
     layers: layerExport.layers,
     embedded_plugins: layerExport.embedded_plugins,
   };

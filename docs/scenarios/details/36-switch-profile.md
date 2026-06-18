@@ -36,6 +36,6 @@ Create additional profiles with `profile create <name>` or tag an existing
 layer with `profile tag <layer>`. Combine stack layers with
 `layer combine` before switching.
 
-For project-specific baselines, use `layer apply` or `deck apply` instead
+For project-specific baselines, use `layer apply` instead
 (see [Scenario 7](./07-preview-apply-layer.md) and
-[Scenario 29](./29-apply-deck.md)).
+[Scenario 25](./25-stack-layers.md)).

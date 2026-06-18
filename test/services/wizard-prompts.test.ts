@@ -253,8 +253,8 @@ describe("wizard prompts", () => {
     }
   });
 
-  it("uses a searchable choice prompt when project apply needs a layer choice", async () => {
-    const context = await createInitializedTestContext("wizard-project-apply-prompts");
+  it("uses a searchable choice prompt when layer apply needs a layer choice", async () => {
+    const context = await createInitializedTestContext("wizard-layer-apply-prompts");
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -266,8 +266,8 @@ describe("wizard prompts", () => {
       );
 
       try {
-        const { runProjectApplyWizard } = await import("../../src/services/wizards/project-apply.ts");
-        const result = await runProjectApplyWizard();
+        const { runLayerApplyWizard } = await import("../../src/services/wizards/layer-apply.ts");
+        const result = await runLayerApplyWizard();
 
         expect(result).toBe("apply-layer@1.0.0");
         expect(choiceSpy).toHaveBeenCalledWith(

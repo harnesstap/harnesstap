@@ -2,18 +2,14 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
-import { formatDeckToml, parseDeckToml } from "../../src/services/transport/deck.ts";
 import {
   formatLayerExportToml,
   parseLayerExportToml,
 } from "../../src/services/transport/layer.ts";
-import { DECK_JSON_VERSION, DECK_SCHEMA } from "../../src/types.ts";
 import {
   makeMultiLayerExport,
   makeSingleLayerExport,
-  parseTestDeckToml,
   parseTestLayerToml,
-  writeDeckToml,
   writeLayerExportToml,
 } from "../helpers/transport-fixtures.ts";
 
@@ -60,37 +56,6 @@ describe("transport TOML round-trip", () => {
 
     const parsed = parseTestLayerToml(formatLayerExportToml(bundle));
     expect(parsed.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
-  });
-
-  it("round-trips deck.toml through disk", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-transport-deck-"));
-    tempDirs.push(dir);
-
-    const deck = {
-      $schema: DECK_SCHEMA,
-      version: DECK_JSON_VERSION,
-      name: "team-deck",
-      layers: [
-        {
-          name: "backend-oncall",
-          version: "1.0.0",
-          environment: "prod",
-        },
-      ],
-      environments: [
-        { name: "prod", values: { PD_REGION: "eu" } },
-      ],
-      active_environment: "prod",
-    };
-
-    const deckPath = join(dir, "deck.toml");
-    writeDeckToml(deckPath, deck);
-
-    const raw = readFileSync(deckPath, "utf-8");
-    expect(raw).toContain('schema = "urn:harnessdeck:deck:v1"');
-    expect(parseTestDeckToml(raw)).toEqual(deck);
-    expect(parseDeckToml(raw)).toEqual(deck);
-    expect(formatDeckToml(deck)).toContain("active_environment");
   });
 
   it("writes layer exports to .harnessdeck.toml paths", () => {

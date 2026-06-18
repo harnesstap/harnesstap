@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { getHarnessdeckDir } from "../db/connection.js";
 import { getLayerById } from "../models/layer-model.js";
 import {
@@ -7,17 +7,13 @@ import {
   getEnvironmentResources,
   getEnvironmentSecretRefs,
 } from "../models/environment.js";
-import { getDeck, listDecks } from "../models/deck.js";
 import type {
-  DeckJson,
-  DeckJsonEnvironment,
   EnvVarMetadata,
   EnvironmentSecretRef,
   Resource,
   ResourceType,
 } from "../types.js";
 import { ENVIRONMENT_RESOURCE_TYPES } from "./resource-classification.js";
-import { readDeckToml } from "./deck-export-import.js";
 import { resolveSecretRefs } from "./secret-resolver.js";
 
 export interface EnvironmentFragment {
@@ -28,13 +24,12 @@ export interface EnvironmentFragment {
 export interface EnvironmentCascadeInput {
   home?: EnvironmentFragment;
   layerDefaults?: EnvironmentFragment[];
-  deckActive?: EnvironmentFragment;
+  projectActive?: EnvironmentFragment;
 }
 
 export interface ResolveEnvironmentCascadeForApplyInput {
   configuredLayerIds: string[];
   projectRoot: string;
-  deckId?: string;
 }
 
 const EMPTY_FRAGMENT: EnvironmentFragment = { vars: {}, secretRefs: {} };
@@ -63,7 +58,7 @@ export function resolveEnvironmentCascade(
   for (const fragment of layers.layerDefaults ?? []) {
     acc = merge(acc, fragment);
   }
-  acc = merge(acc, layers.deckActive);
+  acc = merge(acc, layers.projectActive);
   return acc;
 }
 
@@ -120,20 +115,6 @@ function parseEnvironmentJson(raw: unknown): EnvironmentFragment {
   };
 }
 
-function deckJsonEnvironmentToFragment(
-  environment: DeckJsonEnvironment,
-): EnvironmentFragment {
-  return {
-    vars: environment.values,
-    secretRefs: Object.fromEntries(
-      Object.entries(environment.secret_refs ?? {}).map(([key, ref]) => [
-        key,
-        { provider: ref.provider, ref: ref.ref },
-      ]),
-    ),
-  };
-}
-
 function readEnvironmentFile(path: string): EnvironmentFragment {
   if (!existsSync(path)) {
     return EMPTY_FRAGMENT;
@@ -169,15 +150,14 @@ function readActiveEnvironmentName(baseDir: string): string | undefined {
   return undefined;
 }
 
-export function loadHomeEnvironmentFragment(): EnvironmentFragment | undefined {
-  const harnessdeckDir = getHarnessdeckDir();
-  const activeName = readActiveEnvironmentName(harnessdeckDir);
+function loadActiveEnvironmentFragment(baseDir: string): EnvironmentFragment | undefined {
+  const activeName = readActiveEnvironmentName(baseDir);
   if (!activeName) {
     return undefined;
   }
 
   const fileFragment = readEnvironmentFile(
-    join(harnessdeckDir, "environments", `${activeName}.json`),
+    join(baseDir, "environments", `${activeName}.json`),
   );
   if (Object.keys(fileFragment.vars).length > 0 || Object.keys(fileFragment.secretRefs).length > 0) {
     return fileFragment;
@@ -189,6 +169,16 @@ export function loadHomeEnvironmentFragment(): EnvironmentFragment | undefined {
   }
 
   return undefined;
+}
+
+export function loadHomeEnvironmentFragment(): EnvironmentFragment | undefined {
+  return loadActiveEnvironmentFragment(getHarnessdeckDir());
+}
+
+export function loadProjectActiveEnvironmentFragment(
+  projectRoot: string,
+): EnvironmentFragment | undefined {
+  return loadActiveEnvironmentFragment(join(projectRoot, ".harnessdeck"));
 }
 
 export function loadLayerDefaultFragments(
@@ -203,79 +193,13 @@ export function loadLayerDefaultFragments(
   });
 }
 
-function loadDeckActiveFragmentFromRepo(projectRoot: string): EnvironmentFragment | undefined {
-  const deckTomlPath = join(projectRoot, ".harnessdeck", "deck.toml");
-  if (!existsSync(deckTomlPath)) {
-    return undefined;
-  }
-
-  let deckJson: DeckJson;
-  try {
-    deckJson = readDeckToml(deckTomlPath);
-  } catch {
-    return undefined;
-  }
-
-  const activeName = deckJson.active_environment;
-  if (!activeName) {
-    return undefined;
-  }
-
-  const inlineEnvironment = deckJson.environments?.find(
-    (environment) => environment.name === activeName,
-  );
-  if (inlineEnvironment) {
-    return deckJsonEnvironmentToFragment(inlineEnvironment);
-  }
-
-  const dbEnvironment = getEnvironmentByName(activeName);
-  if (dbEnvironment) {
-    return fragmentFromEnvironmentId(dbEnvironment.id);
-  }
-
-  return undefined;
-}
-
-function loadDeckActiveFragmentFromDb(projectRoot: string): EnvironmentFragment | undefined {
-  const resolvedProjectRoot = resolve(projectRoot);
-  const deck = listDecks().find(
-    (candidate) => resolve(candidate.root_path) === resolvedProjectRoot,
-  );
-  if (!deck?.active_environment_id) {
-    return undefined;
-  }
-  return fragmentFromEnvironmentId(deck.active_environment_id);
-}
-
-export function loadDeckActiveEnvironmentFragment(
-  projectRoot: string,
-  deckId?: string,
-): EnvironmentFragment | undefined {
-  if (deckId) {
-    const deck = getDeck(deckId);
-    if (deck?.active_environment_id) {
-      return fragmentFromEnvironmentId(deck.active_environment_id);
-    }
-  }
-
-  const fromDb = loadDeckActiveFragmentFromDb(projectRoot);
-  if (fromDb) {
-    return fromDb;
-  }
-
-  return loadDeckActiveFragmentFromRepo(projectRoot);
-}
-
 export function buildEnvironmentCascadeInput(
   input: ResolveEnvironmentCascadeForApplyInput,
 ): EnvironmentCascadeInput {
   return {
     home: loadHomeEnvironmentFragment(),
     layerDefaults: loadLayerDefaultFragments(input.configuredLayerIds),
-    deckActive: loadDeckActiveEnvironmentFragment(
-      input.projectRoot,
-      input.deckId,
-    ),
+    projectActive: loadProjectActiveEnvironmentFragment(input.projectRoot),
   };
 }
 
@@ -314,7 +238,7 @@ export function fragmentToEnvironmentResources(
 
 /**
  * Strip environment resources from the merged layer set, then overlay the
- * resolved cascade (home ◂ layer default ◂ deck active).
+ * resolved cascade (home ◂ layer default ◂ project active).
  */
 export function mergeResolvedEnvironmentIntoResources(
   resources: Resource[],

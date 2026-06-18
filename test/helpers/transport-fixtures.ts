@@ -1,7 +1,5 @@
 import type { LayerExport, LayerExportEntry, LayerExportResource } from "../../src/types.ts";
 import { formatLayerExportToml, parseLayerExportToml } from "../../src/services/transport/layer.ts";
-import { formatDeckToml, parseDeckToml } from "../../src/services/transport/deck.ts";
-import type { DeckJson } from "../../src/types.ts";
 import { writeTextFile } from "./fs.ts";
 
 export function formatTestLayerToml(bundle: LayerExport): string {
@@ -72,16 +70,4 @@ export function makeMultiLayerExport(
     })),
     embedded_plugins: [],
   };
-}
-
-export function formatTestDeckToml(deck: DeckJson): string {
-  return formatDeckToml(deck);
-}
-
-export function parseTestDeckToml(raw: string): DeckJson {
-  return parseDeckToml(raw);
-}
-
-export function writeDeckToml(path: string, deck: DeckJson): void {
-  writeTextFile(path, formatDeckToml(deck));
 }

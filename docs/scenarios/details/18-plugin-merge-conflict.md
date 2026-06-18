@@ -26,7 +26,7 @@ plugin declarations in the library. Then compare:
   by a `~/.claude/settings.json` user-scope entry that overrides the project
 
 `layer show` reveals which plugin pins a layer expects at apply time.
-`project apply --strict-plugin-versions` is the enforcement path when you want
+`layer apply --strict-plugin-versions` is the enforcement path when you want
 CI or automation to fail on a mismatch.
 
 There is no longer a dedicated `plugin list` / `plugin show` inventory

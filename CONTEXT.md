@@ -16,13 +16,13 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 ## Concepts
 
-**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; combine and apply at project level with `layer apply` / `deck apply`.
+**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; combine and apply at project level with `layer apply`.
 
 **Profile** — A layer tagged `profile`; presented as a switchable global preset. Not a separate storage type — profiles are layers with the reserved tag `profile`. Switch with `profile use` (or root shorthand `hd <name>`); applies to machine home harness paths only.
 
-**Deck** — Your personal ordered collection of layers (and optional environments); git transport optional. Cherry-pick catalog layers and local layers into a deck; apply the stack to **projects** with `deck apply`. Not an org team baseline — that lives in **catalogs**.
+**Workspace** — The single implicit local library in `~/.harnessdeck/harnessdeck.db`: all layers, resources, and environments live here. Share the whole workspace offline with `migrate export` / `migrate import`, or share individual layers with `layer export` / `layer import`.
 
-**Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer search`, `layer pull`). Users cherry-pick catalog layers into their personal deck or profile stack.
+**Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer search`, `layer pull`). Users cherry-pick catalog layers into their local workspace or profile stack.
 
 **Account** — Local HarnessDeck Cloud login identity (tokens, org context) stored in `cloud-accounts.json`. Distinct from a **profile** layer (global agent preset).
 
@@ -42,10 +42,10 @@ Terms and meanings agreed during design discussions. Implementation details belo
 | --- | --- | --- |
 | **plugin** | Host plugin (manifest + tree on disk / in marketplace) | A HarnessDeck storage row or layer attachment |
 | **plugin_pin** | Composition reference attached to a layer | The host plugin bundle itself |
-| **layer** | HarnessDeck versioned context package; catalog publish unit | Git-transport repo (that's a **deck**) or global preset (that's a **profile**) |
+| **layer** | HarnessDeck versioned context package; catalog publish unit | Global preset (that's a **profile**) |
 | **profile** | Tagged layer (`tags` includes `profile`); global switch UX | Cloud login identity (that's an **account**) |
-| **deck** | Personal curated layer stack; git transport optional | Org-published multiplayer baseline (that's **catalog**) |
-| **catalog** | Org-scoped published layers; browse/search/pull | Personal layer collection (that's a **deck**) |
+| **workspace** | Single local SQLite library (`~/.harnessdeck`); offline share via `migrate` | Org-published multiplayer baseline (that's **catalog**) |
+| **catalog** | Org-scoped published layers; browse/search/pull | Personal layer collection (that's the **workspace**) |
 | **account** | HarnessDeck Cloud auth identity (`cloud-accounts.json`, `--account`) | Profile layer or `active-profile.json` pointer |
 | **context-side** | The *what* axis (skills, rules, …) | Runtime secrets/env (that's **environment-side**) |
 
@@ -56,5 +56,5 @@ No backward-compatibility requirement pre-release: rename `type=plugin` → `plu
 - `layer-composition` — composition resources (plugin_pin, layer refs) and attachments
 - `layer-model` — layer CRUD
 - `plugin-pin-apply` — apply-time pin install, sync, expand, validate
-- `layer-export`, `layer-import`, `deck-export-import` — transport round-trips (replaces monolithic exporter)
+- `layer-export`, `layer-import` — transport round-trips (replaces monolithic exporter)
 - Schema v19 — fresh DDL only; upgrade via `hd migrate export` / `import`

@@ -24,10 +24,9 @@ A few CLI renames matter up front:
   profile switching.
 - **Profiles vs projects:** use `profile use` (or `hd <name>`) for machine
   home harness files; use `layer apply` for one or more layers in a repo
-  ([Scenarios 7](./details/07-preview-apply-layer.md), [25](./details/25-stack-layers.md));
-  use `deck apply` for a curated stack imported from a deck repo
-  ([Scenario 29](./details/29-apply-deck.md)). `project apply` remains a
-  deprecated alias for `layer apply`.
+  ([Scenarios 7](./details/07-preview-apply-layer.md), [25](./details/25-stack-layers.md)).
+  Share a full workspace offline with `migrate export` / `import`
+  ([Scenario 28](./details/28-machine-migration.md)).
 - The current CLI exposes `harnessdeck project mirror`
   command ([Scenario 27](./details/27-project-sync.md)). Use it when you want to mirror alias harness outputs from the on-disk main
   harness. Re-applying a layer to selected harnesses ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
@@ -59,7 +58,6 @@ after HarnessDeck is set up — not how important it is the first time.
 | [25](./details/25-stack-layers.md) | Stack multiple layers                              | Common     | Shipped |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer        | Common     | Shipped |
 | [27](./details/27-project-sync.md) | True cross-harness `project mirror`                 | Common     | Shipped |
-| [29](./details/29-apply-deck.md) | Apply a curated deck to a project                   | Common     | Shipped |
 | [36](./details/36-switch-profile.md) | Switch global profile presets                    | Common     | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
@@ -75,7 +73,6 @@ after HarnessDeck is set up — not how important it is the first time.
 | [22](./details/22-diff-layers.md) | Diff two layers                                    | Occasional | Shipped |
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing               | Occasional | Shipped |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL                  | Occasional | Shipped |
-| [30](./details/30-manage-deck-records.md) | Import, inspect, and remove deck records        | Occasional | Shipped |
 | [37](./details/37-publish-profile-layer.md) | Publish a profile layer to the catalog        | Occasional | Shipped |
 | [32](./details/32-instruction-tier-apply.md) | Apply to instruction-tier harnesses          | Occasional | Shipped |
 | [33](./details/33-mirror-plugin-fallback.md) | Mirror with plugin-source fallback           | Occasional | Shipped |
@@ -85,7 +82,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB           | Rare       | Shipped |
 | [17](./details/17-migrate-state.md) | Migrate HarnessDeck state to a new machine          | Rare       | Shipped (manual) |
 | [18](./details/18-plugin-merge-conflict.md) | Debug committed vs effective Claude plugin settings | Rare       | Shipped |
-| [28](./details/28-machine-migration.md) | One-command machine migration                       | Rare       | Shipped |
+| [28](./details/28-machine-migration.md) | Share workspace offline with migrate export/import  | Occasional | Shipped |
 
 **Status legend**
 
@@ -111,7 +108,6 @@ one repo needs different harness defaults than your machine-wide setup.
 | [25](./details/25-stack-layers.md) | Stack multiple layers in one apply |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer |
 | [27](./details/27-project-sync.md) | True cross-harness `project mirror` |
-| [29](./details/29-apply-deck.md) | Apply a curated deck stack in one command |
 | [36](./details/36-switch-profile.md) | Switch global profile presets on the machine |
 
 ---
@@ -137,7 +133,7 @@ baselines, or when integrating HarnessDeck into tooling.
 | [22](./details/22-diff-layers.md) | Diff two layers (or a layer vs an imported bundle) |
 | [23](./details/23-validate-layer.md) | Doctor-check a layer without writing to disk |
 | [24](./details/24-apply-from-url.md) | Apply a layer directly from a URL |
-| [30](./details/30-manage-deck-records.md) | Import, show, export, and delete deck records |
+| [28](./details/28-machine-migration.md) | Share a full workspace offline with migrate export/import |
 | [37](./details/37-publish-profile-layer.md) | Publish and install profile-tagged catalog layers |
 | [32](./details/32-instruction-tier-apply.md) | Apply layers to instruction-tier harnesses (windsurf, cline, copilot, …) |
 | [33](./details/33-mirror-plugin-fallback.md) | Mirror alias harnesses when main harness tree is empty |
@@ -157,4 +153,3 @@ when maintaining the local DB after a lot of activity.
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB |
 | [17](./details/17-migrate-state.md) | Migrate HarnessDeck state to a new machine (manual workflow) |
 | [18](./details/18-plugin-merge-conflict.md) | Debug committed vs effective Claude plugin settings |
-| [28](./details/28-machine-migration.md) | One-command machine migration (export/import archive) |

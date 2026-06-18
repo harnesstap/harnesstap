@@ -60,7 +60,6 @@ export interface EnvironmentLookupResult {
 
 export interface EnvironmentReferenceSummary {
   layers: Array<{ id: string; name: string }>;
-  decks: Array<{ id: string; name: string }>;
 }
 
 function findEnvironmentByIdPrefix(prefix: string): Environment[] {
@@ -342,23 +341,14 @@ export function listEnvironmentReferences(
        ORDER BY name`,
     )
     .all(environmentId) as EnvironmentReferenceRow[];
-  const deckRows = db
-    .prepare(
-      `SELECT id, name
-       FROM decks
-       WHERE active_environment_id = ?
-       ORDER BY name`,
-    )
-    .all(environmentId) as EnvironmentReferenceRow[];
   return {
     layers: configuredLayerRows,
-    decks: deckRows,
   };
 }
 
 export function hasEnvironmentReferences(environmentId: string): boolean {
   const refs = listEnvironmentReferences(environmentId);
-  return refs.layers.length > 0 || refs.decks.length > 0;
+  return refs.layers.length > 0;
 }
 
 export function addResourceToEnvironment(

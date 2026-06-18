@@ -249,21 +249,6 @@ export interface ProjectLayer {
   applied_at: string;
 }
 
-export interface Deck {
-  id: string;
-  name: string;
-  root_path: string;
-  active_environment_id?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DeckConfiguredLayer {
-  deck_id: string;
-  configured_layer_id: string;
-  order: number;
-}
-
 export const DECK_SCHEMA = "urn:harnessdeck:deck:v1" as const;
 export const DECK_JSON_VERSION = 1 as const;
 

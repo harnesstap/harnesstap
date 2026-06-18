@@ -7,6 +7,11 @@ export {
   embeddedPluginsToTomlRecord,
 } from "./embedded-plugins.js";
 export {
+  environmentToTomlDocument,
+  environmentsFromTomlRecord,
+  environmentsToTomlRecord,
+} from "./environment-document.js";
+export {
   formatLayerExportToml,
   layerExportFromTomlDocument,
   layerExportToTomlDocument,
@@ -14,12 +19,6 @@ export {
   parseLayerExportToml,
   serializeLayerEntry,
 } from "./layer.js";
-export {
-  deckJsonFromTomlDocument,
-  deckJsonToTomlDocument,
-  formatDeckToml,
-  parseDeckToml,
-} from "./deck.js";
 export {
   bundleExportFromTomlDocument,
   bundleExportToTomlDocument,

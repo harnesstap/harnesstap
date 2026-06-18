@@ -151,7 +151,7 @@ are used for harnesses without `instruction-only` emission.
 
 ### Cursor skill modes (`cursor_skill_mode` / `skillCursorMode`)
 
-Cursor project apply and mirror honor a project-level `cursor_skill_mode` stored
+Cursor `layer apply` and mirror honor a project-level `cursor_skill_mode` stored
 in `project_harnesses`:
 
 | Mode | Behavior |

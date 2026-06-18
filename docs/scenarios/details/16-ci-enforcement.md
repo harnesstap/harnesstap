@@ -12,7 +12,7 @@ Typical commands (each exits non-zero on a problem):
 ```bash
 harnessdeck project drift --project . --format json
 harnessdeck layer doctor my-setup --format json
-harnessdeck project apply my-setup --project . --dry-run --strict-plugin-versions --format json
+harnessdeck layer apply my-setup --project . --dry-run --strict-plugin-versions --format json
 harnessdeck resource sync --format json --dry-run
 ```
 

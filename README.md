@@ -4,7 +4,7 @@
 
 **Agent harness configuration toolkit** for Claude Code, Codex, Cursor, and other coding CLIs.
 
-Scan existing setup → store canonical resources → compose **plugins** and **layers** → ship portable **decks** → materialize into any supported harness.
+Scan existing setup → store canonical resources → compose **plugins** and **layers** → share offline or via catalog → materialize into any supported harness.
 
 <br />
 
@@ -35,7 +35,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Architecture](#architecture)
-- [Deck model](#deck-model)
+- [Concept model](#concept-model)
 - [Catalog baselines](#catalog-baselines)
 - [More layer workflows](#more-layer-workflows)
 - [Import and export](#import-and-export)
@@ -59,8 +59,8 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 | **Scan & import** | Detect Claude Code, Codex, Cursor, GitHub Copilot, Copilot CLI, and related project layouts |
 | **Canonical library** | Store imported configuration as resources in local SQLite |
 | **Plugins & layers** | Group context-side resources into **layers**; attach host **plugin pins** and **layer** refs; bind **environments** |
-| **Multi-harness apply** | Materialize layers to one or more harnesses with environment cascade (home → layer default → deck active) |
-| **Portable decks** | Ship git repos that work as Claude marketplaces and embed `.harnessdeck/deck.toml` |
+| **Multi-harness apply** | Materialize layers to one or more harnesses with environment cascade (home → layer default) |
+| **Offline sharing** | Move the full local workspace with `migrate export` / `import`, or share individual layers as TOML bundles |
 | **Layer tooling** | Create layers from scanned projects, diff layers, run `layer doctor` before apply |
 | **Dependencies & pins** | Record layer dependencies and Claude plugin version pins in portable bundles |
 | **Layer exports** | Export or import layers as TOML (`urn:harnessdeck:layer:v1`) |
@@ -85,7 +85,7 @@ harnessdeck init --main codex --aliases claude-code,cursor
 harnessdeck project scan .                    # detect existing resources
 harnessdeck resource list                     # review discovered resources
 harnessdeck layer search foundation           # browse catalog layers
-harnessdeck project apply engineering-foundation \
+harnessdeck layer apply engineering-foundation \
   --project .                                 # apply a catalog baseline
 harnessdeck project status .                  # confirm the final state
 ```
@@ -164,7 +164,7 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
 2. **Apply** a catalog layer by bare name (fetches from the public `harnessdeck-cloud` catalog when needed).
    ```bash
    hd layer search foundation
-   hd project apply engineering-foundation
+   hd layer apply engineering-foundation
    ```
 
 3. **Inspect** project state and next steps.
@@ -173,7 +173,7 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
    hd help
    ```
 
-When a repository has a git `origin`, `hd project apply` stores a snapshot before writing files. Restore it later with `hd project revert`.
+When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd project revert`.
 
 ### Follow-up: scan, compose, and publish
 
@@ -193,7 +193,7 @@ After the baseline fits, build and share your own layers:
 
 3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
    ```bash
-   hd project apply my-setup --project . --harness claude-code,cursor
+   hd layer apply my-setup --project . --harness claude-code,cursor
    hd project mirror .
    hd auth login
    hd layer publish my-setup
@@ -223,8 +223,7 @@ flowchart TB
     Plugins[Plugins — the what]
     Envs[Environments — the how]
     Layers[Configured layers]
-    Decks[Decks and deck.json]
-    Bundles[Layer v1 JSON]
+    Bundles[Layer v1 TOML]
   end
 
   subgraph Targets[Materialized harnesses]
@@ -241,8 +240,7 @@ flowchart TB
   Resources --> Plugins
   Plugins --> Layers
   Envs --> Layers
-  Layers --> Decks
-  Plugins <--> Bundles
+  Layers --> Bundles
   Layers --> Claude
   Layers --> Codex
   Layers --> Cursor
@@ -261,7 +259,7 @@ sequenceDiagram
   CLI->>DB: Import resources canonically
   User->>CLI: hd layer create / combine
   CLI->>DB: Save reusable layer
-  User->>CLI: hd project apply layer --harness ...
+  User->>CLI: hd layer apply layer --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
   User->>CLI: hd project status / drift / revert
@@ -270,9 +268,9 @@ sequenceDiagram
 
 ---
 
-## Deck model
+## Concept model
 
-HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs). A **layer** is the versioned context package; **plugin pins** and **layer** refs are dependencies; a **deck** is git transport for layer stacks.
+HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs). A **layer** is the versioned context package; **plugin pins** and **layer** refs are dependencies. Your **workspace** is the single local SQLite library at `~/.harnessdeck` — all layers and environments live there.
 
 | Concept | Role |
 | --- | --- |
@@ -280,17 +278,11 @@ HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules 
 | **Plugin** | Bundle of *what* resources + Claude config + `needs` contract |
 | **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
 | **Layer** | One or more plugins + optional default environment |
-| **Deck** | Curated layers and environments; portable git repo |
+| **Workspace** | Local library of layers, resources, and environments |
 
-**Cascade (last wins):** `home env ◂ layer default env ◂ deck active env`. Switch active environment to change how-values without reloading the same plugin stack.
+**Cascade (last wins):** `home env ◂ layer default env`. Switch the home active environment to change how-values without reloading the same layer stack.
 
-**Hybrid repo:** a deck is a normal Claude marketplace repo *and* carries canonical state:
-
-```
-my-deck/.harnessdeck/deck.toml            # source of truth (urn:harnessdeck:deck:v1)
-my-deck/.harnessdeck/environments/
-my-deck/.claude-plugin/marketplace.json   # generated; installable without HarnessDeck
-```
+**Offline sharing:** export the whole workspace with `hd migrate export` / `import`, or share individual layers with `hd layer export` / `import`. For multiplayer distribution, publish to HarnessDeck Cloud with `layer publish` / `pull`.
 
 Full specification: [SPEC.md](SPEC.md).
 
@@ -299,7 +291,7 @@ flowchart LR
   A[Init local toolkit state] --> B[Scan repo and home defaults]
   B --> C[Store canonical resources]
   C --> D[Plugins and environments]
-  D --> E[Configured layers and decks]
+  D --> E[Configured layers]
   E --> F[Apply with environment cascade]
 ```
 
@@ -307,11 +299,11 @@ flowchart LR
 
 ## Catalog baselines
 
-Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd project apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
+Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd layer apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
 
 ```bash
 hd layer search foundation
-hd project apply engineering-foundation
+hd layer apply engineering-foundation
 ```
 
 To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
@@ -335,9 +327,7 @@ Layer dependencies are stored with semver constraints and round-trip through bun
 
 ## Import and export
 
-**Layer v1** — layers move between machines as TOML files (`hd layer export` / `import`). Default path: `<name>.harnessdeck.toml`.
-
-**Deck v1** — whole setups use `.harnessdeck/deck.toml` (`urn:harnessdeck:deck:v1`) with inlined environments; see [SPEC.md](SPEC.md#transport-formats).
+**Layer v1** — layers move between machines as TOML files (`hd layer export` / `import`). Default path: `<name>.harnessdeck.toml`. For a full workspace handoff, use `hd migrate export` / `import` (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
 
 ```bash
 hd layer export my-setup --file ./my-setup.harnessdeck.toml
@@ -358,10 +348,10 @@ hd resource sync plugin_pin:formatter@my-marketplace
 hd resource show plugin_pin:formatter@my-marketplace
 hd layer uncombine my-setup plugin_pin:formatter@my-marketplace --type plugin_pin
 hd layer export my-setup --file ./team.harnessdeck.toml --embed-plugins
-hd project apply my-setup --project . --strict-plugin-versions
+hd layer apply my-setup --project . --strict-plugin-versions
 ```
 
-On `project apply`, harnessdeck compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
+On `layer apply`, harnessdeck compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
 
 Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer combine` is the **plugin semver pin or range**, not the global version flag.
 
@@ -391,7 +381,7 @@ HarnessDeck intentionally uses non-zero exit codes for actionable findings:
 | --- | --- | --- |
 | `0` | Success / no actionable issue | `layer doctor` with no findings, `project drift` with no changes |
 | `1` | Actionable finding or user-correctable error | `layer doctor` failures, drift detected, invalid command input |
-| `2` | Strict validation failure during apply | `project apply --strict-plugin-versions` with mismatched plugin pins |
+| `2` | Strict validation failure during apply | `layer apply --strict-plugin-versions` with mismatched plugin pins |
 
 ---
 
@@ -411,7 +401,7 @@ hd migrate import ./harnessdeck-migrate.tar.gz
 **Project command preconditions**
 
 - `project history` and `project drift` require a git-backed project.
-- `project apply` can write files outside git, but snapshot/history support only works when the target project has a git `origin`.
+- `layer apply` can write files outside git, but snapshot/history support only works when the target project has a git `origin`.
 - `project revert` requires a snapshot ID from `project history`.
 - `harness project set` and `harness project status` require a git-backed project.
 
@@ -434,7 +424,7 @@ hd harness list --supported    # native serializers only
 
 ## Where data lives
 
-Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, plugins, environments, layers, decks, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnessdeck/config.jsonc`. Home environment fragments may live under `~/.harnessdeck/environments/`.
+Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, plugins, environments, layers, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnessdeck/config.jsonc`. Home environment fragments may live under `~/.harnessdeck/environments/`.
 
 When you run `hd init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
@@ -454,7 +444,7 @@ hd migrate import backup.tar
 
 `migrate export` opens legacy v18 databases read-only so you can export after upgrading the CLI. Other commands require a v19 database.
 
-**Note:** `migrate export` archives layers (as TOML), harness preferences, and config — not projects, snapshots, decks, or standalone environments. Back those up separately if you need them.
+**Note:** `migrate export` archives layers (as TOML), environments (secret refs only), harness preferences, and config — not tracked projects or snapshots. Back those up separately if you need them.
 
 ---
 
@@ -501,7 +491,7 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 8. **Apply** an installed layer to a project.
    ```bash
-   harnessdeck project apply <layer> --project <path> [--harness <harnesses>]
+   harnessdeck layer apply <layer> --project <path> [--harness <harnesses>]
    ```
 
 Run `harnessdeck <command> --help` for full flag and output-format details.

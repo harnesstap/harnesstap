@@ -9,14 +9,14 @@ import {
 describe("scenario guide", () => {
   it("lists all scenario ids", () => {
     const ids = listScenarioIds();
-    expect(ids.length).toBeGreaterThanOrEqual(30);
+    expect(ids.length).toBeGreaterThanOrEqual(28);
     expect(ids).toContain(11);
-    expect(ids).toContain(29);
+    expect(ids).toContain(28);
   });
 
   it("lists scenario summaries with titles", () => {
     const summaries = listScenarioSummaries();
-    expect(summaries.length).toBeGreaterThanOrEqual(30);
+    expect(summaries.length).toBeGreaterThanOrEqual(28);
     const scenario11 = summaries.find((summary) => summary.id === 11);
     expect(scenario11?.title.toLowerCase()).toContain("catalog");
     expect(scenario11?.frequency).toBeTruthy();
@@ -30,10 +30,10 @@ describe("scenario guide", () => {
     );
   });
 
-  it("loads scenario 29 with deck apply commands", () => {
-    const guide = loadScenarioGuide(29);
-    expect(guide.title.toLowerCase()).toContain("deck");
-    expect(guide.commands.some((command) => command.includes("deck apply"))).toBe(
+  it("loads scenario 28 with migrate commands", () => {
+    const guide = loadScenarioGuide(28);
+    expect(guide.title.toLowerCase()).toContain("migration");
+    expect(guide.commands.some((command) => command.includes("migrate export"))).toBe(
       true,
     );
   });

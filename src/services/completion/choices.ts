@@ -1,4 +1,3 @@
-import { listDecks } from "../../models/deck.js";
 import { listLayers } from "../../models/layer-model.js";
 import {
   formatResourceSelector,
@@ -11,14 +10,6 @@ export function toLayerChoices(): PromptChoice[] {
     name: `${layer.name}@${layer.version}`,
     value: `${layer.name}@${layer.version}`,
     description: layer.description || undefined,
-  }));
-}
-
-export function toDeckChoices(): PromptChoice[] {
-  return listDecks().map((deck) => ({
-    name: deck.name,
-    value: deck.name,
-    description: deck.root_path || undefined,
   }));
 }
 

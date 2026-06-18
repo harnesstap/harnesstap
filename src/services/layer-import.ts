@@ -5,8 +5,6 @@ import {
   syncClaudeLayerPluginsAfterAdd,
   addDependencyToLayer,
   getLayer,
-  getLayerById,
-  setLayerDefaultEnvironment,
 } from "../models/layer-model.js";
 import { attachPluginPinToLayer } from "./layer-composition.js";
 import { isCompositionResourceType } from "./layer-composition.js";
@@ -14,29 +12,14 @@ import {
   normalizeResourceInput,
   upsertResource,
 } from "../models/resource.js";
-import {
-  addConfiguredLayerToDeck,
-  createDeck,
-  getDeck,
-} from "../models/deck.js";
 import type {
-  Deck,
-  DeckJson,
-  Environment,
   LayerExportEntry,
   MultiLayerExport,
   Layer,
   Resource,
 } from "../types.js";
 import { writeEmbeddedPluginsOnImport } from "./plugin-layer-export.js";
-import {
-  importDeckEnvironment,
-  type ImportDeckJsonOptions,
-} from "./deck-export-import.js";
-import {
-  inspectLayerExportFile,
-  parsedLayerExportToDeckJson,
-} from "./layer-export.js";
+import { inspectLayerExportFile } from "./layer-export.js";
 
 export interface ImportLayerOptions {
   /** When importing a layer export with `embedded_plugins`, write those trees under this directory. */
@@ -58,14 +41,6 @@ export interface ImportedLayerBundle {
   layer: Layer;
   resources: Resource[];
   layers: ImportedLayerBundleEntry[];
-}
-
-export interface ImportLayerExportAsDeckResult {
-  deck: Deck;
-  deckJson: DeckJson;
-  plugins: Layer[];
-  configuredLayers: Layer[];
-  environments: Environment[];
 }
 
 function importLayerFromBundleParsed(
@@ -196,77 +171,5 @@ export function importFromFile(
     layer: firstLayer.layer,
     resources: firstLayer.resources,
     layers,
-  };
-}
-
-/**
- * Import layer v1 via the legacy importer, then materialize deck.json structure.
- */
-export function importLayerExportAsDeck(
-  filePath: string,
-  opts?: ImportLayerOptions & {
-    deckName?: string;
-    rootPath?: string;
-    resourceSource?: string;
-  },
-): ImportLayerExportAsDeckResult {
-  const deckJson = parsedLayerExportToDeckJson(inspectLayerExportFile(filePath), {
-    deckName: opts?.deckName,
-  });
-
-  const imported = importFromFile(filePath, opts);
-  const plugins = imported.layers.map((entry) => entry.layer);
-  const environments: Environment[] = [];
-
-  for (const environment of deckJson.environments) {
-    environments.push(
-      importDeckEnvironment(environment, {
-        resourceSource: opts?.resourceSource,
-      } satisfies ImportDeckJsonOptions),
-    );
-  }
-
-  const environmentIdsByName = new Map(
-    environments.map((environment) => [environment.name, environment.id]),
-  );
-
-  const configuredLayers: Layer[] = [];
-  for (const entry of imported.layers) {
-    const deckLayer = deckJson.layers.find(
-      (layer) =>
-        layer.name === entry.layer.name && layer.version === entry.layer.version,
-    );
-    const environmentId = deckLayer?.environment
-      ? environmentIdsByName.get(deckLayer.environment)
-      : undefined;
-
-    let layer = entry.layer;
-    if (environmentId) {
-      setLayerDefaultEnvironment(layer.id, environmentId);
-      layer = getLayerById(layer.id) ?? layer;
-    }
-    configuredLayers.push(layer);
-  }
-
-  const deck = createDeck({
-    name: opts?.deckName ?? deckJson.name,
-    rootPath: opts?.rootPath ?? "",
-  });
-
-  for (const configuredLayer of configuredLayers) {
-    addConfiguredLayerToDeck(deck.id, configuredLayer.id);
-  }
-
-  const finalized = getDeck(deck.id);
-  if (!finalized) {
-    throw new Error(`Deck ${deck.id} not found after layer v1 import`);
-  }
-
-  return {
-    deck: finalized,
-    deckJson,
-    plugins,
-    configuredLayers,
-    environments,
   };
 }

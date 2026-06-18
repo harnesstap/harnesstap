@@ -14,7 +14,7 @@ harnessdeck project history --project .
 harnessdeck project revert <snapshot-id>
 ```
 
-This is the safety-net workflow. Snapshots are created during `project apply`
+This is the safety-net workflow. Snapshots are created during `layer apply`
 **only when the project has a git `origin`** — repos without a remote will
 see an empty history and have nothing to revert to. If you need this safety
 net for a local-only repo, push to a remote (even a local bare repo) before

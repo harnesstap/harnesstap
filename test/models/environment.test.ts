@@ -19,7 +19,6 @@ import {
   createLayerFromSources,
   setLayerDefaultEnvironment,
 } from "../../src/models/layer-model.ts";
-import { createDeck, setDeckActiveEnvironment } from "../../src/models/deck.ts";
 
 describe("environment model", () => {
   it("stores non-secret env vars on environment", async () => {
@@ -104,7 +103,7 @@ describe("environment model", () => {
     }
   });
 
-  it("tracks configured layer and deck environment references", async () => {
+  it("tracks configured layer environment references", async () => {
     const context = await createInitializedTestContext("environment-references");
 
     try {
@@ -114,26 +113,16 @@ describe("environment model", () => {
         sourceLayerIds: [],
         environmentId: env.id,
       });
-      const deck = createDeck({
-        name: "repo",
-        rootPath: context.projectDir,
-      });
-      setDeckActiveEnvironment(deck.id, env.id);
 
       const references = listEnvironmentReferences(env.id);
       expect(references.layers).toEqual([
         expect.objectContaining({ id: configuredLayer.id, name: "backend" }),
       ]);
-      expect(references.decks).toEqual([
-        expect.objectContaining({ id: deck.id, name: "repo" }),
-      ]);
       expect(hasEnvironmentReferences(env.id)).toBe(true);
 
       setLayerDefaultEnvironment(configuredLayer.id, null);
-      setDeckActiveEnvironment(deck.id, null);
       expect(listEnvironmentReferences(env.id)).toEqual({
         layers: [],
-        decks: [],
       });
       expect(hasEnvironmentReferences(env.id)).toBe(false);
 

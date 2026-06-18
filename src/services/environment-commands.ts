@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -18,15 +20,14 @@ import {
 import {
   setLayerDefaultEnvironment,
 } from "../models/layer-model.js";
-import { setDeckActiveEnvironment } from "../models/deck.js";
-import { DECK_JSON_VERSION, DECK_SCHEMA } from "../types.js";
-import { existsSync, mkdirSync } from "node:fs";
-import { basename, join } from "node:path";
-import { readDeckToml, writeDeckToml } from "./deck-export-import.js";
-import { loadDeckActiveEnvironmentFragment, loadHomeEnvironmentFragment, resolveEnvironmentCascade, loadLayerDefaultFragments } from "./environment-cascade.js";
-import { resolveConfiguredLayerOrThrow, resolveDeckByProjectRoot, resolveEnvironmentOrThrow } from "./environment-selectors.js";
+import {
+  loadHomeEnvironmentFragment,
+  loadLayerDefaultFragments,
+  loadProjectActiveEnvironmentFragment,
+  resolveEnvironmentCascade,
+} from "./environment-cascade.js";
+import { resolveConfiguredLayerOrThrow, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import type {
-  DeckJson,
   EnvVarMetadata,
   Environment,
   EnvironmentSecretProvider,
@@ -110,7 +111,7 @@ export function listEnvironmentsCommand(): Array<{
       environment,
       value_count: getEnvironmentResources(environment.id).length,
       secret_ref_count: getEnvironmentSecretRefs(environment.id).length,
-      reference_count: refs.layers.length + refs.decks.length,
+      reference_count: refs.layers.length,
     };
   });
 }
@@ -133,7 +134,7 @@ export function deleteEnvironmentCommand(
   const references = listEnvironmentReferences(environment.id);
   if (!options?.force && hasEnvironmentReferences(environment.id)) {
     throw new Error(
-      `Environment "${environment.name}" is still referenced by configured layers or decks`,
+      `Environment "${environment.name}" is still referenced by configured layers`,
     );
   }
   return {
@@ -268,47 +269,18 @@ export function useEnvironmentForProjectCommand(
 ): {
   environment_id: string;
   environment_name: string;
-  deck_id?: string;
-  deck_file: string;
-  deck_tracked: boolean;
+  active_environment_file: string;
   updated: boolean;
 } {
   const environment = resolveEnvironmentOrThrow(selector);
-  const deckDir = join(projectRoot, ".harnessdeck");
-  mkdirSync(deckDir, { recursive: true });
-  const deckFile = join(deckDir, "deck.toml");
-  const parsedDeckJson = existsSync(deckFile)
-    ? readDeckToml(deckFile)
-    : undefined;
-  const deckJson: DeckJson = {
-    $schema: DECK_SCHEMA,
-    version: DECK_JSON_VERSION,
-    name: parsedDeckJson?.name && parsedDeckJson.name.length > 0
-      ? parsedDeckJson.name
-      : basename(projectRoot),
-    layers: parsedDeckJson?.layers ?? [],
-    environments: parsedDeckJson?.environments ?? [],
-    active_environment: environment.name,
-  };
-  writeDeckToml(deckFile, deckJson);
-
-  const deck = resolveDeckByProjectRoot(projectRoot);
-  if (!deck) {
-    return {
-      environment_id: environment.id,
-      environment_name: environment.name,
-      deck_file: deckFile,
-      deck_tracked: false,
-      updated: true,
-    };
-  }
-  setDeckActiveEnvironment(deck.id, environment.id);
+  const harnessdeckDir = join(projectRoot, ".harnessdeck");
+  mkdirSync(harnessdeckDir, { recursive: true });
+  const activeFile = join(harnessdeckDir, "active-environment.json");
+  writeFileSync(activeFile, `${JSON.stringify({ name: environment.name }, null, 2)}\n`, "utf-8");
   return {
     environment_id: environment.id,
     environment_name: environment.name,
-    deck_id: deck.id,
-    deck_file: deckFile,
-    deck_tracked: true,
+    active_environment_file: activeFile,
     updated: true,
   };
 }
@@ -319,22 +291,22 @@ export function environmentActivePayload(input: {
 }): {
   home?: ReturnType<typeof loadHomeEnvironmentFragment>;
   layer_defaults: ReturnType<typeof loadLayerDefaultFragments>;
-  deck?: ReturnType<typeof loadDeckActiveEnvironmentFragment>;
+  project_active?: ReturnType<typeof loadProjectActiveEnvironmentFragment>;
   resolved: ReturnType<typeof resolveEnvironmentCascade>;
 } {
   const home = loadHomeEnvironmentFragment();
   const layerDefaults = loadLayerDefaultFragments(input.configuredLayerIds ?? []);
-  const deck = input.projectRoot
-    ? loadDeckActiveEnvironmentFragment(input.projectRoot)
+  const projectActive = input.projectRoot
+    ? loadProjectActiveEnvironmentFragment(input.projectRoot)
     : undefined;
   return {
     ...(home ? { home } : {}),
     layer_defaults: layerDefaults,
-    ...(deck ? { deck } : {}),
+    ...(projectActive ? { project_active: projectActive } : {}),
     resolved: resolveEnvironmentCascade({
       ...(home ? { home } : {}),
       layerDefaults,
-      ...(deck ? { deckActive: deck } : {}),
+      ...(projectActive ? { projectActive } : {}),
     }),
   };
 }
@@ -345,7 +317,7 @@ export function environmentResolvePayload(input: {
 }): {
   home?: ReturnType<typeof loadHomeEnvironmentFragment>;
   layer_defaults: ReturnType<typeof loadLayerDefaultFragments>;
-  deck?: ReturnType<typeof loadDeckActiveEnvironmentFragment>;
+  project_active?: ReturnType<typeof loadProjectActiveEnvironmentFragment>;
   resolved: ReturnType<typeof resolveEnvironmentCascade>;
 } {
   return environmentActivePayload({

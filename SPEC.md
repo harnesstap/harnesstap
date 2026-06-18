@@ -4,7 +4,7 @@ This document is the authoritative specification for `harnessdeck` / `hd`.
 
 ## Product summary
 
-`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It collects agent configuration into canonical local **resources**, composes **what** into versioned **layers** (with optional default **environments**), curates layers into portable **decks** for git transport, and syncs the resolved setup into project directories across supported agent harnesses. Teams publish layers to HarnessDeck Cloud **catalogs** under an **organization** for multiplayer discovery, install, and governance.
+`harnessdeck` is an Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. It collects agent configuration into canonical local **resources**, composes **what** into versioned **layers** (with optional default **environments**) in a single local **workspace**, and syncs the resolved setup into project directories across supported agent harnesses. Teams publish layers to HarnessDeck Cloud **catalogs** under an **organization** for multiplayer discovery, install, and governance.
 
 An **agent harness** is the complete infrastructure that wraps around an LLM and makes it a functional agent. In practice, that includes skills, MCP servers, hooks, plugins, rules, agent manifests, commands, and harness-specific configuration files.
 
@@ -20,7 +20,7 @@ The product currently supports these main workflows:
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Export or import a machine-transfer archive of local layers, harness preferences, and config.
 - Authenticate with HarnessDeck Cloud; search, install, and publish layers into org **catalogs**.
-- Create, capture, and refresh **environments**; bind default environments to layers; switch home or deck active environment; resolve the home → layer default → deck-active cascade on `project apply`.
+- Create, capture, and refresh **environments**; bind default environments to layers; switch home active environment; resolve the home → layer-default cascade on `layer apply`.
 - Manage **profiles** (layers tagged `profile`) for global machine presets; switch active profile and apply to home harness paths with `profile use`.
 - Authenticate HarnessDeck Cloud with named **accounts** (`cloud-accounts.json`, `--account` on catalog commands).
 
@@ -37,7 +37,7 @@ flowchart TB
     PubL --> PubP
   end
 
-  subgraph Local["local workspace"]
+  subgraph Workspace["local workspace (~/.harnessdeck)"]
     LL[local layer]
     Res[context-side resources]
     PL["profile layers (tag profile)"]
@@ -46,15 +46,8 @@ flowchart TB
     PL --> AP
   end
 
-  subgraph Deck["deck — personal git transport"]
-    DL1[layer + optional default environment]
-    DL2[layer]
-  end
-
-  PubL -->|layer pull| Local
-  PubP -->|profile pull| PL
-  Deck --> Cascade["home env ◂ layer default env ◂ deck active env"]
-  Local --> Cascade
+  PubL -->|layer pull| Workspace
+  Workspace --> Cascade["home env ◂ layer default env"]
   AP -->|profile use| Global["global harness files ~/.claude …"]
   Cascade --> Out[Harness outputs in the project]
 ```
@@ -64,14 +57,14 @@ The CLI uses a small set of concepts consistently across commands.
 - `resource`: a single canonical item on the **context-side** (what the model sees) or **environment-side** (how it runs).
    - Context-side material types: instruction, skill, rule, MCP server, hook, agent, command.
    - Environment-side types: env var, model config, permission, secret references.
-- `layer`: a versioned **context package** — material resources plus optional **`plugin_pin`** and **`layer`** composition refs, optional Claude host-plugin config, a `needs` contract satisfied by environment resources, and an optional default **environment**. Layers are what `project apply` targets. See [Layer identity & scope](#layer-identity--scope).
+- `layer`: a versioned **context package** — material resources plus optional **`plugin_pin`** and **`layer`** composition refs, optional Claude host-plugin config, a `needs` contract satisfied by environment resources, and an optional default **environment**. Layers are what `layer apply` targets. See [Layer identity & scope](#layer-identity--scope).
 - `host plugin`: an installable bundle in the host harness world (Claude/Cursor/Codex marketplace plugin): manifest + tree. Not a HarnessDeck storage row; materialized as namespaced resources after `resource sync` on a **plugin pin**.
 - `plugin_pin`: a layer dependency on a host plugin (`plugin_pin:ref@marketplace`), with version constraint and sync metadata. Stored as `type=plugin_pin` in SQLite.
-- `environment`: a named, swappable bundle of environment-side resources. Non-secret values can travel in a deck; secrets are referenced, not embedded.
+- `environment`: a named, swappable bundle of environment-side resources. Non-secret values can travel in migrate archives and layer exports; secrets are referenced, not embedded.
 - `organization`: a Cloud tenant boundary (members, roles, billing). Required to publish layers for multiplayer use.
 - `catalog`: a named collection of layers within an organization — the browse, search, and install scope in Cloud and the CLI. Required alongside an organization when publishing; omitted for purely local layers.
 - `profile`: a layer whose `tags` include the reserved string `profile`; switchable global preset. `profile use` merges the profile stack (including transitive `layer` refs) and applies to machine home harness paths. Stored as a normal layer row — not a separate entity type.
-- `deck`: your personal curated bundle of layers and environments, importable as a git repo and described by `.harnessdeck/deck.toml`. `deck apply` targets **projects**. Day-to-day multiplayer distribution flows through **catalogs** (cherry-pick into deck or profile), not shared deck repos as org baselines.
+- `workspace`: the single implicit local library in `~/.harnessdeck/harnessdeck.db` — all layers, resources, and environments. Share offline with `migrate export` / `import`, or share individual layers with `layer export` / `import`.
 - `account`: a named HarnessDeck Cloud login identity in `~/.harnessdeck/cloud-accounts.json` (access tokens, refresh tokens, active org). Use `--account <name>` on catalog commands; distinct from a profile layer.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
@@ -114,20 +107,18 @@ Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.
 
 | Term | Meaning | CLI / storage |
 | --- | --- | --- |
-| **Layer** | Versioned context package (material resources + deps + optional default environment) | `hd layer …`, `project apply <layer>` · `layers` + `layer_resources` |
+| **Layer** | Versioned context package (material resources + deps + optional default environment) | `hd layer …`, `layer apply <layer>` · `layers` + `layer_resources` |
 | **Host plugin** | Claude/Cursor/Codex installable bundle (manifest + tree) | Host commands (`claude plugin install`, …) — not a HarnessDeck row |
 | **`plugin_pin`** | Dependency on a host plugin attached to a layer | `layer combine plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
 | **`layer` ref** | Dependency on another HarnessDeck layer (catalog/local) | `layer combine layer:name@^1.0` · `resources.type=layer` |
 | **Profile** | Layer tagged `profile`; global switch preset | `hd profile use <name>` · `layers.tags` includes `profile` |
-| **Deck** | Personal git-transport bundle of layers + environments | `.harnessdeck/deck.toml` · `decks`, `deck_layers` |
+| **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnessdeck/harnessdeck.db` |
 | **Catalog** | Org-scoped published layer collection (multiplayer) | `layer search`, `layer pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
 
 **Package.json analogy:** a **layer** is the package; **context-side resources** are source files; **`plugin_pin`** / **`layer` ref** are dependencies; **`environment`** is runtime config (.env).
 
-Compat shims (`configured-layer.ts`, `listDeckConfiguredLayers`) delegate to `layer-model.ts` / `deck_layers` and are deprecated.
-
-Layer freshness and composition use `resource sync`, `layer doctor`, and `project apply` plugin-version flags.
+Layer freshness and composition use `resource sync`, `layer doctor`, and `layer apply` plugin-version flags.
 
 ### Resource classification
 
@@ -185,7 +176,7 @@ A layer is an ordered list of attachments:
 
 Nested `layer` refs expand depth-first with cycle detection at apply time.
 
-**Lazy plugin pin attach:** `layer combine plugin_pin:…` links only. Sync is explicit via `resource sync`, `layer combine --sync`, or `project apply --sync-plugins`.
+**Lazy plugin pin attach:** `layer combine plugin_pin:…` links only. Sync is explicit via `resource sync`, `layer combine --sync`, or `layer apply --sync-plugins`.
 
 **Plugin pin metadata** (harness-agnostic):
 
@@ -206,28 +197,16 @@ interface PluginPinMetadata {
 Composition resolves by ordered override (last wins):
 
 ```
-home environment  ◂  layer default environment  ◂  deck active environment
+home environment  ◂  layer default environment
 ```
 
-On `project apply`, HarnessDeck merges environment fragments into layer serialization so env vars and model config override matching `type:name` resources. Home environments may be stored under `~/.harnessdeck/environments/<name>.json` (JSONC).
+On `layer apply`, HarnessDeck merges environment fragments into layer serialization so env vars and model config override matching `type:name` resources. Home environments may be stored under `~/.harnessdeck/environments/<name>.json` (JSONC).
 
-Switching deck active environment re-materializes how-values without reloading layer content — for example, moving from staging to prod while keeping the same layer stack.
+Switching the home active environment re-materializes how-values without reloading layer content — for example, moving from staging to prod while keeping the same layer stack.
 
-### Hybrid deck repo layout
+### Offline workspace sharing
 
-A deck ships as a git repo that is simultaneously a valid Claude **marketplace** (installable without HarnessDeck) and a carrier for the canonical bundle:
-
-```
-my-deck/
-├─ .claude-plugin/marketplace.json
-├─ <plugin-name>/.claude-plugin/plugin.json   # + harnessdeck.needs
-├─ AGENTS.md · .cursor/rules/ · …             # generated native files
-└─ .harnessdeck/
-   ├─ deck.toml                                # urn:harnessdeck:deck:v1
-   └─ environments/<name>.json                 # non-secret values only
-```
-
-`.harnessdeck/deck.toml` is the lossless source; marketplace and native files are **generated** and checked by deck doctor. See [Transport formats](#transport-formats).
+Share the full local workspace between machines with `migrate export` / `migrate import`. Archives include layer bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. For surgical sharing, use `layer export` / `layer import` on individual layers. For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud catalogs.
 
 ### Progressive enhancement
 
@@ -272,10 +251,9 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `harnessdeck init` | Creates `~/.harnessdeck/harnessdeck.db`, initializes the schema, seeds built-in layers, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnessdeck layer ...` | Layer CRUD, **apply**, composition attach/detach, bundle export/import, cloud catalog workflows, diff, and doctor. |
-| `harnessdeck deck ...` | List, show, **apply**, delete, export, import, and validate portable deck repositories. |
-| `harnessdeck migrate ...` | Exports or imports a machine-transfer archive. |
+| `harnessdeck migrate ...` | Exports or imports a machine-transfer archive (offline workspace sharing). |
 | `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
-| `harnessdeck project ...` | Scans projects, drift, mirror, snapshots, and status (`project apply` is a deprecated alias for `layer apply`). |
+| `harnessdeck project ...` | Scans projects, drift, mirror, snapshots, and status. |
 | `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
 | `harnessdeck environment ...` | Creates and manages environments, environment values, secret refs, active-environment pointers, scoped capture/refresh, and cascade preview. |
 | `harnessdeck profile ...` | Lists, shows, creates, tags, and switches profile layers; global apply via `profile use`. |
@@ -293,6 +271,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer delete` | Deletes a layer by selector. |
 | `layer export` | Writes a portable JSONC layer export (`urn:harnessdeck:layer:v1`). |
 | `layer import` | Imports a layer v1 file into the local database. |
+| `layer apply` | Applies layer selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
 | `layer search` | Searches remote catalogs through the configured cloud account and connected org scopes. |
 | `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
 | `layer publish` | Publishes a local layer to a Cloud org **catalog** (requires organization, catalog name, and publish scope). |
@@ -304,7 +283,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer diff` | Compares two layers, or a layer and a bundle file. |
 | `layer doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
 | `layer from-project` | Scans a project and creates a layer from imported resources. |
-| `layer set-environment` | Sets the default environment on the layer that `project apply` resolves for the given selector. |
+| `layer set-environment` | Sets the default environment on the layer that `layer apply` resolves for the given selector. |
 | `layer unset-environment` | Clears the layer's default environment. |
 
 ### `environment` subcommands
@@ -318,8 +297,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `environment set` | Upserts environment values (`--var`, `--model`, `--permission`). |
 | `environment unset` | Removes environment values. |
 | `environment secret set` / `secret unset` | Manages secret references. |
-| `environment import` / `export` | Reads or writes deck environment JSONC transport. |
-| `environment use` | Sets the home or deck active environment pointer; `--reapply` opt-in re-runs last applied layers. |
+| `environment import` / `export` | Reads or writes environment JSONC transport. |
+| `environment use` | Sets the home active environment pointer; `--reapply` opt-in re-runs last applied layers. |
 | `environment active` | Shows active environment and cascade preview. |
 | `environment resolve` | Dry-run merged environment values per cascade tier. |
 | `environment capture` | Creates an environment from scoped project capture (see [Environment capture](#environment-capture)). |
@@ -339,7 +318,6 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Current behavior |
 | --- | --- |
 | `project scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnessdeckignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
-| `project apply` | Applies layer selectors, bundle paths, or bundle URLs; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
 | `project drift` | Compares working tree against the latest apply/sync snapshot. |
 | `project mirror` | Re-materializes alias harness outputs from the main harness reference. |
 | `project history` | Lists stored snapshots (requires git-backed project). |
@@ -393,7 +371,7 @@ A **profile** is a layer whose `tags` include the reserved string `profile`. Pro
 | `--base-url <url>` | Cloud base URL for dependency pull |
 | `--no-pull` | Fail when composition refs are missing locally instead of auto-pull |
 
-**Scope:** `profile use` applies to machine **home** harness paths only. Project apply remains `layer apply` / `deck apply`.
+**Scope:** `profile use` applies to machine **home** harness paths only. Project apply is `layer apply` only.
 
 **Root shorthand:** when `argv[2]` is not a registered top-level command or alias and matches a local profile layer name, the CLI rewrites to `profile use <name>`. Reserved names always win — e.g. `hd init` stays `init`, `hd work` becomes `profile use work` when `work` is a profile-tagged layer.
 
@@ -403,14 +381,14 @@ Remote catalog workflows live on **`layer`**, not `cloud`:
 - `layer pull` — fetch a published layer + local import (distinct from `layer import` on a local file)
 - `layer publish` — export bundle + upload a versioned layer to an org catalog
 
-`project apply` resolves local layer names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `layer pull`).
+`layer apply` resolves local layer names, bundle paths, and URLs. Published selectors (`org/catalog/name@version` or `org/name@version`) that are not installed locally are fetched from the catalog at apply time (same import path as `layer pull`).
 
 ### `migrate` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `migrate export <file>` | Exports local layers as bundle files plus harness preferences and config. |
-| `migrate import <file>` | Imports a machine-transfer archive. |
+| `migrate export <file>` | Exports local layers, environments (secret refs only), harness preferences, and config as a portable archive. |
+| `migrate import <file>` | Imports a machine-transfer archive into the local workspace. |
 
 ## CLI UX contract
 
@@ -423,7 +401,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|active|use`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `project apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|active|use`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -459,7 +437,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ## Wizard mode
 
-Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer combine`, `layer uncombine`, `layer from-project`, `layer set-environment`, `project apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
+Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer combine`, `layer uncombine`, `layer from-project`, `layer set-environment`, `layer apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
 
 Wizard mode triggers when all of these are true:
 
@@ -479,7 +457,7 @@ The CLI renders human mode through `src/ui/` primitives (`table`, `panel`, `diff
 - One visual language across commands (semantic colors, `✓` / `⚠` / `✗` verdicts, boxed tables).
 - List tables use uppercase muted headers and optional summary footers.
 - Diff and drift output color rows by change kind (`+` / `−` / `~`).
-- Spinners for long operations (`project scan`, `project apply`, `project mirror`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
+- Spinners for long operations (`project scan`, `layer apply`, `project mirror`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
 - `--no-color` and `NO_COLOR` disable styling; box-drawing degrades to ASCII when not a TTY.
 
 JSON output is unchanged by the visual layer.
@@ -533,7 +511,6 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 - `layers` — versioned capabilities (local or published identity).
 - `layer_resources` — ordered attachments on a layer.
 - `environments`, `environment_resources`, `environment_secret_refs` — named how-value bundles.
-- `decks`, `deck_layers` — deck metadata and layer membership.
 - `projects`, `project_layers` — tracked directories and applied layers.
 - `resources` — canonical configuration items (including `plugin_pin` and `layer` composition resource types).
 - `harness_preferences`, `project_harnesses`, `snapshots`, `global_apply_snapshots`, `global_apply_snapshot_installs`, `schema_version`.
@@ -544,11 +521,11 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 
 Project identity uses a normalized git `origin` remote. `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
 
-During `project scan`, `project apply`, and `project mirror`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
+During `project scan`, `layer apply`, and `project mirror`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
 
 ### Snapshot behavior
 
-Snapshots are created during `project apply` and `project mirror` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `project revert` restores those files. `project drift` compares the latest snapshot to the working tree.
+Snapshots are created during `layer apply` and `project mirror` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `project revert` restores those files. `project drift` compares the latest snapshot to the working tree.
 
 ## Canonical model
 
@@ -560,11 +537,11 @@ Metadata varies by type. See [Unified composition model](#unified-composition-mo
 
 ### Environment model
 
-An environment has a unique `name`, description, ordered **environment values** (`env_var`, `model_config`, `permission` resources linked via `environment_resources`), and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in deck transport.
+An environment has a unique `name`, description, ordered **environment values** (`env_var`, `model_config`, `permission` resources linked via `environment_resources`), and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in migrate archives or layer exports.
 
 ### Environment capture
 
-**Environment capture** creates or refreshes an environment from the current state of a project. It is distinct from **apply snapshots** stored during `project apply` / `project mirror`.
+**Environment capture** creates or refreshes an environment from the current state of a project. It is distinct from **apply snapshots** stored during `layer apply` / `project mirror`.
 
 `environment capture` and `environment refresh` store only environment values **required by the layer stack in scope** — not the full machine environment:
 
@@ -599,7 +576,7 @@ A **layer** is the primary composable unit.
 
 **Behavior:**
 
-- `project apply` resolves and materializes one or more layers (later layers override earlier for matching `type:name` keys).
+- `layer apply` resolves and materializes one or more layers (later layers override earlier for matching `type:name` keys).
 - Nested `layer` refs expand depth-first; published refs resolve through catalog scope and semver constraints.
 - Resource order is preserved during serialization.
 
@@ -607,9 +584,9 @@ A **layer** is the primary composable unit.
 
 **Implementation (SQLite v15):** composition and apply identity share one `layers` row per capability. `layer_resources` holds ordered attachments. Published identity uses `org_slug` / `catalog_slug` (empty strings for local layers).
 
-### Deck model
+### Workspace model
 
-A deck record has a `name`, optional `root_path`, optional `active_environment_id`, and ordered layer membership. On-disk source of truth: `.harnessdeck/deck.toml` (`urn:harnessdeck:deck:v1`).
+The local workspace is the single SQLite library at `~/.harnessdeck/harnessdeck.db`. All layers, resources, and environments live here. Share the full workspace offline with `migrate export` / `import`, or share individual layers with `layer export` / `import`.
 
 ## Agent harness model
 
@@ -655,13 +632,13 @@ When one supported harness already exists in a project, it becomes the default m
 
 ### Apply
 
-`project apply` accepts layer selectors, bundle files, or bundle URLs. Later layers override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs. Environment cascade merges home, per-layer defaults, and deck-active fragments before serialization.
+`layer apply` accepts layer selectors, bundle files, or bundle URLs. Later layers override earlier ones for matching `type:name` resources, Claude config entries, and plugin refs. Environment cascade merges home and per-layer default fragments before serialization.
 
 `layer` composition resources expand depth-first with cycle detection.
 
 Plugin resources with `never_synced` or `stale` status warn by default; pass `--sync-plugins` to refresh before materialize.
 
-When generated files already exist, `project apply` uses `--on-conflict replace|skip|prompt` (default: `prompt` on TTY, otherwise `replace`).
+When generated files already exist, `layer apply` uses `--on-conflict replace|skip|prompt` (default: `prompt` on TTY, otherwise `replace`).
 
 ### Global profile apply
 
@@ -670,13 +647,13 @@ When generated files already exist, `project apply` uses `--on-conflict replace|
 1. Resolve profile layer by selector; require `tags` includes `profile`.
 2. `mergeLayersForApply` for the profile layer plus transitive `layer` refs (auto-pull missing published refs unless `--no-pull`).
 3. Resolve harness targets from global `harness_preferences` when `--harness` is omitted.
-4. `resolveEnvironmentCascadeForApply` with `projectRoot: homedir()`, configured layer IDs from the merged stack, no deck.
+4. `resolveEnvironmentCascadeForApply` with `projectRoot: homedir()`, configured layer IDs from the merged stack.
 5. `preparePluginPinsForApply` at global/home scope.
 6. `applyToGlobal` with conflict policy; record `global_apply_snapshots`.
 
 `environment use` without `--project` remains valid for env-only switches; prefer `profile use` when changing both stack and default environment.
 
-For `project apply`, when no `--harness` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
+For `layer apply`, when no `--harness` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
 
 ### Project sync
 
@@ -708,44 +685,15 @@ All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport fil
 
 Default export path: `<name>.harnessdeck.toml`.
 
-### Deck v1 (canonical repo format)
-
-`urn:harnessdeck:deck:v1` in `.harnessdeck/deck.toml`:
-
-```toml
-schema = "urn:harnessdeck:deck:v1"
-version = 1
-
-name = "my-deck"
-active_environment = "staging"
-
-[[layers]]
-name = "backend-oncall"
-version = "1.0.0"
-org = "acme"
-catalog = "platform"
-environment = "oncall-prod"
-
-[environments.staging.values]
-PD_REGION = "eu"
-
-[environments.prod.values]
-PD_REGION = "us"
-```
-
-Environments are inlined under `[environments.<name>]`. Deck doctor materializes and checks generated marketplace/native files against canonical `deck.toml`. Layer entries reference layers by `name`, `version`, and optional `org`/`catalog`.
-
-### Bundle v1 (portable single file)
-
-`urn:harnessdeck:bundle:v1` combines `[deck]`, top-level `[environments.*]`, full `[[layers]]` payloads, and deduplicated `embedded_plugins` in one `*.harnessdeck.toml` file.
-
 ### Machine transfer archives
 
-`migrate export` writes TOML layer exports inside JSON metadata or tar.gz archives. `migrate import` restores them. Archives include `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
+`migrate export` writes layer bundles and environment definitions inside a tar.gz archive with JSON metadata. `migrate import` restores them into the local workspace. Archives include harness preferences, config, and `active-profile.json` when present. Environment secret refs are preserved; secret values are not embedded. They do not include tracked project records, project snapshots, or cloud accounts.
+
+Use `migrate` for full workspace handoff; use `layer export` / `layer import` for sharing individual layers.
 
 ## HarnessDeck Cloud
 
-HarnessDeck Cloud is the multiplayer control plane for **published layers**. An **organization** owns **catalogs**; each catalog holds versioned layers teams can search, review, and install. Deck repos remain the git transport format; catalogs are the default distribution surface.
+HarnessDeck Cloud is the multiplayer control plane for **published layers**. An **organization** owns **catalogs**; each catalog holds versioned layers teams can search, review, and install. Offline workspace sharing uses `migrate`; catalogs are the default multiplayer distribution surface.
 
 Authentication stores named accounts in `~/.harnessdeck/cloud-accounts.json`. There is no `cloud-profiles.json` and no `--profile` flag — use `--account` on catalog and auth commands. Re-run `auth login` after upgrading from pre-account CLI builds.
 
@@ -787,7 +735,7 @@ Local integration behavior:
 
 Executable terminal demos supplement written scenarios in `docs/scenarios/`. Sources live under `docs/scenarios/vhs/tapes/`; rendered GIFs under `docs/scenarios/vhs/output/`. Regenerate with `bun run docs:vhs` (`scripts/generate-vhs-scenarios.sh`). Demos run against isolated fixture workspaces — not contributor home directories. VHS is not part of `bun run preflight`.
 
-The primary walkthrough is a single adoption story (`init` → `project scan` → `resource list` → `layer list` → `project apply` → `project status`) embedded from the root README.
+The primary walkthrough is a single adoption story (`init` → `project scan` → `resource list` → `layer list` → `layer apply` → `project status`) embedded from the root README.
 
 ## Build, test, and release workflow
 
@@ -806,5 +754,5 @@ bun run build
 ## Known gaps and non-goals
 
 - Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
-- `layer export` / `layer import` still operate on one layer export at a time; use `deck export --with-layer-exports` and `deck import` for portable deck-repo round-trip.
+- `layer export` / `layer import` operate on one layer at a time; use `migrate export` / `import` for full workspace handoff.
 - HarnessDeck does not host a plugin marketplace or wrap `claude plugin install|uninstall`.

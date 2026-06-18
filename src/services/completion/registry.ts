@@ -12,7 +12,6 @@ import {
 } from "./providers/file-path.js";
 import { completeHarnessSlugs } from "./providers/harness-slug.js";
 import { completeLayerAttachment } from "./providers/layer-attachment.js";
-import { completeLocalDecks } from "./providers/local-deck.js";
 import { completeLocalEnvironments } from "./providers/local-environment.js";
 import { completeLocalLayers } from "./providers/local-layer.js";
 import { completeProfileLayers } from "./providers/profile-layer.js";
@@ -55,11 +54,6 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   ":0": [completeProfileLayers],
   "layer catalog connect:1": [completeCatalogConnectValue],
   "layer catalog disconnect:1": [completeCatalogConnectValue],
-  "deck show:0": [completeLocalDecks],
-  "deck delete:0": [completeLocalDecks],
-  "deck export:0": [completeLocalDecks],
-  "deck apply:0": [completeLocalDecks],
-  "deck import:0": [completeDirectoryPath],
   "resource show:0": [completeLocalResources],
   "resource delete:0": [completeLocalResources],
   "resource list:0": [completeResourceTypes],
