@@ -392,9 +392,6 @@ export async function resolveCompletions(
     case "flag-value":
       return runProviders(lookupProviders(ctx), ctx);
     case "positional":
-      if (!ctx.localDataAvailable) {
-        return [];
-      }
       return runProviders(lookupProviders(ctx), ctx);
     default: {
       const unexpected: never = ctx.slot;
