@@ -20,7 +20,7 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 **Profile** — A layer tagged `profile`; presented as a switchable global preset. Not a separate storage type — profiles are layers with the reserved tag `profile`. Switch with `profile use` (or root shorthand `hd <name>`); applies to machine home harness paths only.
 
-**Workspace** — The single implicit local library in `~/.harnessdeck/harnessdeck.db`: all layers, resources, and environments live here. Share the whole workspace offline with `migrate export` / `migrate import`, or share individual layers with `layer export` / `layer import`.
+**Workspace** — The single implicit local library in `~/.harnessdeck/harnessdeck.db`: all layers, resources, and environments live here. Share offline with `migrate export` / `migrate import` (`--workspace`, `--layer`, or `--resource`).
 
 **Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer search`, `layer pull`). Users cherry-pick catalog layers into their local workspace or profile stack.
 

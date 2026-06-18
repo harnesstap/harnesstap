@@ -8,7 +8,7 @@
   { "id": 7, "argv": ["status", ".", "--format", "json"] },
   { "id": 8, "argv": ["resource", "sync", "--format", "json", "--dry-run"] },
   { "id": 9, "argv": ["history", ".", "--format", "json"], "requiresGitOrigin": true },
-  { "id": 10, "argv": ["layer", "export", "missing-layer-smoke", "--file", "/dev/null"], "expectFailure": true },
+  { "id": 10, "argv": ["migrate", "export", "/dev/null", "--layer", "missing-layer-smoke"], "expectFailure": true },
   { "id": 11, "argv": ["layer", "search", "foundation", "--format", "json"] },
   { "id": 12, "argv": ["help", "--format", "json"] },
   { "id": 13, "argv": ["harness", "list", "--format", "json"] },

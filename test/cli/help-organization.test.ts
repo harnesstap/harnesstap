@@ -189,7 +189,7 @@ describe("CLI help and command organization", () => {
     // Should show arguments but not [options] for subcommands
     expect(layerHelp.stdout).toContain("show [name]");
     expect(layerHelp.stdout).toContain("publish <layer>");
-    expect(layerHelp.stdout).toContain("export <layer>");
+    expect(layerHelp.stdout).toContain("migrate export --layer");
     
     // Should NOT contain [options] in the command name column
     expect(layerHelp.stdout).not.toContain("show [options]");

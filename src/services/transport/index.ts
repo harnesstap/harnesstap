@@ -27,3 +27,7 @@ export {
   parseBundleToml,
   type BundleExport,
 } from "./bundle.js";
+export {
+  formatResourceExportToml,
+  parseResourceExportToml,
+} from "./resource.js";

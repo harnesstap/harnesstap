@@ -156,8 +156,6 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer show <name>`
 - `layer edit [name]` — interactively add/remove attachments, or script changes with `--add` / `--remove` / `--apply`
 - `layer delete [name]`
-- `layer export <layer>`
-- `layer import <file>` — import a local bundle file (`urn:harnessdeck:layer:v1`)
 - `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
 - `layer pull [selector]` — download a remote layer bundle and import it
@@ -193,8 +191,6 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer edit --version <constraint>` — plugin or layer references only (scripting adds)
 - `layer edit --sync` — sync a plugin resource immediately after add (default: lazy)
 - `layer edit --embed` — mark plugin pin as embed-on-export when adding
-- `layer export -f, --file <path>` — output bundle path
-- `layer export --embed-plugins`
 - `layer apply --project <path>` — target project directory (default `.`)
 - `layer apply --harness <slugs>` — comma-separated harness slugs
 - `layer apply --dry-run` — show planned file writes only
@@ -365,27 +361,31 @@ Manage global harness preferences and git-backed project overrides.
 
 ## migrate (`m`)
 
-Move full HarnessDeck workspace state between machines — the offline sharing path when you want to hand off layers, environments, harness preferences, and config without publishing to the cloud catalog.
+Offline sharing for workspace archives, individual layers, or single resources — without publishing to the cloud catalog.
 
 Use `migrate` when:
 
-- setting up a new laptop from an existing HarnessDeck install
-- sharing a curated layer library with a teammate offline (USB, internal file share, git LFS)
+- setting up a new laptop from an existing HarnessDeck install (full workspace)
+- sharing a curated layer or resource with a teammate offline
 - backing up your local workspace before a reinstall
 
-For surgical sharing of one layer, prefer `layer export` / `layer import`. For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud.
+For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud.
 
 ### Commands
 
-- `migrate export <file>` — write a portable archive of the local workspace
-- `migrate import <file>` — restore layers, environments, harness preferences, and config from an archive
+- `migrate export [file]` — export workspace, layer, or resource (interactive when `[file]` omitted on a TTY)
+- `migrate import [file]` — import from archive or TOML (auto-detects scope from file format)
 
 ### Important options
 
-- `migrate export --include-plugins` — embed plugin trees in exported layer bundles for offline portability
-- `migrate export --format json` — machine-readable export summary
-- `migrate import --format json` — machine-readable import summary
+- `migrate export --workspace` — full workspace archive (`.tar.gz` or `.json`)
+- `migrate export --layer <name>` — layer bundle TOML (`urn:harnessdeck:layer:v1`); comma-separated for multi-layer
+- `migrate export --resource <selector>` — single resource TOML (`urn:harnessdeck:resource:v1`)
+- `migrate export -o, --file <path>` — output path (overrides positional)
+- `migrate export --include-plugins` / `--embed-plugins` — embed plugin trees (workspace and layer scope)
+- `migrate import --workspace` / `--layer` / `--resource` — force import scope
+- `migrate export --format json` / `migrate import --format json` — machine-readable summary
 
-Archives include exported layer bundles, named environments (secret refs only — not secret values), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts (`cloud-accounts.json` remains local per machine).
+Workspace archives include layer bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
 
-See [Scenario 28](../scenarios/details/28-machine-migration.md) for a one-command workflow and [Scenario 17](../scenarios/details/17-migrate-state.md) for a manual layer-by-layer alternative.
+See [Scenario 28](../scenarios/details/28-machine-migration.md) and [Scenario 17](../scenarios/details/17-migrate-state.md).
