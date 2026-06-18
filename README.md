@@ -170,8 +170,7 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
 3. **Inspect** project state and next steps.
    ```bash
    hd project status .
-   hd concepts
-   hd guide
+   hd help
    ```
 
 When a repository has a git `origin`, `hd project apply` stores a snapshot before writing files. Restore it later with `hd project revert`.

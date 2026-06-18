@@ -119,11 +119,10 @@ import {
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "./constants/onboarding.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "./constants/profile.js";
-import { buildConceptsGuidePayload, printConceptsGuide } from "./services/concepts-guide.js";
+import { buildHelpCommandPayload, printHelpCommand } from "./services/concepts-guide.js";
 import { catalogAliasHint } from "./services/catalog-aliases.js";
 import { maybePromptInitCatalogInstall } from "./services/init-catalog-prompt.js";
 import {
-  listScenarioIds,
   loadScenarioGuide,
   parseScenarioId,
 } from "./services/scenario-guide.js";
@@ -276,10 +275,6 @@ function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
 }
 
-const GUIDE_QUICK_START_URL =
-  "https://github.com/harnessdeck/harnessdeck#quick-start";
-const GUIDE_CLI_REFERENCE_URL =
-  "https://github.com/harnessdeck/harnessdeck/blob/main/docs/cli/command-reference.md";
 const GUIDE_SCENARIOS_URL =
   "https://github.com/harnessdeck/harnessdeck/blob/main/docs/scenarios/scenarios.md";
 
@@ -2705,43 +2700,17 @@ function printQuickStartGuide(): void {
   console.log(
     `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
-  console.log(`  ${formatCommand("concepts")}`);
-  console.log(`  ${formatCommand("guide")}`);
+  console.log(`  ${formatCommand("help")}`);
   ui.dim(`Enable tab completion: ${formatCommand("completion zsh >> ~/.zshrc")}`);
 }
 
-function handleGuideCommand(): void {
-  console.log("");
-  ui.subheader("WHAT HARNESSDECK DOES");
-  console.log("");
-  console.log(
-    "  Scan assistant config, store canonical resources, compose layers, apply to projects.",
-  );
-  console.log("");
-  ui.subheader("QUICK START");
-  console.log("");
-  console.log(`  ${formatCommand("init --main codex --aliases claude-code,cursor")}`);
-  console.log(
-    `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
-  );
-  console.log(
-    `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,
-  );
-  console.log(`  ${formatCommand("project status .")}`);
-  console.log(`  ${formatCommand("completion zsh >> ~/.zshrc")}`);
-  console.log("");
-  ui.subheader("EXPLORE");
-  console.log("");
-  console.log(`  ${formatCommand("project scan .")}`);
-  console.log(`  ${formatCommand("harness list")}`);
-  console.log(`  ${formatCommand("concepts")}`);
-  console.log("");
-  ui.subheader("DOCUMENTATION");
-  console.log("");
-  ui.info(GUIDE_QUICK_START_URL);
-  ui.info(GUIDE_CLI_REFERENCE_URL);
-  ui.info(GUIDE_SCENARIOS_URL);
-  ui.dim(`Run ${formatCommand("guide --scenario <id>")} for a scenario playbook (1-${listScenarioIds().at(-1) ?? 28}).`);
+function handleHelpCommand(opts: { format?: string }): void {
+  const format = parseOutputFormat(opts.format);
+  if (format === "json") {
+    printJson(buildHelpCommandPayload());
+    return;
+  }
+  printHelpCommand();
 }
 
 function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: string }): void {
@@ -2781,7 +2750,7 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err), {
-      hints: [`hd guide --scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
+      hints: [`hd help scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
     });
   }
 }
@@ -3797,41 +3766,23 @@ function handleHarnessProjectStatusCommand(opts: {
   });
 }
 
-// ── init ────────────────────────────────────────────────────────────────
+// ── help ────────────────────────────────────────────────────────────────
 
-program
-  .command("guide")
-  .description("Show quick start commands and documentation links")
-  .option("--scenario <id>", "Show commands for a numbered user scenario playbook")
+const helpCommand = program
+  .command("help")
+  .description("Core concepts and scenario playbooks")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { scenario?: string; format?: string }) => {
-    if (opts.scenario) {
-      handleScenarioGuideCommand(opts.scenario, opts);
-      return;
-    }
-    handleGuideCommand();
+  .action((opts: { format?: string }) => {
+    handleHelpCommand(opts);
   });
 
-program
+helpCommand
   .command("scenario")
   .argument("<id>", "Scenario number from docs/scenarios/scenarios.md")
   .description("Show a numbered scenario playbook from the docs")
   .option("--format <mode>", "Output format: human or json", "human")
   .action((id: string, opts: { format?: string }) => {
     handleScenarioGuideCommand(id, opts);
-  });
-
-program
-  .command("concepts")
-  .description("Explain core HarnessDeck concepts and common command choices")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string }) => {
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(buildConceptsGuidePayload());
-      return;
-    }
-    printConceptsGuide();
   });
 
 program

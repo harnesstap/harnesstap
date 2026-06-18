@@ -142,6 +142,27 @@ describe("CLI __complete", () => {
       await context.cleanup();
     }
   });
+
+  it("returns scenario ids for help scenario completion without local database", async () => {
+    const context = await createTestContextWithoutHarnessdeck();
+    try {
+      const result = await runCli([
+        "__complete",
+        "zsh",
+        "--",
+        "hd",
+        "help",
+        "scenario",
+        "1",
+      ]);
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stdout).toContain("11");
+      expect(result.stdout).toContain("7");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
 
 async function createTestContextWithoutHarnessdeck(): Promise<{

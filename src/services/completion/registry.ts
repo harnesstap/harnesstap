@@ -18,6 +18,7 @@ import { completeLocalLayers } from "./providers/local-layer.js";
 import { completeProfileLayers } from "./providers/profile-layer.js";
 import { completeLocalResources } from "./providers/local-resource.js";
 import { completeResourceTypes } from "./providers/resource-type.js";
+import { completeScenarioIds } from "./providers/scenario-id.js";
 import { completeSnapshotIds } from "./providers/snapshot-id.js";
 import { staticEnumProvider } from "./providers/static-enum.js";
 import { flagsMatch } from "./utils.js";
@@ -78,6 +79,7 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "migrate export:0": [completeFilePath],
   "migrate import:0": [completeFilePath],
   "auth login:0": [completeCloudAccounts],
+  "help scenario:0": [completeScenarioIds],
 };
 
 const FLAG_PROVIDERS: FlagRegistry = {

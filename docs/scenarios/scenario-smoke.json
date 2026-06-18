@@ -10,7 +10,7 @@
   { "id": 9, "argv": ["project", "history", "--project", ".", "--format", "json"], "requiresGitOrigin": true },
   { "id": 10, "argv": ["layer", "export", "missing-layer-smoke", "--file", "/dev/null"], "expectFailure": true },
   { "id": 11, "argv": ["layer", "search", "foundation", "--format", "json"] },
-  { "id": 12, "argv": ["guide", "--format", "json"] },
+  { "id": 12, "argv": ["help", "--format", "json"] },
   { "id": 13, "argv": ["harness", "list", "--format", "json"] },
   { "id": 14, "argv": ["resource", "list", "--format", "json"] },
   { "id": 15, "argv": ["harness", "list", "--format", "json"] },
