@@ -11,7 +11,7 @@ A few CLI renames matter up front:
   `layer apply --strict-plugin-versions` instead ([Scenarios 8](./details/08-audit-plugins.md), [16](./details/16-ci-enforcement.md), [18](./details/18-plugin-merge-conflict.md), [19](./details/19-refresh-plugin-metadata.md)).
 - `harnessdeck layer doctor` replaced the removed `layer validate` command
   ([Scenario 23](./details/23-validate-layer.md)).
-- `harnessdeck layer combine` adds local resources or plugin pins to a layer;
+- `harnessdeck layer edit` adds local resources or plugin pins to a layer;
 - `harnessdeck layer pull` installs a layer from the remote catalog
   ([Scenario 5](./details/05-build-layer-from-resources.md)).
 - `harnessdeck init` initializes `~/.harnessdeck`, imports supported

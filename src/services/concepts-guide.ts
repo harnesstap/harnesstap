@@ -60,7 +60,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
         purpose: "Cache a catalog layer locally",
       },
       {
-        command: "layer combine <layer> <item> --type skill",
+        command: "layer edit <layer> --add <item> --type skill",
         purpose: "Add a local resource to a layer",
       },
     ],

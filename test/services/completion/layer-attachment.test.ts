@@ -4,22 +4,25 @@ import {
   createLayer,
 } from "../../../src/models/layer-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
-import { completeLayerAttachment } from "../../../src/services/completion/providers/layer-attachment.ts";
+import {
+  completeLayerEditAddAttachment,
+  completeLayerEditRemoveAttachment,
+} from "../../../src/services/completion/providers/layer-attachment.ts";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import { makeResourceInput } from "../../helpers/resources.ts";
 
-describe("completeLayerAttachment", () => {
-  it("suggests typed resources and other layers for combine", async () => {
-    const context = await createInitializedTestContext("completion-layer-attach-combine");
+describe("layer edit attachment completion", () => {
+  it("suggests typed resources and other layers for --add", async () => {
+    const context = await createInitializedTestContext("completion-layer-edit-add");
     try {
       const targetLayer = createLayer({ name: "target-layer", version: "1.0.0" });
       createLayer({ name: "dep-layer", version: "1.0.0" });
       const skill = createResource(makeResourceInput({ name: "combine-skill" }));
 
-      const candidates = completeLayerAttachment({
-        commandPath: ["layer", "combine"],
-        slot: "positional",
-        positionalIndex: 1,
+      const candidates = completeLayerEditAddAttachment({
+        commandPath: ["layer", "edit"],
+        slot: "flag-value",
+        flag: "add",
         consumedPositionals: [targetLayer.name],
         prefix: "",
         localDataAvailable: true,
@@ -33,17 +36,17 @@ describe("completeLayerAttachment", () => {
     }
   });
 
-  it("suggests current attachments for uncombine", async () => {
-    const context = await createInitializedTestContext("completion-layer-attach-uncombine");
+  it("suggests current attachments for --remove", async () => {
+    const context = await createInitializedTestContext("completion-layer-edit-remove");
     try {
       const layer = createLayer({ name: "source-layer", version: "1.0.0" });
       const skill = createResource(makeResourceInput({ name: "attached-skill" }));
       addResourceToLayer(layer.id, skill.id);
 
-      const candidates = completeLayerAttachment({
-        commandPath: ["layer", "uncombine"],
-        slot: "positional",
-        positionalIndex: 1,
+      const candidates = completeLayerEditRemoveAttachment({
+        commandPath: ["layer", "edit"],
+        slot: "flag-value",
+        flag: "remove",
         consumedPositionals: [layer.name],
         prefix: "",
         localDataAvailable: true,

@@ -135,13 +135,7 @@ describe("CLI layer", () => {
 
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      await runCli([
-        "layer", "combine",
-        "team-stack@1.2.0",
-        "baseline",
-        "--type", "layer-dependency",
-        "--version", "^1.0.0",
-      ]);
+      await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--no-interactive"]);
 
       const layer = layerModel.getLayer("team-stack@1.2.0");
       if (!layer) throw new Error("Expected layer to exist");
@@ -151,14 +145,7 @@ describe("CLI layer", () => {
       expect(deps[0].dependency_name).toBe("baseline");
       expect(deps[0].version_constraint).toBe("^1.0.0");
 
-      await runCli([
-        "layer",
-        "uncombine",
-        "team-stack@1.2.0",
-        "baseline",
-        "--type",
-        "layer-dependency",
-      ]);
+      await runCli(["layer", "edit", "team-stack@1.2.0", "--remove", "baseline", "--type", "layer-dependency", "--no-interactive"]);
 
       const afterRemove = layerModel.listLayerDependencies(layer.id);
       expect(afterRemove).toHaveLength(0);
@@ -172,13 +159,7 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli([
-        "layer", "combine",
-        "team-stack@not-semver",
-        "baseline",
-        "--type", "layer-dependency",
-        "--version", "^1.0.0",
-      ]);
+      const result = await runCli(["layer", "edit", "team-stack@not-semver", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/invalid version constraint/i);
@@ -194,16 +175,7 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "missing-layer",
-        "baseline",
-        "--type",
-        "layer-dependency",
-        "--version",
-        "^1.0.0",
-      ]);
+      const result = await runCli(["layer", "edit", "missing-layer", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/layer not found: missing-layer/i);
@@ -219,16 +191,7 @@ describe("CLI layer", () => {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "team-stack@1.2.0",
-        "baseline",
-        "--type",
-        "layer-dependency",
-        "--version",
-        "not-semver",
-      ]);
+      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer-dependency", "--version", "not-semver", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/invalid version constraint/i);
@@ -242,14 +205,7 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
 
-      const result = await runCli([
-        "layer",
-        "uncombine",
-        "missing-layer",
-        "baseline",
-        "--type",
-        "layer-dependency",
-      ]);
+      const result = await runCli(["layer", "edit", "missing-layer", "--remove", "baseline", "--type", "layer-dependency", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/layer not found: missing-layer/i);
@@ -264,14 +220,7 @@ describe("CLI layer", () => {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      const result = await runCli([
-        "layer",
-        "uncombine",
-        "team-stack@1.2.0",
-        "baseline",
-        "--type",
-        "layer-dependency",
-      ]);
+      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--remove", "baseline", "--type", "layer-dependency", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/dependency "baseline" not found/i);
@@ -406,14 +355,7 @@ describe("CLI layer", () => {
       const createList = await runCli(["layer", "list"]);
       expect(createList.stdout).toContain("team");
 
-      const addResult = await runCli([
-        "layer",
-        "combine",
-        "team",
-        resource.id,
-        "--type",
-        "skill",
-      ]);
+      const addResult = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--no-interactive"]);
       expect(addResult.stdout).toContain("✓ Added");
       expect(addResult.stdout).toContain("skill");
       expect(addResult.stdout).toContain('"shared-skill"');
@@ -423,14 +365,7 @@ describe("CLI layer", () => {
       expect(layerShow.stdout).toContain("team");
       expect(layerShow.stdout).toContain("shared-skill");
 
-      const removeResult = await runCli([
-        "layer",
-        "uncombine",
-        "team",
-        resource.id,
-        "--type",
-        "skill",
-      ]);
+      const removeResult = await runCli(["layer", "edit", "team", "--remove", "shared-skill", "--type", "skill", "--no-interactive"]);
       expect(removeResult.stdout).toContain("✓ Removed");
       expect(removeResult.stdout).toContain("skill");
       expect(removeResult.stdout).toContain('"shared-skill"');
@@ -469,7 +404,7 @@ describe("CLI layer", () => {
       );
 
       await runCli(["layer", "create", "team"]);
-      await runCli(["layer", "combine", "team", resource.id, "--type", "skill"]);
+      await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--no-interactive"]);
       const shortId = `${resource.id.slice(0, 6)}…${resource.id.slice(-4)}`;
 
       const hidden = await runCli(["layer", "show", "team"]);
@@ -597,6 +532,44 @@ describe("CLI layer", () => {
     }
   });
 
+  it("layer doctor prompts for layer name when omitted on TTY", async () => {
+    const context = await createTestContext("cli-layer-doctor-prompt");
+    try {
+      await runCli(["init"]);
+      const layerModel = await import("../../src/models/layer-model.ts");
+      layerModel.createLayer({ name: "healthy-layer" });
+
+      const result = await runCli(["layer", "doctor"], {
+        isTTY: true,
+        promptResponses: [{ value: "healthy-layer" }],
+      });
+
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("CHECK");
+      expect(result.stdout).toContain("healthy-layer");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer doctor fails without prompt when name is omitted in non-interactive mode", async () => {
+    const context = await createTestContext("cli-layer-doctor-no-prompt");
+    try {
+      await runCli(["init"]);
+      const layerModel = await import("../../src/models/layer-model.ts");
+      layerModel.createLayer({ name: "healthy-layer" });
+
+      const result = await runCli(["layer", "doctor"], {
+        isTTY: false,
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("missing required argument 'name'");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("narrows layer doctor to the selected checks", async () => {
     const context = await createTestContext("cli-layer-doctor-check-filter");
     try {
@@ -665,12 +638,12 @@ describe("CLI layer", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
 
-      await runCli(["layer", "combine", "team", "shared-skill", "--type", "skill"]);
+      await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--no-interactive"]);
       expect(layerModel.getLayerResources(layer.id)).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: resource.id })]),
       );
 
-      await runCli(["layer", "uncombine", "team", "shared-skill", "--type", "skill"]);
+      await runCli(["layer", "edit", "team", "--remove", "shared-skill", "--type", "skill", "--no-interactive"]);
       expect(layerModel.getLayerResources(layer.id)).toHaveLength(0);
     } finally {
       await context.cleanup();
@@ -700,14 +673,7 @@ describe("CLI layer", () => {
       );
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "team",
-        "shared-skill",
-        "--type",
-        "skill",
-      ]);
+      const result = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Ambiguous resource name: shared-skill");
@@ -746,14 +712,7 @@ describe("CLI layer", () => {
       layerModel.addResourceToLayer(layer.id, first.id);
       layerModel.addResourceToLayer(layer.id, second.id);
 
-      const result = await runCli([
-        "layer",
-        "uncombine",
-        "team",
-        "shared-skill",
-        "--type",
-        "skill",
-      ]);
+      const result = await runCli(["layer", "edit", "team", "--remove", "shared-skill", "--type", "skill", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Ambiguous resource name: shared-skill");
@@ -766,13 +725,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("requires --type for layer combine", async () => {
+  it("requires --type for layer edit --add", async () => {
     const context = await createTestContext("cli-layer-add-type-required");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "combine", "team", "shared-skill"]);
+      const result = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Attachment type required");
@@ -784,35 +743,8 @@ describe("CLI layer", () => {
     }
   });
 
-  it("auto-prompts layer combine on a TTY when required args are missing", async () => {
-    const context = await createTestContext("cli-layer-add-wizard");
-    try {
-      await runCli(["init"]);
-      const resourceModel = await import("../../src/models/resource.ts");
-      const resource = resourceModel.createResource(
-        makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
-      );
-      await runCli(["layer", "create", "team"]);
-
-      const result = await runCli(["layer", "combine", "team"], {
-        isTTY: true,
-        promptResponses: [
-          { value: "resource" },
-          { value: "skill" },
-          { value: `skill:${resource.id}` },
-        ],
-      });
-
-      expect(result.exitCode ?? 0).toBe(0);
-      expect(result.stdout).toContain("Added");
-      expect(result.stdout).toContain('"shared-skill"');
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("auto-prompts layer combine for the layer when the layer name is missing", async () => {
-    const context = await createTestContext("cli-layer-add-missing-layer");
+  it("auto-prompts layer edit when the layer name is missing", async () => {
+    const context = await createTestContext("cli-layer-edit-missing-layer");
     try {
       await runCli(["init"]);
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -822,19 +754,37 @@ describe("CLI layer", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
 
-      const result = await runCli(["layer", "combine"], {
+      const result = await runCli(["layer", "edit"], {
         isTTY: true,
         promptResponses: [
           { value: "team@1.0.0" },
-          { value: "resource" },
-          { value: "skill" },
-          { value: `skill:${resource.id}` },
+          {
+            value: [
+              {
+                id: resource.id,
+                type: "skill",
+                name: "shared-skill",
+                namespace: "",
+                display_name: "shared-skill",
+                description: "Shared",
+                source: "manual",
+                origin_kind: "manual",
+                origin_ref: "",
+                content_hash: "",
+                content: "# Shared",
+                metadata: {},
+                created_at: "2026-01-01T00:00:00.000Z",
+                updated_at: "2026-01-02T00:00:00.000Z",
+                checked: true,
+              },
+            ],
+          },
         ],
       });
 
       expect(result.exitCode ?? 0).toBe(0);
-      expect(result.stdout).toContain("Added");
-      expect(result.stdout).toContain('"shared-skill"');
+      expect(result.stdout).toContain("+1 added");
+      expect(result.stdout).toContain("team@1.0.0");
       expect(layerModel.getLayerResources(layer.id)).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: resource.id })]),
       );
@@ -843,65 +793,68 @@ describe("CLI layer", () => {
     }
   });
 
-  it("does not auto-prompt layer combine when --format json is requested", async () => {
-    const context = await createTestContext("cli-layer-add-wizard-json");
+  it("prints JSON snapshot without prompting when --format json --no-interactive", async () => {
+    const context = await createTestContext("cli-layer-edit-wizard-json");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "combine", "team", "--format", "json"], {
+      const result = await runCli(["layer", "edit", "team", "--format", "json", "--no-interactive"], {
         isTTY: true,
       });
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("missing required argument 'selector'");
+      expect(result.exitCode ?? 0).toBe(0);
+      const payload = JSON.parse(result.stdout);
+      expect(payload.layer.name).toBe("team");
+      expect(payload.attachments).toEqual([]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not auto-prompt layer combine when CI disables interactivity", async () => {
-    const context = await createTestContext("cli-layer-add-wizard-ci");
+  it("does not launch interactive edit when CI disables interactivity", async () => {
+    const context = await createTestContext("cli-layer-edit-wizard-ci");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "combine", "team"], {
+      const result = await runCli(["layer", "edit", "team"], {
         isTTY: true,
         env: { CI: "true" },
       });
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("missing required argument 'selector'");
+      expect(result.stderr).toMatch(/requires an interactive terminal/i);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not auto-prompt layer combine when --no-interactive is requested", async () => {
-    const context = await createTestContext("cli-layer-add-wizard-disabled");
+  it("does not launch interactive edit when --no-interactive is requested", async () => {
+    const context = await createTestContext("cli-layer-edit-wizard-disabled");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["--no-interactive", "layer", "combine", "team"], {
+      const result = await runCli(["layer", "edit", "team", "--no-interactive"], {
         isTTY: true,
       });
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("missing required argument 'selector'");
+      expect(result.stderr).toMatch(/requires an interactive terminal/i);
+      expect(result.stderr).toContain("--add");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("requires --type for layer uncombine", async () => {
+  it("requires --type for layer edit --remove", async () => {
     const context = await createTestContext("cli-layer-remove-type-required");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli(["layer", "uncombine", "team", "shared-skill"]);
+      const result = await runCli(["layer", "edit", "team", "--remove", "shared-skill", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Attachment type required");
@@ -913,20 +866,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("rejects invalid --type for layer uncombine", async () => {
+  it("rejects invalid --type for layer edit --remove", async () => {
     const context = await createTestContext("cli-layer-remove-type-invalid");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli([
-        "layer",
-        "uncombine",
-        "team",
-        "shared-skill",
-        "--type",
-        "not-a-real-type",
-      ]);
+      const result = await runCli(["layer", "edit", "team", "--remove", "shared-skill", "--type", "not-a-real-type", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Invalid --type. Valid:");
@@ -947,14 +893,7 @@ describe("CLI layer", () => {
       );
       await runCli(["layer", "create", "team"]);
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "team",
-        "shared-skill",
-        "--type",
-        "instruction",
-      ]);
+      const result = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "instruction", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Type mismatch");
@@ -975,28 +914,11 @@ describe("CLI layer", () => {
       );
       await runCli(["layer", "create", "team"]);
 
-      const versionResult = await runCli([
-        "layer",
-        "combine",
-        "team",
-        "shared-skill",
-        "--type",
-        "skill",
-        "--version",
-        "^1.0.0",
-      ]);
+      const versionResult = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--version", "^1.0.0", "--no-interactive"]);
       expect(versionResult.exitCode).toBe(1);
       expect(versionResult.stderr).toContain("--version is only supported for plugin_pin and layer attachments");
 
-      const embedResult = await runCli([
-        "layer",
-        "combine",
-        "team",
-        "shared-skill",
-        "--type",
-        "skill",
-        "--embed",
-      ]);
+      const embedResult = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--embed", "--no-interactive"]);
       expect(embedResult.exitCode).toBe(1);
       expect(embedResult.stderr).toContain("--embed is only supported for plugin_pin attachments");
     } finally {
@@ -1010,17 +932,7 @@ describe("CLI layer", () => {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "team-stack@1.2.0",
-        "baseline",
-        "--type",
-        "layer-dependency",
-        "--version",
-        "^1.0.0",
-        "--embed",
-      ]);
+      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--embed", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("--embed is only supported for plugin_pin attachments");
@@ -1035,29 +947,13 @@ describe("CLI layer", () => {
       await runCli(["init"]);
       await runCli(["layer", "create", "plugin-test"]);
 
-      const addResult = await runCli([
-        "layer",
-        "combine",
-        "plugin-test",
-        "formatter@marketplace",
-        "--type",
-        "plugin_pin",
-        "--version",
-        "^2.1.0",
-      ]);
+      const addResult = await runCli(["layer", "edit", "plugin-test", "--add", "formatter@marketplace", "--type", "plugin_pin", "--version", "^2.1.0", "--no-interactive"]);
       expect(addResult.stdout).toContain("✓ Attached plugin");
       expect(addResult.stdout).toContain("formatter@marketplace");
       expect(addResult.stdout).toContain("^2.1.0");
       expect(addResult.stdout).toContain("plugin-test");
 
-      const removeResult = await runCli([
-        "layer",
-        "uncombine",
-        "plugin-test",
-        "formatter@marketplace",
-        "--type",
-        "plugin_pin",
-      ]);
+      const removeResult = await runCli(["layer", "edit", "plugin-test", "--remove", "formatter@marketplace", "--type", "plugin_pin", "--no-interactive"]);
       expect(removeResult.stdout).toContain("✓ Removed plugin");
       expect(removeResult.stdout).toContain("formatter@marketplace");
       expect(removeResult.stdout).toContain("plugin-test");

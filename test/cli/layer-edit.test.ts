@@ -61,15 +61,7 @@ describe("CLI layer edit", () => {
         makeResourceInput({ type: "skill", name: "helper" }),
         { policy: "overwrite" },
       ).resource;
-      await runCli([
-        "layer",
-        "combine",
-        "stack",
-        "helper",
-        "--type",
-        "skill",
-        "--no-interactive",
-      ]);
+      await runCli(["layer", "edit", "stack", "--add", "helper", "--type", "skill", "--no-interactive"]);
 
       const result = await runCli(
         ["layer", "edit", "stack", "--format", "json", "--no-interactive"],
@@ -104,8 +96,9 @@ describe("CLI layer edit", () => {
       });
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/interactive only/i);
-      expect(result.stderr).toContain("layer combine");
+      expect(result.stderr).toMatch(/requires an interactive terminal/i);
+      expect(result.stderr).toContain("--add");
+      expect(result.stderr).toContain("--remove");
     } finally {
       await context.cleanup();
     }

@@ -9,16 +9,7 @@ describe("CLI layer plugin pins", () => {
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "p1"]);
-      await runCli([
-        "layer",
-        "combine",
-        "p1",
-        "fmt@acme",
-        "--type",
-        "plugin_pin",
-        "--version",
-        ">=2.0.0 <3.0.0",
-      ]);
+      await runCli(["layer", "edit", "p1", "--add", "fmt@acme", "--type", "plugin_pin", "--version", ">=2.0.0 <3.0.0", "--no-interactive"]);
       const show = await runCli(["layer", "show", "p1"]);
       expect(show.stdout).toContain("fmt@acme");
       expect(show.stdout).toContain(">=2.0.0");
@@ -33,16 +24,7 @@ describe("CLI layer plugin pins", () => {
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "pj"]);
-      await runCli([
-        "layer",
-        "combine",
-        "pj",
-        "tools@hub",
-        "--type",
-        "plugin_pin",
-        "--version",
-        "^1.2.3",
-      ]);
+      await runCli(["layer", "edit", "pj", "--add", "tools@hub", "--type", "plugin_pin", "--version", "^1.2.3", "--no-interactive"]);
       const show = await runCli([
         "layer",
         "show",
@@ -67,17 +49,8 @@ describe("CLI layer plugin pins", () => {
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "pr"]);
-      await runCli([
-        "layer",
-        "combine",
-        "pr",
-        "gone@mp",
-        "--type",
-        "plugin_pin",
-        "--version",
-        "1.0.0",
-      ]);
-      await runCli(["layer", "uncombine", "pr", "gone@mp", "--type", "plugin_pin"]);
+      await runCli(["layer", "edit", "pr", "--add", "gone@mp", "--type", "plugin_pin", "--version", "1.0.0", "--no-interactive"]);
+      await runCli(["layer", "edit", "pr", "--remove", "gone@mp", "--type", "plugin_pin", "--no-interactive"]);
       const show = await runCli(["layer", "show", "pr"]);
       expect(show.stdout).not.toContain("gone@mp");
     } finally {
@@ -92,14 +65,7 @@ describe("CLI layer plugin pins", () => {
       await runCli(["init"]);
       await runCli(["layer", "create", "pv"]);
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "pv",
-        "tools@hub",
-        "--type",
-        "plugin_pin",
-      ]);
+      const result = await runCli(["layer", "edit", "pv", "--add", "tools@hub", "--type", "plugin_pin", "--no-interactive"]);
 
       expect(result.exitCode ?? 0).toBe(0);
       expect(result.stdout).toContain("Attached plugin pin tools@hub");
@@ -117,17 +83,7 @@ describe("CLI layer plugin pins", () => {
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const layerModel = await import("../../src/models/layer-model.ts");
 
-      const result = await runCli([
-        "layer",
-        "combine",
-        "embed-layer",
-        "tools@hub",
-        "--type",
-        "plugin_pin",
-        "--version",
-        "^1.2.3",
-        "--embed",
-      ]);
+      const result = await runCli(["layer", "edit", "embed-layer", "--add", "tools@hub", "--type", "plugin_pin", "--version", "^1.2.3", "--embed", "--no-interactive"]);
 
       expect(result.exitCode ?? 0).toBe(0);
       const layer = layerModel.getLayer("embed-layer");

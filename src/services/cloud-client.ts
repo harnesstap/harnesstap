@@ -36,6 +36,11 @@ type PublishedLayerRecord = {
 };
 
 const DEFAULT_DEVICE_SCOPES = ["read", "publish"] as const;
+const DEVICE_AUTH_PATH = "/cli/auth/device";
+
+export function deviceVerificationUri(baseUrl: string): string {
+  return `${baseUrl.replace(/\/+$/, "")}${DEVICE_AUTH_PATH}`;
+}
 
 function apiUrl(baseUrl: string, path: string): string {
   const normalized = baseUrl.replace(/\/+$/, "");

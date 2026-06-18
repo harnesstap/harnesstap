@@ -168,7 +168,7 @@ When auto-bridging hits a limit, combine these patterns:
 
 ### Plugin pins + `resource sync`
 
-Pin marketplace or local plugins in a layer (`layer combine`, `layer show`).
+Pin marketplace or local plugins in a layer (`layer edit`, `layer show`).
 After the host installs the plugin, refresh HarnessDeck's library copy:
 
 ```bash

@@ -10,8 +10,8 @@ layer to describe not just files, but also expected plugin versions.
 Typical commands:
 
 ```bash
-harnessdeck layer combine my-setup formatter@team-marketplace --type plugin_pin --version "^2.1.0"
-harnessdeck layer uncombine my-setup formatter@team-marketplace --type plugin_pin
+harnessdeck layer edit my-setup --add formatter@team-marketplace --type plugin_pin --version "^2.1.0"
+harnessdeck layer edit my-setup --remove formatter@team-marketplace --type plugin_pin
 harnessdeck layer show my-setup
 ```
 

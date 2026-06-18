@@ -64,7 +64,18 @@ function completeUncombineAttachments(layerId: string): CompletionCandidate[] {
   return candidates;
 }
 
-export function completeLayerAttachment(ctx: CompletionContext): CompletionCandidate[] {
+export function completeLayerEditAddAttachment(ctx: CompletionContext): CompletionCandidate[] {
+  return completeLayerAttachmentCandidates(ctx, "add");
+}
+
+export function completeLayerEditRemoveAttachment(ctx: CompletionContext): CompletionCandidate[] {
+  return completeLayerAttachmentCandidates(ctx, "remove");
+}
+
+function completeLayerAttachmentCandidates(
+  ctx: CompletionContext,
+  mode: "add" | "remove",
+): CompletionCandidate[] {
   if (!ctx.localDataAvailable) {
     return [];
   }
@@ -80,8 +91,7 @@ export function completeLayerAttachment(ctx: CompletionContext): CompletionCandi
       return [];
     }
 
-    const isUncombine = ctx.commandPath[1] === "uncombine";
-    const candidates = isUncombine
+    const candidates = mode === "remove"
       ? completeUncombineAttachments(layer.id)
       : completeCombineAttachments(layer.id);
 
@@ -89,4 +99,10 @@ export function completeLayerAttachment(ctx: CompletionContext): CompletionCandi
   } catch {
     return [];
   }
+}
+
+/** @deprecated Use completeLayerEditAddAttachment / completeLayerEditRemoveAttachment */
+export function completeLayerAttachment(ctx: CompletionContext): CompletionCandidate[] {
+  const mode = ctx.flag === "remove" ? "remove" : "add";
+  return completeLayerAttachmentCandidates(ctx, mode);
 }

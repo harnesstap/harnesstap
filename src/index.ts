@@ -101,13 +101,19 @@ import {
 } from "./services/harness-targets.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
 import { getCloudAccount, saveCloudAccount, setDefaultCloudAccount, updateCloudAccount, removeCloudAccount } from "./config/cloud-accounts.js";
-import { requestDeviceCode, pollDeviceToken, createCloudClient } from "./services/cloud-client.js";
+import {
+  deviceVerificationUri,
+  requestDeviceCode,
+  pollDeviceToken,
+  createCloudClient,
+} from "./services/cloud-client.js";
 import {
   listLayersInScope,
 } from "./services/catalog-client.js";
 import {
   formatCatalogScopeLabel,
   resolveCatalogScope,
+  resolveCloudBaseUrl,
 } from "./config/catalog.js";
 import {
   handleLayerCatalogConnectLayerCommand,
@@ -189,10 +195,8 @@ import {
 import { syncProject, type ProjectReferenceStrategy } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
-  addLayerAttachment,
   LAYER_ATTACHMENT_TYPES,
   LayerAttachmentHintError,
-  removeLayerAttachment,
   validateLayerAttachmentType,
 } from "./services/layer-composition.js";
 import {
@@ -222,11 +226,13 @@ import {
   toLayerChoices,
   toResourceChoices,
 } from "./services/completion/choices.js";
-import { runLayerAddWizard } from "./services/wizards/layer-add.js";
 import {
   applyLayerEdit,
+  applyLayerEditScripting,
   attachmentKey,
   buildLayerEditCandidates,
+  buildPendingFromApplySpec,
+  parseLayerEditApplyFile,
 } from "./services/layer-edit.js";
 import { runLayerEditWizard } from "./services/wizards/layer-edit.js";
 import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
@@ -261,6 +267,10 @@ function resolveInvocationName(): "harnessdeck" | "hd" {
 
 function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
+}
+
+function collectRepeatedOption(value: string, previous: string[]): string[] {
+  return [...previous, value];
 }
 
 const GUIDE_SCENARIOS_URL =
@@ -434,6 +444,16 @@ function makeResourceTypeColumn(width = 14): Column {
     width,
     style: (value) => ui.theme.resourceType(value),
   };
+}
+
+function isLayerAttachmentOnlyType(type: string | undefined): boolean {
+  if (!type) {
+    return false;
+  }
+  if (type === "layer-dependency") {
+    return true;
+  }
+  return type === "plugin_pin" || type === "layer";
 }
 
 function resolveResourceListType(
@@ -641,8 +661,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "create",
   "list",
   "show",
-  "combine",
-  "uncombine",
+  "edit",
   "delete",
   "export",
   "import",
@@ -2265,32 +2284,62 @@ async function handleLayerEditCommand(
     format?: string;
     interactive?: boolean;
     noInteractive?: boolean;
+    add?: string[];
+    remove?: string[];
+    apply?: string;
+    version?: string;
+    embed?: boolean;
+    sync?: boolean;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const resolvedType = resolveResourceListType(undefined, opts.type);
-  if (resolvedType === "conflict") {
-    ui.danger(`Conflicting type filters: ${opts.type}`);
-    return;
-  }
-  if (resolvedType === "invalid") {
-    ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
-    return;
+
+  const adds = opts.add ?? [];
+  const removes = opts.remove ?? [];
+  const scripting = adds.length > 0 || removes.length > 0 || Boolean(opts.apply);
+
+  let typeFilter: ResourceType | undefined;
+  if (scripting) {
+    if (opts.type) {
+      try {
+        validateLayerAttachmentType(opts.type);
+      } catch (error) {
+        process.exitCode = 1;
+        ui.danger(error instanceof Error ? error.message : String(error));
+        return;
+      }
+    }
+  } else if (isLayerAttachmentOnlyType(opts.type)) {
+    typeFilter = undefined;
+  } else {
+    const resolvedType = resolveResourceListType(undefined, opts.type);
+    if (resolvedType === "conflict") {
+      ui.danger(`Conflicting type filters: ${opts.type}`);
+      return;
+    }
+    if (resolvedType === "invalid") {
+      ui.danger(`Invalid type. Valid: ${RESOURCE_TYPES.join(", ")}`);
+      return;
+    }
+    typeFilter = resolvedType;
   }
 
-  const resolvedName = name ?? await resolveLayerMutationTarget({
-    layerName: name,
-    interactive: opts.interactive,
-    noInteractive: opts.noInteractive,
-    format: opts.format,
-    message: "Which layer do you want to edit?",
-  });
+  const resolvedName = scripting
+    ? name
+    : name ?? await resolveLayerMutationTarget({
+        layerName: name,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+        message: "Which layer do you want to edit?",
+      });
+
   if (!resolvedName) {
     process.exitCode = 1;
     ui.danger(
-      listLayers().length > 0
+      scripting || listLayers().length > 0
         ? "error: missing required argument 'name'"
         : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
     );
@@ -2306,6 +2355,60 @@ async function handleLayerEditCommand(
 
   const candidates = buildLayerEditCandidates(layer);
 
+  if (scripting) {
+    try {
+      if (opts.apply) {
+        const raw = readFileSync(opts.apply, "utf8");
+        const attachments = parseLayerEditApplyFile(raw);
+        const pending = buildPendingFromApplySpec(candidates, attachments);
+        const result = await applyLayerEdit({
+          layer,
+          initial: candidates,
+          pending,
+          dryRun: opts.dryRun,
+        });
+        printLayerEditSuccess(layer, result, opts.dryRun);
+        return;
+      }
+
+      const attachmentType = validateLayerAttachmentType(opts.type);
+      const result = await applyLayerEditScripting({
+        layer,
+        adds: adds.map((selector) => ({
+          selector,
+          type: attachmentType,
+          version: opts.version,
+          embed: opts.embed,
+          sync: opts.sync,
+        })),
+        removes: removes.map((selector) => ({
+          selector,
+          type: attachmentType,
+        })),
+        dryRun: opts.dryRun,
+      });
+
+      if (opts.dryRun) {
+        printLayerEditSuccess(layer, result, true);
+        return;
+      }
+
+      for (const message of result.messages) {
+        ui.success(ui.theme.accent(message));
+      }
+      return;
+    } catch (error) {
+      if (error instanceof LayerAttachmentHintError) {
+        process.exitCode = 1;
+        ui.danger(error.message, { hints: error.hints });
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+      return;
+    }
+  }
+
   if (format === "json" && !shouldUseInteractiveLayerEdit(opts)) {
     printLayerEditJsonSnapshot(layer, candidates);
     return;
@@ -2314,7 +2417,7 @@ async function handleLayerEditCommand(
   if (!shouldUseInteractiveLayerEdit(opts)) {
     process.exitCode = 1;
     ui.danger(
-      `layer edit is interactive only. Use \`${formatCommand("layer combine")}\` / \`${formatCommand("layer uncombine")}\` for scripting.`,
+      `layer edit requires an interactive terminal, or use \`${formatCommand("layer edit <name> --add <selector> --type <type>")}\`, \`--remove\`, or \`--apply <file>\` for scripting.`,
     );
     return;
   }
@@ -2322,7 +2425,7 @@ async function handleLayerEditCommand(
   try {
     const pending = await runLayerEditWizard({
       layer,
-      typeFilter: resolvedType,
+      typeFilter,
       search: opts.search,
       showId: opts.showId,
       showAll: opts.all,
@@ -2338,14 +2441,7 @@ async function handleLayerEditCommand(
       pending,
       dryRun: opts.dryRun,
     });
-
-    const label = formatLayerLabel(layer);
-    const summary = `+${result.added.length} added, −${result.removed.length} removed`;
-    if (opts.dryRun) {
-      ui.success(`Dry run for layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary} (no changes written)`);
-      return;
-    }
-    ui.success(`Updated layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary}`);
+    printLayerEditSuccess(layer, result, opts.dryRun);
   } catch (error) {
     if (isPromptCancellationError(error)) {
       process.exitCode = 1;
@@ -2353,6 +2449,20 @@ async function handleLayerEditCommand(
     }
     throw error;
   }
+}
+
+function printLayerEditSuccess(
+  layer: Layer,
+  result: { added: string[]; removed: string[] },
+  dryRun?: boolean,
+): void {
+  const label = formatLayerLabel(layer);
+  const summary = `+${result.added.length} added, −${result.removed.length} removed`;
+  if (dryRun) {
+    ui.success(`Dry run for layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary} (no changes written)`);
+    return;
+  }
+  ui.success(`Updated layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary}`);
 }
 
 function parseHarnessAliases(aliases?: string): string[] | undefined {
@@ -3389,10 +3499,16 @@ function handleLayerDiffCommand(
   }
 }
 
-function handleLayerDoctorCommand(
+async function handleLayerDoctorCommand(
   name: string | undefined,
-  opts: { check?: string[]; format?: string; listChecks?: boolean },
-): void {
+  opts: {
+    check?: string[];
+    format?: string;
+    listChecks?: boolean;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  },
+): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
@@ -3419,12 +3535,25 @@ function handleLayerDoctorCommand(
       return;
     }
 
-    if (!name) {
-      throw new Error("Layer name or ID is required unless --list-checks is used.");
+    const resolvedName = name ?? await resolveLayerMutationTarget({
+      layerName: name,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+      message: "Which layer do you want to diagnose?",
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger(
+        listLayers().length > 0
+          ? "error: missing required argument 'name'"
+          : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
+      );
+      return;
     }
 
     const report = runLayerDoctor({
-      nameOrId: name,
+      nameOrId: resolvedName,
       checkIds: opts.check,
     });
 
@@ -3984,19 +4113,31 @@ layerCmd
 layerCmd
   .command("edit")
   .argument("[name]", "Layer name or ID")
-  .option("-t, --type <type>", `Restrict to one resource type (${RESOURCE_TYPES.join(", ")})`)
-  .option("-s, --search <query>", "Pre-fill search filter")
+  .option("-t, --type <type>", `Attachment or filter type (${LAYER_ATTACHMENT_TYPES.join(", ")})`)
+  .option("-s, --search <query>", "Pre-fill search filter (interactive mode)")
   .option("--show-id", "Show IDs in tables")
   .option("--all", "Show all resources per type (default: first 10 per type)")
+  .option("--add <selector>", "Add attachment (repeatable; scripting mode)", collectRepeatedOption, [])
+  .option("--remove <selector>", "Remove attachment (repeatable; scripting mode)", collectRepeatedOption, [])
+  .option("--apply <file>", "Apply membership from JSON file (scripting mode)")
+  .option("--version <constraint>", "Version constraint for plugin or layer attachments")
+  .option("--embed", "Mark plugin pin as embed-on-export when adding")
+  .option("--sync", "Sync plugin resource immediately after add")
   .option("--dry-run", "Preview changes without writing")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Interactively add or remove layer attachments")
+  .description("Add or remove layer attachments (interactive or scripting)")
   .action(async (name: string | undefined, opts: {
     type?: string;
     search?: string;
     showId?: boolean;
     all?: boolean;
+    add?: string[];
+    remove?: string[];
+    apply?: string;
+    version?: string;
+    embed?: boolean;
+    sync?: boolean;
     dryRun?: boolean;
     format?: string;
     interactive?: boolean;
@@ -4006,159 +4147,11 @@ layerCmd
       await handleLayerEditCommand(name, opts);
     } catch (error) {
       process.exitCode = 1;
+      if (error instanceof LayerAttachmentHintError) {
+        ui.danger(error.message, { hints: error.hints });
+        return;
+      }
       ui.danger(error instanceof Error ? error.message : String(error));
-    }
-  });
-
-layerCmd
-  .command("combine")
-  .argument("[layer]", "Layer name or ID")
-  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type when selector omits prefix: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
-  .option("--version <constraint>", "Version constraint for plugin or layer attachments")
-  .option("--embed", "Mark plugin resource as embed-on-export")
-  .option("--sync", "Sync plugin resource immediately after combine (default: lazy)")
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Combine a resource, plugin, or layer reference into a layer")
-  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; version?: string; embed?: boolean; sync?: boolean; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const layerTarget = await resolveLayerMutationTarget({
-        layerName,
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format: opts.format,
-        message: "Which layer do you want to update?",
-      });
-      if (!layerTarget) {
-        process.exitCode = 1;
-        ui.danger(
-          listLayers().length > 0
-            ? "error: missing required argument 'layer'"
-            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
-        );
-        return;
-      }
-
-      const layer = getLayer(layerTarget);
-      if (!layer) {
-        process.exitCode = 1;
-        ui.danger(`Layer not found: ${layerTarget}`);
-        return;
-      }
-
-      const attachmentType = validateLayerAttachmentType(opts.type);
-
-      const wizardValues = await runLayerAddWizard({
-        selector,
-        type: attachmentType,
-        version: opts.version,
-        embed: opts.embed,
-        layerName: layer.name,
-        shouldPrompt: shouldUseWizard({
-          interactive: opts.interactive,
-          noInteractive: opts.noInteractive,
-          format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !layerName || !selector,
-        }),
-      });
-
-      if (!wizardValues.selector) {
-        throw new Error(`error: missing required argument 'selector'`);
-      }
-
-      ui.success(ui.theme.accent(await addLayerAttachment({
-        layer,
-        selector: wizardValues.selector,
-        type: wizardValues.type,
-        version: wizardValues.version,
-        embed: wizardValues.embed ?? opts.embed,
-        sync: opts.sync,
-      })));
-    } catch (err) {
-      process.exitCode = 1;
-      if (err instanceof LayerAttachmentHintError) {
-        ui.danger(err.message, { hints: err.hints });
-        return;
-      }
-      ui.danger(err instanceof Error ? err.message : String(err));
-    }
-  });
-
-layerCmd
-  .command("uncombine")
-  .argument("[layer]", "Layer name or ID")
-  .argument("[selector]", "Attachment selector (resource, plugin ref, or dependency name)")
-  .option("--type <type>", `Attachment type: ${LAYER_ATTACHMENT_TYPES.join(", ")}`)
-  .option("--interactive", "Prompt instead of relying on explicit flags")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Uncombine a resource, plugin, or layer reference from a layer")
-  .action(async (layerName: string | undefined, selector: string | undefined, opts: { type?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    try {
-      const layerTarget = await resolveLayerMutationTarget({
-        layerName,
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format: opts.format,
-        message: "Which layer do you want to update?",
-      });
-      if (!layerTarget) {
-        process.exitCode = 1;
-        ui.danger(
-          listLayers().length > 0
-            ? "error: missing required argument 'layer'"
-            : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
-        );
-        return;
-      }
-
-      const layer = getLayer(layerTarget);
-      if (!layer) {
-        process.exitCode = 1;
-        ui.danger(`Layer not found: ${layerTarget}`);
-        return;
-      }
-
-      const attachmentType = validateLayerAttachmentType(opts.type);
-
-      const wizardValues = await runLayerAddWizard({
-        selector,
-        type: attachmentType,
-        layerName: layer.name,
-        shouldPrompt: shouldUseWizard({
-          interactive: opts.interactive,
-          noInteractive: opts.noInteractive,
-          format: parseOutputFormat(opts.format),
-          missingRequiredArgs: !layerName || !selector,
-        }),
-      });
-
-      if (!wizardValues.selector) {
-        throw new Error(`error: missing required argument 'selector'`);
-      }
-
-      const result = removeLayerAttachment({
-        layer,
-        selector: wizardValues.selector,
-        type: wizardValues.type ?? attachmentType,
-      });
-      if (!result.removed && attachmentType === "layer") {
-        process.exitCode = 1;
-        ui.danger(result.message);
-        return;
-      }
-      ui.success(ui.theme.accent(result.message));
-    } catch (err) {
-      process.exitCode = 1;
-      if (err instanceof LayerAttachmentHintError) {
-        ui.danger(err.message, { hints: err.hints });
-        return;
-      }
-      ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
 
@@ -5421,10 +5414,10 @@ process.on("exit", () => closeDb());
 
 async function handleCloudLoginCommand(accountName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
   const name = accountName ?? "default";
-  const baseUrl = opts.baseUrl ?? "https://harnessdeck.kayrnt.fr";
+  const baseUrl = resolveCloudBaseUrl(opts.baseUrl);
   try {
     const device = await requestDeviceCode(baseUrl);
-    console.log(`Visit: ${device.verification_uri}`);
+    console.log(`Visit: ${deviceVerificationUri(baseUrl)}`);
     console.log(`Code:  ${device.user_code}`);
     const token = await pollDeviceToken(baseUrl, device.device_code, { interval: 0.1, maxPolls: 300 });
     const now = Math.floor(Date.now() / 1000);

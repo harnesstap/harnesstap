@@ -109,8 +109,8 @@ Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.
 | --- | --- | --- |
 | **Layer** | Versioned context package (material resources + deps + optional default environment) | `hd layer …`, `layer apply <layer>` · `layers` + `layer_resources` |
 | **Host plugin** | Claude/Cursor/Codex installable bundle (manifest + tree) | Host commands (`claude plugin install`, …) — not a HarnessDeck row |
-| **`plugin_pin`** | Dependency on a host plugin attached to a layer | `layer combine plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
-| **`layer` ref** | Dependency on another HarnessDeck layer (catalog/local) | `layer combine layer:name@^1.0` · `resources.type=layer` |
+| **`plugin_pin`** | Dependency on a host plugin attached to a layer | `layer edit --add plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
+| **`layer` ref** | Dependency on another HarnessDeck layer (catalog/local) | `layer edit --add layer:name@^1.0` · `resources.type=layer` |
 | **Profile** | Layer tagged `profile`; global switch preset | `hd profile use <name>` · `layers.tags` includes `profile` |
 | **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnessdeck/harnessdeck.db` |
 | **Catalog** | Org-scoped published layer collection (multiplayer) | `layer search`, `layer pull` · Cloud APIs |
@@ -160,7 +160,7 @@ selector ::= [ type ":" ] name [ "@" namespace ]
 Examples: `brainstorming`, `skill:brainstorming@cursor-team-kit`, `plugin_pin:posthog@cursor-team-kit`, `layer:backend-oncall`, `01J…` (ULID id).
 
 - **Display** commands (`resource show`, `resource delete`): bare names prefer the unnamespaced row when present; otherwise list ambiguous matches.
-- **Compose** commands (`layer combine`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
+- **Compose** commands (`layer edit`, merge, apply): require `@namespace` (or a ULID) when more than one namespace exists for the same `type:name`.
 
 Imported bodies are content-addressed under `~/.harnessdeck/blobs/sha256/…` with `content_hash` stored on the row.
 
@@ -170,13 +170,13 @@ A layer is an ordered list of attachments:
 
 | Attachment | `resource list` | Attach example | Refresh |
 | --- | --- | --- | --- |
-| Material (`skill`, …) | yes | `layer combine L skill:foo@ns` | via `resource sync` when `origin_kind=marketplace_link` |
-| `plugin_pin` | yes | `layer combine L plugin_pin:posthog@cursor-team-kit` | `resource sync plugin_pin:posthog@cursor-team-kit` |
-| `layer` | no | `layer combine L layer:backend-oncall@^1.0` | resolves to another local or published layer version |
+| Material (`skill`, …) | yes | `layer edit L --add skill:foo@ns` | via `resource sync` when `origin_kind=marketplace_link` |
+| `plugin_pin` | yes | `layer edit L --add plugin_pin:posthog@cursor-team-kit` | `resource sync plugin_pin:posthog@cursor-team-kit` |
+| `layer` | no | `layer edit L --add layer:backend-oncall@^1.0` | resolves to another local or published layer version |
 
 Nested `layer` refs expand depth-first with cycle detection at apply time.
 
-**Lazy plugin pin attach:** `layer combine plugin_pin:…` links only. Sync is explicit via `resource sync`, `layer combine --sync`, or `layer apply --sync-plugins`.
+**Lazy plugin pin attach:** `layer edit --add plugin_pin:…` links only. Sync is explicit via `resource sync`, `layer edit --sync`, or `layer apply --sync-plugins`.
 
 **Plugin pin metadata** (harness-agnostic):
 
@@ -266,8 +266,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer create` | Creates a local layer with optional description, tags, and version. |
 | `layer list` | Lists layers (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
 | `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
-| `layer combine` | Adds a composition attachment. Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
-| `layer uncombine` | Removes a typed attachment. |
+| `layer edit` | Add or remove composition attachments (interactive checkbox UI, or `--add` / `--remove` / `--apply` scripting). Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer delete` | Deletes a layer by selector. |
 | `layer export` | Writes a portable JSONC layer export (`urn:harnessdeck:layer:v1`). |
 | `layer import` | Imports a layer v1 file into the local database. |
@@ -437,7 +436,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ## Wizard mode
 
-Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer combine`, `layer uncombine`, `layer from-project`, `layer set-environment`, `layer apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
+Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer edit`, `layer from-project`, `layer set-environment`, `layer apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
 
 Wizard mode triggers when all of these are true:
 

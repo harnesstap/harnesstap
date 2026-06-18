@@ -194,9 +194,9 @@ describe("VHS scenario manifest", () => {
     expect(readme).toContain("Agent harness configuration toolkit");
     expect(readme).toContain("hd harness list");
     expect(readme).toContain("hd layer doctor");
-    expect(readme).toContain("hd layer combine my-setup research-helper --type skill");
+    expect(readme).toContain("hd layer edit my-setup --add research-helper --type skill");
     expect(readme).toContain(
-      "hd layer combine my-setup plugin_pin:formatter@my-marketplace --version",
+      "hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --version",
     );
     expect(readme).not.toContain("hd platform list");
     expect(readme).not.toContain("hd layer validate");
@@ -211,8 +211,8 @@ describe("VHS scenario manifest", () => {
     expect(spec).toContain("Agent harness configuration toolkit");
     expect(spec).toContain("harness list");
     expect(spec).toContain("layer doctor");
-    expect(spec).toContain("layer combine");
-    expect(spec).toContain("layer uncombine");
+    expect(spec).toContain("layer edit");
+    expect(spec).not.toContain("layer uncombine");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
     expect(spec).not.toContain("harnessdeck platform list");
