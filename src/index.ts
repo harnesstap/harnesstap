@@ -186,10 +186,6 @@ import {
   addApplyCommandOptions,
   type ApplyCommandOpts,
 } from "./services/apply-command-options.js";
-import {
-  isLayerExportFilePath,
-  isLayerUrl,
-} from "./services/layer-source.js";
 import { syncProject, type ProjectReferenceStrategy } from "./services/project-sync.js";
 import { scanPluginSource } from "./services/plugin-source-import.js";
 import {
@@ -217,7 +213,6 @@ import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
   isPromptCancellationError,
   promptForChoice,
-  promptForConfirmation,
   promptForSearchableChoice,
   promptForValue,
   resolveOrPrompt,

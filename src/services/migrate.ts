@@ -259,11 +259,12 @@ export function importMigrationState(opts: MigrateImportOptions): {
     }
     const activeProfilePath = join(workDir, "active-profile.json");
 
+    const manifestVersion = manifest.version;
     if (
-      manifest.version !== MIGRATE_MANIFEST_VERSION
-      && manifest.version !== MIGRATE_MANIFEST_VERSION_V1
+      manifestVersion !== MIGRATE_MANIFEST_VERSION
+      && manifestVersion !== MIGRATE_MANIFEST_VERSION_V1
     ) {
-      throw new Error(`Unsupported migration manifest version: ${manifest.version}`);
+      throw new Error(`Unsupported migration manifest version: ${manifestVersion}`);
     }
 
     let layersImported = 0;

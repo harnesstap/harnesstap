@@ -1,5 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { parse } from "smol-toml";
 import {
   addSecretRefToEnvironment,
