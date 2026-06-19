@@ -196,6 +196,7 @@ After the baseline fits, build and share your own layers:
    hd layer apply my-setup --project . --harness claude-code,cursor
    hd project mirror .
    hd auth login
+   hd layer catalog register acme/default
    hd layer publish my-setup
    ```
 
@@ -486,8 +487,11 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 7. **Publish** a local layer.
    ```bash
-   harnessdeck layer publish <layer> [--account <name>]
+   harnessdeck layer catalog register <org>/<catalog>
+   harnessdeck layer publish <layer> [<org>/<catalog>] [--account <name>]
+   harnessdeck layer publish plan <layer>
    ```
+   Publishes to all registered catalogs by default. Pass `org/catalog` or use `layer catalog bindings` to restrict targets.
 
 8. **Apply** an installed layer to a project.
    ```bash

@@ -168,6 +168,8 @@ describe("CLI output format", () => {
         );
         layerModel.addResourceToLayer(publishLayer.id, publishResource.id);
 
+        await runCli(["layer", "catalog", "register", "acme/default"]);
+
         const publish = await runCli([
           "layer",
           "publish",
