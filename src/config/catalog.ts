@@ -376,13 +376,13 @@ export function registerPublishCatalog(
   const parsed = parsePublishCatalogSelector(selector);
   const current = loadCatalogSettings(harnessdeckDir);
   const key = publishCatalogKey(parsed);
-  const existingIndex = current.registered.findIndex((entry) => publishCatalogKey(entry) === key);
-  if (existingIndex >= 0) {
-    const existing = current.registered[existingIndex];
+  const existing = current.registered.find((entry) => publishCatalogKey(entry) === key);
+  if (existing) {
     if (parsed.account && !existing.account) {
-      const updated = { ...existing, account: parsed.account };
-      const registered = [...current.registered];
-      registered[existingIndex] = updated;
+      const updated: RegisteredCatalog = { ...existing, account: parsed.account };
+      const registered = current.registered.map((entry) =>
+        publishCatalogKey(entry) === key ? updated : entry,
+      );
       const settings = saveCatalogSettings({
         registered: sortRegisteredCatalogs(registered),
       }, harnessdeckDir);
