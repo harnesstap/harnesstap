@@ -1,17 +1,11 @@
 import { resolve } from "node:path";
-import { refreshGitSource } from "../plugins/refresh.js";
 import {
   getImportedSnapshot,
   recordImportedSnapshotInstall,
 } from "../models/imported-snapshot.js";
 import { getDb } from "../db/connection.js";
-import { classifyRepo } from "./repo-profile.js";
 import { resolveScanGlobalHarnessTargets } from "./harness-targets.js";
 import { importSkillPackage } from "./skill-package-import.js";
-import {
-  discoverSkillPackage,
-  type DiscoveredSkill,
-} from "./skill-discovery.js";
 import {
   installSkillsToGlobal,
   installSkillsToProject,
@@ -20,11 +14,11 @@ import {
   createLayer,
   getLayer,
 } from "../models/layer-model.js";
-import {
-  resolveRemoteSource,
-  sourceCacheDir,
-} from "./source-resolver.js";
 import { addLayerAttachment } from "./layer-composition.js";
+import {
+  resolveSelectedSkills,
+  resolveSkillPackageCheckout,
+} from "./skill-package-resolve.js";
 
 export interface AddSkillPackageOptions {
   source: string;
@@ -47,34 +41,6 @@ export interface AddSkillPackageResult {
   installedSkills: string[];
   snapshotId: string;
   layer?: string;
-}
-
-function skillPackageHint(primary: string): string {
-  return `Source is not a skill package (detected: ${primary}). Use a repo with skills/ or .agents/skills/ containing SKILL.md files.`;
-}
-
-function resolveSkillsToInstall(
-  discovered: DiscoveredSkill[],
-  options: Pick<AddSkillPackageOptions, "skillNames" | "all">,
-): DiscoveredSkill[] {
-  const discoveredNames = new Set(discovered.map((skill) => skill.name));
-
-  if (options.all) {
-    return discovered;
-  }
-
-  if (options.skillNames && options.skillNames.length > 0) {
-    const missing = options.skillNames.filter((name) => !discoveredNames.has(name));
-    if (missing.length > 0) {
-      throw new Error(`Skill(s) not found: ${missing.join(", ")}`);
-    }
-    const selected = new Set(options.skillNames);
-    return discovered.filter((skill) => selected.has(skill.name));
-  }
-
-  throw new Error(
-    "No skills selected. Pass --skill <names>, --all, or use the wizard.",
-  );
 }
 
 function resolveHarnessTargets(options: AddSkillPackageOptions): string[] {
@@ -105,45 +71,15 @@ function updateSnapshotInstalledSkillNames(
 export async function addSkillPackage(
   options: AddSkillPackageOptions,
 ): Promise<AddSkillPackageResult> {
-  const resolved = resolveRemoteSource(options.source);
-  let checkoutRoot: string;
-  let gitUrl: string | undefined;
-  let gitSha: string | undefined;
+  const resolved = resolveSkillPackageCheckout(
+    options.source,
+    options.harnessdeckDir,
+  );
 
-  if (resolved.kind === "git") {
-    const cacheDir = sourceCacheDir(
-      options.harnessdeckDir,
-      resolved.owner,
-      resolved.repo,
-    );
-    const refresh = refreshGitSource({
-      url: resolved.url,
-      targetDir: cacheDir,
-    });
-    if (!refresh.ok) {
-      throw new Error(refresh.message);
-    }
-    checkoutRoot = cacheDir;
-    gitUrl = resolved.url;
-    gitSha = refresh.sha;
-  } else {
-    checkoutRoot = resolved.path;
-  }
-
-  const classification = classifyRepo(checkoutRoot);
-  if (classification.primary !== "skill-package") {
-    throw new Error(skillPackageHint(classification.primary));
-  }
-
-  const discovered = discoverSkillPackage(checkoutRoot);
-  if (discovered.length === 0) {
-    throw new Error(`No skills found in skill package: ${checkoutRoot}`);
-  }
-
-  const importedSkills = discovered.map((skill) => skill.name);
-  const skillsToInstall = resolveSkillsToInstall(discovered, options);
+  const importedSkills = resolved.discovered.map((skill) => skill.name);
+  const skillsToInstall = resolveSelectedSkills(resolved.discovered, options);
   const installedSkillNames = skillsToInstall.map((skill) => skill.name);
-  const namespace = resolved.label;
+  const namespace = resolved.namespace;
 
   if (options.dryRun) {
     return {
@@ -155,10 +91,10 @@ export async function addSkillPackage(
   }
 
   const importResult = await importSkillPackage({
-    rootPath: checkoutRoot,
+    rootPath: resolved.checkoutRoot,
     sourceLabel: namespace,
-    gitUrl,
-    gitSha,
+    gitUrl: resolved.gitUrl,
+    gitSha: resolved.gitSha,
   });
 
   const harnesses = resolveHarnessTargets(options);
@@ -166,7 +102,7 @@ export async function addSkillPackage(
 
   if (options.scope === "global") {
     const installResult = await installSkillsToGlobal({
-      checkoutRoot,
+      checkoutRoot: resolved.checkoutRoot,
       skills: skillsToInstall,
       harnesses,
       homeRoot: options.homeRoot,
@@ -181,7 +117,7 @@ export async function addSkillPackage(
   } else {
     const projectRoot = resolve(options.projectRoot ?? ".");
     const installResult = await installSkillsToProject({
-      checkoutRoot,
+      checkoutRoot: resolved.checkoutRoot,
       skills: skillsToInstall,
       harnesses,
       projectRoot,
