@@ -54,6 +54,7 @@ Only harnesses whose registry entry includes `env_vars`, `model_config`, and/or 
 | `.cursor-plugin/marketplace.json` | Cursor (marketplace root) | `marketplace` |
 | `.codex-plugin/plugin.json` | Codex | `codex-plugin` |
 | `.github/plugin/plugin.json` | GitHub Copilot / Copilot CLI | `copilot-plugin` |
+| `plugin.json` / `.goose-plugin/plugin.json` / `.plugin/plugin.json` | Goose (Open Plugins) | `goose-plugin` |
 
 Scanning a repo with both harness files and a plugin manifest merges both sources automatically. See [Portability limits — dual-mode scan](portability-limits.md#dual-mode-scan-for-plugin-only-repos).
 
@@ -65,6 +66,7 @@ During `layer apply`, HarnessDeck can **install** and **sync** plugins from host
 | ------- | -------- | ------------------------ |
 | **claude-code** | Claude Code marketplace / `claude plugin` | `~/.claude/plugins/` |
 | **cursor** | Cursor plugin cache (git-backed marketplaces) | `~/.cursor/plugins/` |
+| **goose** | `goose plugin install` (git-backed Open Plugins) | `~/.agents/plugins/` |
 
 Other harnesses still benefit from plugin-source **scan** and **resource sync** when you point at an install tree or plugin repo, but do not have an automated install provider yet.
 
@@ -74,7 +76,7 @@ Claude **layer pins** and marketplace metadata (`layer show` → `claude` block)
 
 | Tier | Harnesses | Notes |
 | ---- | --------- | ----- |
-| **Native** | `claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli` | Dedicated scan/serialize logic |
+| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli` | Dedicated scan/serialize logic |
 | **Generic** | All other registered harnesses | Path-driven serializer driven by registry `projectPaths` / `globalPaths` |
 
 Filter native harnesses at the CLI:
@@ -129,7 +131,7 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | `cline` | Cline | Generic | instr, skill, rule, mcp | Instruction-only | — |
 | `roo` | Roo Code | Generic | instr, skill, rule, mcp | Native skills | — |
 | `continue` | Continue | Generic | instr, skill, mcp | Native skills | — |
-| `goose` | Goose | Generic | instr, skill, mcp | Native skills | — |
+| `goose` | Goose | Native | instr, skill, mcp, hook, cmd | Native skills | Yes |
 | `trae` | Trae | Generic | instr, skill, rule, mcp | Native skills | — |
 | `openhands` | OpenHands | Generic | instr, skill, mcp | Native skills | — |
 | `kiro` | Kiro | Generic | instr, skill, rule | Instruction-only | — |
@@ -167,8 +169,23 @@ These are the primary **project** paths HarnessDeck scans and writes. Global pat
 | **gemini-cli** | `AGENTS.md` | `.agents/skills/` | — | — | — | `commands/` | `gemini-extension.json` |
 | **windsurf** | `.windsurfrules` | `.agents/skills/` | `.windsurf/rules/` | (global MCP config) | — | — | — |
 | **roo** | `AGENTS.md` | `.roo/skills/` | `.roomodes` | `.roo/mcp.json` | — | — | — |
+| **goose** | `AGENTS.md`, `.goosehints` | `.agents/skills/` (+ `.goose/skills/`) | — | `.config/goose/config.yaml` (project), `~/.config/goose/config.yaml` (global) | — | `recipes/*.yaml` | `~/.config/goose/config.yaml` |
 
 Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions — see the registry for the full list.
+
+### Goose context engineering
+
+HarnessDeck maps [Goose context engineering](https://goose-docs.ai/docs/guides/context-engineering/) surfaces as follows:
+
+| Goose feature | HarnessDeck support |
+| ------------- | ------------------- |
+| **goosehints** (`.goosehints`, nested, global `~/.config/goose/.goosehints`) | Scanned and emitted as `instruction` resources |
+| **Agent skills** (`.agents/skills/`, legacy `.goose/skills/`) | Native `skill` resources |
+| **Open Plugins** (`plugin.json`, `.goose-plugin/`, `.agents/plugins/`) | Plugin-source import + `goose plugin install` sync |
+| **Hooks** (plugin `hooks/hooks.json`) | `hook` resources; layer apply emits `.agents/plugins/harnessdeck-layer/` |
+| **MCP extensions** (`config.yaml` `extensions:`) | `mcp_server` resources via native serializer |
+| **Recipes** (`recipes/*.yaml`) | `command` resources |
+| **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only — not layer resources (see [portability limits](portability-limits.md)) |
 
 ## Related commands
 

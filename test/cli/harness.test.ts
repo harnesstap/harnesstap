@@ -32,6 +32,7 @@ describe("CLI harness", () => {
         "github-copilot",
         "copilot-cli",
         "gemini-cli",
+        "goose",
       ]);
 
       const layerList = await runCli(["l", "ls", "--format", "json"], {

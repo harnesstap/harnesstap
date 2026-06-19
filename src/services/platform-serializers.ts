@@ -1,6 +1,7 @@
 import { ClaudeCodeSerializer } from "../platforms/claude-code.js";
 import { CursorSerializer } from "../platforms/cursor.js";
 import { CodexSerializer } from "../platforms/codex.js";
+import { GooseSerializer } from "../platforms/goose.js";
 import { OpenCodeSerializer } from "../platforms/opencode.js";
 import { CopilotSerializer } from "../platforms/copilot.js";
 import { GeminiCliSerializer } from "../platforms/gemini-cli.js";
@@ -11,6 +12,7 @@ export const DEDICATED_SERIALIZER_PLATFORM_IDS = [
   "claude-code",
   "cursor",
   "codex",
+  "goose",
   "opencode",
   "github-copilot",
   "copilot-cli",
@@ -33,6 +35,8 @@ export function getPlatformSerializer(platformId: string): PlatformSerializer {
       return new CursorSerializer();
     case "codex":
       return new CodexSerializer();
+    case "goose":
+      return new GooseSerializer();
     case "opencode":
       return new OpenCodeSerializer();
     case "github-copilot":

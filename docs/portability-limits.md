@@ -104,6 +104,7 @@ Examples of surfaces that stay on their native harness:
 | **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
 | **Statusline hooks** | Claude Code (and similar) | Terminal chrome integrations; not part of the shared resource model. |
 | **Runtime mode / session config** | Host-specific | Environment variables and `~/.config/…` state are outside layer resources. |
+| **Goose subagents / plan mode / MOIM / prompt templates** | Goose | Session workflows and per-turn env injection; not file-based layer resources. |
 
 Warnings look like:
 
