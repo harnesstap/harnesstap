@@ -627,6 +627,22 @@ describe("CLI layer", () => {
     } satisfies Partial<CommanderError>);
   });
 
+  it("rejects the removed layer export command", async () => {
+    await expect(runCli(["layer", "export", "team-setup"])).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+      exitCode: 1,
+      message: expect.stringMatching(/unknown command/i),
+    } satisfies Partial<CommanderError>);
+  });
+
+  it("rejects the removed layer import command", async () => {
+    await expect(runCli(["layer", "import", "./team.harnessdeck.toml"])).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+      exitCode: 1,
+      message: expect.stringMatching(/unknown command/i),
+    } satisfies Partial<CommanderError>);
+  });
+
   it("accepts resource names when adding and removing typed layer resources", async () => {
     const context = await createTestContext("cli-layer-resource-selector");
     try {

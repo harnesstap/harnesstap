@@ -54,12 +54,17 @@ describe("CLI help and command organization", () => {
   });
 
   it("keeps removed layer subcommands as unknown commands", async () => {
-    const result = runCli(["layer", "validate", "empty-layer"]);
-    await expect(result).rejects.toMatchObject({
-      code: "commander.unknownCommand",
-      exitCode: 1,
-      message: expect.stringMatching(/unknown command/i),
-    });
+    for (const args of [
+      ["layer", "validate", "empty-layer"],
+      ["layer", "export", "empty-layer"],
+      ["layer", "import", "./missing.harnessdeck.toml"],
+    ]) {
+      await expect(runCli(args)).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+        exitCode: 1,
+        message: expect.stringMatching(/unknown command/i),
+      });
+    }
   });
 
   it("shows top-level help without an error when invoked with no arguments", async () => {
@@ -189,7 +194,6 @@ describe("CLI help and command organization", () => {
     // Should show arguments but not [options] for subcommands
     expect(layerHelp.stdout).toContain("show [name]");
     expect(layerHelp.stdout).toContain("publish <layer>");
-    expect(layerHelp.stdout).toContain("migrate export --layer");
     
     // Should NOT contain [options] in the command name column
     expect(layerHelp.stdout).not.toContain("show [options]");

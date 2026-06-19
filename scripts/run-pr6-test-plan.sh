@@ -84,19 +84,21 @@ pass "plugin update --all runs (summary returned)"
 echo "=== 4. layer add-plugin + export/import round-trip ==="
 "${CLI[@]}" layer create team-setup >/dev/null
 "${CLI[@]}" layer add-plugin team-setup formatter@acme-marketplace --version ">=2.0.0 <3.0.0" >/dev/null
-BUNDLE="$WORKDIR/team.harnessdeck.json"
-"${CLI[@]}" layer export team-setup --file "$BUNDLE" >/dev/null
+BUNDLE="$WORKDIR/team.harnessdeck.toml"
+"${CLI[@]}" migrate export "$BUNDLE" --layer team-setup >/dev/null
 bun -e "
-const raw = await Bun.file(process.argv[1]).json();
-if (raw.version !== 1 || raw.$schema !== 'urn:harnessdeck:layer:v1') throw new Error('expected layer v1');
-const pin = (raw.plugins ?? []).find((p) => p.ref === 'formatter@acme-marketplace');
+const { parse } = await import('smol-toml');
+const raw = parse(await Bun.file(process.argv[1]).text());
+if (raw.version !== 1 || raw.schema !== 'urn:harnessdeck:layer:v1') throw new Error('expected layer v1');
+const layer = raw.layers?.[0];
+const pin = (layer?.plugins ?? []).find((p) => p.ref === 'formatter@acme-marketplace');
 if (!pin || pin.version_constraint !== '>=2.0.0 <3.0.0') throw new Error('pin missing');
 console.log('ok bundle pin');
 " "$BUNDLE" || fail "export bundle"
 
 HD_HOME2="$(mktemp -d "${TMPDIR:-/tmp}/hd-test-plan-import-XXXX")"
 HARNESSDECK_HOME="$HD_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" init >/dev/null
-IMPORT_OUT="$(HARNESSDECK_HOME="$HD_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" layer import "$BUNDLE" 2>&1)"
+IMPORT_OUT="$(HARNESSDECK_HOME="$HD_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" migrate import "$BUNDLE" 2>&1)"
 echo "$IMPORT_OUT"
 echo "$IMPORT_OUT" | grep -q 'team-setup' || fail "import layer"
 rm -rf "$HD_HOME2"

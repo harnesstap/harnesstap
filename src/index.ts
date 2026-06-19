@@ -1698,28 +1698,6 @@ function handleRevertCommand(snapshotId?: string): void {
   );
 }
 
-function printRemovedLayerTransportCommand(command: "export" | "import"): void {
-  const lines =
-    command === "export"
-      ? [
-          "layer export was removed. Use migrate export instead:",
-          "",
-          "  hd migrate export ./my-layer.harnessdeck.toml --layer my-layer",
-          "  hd migrate export ./team.harnessdeck.toml --layer a,b --embed-plugins",
-          "",
-          "See: docs/cli/command-reference.md#migrate",
-        ]
-      : [
-          "layer import was removed. Use migrate import instead:",
-          "",
-          "  hd migrate import ./my-layer.harnessdeck.toml",
-          "",
-          "Layer TOML files are auto-detected. See: docs/cli/command-reference.md#migrate",
-        ];
-  console.error(lines.join("\n"));
-  process.exitCode = 1;
-}
-
 function printMigrateExportHuman(result: ScopedExportResult): void {
   switch (result.scope) {
     case "workspace":
@@ -1766,14 +1744,6 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
       throw new Error(`Unsupported import result: ${String(neverResult)}`);
     }
   }
-}
-
-function handleLayerExportCommand(): void {
-  printRemovedLayerTransportCommand("export");
-}
-
-function handleLayerImportCommand(): void {
-  printRemovedLayerTransportCommand("import");
 }
 
 async function resolveCloudClientForLayerCommand(accountName?: string) {
@@ -4307,18 +4277,6 @@ layerCmd
       ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
-
-layerCmd
-  .command("export")
-  .description("Removed — use migrate export --layer")
-  .allowExcessArguments()
-  .action(handleLayerExportCommand);
-
-layerCmd
-  .command("import")
-  .description("Removed — use migrate import")
-  .allowExcessArguments()
-  .action(handleLayerImportCommand);
 
 addApplyCommandOptions(
   layerCmd
