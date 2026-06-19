@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import {
   DEFAULT_CATALOG_SLUG,
+  formatCanonicalPublishedSelectorWithVersion,
   formatPublishedSelector,
   formatPublishedSelectorWithVersion,
   parseLayerSelector,
   resolveRemoteLayerSelector,
+  resolvedRemoteLayerFromCatalog,
 } from "../../src/services/layer-selector.js";
 
 describe("parseLayerSelector", () => {
@@ -88,6 +90,37 @@ describe("formatPublishedSelectorWithVersion", () => {
         version: "2.0.0",
       }),
     ).toBe("acme/frontend@2.0.0");
+  });
+});
+
+describe("formatCanonicalPublishedSelectorWithVersion", () => {
+  it("always includes catalog even for the default catalog", () => {
+    expect(
+      formatCanonicalPublishedSelectorWithVersion({
+        org: "harnessdeck-cloud",
+        catalog: DEFAULT_CATALOG_SLUG,
+        name: "devops-engineer",
+        version: "1.0.0",
+      }),
+    ).toBe("harnessdeck-cloud/default/devops-engineer@1.0.0");
+  });
+});
+
+describe("resolvedRemoteLayerFromCatalog", () => {
+  it("maps catalog layer fields to install options", () => {
+    expect(
+      resolvedRemoteLayerFromCatalog({
+        org: "harnessdeck-cloud",
+        catalog: DEFAULT_CATALOG_SLUG,
+        name: "devops-engineer",
+        version: "1.0.0",
+      }),
+    ).toEqual({
+      org_slug: "harnessdeck-cloud",
+      catalog_slug: DEFAULT_CATALOG_SLUG,
+      layer_slug: "devops-engineer",
+      version: "1.0.0",
+    });
   });
 });
 

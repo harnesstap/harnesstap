@@ -509,6 +509,66 @@ describe("CLI cloud layer workflows", () => {
 
   // ── Task 4: Interactive remote layer search ──────────────────────────────
 
+  it("layer search on TTY launches interactive catalog search and applies to the project", async () => {
+    const context = await createTestContext("cli-layer-search-interactive");
+    try {
+      await runCli(["init", "--main", "claude-code"]);
+      initGitRepo(context.projectDir, "git@github.com:acme/demo.git");
+
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudAccounts.setDefaultCloudAccount("test");
+
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
+
+      const result = await runCli(
+        ["layer", "search", "fullstack", "--account", "test", "--base-url", "https://mock"],
+        {
+          isTTY: true,
+          promptResponses: [
+            { choice: "harnessdeck-cloud/default/team" },
+            { value: "project" },
+          ],
+        },
+      );
+
+      expect(result.stdout).toContain("Fetched");
+      expect(result.stdout).toContain("from catalog");
+      expect(result.stdout).toContain("claude-code");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer search on non-TTY prints table results", async () => {
+    const context = await createTestContext("cli-layer-search-non-tty");
+    try {
+      await runCli(["init"]);
+
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
+
+      const result = await runCli(
+        ["layer", "search", "team", "--base-url", "https://mock"],
+        { isTTY: false },
+      );
+
+      expect(result.stdout).toContain("harnessdeck-cloud/default/team");
+      expect(result.stdout).not.toContain("Installed layer");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("layer pull with no selector on TTY launches interactive remote search", async () => {
     const context = await createTestContext("cli-layer-add-interactive-search");
     try {

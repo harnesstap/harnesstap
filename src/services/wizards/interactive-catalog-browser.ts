@@ -12,7 +12,7 @@ import {
 } from "@inquirer/core";
 import type { CatalogLayer } from "../catalog-types.js";
 import {
-  formatPublishedSelectorWithVersion,
+  formatCanonicalPublishedSelectorWithVersion,
 } from "../layer-selector.js";
 import {
   formatCatalogSelectionLabel,
@@ -88,9 +88,9 @@ export const promptForInteractiveCatalogBrowser: (
   const [layers, setLayers] = useState<CatalogLayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchedQueryRef = { current: "__unset__" };
-  const debounceRef = { current: null as ReturnType<typeof setTimeout> | null };
-  const requestRef = { current: 0 };
+  const fetchedQueryRef = useState({ current: "__unset__" })[0];
+  const debounceRef = useState<{ current: ReturnType<typeof setTimeout> | null }>({ current: null })[0];
+  const requestRef = useState({ current: 0 })[0];
 
   async function runSearch(nextQuery: string) {
     const requestId = ++requestRef.current;
@@ -148,7 +148,7 @@ export const promptForInteractiveCatalogBrowser: (
           catalogSlug: selectedLayer.catalogSlug,
           slug: selectedLayer.slug,
           version: selectedLayer.latestVersion,
-          selector: formatPublishedSelectorWithVersion({
+          selector: formatCanonicalPublishedSelectorWithVersion({
             org: selectedLayer.orgSlug,
             catalog: selectedLayer.catalogSlug,
             name: selectedLayer.slug,

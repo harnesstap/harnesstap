@@ -100,6 +100,39 @@ export function formatPublishedSelectorWithVersion(selector: {
   return selector.version ? `${base}@${selector.version}` : base;
 }
 
+/** Three-part selector for install/resolve paths (always includes catalog). */
+export function formatCanonicalPublishedSelector(input: {
+  org: string;
+  catalog: string;
+  name: string;
+}): string {
+  return `${input.org}/${input.catalog}/${input.name}`;
+}
+
+export function formatCanonicalPublishedSelectorWithVersion(selector: {
+  org: string;
+  catalog: string;
+  name: string;
+  version?: string;
+}): string {
+  const base = formatCanonicalPublishedSelector(selector);
+  return selector.version ? `${base}@${selector.version}` : base;
+}
+
+export function resolvedRemoteLayerFromCatalog(input: {
+  org: string;
+  catalog: string;
+  name: string;
+  version?: string | null;
+}): ResolvedRemoteLayerSelector {
+  return {
+    org_slug: input.org,
+    catalog_slug: input.catalog,
+    layer_slug: input.name,
+    ...(input.version ? { version: input.version } : {}),
+  };
+}
+
 export interface ResolvedRemoteLayerSelector {
   org_slug: string;
   catalog_slug: string;

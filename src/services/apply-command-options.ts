@@ -3,6 +3,8 @@ import type { Command } from "commander";
 export interface ApplyCommandOpts {
   project: string;
   harness?: string;
+  account?: string;
+  baseUrl?: string;
   dryRun?: boolean;
   format?: string;
   ignorePluginVersions?: boolean;

@@ -2,7 +2,7 @@ import { listLayers } from "../models/layer-model.js";
 import { formatCatalogScopeLabel, resolveCatalogScope } from "../config/catalog.js";
 import { listLayersInScope } from "./catalog-client.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
-import { resolveRemoteLayerSelector } from "./layer-selector.js";
+import { resolvedRemoteLayerFromCatalog } from "./layer-selector.js";
 import { runInteractiveCatalogBrowser } from "./wizards/interactive-catalog-browser.js";
 import { promptForChoice } from "./wizards/shared.js";
 import { ui } from "../ui/index.js";
@@ -38,10 +38,11 @@ export async function maybePromptInitCatalogInstall(input: {
     listLayers: ({ q, limit }) => listLayersInScope({ q, limit, sort: "updated" }),
   });
 
-  const parsed = resolveRemoteLayerSelector(selected.selector, {
+  const parsed = resolvedRemoteLayerFromCatalog({
     org: selected.orgSlug,
     catalog: selected.catalogSlug,
-    version: selected.version ?? undefined,
+    name: selected.slug,
+    version: selected.version,
   });
   const installed = await installLayerFromCatalog(parsed, {});
 

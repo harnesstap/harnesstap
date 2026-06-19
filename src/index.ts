@@ -138,6 +138,13 @@ import {
   renderPublishResults,
 } from "./services/layer-publish.js";
 import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
+import { runInteractiveCatalogSearch } from "./services/wizards/interactive-catalog-search.js";
+import {
+  applyLayersGlobally,
+  catalogSearchSelectors,
+  promptCatalogSearchApplyScope,
+  resolveCatalogSearchProjectRoot,
+} from "./services/layer-search-apply.js";
 import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
@@ -194,7 +201,10 @@ import {
   importEnvironmentToml,
 } from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
-import { resolveApplyLayerSource } from "./services/layer-apply-source.js";
+import {
+  resolveApplyLayerSource,
+  type ResolveApplyLayerSourceOptions,
+} from "./services/layer-apply-source.js";
 import { LayerAmbiguityError, LayerResolveError } from "./services/layer-bare-name-resolve.js";
 import { installLayerFromCatalog } from "./services/layer-catalog-install.js";
 import {
@@ -506,6 +516,18 @@ function shouldUseInteractiveResourceList(input: {
     noInteractive: input.noInteractive,
     format: parseOutputFormat(input.format),
     missingRequiredArgs: true,
+  });
+}
+
+function shouldUseInteractiveLayerSearch(input: {
+  noInteractive?: boolean;
+  format: "human" | "json";
+}): boolean {
+  return shouldUseWizard({
+    interactive: true,
+    noInteractive: input.noInteractive,
+    format: input.format,
+    missingRequiredArgs: false,
   });
 }
 
@@ -1137,7 +1159,7 @@ async function handleScanCommand(
 async function resolveApplyLayers(
   layerNames: [string, ...string[]],
   projectRoot: string,
-  options: {
+  options: ResolveApplyLayerSourceOptions & {
     onFetched?: (sourceLabel: string) => void;
   } = {},
 ): Promise<{
@@ -1167,7 +1189,7 @@ async function resolveApplyLayers(
 
   const resolvedSources = await Promise.all(
     layerNames.map((selector) =>
-      resolveApplyLayerSource(selector, { onFetched: options.onFetched }),
+      resolveApplyLayerSource(selector, options),
     ),
   );
 
@@ -1312,6 +1334,8 @@ async function handleApplyCommand(
       resolvedLayerNames as [string, ...string[]],
       projectRoot,
       {
+        account: opts.account,
+        baseUrl: opts.baseUrl,
         onFetched:
           outputFormat === "human"
             ? (sourceLabel) => {
@@ -1760,13 +1784,74 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
 
 async function handleLayerSearchCommand(
   query: string,
-  opts: { account?: string; format?: string; baseUrl?: string; tag?: string },
+  opts: {
+    account?: string;
+    format?: string;
+    baseUrl?: string;
+    tag?: string;
+    noInteractive?: boolean;
+  },
 ) {
   const format = parseOutputFormat(opts.format);
+  const catalogOptions = { account: opts.account, baseUrl: opts.baseUrl };
+
   try {
+    if (shouldUseInteractiveLayerSearch({ format, noInteractive: opts.noInteractive })) {
+      const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
+      const result = await runInteractiveCatalogSearch({
+        message: "Search catalog layers to apply",
+        scopeLabel: formatCatalogScopeLabel(scope),
+        initialQuery: query,
+        listLayers: ({ q, limit }) =>
+          listLayersInScope(
+            { q, tag: opts.tag, limit, sort: "updated" },
+            catalogOptions,
+          ),
+      });
+
+      if (result.selections.length === 0) {
+        return;
+      }
+
+      const selectors = catalogSearchSelectors(result.selections);
+      const applyScope = await promptCatalogSearchApplyScope();
+      const onFetched = (sourceLabel: string) => {
+        ui.info(`Fetched ${sourceLabel} from catalog`);
+      };
+
+      if (applyScope === "project") {
+        await handleApplyCommand(selectors, {
+          project: resolveCatalogSearchProjectRoot(),
+          account: opts.account,
+          baseUrl: opts.baseUrl,
+          format: opts.format,
+          noInteractive: opts.noInteractive,
+        });
+        return;
+      }
+
+      const conflictPolicy = resolveApplyConflictPolicy({
+        noInteractive: opts.noInteractive,
+      });
+      const conflictResolver =
+        conflictPolicy === "prompt" ? promptMaterializationConflict : undefined;
+      const applied = await applyLayersGlobally(selectors, {
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        conflictPolicy,
+        conflictResolver,
+        onFetched,
+      });
+      if (applied.cancelled) {
+        process.exitCode = 1;
+        ui.danger("Apply cancelled due to file conflicts");
+      }
+      return;
+    }
+
     const results = await listLayersInScope(
       { q: query, tag: opts.tag, limit: 25, sort: "updated" },
-      { account: opts.account, baseUrl: opts.baseUrl },
+      catalogOptions,
     );
     if (format === "json") {
       printJson(results);
@@ -1781,6 +1866,10 @@ async function handleLayerSearchCommand(
       }
     }
   } catch (err) {
+    if (isPromptCancellationError(err)) {
+      process.exitCode = 1;
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }

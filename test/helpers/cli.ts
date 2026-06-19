@@ -5,6 +5,7 @@ import { mock, spyOn } from "bun:test";
 import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
 import type { runLayerEditWizard as RunLayerEditWizard } from "../../src/services/wizards/layer-edit.js";
+import type { runInteractiveCatalogSearch as RunInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.js";
 
 export interface CliResult {
   stdout: string;
@@ -215,6 +216,68 @@ const interactiveCatalogBrowserMock = mock(async (
 
 mock.module("../../src/services/wizards/interactive-catalog-browser.js", () => ({
   runInteractiveCatalogBrowser: interactiveCatalogBrowserMock,
+}));
+
+const interactiveCatalogSearchMock = mock(async (
+  ...args: Parameters<typeof RunInteractiveCatalogSearch>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/interactive-catalog-search.ts?actual"
+    );
+    return actualWizard.runInteractiveCatalogSearch(...args);
+  }
+  const value = shiftSinglePromptValue();
+  const entries = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? [value]
+      : null;
+  if (!entries) {
+    throw new Error(
+      "Interactive catalog search responses must resolve to an array of selectors",
+    );
+  }
+  return {
+    selections: entries.map((entry) => {
+        if (typeof entry === "string") {
+          const parts = entry.split("/").filter(Boolean);
+          if (parts.length === 3) {
+            const [orgSlug, catalogSlug, slug] = parts;
+            return {
+              orgSlug,
+              catalogSlug,
+              slug,
+              version: "1.0.0",
+              selector: entry,
+            };
+          }
+        }
+        if (entry && typeof entry === "object") {
+          const record = entry as Record<string, unknown>;
+          if (typeof record.orgSlug === "string" && typeof record.slug === "string") {
+            const catalogSlug = typeof record.catalogSlug === "string"
+              ? record.catalogSlug
+              : "default";
+            const selector = typeof record.selector === "string"
+              ? record.selector
+              : `${record.orgSlug}/${catalogSlug}/${record.slug}`;
+            return {
+              orgSlug: record.orgSlug,
+              catalogSlug,
+              slug: record.slug,
+              version: typeof record.version === "string" ? record.version : "1.0.0",
+              selector,
+            };
+          }
+        }
+        throw new Error("Invalid interactive catalog search selection entry");
+      }),
+  };
+});
+
+mock.module("../../src/services/wizards/interactive-catalog-search.js", () => ({
+  runInteractiveCatalogSearch: interactiveCatalogSearchMock,
 }));
 
 function stringifyArgs(args: unknown[]): string {
