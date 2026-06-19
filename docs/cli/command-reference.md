@@ -154,7 +154,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer create <name>`
 - `layer list`
 - `layer show <name>`
-- `layer edit [name]` — interactively add/remove attachments, or script changes with `--add` / `--remove` / `--apply`
+- `layer edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `layer delete [name]`
 - `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
@@ -168,8 +168,6 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer diff <left> <right>`
 - `layer doctor [name]` — validate a layer without writing to disk
 - `layer from-project [name] --project <path>`
-- `layer set-environment <layer> <environment>` — bind a default environment to the configured layer that `layer apply` resolves
-- `layer unset-environment <layer>` — clear the configured layer default environment
 
 ### Important options
 
@@ -191,6 +189,8 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer edit --version <constraint>` — plugin or layer references only (scripting adds)
 - `layer edit --sync` — sync a plugin resource immediately after add (default: lazy)
 - `layer edit --embed` — mark plugin pin as embed-on-export when adding
+- `layer edit --environment <name>` — bind a default environment to the configured layer that `layer apply` resolves
+- `layer edit --clear-environment` — clear the configured layer default environment
 - `layer apply --project <path>` — target project directory (default `.`)
 - `layer apply --harness <slugs>` — comma-separated harness slugs
 - `layer apply --dry-run` — show planned file writes only

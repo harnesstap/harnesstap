@@ -266,7 +266,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer create` | Creates a local layer with optional description, tags, and version. |
 | `layer list` | Lists layers (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
 | `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
-| `layer edit` | Add or remove composition attachments (interactive checkbox UI, or `--add` / `--remove` / `--apply` scripting). Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
+| `layer edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer delete` | Deletes a layer by selector. |
 | `migrate export` | Export workspace archive, layer bundle, or resource TOML. |
 | `migrate import` | Import workspace archive, layer bundle, or resource TOML. |
@@ -282,8 +282,6 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer diff` | Compares two layers, or a layer and a bundle file. |
 | `layer doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
 | `layer from-project` | Scans a project and creates a layer from imported resources. |
-| `layer set-environment` | Sets the default environment on the layer that `layer apply` resolves for the given selector. |
-| `layer unset-environment` | Clears the layer's default environment. |
 
 ### `environment` subcommands
 
@@ -436,7 +434,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ## Wizard mode
 
-Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer edit`, `layer from-project`, `layer set-environment`, `layer apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
+Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer edit`, `layer from-project`, `layer apply`, `resource delete`, `environment create`, `environment capture`, `environment use`, `init`, `harness set`, and `harness project set`.
 
 Wizard mode triggers when all of these are true:
 

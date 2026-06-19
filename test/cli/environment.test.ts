@@ -120,7 +120,7 @@ describe("CLI environment", () => {
     }
   });
 
-  it("supports layer set-environment/unset-environment and shows default environment", async () => {
+  it("supports layer edit --environment/--clear-environment and shows default environment", async () => {
     const context = await createTestContext("cli-layer-environment");
     try {
       await runCli(["init"]);
@@ -135,7 +135,7 @@ describe("CLI environment", () => {
       });
 
       await runCli(["environment", "create", "staging"]);
-      await runCli(["layer", "set-environment", configuredLayer.id, "staging"]);
+      await runCli(["layer", "edit", configuredLayer.id, "--environment", "staging"]);
 
       const layerShowHuman = await runCli(["layer", "show", "app-layer"]);
       expect(layerShowHuman.stdout).toContain("Default environment");
@@ -150,7 +150,7 @@ describe("CLI environment", () => {
         }),
       );
 
-      await runCli(["layer", "unset-environment", configuredLayer.id]);
+      await runCli(["layer", "edit", configuredLayer.id, "--clear-environment"]);
       const afterUnset = await runCli(["layer", "show", "app-layer", "--format", "json"]);
       expect(JSON.parse(afterUnset.stdout)).toEqual(
         expect.objectContaining({
@@ -266,7 +266,7 @@ describe("CLI environment", () => {
       await runCli(["environment", "set", "default-env", "--var", "PD_REGION=layer"]);
       await runCli(["environment", "create", "project-env"]);
       await runCli(["environment", "set", "project-env", "--var", "PD_REGION=project"]);
-      await runCli(["layer", "set-environment", configuredLayer.id, "default-env"]);
+      await runCli(["layer", "edit", configuredLayer.id, "--environment", "default-env"]);
 
       const useResult = await runCli([
         "environment",

@@ -675,8 +675,6 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "diff",
   "doctor",
   "from-project",
-  "set-environment",
-  "unset-environment",
 ]);
 
 const LAYER_HELP_REMOTE_COMMANDS = new Set([
@@ -2300,6 +2298,8 @@ async function handleLayerEditCommand(
     version?: string;
     embed?: boolean;
     sync?: boolean;
+    environment?: string;
+    clearEnvironment?: boolean;
   },
 ): Promise<void> {
   const db = getDb();
@@ -2308,7 +2308,21 @@ async function handleLayerEditCommand(
 
   const adds = opts.add ?? [];
   const removes = opts.remove ?? [];
-  const scripting = adds.length > 0 || removes.length > 0 || Boolean(opts.apply);
+  const environmentChange = opts.environment
+    ? { kind: "set" as const, environment: opts.environment }
+    : opts.clearEnvironment
+      ? { kind: "clear" as const }
+      : undefined;
+  const scripting = adds.length > 0
+    || removes.length > 0
+    || Boolean(opts.apply)
+    || Boolean(environmentChange);
+
+  if (opts.environment && opts.clearEnvironment) {
+    process.exitCode = 1;
+    ui.danger("Cannot use --environment and --clear-environment together");
+    return;
+  }
 
   let typeFilter: ResourceType | undefined;
   if (scripting) {
@@ -2367,6 +2381,38 @@ async function handleLayerEditCommand(
 
   if (scripting) {
     try {
+      if (environmentChange) {
+        if (opts.dryRun) {
+          const action = environmentChange.kind === "set"
+            ? `set default environment to ${environmentChange.environment}`
+            : "clear default environment";
+          ui.info(`Would ${action} on ${formatLayerLabel(layer)}`);
+        } else if (environmentChange.kind === "set") {
+          const result = setLayerEnvironmentCommand(resolvedName, environmentChange.environment);
+          if (format === "json") {
+            printJson(result);
+          } else {
+            ui.success(
+              `Set default environment on ${ui.theme.accent(formatLayerLabel(layer))}`,
+            );
+          }
+        } else {
+          const result = unsetLayerEnvironmentCommand(resolvedName);
+          if (format === "json") {
+            printJson(result);
+          } else {
+            ui.success(
+              `Cleared default environment on ${ui.theme.accent(formatLayerLabel(layer))}`,
+            );
+          }
+        }
+      }
+
+      const attachmentScripting = adds.length > 0 || removes.length > 0 || Boolean(opts.apply);
+      if (!attachmentScripting) {
+        return;
+      }
+
       if (opts.apply) {
         const raw = readFileSync(opts.apply, "utf8");
         const attachments = parseLayerEditApplyFile(raw);
@@ -2427,7 +2473,7 @@ async function handleLayerEditCommand(
   if (!shouldUseInteractiveLayerEdit(opts)) {
     process.exitCode = 1;
     ui.danger(
-      `layer edit requires an interactive terminal, or use \`${formatCommand("layer edit <name> --add <selector> --type <type>")}\`, \`--remove\`, or \`--apply <file>\` for scripting.`,
+      `layer edit requires an interactive terminal, or use \`${formatCommand("layer edit <name> --add <selector> --type <type>")}\`, \`--remove\`, \`--apply <file>\`, \`--environment <name>\`, or \`--clear-environment\` for scripting.`,
     );
     return;
   }
@@ -4198,10 +4244,12 @@ layerCmd
   .option("--version <constraint>", "Version constraint for plugin or layer attachments")
   .option("--embed", "Mark plugin pin as embed-on-export when adding")
   .option("--sync", "Sync plugin resource immediately after add")
+  .option("--environment <name>", "Set default environment for layer apply cascade")
+  .option("--clear-environment", "Clear default environment from layer")
   .option("--dry-run", "Preview changes without writing")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Add or remove layer attachments (interactive or scripting)")
+  .description("Edit layer composition and default environment (interactive or scripting)")
   .action(async (name: string | undefined, opts: {
     type?: string;
     search?: string;
@@ -4213,6 +4261,8 @@ layerCmd
     version?: string;
     embed?: boolean;
     sync?: boolean;
+    environment?: string;
+    clearEnvironment?: boolean;
     dryRun?: boolean;
     format?: string;
     interactive?: boolean;
@@ -4443,41 +4493,6 @@ layerCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Scan current folder and create a layer from its resources")
   .action(handleLayerFromProjectCommand);
-
-layerCmd
-  .command("set-environment")
-  .argument("<layer>", "Configured layer name or ID")
-  .argument("<environment>", "Environment name or ID")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Set default environment for a configured layer")
-  .action((layer: string, environment: string, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const result = setLayerEnvironmentCommand(layer, environment);
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(result);
-      return;
-    }
-    ui.success(`Set default environment on ${ui.theme.accent(layer)}`);
-  });
-
-layerCmd
-  .command("unset-environment")
-  .argument("<layer>", "Configured layer name or ID")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Clear default environment from a configured layer")
-  .action((layer: string, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const result = unsetLayerEnvironmentCommand(layer);
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(result);
-      return;
-    }
-    ui.success(`Cleared default environment on ${ui.theme.accent(layer)}`);
-  });
 
 // ── profile ──────────────────────────────────────────────────────────────
 
