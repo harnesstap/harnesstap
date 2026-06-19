@@ -71,6 +71,7 @@ function resolveInstallRoot(
     join(claudePluginsRoot, marketplace ?? plugin, plugin),
     join(homeRoot, ".cursor", "plugins", plugin),
     join(homeRoot, ".cursor", "plugins", "cache", marketplace ?? plugin, plugin),
+    join(homeRoot, ".agents", "plugins", plugin),
   ];
 
   if (originRef.startsWith("./") || originRef.startsWith("../")) {

@@ -159,6 +159,9 @@ export function isPluginSourcePath(sourcePath: string): boolean {
   }
 
   return (
+    existsSync(join(sourcePath, ".goose-plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, ".plugin", "plugin.json")) ||
+    existsSync(join(sourcePath, "plugin.json")) ||
     existsSync(join(sourcePath, ".cursor-plugin", "plugin.json")) ||
     existsSync(join(sourcePath, ".claude-plugin", "plugin.json")) ||
     existsSync(join(sourcePath, ".codex-plugin", "plugin.json")) ||

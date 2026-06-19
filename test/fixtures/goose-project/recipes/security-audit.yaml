@@ -1,0 +1,5 @@
+version: 1.0.0
+title: Security audit
+description: Audit code for security issues
+instructions: |
+  Review the codebase for security vulnerabilities.

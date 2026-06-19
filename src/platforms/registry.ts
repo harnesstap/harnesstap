@@ -180,12 +180,19 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: "~/.continue/skills/",
   }),
 
-  def("goose", "Goose", ["instructions", "skills", "mcp"], {
+  def("goose", "Goose", ["instructions", "skills", "mcp", "hooks", "commands"], {
     instructions: "AGENTS.md",
-    skills: ".goose/skills/",
+    skills: ".agents/skills/",
+    commands: "recipes/",
+    mcp: ".config/goose/config.yaml",
+    pathAlternates: {
+      instructions: [".goosehints"],
+      skills: [".goose/skills/"],
+    },
   }, {
-    skills: "~/.config/goose/skills/",
-    settings: "~/.config/goose/config.json",
+    instructions: "~/.config/goose/.goosehints",
+    skills: "~/.agents/skills/",
+    settings: "~/.config/goose/config.yaml",
   }),
 
   def("trae", "Trae", ["instructions", "skills", "rules", "mcp"], {

@@ -326,6 +326,7 @@ export const IMPORTED_SOURCE_KINDS = [
   "claude-plugin",
   "codex-plugin",
   "copilot-plugin",
+  "goose-plugin",
   "marketplace",
   "skill-package",
 ] as const;
@@ -419,6 +420,8 @@ export interface PlatformPaths {
   pathAlternates?: Partial<{
     commands: string[];
     rules: string[];
+    instructions: string[];
+    skills: string[];
   }>;
 }
 

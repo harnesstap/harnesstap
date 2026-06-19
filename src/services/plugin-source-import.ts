@@ -87,6 +87,18 @@ interface ListedPluginManifest {
 
 const PLUGIN_MANIFEST_CANDIDATES: PluginManifestCandidate[] = [
   {
+    relativeManifestPath: ".goose-plugin/plugin.json",
+    sourcePluginKind: "goose-plugin",
+  },
+  {
+    relativeManifestPath: ".plugin/plugin.json",
+    sourcePluginKind: "goose-plugin",
+  },
+  {
+    relativeManifestPath: "plugin.json",
+    sourcePluginKind: "goose-plugin",
+  },
+  {
     relativeManifestPath: ".cursor-plugin/plugin.json",
     sourcePluginKind: "cursor-plugin",
   },

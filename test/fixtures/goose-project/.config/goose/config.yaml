@@ -1,0 +1,10 @@
+extensions:
+  fetch:
+    name: fetch
+    type: stdio
+    cmd: uvx
+    args:
+      - mcp-server-fetch
+    enabled: true
+    envs: {}
+    timeout: 300
