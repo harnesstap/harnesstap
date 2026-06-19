@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import {
   applyToGlobal,
-  generateFiles,
   type ConflictPolicy,
   type ConflictResolution,
   type MaterializationConflict,
@@ -47,7 +46,7 @@ export async function promptCatalogSearchApplyScope(): Promise<CatalogSearchAppl
 
 async function resolveMergedApplyBundle(
   selectors: [string, ...string[]],
-  projectRoot: string,
+  _projectRoot: string,
   options: ResolveApplyLayerSourceOptions,
 ) {
   const resolvedSources = await Promise.all(

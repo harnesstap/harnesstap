@@ -201,6 +201,7 @@ import {
   importEnvironmentToml,
 } from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
+import { createLayerFromSource } from "./services/layer-from-source.js";
 import {
   resolveApplyLayerSource,
   type ResolveApplyLayerSourceOptions,
@@ -271,14 +272,12 @@ import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
 import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
 import { runAddPackageWizard } from "./services/wizards/add-package.js";
+import { runLayerCreateFromSourceWizard } from "./services/wizards/layer-create-from-source.js";
 import { addSkillPackage } from "./services/add-package.js";
-import { discoverSkillPackage } from "./services/skill-discovery.js";
-import { classifyRepo } from "./services/repo-profile.js";
 import {
-  resolveRemoteSource,
-  sourceCacheDir,
-} from "./services/source-resolver.js";
-import { refreshGitSource } from "./plugins/refresh.js";
+  resolveSkillPackageCheckout,
+  type LayerSourceConflictPolicy,
+} from "./services/skill-package-resolve.js";
 import type { PersistedPluginSourceResults } from "./services/scanner.js";
 import type { Column } from "./ui/table.js";
 import {
@@ -3150,28 +3149,16 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
   }
 }
 
-async function resolveSkillPackageCheckout(
-  source: string,
-  harnessdeckDir: string,
-): Promise<{ checkoutRoot: string; namespace: string }> {
-  const resolved = resolveRemoteSource(source);
-  if (resolved.kind === "git") {
-    const cacheDir = sourceCacheDir(
-      harnessdeckDir,
-      resolved.owner,
-      resolved.repo,
-    );
-    const refresh = refreshGitSource({
-      url: resolved.url,
-      targetDir: cacheDir,
-    });
-    if (!refresh.ok) {
-      throw new Error(refresh.message);
-    }
-    return { checkoutRoot: cacheDir, namespace: resolved.label };
+function parseLayerSourceConflictPolicy(
+  value: string | undefined,
+): LayerSourceConflictPolicy | undefined {
+  if (!value) return undefined;
+  if (value === "cancel" || value === "merge" || value === "overwrite") {
+    return value;
   }
-
-  return { checkoutRoot: resolved.path, namespace: resolved.label };
+  throw new Error(
+    `Invalid --on-conflict value: ${value}. Use cancel, merge, or overwrite.`,
+  );
 }
 
 function parseCommaSeparatedList(value: string | undefined): string[] | undefined {
@@ -3230,27 +3217,15 @@ async function handleAddCommand(
       throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
     })();
 
-  const { checkoutRoot, namespace } = await resolveSkillPackageCheckout(
-    source,
-    harnessdeckDir,
-  );
-  const classification = classifyRepo(checkoutRoot);
-  if (classification.primary !== "skill-package") {
-    throw new Error(
-      `Source is not a skill package (detected: ${classification.primary}). Use a repo with skills/ or .agents/skills/ containing SKILL.md files.`,
-    );
-  }
-
-  const discovered = discoverSkillPackage(checkoutRoot);
-  if (discovered.length === 0) {
-    throw new Error(`No skills found in skill package: ${checkoutRoot}`);
-  }
+  const resolvedPackage = resolveSkillPackageCheckout(source, harnessdeckDir);
+  const { namespace } = resolvedPackage;
+  const discovered = resolvedPackage.discovered;
 
   if (opts.list) {
     const payload = {
       source,
       namespace,
-      primary: classification.primary,
+      primary: "skill-package",
       skills: discovered,
     };
     if (format === "json") {
@@ -4284,6 +4259,171 @@ program
     }
   });
 
+async function handleLayerCreateCommand(
+  name: string,
+  opts: {
+    description?: string;
+    tags?: string;
+    version?: string;
+    from?: string;
+    skill?: string;
+    all?: boolean;
+    excludeCategory?: string[];
+    onConflict?: string;
+    install?: boolean;
+    global?: boolean;
+    project?: boolean | string;
+    harness?: string;
+    method?: string;
+    dryRun?: boolean;
+    format?: string;
+    interactive?: boolean;
+    yes?: boolean;
+  },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const db = getDb();
+  initializeSchema(db);
+  const tags = opts.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) ?? [];
+  const version = opts.version ?? "1.0.0";
+
+  if (!opts.from) {
+    const layer = createLayer({
+      name,
+      version,
+      description: opts.description,
+      tags,
+    });
+    if (format === "json") {
+      printJson(layer);
+      return;
+    }
+    ui.success(`Created layer ${ui.theme.accent(formatLayerLabel(layer))}`);
+    return;
+  }
+
+  if (opts.install && !opts.global && opts.project === undefined) {
+    throw new Error("Pass --global or --project when using --install.");
+  }
+  if (opts.global && opts.project !== undefined) {
+    throw new Error("Pass only one of --global or --project.");
+  }
+
+  const method = opts.method === "copy"
+    ? "copy"
+    : opts.method === "symlink" || !opts.method
+      ? "symlink"
+      : (() => {
+          throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
+        })();
+
+  const harnessdeckDir = getHarnessdeckDir();
+  const homeRoot = resolveHomeRoot();
+  const skillNames = parseCommaSeparatedList(opts.skill);
+  const excludeCategories = [
+    ...(opts.excludeCategory ?? []),
+  ].flatMap((entry) => entry.split(",").map((part) => part.trim()).filter(Boolean));
+  const onConflictFlag = parseLayerSourceConflictPolicy(opts.onConflict);
+  const harnesses = parseCommaSeparatedList(opts.harness);
+  if (harnesses) {
+    assertSupportedHarnessTargets(harnesses);
+  }
+
+  const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnessdeckDir);
+  const shouldPrompt = shouldUseWizard({
+    noInteractive: opts.yes,
+    interactive: opts.interactive,
+    format,
+    missingRequiredArgs: !opts.all && (!skillNames || skillNames.length === 0),
+  });
+
+  const wizard = await runLayerCreateFromSourceWizard({
+    layerName: name,
+    layerVersion: version,
+    discovered: resolvedPackage.discovered,
+    skillNames,
+    all: opts.all,
+    excludeCategories: excludeCategories.length > 0 ? excludeCategories : undefined,
+    onConflict: onConflictFlag,
+    shouldPrompt,
+  });
+
+  if (wizard.cancelled) {
+    ui.info("Operation cancelled.");
+    return;
+  }
+
+  const installScope = opts.global
+    ? { scope: "global" as const }
+    : opts.project !== undefined
+      ? {
+          scope: "project" as const,
+          projectRoot: typeof opts.project === "string" ? opts.project : ".",
+        }
+      : undefined;
+
+  const result = await createLayerFromSource({
+    name,
+    source: opts.from,
+    version,
+    description: opts.description,
+    tags,
+    skillNames: wizard.skillNames,
+    all: wizard.all,
+    excludeCategories: excludeCategories.length > 0 ? excludeCategories : undefined,
+    onConflict: onConflictFlag ?? wizard.onConflict,
+    install: Boolean(opts.install),
+    scope: installScope?.scope,
+    projectRoot: installScope?.projectRoot,
+    method,
+    harnesses,
+    dryRun: opts.dryRun,
+    homeRoot,
+    harnessdeckDir,
+  });
+
+  const payload = {
+    layer: result.layer.name,
+    version: result.layer.version,
+    source: opts.from,
+    namespace: result.namespace,
+    discovered: result.importedSkills,
+    attached: result.attachedSkills,
+    installed: result.installedSkills,
+    conflict_policy: result.conflictPolicy,
+    snapshot_id: result.snapshotId,
+  };
+
+  if (format === "json") {
+    printJson(payload);
+    return;
+  }
+
+  if (opts.dryRun) {
+    ui.success(
+      `Dry run ${ui.icons.hint} would configure layer ${ui.theme.accent(formatLayerLabel(result.layer))} with ${formatCount(result.attachedSkills.length, "skill")} from ${result.namespace}`,
+    );
+    return;
+  }
+
+  const actionLabel = result.conflictPolicy === "merge"
+    ? "Updated"
+    : result.conflictPolicy === "overwrite"
+      ? "Replaced"
+      : "Created";
+  ui.success(
+    `${actionLabel} layer ${ui.theme.accent(formatLayerLabel(result.layer))} ${ui.icons.bullet} ${formatCount(result.attachedSkills.length, "skill")} attached from ${result.namespace}`,
+  );
+  console.log("");
+  ui.kvBlock([
+    { key: "Attached", value: result.attachedSkills.join(", ") || "—" },
+    ...(result.installedSkills.length > 0
+      ? [{ key: "Installed", value: result.installedSkills.join(", ") }]
+      : []),
+    { key: "Run", value: formatCommand(`layer show ${result.layer.name}`) },
+  ]);
+}
+
 // ── layer ──────────────────────────────────────────────────────────────
 
 const layerCmd = configureCommandGroup(
@@ -4299,21 +4439,64 @@ layerCmd
   .option("-d, --description <text>", "Layer description")
   .option("--tags <tags>", "Comma-separated tags")
   .option("--version <semver>", "Layer version (semver)", "1.0.0")
+  .option(
+    "--from <source>",
+    "Skill package source (owner/repo, git URL, or local path)",
+  )
+  .option("--skill <names>", "Comma-separated skills to attach")
+  .option("--all", "Attach all discovered skills")
+  .option(
+    "--exclude-category <names>",
+    "Exclude skill categories (repeatable or comma-separated)",
+    collectRepeatedOption,
+    [],
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When layer exists: cancel, merge, or overwrite (default: cancel)",
+  )
+  .option("--install", "Install selected skills to hub paths")
+  .option("--global", "Install globally when --install is set")
+  .option("--project [path]", "Install to project when --install is set")
+  .option("--harness <slugs>", "Comma-separated harness slugs for --install")
+  .option("--method <mode>", "Install method when --install is set: symlink or copy")
+  .option("--dry-run", "Preview layer configuration without writing")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("-y, --yes", "Skip interactive prompts")
   .action(
-    (
+    async (
       name: string,
-      opts: { description?: string; tags?: string; version?: string },
+      opts: {
+        description?: string;
+        tags?: string;
+        version?: string;
+        from?: string;
+        skill?: string;
+        all?: boolean;
+        excludeCategory?: string[];
+        onConflict?: string;
+        install?: boolean;
+        global?: boolean;
+        project?: boolean | string;
+        harness?: string;
+        method?: string;
+        dryRun?: boolean;
+        format?: string;
+        interactive?: boolean;
+        yes?: boolean;
+      },
     ) => {
-      const db = getDb();
-      initializeSchema(db);
-      const tags = opts.tags?.split(",").map((t) => t.trim()) ?? [];
-      const layer = createLayer({
-        name,
-        version: opts.version,
-        description: opts.description,
-        tags,
-      });
-      ui.success(`Created layer ${ui.theme.accent(formatLayerLabel(layer))}`);
+      try {
+        await handleLayerCreateCommand(name, opts);
+      } catch (error) {
+        if (isPromptCancellationError(error)) {
+          ui.info("Operation cancelled.");
+          return;
+        }
+        process.exitCode = 1;
+        renderCliError(error);
+      }
     },
   );
 

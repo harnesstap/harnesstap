@@ -180,6 +180,13 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer create -d, --description <text>` — layer description
 - `layer create --tags <tags>` — comma-separated tags
 - `layer create --version <semver>` — layer version (default `1.0.0`)
+- `layer create --from <source>` — import a skill package (`owner/repo`, git URL, or local path) and attach selected skills
+- `layer create --skill <names>` — comma-separated skills to attach when using `--from`
+- `layer create --all` — attach all discovered skills when using `--from`
+- `layer create --exclude-category <names>` — exclude skill categories (repeatable or comma-separated)
+- `layer create --on-conflict <policy>` — when the layer exists: `cancel` (default), `merge`, or `overwrite`
+- `layer create --install` — opt-in hub install; requires `--global` or `--project`
+- `layer create --dry-run` — preview configuration without writing
 - `layer list --format json`
 - `layer list --show-id`
 - `layer show --format json`

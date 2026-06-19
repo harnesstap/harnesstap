@@ -89,7 +89,7 @@ export function toCatalogSearchRows(
 function decorateCatalogSearchRows(
   rows: CatalogSearchRow[],
   opts: CatalogSearchRenderOptions,
-): CatalogListRow[] {
+): CatalogSearchRow[] {
   return rows.map((row) => {
     const checkbox = row.checked ? "[x]" : "[ ]";
     const cursor = catalogLayerKey(row) === opts.activeLayerKey ? ">" : " ";

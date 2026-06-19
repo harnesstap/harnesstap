@@ -52,6 +52,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [11](./details/11-builtin-layer.md) | Start from a catalog baseline                      | Common     | Shipped |
 | [4](./details/04-scan-import-repo.md)  | Scan and import an existing repo                    | Common     | Shipped |
 | [35](./details/35-add-skill-package.md) | Add a remote skill package                         | Common     | Shipped |
+| [38](./details/38-layer-from-skill-package.md) | Create a layer from a skill package          | Common     | Shipped |
 | [31](./details/31-dual-mode-plugin-import.md) | Import dual-mode plugin repo                 | Common     | Shipped |
 | [3](./details/03-project-harness-preferences.md)  | Override harness preferences for one repository     | Common     | Shipped |
 | [15](./details/15-subset-platforms.md) | Apply to a subset of target platforms               | Common     | Shipped |
