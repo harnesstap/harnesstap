@@ -33,6 +33,7 @@ const LOCAL_LAYER_OR_FILE: CompletionProvider[] = [
 const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer show:0": [completeLocalLayers],
   "layer edit:0": [completeLocalLayers],
+  "layer editor:0": [completeLocalLayers],
   "layer delete:0": [completeLocalLayers],
   "layer apply:0": [completeLocalLayers],
   "layer diff:0": LOCAL_LAYER_OR_FILE,

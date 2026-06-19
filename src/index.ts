@@ -33,7 +33,9 @@ import {
   writeFiles,
 } from "./services/applier.js";
 import { inspectLayerExportFile } from "./services/layer-export.js";
+import { exportLayerDefinition } from "./services/layer-editor.js";
 import { importFromFile } from "./services/layer-import.js";
+import { openPathInSystemEditor } from "./services/open-path.js";
 import {
   listResources,
   deleteResource,
@@ -679,6 +681,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "list",
   "show",
   "edit",
+  "editor",
   "delete",
   "export",
   "import",
@@ -2511,6 +2514,63 @@ function printLayerEditSuccess(
   ui.success(`Updated layer ${ui.theme.accent(label)} ${ui.icons.bullet} ${summary}`);
 }
 
+async function handleLayerEditorCommand(
+  name: string | undefined,
+  opts: {
+    format?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+
+  const resolvedName = name ?? await resolveLayerMutationTarget({
+    layerName: name,
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    format: opts.format,
+    message: "Which layer definition do you want to open?",
+  });
+  if (!resolvedName) {
+    process.exitCode = 1;
+    ui.danger(
+      listLayers().length > 0
+        ? "error: missing required argument 'name'"
+        : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
+    );
+    return;
+  }
+
+  const layer = getLayer(resolvedName);
+  if (!layer) {
+    process.exitCode = 1;
+    ui.danger(`Layer not found: ${resolvedName}`);
+    return;
+  }
+
+  try {
+    const definitionPath = exportLayerDefinition(layer);
+    if (format === "json") {
+      printJson({
+        layer: formatLayerLabel(layer),
+        path: definitionPath,
+      });
+      return;
+    }
+
+    openPathInSystemEditor(definitionPath);
+    ui.success(`Opened layer definition ${ui.theme.accent(definitionPath)}`);
+    ui.info(
+      `After editing, import changes with \`${formatCommand(`migrate import ${definitionPath}`)}\`.`,
+    );
+  } catch (error) {
+    process.exitCode = 1;
+    ui.danger(error instanceof Error ? error.message : String(error));
+  }
+}
+
 function parseHarnessAliases(aliases?: string): string[] | undefined {
   return aliases
     ?.split(",")
@@ -4268,6 +4328,20 @@ layerCmd
       }
       ui.danger(error instanceof Error ? error.message : String(error));
     }
+  });
+
+layerCmd
+  .command("editor")
+  .argument("[name]", "Layer name or ID")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Open a layer definition file in your system editor")
+  .action(async (name: string | undefined, opts: {
+    format?: string;
+    interactive?: boolean;
+    noInteractive?: boolean;
+  }) => {
+    await handleLayerEditorCommand(name, opts);
   });
 
 layerCmd

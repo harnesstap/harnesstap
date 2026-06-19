@@ -14,6 +14,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 [![Bun](https://img.shields.io/badge/bun-1.3+-000000?logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/harnessdeck/harnessdeck)
+[![Hits](https://hits.sh/github.com/harnessdeck/harnessdeck.svg)](https://hits.sh/github.com/harnessdeck/harnessdeck/)
 
 <br />
 
