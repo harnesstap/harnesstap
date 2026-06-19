@@ -96,7 +96,7 @@ Examples:
 **Publishing rules:**
 
 1. Local layers may be created, composed, exported, and applied with **no** organization or catalog.
-2. `layer publish` requires an active Cloud organization, a target **catalog** name, and produces an immutable published version.
+2. `layer publish` requires an active Cloud account and at least one **registered** publish catalog (`layer catalog register`). By default it fans out to all registered catalogs; per-layer allow lists are configured with `layer catalog` / `layer catalog bindings`.
 3. `layer search` and `layer pull` resolve against the CLI [catalog scope](#harnessdeck-cloud) (default public org + connected catalogs + authenticated private layers).
 
 **Wire compatibility:** Cloud APIs and the CLI still accept `org/library[@version]` today. Treat `library` as the published **layer name** inside the org's default or named catalog until selectors migrate to `org/catalog/name`.
@@ -273,8 +273,14 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `layer apply` | Applies layer selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
 | `layer search` | Searches remote catalogs through the configured cloud account and connected org scopes. |
 | `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
-| `layer publish` | Publishes a local layer to a Cloud org **catalog** (requires organization, catalog name, and publish scope). |
-| `layer catalog list` | Shows default catalog, connected orgs, connected layers, and effective cloud base URL. |
+| `layer publish` | Publishes a local layer to effective publish targets (all registered catalogs, or per-layer allow list). One-off `org/catalog` override supported. |
+| `layer publish plan` | Dry-run publish: effective targets and planned versions per catalog. |
+| `layer catalog` | Interactive wizard for per-layer publish bindings. |
+| `layer catalog bindings` | Show or set per-layer publish allow list (`--add` replaces full list, `--remove`, `--clear`). |
+| `layer catalog register` | Register an `org/catalog` publish destination in `config.jsonc`. |
+| `layer catalog unregister` | Remove a registered publish destination. |
+| `layer catalog registered` | List registered publish catalogs. |
+| `layer catalog list` | Shows default catalog, connected orgs, connected layers, registered publish catalogs, and effective cloud base URL. |
 | `layer catalog connect org <slug>` | Opt in to public layers from another org in browse/search scope. |
 | `layer catalog disconnect org <slug>` | Remove a connected org from scope (cannot remove `harnessdeck-cloud`). |
 | `layer catalog connect layer <org>/<name>` | Opt in to one published layer without subscribing to the whole org. |
@@ -712,11 +718,23 @@ The CLI builds a **catalog scope** from:
 
 `layer search` and interactive `layer pull` query this union. Configuration persists under `catalog` in `~/.harnessdeck/config.jsonc`.
 
+### Publish registry and bindings
+
+Publish scope is separate from pull scope:
+
+| Source | Contents |
+| --- | --- |
+| Registered catalog | `layer catalog register org/catalog` — machine may publish to this destination |
+| Per-layer allow list | SQLite `layer_publish_targets`; empty = all registered catalogs |
+| Effective targets | Allow list when non-empty, else all registered; always intersected with registry |
+
+Configure bindings interactively with `layer catalog` or in scripts with `layer catalog bindings <layer> --add org/catalog` (replace semantics).
+
 ### Publish and install
 
 | Action | Requires | Result |
 | --- | --- | --- |
-| `layer publish` | Cloud org, target **catalog**, publish scope | New immutable version under `org/catalog/name` |
+| `layer publish` | Registered catalogs (or explicit one-off `org/catalog`) | New immutable version per target under `org/catalog/name` |
 | `layer pull` | Selector in catalog scope (or explicit `org/catalog/name@version`) | Local import of the published bundle |
 | Solo local work | Neither org nor catalog | Layers exist only in local SQLite until published |
 

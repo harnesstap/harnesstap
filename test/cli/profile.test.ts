@@ -195,6 +195,8 @@ describe("CLI profile", () => {
       const depResource = composition.ensureLayerResource("local-dep");
       addResourceToLayer(depProfile.id, depResource.id);
 
+      await runCli(["layer", "catalog", "register", "acme/default"]);
+
       const result = await runCli([
         "profile",
         "publish",
@@ -204,18 +206,20 @@ describe("CLI profile", () => {
       ]);
       const publishOutput = `${result.stdout}\n${result.stderr}`;
       expect(publishOutput).toContain("unpublished local layers");
-      expect(publishOutput).toContain("Published layer dep-profile");
+      expect(publishOutput).toContain("Published dep-profile to acme/dep-profile");
 
       const emptyResult = await runCli([
         "profile",
         "publish",
         "orphan-profile",
+        "--org",
+        "acme",
         "--account",
         "test",
       ]);
       const emptyPublishOutput = `${emptyResult.stdout}\n${emptyResult.stderr}`;
       expect(emptyPublishOutput).toContain("no layer references and no material resources");
-      expect(emptyPublishOutput).toContain("Published layer orphan-profile");
+      expect(emptyPublishOutput).toContain("Published orphan-profile to acme/orphan-profile");
 
       restorePublishFetch();
     } finally {

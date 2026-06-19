@@ -6,6 +6,7 @@ import {
   disconnectCatalogOrg,
   formatCatalogScopeLabel,
   loadCatalogSettings,
+  loadRegisteredCatalogs,
   resolveCatalogScope,
 } from "../config/catalog.js";
 import {
@@ -21,11 +22,13 @@ export async function handleLayerCatalogListCommand(opts: {
 }) {
   const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
   const settings = loadCatalogSettings();
+  const registered = loadRegisteredCatalogs();
   const payload = {
     defaultOrg: DEFAULT_CATALOG_ORG_SLUG,
     cloudBaseUrl: scope.cloudBaseUrl,
     connectedOrgs: settings.connectedOrgs,
     connectedLayers: settings.connectedLayers,
+    registered,
     scopeLabel: formatCatalogScopeLabel(scope),
   };
 
@@ -39,6 +42,9 @@ export async function handleLayerCatalogListCommand(opts: {
   console.log(`Connected orgs: ${payload.connectedOrgs.length > 0 ? payload.connectedOrgs.join(", ") : "—"}`);
   console.log(
     `Connected layers: ${payload.connectedLayers.length > 0 ? payload.connectedLayers.join(", ") : "—"}`,
+  );
+  console.log(
+    `Registered publish catalogs: ${registered.length > 0 ? registered.map((entry) => `${entry.org}/${entry.catalog}`).join(", ") : "—"}`,
   );
 }
 

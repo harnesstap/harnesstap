@@ -159,12 +159,18 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
 - `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
 - `layer pull [selector]` — download a remote layer bundle and import it
-- `layer catalog list` — show default catalog, connected orgs/libraries, and cloud base URL
+- `layer catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
+- `layer catalog` — interactive publish-binding wizard (layer picker → catalog checkboxes)
+- `layer catalog bindings [layer]` — show effective publish targets (non-TTY) or edit bindings (`--add`, `--remove`, `--clear`; `--add` replaces the full allow list)
+- `layer catalog register org/catalog` — register a publish destination
+- `layer catalog unregister org/catalog` — remove a publish destination from the registry
+- `layer catalog registered` — list registered publish catalogs
 - `layer catalog connect org <slug>` — opt into another org's public libraries
 - `layer catalog disconnect org <slug>`
 - `layer catalog connect layer <org>/<slug>` or `<org>/<catalog>/<slug>` — opt into a single public library
 - `layer catalog disconnect layer <org>/<slug>` or `<org>/<catalog>/<slug>`
-- `layer publish <layer>` — export bundle and upload to HarnessDeck Cloud
+- `layer publish <layer>` — export bundle and upload to all effective publish targets (registered catalogs, or per-layer allow list)
+- `layer publish plan <layer>` — dry-run: list effective targets and planned versions
 - `layer diff <left> <right>`
 - `layer doctor [name]` — validate a layer without writing to disk
 - `layer from-project [name] --project <path>`
@@ -209,10 +215,15 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer pull --base-url <url>`
 - `layer search --account <name>`
 - `layer search --base-url <url>`
-- `layer publish --catalog <slug>` — target catalog slug (default `default`)
+- `layer publish org/catalog` — one-off publish to a single catalog (does not change bindings)
+- `layer publish --org <slug> --catalog <slug>` — one-off override (same as positional `org/catalog`)
 - `layer publish --account <name>`
+- `layer catalog bindings --add org/catalog` — replace per-layer allow list (repeatable; auto-registers missing catalogs)
+- `layer catalog bindings --remove org/catalog` — remove one target from the allow list
+- `layer catalog bindings --clear` — revert layer to all registered catalogs
+- `layer catalog register --account <name>` — optional account for a registered catalog
 
-`layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
+`layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `layer catalog register` before `layer publish` when no bindings exist. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
 
 ## auth (`a`)
 

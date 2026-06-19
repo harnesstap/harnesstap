@@ -32,9 +32,8 @@ import {
   materializeFiles,
   writeFiles,
 } from "./services/applier.js";
-import { exportLayer, inspectLayerExportFile } from "./services/layer-export.js";
+import { inspectLayerExportFile } from "./services/layer-export.js";
 import { importFromFile } from "./services/layer-import.js";
-import { formatLayerExportToml } from "./services/transport/index.js";
 import {
   listResources,
   deleteResource,
@@ -123,6 +122,19 @@ import {
   handleLayerCatalogListCommand,
   renderLayerSearchResults,
 } from "./services/layer-catalog.js";
+import {
+  handleLayerCatalogBindingsCommand,
+  handleLayerCatalogRegisterCommand,
+  handleLayerCatalogRegisteredCommand,
+  handleLayerCatalogUnregisterCommand,
+  resolveOneOffPublishTarget,
+  resolvePublishTargetsForLayer,
+} from "./services/layer-catalog-bindings.js";
+import {
+  planLayerPublish,
+  publishLayerToCatalogs,
+  renderPublishResults,
+} from "./services/layer-publish.js";
 import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
 import {
   CANONICAL_CATALOG_BASELINE,
@@ -153,7 +165,6 @@ import { buildProjectStatusPayload } from "./services/project-status-payload.js"
 import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergeLayersForApply } from "./services/layer-apply-merge.js";
-import { updateLayerPublishedIdentity } from "./models/layer-model.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
 import {
   createEnvironmentCommand,
@@ -1744,18 +1755,6 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
   }
 }
 
-async function resolveCloudClientForLayerCommand(accountName?: string) {
-  const accountInfo = await getCloudAccount(accountName);
-  const { account } = accountInfo;
-  if (!account || !account.cloudBaseUrl) return undefined;
-  const token = account.accessToken ? {
-    access_token: account.accessToken,
-    refresh_token: account.refreshToken,
-    expires_at: typeof account.accessTokenExpiresAt === 'string' ? Number(account.accessTokenExpiresAt) : (account.accessTokenExpiresAt as number | undefined),
-  } : undefined;
-  return createCloudClient({ baseUrl: account.cloudBaseUrl, token });
-}
-
 async function handleLayerSearchCommand(
   query: string,
   opts: { account?: string; format?: string; baseUrl?: string; tag?: string },
@@ -1929,6 +1928,7 @@ async function handleProfilePullCommand(
 
 async function handleLayerPublishCommand(
   layerName: string,
+  catalogSelector: string | undefined,
   opts: { org?: string; catalog?: string; account?: string; format?: string },
 ) {
   const db = getDb();
@@ -1941,98 +1941,88 @@ async function handleLayerPublishCommand(
   }
 
   try {
-    const client = await resolveCloudClientForLayerCommand(opts.account);
-    if (!client) {
-      process.exitCode = 1;
-      ui.danger("No cloud account configured. Use `auth login` to create one or pass --account.");
-      return;
-    }
-
-    // Resolve org slug
-    let orgSlug = opts.org;
-    if (!orgSlug) {
-      const orgs = await client.listOrgs();
-      if (orgs.length === 0) {
-        process.exitCode = 1;
-        ui.danger("No organizations found. You must belong to at least one organization to publish layers.");
-        return;
-      } else if (orgs.length === 1) {
-        // Auto-select the only org
-        const [firstOrg] = orgs;
-        if (!firstOrg) {
-          ui.danger("No organizations found.");
-          return;
-        }
-        orgSlug = String(firstOrg.slug);
-        if (parseOutputFormat(opts.format) === "human") {
-          ui.info(`Auto-selected organization: ${orgSlug}`);
-        }
-      } else {
-        // Multiple orgs - prompt user
-        const canPrompt = shouldUseWizard({
-          interactive: true,
-          noInteractive: false,
-          format: parseOutputFormat(opts.format),
-          missingRequiredArgs: true,
-        });
-
-        if (!canPrompt) {
-          process.exitCode = 1;
-          ui.danger("Multiple organizations found. Use --org to specify which organization to publish under.");
-          return;
-        }
-
-        const choices = orgs.map((org) => ({
-          name: String(org.name ?? org.slug),
-          value: String(org.slug),
-        }));
-
-        orgSlug = await promptForChoice({
-          message: "Select organization to publish under",
-          choices,
-        });
-      }
-    }
-
-    if (!orgSlug) {
-      process.exitCode = 1;
-      ui.danger("Failed to determine organization. Use --org to specify.");
-      return;
-    }
-
-    // build layer export using exporter
-    const layerExport = exportLayer(layer.id);
-    const layerExportToml = formatLayerExportToml(layerExport);
-
-    const catalogSlug = opts.catalog ?? "default";
-    const resp = await client.publishLayerExport(
-      { layer_name: layer.name, org_slug: orgSlug, catalog_slug: catalogSlug },
-      layerExportToml,
-    );
-    updateLayerPublishedIdentity(layer.id, {
-      org_slug: orgSlug,
-      catalog_slug: catalogSlug,
-      version: typeof resp.version === "string" ? resp.version : undefined,
+    const oneOffTargets = resolveOneOffPublishTarget({
+      catalogSelector,
+      org: opts.org,
+      catalog: opts.catalog,
+      account: opts.account,
     });
-    if (parseOutputFormat(opts.format) === "json") {
-      printJson(resp);
-      return;
-    }
-    const publishedLabel = formatPublishedSelector({
-      org: orgSlug,
-      catalog: catalogSlug,
-      name: layer.name,
+    const targets = oneOffTargets.length > 0
+      ? oneOffTargets
+      : resolvePublishTargetsForLayer(layer.id);
+
+    const results = await publishLayerToCatalogs(layer, targets, {
+      account: opts.account,
     });
-    ui.success(`Published layer ${layer.name} to ${publishedLabel}`);
+
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson({
+        layer: layer.name,
+        results: results.map((result) => ({
+          org: result.target.org,
+          catalog: result.target.catalog,
+          account: result.target.account,
+          ok: result.ok,
+          version: result.version,
+          error: result.error,
+        })),
+      });
+    } else {
+      renderPublishResults(layer.name, results);
+    }
+
+    if (results.some((result) => !result.ok)) {
+      process.exitCode = 1;
+    }
   } catch (err) {
     process.exitCode = 1;
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    // Enhance error message for common cases
-    if (errorMsg.includes("409")) {
-      ui.danger(`Layer slug "${layer.name}" already exists in organization. Choose a different layer name or delete the existing published layer.`);
-    } else {
-      ui.danger(errorMsg);
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleLayerPublishPlanCommand(
+  layerName: string,
+  opts: { account?: string; format?: string },
+) {
+  const db = getDb();
+  initializeSchema(db);
+  const layer = getLayer(layerName);
+  if (!layer) {
+    process.exitCode = 1;
+    ui.danger(`Layer not found: ${layerName}`);
+    return;
+  }
+
+  try {
+    const targets = resolvePublishTargetsForLayer(layer.id);
+    const plans = await planLayerPublish(layer, targets, { account: opts.account });
+    const format = parseOutputFormat(opts.format);
+    if (format === "json") {
+      printJson({ layer: layer.name, plans });
+      return;
     }
+
+    for (const plan of plans) {
+      const label = formatPublishedSelector({
+        org: plan.target.org,
+        catalog: plan.target.catalog,
+        name: layer.name,
+      });
+      if (plan.ok) {
+        const accountLabel = plan.account ? ` (account: ${plan.account})` : "";
+        const versionLabel = plan.nextVersion ? ` → ${plan.nextVersion}` : "";
+        console.log(`${label}${accountLabel}${versionLabel}`);
+      } else {
+        ui.danger(`${label}: ${plan.error ?? "unavailable"}`);
+      }
+    }
+    if (plans.some((plan) => !plan.ok)) {
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    process.exitCode = 1;
+    ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -2089,7 +2079,7 @@ async function handleProfilePublishCommand(
     ui.warn(`Layer "${layer.name}" is not tagged as a profile.`);
   }
   warnProfilePublishValidation(layer);
-  await handleLayerPublishCommand(layerName, opts);
+  await handleLayerPublishCommand(layerName, undefined, opts);
 }
 
 function handleHarnessListCommand(
@@ -4353,7 +4343,7 @@ layerCmd
 
 const layerCatalogCmd = layerCmd
   .command("catalog")
-  .description("Manage connected remote catalog sources");
+  .description("Manage publish catalog bindings and connected pull sources");
 
 layerCatalogCmd
   .command("list")
@@ -4440,6 +4430,106 @@ layerCatalogCmd
     }
   });
 
+layerCatalogCmd
+  .command("register")
+  .argument("<selector>", "Publish catalog org/catalog or account@org/catalog")
+  .option("--account <name>", "Cloud account for this catalog")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Register a publish catalog on this machine")
+  .action(async (selector: string, opts: { account?: string; format?: string }) => {
+    try {
+      await handleLayerCatalogRegisterCommand(selector, {
+        account: opts.account,
+        format: parseOutputFormat(opts.format),
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+layerCatalogCmd
+  .command("unregister")
+  .argument("<selector>", "Publish catalog org/catalog")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Remove a publish catalog from this machine")
+  .action(async (selector: string, opts: { format?: string }) => {
+    try {
+      await handleLayerCatalogUnregisterCommand(selector, {
+        format: parseOutputFormat(opts.format),
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+layerCatalogCmd
+  .command("registered")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List registered publish catalogs")
+  .action(async (opts: { format?: string }) => {
+    try {
+      await handleLayerCatalogRegisteredCommand({
+        format: parseOutputFormat(opts.format),
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+layerCatalogCmd
+  .command("bindings [layer]")
+  .option(
+    "--add <selector>",
+    "Set publish catalogs to org/catalog (repeatable; replaces the allow list)",
+    (value: string, previous: string[] = []) => [...previous, value],
+    [],
+  )
+  .option(
+    "--remove <selector>",
+    "Remove org/catalog from the layer allow list (repeatable)",
+    (value: string, previous: string[] = []) => [...previous, value],
+    [],
+  )
+  .option("--clear", "Publish this layer to all registered catalogs")
+  .option("--account <name>", "Cloud account for auto-register")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Configure which registered catalogs a layer publishes to")
+  .action(async (layer: string | undefined, opts: {
+    add?: string[];
+    remove?: string[];
+    clear?: boolean;
+    account?: string;
+    format?: string;
+    interactive?: boolean;
+  }) => {
+    try {
+      await handleLayerCatalogBindingsCommand(layer, {
+        ...opts,
+        format: parseOutputFormat(opts.format),
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+layerCatalogCmd
+  .action(async () => {
+    try {
+      await handleLayerCatalogBindingsCommand(undefined, {
+        interactive: true,
+        format: "human",
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
+
 layerCmd
   .command("pull")
   .argument("[selector]", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
@@ -4456,15 +4546,33 @@ layerCmd
     await handleLayerInstallCommand(selector, opts);
   });
 
-layerCmd
+const layerPublishCmd = layerCmd
   .command("publish")
-  .argument("<layer>", "Local layer name to publish")
-  .option("--org <slug>", "Organization slug to publish under")
-  .option("--catalog <slug>", "Catalog slug to publish under (default: default)")
+  .description("Publish a local layer to registered cloud catalogs");
+
+layerPublishCmd
+  .command("plan")
+  .argument("<layer>", "Local layer name")
   .option("--account <name>", "Cloud account to use")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Publish a local layer to the cloud catalog")
-  .action(handleLayerPublishCommand);
+  .description("Dry-run publish targets for a local layer")
+  .action(async (layer: string, opts: { account?: string; format?: string }) => {
+    await handleLayerPublishPlanCommand(layer, opts);
+  });
+
+layerPublishCmd
+  .argument("<layer>", "Local layer name to publish")
+  .argument("[target]", "One-off org/catalog target")
+  .option("--org <slug>", "One-off organization slug")
+  .option("--catalog <slug>", "One-off catalog slug (default: default)")
+  .option("--account <name>", "Cloud account to use")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action((layer: string, target: string | undefined, opts: {
+    org?: string;
+    catalog?: string;
+    account?: string;
+    format?: string;
+  }) => handleLayerPublishCommand(layer, target, opts));
 
 layerCmd
   .command("diff")

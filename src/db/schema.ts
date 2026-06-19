@@ -1,9 +1,9 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 const MIGRATIONS: Record<number, string> = {
-  21: `
+  22: `
     CREATE TABLE IF NOT EXISTS resources (
       id          TEXT PRIMARY KEY,
       type        TEXT NOT NULL CHECK(type IN (
@@ -61,6 +61,14 @@ const MIGRATIONS: Record<number, string> = {
       resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
       "order" INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (layer_id, resource_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS layer_publish_targets (
+      layer_id TEXT NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
+      org_slug TEXT NOT NULL,
+      catalog_slug TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (layer_id, org_slug, catalog_slug)
     );
 
     CREATE TABLE IF NOT EXISTS projects (
@@ -182,7 +190,7 @@ const MIGRATIONS: Record<number, string> = {
       version INTEGER NOT NULL
     );
 
-    INSERT INTO schema_version (version) VALUES (21);
+    INSERT INTO schema_version (version) VALUES (22);
   `,
 };
 

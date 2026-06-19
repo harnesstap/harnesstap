@@ -94,8 +94,17 @@ describe("CLI cloud layer workflows", () => {
 
       const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
+      await runCli(["layer", "catalog", "register", "acme/default"]);
+
       const publish = await runCli(["layer", "publish", "pubtest", "--account", "test", "--format", "json"]);
-      expect(JSON.parse(publish.stdout)).toEqual(expect.objectContaining({ id: expect.any(String), version: "1.0.0", url: expect.any(String) }));
+      expect(JSON.parse(publish.stdout)).toEqual(
+        expect.objectContaining({
+          layer: "pubtest",
+          results: [
+            expect.objectContaining({ ok: true, version: "1.0.0" }),
+          ],
+        }),
+      );
 
       restorePublishFetch();
 
@@ -564,7 +573,7 @@ describe("CLI cloud layer workflows", () => {
 
   // ── Task 4: Publish org resolution ─────────────────────────────────────────
 
-  it("layer publish with no --org auto-selects when user has exactly one org", async () => {
+  it("layer publish uses registered catalogs when no one-off target is provided", async () => {
     const context = await createTestContext("cli-layer-publish-one-org");
     try {
       await runCli(["init"]);
@@ -595,11 +604,13 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
+      await runCli(["layer", "catalog", "register", "acme/default"]);
+
       const result = await runCli(["layer", "publish", "my-layer", "--account", "test", "--format", "json"]);
 
       expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
       const payload = JSON.parse(result.stdout);
-      expect(payload).toEqual(expect.objectContaining({ id: expect.any(String), version: "1.0.0" }));
+      expect(payload.results[0]).toEqual(expect.objectContaining({ ok: true, version: "1.0.0" }));
 
       restorePublishFetch();
     } finally {
@@ -607,8 +618,8 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer publish with no --org prompts when user has multiple orgs", async () => {
-    const context = await createTestContext("cli-layer-publish-multi-org");
+  it("layer publish fans out to multiple registered catalogs", async () => {
+    const context = await createTestContext("cli-layer-publish-multi-catalog");
     try {
       await runCli(["init"]);
 
@@ -644,12 +655,11 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
+      await runCli(["layer", "catalog", "register", "acme/default"]);
+      await runCli(["layer", "catalog", "register", "widgets/default"]);
+
       const result = await runCli(
         ["layer", "publish", "multi-org-layer", "--account", "test"],
-        {
-          isTTY: true,
-          promptResponses: [{ value: "widgets" }]
-        }
       );
 
       const stderr = result.stderr
@@ -658,7 +668,7 @@ describe("CLI cloud layer workflows", () => {
       if (stderr) {
         throw new Error(`Command failed with stderr: ${stderr}`);
       }
-      expect(result.stdout).toContain("Published layer");
+      expect(result.stdout).toContain("Published multi-org-layer");
 
       restorePublishFetch();
     } finally {
@@ -666,7 +676,7 @@ describe("CLI cloud layer workflows", () => {
     }
   });
 
-  it("layer publish with no --org errors when user has zero orgs", async () => {
+  it("layer publish errors when no publish catalogs are registered", async () => {
     const context = await createTestContext("cli-layer-publish-zero-org");
     try {
       await runCli(["init"]);
@@ -681,11 +691,6 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const restorePublishFetch = createCloudPublishFetchMock({
-        baseUrl: "https://mock",
-        orgs: [],
-      });
-
       const layerModel = await import("../../src/models/layer-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
@@ -696,16 +701,14 @@ describe("CLI cloud layer workflows", () => {
           name: "r",
           description: "",
           content: "#test",
-        })
+        }),
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
       const result = await runCli(["layer", "publish", "zero-org-layer", "--account", "test"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("No organizations found");
-
-      restorePublishFetch();
+      expect(result.stderr).toContain("No publish catalogs registered");
     } finally {
       await context.cleanup();
     }
@@ -746,7 +749,15 @@ describe("CLI cloud layer workflows", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const result = await runCli(["layer", "publish", "existing-slug", "--account", "test"]);
+      const result = await runCli([
+        "layer",
+        "publish",
+        "existing-slug",
+        "--org",
+        "acme",
+        "--account",
+        "test",
+      ]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("already exists");

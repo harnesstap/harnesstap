@@ -67,6 +67,8 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
   return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
 }
 
+export { nextPublishVersion };
+
 import { parseLayerExportToml } from "./transport/index.js";
 
 function exportLayerExportToCloudPayload(layerExportToml: string): { layers: Array<Record<string, unknown>> } {
@@ -149,6 +151,7 @@ export async function pollDeviceToken(
 export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
+  planLayerPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
   publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string): Promise<Record<string, unknown>>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
@@ -271,6 +274,28 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       if (!response.ok) throw new Error(`listOrgs failed: ${response.status}`);
       const data = await response.json() as { orgs?: Record<string, unknown>[] };
       return data.orgs ?? [];
+    },
+
+    async planLayerPublishVersion(metadata: Record<string, unknown>) {
+      const orgSlug = String(metadata.org_slug ?? "");
+      const catalogSlug = String(metadata.catalog_slug ?? "default");
+      const layerName = String(metadata.layer_name ?? "");
+      if (!orgSlug || !layerName) {
+        throw new Error("publish metadata must include org_slug and layer_name.");
+      }
+
+      const orgs = await this.listOrgs();
+      const org = orgs.find((entry) => String(entry.slug) === orgSlug);
+      if (!org || typeof org.id !== "string") {
+        throw new Error(`Organization not found: ${orgSlug}`);
+      }
+
+      const slug = toSlug(layerName);
+      const publishedLayer = (await listPublishedLayers(org.id)).find(
+        (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
+      );
+
+      return { nextVersion: nextPublishVersion(publishedLayer?.latestVersion) };
     },
 
     async publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string) {
