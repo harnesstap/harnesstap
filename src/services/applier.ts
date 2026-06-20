@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import {
   findImportedSnapshotOwnersByFile,
@@ -131,11 +139,54 @@ function assertMaterializedPathIsSafe(rootPath: string, relativePath: string): s
   return fullPath;
 }
 
-function removeMaterializedFiles(rootPath: string, filePaths: string[]): void {
+function removeEmptyParentDirectory(filePath: string): void {
+  const parent = dirname(filePath);
+  try {
+    if (existsSync(parent) && readdirSync(parent).length === 0) {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  } catch {
+    // Best-effort cleanup for empty skill directories.
+  }
+}
+
+export function removeGlobalMaterializedFiles(
+  rootPath: string,
+  filePaths: string[],
+): void {
   for (const filePath of new Set(filePaths)) {
     const fullPath = assertMaterializedPathIsSafe(rootPath, filePath);
+    if (filePath.endsWith("/SKILL.md")) {
+      const skillDir = dirname(fullPath);
+      if (existsSync(skillDir)) {
+        rmSync(skillDir, { recursive: true, force: true });
+        removeEmptyParentDirectory(skillDir);
+        continue;
+      }
+    }
     rmSync(fullPath, { force: true });
+    removeEmptyParentDirectory(fullPath);
   }
+}
+
+function removeMaterializedFiles(rootPath: string, filePaths: string[]): void {
+  removeGlobalMaterializedFiles(rootPath, filePaths);
+}
+
+function readExistingFileContent(fullPath: string): string | null {
+  if (!existsSync(fullPath)) {
+    return null;
+  }
+  try {
+    return readFileSync(fullPath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+function fileContentMatchesExisting(fullPath: string, expectedContent: string): boolean {
+  const existingContent = readExistingFileContent(fullPath);
+  return existingContent !== null && existingContent === expectedContent;
 }
 
 function isGenerateFilesOptions(
@@ -232,6 +283,7 @@ async function planConflicts(
       }];
     }
     if (!existsSync(fullPath)) return [];
+    if (fileContentMatchesExisting(fullPath, file.content)) return [];
     const owners = findImportedSnapshotOwnersByFile(file.path);
     return [{
       path: file.path,
@@ -335,6 +387,10 @@ export async function materializeFiles(
       continue;
     }
     const fullPath = assertMaterializedPathIsSafe(rootPath, file.path);
+    if (fileContentMatchesExisting(fullPath, file.content)) {
+      writtenFiles.push(file.path);
+      continue;
+    }
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, file.content, "utf-8");
     writtenFiles.push(file.path);

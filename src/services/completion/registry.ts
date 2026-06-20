@@ -42,6 +42,8 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer search:0": [completeCatalogLayers],
   "layer publish:0": [completeLocalLayers],
   "profile use:0": [completeProfileLayers],
+  "profile show:0": [completeProfileLayers],
+  "profile delete:0": [completeProfileLayers],
   "profile pull:0": [completeCatalogProfiles],
   "profile search:0": [completeCatalogProfiles],
   ":0": [completeProfileLayers],

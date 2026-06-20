@@ -128,6 +128,30 @@ export async function resolveCatalogAccess(input?: {
   };
 }
 
+export async function listCatalogLayersPage(
+  options: CatalogListOptions = {},
+  input?: { account?: string; baseUrl?: string },
+): Promise<CatalogListResult> {
+  const access = await resolveCatalogAccess(input);
+  const scopedOptions = buildScopeParams(access.scope, options);
+
+  if (input?.account) {
+    const accountInfo = await getCloudAccount(input.account);
+    const accessToken = accountInfo.account?.accessToken;
+    if (accessToken) {
+      const client = await createAuthenticatedCatalogClient(access.scope.cloudBaseUrl, accessToken);
+      return client.listLayers(scopedOptions);
+    }
+    return access.publicClient.listLayers(scopedOptions);
+  }
+
+  if (access.authenticatedClient) {
+    return access.authenticatedClient.listLayers(scopedOptions);
+  }
+
+  return access.publicClient.listLayers(scopedOptions);
+}
+
 export async function listLayersInScope(
   options: CatalogListOptions = {},
   input?: { account?: string; baseUrl?: string },

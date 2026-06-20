@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { CommanderError } from "commander";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
+import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { importBuiltinFixtures } from "../helpers/builtin-fixtures.ts";
 
@@ -429,6 +430,45 @@ describe("CLI layer", () => {
       expect(result.stdout).toContain("NAME");
       expect(result.stdout).toContain("DESCRIPTION");
       expect(result.stdout).toContain("run `hd layer show <name>` for details");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer list --local-only has no Remote catalog section", async () => {
+    const context = await createTestContext("cli-layer-list-local-only");
+    try {
+      await runCli(["init"]);
+      await runCli(["layer", "create", "team-stack"]);
+
+      const result = await runCli(["layer", "list", "--local-only", "--no-interactive"]);
+
+      expect(result.stdout).toContain("team-stack");
+      expect(result.stdout).not.toContain("Remote catalog");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer list with mock catalog includes Remote catalog section", async () => {
+    const context = await createTestContext("cli-layer-list-remote-section");
+    try {
+      await runCli(["init"]);
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+      });
+
+      const result = await runCli([
+        "layer",
+        "list",
+        "--base-url",
+        "https://mock",
+        "--no-interactive",
+      ]);
+
+      expect(result.stdout).toContain("Remote catalog");
+
+      restoreFetch();
     } finally {
       await context.cleanup();
     }

@@ -4,6 +4,7 @@ import {
   applyToGlobal,
   generateFiles,
   materializeFiles,
+  removeGlobalMaterializedFiles,
   type ConflictPolicy,
   type ConflictResolution,
   type MaterializationConflict,
@@ -17,6 +18,9 @@ import {
 import type { Layer } from "../types.js";
 import {
   createGlobalApplySnapshot,
+  getLatestGlobalApplySnapshotForProfile,
+  listGlobalApplySnapshotInstalls,
+  listGlobalApplySnapshots,
   recordGlobalApplySnapshotInstall,
 } from "../models/global-apply-snapshot.js";
 import { getHarnessPreference } from "../models/harness.js";
@@ -24,6 +28,10 @@ import { getEnvironment } from "../models/environment.js";
 import { getHarnessdeckDir } from "../db/connection.js";
 import { isProfileLayer } from "../constants/profile.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
+import {
+  collectOtherProfilesSnapshotTrackedFiles,
+  planStaleGlobalProfileFiles,
+} from "./global-profile-cleanup.js";
 import { preparePluginPinsForApply } from "./plugin-pin-apply.js";
 import {
   assertSupportedHarnessTargets,
@@ -32,6 +40,7 @@ import {
 } from "./harness-targets.js";
 import { detectPlatforms } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { getActiveProfileName } from "./active-profile.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
 import { listAttachedLayerRefs } from "./layer-composition.js";
 import { parseLayerSelector, resolveRemoteLayerSelector } from "./layer-selector.js";
@@ -62,6 +71,100 @@ export interface ApplyProfileLayerResult {
   conflicts: string[];
   default_environment_name?: string;
   pulled_layers?: Array<{ layer_name: string; source: string }>;
+  expected_files?: Array<{ path: string; content: string }>;
+  removed_files?: string[];
+}
+
+function collectProfileSnapshotTrackedFiles(profileName: string): string[] {
+  const snapshot = getLatestGlobalApplySnapshotForProfile(profileName);
+  if (!snapshot) {
+    return [];
+  }
+  return [
+    ...new Set(
+      listGlobalApplySnapshotInstalls(snapshot.id).flatMap(
+        (install) => install.files,
+      ),
+    ),
+  ];
+}
+
+function collectPreviousGlobalApplyTrackedFiles(): string[] {
+  const [previousSnapshot] = listGlobalApplySnapshots();
+  if (!previousSnapshot) {
+    return [];
+  }
+  return collectProfileSnapshotTrackedFiles(previousSnapshot.profile_name);
+}
+
+async function collectOutgoingProfileFilesForCleanup(
+  outgoingProfileName: string,
+  incomingProfileName: string,
+  options: Pick<ApplyProfileLayerOptions, "harness" | "pull">,
+): Promise<string[]> {
+  if (outgoingProfileName === incomingProfileName) {
+    return collectProfileSnapshotTrackedFiles(outgoingProfileName);
+  }
+
+  const fromSnapshot = collectProfileSnapshotTrackedFiles(outgoingProfileName);
+  const outgoingApply = await applyProfileLayer(outgoingProfileName, {
+    dryRun: true,
+    harness: options.harness,
+    conflictPolicy: "replace",
+    pull: options.pull ?? false,
+  });
+
+  return [...new Set([...fromSnapshot, ...outgoingApply.files])];
+}
+
+async function resolvePreviousTrackedFilesForApply(
+  incomingProfileName: string,
+  options: Pick<ApplyProfileLayerOptions, "harness" | "pull">,
+): Promise<string[]> {
+  const outgoingProfile = getActiveProfileName();
+  const tracked = new Set<string>();
+
+  if (outgoingProfile && outgoingProfile !== incomingProfileName) {
+    for (const filePath of await collectOutgoingProfileFilesForCleanup(
+      outgoingProfile,
+      incomingProfileName,
+      options,
+    )) {
+      tracked.add(filePath);
+    }
+  } else if (outgoingProfile) {
+    for (const filePath of collectProfileSnapshotTrackedFiles(outgoingProfile)) {
+      tracked.add(filePath);
+    }
+  }
+
+  for (const filePath of collectOtherProfilesSnapshotTrackedFiles(incomingProfileName)) {
+    tracked.add(filePath);
+  }
+
+  if (tracked.size > 0) {
+    return [...tracked];
+  }
+
+  return collectPreviousGlobalApplyTrackedFiles();
+}
+
+function removeStaleGlobalProfileFiles(
+  homeRoot: string,
+  desiredFiles: readonly string[],
+  previousTrackedFiles: readonly string[],
+  harnesses: string[],
+): string[] {
+  const staleFiles = planStaleGlobalProfileFiles(
+    homeRoot,
+    desiredFiles,
+    previousTrackedFiles,
+    harnesses,
+  );
+  if (staleFiles.length > 0) {
+    removeGlobalMaterializedFiles(homeRoot, staleFiles);
+  }
+  return staleFiles;
 }
 
 function normalizeVersionConstraint(versionConstraint: string): string | undefined {
@@ -172,7 +275,7 @@ async function ensureProfileDependenciesAvailable(
   return pulledLayers;
 }
 
-function collectProfileLayerIds(profileLayer: Layer): string[] {
+export function collectProfileLayerIds(profileLayer: Layer): string[] {
   const orderedIds: string[] = [];
   const queue: Layer[] = [profileLayer];
   const visited = new Set<string>();
@@ -274,6 +377,10 @@ export async function applyProfileLayer(
   const applyResources = pluginPrepare.applyResources;
 
   if (options.dryRun) {
+    const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
+      profileLayer.name,
+      options,
+    );
     const generated = await generateFiles(applyResources, harnesses, homeRoot, {
       target: "global",
       claudeConfig: merged.claude,
@@ -285,6 +392,13 @@ export async function applyProfileLayer(
       conflictResolver: options.conflictResolver,
       dryRun: true,
     });
+    const desiredFiles = files.map((file) => file.path);
+    const removedFiles = planStaleGlobalProfileFiles(
+      homeRoot,
+      desiredFiles,
+      previousTrackedFiles,
+      harnesses,
+    );
     return {
       profile_name: profileLayer.name,
       profile_layer_id: profileLayer.id,
@@ -296,11 +410,17 @@ export async function applyProfileLayer(
       written_files: materialized.writtenFiles,
       skipped_files: materialized.skippedFiles,
       conflicts: materialized.conflicts.map((conflict) => conflict.path),
+      expected_files: files.map((file) => ({ path: file.path, content: file.content })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
       ...(pulledLayers.length > 0 ? { pulled_layers: pulledLayers } : {}),
+      ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
     };
   }
 
+  const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
+    profileLayer.name,
+    options,
+  );
   const applied = await applyToGlobal(applyResources, harnesses, homeRoot, {
     conflictPolicy: options.conflictPolicy,
     conflictResolver: options.conflictResolver,
@@ -308,16 +428,21 @@ export async function applyProfileLayer(
     claudeConfig: merged.claude,
   });
   let snapshotId: string | undefined;
+  let removedFiles: string[] = [];
   if (!applied.cancelled) {
+    removedFiles = removeStaleGlobalProfileFiles(
+      homeRoot,
+      applied.results.flatMap((result) => result.files.map((file) => file.path)),
+      previousTrackedFiles,
+      harnesses,
+    );
     const snapshot = createGlobalApplySnapshot({
       profile_name: profileLayer.name,
       layer_ids: configuredLayerIds,
     });
     snapshotId = snapshot.id;
     for (const result of applied.results) {
-      const installFiles = result.files
-        .map((file) => file.path)
-        .filter((filePath) => applied.writtenFiles.includes(filePath));
+      const installFiles = result.files.map((file) => file.path);
       if (installFiles.length === 0) continue;
       recordGlobalApplySnapshotInstall({
         snapshot_id: snapshot.id,
@@ -344,5 +469,6 @@ export async function applyProfileLayer(
     conflicts: applied.conflicts.map((conflict) => conflict.path),
     ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
     ...(pulledLayers.length > 0 ? { pulled_layers: pulledLayers } : {}),
+    ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
   };
 }

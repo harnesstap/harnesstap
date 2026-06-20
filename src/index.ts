@@ -109,11 +109,6 @@ import {
   createCloudClient,
 } from "./services/cloud-client.js";
 import {
-  listLayersInScope,
-} from "./services/catalog-client.js";
-import {
-  formatCatalogScopeLabel,
-  resolveCatalogScope,
   resolveCloudBaseUrl,
 } from "./config/catalog.js";
 import {
@@ -122,7 +117,6 @@ import {
   handleLayerCatalogDisconnectLayerCommand,
   handleLayerCatalogDisconnectOrgCommand,
   handleLayerCatalogListCommand,
-  renderLayerSearchResults,
 } from "./services/layer-catalog.js";
 import {
   handleLayerCatalogBindingsCommand,
@@ -137,21 +131,20 @@ import {
   publishLayerToCatalogs,
   renderPublishResults,
 } from "./services/layer-publish.js";
-import { runInteractiveCatalogBrowser } from "./services/wizards/interactive-catalog-browser.js";
-import { runInteractiveCatalogSearch } from "./services/wizards/interactive-catalog-search.js";
+import { resolveCatalogSearchProjectRoot } from "./services/layer-search-apply.js";
 import {
-  applyLayersGlobally,
-  catalogSearchSelectors,
-  promptCatalogSearchApplyScope,
-  resolveCatalogSearchProjectRoot,
-} from "./services/layer-search-apply.js";
+  configureLayerListInteractiveDeps,
+  handleLayerListCommand,
+  warnLayerPullBrowseDeprecated,
+  warnLayerSearchDeprecated,
+  warnProfileSearchDeprecated,
+} from "./services/layer-list.js";
 import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "./constants/onboarding.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "./constants/profile.js";
 import { buildHelpCommandPayload, printHelpCommand } from "./services/concepts-guide.js";
-import { catalogAliasHint } from "./services/catalog-aliases.js";
 import { maybePromptInitCatalogInstall } from "./services/init-catalog-prompt.js";
 import {
   loadScenarioGuide,
@@ -235,13 +228,16 @@ import { runMigrateExportWizard } from "./services/wizards/migrate-export.js";
 import { runMigrateImportWizard } from "./services/wizards/migrate-import.js";
 import {
   createProfileCommand,
-  getActiveProfilePayload,
+  deleteProfileCommand,
   listProfileLayersCommand,
   showProfileCommand,
   tagProfileCommand,
-  untagProfileCommand,
   useProfileCommand,
 } from "./services/profile-commands.js";
+import { detectGlobalProfileStatus } from "./services/global-profile-drift.js";
+import { maybePromptProfileEnable } from "./services/profile-enable-prompt.js";
+import { maybeSyncActiveProfileBeforeSwitch } from "./services/profile-switch-prompt.js";
+import { maybePromptProfileLayerDelete } from "./services/profile-delete-prompt.js";
 import { setActiveProfileName } from "./services/active-profile.js";
 import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
@@ -515,18 +511,6 @@ function shouldUseInteractiveResourceList(input: {
     noInteractive: input.noInteractive,
     format: parseOutputFormat(input.format),
     missingRequiredArgs: true,
-  });
-}
-
-function shouldUseInteractiveLayerSearch(input: {
-  noInteractive?: boolean;
-  format: "human" | "json";
-}): boolean {
-  return shouldUseWizard({
-    interactive: true,
-    noInteractive: input.noInteractive,
-    format: input.format,
-    missingRequiredArgs: false,
   });
 }
 
@@ -1640,6 +1624,31 @@ async function handleApplyCommand(
   }
 }
 
+configureLayerListInteractiveDeps({
+  applyToProject: async (selectors, applyOpts) => {
+    await handleApplyCommand(selectors, {
+      project: resolveCatalogSearchProjectRoot(),
+      account: applyOpts.account,
+      baseUrl: applyOpts.baseUrl,
+      format: applyOpts.format,
+      noInteractive: applyOpts.noInteractive,
+    });
+  },
+  onInstall: async (selector, installOpts) => {
+    await handleLayerInstallCommand(selector, {
+      as: installOpts.as,
+      org: installOpts.org,
+      catalog: installOpts.catalog,
+      version: installOpts.version,
+      account: installOpts.account,
+      baseUrl: installOpts.baseUrl,
+      format: installOpts.format,
+      interactive: installOpts.interactive,
+      noInteractive: installOpts.noInteractive,
+    });
+  },
+});
+
 function handleHistoryCommand(
   path: string,
   opts: { format?: string; showId?: boolean },
@@ -1781,105 +1790,20 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
   }
 }
 
-async function handleLayerSearchCommand(
-  query: string,
-  opts: {
-    account?: string;
-    format?: string;
-    baseUrl?: string;
-    tag?: string;
-    noInteractive?: boolean;
-  },
-) {
-  const format = parseOutputFormat(opts.format);
-  const catalogOptions = { account: opts.account, baseUrl: opts.baseUrl };
-
-  try {
-    if (shouldUseInteractiveLayerSearch({ format, noInteractive: opts.noInteractive })) {
-      const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
-      const result = await runInteractiveCatalogSearch({
-        message: "Search catalog layers to apply",
-        scopeLabel: formatCatalogScopeLabel(scope),
-        initialQuery: query,
-        listLayers: ({ q, limit }) =>
-          listLayersInScope(
-            { q, tag: opts.tag, limit, sort: "updated" },
-            catalogOptions,
-          ),
-      });
-
-      if (result.selections.length === 0) {
-        return;
-      }
-
-      const selectors = catalogSearchSelectors(result.selections);
-      const applyScope = await promptCatalogSearchApplyScope();
-      const onFetched = (sourceLabel: string) => {
-        ui.info(`Fetched ${sourceLabel} from catalog`);
-      };
-
-      if (applyScope === "project") {
-        await handleApplyCommand(selectors, {
-          project: resolveCatalogSearchProjectRoot(),
-          account: opts.account,
-          baseUrl: opts.baseUrl,
-          format: opts.format,
-          noInteractive: opts.noInteractive,
-        });
-        return;
-      }
-
-      const conflictPolicy = resolveApplyConflictPolicy({
-        noInteractive: opts.noInteractive,
-      });
-      const conflictResolver =
-        conflictPolicy === "prompt" ? promptMaterializationConflict : undefined;
-      const applied = await applyLayersGlobally(selectors, {
-        account: opts.account,
-        baseUrl: opts.baseUrl,
-        conflictPolicy,
-        conflictResolver,
-        onFetched,
-      });
-      if (applied.cancelled) {
-        process.exitCode = 1;
-        ui.danger("Apply cancelled due to file conflicts");
-      }
-      return;
-    }
-
-    const results = await listLayersInScope(
-      { q: query, tag: opts.tag, limit: 25, sort: "updated" },
-      catalogOptions,
-    );
-    if (format === "json") {
-      printJson(results);
-      return;
-    }
-
-    renderLayerSearchResults(results);
-    if (results.length === 0) {
-      const aliasHint = catalogAliasHint(query);
-      if (aliasHint) {
-        ui.hint(aliasHint);
-      }
-    }
-  } catch (err) {
-    if (isPromptCancellationError(err)) {
-      process.exitCode = 1;
-      return;
-    }
-    ui.danger(err instanceof Error ? err.message : String(err));
-  }
-}
-
 async function handleProfileSearchCommand(
   query: string,
-  opts: { account?: string; format?: string; baseUrl?: string },
+  opts: { account?: string; format?: string; baseUrl?: string; noInteractive?: boolean },
 ) {
-  await handleLayerSearchCommand(query, {
-    ...opts,
+  warnProfileSearchDeprecated();
+  await handleLayerListCommand({
+    search: query,
+    remoteOnly: true,
     tag: PROFILE_LAYER_TAG,
+    profileMode: true,
+    format: parseOutputFormat(opts.format),
+    account: opts.account,
+    baseUrl: opts.baseUrl,
+    noInteractive: opts.noInteractive,
   });
 }
 
@@ -1899,7 +1823,6 @@ async function handleLayerInstallCommand(
 ): Promise<{ layerName: string; layerId: string } | undefined> {
   const db = getDb();
   initializeSchema(db);
-  const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
 
   if (!selector) {
     const canPrompt = shouldUseWizard({
@@ -1915,28 +1838,35 @@ async function handleLayerInstallCommand(
       return undefined;
     }
 
+    warnLayerPullBrowseDeprecated();
     try {
-      const selected = await runInteractiveCatalogBrowser({
-        message: "Select a layer to install",
-        scopeLabel: formatCatalogScopeLabel(scope),
-        listLayers: ({ q, limit }) =>
-          listLayersInScope(
-            { q, limit, sort: "updated" },
-            { account: opts.account, baseUrl: opts.baseUrl },
-          ),
+      await handleLayerListCommand({
+        installOnSelect: true,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        format: parseOutputFormat(opts.format),
+        noInteractive: opts.noInteractive,
+        interactive: opts.interactive,
+        installContext: {
+          as: opts.as,
+          org: opts.org,
+          catalog: opts.catalog,
+          version: opts.version,
+          account: opts.account,
+          baseUrl: opts.baseUrl,
+          format: opts.format,
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+        },
       });
-      selector = selected.selector;
-      if (!opts.version && selected.version) {
-        opts = { ...opts, version: selected.version };
-      }
     } catch (err) {
       process.exitCode = 1;
       if (isPromptCancellationError(err)) {
         return undefined;
       }
       ui.danger(err instanceof Error ? err.message : String(err));
-      return undefined;
     }
+    return undefined;
   }
 
   let parsed: ReturnType<typeof resolveRemoteLayerSelector>;
@@ -2204,6 +2134,7 @@ function handleHarnessListCommand(
 function handleLayerShowCommand(
   name: string,
   opts: { format?: string; showId?: boolean },
+  profileExtras?: { active: boolean },
 ): void {
   const db = getDb();
   initializeSchema(db);
@@ -2265,6 +2196,7 @@ function handleLayerShowCommand(
             },
           }
         : {}),
+      ...(profileExtras ? { active: profileExtras.active } : {}),
     });
     return;
   }
@@ -2274,6 +2206,9 @@ function handleLayerShowCommand(
     rows: [
       ["Description", layer.description || "—"],
       ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+      ...(profileExtras
+        ? [["Active", profileExtras.active ? "yes" : "no"]] as [string, string][]
+        : []),
       ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
       ["Plugin pins", pluginPinRows.length === 0 ? "(none pinned)" : `${pluginPinRows.length}`],
       ...(configuredLayer
@@ -3088,6 +3023,7 @@ function printQuickStartGuide(): void {
   console.log("");
   ui.subheader("NEXT STEPS");
   console.log("");
+  console.log(`  ${formatCommand("profile use default")}`);
   console.log(
     `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
   );
@@ -4424,6 +4360,210 @@ async function handleLayerCreateCommand(
   ]);
 }
 
+async function handleProfileCreateCommand(
+  name: string,
+  opts: {
+    description?: string;
+    version?: string;
+    from?: string;
+    skill?: string;
+    all?: boolean;
+    excludeCategory?: string[];
+    onConflict?: string;
+    use?: boolean;
+    dryRun?: boolean;
+    harness?: string;
+    format?: string;
+    interactive?: boolean;
+    yes?: boolean;
+    onConflictUse?: string;
+    account?: string;
+    baseUrl?: string;
+    pull?: boolean;
+  },
+): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  const db = getDb();
+  initializeSchema(db);
+  const version = opts.version ?? "1.0.0";
+
+  if (opts.from) {
+    const harnessdeckDir = getHarnessdeckDir();
+    const homeRoot = resolveHomeRoot();
+    const skillNames = parseCommaSeparatedList(opts.skill);
+    const excludeCategories = [
+      ...(opts.excludeCategory ?? []),
+    ].flatMap((entry) => entry.split(",").map((part) => part.trim()).filter(Boolean));
+    const onConflictFlag = parseLayerSourceConflictPolicy(opts.onConflict);
+    const harnesses = parseCommaSeparatedList(opts.harness);
+    if (harnesses) {
+      assertSupportedHarnessTargets(harnesses);
+    }
+
+    const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnessdeckDir);
+    const shouldPrompt = shouldUseWizard({
+      noInteractive: opts.yes,
+      interactive: opts.interactive,
+      format,
+      missingRequiredArgs: !opts.all && (!skillNames || skillNames.length === 0),
+    });
+
+    const wizard = await runLayerCreateFromSourceWizard({
+      layerName: name,
+      layerVersion: version,
+      discovered: resolvedPackage.discovered,
+      skillNames,
+      all: opts.all,
+      excludeCategories: excludeCategories.length > 0 ? excludeCategories : undefined,
+      onConflict: onConflictFlag,
+      shouldPrompt,
+    });
+
+    if (wizard.cancelled) {
+      ui.info("Operation cancelled.");
+      return;
+    }
+
+    const result = await createLayerFromSource({
+      name,
+      source: opts.from,
+      version,
+      description: opts.description,
+      tags: [PROFILE_LAYER_TAG],
+      skillNames: wizard.skillNames,
+      all: wizard.all,
+      excludeCategories: excludeCategories.length > 0 ? excludeCategories : undefined,
+      onConflict: onConflictFlag ?? wizard.onConflict,
+      dryRun: opts.dryRun,
+      homeRoot,
+      harnessdeckDir,
+    });
+
+    if (!isProfileLayer(result.layer)) {
+      tagProfileCommand(result.layer.name);
+    }
+
+    if (opts.dryRun && !opts.use) {
+      if (format === "json") {
+        printJson({
+          layer: result.layer,
+          created: true,
+          promoted: true,
+          namespace: result.namespace,
+          attached_skills: result.attachedSkills,
+        });
+        return;
+      }
+      ui.success(
+        `Dry run ${ui.icons.hint} would create profile ${ui.theme.accent(result.layer.name)} with ${formatCount(result.attachedSkills.length, "skill")} from ${result.namespace}`,
+      );
+      return;
+    }
+
+    if (format !== "json") {
+      ui.success(
+        `Created profile ${ui.theme.accent(result.layer.name)} ${ui.icons.bullet} ${formatCount(result.attachedSkills.length, "skill")} attached from ${result.namespace}`,
+      );
+    } else if (!opts.use) {
+      printJson({
+        layer: result.layer,
+        created: true,
+        promoted: true,
+        namespace: result.namespace,
+        attached_skills: result.attachedSkills,
+      });
+      return;
+    }
+  } else {
+    const result = createProfileCommand({
+      name,
+      description: opts.description,
+      version,
+    });
+
+    if (format === "json" && !opts.use) {
+      printJson(result);
+      return;
+    }
+
+    if (result.created) {
+      ui.success(`Created profile ${ui.theme.accent(result.layer.name)}`);
+    } else if (result.promoted) {
+      ui.success(`Tagged layer ${ui.theme.accent(result.layer.name)} as profile`);
+    } else {
+      ui.info(`Profile ${ui.theme.accent(result.layer.name)} already exists`);
+    }
+  }
+
+  if (opts.use) {
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: opts.onConflictUse,
+    });
+    try {
+      if (!opts.dryRun) {
+        await maybeSyncActiveProfileBeforeSwitch({
+          targetProfileName: name,
+          harness: opts.harness,
+          yes: opts.yes,
+          format,
+        });
+      }
+      const applied = await useProfileCommand(name, {
+        dryRun: opts.dryRun,
+        harness: opts.harness,
+        pull: opts.pull,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        conflictPolicy,
+        ...(conflictPolicy === "prompt"
+          ? { conflictResolver: promptMaterializationConflict }
+          : {}),
+      });
+      if (format === "json") {
+        printJson({ apply: applied });
+        return;
+      }
+      if (applied.cancelled) {
+        process.exitCode = 1;
+        ui.warn("Profile apply cancelled.");
+        return;
+      }
+      const dryPrefix = applied.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      ui.success(
+        `${dryPrefix}Applied profile ${ui.theme.accent(applied.profile_name)} to ${applied.harnesses.join(", ") || "(none)"}`,
+      );
+      return;
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+      return;
+    }
+  }
+
+  if (format === "json") {
+    return;
+  }
+
+  try {
+    await maybePromptProfileEnable({
+      profileName: name,
+      format: opts.format,
+      yes: opts.yes,
+      harness: opts.harness,
+      pull: opts.pull,
+      account: opts.account,
+      baseUrl: opts.baseUrl,
+      onConflictUse: opts.onConflictUse,
+    });
+  } catch (err) {
+    if (isPromptCancellationError(err)) {
+      ui.info("Operation cancelled.");
+      return;
+    }
+    throw err;
+  }
+}
+
 // ── layer ──────────────────────────────────────────────────────────────
 
 const layerCmd = configureCommandGroup(
@@ -4505,26 +4645,49 @@ layerCmd
   .alias("ls")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in human-readable tables")
-  .action((opts: { format?: string; showId?: boolean }) => {
+  .option("-s, --search <query>", "Filter by name, description, or tags (local and remote)")
+  .option("--local-only", "List only local layers")
+  .option("--remote-only", "List only remote catalog layers")
+  .option("--tag <tag>", "Filter remote catalog layers by tag")
+  .option("--account <name>", "Cloud account to use for remote listing")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--no-interactive", "Disable interactive wizards")
+  .option("--interactive", "Enable interactive wizards")
+  .action(async (opts: {
+    format?: string;
+    showId?: boolean;
+    search?: string;
+    localOnly?: boolean;
+    remoteOnly?: boolean;
+    tag?: string;
+    account?: string;
+    baseUrl?: string;
+    noInteractive?: boolean;
+    interactive?: boolean;
+  }) => {
     const db = getDb();
     initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const layers = listLayers();
-    if (format === "json") {
-      printJson(layers);
-      return;
+    try {
+      await handleLayerListCommand({
+        search: opts.search,
+        localOnly: opts.localOnly,
+        remoteOnly: opts.remoteOnly,
+        tag: opts.tag,
+        showId: opts.showId,
+        format: parseOutputFormat(opts.format),
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        noInteractive: opts.noInteractive,
+        interactive: opts.interactive,
+      });
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        process.exitCode = 1;
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
     }
-    ui.table.print({
-      columns: [
-        ...makeIdColumn(Boolean(opts.showId)),
-        { key: "name", header: "NAME", width: 26 },
-        { key: "version", header: "VERSION", width: 12 },
-        { key: "description", header: "DESCRIPTION", width: 44, transform: (value) => value || "—" },
-      ],
-      rows: layers,
-      summary: `${layers.length} layers ${ui.icons.bullet} run \`${formatCommand("layer show <name>")}\` for details`,
-      empty: "No layers found.",
-    });
   });
 
 layerCmd
@@ -4684,8 +4847,38 @@ layerCmd
   .option("--account <name>", "Cloud account to use")
   .option("--base-url <url>", "HarnessDeck Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Search remote layer libraries")
-  .action(handleLayerSearchCommand);
+  .option("--no-interactive", "Disable interactive wizards")
+  .description("Search remote layer libraries (deprecated: use layer list --search)")
+  .action(async (
+    query: string,
+    opts: {
+      account?: string;
+      baseUrl?: string;
+      format?: string;
+      noInteractive?: boolean;
+    },
+  ) => {
+    const db = getDb();
+    initializeSchema(db);
+    warnLayerSearchDeprecated();
+    try {
+      await handleLayerListCommand({
+        search: query,
+        remoteOnly: true,
+        format: parseOutputFormat(opts.format),
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        noInteractive: opts.noInteractive,
+      });
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        process.exitCode = 1;
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
+    }
+  });
 
 const layerCatalogCmd = layerCmd
   .command("catalog")
@@ -4959,83 +5152,115 @@ const profileCmd = configureCommandGroup(
 
 profileCmd
   .command("list")
+  .alias("ls")
+  .option("-s, --search <query>", "Filter by name, description, or tags (local and remote)")
+  .option("--local-only", "List only local profile layers")
+  .option("--remote-only", "List only remote catalog profile layers")
+  .option("--account <name>", "Cloud account to use for remote listing")
+  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--no-interactive", "Disable interactive wizards")
+  .option("--interactive", "Enable interactive wizards")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string }) => {
+  .action(async (opts: {
+    search?: string;
+    localOnly?: boolean;
+    remoteOnly?: boolean;
+    account?: string;
+    baseUrl?: string;
+    noInteractive?: boolean;
+    interactive?: boolean;
+    format?: string;
+  }) => {
     const db = getDb();
     initializeSchema(db);
-    const profiles = listProfileLayersCommand();
-    const active = getActiveProfilePayload().active_profile;
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson({
-        profiles: profiles.map((profile) => ({
-          ...profile,
-          active: active === profile.name,
-        })),
+    try {
+      await handleLayerListCommand({
+        profileMode: true,
+        localLayersProvider: listProfileLayersCommand,
+        tag: PROFILE_LAYER_TAG,
+        search: opts.search,
+        localOnly: opts.localOnly,
+        remoteOnly: opts.remoteOnly,
+        format: parseOutputFormat(opts.format),
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        noInteractive: opts.noInteractive,
+        interactive: opts.interactive,
       });
-      return;
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        process.exitCode = 1;
+        return;
+      }
+      process.exitCode = 1;
+      ui.danger(error instanceof Error ? error.message : String(error));
     }
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 24 },
-        { key: "version", header: "VERSION", width: 12 },
-        { key: "active", header: "ACTIVE", width: 8 },
-        { key: "description", header: "DESCRIPTION", width: 50 },
-      ],
-      rows: profiles.map((profile) => ({
-        name: profile.name,
-        version: profile.version,
-        active: active === profile.name ? "yes" : "",
-        description: profile.description || "—",
-      })),
-      empty: "No profile layers found.",
-    });
   });
 
 profileCmd
   .command("show")
   .argument("<name>", "Profile layer name or selector")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { format?: string }) => {
+  .option("--show-id", "Show IDs in list-oriented human tables")
+  .description("Show profile layer details, resources, and dependencies")
+  .action((name: string, opts: { format?: string; showId?: boolean }) => {
     const db = getDb();
     initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
     const payload = showProfileCommand(name);
-    if (format === "json") {
-      printJson(payload);
-      return;
-    }
-    console.log(`${ui.theme.muted("Profile:")} ${ui.theme.accent(payload.profile.name)}`);
-    console.log(`${ui.theme.muted("Version:")} ${payload.profile.version}`);
-    console.log(`${ui.theme.muted("Active:")} ${payload.active ? "yes" : "no"}`);
-    console.log("");
-    ui.table.print({
-      columns: [
-        { key: "dependency_name", header: "DEPENDENCY", width: 28 },
-        { key: "version_constraint", header: "VERSION", width: 16 },
-      ],
-      rows: payload.dependencies,
-      empty: "No attached layer dependencies.",
+    handleLayerShowCommand(formatLayerLabel(payload.profile), opts, {
+      active: payload.active,
     });
   });
 
 profileCmd
-  .command("active")
+  .command("status")
+  .option("--harness <slugs>", "Comma-separated harness slugs (defaults to global harness preference)")
+  .option("--check", "Exit with code 1 when global state is out of sync with the active profile")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { format?: string }) => {
+  .description("Show the active profile and whether global harness files are in sync")
+  .action(async (opts: {
+    harness?: string;
+    check?: boolean;
+    format?: string;
+  }) => {
     const db = getDb();
     initializeSchema(db);
-    const payload = getActiveProfilePayload();
     const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(payload);
-      return;
+    try {
+      const status = await detectGlobalProfileStatus({ harness: opts.harness });
+      if (format === "json") {
+        printJson(status);
+      } else if (!status.active_profile) {
+        ui.info("No active profile set.");
+      } else if (status.warning) {
+        ui.warn(status.warning);
+      } else if (!status.applied) {
+        ui.warn(
+          `Active profile ${ui.theme.accent(status.active_profile)} has not been applied globally yet.`,
+        );
+        ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to materialize home harness files.`);
+      } else if (!status.has_drift) {
+        ui.success(`Global harness files are in sync with profile ${ui.theme.accent(status.active_profile)}.`);
+      } else {
+        ui.warn(
+          `Global harness files are out of sync with profile ${ui.theme.accent(status.active_profile)}.`,
+        );
+        if (!status.stack_in_sync) {
+          ui.dim("Profile stack changed since the last global apply.");
+        }
+        if (status.changes.length > 0) {
+          ui.dim(`${status.changes.length} file(s) differ on disk.`);
+        }
+        ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to refresh global harness files.`);
+      }
+
+      if (opts.check && status.has_drift) {
+        process.exitCode = 1;
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
-    if (!payload.active_profile) {
-      ui.info("No active profile set.");
-      return;
-    }
-    ui.success(`Active profile: ${ui.theme.accent(payload.active_profile)}`);
   });
 
 profileCmd
@@ -5070,6 +5295,13 @@ profileCmd
       onConflict: opts.onConflict,
     });
     try {
+      if (!opts.dryRun) {
+        await maybeSyncActiveProfileBeforeSwitch({
+          targetProfileName: name,
+          harness: opts.harness,
+          format,
+        });
+      }
       const payload = await useProfileCommand(name, {
         dryRun: opts.dryRun,
         harness: opts.harness,
@@ -5121,52 +5353,118 @@ profileCmd
   .command("create")
   .argument("<name>", "Profile layer name")
   .option("-d, --description <text>", "Profile description")
+  .option("--version <semver>", "Layer version when creating from a source", "1.0.0")
+  .option(
+    "--from <source>",
+    "Skill package source (owner/repo, git URL, or local path)",
+  )
+  .option("--skill <names>", "Comma-separated skills to attach when using --from")
+  .option("--all", "Attach all discovered skills when using --from")
+  .option(
+    "--exclude-category <names>",
+    "Exclude skill categories when using --from (repeatable or comma-separated)",
+    collectRepeatedOption,
+    [],
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When layer exists during --from: merge, overwrite, or cancel",
+  )
+  .option("--use", "Apply globally and set as the active profile")
+  .option("--dry-run", "Preview profile apply when used with --use")
+  .option("--harness <slugs>", "Harness targets for --use")
+  .option(
+    "--on-conflict-use <policy>",
+    "When applying with --use: replace, skip, or prompt",
+  )
+  .option("--account <name>", "Cloud account for dependency pulls during --use")
+  .option("--base-url <url>", "Cloud base URL for dependency pulls during --use")
+  .option("--no-pull", "Do not auto-pull missing published dependencies during --use")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { description?: string; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const layer = createProfileCommand({
-      name,
-      description: opts.description,
-    });
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(layer);
-      return;
+  .option("--interactive", "Prompt for skill selection when using --from")
+  .option("-y, --yes", "Skip prompts when using --from")
+  .description("Create a profile layer, promote an existing layer, or import from a skill package")
+  .action(async (name: string, opts: {
+    description?: string;
+    version?: string;
+    from?: string;
+    skill?: string;
+    all?: boolean;
+    excludeCategory?: string[];
+    onConflict?: string;
+    use?: boolean;
+    dryRun?: boolean;
+    harness?: string;
+    onConflictUse?: string;
+    account?: string;
+    baseUrl?: string;
+    pull?: boolean;
+    format?: string;
+    interactive?: boolean;
+    yes?: boolean;
+  }) => {
+    try {
+      await handleProfileCreateCommand(name, opts);
+    } catch (err) {
+      process.exitCode = 1;
+      if (isPromptCancellationError(err)) {
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
-    ui.success(`Created profile ${ui.theme.accent(layer.name)}`);
   });
 
 profileCmd
-  .command("tag")
-  .argument("<layer>", "Layer selector")
+  .command("delete")
+  .argument("<name>", "Profile layer name or selector")
+  .option("--layer", "Also delete the underlying layer without prompting")
+  .option("-y, --yes", "Skip the interactive layer delete prompt")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((layer: string, opts: { format?: string }) => {
+  .description("Demote a profile layer and optionally delete the underlying layer")
+  .action(async (name: string, opts: {
+    layer?: boolean;
+    yes?: boolean;
+    format?: string;
+  }) => {
     const db = getDb();
     initializeSchema(db);
-    const payload = tagProfileCommand(layer);
     const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(payload);
-      return;
-    }
-    ui.success(`Tagged layer ${ui.theme.accent(layer)} as profile`);
-  });
+    try {
+      const demoted = deleteProfileCommand(name);
+      let layerDeleted = false;
+      if (opts.layer || format === "human") {
+        layerDeleted = await maybePromptProfileLayerDelete({
+          layerName: demoted.layer_name,
+          layerId: demoted.layer_id,
+          format: opts.format,
+          yes: opts.yes,
+          deleteLayerFlag: opts.layer,
+        });
+      }
 
-profileCmd
-  .command("untag")
-  .argument("<layer>", "Layer selector")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((layer: string, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const payload = untagProfileCommand(layer);
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(payload);
-      return;
+      if (format === "json") {
+        printJson({
+          ...demoted,
+          layer_deleted: layerDeleted,
+        });
+        return;
+      }
+
+      ui.success(`Demoted profile ${ui.theme.accent(demoted.layer_name)}`);
+      if (demoted.was_active) {
+        ui.info("Cleared active profile pointer.");
+      }
+      if (layerDeleted) {
+        ui.success(`Deleted layer ${ui.theme.accent(demoted.layer_name)}`);
+      }
+    } catch (err) {
+      process.exitCode = 1;
+      if (isPromptCancellationError(err)) {
+        ui.info("Operation cancelled.");
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
     }
-    ui.success(`Removed profile tag from ${ui.theme.accent(layer)}`);
   });
 
 profileCmd
@@ -5175,11 +5473,13 @@ profileCmd
   .option("--account <name>", "Cloud account name")
   .option("--base-url <url>", "Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Search catalog profile layers (tag=profile)")
+  .option("--no-interactive", "Disable interactive wizards")
+  .description("Search catalog profile layers (deprecated: use profile list --search)")
   .action(async (query: string, opts: {
     account?: string;
     baseUrl?: string;
     format?: string;
+    noInteractive?: boolean;
   }) => {
     await handleProfileSearchCommand(query, opts);
   });
