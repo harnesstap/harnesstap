@@ -1,6 +1,7 @@
 import type { CatalogLayer } from "../services/catalog-types.js";
 import { formatPublishedSelector } from "../services/layer-selector.js";
 import * as format from "./format.js";
+import { renderSubheader } from "./section.js";
 import { renderTable, type Column } from "./table.js";
 import { theme } from "./theme.js";
 
@@ -115,6 +116,25 @@ export function renderCatalogLayerShow(layer: CatalogLayer): string {
     }`,
   ];
   return lines.join("\n");
+}
+
+export function renderCatalogListChunk(chunk: {
+  sourceLabel: string;
+  layers: CatalogLayer[];
+  pageIndex: number;
+}): string {
+  if (chunk.layers.length === 0) {
+    return "";
+  }
+
+  const heading = chunk.pageIndex > 0
+    ? `Remote catalog · ${chunk.sourceLabel} (continued)`
+    : `Remote catalog · ${chunk.sourceLabel}`;
+
+  return [
+    renderSubheader(heading),
+    renderCatalogListTable(chunk.layers),
+  ].join("\n");
 }
 
 export function renderCatalogListTable(

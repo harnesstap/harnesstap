@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
@@ -19,6 +21,9 @@ describe("CLI profile", () => {
       const listInitial = await runCli(["profile", "list"]);
       expect(listInitial.stdout).toContain("default");
 
+      const listAlias = await runCli(["p", "ls"]);
+      expect(listAlias.stdout).toContain("default");
+
       const createResult = await runCli(["profile", "create", "work"]);
       expect(createResult.stdout).toContain("Created profile");
 
@@ -29,7 +34,154 @@ describe("CLI profile", () => {
     }
   });
 
-  it("supports tag/use/active profile flow", async () => {
+  it("promotes an existing layer and suggests switching", async () => {
+    const context = await createTestContext("cli-profile-promote-existing");
+    try {
+      await runCli(["init"]);
+      createLayer({ name: "dbt-expert" });
+
+      const createResult = await runCli(["profile", "create", "dbt-expert"]);
+      expect(createResult.stdout).toContain("Tagged layer");
+      expect(createResult.stdout).toContain("dbt-expert");
+      expect(createResult.stdout).toContain("profile use dbt-expert");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("prompts to enable a promoted profile interactively", async () => {
+    const context = await createTestContext("cli-profile-promote-interactive");
+    try {
+      await runCli(["init", "--main", "claude-code"]);
+      const layer = createLayer({ name: "dbt-expert" });
+      const resource = createResource({
+        type: "instruction",
+        name: "dbt-guide",
+        description: "",
+        content: "# dbt",
+        metadata: {},
+        source: "manual",
+      });
+      addResourceToLayer(layer.id, resource.id);
+
+      const createResult = await runCli(
+        ["profile", "create", "dbt-expert"],
+        {
+          isTTY: true,
+          promptResponses: [{ value: true }],
+        },
+      );
+      expect(createResult.stdout).toContain("Tagged layer");
+      expect(createResult.stdout).toContain("Applied profile");
+
+      const status = await runCli(["profile", "status"]);
+      expect(status.stdout).toContain("dbt-expert");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports global profile status", async () => {
+    const context = await createTestContext("cli-profile-status");
+    try {
+      await runCli(["init", "--main", "claude-code"]);
+      const pending = await runCli(["profile", "status"]);
+      expect(pending.stdout).toContain("has not been applied globally");
+
+      const layer = createLayer({ name: "work" });
+      setLayerTags(layer.id, ["profile"]);
+      const resource = createResource({
+        type: "instruction",
+        name: "work-guide",
+        description: "",
+        content: "# work",
+        metadata: {},
+        source: "manual",
+      });
+      addResourceToLayer(layer.id, resource.id);
+
+      await runCli(["profile", "use", "work", "--harness", "claude-code"]);
+      const synced = await runCli(["profile", "status"]);
+      expect(synced.stdout).toContain("in sync");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("demotes a profile and keeps the layer by default", async () => {
+    const context = await createTestContext("cli-profile-delete-demote");
+    try {
+      await runCli(["init"]);
+      const layer = createLayer({ name: "dbt-expert" });
+      setLayerTags(layer.id, ["profile"]);
+
+      const result = await runCli(["profile", "delete", "dbt-expert"]);
+      expect(result.stdout).toContain("Demoted profile");
+      expect(result.stdout).toContain("layer delete dbt-expert");
+
+      const layerModel = await import("../../src/models/layer-model.ts");
+      expect(layerModel.getLayer("dbt-expert")).toBeDefined();
+      expect(layerModel.getLayer("dbt-expert")?.tags).not.toContain("profile");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("demotes a profile and deletes the layer when confirmed", async () => {
+    const context = await createTestContext("cli-profile-delete-layer");
+    try {
+      await runCli(["init"]);
+      const layer = createLayer({ name: "dbt-expert" });
+      setLayerTags(layer.id, ["profile"]);
+
+      const result = await runCli(
+        ["profile", "delete", "dbt-expert"],
+        {
+          isTTY: true,
+          promptResponses: [{ value: true }],
+        },
+      );
+      expect(result.stdout).toContain("Demoted profile");
+      expect(result.stdout).toContain("Deleted layer");
+
+      const layerModel = await import("../../src/models/layer-model.ts");
+      expect(layerModel.getLayer("dbt-expert")).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("clears the active profile pointer when deleting the active profile", async () => {
+    const context = await createTestContext("cli-profile-delete-active");
+    try {
+      await runCli(["init", "--main", "claude-code"]);
+      const layer = createLayer({ name: "dbt-expert" });
+      setLayerTags(layer.id, ["profile"]);
+      const resource = createResource({
+        type: "instruction",
+        name: "dbt-guide",
+        description: "",
+        content: "# dbt",
+        metadata: {},
+        source: "manual",
+      });
+      addResourceToLayer(layer.id, resource.id);
+      await runCli(["profile", "use", "dbt-expert", "--harness", "claude-code"]);
+
+      const result = await runCli(["profile", "delete", "dbt-expert", "--layer"]);
+      expect(result.stdout).toContain("Cleared active profile pointer");
+
+      const status = await runCli(["profile", "status", "--format", "json"]);
+      expect(JSON.parse(status.stdout)).toMatchObject({
+        active_profile: null,
+        profile_exists: false,
+      });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("supports create/use/active profile flow", async () => {
     const context = await createTestContext("cli-profile-use-active");
     try {
       await runCli(["init", "--main", "claude-code"]);
@@ -44,8 +196,8 @@ describe("CLI profile", () => {
       });
       addResourceToLayer(baseLayer.id, resource.id);
 
-      const tagged = await runCli(["profile", "tag", "work-layer"]);
-      expect(tagged.stdout).toContain("Tagged layer");
+      const created = await runCli(["profile", "create", "work-layer", "--yes"]);
+      expect(created.stdout).toContain("Tagged layer");
 
       const dryRun = await runCli([
         "profile",
@@ -67,8 +219,60 @@ describe("CLI profile", () => {
       ]);
       expect(apply.stdout).toContain("Applied profile");
 
-      const active = await runCli(["profile", "active"]);
-      expect(active.stdout).toContain("work-layer");
+      const status = await runCli(["profile", "status"]);
+      expect(status.stdout).toContain("work-layer");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("profile show renders the same layer detail panel as layer show", async () => {
+    const context = await createTestContext("cli-profile-show-panel");
+    try {
+      await runCli(["init"]);
+      const layer = createLayer({ name: "dbt-expert" });
+      setLayerTags(layer.id, ["profile"]);
+      const resource = createResource({
+        type: "instruction",
+        name: "dbt-guide",
+        description: "",
+        content: "# dbt",
+        metadata: {},
+        source: "manual",
+      });
+      addResourceToLayer(layer.id, resource.id);
+
+      const layerShow = await runCli(["layer", "show", "dbt-expert"]);
+      const profileShow = await runCli(["profile", "show", "dbt-expert"]);
+
+      for (const marker of ["LAYER", "Description", "RESOURCES", "dbt-guide"]) {
+        expect(layerShow.stdout).toContain(marker);
+        expect(profileShow.stdout).toContain(marker);
+      }
+      expect(profileShow.stdout).toContain("Active");
+      expect(layerShow.stdout).not.toContain("Active");
+
+      const profileJson = JSON.parse(
+        (await runCli(["profile", "show", "dbt-expert", "--format", "json"])).stdout,
+      );
+      expect(profileJson.name).toBe("dbt-expert");
+      expect(profileJson.resources).toHaveLength(1);
+      expect(profileJson.active).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("profile list --local-only omits remote catalog section", async () => {
+    const context = await createTestContext("cli-profile-list-local-only");
+    try {
+      await runCli(["init"]);
+      await runCli(["profile", "create", "work"]);
+
+      const result = await runCli(["profile", "list", "--local-only", "--no-interactive"]);
+
+      expect(result.stdout).toContain("work");
+      expect(result.stdout).not.toContain("Remote catalog");
     } finally {
       await context.cleanup();
     }
@@ -344,6 +548,147 @@ describe("CLI profile", () => {
       expect(applyOutput).toContain("remote-base");
 
       restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("removes dbt-only skills through the profile use command flow", async () => {
+    const context = await createTestContext("cli-profile-switch-dbt-default");
+    try {
+      await runCli(["init", "--main", "claude-code", "--no-default-profile"]);
+
+      const workLayer = createLayer({ name: "work" });
+      setLayerTags(workLayer.id, ["profile"]);
+      addResourceToLayer(
+        workLayer.id,
+        createResource({
+          type: "skill",
+          name: "shared-skill",
+          description: "shared",
+          content: "# Shared",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const dbtLayer = createLayer({ name: "dbt-expert" });
+      setLayerTags(dbtLayer.id, ["profile"]);
+      addResourceToLayer(
+        dbtLayer.id,
+        createResource({
+          type: "skill",
+          name: "shared-skill",
+          description: "shared",
+          content: "# Shared",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+      addResourceToLayer(
+        dbtLayer.id,
+        createResource({
+          type: "skill",
+          name: "dbt-only-skill",
+          description: "dbt",
+          content: "# DBT only",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      await runCli(["profile", "use", "dbt-expert", "--harness", "claude-code"]);
+      const dbtOnlyPath = join(
+        context.homeDir,
+        ".claude/skills/dbt-only-skill/SKILL.md",
+      );
+      expect(existsSync(dbtOnlyPath)).toBe(true);
+
+      const switched = await runCli([
+        "profile",
+        "use",
+        "work",
+        "--harness",
+        "claude-code",
+        "--on-conflict",
+        "replace",
+      ]);
+      expect(switched.stdout).toContain("Applied profile");
+      expect(existsSync(dbtOnlyPath)).toBe(false);
+
+      const reapplied = await runCli([
+        "profile",
+        "use",
+        "work",
+        "--harness",
+        "claude-code",
+      ], {
+        isTTY: true,
+      });
+      expect(reapplied.stdout).not.toContain("File already exists");
+      expect(reapplied.stdout).toContain("Applied profile");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("prompts to update the active profile from the main harness before switching", async () => {
+    const context = await createTestContext("cli-profile-switch-sync-prompt");
+    try {
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+
+      await runCli(["init", "--main", "claude-code"]);
+
+      const profileA = createLayer({ name: "profile-a" });
+      setLayerTags(profileA.id, ["profile"]);
+      addResourceToLayer(
+        profileA.id,
+        createResource({
+          type: "skill",
+          name: "kept-skill",
+          description: "kept",
+          content: "# kept",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const profileB = createLayer({ name: "profile-b" });
+      setLayerTags(profileB.id, ["profile"]);
+      addResourceToLayer(
+        profileB.id,
+        createResource({
+          type: "skill",
+          name: "other-skill",
+          description: "other",
+          content: "# other",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      await runCli(["profile", "use", "profile-a", "--harness", "claude-code"]);
+
+      mkdirSync(join(context.homeDir, ".claude", "skills", "manual-skill"), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(context.homeDir, ".claude", "skills", "manual-skill", "SKILL.md"),
+        "---\nname: manual-skill\ndescription: manual\n---\n\n# manual",
+        "utf-8",
+      );
+
+      const switchResult = await runCli(
+        ["profile", "use", "profile-b", "--harness", "claude-code"],
+        {
+          isTTY: true,
+          promptResponses: [{ value: true }],
+        },
+      );
+
+      expect(switchResult.stdout).toContain("out of sync");
+      expect(switchResult.stdout).toContain("Updated profile");
+      expect(switchResult.stdout).toContain("Applied profile");
     } finally {
       await context.cleanup();
     }

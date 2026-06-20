@@ -22,8 +22,13 @@ describe("CLI output format", () => {
         }),
       );
 
-      const layerList = await runCli(["layer", "list", "--format", "json"]);
+      const layerList = await runCli(["layer", "list", "--local-only", "--format", "json"]);
       expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
+
+      const layerListCombined = await runCli(["layer", "list", "--format", "json", "--no-interactive"]);
+      const combined = JSON.parse(layerListCombined.stdout) as { local: unknown[]; remote: unknown[] };
+      expect(Array.isArray(combined.local)).toBe(true);
+      expect(Array.isArray(combined.remote)).toBe(true);
 
       initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-output.git");
       const layerModel = await import("../../src/models/layer-model.ts");

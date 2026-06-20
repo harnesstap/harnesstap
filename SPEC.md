@@ -264,15 +264,15 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Current behavior |
 | --- | --- |
 | `layer create` | Creates a local layer with optional description, tags, and version. |
-| `layer list` | Lists layers (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). |
+| `layer list` | Lists local layers, then streams remote catalog layers from catalog scope ∪ registered publish catalogs (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). `--local-only` preserves legacy local-only output; `--search` filters local and remote. Interactive TTY browse can install a selected remote layer. |
 | `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
 | `layer edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
 | `layer delete` | Deletes a layer by selector. |
 | `migrate export` | Export workspace archive, layer bundle, or resource TOML. |
 | `migrate import` | Import workspace archive, layer bundle, or resource TOML. |
 | `layer apply` | Applies layer selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
-| `layer search` | Searches remote catalogs through the configured cloud account and connected org scopes. |
-| `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Interactive remote search on TTY when no selector is provided. |
+| `layer search` | **Deprecated.** Alias for `layer list --search <query> --remote-only` (warns once per session). |
+| `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). Without a selector on TTY, delegates to `layer list` interactive browse (deprecated path; warns once). |
 | `layer publish` | Publishes a local layer to effective publish targets (all registered catalogs, or per-layer allow list). One-off `org/catalog` override supported. |
 | `layer publish plan` | Dry-run publish: effective targets and planned versions per catalog. |
 | `layer catalog` | Interactive wizard for per-layer publish bindings. |
@@ -352,14 +352,13 @@ A **profile** is a layer whose `tags` include the reserved string `profile`. Pro
 
 | Command | Current behavior |
 | --- | --- |
-| `profile list` | Lists local layers where `tags` includes `profile`; marks the active profile from `active-profile.json`. |
-| `profile show <name>` | Layer metadata plus profile summary (stack refs, active marker). |
-| `profile active` | Prints the active profile name from `~/.harnessdeck/active-profile.json`. |
+| `profile list` | Lists local profile layers, then streams remote catalog layers with `tag=profile` (same discovery model as `layer list`). Marks the active profile from `active-profile.json`. |
+| `profile show <name>` | Same detail view as `layer show`, plus active profile marker. |
+| `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). |
 | `profile use <name>` | Resolves and merges the profile stack (transitive `layer` refs), optionally auto-pulls missing published dependencies, applies to **global** harness paths, writes `active-profile.json`, and records a global apply snapshot. If the profile layer has `default_environment_id`, updates the home active environment pointer. |
-| `profile create <name>` | Creates an empty local layer with `tags: ["profile"]`. |
-| `profile tag <layer>` | Adds the `profile` tag to an existing layer. |
-| `profile untag <layer>` | Removes the `profile` tag; clears `active-profile.json` when untagging the active profile. |
-| `profile search <query>` | Catalog search filtered to `tag=profile` (alias over `layer search`). |
+| `profile create <name>` | Creates an empty local layer with `tags: ["profile"]`, or promotes an existing layer with the same name. |
+| `profile delete <name>` | Demotes a profile layer (removes `profile` tag, clears `active-profile.json` when deleting the active profile) and optionally deletes the underlying layer. |
+| `profile search <query>` | **Deprecated.** Alias for `profile list --search <query> --remote-only` (warns once per session). |
 | `profile pull <selector>` | Alias for `layer pull`; warns when the installed layer is not profile-tagged. |
 | `profile publish <name>` | Alias for `layer publish` with profile validation warnings (empty stack, unpublished local deps). |
 
@@ -380,7 +379,8 @@ A **profile** is a layer whose `tags` include the reserved string `profile`. Pro
 
 Remote catalog workflows live on **`layer`**, not `cloud`:
 
-- `layer search` — search catalogs in scope
+- `layer list` — discover local and remote layers (catalog scope ∪ registered publish catalogs)
+- `layer list --search` — filter local and remote layers (replaces deprecated `layer search`)
 - `layer pull` — fetch a published layer + local import (distinct from `migrate import` on a local file)
 - `layer publish` — export bundle + upload a versioned layer to an org catalog
 
@@ -404,7 +404,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|active|use`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|status|use`, `environment list|show|active|resolve`, `project status|history|drift`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment capture|refresh` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -715,8 +715,9 @@ The CLI builds a **catalog scope** from:
 | Connected org | `layer catalog connect org <slug>` — public layers from that org |
 | Connected layer | `layer catalog connect layer <org/name>` — opt-in to one published layer |
 | Authenticated | Private and shared layers in orgs the user belongs to |
+| Registered publish catalogs | `layer catalog register org/catalog` — also included in `layer list` / `profile list` remote discovery (supplemental queries per registered org/catalog) |
 
-`layer search` and interactive `layer pull` query this union. Configuration persists under `catalog` in `~/.harnessdeck/config.jsonc`.
+`layer list`, `profile list`, and deprecated `layer search` / `profile search` query the union of catalog scope and registered catalogs (best-effort per source). Configuration persists under `catalog` in `~/.harnessdeck/config.jsonc`.
 
 ### Publish registry and bindings
 

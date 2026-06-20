@@ -152,13 +152,13 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 ### Commands
 
 - `layer create <name>`
-- `layer list`
+- `layer list` — local layers plus streamed remote catalog layers (default); use `--local-only` for legacy local-only output
 - `layer show <name>`
 - `layer edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `layer delete [name]`
 - `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
-- `layer search <query>` — search libraries in the local catalog scope (default: `harnessdeck-cloud` public libraries)
-- `layer pull [selector]` — download a remote layer bundle and import it
+- `layer search <query>` — **deprecated**; use `layer list --search <query> --remote-only`
+- `layer pull [selector]` — download a remote layer bundle and import it; without a selector on TTY, opens `layer list` browse (deprecated path)
 - `layer catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
 - `layer catalog` — interactive publish-binding wizard (layer picker → catalog checkboxes)
 - `layer catalog bindings [layer]` — show effective publish targets (non-TTY) or edit bindings (`--add`, `--remove`, `--clear`; `--add` replaces the full allow list)
@@ -189,6 +189,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer create --dry-run` — preview configuration without writing
 - `layer list --format json`
 - `layer list --show-id`
+- `layer list -s, --search <query>` — filter local and remote layers by name, description, or tags
+- `layer list --local-only` — list only local layers (JSON shape matches legacy `layer list`)
+- `layer list --remote-only` — skip local section; remote-only JSON emits a top-level array
+- `layer list --tag <tag>` — filter remote catalog layers by tag
+- `layer list --account <name>` / `--base-url <url>` — cloud account and base URL for remote listing
+- `layer list --no-interactive` — disable TTY browse wizard (streaming print-only)
 - `layer show --format json`
 - `layer edit --type <type>` — restrict tables to one attachment type
 - `layer edit --search <query>` — pre-fill the interactive search filter
@@ -230,7 +236,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer catalog bindings --clear` — revert layer to all registered catalogs
 - `layer catalog register --account <name>` — optional account for a registered catalog
 
-`layer pull` and `layer search` work without `auth login` for the default `harnessdeck-cloud` public catalog. Use `layer catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `layer catalog register` before `layer publish` when no bindings exist. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
+`layer pull` and `layer list` remote discovery query catalog scope **plus** registered publish catalogs (`layer catalog register`). Use `layer catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `layer catalog register` before `layer publish` when no bindings exist. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
 
 ## auth (`a`)
 
@@ -262,23 +268,34 @@ Root shorthand: when the first argument is not a known command and matches a loc
 
 ### Commands
 
-- `profile list` — list local layers tagged `profile`; marks active profile
-- `profile show <name>` — profile metadata, layer dependencies, active marker
-- `profile active` — print active profile from `~/.harnessdeck/active-profile.json`
+- `profile list` / `profile ls` — list local profile layers, then stream remote catalog layers with `tag=profile`; marks active profile
+- `profile show <name>` — same detail view as `layer show`, plus active profile marker
+- `profile status` — active profile and whether global harness files are in sync
 - `profile use <name>` — merge profile stack, apply globally, set active pointer
-- `profile create <name>` — create empty layer with `tags: [profile]`
-- `profile tag <layer>` — add `profile` tag to an existing layer
-- `profile untag <layer>` — remove `profile` tag (clears active pointer if needed)
-- `profile search <query>` — catalog search with `tag=profile` filter
+- `profile create <name>` — create profile layer, promote an existing layer, or import from `--from`
+- `profile delete <name>` — demote a profile layer and optionally delete the underlying layer
+- `profile search <query>` — **deprecated**; use `profile list --search <query> --remote-only`
 - `profile pull <selector>` — install from catalog (`layer pull` alias; warns if not profile-tagged)
 - `profile publish <name>` — publish with profile validation warnings (`layer publish` alias)
 
 ### Important options
 
 - `profile list --format json`
+- `profile list -s, --search <query>` — filter local and remote profile layers
+- `profile list --local-only` — list only local profile layers
+- `profile list --remote-only` — skip local section
+- `profile list --account <name>` / `--base-url <url>` / `--no-interactive`
 - `profile show --format json`
-- `profile active --format json`
+- `profile show --show-id`
+- `profile status --check` — exit 1 when global state is out of sync
+- `profile status --harness <slugs>` / `--format json`
 - `profile create -d, --description <text>`
+- `profile create --from <source>` — same skill-package options as `layer create --from`
+- `profile create --use` — apply globally and set active after create/promote
+- `profile create --use --dry-run` — preview global apply
+- `profile create -y, --yes` — skip the interactive enable prompt
+- `profile delete --layer` — also delete the underlying layer without prompting
+- `profile delete -y, --yes` — skip the interactive layer delete prompt
 - `profile use --dry-run` — preview global file writes
 - `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)
 - `profile use --on-conflict <replace|skip|prompt>`

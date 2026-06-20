@@ -15,7 +15,7 @@ harnessdeck init
 harnessdeck profile list
 harnessdeck profile use default --dry-run
 harnessdeck profile use work --harness claude-code,cursor
-harnessdeck profile active
+harnessdeck profile status
 hd work
 ```
 
@@ -32,9 +32,10 @@ What this gives you:
 apply. Run `profile use default` (or `hd default`) after bootstrap to
 materialize home harness files.
 
-Create additional profiles with `profile create <name>` or tag an existing
-layer with `profile tag <layer>`. Combine stack layers with
-`layer edit` before switching.
+Create additional profiles with `profile create <name>` (promotes an
+existing layer when the name already exists). Remove them with
+`profile delete <name>`. Combine stack layers with `layer edit` before
+switching.
 
 For project-specific baselines, use `layer apply` instead
 (see [Scenario 7](./07-preview-apply-layer.md) and

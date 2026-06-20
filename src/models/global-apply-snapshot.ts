@@ -100,6 +100,14 @@ export function listGlobalApplySnapshots(): GlobalApplySnapshot[] {
   return rows.map(rowToGlobalApplySnapshot);
 }
 
+export function getLatestGlobalApplySnapshotForProfile(
+  profileName: string,
+): GlobalApplySnapshot | undefined {
+  return listGlobalApplySnapshots().find(
+    (snapshot) => snapshot.profile_name === profileName,
+  );
+}
+
 export function listGlobalApplySnapshotInstalls(
   snapshotId: string,
 ): GlobalApplySnapshotInstall[] {

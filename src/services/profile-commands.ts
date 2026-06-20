@@ -1,6 +1,7 @@
 import { listLayerDependencies } from "../models/layer-model.js";
 import {
   createLayer,
+  getLayerByName,
   resolveLayerSelector,
   setLayerTags,
 } from "../models/layer-model.js";
@@ -12,6 +13,12 @@ import {
   setActiveProfileName,
 } from "./active-profile.js";
 import { applyProfileLayer, type ApplyProfileLayerOptions } from "./profile-apply.js";
+
+export interface CreateProfileResult {
+  layer: Layer;
+  created: boolean;
+  promoted: boolean;
+}
 
 export function listProfileLayersCommand() {
   return listProfileLayers();
@@ -72,13 +79,41 @@ export function createProfileCommand(input: {
   name: string;
   description?: string;
   version?: string;
-}) {
-  return createLayer({
+}): CreateProfileResult {
+  const version = input.version ?? "1.0.0";
+  const existing = getLayerByName(input.name, version);
+  if (existing) {
+    if (isProfileLayer(existing)) {
+      return {
+        layer: existing,
+        created: false,
+        promoted: false,
+      };
+    }
+    const tags = [...new Set([...existing.tags, PROFILE_LAYER_TAG])];
+    setLayerTags(existing.id, tags);
+    const refreshed = resolveLayerSelector(existing.name);
+    if (!refreshed) {
+      throw new Error(`Layer not found after tagging: ${input.name}`);
+    }
+    return {
+      layer: refreshed,
+      created: false,
+      promoted: true,
+    };
+  }
+
+  const layer = createLayer({
     name: input.name,
     description: input.description,
-    version: input.version,
+    version,
     tags: [PROFILE_LAYER_TAG],
   });
+  return {
+    layer,
+    created: true,
+    promoted: true,
+  };
 }
 
 export function tagProfileCommand(selector: string): {
@@ -109,4 +144,27 @@ export function untagProfileCommand(selector: string): {
     clearActiveProfileName();
   }
   return { layer_id: layer.id, tags };
+}
+
+export function deleteProfileCommand(selector: string): {
+  layer_id: string;
+  layer_name: string;
+  tags: string[];
+  was_active: boolean;
+} {
+  const layer = resolveLayerSelector(selector);
+  if (!layer) {
+    throw new Error(`Profile not found: ${selector}`);
+  }
+  if (!isProfileLayer(layer)) {
+    throw new Error(`Layer "${layer.name}" is not tagged as a profile`);
+  }
+  const wasActive = getActiveProfileName() === layer.name;
+  const untagged = untagProfileCommand(selector);
+  return {
+    layer_id: untagged.layer_id,
+    layer_name: layer.name,
+    tags: untagged.tags,
+    was_active: wasActive,
+  };
 }

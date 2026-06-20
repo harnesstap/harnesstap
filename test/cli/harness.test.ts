@@ -35,7 +35,7 @@ describe("CLI harness", () => {
         "goose",
       ]);
 
-      const layerList = await runCli(["l", "ls", "--format", "json"], {
+      const layerList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
         commandName: "hd",
       });
       expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);

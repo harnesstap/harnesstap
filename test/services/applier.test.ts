@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { describe, expect, it, mock } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResource } from "../helpers/resources.ts";
@@ -283,6 +283,48 @@ describe("applier services", () => {
       expect(result.skippedFiles).toEqual([".copilot/skills/research/SKILL.md"]);
       expect(readFileSync(targetPath, "utf-8")).toBe("existing");
       expect(resolver).toHaveBeenCalledTimes(1);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not prompt when an existing file already matches generated content", async () => {
+    const context = await createInitializedTestContext("applier-global-identical-content");
+
+    try {
+      const applier = await import("../../src/services/applier.ts");
+      const resources = [
+        makeResource({
+          type: "skill",
+          name: "research",
+          description: "Research helper",
+          content: "# Research",
+        }),
+      ];
+      const [generated] = await applier.generateFiles(
+        resources,
+        ["copilot-cli"],
+        context.homeDir,
+        { target: "global" },
+      );
+      const targetPath = join(context.homeDir, generated.files[0].path);
+      mkdirSync(dirname(targetPath), { recursive: true });
+      writeFileSync(targetPath, generated.files[0].content, "utf-8");
+
+      const resolver = mock(async () => "replace" as const);
+
+      const result = await applier.applyToGlobal(
+        resources,
+        ["copilot-cli"],
+        context.homeDir,
+        { conflictResolver: resolver },
+      );
+
+      expect(result.cancelled).toBe(false);
+      expect(result.conflicts).toEqual([]);
+      expect(result.writtenFiles).toEqual([generated.files[0].path]);
+      expect(resolver).not.toHaveBeenCalled();
+      expect(readFileSync(targetPath, "utf-8")).toBe(generated.files[0].content);
     } finally {
       await context.cleanup();
     }

@@ -594,6 +594,8 @@ describe("CLI cloud layer workflows", () => {
         },
       );
 
+      expect(result.stderr).toContain("layer pull");
+      expect(result.stderr).toContain("deprecated");
       expect(result.stdout).toContain("Installed layer");
       expect(result.stdout).toContain("team");
 
