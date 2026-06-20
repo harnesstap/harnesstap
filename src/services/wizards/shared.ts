@@ -24,6 +24,25 @@ export function isPromptCancellationError(error: unknown): boolean {
   return /force closed the prompt/i.test(error.message);
 }
 
+export class PromptBackError extends Error {
+  override name = "PromptBackError";
+}
+
+export function isPromptBackError(error: unknown): boolean {
+  return error instanceof PromptBackError;
+}
+
+export async function withPromptBack<T>(prompt: () => Promise<T>): Promise<T> {
+  try {
+    return await prompt();
+  } catch (error) {
+    if (isPromptCancellationError(error)) {
+      throw new PromptBackError();
+    }
+    throw error;
+  }
+}
+
 export function shouldUseWizard(input: WizardTriggerInput): boolean {
   const noInteractive =
     input.noInteractive ?? process.argv.includes("--no-interactive");

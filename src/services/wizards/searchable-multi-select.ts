@@ -11,6 +11,9 @@ import {
   usePrefix,
   useState,
 } from "@inquirer/core";
+import { PromptBackError } from "./shared.js";
+
+const PROMPT_BACK_SENTINEL = "__harnessdeck_prompt_back__";
 
 type SearchableChoice<T extends string> = {
   name: string;
@@ -93,10 +96,11 @@ function isSearchCharacter(key: {
   );
 }
 
-export const promptForSearchableMultiSelect: (
-  config: PromptConfig<string>,
-  context?: PromptContext,
-) => Promise<string[]> = createPrompt<string[], PromptConfig<string>>(
+function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
+  return key.name === "escape" || key.sequence === "\u001b";
+}
+
+const searchableMultiSelectPrompt = createPrompt<string[], PromptConfig<string>>(
   (config, done) => {
   const theme = makeTheme(searchableMultiSelectTheme, {});
   const prefix = usePrefix({ status: "idle", theme });
@@ -115,6 +119,11 @@ export const promptForSearchableMultiSelect: (
       : Math.min(active, visibleEntries.length - 1);
 
   useKeypress((key) => {
+    if (isEscapeKey(key)) {
+      done([PROMPT_BACK_SENTINEL]);
+      return;
+    }
+
     if (isEnterKey(key)) {
       done(
         items.filter((item) => item.checked).map((item) => item.value),
@@ -207,6 +216,7 @@ export const promptForSearchableMultiSelect: (
     ["⌫", "erase"],
     ["ctrl+a", "all"],
     ["ctrl+x", "none"],
+    ["esc", "back"],
     ["⏎", "submit"],
   ]);
 
@@ -217,3 +227,14 @@ export const promptForSearchableMultiSelect: (
     helpLine,
   ].join("\n");
 });
+
+export async function promptForSearchableMultiSelect(
+  config: PromptConfig<string>,
+  context?: PromptContext,
+): Promise<string[]> {
+  const result = await searchableMultiSelectPrompt(config, context);
+  if (result.length === 1 && result[0] === PROMPT_BACK_SENTINEL) {
+    throw new PromptBackError();
+  }
+  return result;
+}

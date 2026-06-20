@@ -20,17 +20,20 @@ import {
   promptForProjectLayerScope,
 } from "./environment-create-project-scope.js";
 import {
+  isPromptBackError,
   promptForChoice,
   promptForConfirmation,
   promptForSearchableChoice,
   promptForValue,
+  withPromptBack,
 } from "./shared.js";
 
 export type EnvironmentCreateSource = "from-project" | "from-layer" | "blank";
 
-export type EnvironmentCreateWizardOutcome =
-  | { status: "cancelled" }
-  | { status: "confirmed"; result: EnvironmentCreateResult };
+export type EnvironmentCreateWizardOutcome = {
+  status: "confirmed";
+  result: EnvironmentCreateResult;
+};
 
 export type EnvSuggestionChoice = {
   name: string;
@@ -148,17 +151,25 @@ async function collectFromLayerResolutions(input: {
     processEnv,
   );
   if (suggestionChoices.length > 0) {
-    const selectedProcessKeys = await promptForSearchableMultiSelect({
-      message: "Import matching process environment variables?",
-      choices: suggestionChoices.map((choice) => ({
-        name: choice.name,
-        value: choice.value,
-        description: choice.description,
-      })),
-      default: suggestionChoices
-        .filter((choice) => choice.defaultSelected)
-        .map((choice) => choice.value),
-    });
+    let selectedProcessKeys: string[];
+    try {
+      selectedProcessKeys = await promptForSearchableMultiSelect({
+        message: "Import matching process environment variables?",
+        choices: suggestionChoices.map((choice) => ({
+          name: choice.name,
+          value: choice.value,
+          description: choice.description,
+        })),
+        default: suggestionChoices
+          .filter((choice) => choice.defaultSelected)
+          .map((choice) => choice.value),
+      });
+    } catch (error) {
+      if (isPromptBackError(error)) {
+        throw error;
+      }
+      throw error;
+    }
 
     for (const processKey of selectedProcessKeys) {
       const requiredKey = resolveRequiredKeyForProcessKey(
@@ -270,99 +281,137 @@ export async function runEnvironmentCreateWizard(input: {
   name: string;
   description?: string;
 }): Promise<EnvironmentCreateWizardOutcome> {
-  const source = await promptForChoice<EnvironmentCreateSource>({
-    message: "How should this environment be created?",
-    choices: ENVIRONMENT_CREATE_SOURCE_CHOICES,
-    default: "from-project",
-  });
+  while (true) {
+    const source = await promptForChoice<EnvironmentCreateSource>({
+      message: "How should this environment be created?",
+      choices: ENVIRONMENT_CREATE_SOURCE_CHOICES,
+      default: "from-project",
+    });
 
-  if (source === "blank") {
-    const description = await promptOptionalDescription(input.description);
+    if (source === "blank") {
+      const description = await promptOptionalDescription(input.description);
+      const confirmed = await promptForConfirmation({
+        message: `Create blank environment ${input.name}?`,
+        default: true,
+      });
+      if (!confirmed) {
+        continue;
+      }
+
+      const result = await runEnvironmentCreate({
+        name: input.name,
+        blank: true,
+        description,
+      });
+      return { status: "confirmed", result };
+    }
+
+    if (source === "from-project") {
+      let scope;
+      try {
+        scope = await promptForProjectLayerScope();
+      } catch (error) {
+        if (isPromptBackError(error)) {
+          continue;
+        }
+        throw error;
+      }
+      if (!scope) {
+        continue;
+      }
+
+      const { projectRoot, layerSelectors } = scope;
+
+      const preview = await previewEnvironmentCapture({
+        mode: "capture",
+        environmentName: input.name,
+        projectRoot,
+        layerSelectors,
+      });
+      printFromProjectPreviewSummary(preview);
+
+      const confirmed = await promptForConfirmation({
+        message: "Create environment from this project preview?",
+        default: true,
+      });
+      if (!confirmed) {
+        continue;
+      }
+
+      const result = await runEnvironmentCreate({
+        name: input.name,
+        fromProject: projectRoot,
+        layers: layerSelectors,
+        description: input.description,
+      });
+      return { status: "confirmed", result };
+    }
+
+    const layers = listLayers();
+    if (layers.length === 0) {
+      throw new Error("No configured layers found.");
+    }
+
+    let layerSelector: string | undefined;
+    let resolved: EnvironmentFromLayerResolved | undefined;
+
+    layerSelection: while (true) {
+      try {
+        layerSelector = await withPromptBack(() =>
+          promptForSearchableChoice({
+            message: "Layer whose requirements should seed this environment",
+            choices: toLayerChoices(),
+          }),
+        );
+      } catch (error) {
+        if (isPromptBackError(error)) {
+          layerSelector = undefined;
+          break layerSelection;
+        }
+        throw error;
+      }
+
+      try {
+        resolved = await collectFromLayerResolutions({ layerSelector });
+        break layerSelection;
+      } catch (error) {
+        if (isPromptBackError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (!layerSelector || !resolved) {
+      continue;
+    }
+    const bind = await promptForConfirmation({
+      message: "Set as default environment for this layer?",
+      default: true,
+    });
+
+    printFromLayerPreviewSummary({
+      name: input.name,
+      layerSelector,
+      resolved,
+      bind,
+    });
+
     const confirmed = await promptForConfirmation({
-      message: `Create blank environment ${input.name}?`,
+      message: "Create environment from this configuration?",
       default: true,
     });
     if (!confirmed) {
-      return { status: "cancelled" };
+      continue;
     }
 
     const result = await runEnvironmentCreate({
       name: input.name,
-      blank: true,
-      description,
-    });
-    return { status: "confirmed", result };
-  }
-
-  if (source === "from-project") {
-    const scope = await promptForProjectLayerScope();
-    if (!scope) {
-      return { status: "cancelled" };
-    }
-
-    const { projectRoot, layerSelectors } = scope;
-
-    const preview = await previewEnvironmentCapture({
-      mode: "capture",
-      environmentName: input.name,
-      projectRoot,
-      layerSelectors,
-    });
-    printFromProjectPreviewSummary(preview);
-
-    const confirmed = await promptForConfirmation({
-      message: "Create environment from this project preview?",
-      default: true,
-    });
-    if (!confirmed) {
-      return { status: "cancelled" };
-    }
-
-    const result = await runEnvironmentCreate({
-      name: input.name,
-      fromProject: projectRoot,
-      layers: layerSelectors,
+      fromLayer: layerSelector,
+      bind,
       description: input.description,
+      fromLayerResolved: resolved,
     });
     return { status: "confirmed", result };
   }
-
-  const layers = listLayers();
-  if (layers.length === 0) {
-    throw new Error("No configured layers found.");
-  }
-
-  const layerSelector = await promptForSearchableChoice({
-    message: "Layer whose requirements should seed this environment",
-    choices: toLayerChoices(),
-  });
-  const resolved = await collectFromLayerResolutions({ layerSelector });
-  const bind = await promptForConfirmation({
-    message: "Set as default environment for this layer?",
-    default: true,
-  });
-
-  printFromLayerPreviewSummary({
-    name: input.name,
-    layerSelector,
-    resolved,
-    bind,
-  });
-
-  const confirmed = await promptForConfirmation({
-    message: "Create environment from this configuration?",
-    default: true,
-  });
-  if (!confirmed) {
-    return { status: "cancelled" };
-  }
-
-  const result = await runEnvironmentCreate({
-    name: input.name,
-    fromLayer: layerSelector,
-    bind,
-    description: input.description,
-    fromLayerResolved: resolved,
-  });
-  return { status: "confirmed", result };
 }

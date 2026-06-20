@@ -3304,21 +3304,24 @@ async function handleEnvironmentCreateCommand(
   });
 
   if (useWizard) {
-    const wizardOutcome = await runEnvironmentCreateWizard({
-      name,
-      description: opts.description,
-    });
-    if (wizardOutcome.status === "cancelled") {
-      ui.info("Operation cancelled.");
-      return;
+    try {
+      const wizardOutcome = await runEnvironmentCreateWizard({
+        name,
+        description: opts.description,
+      });
+      printEnvironmentCreateResult(wizardOutcome.result, {
+        name,
+        fromProject: opts.fromProject,
+        refresh: opts.refresh,
+        format,
+      });
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        ui.info("Operation cancelled.");
+        return;
+      }
+      throw error;
     }
-
-    printEnvironmentCreateResult(wizardOutcome.result, {
-      name,
-      fromProject: opts.fromProject,
-      refresh: opts.refresh,
-      format,
-    });
     return;
   }
 

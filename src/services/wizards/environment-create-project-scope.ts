@@ -7,8 +7,10 @@ import {
 import { toLayerChoices } from "../completion/choices.js";
 import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
 import {
+  isPromptBackError,
   promptForChoice,
   promptForValue,
+  withPromptBack,
   type PromptChoice,
 } from "./shared.js";
 
@@ -21,6 +23,8 @@ export type ProjectLayerScopeInspection =
     }
   | { kind: "untracked"; projectRoot: string }
   | { kind: "no_applied_layers"; projectRoot: string };
+
+type PromptLayerSelection = string[] | "back";
 
 function formatLayerSelector(layerId: string): string | undefined {
   const layer = getLayerById(layerId);
@@ -87,60 +91,69 @@ function explainMissingProjectLayers(inspection: ProjectLayerScopeInspection): v
 type MissingScopeAction = "pick_layers" | "change_directory" | "cancel";
 
 async function promptMissingScopeAction(): Promise<MissingScopeAction> {
-  return promptForChoice<MissingScopeAction>({
-    message: "How do you want to continue?",
-    choices: [
-      {
-        name: "Pick layers from library",
-        value: "pick_layers",
-        description: "Choose which layers define required env vars",
-      },
-      {
-        name: "Try another project directory",
-        value: "change_directory",
-        description: "Look for a tracked project with applied layers",
-      },
-      {
-        name: "Cancel",
-        value: "cancel",
-        description: "Abort environment create",
-      },
-    ],
-    default: "pick_layers",
-  });
+  return withPromptBack(() =>
+    promptForChoice<MissingScopeAction>({
+      message: "How do you want to continue?",
+      choices: [
+        {
+          name: "Pick layers from library",
+          value: "pick_layers",
+          description: "Choose which layers define required env vars",
+        },
+        {
+          name: "Try another project directory",
+          value: "change_directory",
+          description: "Look for a tracked project with applied layers",
+        },
+        {
+          name: "Cancel",
+          value: "cancel",
+          description: "Abort environment create",
+        },
+      ],
+      default: "pick_layers",
+    }),
+  );
 }
 
-async function promptLayerSelectorsFromLibrary(): Promise<string[] | undefined> {
+async function promptLayerSelectorsFromLibrary(): Promise<PromptLayerSelection> {
   const layerChoices = toLayerChoices();
   if (layerChoices.length === 0) {
     console.log("");
     console.log("No layers found in your HarnessDeck library.");
     console.log("Create a layer first with `hd layer create`, then retry.");
-    return undefined;
+    return [];
   }
 
-  const selected = await promptForSearchableMultiSelect({
-    message: "Layers that define required environment variables",
-    choices: layerChoices.map((choice) => ({
-      name: choice.name,
-      value: choice.value,
-      description: choice.description,
-    })),
-  });
+  try {
+    const selected = await promptForSearchableMultiSelect({
+      message: "Layers that define required environment variables",
+      choices: layerChoices.map((choice) => ({
+        name: choice.name,
+        value: choice.value,
+        description: choice.description,
+      })),
+    });
 
-  if (selected.length === 0) {
-    console.log("");
-    console.log("Select at least one layer to continue.");
-    return undefined;
+    if (selected.length === 0) {
+      console.log("");
+      console.log("Select at least one layer to continue.");
+      return [];
+    }
+
+    return selected;
+  } catch (error) {
+    if (isPromptBackError(error)) {
+      return "back";
+    }
+    throw error;
   }
-
-  return selected;
 }
 
 async function promptAppliedLayerSelectors(input: {
   labels: string[];
   selectors: string[];
-}): Promise<string[]> {
+}): Promise<PromptLayerSelection> {
   if (input.selectors.length === 1) {
     console.log("");
     console.log(`Using applied layer: ${input.labels[0]}`);
@@ -153,66 +166,117 @@ async function promptAppliedLayerSelectors(input: {
     console.log(`  - ${label}`);
   }
 
-  return promptForSearchableMultiSelect({
-    message: "Layers to derive required environment variables from",
-    choices: input.selectors.map((selector, index) => ({
-      name: input.labels[index] ?? selector,
-      value: selector,
-    })),
-    default: input.selectors,
-  });
+  try {
+    const selected = await promptForSearchableMultiSelect({
+      message: "Layers to derive required environment variables from",
+      choices: input.selectors.map((selector, index) => ({
+        name: input.labels[index] ?? selector,
+        value: selector,
+      })),
+      default: input.selectors,
+    });
+
+    if (selected.length === 0) {
+      console.log("");
+      console.log("Select at least one layer to continue.");
+      return [];
+    }
+
+    return selected;
+  } catch (error) {
+    if (isPromptBackError(error)) {
+      return "back";
+    }
+    throw error;
+  }
+}
+
+async function promptProjectDirectory(defaultPath = "."): Promise<string> {
+  return resolve(
+    await withPromptBack(() =>
+      promptForValue({
+        message: "Project directory to scan for harness configuration",
+        default: defaultPath,
+      }),
+    ),
+  );
 }
 
 export async function promptForProjectLayerScope(input?: {
   initialProjectRoot?: string;
 }): Promise<{ projectRoot: string; layerSelectors: string[] } | undefined> {
-  let projectRoot = resolve(
-    input?.initialProjectRoot
-      ?? (await promptForValue({
-        message: "Project directory to scan for harness configuration",
-        default: ".",
-      })),
-  );
+  let projectRoot = input?.initialProjectRoot
+    ? resolve(input.initialProjectRoot)
+    : undefined;
 
   while (true) {
-    const inspection = inspectProjectLayerScope(projectRoot);
+    if (!projectRoot) {
+      try {
+        projectRoot = await promptProjectDirectory();
+      } catch (error) {
+        if (isPromptBackError(error)) {
+          throw error;
+        }
+        throw error;
+      }
+    }
 
-    if (inspection.kind === "applied") {
-      const layerSelectors = await promptAppliedLayerSelectors({
-        labels: inspection.labels,
-        selectors: inspection.selectors,
-      });
-      if (layerSelectors.length === 0) {
-        console.log("");
-        console.log("Select at least one layer to continue.");
+    while (true) {
+      const inspection = inspectProjectLayerScope(projectRoot);
+
+      if (inspection.kind === "applied") {
+        const layerSelection = await promptAppliedLayerSelectors({
+          labels: inspection.labels,
+          selectors: inspection.selectors,
+        });
+        if (layerSelection === "back") {
+          projectRoot = undefined;
+          break;
+        }
+        if (layerSelection.length === 0) {
+          continue;
+        }
+        return {
+          projectRoot: inspection.projectRoot,
+          layerSelectors: layerSelection,
+        };
+      }
+
+      explainMissingProjectLayers(inspection);
+
+      let action: MissingScopeAction;
+      try {
+        action = await promptMissingScopeAction();
+      } catch (error) {
+        if (isPromptBackError(error)) {
+          projectRoot = undefined;
+          break;
+        }
+        throw error;
+      }
+
+      if (action === "cancel") {
+        return undefined;
+      }
+
+      if (action === "change_directory") {
+        projectRoot = undefined;
+        break;
+      }
+
+      const layerSelection = await promptLayerSelectorsFromLibrary();
+      if (layerSelection === "back") {
         continue;
       }
-      return { projectRoot: inspection.projectRoot, layerSelectors };
+      if (layerSelection.length === 0) {
+        continue;
+      }
+
+      return {
+        projectRoot: inspection.projectRoot,
+        layerSelectors: layerSelection,
+      };
     }
-
-    explainMissingProjectLayers(inspection);
-    const action = await promptMissingScopeAction();
-
-    if (action === "cancel") {
-      return undefined;
-    }
-
-    if (action === "change_directory") {
-      projectRoot = resolve(
-        await promptForValue({
-          message: "Project directory to scan for harness configuration",
-          default: projectRoot,
-        }),
-      );
-      continue;
-    }
-
-    const layerSelectors = await promptLayerSelectorsFromLibrary();
-    if (!layerSelectors) {
-      continue;
-    }
-
-    return { projectRoot: inspection.projectRoot, layerSelectors };
   }
 }
 

@@ -1,6 +1,7 @@
 import { render } from "@inquirer/testing";
 import { describe, expect, it } from "bun:test";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.ts?actual";
+import { PromptBackError } from "../../src/services/wizards/shared.ts";
 
 const CTRL_A = { name: "a", ctrl: true } as const;
 const CTRL_X = { name: "x", ctrl: true } as const;
@@ -72,5 +73,13 @@ describe("searchable multi-select prompt", () => {
     events.keypress("enter");
 
     await expect(answer).resolves.toEqual(["copilot-cli"]);
+  });
+
+  it("rejects with PromptBackError when escape is pressed", async () => {
+    const { answer, events } = await renderPrompt();
+
+    events.keypress("escape");
+
+    await expect(answer).rejects.toBeInstanceOf(PromptBackError);
   });
 });
