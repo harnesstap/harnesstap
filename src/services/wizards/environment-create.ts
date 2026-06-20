@@ -1,4 +1,3 @@
-import { resolve } from "node:path";
 import { listLayers } from "../../models/layer-model.js";
 import { toLayerChoices } from "../completion/choices.js";
 import {
@@ -16,6 +15,10 @@ import {
   type EnvironmentFromLayerResolved,
 } from "../environment-create.js";
 import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
+import {
+  ENVIRONMENT_CREATE_SOURCE_CHOICES,
+  promptForProjectLayerScope,
+} from "./environment-create-project-scope.js";
 import {
   promptForChoice,
   promptForConfirmation,
@@ -242,7 +245,7 @@ function printFromProjectPreviewSummary(
   console.log(`Environment: ${preview.environment_name}`);
   console.log(`Project harness: ${preview.main_harness}`);
   console.log(`Configured layers: ${preview.configured_layer_ids.length}`);
-  console.log(`Captured values: ${Object.keys(preview.values).length}`);
+  console.log(`Imported values: ${Object.keys(preview.values).length}`);
   console.log(`Secret refs: ${Object.keys(preview.secret_refs).length}`);
   console.log(`Missing keys: ${preview.missing_keys.length}`);
   console.log("");
@@ -269,11 +272,7 @@ export async function runEnvironmentCreateWizard(input: {
 }): Promise<EnvironmentCreateWizardOutcome> {
   const source = await promptForChoice<EnvironmentCreateSource>({
     message: "How should this environment be created?",
-    choices: [
-      { name: "Capture from project", value: "from-project" },
-      { name: "Build from layer requirements", value: "from-layer" },
-      { name: "Blank environment", value: "blank" },
-    ],
+    choices: ENVIRONMENT_CREATE_SOURCE_CHOICES,
     default: "from-project",
   });
 
@@ -296,34 +295,12 @@ export async function runEnvironmentCreateWizard(input: {
   }
 
   if (source === "from-project") {
-    const projectRoot = resolve(
-      await promptForValue({
-        message: "Project directory",
-        default: ".",
-      }),
-    );
-
-    let layerSelectors: string[] | undefined;
-    const specifyLayers = await promptForConfirmation({
-      message: "Specify configured layers explicitly?",
-      default: false,
-    });
-    if (specifyLayers) {
-      const layerChoices = toLayerChoices();
-      if (layerChoices.length === 0) {
-        throw new Error("No configured layers found.");
-      }
-      layerSelectors = await promptForSearchableMultiSelect({
-        message: "Configured layers to scope import",
-        choices: layerChoices.map((choice) => ({
-          name: choice.name,
-          value: choice.value,
-        })),
-      });
-      if (layerSelectors.length === 0) {
-        throw new Error("Select at least one configured layer.");
-      }
+    const scope = await promptForProjectLayerScope();
+    if (!scope) {
+      return { status: "cancelled" };
     }
+
+    const { projectRoot, layerSelectors } = scope;
 
     const preview = await previewEnvironmentCapture({
       mode: "capture",
@@ -356,7 +333,7 @@ export async function runEnvironmentCreateWizard(input: {
   }
 
   const layerSelector = await promptForSearchableChoice({
-    message: "Configured layer",
+    message: "Layer whose requirements should seed this environment",
     choices: toLayerChoices(),
   });
   const resolved = await collectFromLayerResolutions({ layerSelector });

@@ -82,6 +82,7 @@ export async function promptForValue(input: {
 export interface PromptChoice<T extends string = string> {
   name: string;
   value: T;
+  description?: string;
 }
 
 function promptPageSize(choiceCount: number): number {

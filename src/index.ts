@@ -5916,7 +5916,7 @@ environmentCmd
   .command("create")
   .argument("<name>", "Environment name")
   .option("--blank", "Create an empty environment")
-  .option("--from-project <path>", "Create from project capture")
+  .option("--from-project <path>", "Create from project harness configuration")
   .option(
     "--from-layer <layer>",
     "Create from configured layer requirements (repeatable or comma-separated)",
@@ -5928,7 +5928,7 @@ environmentCmd
   .option("--layers <layers...>", "Configured layer selectors for --from-project")
   .option("--strict", "Fail when required keys are missing")
   .option("--dry-run", "Preview without persisting")
-  .option("--include-permissions", "Capture scanned permission resources")
+  .option("--include-permissions", "Include scanned permission resources")
   .option("--description <text>", "Environment description")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
