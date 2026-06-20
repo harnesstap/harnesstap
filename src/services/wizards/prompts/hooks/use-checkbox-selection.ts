@@ -35,3 +35,22 @@ export function clearVisible<TKey, TItem>(
   }
   return next;
 }
+
+export function toggleCheckedAtIndex<T extends { checked: boolean }>(
+  items: T[],
+  index: number,
+): T[] {
+  return items.map((item, itemIndex) =>
+    itemIndex === index ? { ...item, checked: !item.checked } : item,
+  );
+}
+
+export function setCheckedForIndexes<T extends { checked: boolean }>(
+  items: T[],
+  indexes: Set<number>,
+  checked: boolean,
+): T[] {
+  return items.map((item, index) =>
+    indexes.has(index) ? { ...item, checked } : item,
+  );
+}
