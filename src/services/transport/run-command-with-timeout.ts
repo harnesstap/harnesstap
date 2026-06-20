@@ -21,7 +21,8 @@ export function runCommandWithTimeout(
     killSignal: "SIGTERM",
   });
 
-  if (result.error?.code === "ETIMEDOUT") {
+  const spawnError = result.error;
+  if (spawnError && "code" in spawnError && spawnError.code === "ETIMEDOUT") {
     return {
       stdout: result.stdout?.toString() ?? "",
       stderr: `Command timed out after ${timeoutMs}ms: ${command} ${args.join(" ")}`,

@@ -307,7 +307,7 @@ export async function runEnvironmentCreateWizard(input: {
     }
 
     if (source === "from-project") {
-      let scope;
+      let scope: { projectRoot: string; layerSelectors: string[] } | undefined;
       try {
         scope = await promptForProjectLayerScope();
       } catch (error) {

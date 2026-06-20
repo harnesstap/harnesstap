@@ -5,7 +5,7 @@ export const CATALOG_LIST_TIMEOUT_MESSAGE =
   "Catalog request timed out (30s). Try again or use --local-only to skip remote listing.";
 
 export async function fetchWithTimeout(
-  input: RequestInfo | URL,
+  input: string | URL,
   init?: RequestInit & { timeoutMs?: number; retries?: number },
 ): Promise<Response> {
   const timeoutMs = init?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
