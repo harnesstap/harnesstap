@@ -32,6 +32,7 @@ import {
   collectOtherProfilesSnapshotTrackedFiles,
   planStaleGlobalProfileFiles,
 } from "./global-profile-cleanup.js";
+import { substituteResourcesForApply } from "./environment-var-substitution.js";
 import { preparePluginPinsForApply } from "./plugin-pin-apply.js";
 import {
   assertSupportedHarnessTargets,
@@ -374,7 +375,11 @@ export async function applyProfileLayer(
     scope: "user",
     skipSync: options.dryRun || merged.pluginPins.length === 0,
   });
-  const applyResources = pluginPrepare.applyResources;
+  let applyResources = pluginPrepare.applyResources;
+  applyResources = substituteResourcesForApply(
+    applyResources,
+    resolvedEnvironment.vars,
+  ).resources;
 
   if (options.dryRun) {
     const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(

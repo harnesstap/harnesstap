@@ -9,6 +9,7 @@ export interface ApplyCommandOpts {
   format?: string;
   ignorePluginVersions?: boolean;
   strictPluginVersions?: boolean;
+  strict?: boolean;
   syncPlugins?: boolean;
   interactive?: boolean;
   noInteractive?: boolean;
@@ -40,5 +41,9 @@ export function addApplyCommandOptions(command: Command): Command {
     .option(
       "--on-conflict <policy>",
       "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
+    )
+    .option(
+      "--strict",
+      "Fail apply when ${VAR} environment placeholders cannot be resolved",
     );
 }

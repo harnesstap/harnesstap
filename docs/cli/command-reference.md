@@ -346,10 +346,11 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 
 ### Commands
 
-- `environment create <name>`
+- `environment create <name>` — blank (default), from project (`--from-project`), or from configured layer requirements (`--from-layer`); interactive wizard on TTY when no mode flags are set
+- `environment edit [name]` — interactively edit env vars, secret refs, model config, and permissions
 - `environment list`
-- `environment show <name>`
-- `environment delete <name>`
+- `environment show <name>` — values, secret refs, reverse references; `--layer` analyzes requirement gaps for a configured layer
+- `environment delete [name]`
 - `environment set <name>` — upsert values (`--var`, `--model`, `--permission`)
 - `environment unset <name>`
 - `environment secret set <name>` / `environment secret unset <name>`
@@ -357,20 +358,30 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 - `environment use <name>` — set home active environment; `--reapply` opt-in re-runs last applied layers
 - `environment active` — show active environment and cascade preview
 - `environment resolve` — dry-run merged environment values per cascade tier
-- `environment capture <name>` — create an environment from scoped project capture
-- `environment refresh <name>` — update an existing environment from scoped project capture
 
 ### Important options
 
+- `environment create --blank` — create an empty environment (default when no mode flag is set)
+- `environment create --from-project <path>` — import scoped project values required by the layer stack
+- `environment create --from-layer <selector>` — seed from configured layer `needs[]`, MCP env keys, and model metadata (repeatable or comma-separated)
+- `environment create --refresh` — update an existing environment (`--from-project` only)
+- `environment create --bind` — bind the new environment as the configured layer default (`--from-layer` only)
+- `environment create --layers <selectors>` — configured layer scope for `--from-project` (default: project's last-applied layers)
+- `environment create --strict` — exit non-zero when required keys are missing
+- `environment create --include-permissions` — include scanned permission resources (`--from-project` only)
+- `environment create --description <text>`
+- `environment create --dry-run` — preview without persisting
+- `environment create --interactive` / `-y, --yes`
+- `environment create --format json`
+- `environment edit --format json` — read-only edit snapshot (non-TTY)
+- `environment edit --interactive` / `-y, --yes`
 - `environment list --format json`
-- `environment show --format json`
+- `environment show --layer <selector>` — compare environment values against a configured layer's requirements
+- `environment show --format json` — includes `requirement_gaps` when `--layer` is set
+- `environment delete --force` — delete even when referenced
+- `environment delete --interactive` / `-y, --yes`
 - `environment active --format json`
 - `environment resolve --format json`
-- `environment capture --project <path>` — required
-- `environment capture --layers <selectors>` — default: project's last-applied configured layers
-- `environment capture --strict` — exit non-zero when required keys are missing
-- `environment capture --include-permissions`
-- `environment capture --dry-run --format json`
 - `environment use --reapply`
 
 ## harness (`h`)

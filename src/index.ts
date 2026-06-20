@@ -62,7 +62,11 @@ import {
   applyConfiguredLayerToProject,
   getProjectConfiguredLayers,
 } from "./models/project.js";
-import { getEnvironment } from "./models/environment.js";
+import {
+  getEnvironment,
+  listEnvironmentReferences,
+  listEnvironments,
+} from "./models/environment.js";
 import {
   createSnapshot,
   listSnapshots,
@@ -168,8 +172,8 @@ import { diffLayers } from "./services/layer-diff.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "./services/layer-doctor.js";
 import { mergeLayersForApply } from "./services/layer-apply-merge.js";
 import { resolveEnvironmentCascadeForApply } from "./services/environment-cascade.js";
+import { substituteResourcesForApply } from "./services/environment-var-substitution.js";
 import {
-  createEnvironmentCommand,
   deleteEnvironmentCommand,
   environmentActivePayload,
   environmentResolvePayload,
@@ -188,7 +192,13 @@ import {
   useEnvironmentForProjectCommand,
   useEnvironmentPayload,
 } from "./services/environment-commands.js";
-import { captureOrRefreshEnvironment } from "./services/environment-capture.js";
+import { runEnvironmentCreate } from "./services/environment-create.js";
+import { buildEnvironmentEditRows } from "./services/environment-edit.js";
+import { runEnvironmentCreateWizard } from "./services/wizards/environment-create.js";
+import { runEnvironmentDeleteWizard } from "./services/wizards/environment-delete.js";
+import { runEnvironmentEditWizard } from "./services/wizards/environment-edit.js";
+import { analyzeEnvironmentGaps } from "./services/environment-requirements.js";
+import { resolveEnvironmentOrThrow } from "./services/environment-selectors.js";
 import {
   exportEnvironmentToml,
   importEnvironmentToml,
@@ -243,6 +253,7 @@ import { createProgress, type ProgressHandle } from "./ui/progress.js";
 import {
   isPromptCancellationError,
   promptForChoice,
+  promptForConfirmation,
   promptForSearchableChoice,
   promptForValue,
   resolveOrPrompt,
@@ -1431,6 +1442,19 @@ async function handleApplyCommand(
 
   applyResources = pluginPrepare.applyResources;
   pluginValidationIssues = pluginPrepare.validationIssues;
+
+  const substituted = substituteResourcesForApply(
+    applyResources,
+    resolvedEnvironment.vars,
+  );
+  applyResources = substituted.resources;
+  if (opts.strict && substituted.missing.length > 0) {
+    process.exitCode = 1;
+    ui.danger("Strict mode failed: unresolved environment variables.", {
+      hints: substituted.missing.map((key) => key),
+    });
+    return;
+  }
 
   if (!skipPluginSync) {
     printPluginApplyPostSyncSummary(pluginPrepare, pluginPrepare.extraMaterialized);
@@ -2640,7 +2664,10 @@ function parsePermissionUnsetSelector(
   }
 }
 
-function renderEnvironmentShowHuman(payload: ReturnType<typeof showEnvironmentCommand>): void {
+function renderEnvironmentShowHuman(
+  payload: ReturnType<typeof showEnvironmentCommand>,
+  requirementGaps?: ReturnType<typeof analyzeEnvironmentGaps>,
+): void {
   ui.panel({
     title: ["ENVIRONMENT", payload.environment.name],
     rows: [
@@ -2703,6 +2730,38 @@ function renderEnvironmentShowHuman(payload: ReturnType<typeof showEnvironmentCo
         provider: value.provider,
         ref: value.ref,
       })),
+    });
+  }
+
+  if (payload.references.layers.length > 0) {
+    ui.subheader("REFERENCES");
+    ui.table.print({
+      columns: [
+        { key: "layer", header: "LAYER", width: 40 },
+      ],
+      rows: payload.references.layers.map((ref) => {
+        const layer = getLayerById(ref.id);
+        return {
+          layer: layer ? formatLayerLabel(layer) : ref.name,
+        };
+      }),
+    });
+  }
+
+  if (requirementGaps !== undefined) {
+    ui.subheader("REQUIREMENT GAPS");
+    ui.table.print({
+      columns: [
+        { key: "key", header: "KEY", width: 28 },
+        { key: "sources", header: "SOURCES", width: 24 },
+        { key: "status", header: "STATUS", width: 12 },
+      ],
+      rows: requirementGaps.map((gap) => ({
+        key: gap.key,
+        sources: gap.sources.join(", "),
+        status: gap.status,
+      })),
+      empty: "No requirement gaps found.",
     });
   }
 }
@@ -2915,60 +2974,380 @@ function printEnvironmentMutationResult(
   renderEnvironmentShowHuman(payload);
 }
 
-async function handleEnvironmentCaptureCommand(
-  mode: "capture" | "refresh",
-  name: string,
+function shouldUseInteractiveEnvironmentEdit(input: {
+  noInteractive?: boolean;
+  format?: string;
+}): boolean {
+  return shouldUseWizard({
+    interactive: true,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+}
+
+async function resolveEnvironmentMutationTarget(input: {
+  environmentName?: string;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  format?: string;
+  message: string;
+}): Promise<string | undefined> {
+  const format = parseOutputFormat(input.format);
+  const choices = listEnvironments().map((environment) => ({
+    name: environment.name,
+    value: environment.name,
+  }));
+
+  return resolveOrPrompt({
+    value: input.environmentName,
+    shouldPrompt: shouldUseWizard({
+      interactive: input.interactive,
+      noInteractive: input.noInteractive,
+      format,
+      missingRequiredArgs: !input.environmentName,
+    }),
+    prompt: async () => {
+      if (choices.length === 0) {
+        return undefined;
+      }
+      return promptForSearchableChoice({
+        message: input.message,
+        choices,
+      });
+    },
+  });
+}
+
+function printEnvironmentEditJsonSnapshot(
+  environment: ReturnType<typeof resolveEnvironmentOrThrow>,
+  rows: ReturnType<typeof buildEnvironmentEditRows>,
+): void {
+  printJson({
+    environment: {
+      id: environment.id,
+      name: environment.name,
+    },
+    rows,
+  });
+}
+
+async function handleEnvironmentEditCommand(
+  name: string | undefined,
   opts: {
-    project: string;
-    layers?: string[];
-    includePermissions?: boolean;
-    dryRun?: boolean;
-    strict?: boolean;
     format?: string;
+    interactive?: boolean;
+    yes?: boolean;
   },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(opts.project);
-  const result = await captureOrRefreshEnvironment({
-    mode,
+  const noInteractive = opts.yes;
+
+  const resolvedName = name ?? await resolveEnvironmentMutationTarget({
     environmentName: name,
-    projectRoot,
-    layerSelectors: opts.layers,
-    includePermissions: opts.includePermissions,
-    dryRun: opts.dryRun,
-    strict: opts.strict,
+    interactive: opts.interactive,
+    noInteractive,
+    format: opts.format,
+    message: "Which environment do you want to edit?",
+  });
+
+  if (!resolvedName) {
+    process.exitCode = 1;
+    ui.danger(
+      listEnvironments().length > 0
+        ? "error: missing required argument 'name'"
+        : `No environments found. Create one with \`${formatCommand("environment create <name>")}\` first.`,
+    );
+    return;
+  }
+
+  const environment = resolveEnvironmentOrThrow(resolvedName);
+  const rows = buildEnvironmentEditRows(environment.id);
+
+  if (format === "json" && !shouldUseInteractiveEnvironmentEdit({ noInteractive, format: opts.format })) {
+    printEnvironmentEditJsonSnapshot(environment, rows);
+    return;
+  }
+
+  if (!shouldUseInteractiveEnvironmentEdit({ noInteractive, format: opts.format })) {
+    process.exitCode = 1;
+    ui.danger(
+      `environment edit requires an interactive terminal. Use \`${formatCommand("environment edit <name> --format json")}\` for a snapshot.`,
+    );
+    return;
+  }
+
+  try {
+    const result = await runEnvironmentEditWizard({ environment });
+    if (!result) {
+      process.exitCode = 1;
+      return;
+    }
+    ui.success(`Updated environment ${ui.theme.accent(environment.name)}`);
+  } catch (error) {
+    if (isPromptCancellationError(error)) {
+      process.exitCode = 1;
+      return;
+    }
+    throw error;
+  }
+}
+
+function renderEnvironmentDeleteReferences(
+  references: ReturnType<typeof listEnvironmentReferences>,
+): void {
+  if (references.layers.length === 0) {
+    return;
+  }
+
+  ui.subheader("REFERENCES");
+  ui.table.print({
+    columns: [
+      { key: "layer", header: "LAYER", width: 40 },
+    ],
+    rows: references.layers.map((ref) => {
+      const layer = getLayerById(ref.id);
+      return {
+        layer: layer ? formatLayerLabel(layer) : ref.name,
+      };
+    }),
+  });
+}
+
+async function handleEnvironmentDeleteCommand(
+  name: string | undefined,
+  opts: {
+    force?: boolean;
+    format?: string;
+    interactive?: boolean;
+    yes?: boolean;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.yes,
+    format,
+    missingRequiredArgs: !name,
+  });
+
+  const resolvedName = name ?? (useWizard ? await runEnvironmentDeleteWizard() : undefined);
+  if (!resolvedName) {
+    throw new Error(
+      !name && useWizard
+        ? "No environment selected for deletion"
+        : "Environment name is required",
+    );
+  }
+
+  const environment = resolveEnvironmentOrThrow(resolvedName);
+  const references = listEnvironmentReferences(environment.id);
+
+  let confirmedWithReferences = false;
+  if (useWizard && !opts.force) {
+    renderEnvironmentDeleteReferences(references);
+    const confirmed = await promptForConfirmation({
+      message: references.layers.length > 0
+        ? `Delete environment "${environment.name}" even though it is referenced?`
+        : `Delete environment "${environment.name}"?`,
+      default: false,
+    });
+    if (!confirmed) {
+      ui.info("Operation cancelled.");
+      return;
+    }
+    confirmedWithReferences = references.layers.length > 0;
+  }
+
+  const result = deleteEnvironmentCommand(resolvedName, {
+    force: Boolean(opts.force || confirmedWithReferences),
   });
 
   if (format === "json") {
     printJson(result);
+    return;
+  }
+  ui.success(`Deleted environment ${ui.theme.accent(environment.name)}`);
+}
+
+function hasExplicitCreateMode(opts: {
+  blank?: boolean;
+  fromProject?: string;
+  fromLayer?: string[];
+}): boolean {
+  return Boolean(
+    opts.blank || opts.fromProject || (opts.fromLayer && opts.fromLayer.length > 0),
+  );
+}
+
+function printEnvironmentCreateResult(
+  result: Awaited<ReturnType<typeof runEnvironmentCreate>>,
+  opts: {
+    name: string;
+    fromProject?: string;
+    refresh?: boolean;
+    format: "human" | "json";
+  },
+): void {
+  if (result.mode === "blank") {
+    if (opts.format === "json") {
+      printJson(result.payload.environment);
+      return;
+    }
+    ui.success(`Created environment ${ui.theme.accent(result.payload.environment.name)}`);
+    return;
+  }
+
+  if (result.mode === "from-project") {
+    const captureResult = result.result;
+    if (opts.format === "json") {
+      printJson(captureResult);
+    } else {
+      const action = opts.refresh ? "refresh" : "create";
+      ui.panel({
+        title: ["ENVIRONMENT", `${action} ${opts.name}`],
+        rows: [
+          ["Project", opts.fromProject ? resolve(opts.fromProject) : "—"],
+          ["Main harness", captureResult.main_harness],
+          ["Configured layers", `${captureResult.configured_layer_ids.length}`],
+          ["Persisted", captureResult.persisted ? "yes" : "no"],
+          ["Missing keys", `${captureResult.missing_keys.length}`],
+        ],
+      });
+      if (captureResult.missing_keys.length > 0) {
+        ui.subheader("MISSING KEYS");
+        for (const missing of captureResult.missing_keys) {
+          const sources =
+            missing.sources.length > 0 ? missing.sources.join(", ") : "unknown";
+          ui.warn(`${missing.key} (${sources})`);
+        }
+      }
+    }
+
+    if (captureResult.strict_failed) {
+      process.exitCode = 1;
+      if (opts.format === "human") {
+        ui.danger("Strict mode failed: missing required environment keys.");
+      }
+    }
+    return;
+  }
+
+  const fromLayerResult = result.preview;
+  if (opts.format === "json") {
+    printJson({
+      ...fromLayerResult,
+      environment: result.payload.environment,
+      persisted: result.persisted,
+    });
   } else {
     ui.panel({
-      title: ["ENVIRONMENT", `${mode} ${name}`],
+      title: ["ENVIRONMENT", `create ${opts.name} from layer`],
       rows: [
-        ["Project", projectRoot],
-        ["Main harness", result.main_harness],
-        ["Configured layers", `${result.configured_layer_ids.length}`],
+        ["Configured layers", `${fromLayerResult.configured_layer_ids.length}`],
         ["Persisted", result.persisted ? "yes" : "no"],
-        ["Missing keys", `${result.missing_keys.length}`],
+        ["Missing keys", `${fromLayerResult.missing_keys.length}`],
+        ["Bound layers", `${fromLayerResult.bound_layer_ids.length}`],
       ],
     });
-    if (result.missing_keys.length > 0) {
+    if (fromLayerResult.missing_keys.length > 0) {
       ui.subheader("MISSING KEYS");
-      for (const missing of result.missing_keys) {
-        const sources = missing.sources.length > 0 ? missing.sources.join(", ") : "unknown";
+      for (const missing of fromLayerResult.missing_keys) {
+        const sources =
+          missing.sources.length > 0 ? missing.sources.join(", ") : "unknown";
         ui.warn(`${missing.key} (${sources})`);
       }
     }
+    if (result.persisted) {
+      ui.success(`Created environment ${ui.theme.accent(opts.name)}`);
+    }
   }
 
-  if (result.strict_failed) {
+  if (fromLayerResult.strict_failed) {
     process.exitCode = 1;
-    if (format === "human") {
+    if (opts.format === "human") {
       ui.danger("Strict mode failed: missing required environment keys.");
     }
   }
+}
+
+async function handleEnvironmentCreateCommand(
+  name: string,
+  opts: {
+    blank?: boolean;
+    fromProject?: string;
+    fromLayer?: string[];
+    refresh?: boolean;
+    bind?: boolean;
+    layers?: string[];
+    strict?: boolean;
+    dryRun?: boolean;
+    includePermissions?: boolean;
+    description?: string;
+    format?: string;
+    interactive?: boolean;
+    yes?: boolean;
+  },
+): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const useWizard = shouldUseWizard({
+    interactive: opts.interactive,
+    noInteractive: opts.yes,
+    format: opts.format,
+    missingRequiredArgs: !hasExplicitCreateMode(opts),
+  });
+
+  if (useWizard) {
+    const wizardOutcome = await runEnvironmentCreateWizard({
+      name,
+      description: opts.description,
+    });
+    if (wizardOutcome.status === "cancelled") {
+      ui.info("Operation cancelled.");
+      return;
+    }
+
+    printEnvironmentCreateResult(wizardOutcome.result, {
+      name,
+      fromProject: opts.fromProject,
+      refresh: opts.refresh,
+      format,
+    });
+    return;
+  }
+
+  const fromLayer = opts.fromLayer?.length
+    ? opts.fromLayer.flatMap((entry) =>
+        entry.split(",").map((part) => part.trim()).filter(Boolean),
+      )
+    : undefined;
+
+  const result = await runEnvironmentCreate({
+    name,
+    ...(opts.blank ? { blank: true } : {}),
+    ...(opts.fromProject ? { fromProject: resolve(opts.fromProject) } : {}),
+    ...(fromLayer ? { fromLayer } : {}),
+    refresh: opts.refresh,
+    bind: opts.bind,
+    layers: opts.layers,
+    strict: opts.strict,
+    dryRun: opts.dryRun,
+    includePermissions: opts.includePermissions,
+    description: opts.description,
+  });
+
+  printEnvironmentCreateResult(result, {
+    name,
+    fromProject: opts.fromProject,
+    refresh: opts.refresh,
+    format,
+  });
 }
 
 async function handleEnvironmentUseCommand(
@@ -5536,17 +5915,79 @@ const environmentCmd = configureCommandGroup(
 environmentCmd
   .command("create")
   .argument("<name>", "Environment name")
+  .option("--blank", "Create an empty environment")
+  .option("--from-project <path>", "Create from project capture")
+  .option(
+    "--from-layer <layer>",
+    "Create from configured layer requirements (repeatable or comma-separated)",
+    collectRepeatedOption,
+    [],
+  )
+  .option("--refresh", "Refresh an existing environment (--from-project only)")
+  .option("--bind", "Bind environment as layer default (--from-layer only)")
+  .option("--layers <layers...>", "Configured layer selectors for --from-project")
+  .option("--strict", "Fail when required keys are missing")
+  .option("--dry-run", "Preview without persisting")
+  .option("--include-permissions", "Capture scanned permission resources")
+  .option("--description <text>", "Environment description")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("-y, --yes", "Skip interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const created = createEnvironmentCommand({ name });
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(created);
-      return;
+  .action(async (
+    name: string,
+    opts: {
+      blank?: boolean;
+      fromProject?: string;
+      fromLayer?: string[];
+      refresh?: boolean;
+      bind?: boolean;
+      layers?: string[];
+      strict?: boolean;
+      dryRun?: boolean;
+      includePermissions?: boolean;
+      description?: string;
+      interactive?: boolean;
+      yes?: boolean;
+      format?: string;
+    },
+  ) => {
+    try {
+      await handleEnvironmentCreateCommand(name, opts);
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        ui.info("Operation cancelled.");
+        return;
+      }
+      process.exitCode = 1;
+      renderCliError(error);
     }
-    ui.success(`Created environment ${ui.theme.accent(created.name)}`);
+  });
+
+environmentCmd
+  .command("edit")
+  .argument("[name]", "Environment name or ID")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("-y, --yes", "Skip interactive prompts")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Edit environment values interactively")
+  .action(async (
+    name: string | undefined,
+    opts: {
+      interactive?: boolean;
+      yes?: boolean;
+      format?: string;
+    },
+  ) => {
+    try {
+      await handleEnvironmentEditCommand(name, opts);
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        ui.info("Operation cancelled.");
+        return;
+      }
+      process.exitCode = 1;
+      renderCliError(error);
+    }
   });
 
 environmentCmd
@@ -5582,30 +6023,53 @@ environmentCmd
 environmentCmd
   .command("show")
   .argument("<name>", "Environment name or ID")
+  .option("--layer <selector>", "Analyze requirement gaps for a configured layer")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { format?: string }) => {
+  .action((name: string, opts: { format?: string; layer?: string }) => {
     const db = getDb();
     initializeSchema(db);
     const payload = showEnvironmentCommand(name);
     const format = parseOutputFormat(opts.format);
-    printEnvironmentMutationResult(payload, format);
+    const requirementGaps = opts.layer
+      ? analyzeEnvironmentGaps(payload.environment.id, opts.layer)
+      : undefined;
+    if (format === "json") {
+      printJson(
+        requirementGaps !== undefined
+          ? { ...payload, requirement_gaps: requirementGaps }
+          : payload,
+      );
+      return;
+    }
+    renderEnvironmentShowHuman(payload, requirementGaps);
   });
 
 environmentCmd
   .command("delete")
-  .argument("<name>", "Environment name or ID")
+  .argument("[name]", "Environment name or ID")
   .option("--force", "Delete even if references exist")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("-y, --yes", "Skip interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { force?: boolean; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const result = deleteEnvironmentCommand(name, { force: opts.force });
-    const format = parseOutputFormat(opts.format);
-    if (format === "json") {
-      printJson(result);
-      return;
+  .action(async (
+    name: string | undefined,
+    opts: {
+      force?: boolean;
+      format?: string;
+      interactive?: boolean;
+      yes?: boolean;
+    },
+  ) => {
+    try {
+      await handleEnvironmentDeleteCommand(name, opts);
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        ui.info("Operation cancelled.");
+        return;
+      }
+      process.exitCode = 1;
+      renderCliError(error);
     }
-    ui.success(`Deleted environment ${ui.theme.accent(name)}`);
   });
 
 environmentCmd
@@ -5707,52 +6171,6 @@ environmentSecretCmd
     const payload = unsetEnvironmentSecretCommand(name, key);
     const format = parseOutputFormat(opts.format);
     printEnvironmentMutationResult(payload, format);
-  });
-
-environmentCmd
-  .command("capture")
-  .argument("<name>", "Environment name")
-  .requiredOption("--project <path>", "Project directory")
-  .option("--layers <layers...>", "Configured layer selectors")
-  .option("--include-permissions", "Capture scanned permission resources")
-  .option("--dry-run", "Preview capture without persisting")
-  .option("--strict", "Fail when required keys are missing")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (
-    name: string,
-    opts: {
-      project: string;
-      layers?: string[];
-      includePermissions?: boolean;
-      dryRun?: boolean;
-      strict?: boolean;
-      format?: string;
-    },
-  ) => {
-    await handleEnvironmentCaptureCommand("capture", name, opts);
-  });
-
-environmentCmd
-  .command("refresh")
-  .argument("<name>", "Environment name")
-  .requiredOption("--project <path>", "Project directory")
-  .option("--layers <layers...>", "Configured layer selectors")
-  .option("--include-permissions", "Capture scanned permission resources")
-  .option("--dry-run", "Preview refresh without persisting")
-  .option("--strict", "Fail when required keys are missing")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (
-    name: string,
-    opts: {
-      project: string;
-      layers?: string[];
-      includePermissions?: boolean;
-      dryRun?: boolean;
-      strict?: boolean;
-      format?: string;
-    },
-  ) => {
-    await handleEnvironmentCaptureCommand("refresh", name, opts);
   });
 
 environmentCmd
