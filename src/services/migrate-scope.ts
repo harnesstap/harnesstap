@@ -1,7 +1,11 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import type { AnyMigrateManifest, MigrateManifest } from "./migrate.js";
 import { exportMigrationState, importMigrationState } from "./migrate.js";
+import {
+  exportEnvironmentToml,
+  importEnvironmentFile,
+} from "./environment-import-export.js";
 import { exportToFile } from "./layer-export.js";
 import { importFromFile } from "./layer-import.js";
 import {
@@ -12,7 +16,7 @@ import {
 import { parseTransportToml } from "./transport/read.js";
 import { LAYER_SCHEMA, RESOURCE_SCHEMA } from "../types.js";
 
-export type MigrateScope = "workspace" | "layer" | "resource";
+export type MigrateScope = "workspace" | "layer" | "resource" | "environment";
 
 export interface MigrateExportCliOpts {
   file?: string;
@@ -20,6 +24,7 @@ export interface MigrateExportCliOpts {
   workspace?: boolean;
   layer?: string;
   resource?: string;
+  environment?: string;
   includePlugins?: boolean;
   embedPlugins?: boolean;
 }
@@ -29,6 +34,7 @@ export interface MigrateImportCliOpts {
   workspace?: boolean;
   layer?: boolean;
   resource?: boolean;
+  environment?: boolean;
 }
 
 export type WorkspaceExportResult = {
@@ -49,10 +55,17 @@ export type ResourceExportResult = {
   resource: string;
 };
 
+export type EnvironmentExportResult = {
+  scope: "environment";
+  output: string;
+  environment: string;
+};
+
 export type ScopedExportResult =
   | WorkspaceExportResult
   | LayerExportResult
-  | ResourceExportResult;
+  | ResourceExportResult
+  | EnvironmentExportResult;
 
 export type WorkspaceImportResult = {
   scope: "workspace";
@@ -74,20 +87,30 @@ export type ResourceImportResult = {
   action: "created" | "updated" | "unchanged";
 };
 
+export type EnvironmentImportResult = {
+  scope: "environment";
+  environment: string;
+  imported_keys: string[];
+  imported_secret_refs: string[];
+};
+
 export type ScopedImportResult =
   | WorkspaceImportResult
   | LayerImportResult
-  | ResourceImportResult;
+  | ResourceImportResult
+  | EnvironmentImportResult;
 
 function countScopeFlags(opts: {
   workspace?: boolean;
   layer?: string | boolean;
   resource?: string | boolean;
+  environment?: string | boolean;
 }): number {
   let count = 0;
   if (opts.workspace) count++;
   if (opts.layer) count++;
   if (opts.resource) count++;
+  if (opts.environment) count++;
   return count;
 }
 
@@ -95,9 +118,10 @@ export function assertExclusiveScopeFlags(opts: {
   workspace?: boolean;
   layer?: string | boolean;
   resource?: string | boolean;
+  environment?: string | boolean;
 }): void {
   if (countScopeFlags(opts) > 1) {
-    throw new Error("Choose only one of --workspace, --layer, or --resource.");
+    throw new Error("Choose only one of --workspace, --layer, --resource, or --environment.");
   }
 }
 
@@ -105,14 +129,36 @@ function embedPlugins(opts: MigrateExportCliOpts): boolean {
   return opts.includePlugins ?? opts.embedPlugins ?? false;
 }
 
+function isEnvironmentTomlDocument(document: Record<string, unknown>): boolean {
+  if (document.$schema === LAYER_SCHEMA || document.$schema === RESOURCE_SCHEMA) {
+    return false;
+  }
+  if (document.environments && typeof document.environments === "object") {
+    return true;
+  }
+  return typeof document.name === "string" && document.values !== undefined;
+}
+
 export function resolveExportScope(opts: MigrateExportCliOpts): {
   scope: MigrateScope;
   outputPath: string;
   layerSelector?: string;
   resourceSelector?: string;
+  environmentSelector?: string;
 } {
   assertExclusiveScopeFlags(opts);
   const outputPath = opts.outputFile ?? opts.file;
+
+  if (opts.environment) {
+    const path = outputPath && outputPath.length > 0
+      ? resolve(outputPath)
+      : resolve(`${opts.environment}.environment.toml`);
+    return {
+      scope: "environment",
+      outputPath: path,
+      environmentSelector: opts.environment,
+    };
+  }
 
   if (opts.layer) {
     const firstLayer = opts.layer.split(",")[0]?.trim() ?? "layer";
@@ -157,7 +203,7 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
   }
 
   throw new Error(
-    "Specify export scope: --workspace, --layer <name>, or --resource <selector>.",
+    "Specify export scope: --workspace, --layer <name>, --resource <selector>, or --environment <name>.",
   );
 }
 
@@ -175,6 +221,7 @@ export function detectImportScopeFromFile(filePath: string): MigrateScope {
     const schema = document.schema;
     if (schema === LAYER_SCHEMA) return "layer";
     if (schema === RESOURCE_SCHEMA) return "resource";
+    if (isEnvironmentTomlDocument(document)) return "environment";
     throw new Error(`Unsupported TOML schema for migrate import: ${String(schema)}`);
   }
   throw new Error(`Cannot detect import scope for file: ${resolved}`);
@@ -185,6 +232,7 @@ export function resolveImportScope(opts: MigrateImportCliOpts): MigrateScope {
     workspace: opts.workspace,
     layer: opts.layer,
     resource: opts.resource,
+    environment: opts.environment,
   });
   if (!opts.file || opts.file.length === 0) {
     throw new Error("Import file path is required.");
@@ -197,6 +245,8 @@ export function resolveImportScope(opts: MigrateImportCliOpts): MigrateScope {
     scope = "layer";
   } else if (opts.resource) {
     scope = "resource";
+  } else if (opts.environment) {
+    scope = "environment";
   } else {
     return detectImportScopeFromFile(opts.file);
   }
@@ -263,6 +313,18 @@ export function exportScopedMigration(
         resource: formatResourceSelector(exportDoc),
       };
     }
+    case "environment": {
+      if (!resolved.environmentSelector) {
+        throw new Error("Environment selector is required for environment export.");
+      }
+      const { environment, toml } = exportEnvironmentToml(resolved.environmentSelector);
+      writeFileSync(resolved.outputPath, toml, "utf-8");
+      return {
+        scope: "environment",
+        output: resolved.outputPath,
+        environment: environment.name,
+      };
+    }
     default: {
       const neverScope: never = resolved.scope;
       throw new Error(`Unsupported export scope: ${neverScope}`);
@@ -306,6 +368,15 @@ export function importScopedMigration(
         scope: "resource",
         resource: formatResourceSelector(result.resource),
         action: result.action,
+      };
+    }
+    case "environment": {
+      const result = importEnvironmentFile(resolved);
+      return {
+        scope: "environment",
+        environment: result.environment.name,
+        imported_keys: result.imported_keys,
+        imported_secret_refs: result.imported_secret_refs,
       };
     }
     default: {

@@ -95,3 +95,29 @@ export function resolveSecretRefs(
   }
   return vars;
 }
+
+export interface SecretRefWarning {
+  key: string;
+  message: string;
+}
+
+export function resolveSecretRefsBestEffort(
+  secretRefs: Record<string, SecretRefInput>,
+): {
+  resolved: Record<string, string>;
+  warnings: SecretRefWarning[];
+} {
+  const resolved: Record<string, string> = {};
+  const warnings: SecretRefWarning[] = [];
+  for (const [key, secretRef] of Object.entries(secretRefs)) {
+    try {
+      resolved[key] = resolveSecretRef(secretRef);
+    } catch (error) {
+      warnings.push({
+        key,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return { resolved, warnings };
+}

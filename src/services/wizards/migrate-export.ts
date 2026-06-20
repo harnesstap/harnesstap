@@ -1,4 +1,5 @@
 import inquirer from "inquirer";
+import { listEnvironments } from "../../models/environment.js";
 import { listResources } from "../../models/resource.js";
 import { toLayerChoices } from "../completion/choices.js";
 import type { MigrateScope } from "../migrate-scope.js";
@@ -15,6 +16,7 @@ export type MigrateExportWizardResult = {
   outputPath: string;
   layer?: string;
   resource?: string;
+  environment?: string;
   embedPlugins?: boolean;
 };
 
@@ -28,6 +30,7 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
         { name: "Workspace (full local library)", value: "workspace" },
         { name: "Layer", value: "layer" },
         { name: "Resource", value: "resource" },
+        { name: "Environment", value: "environment" },
       ],
     },
   ]);
@@ -79,6 +82,28 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
       default: `${type}-${name}.harnessdeck.toml`,
     });
     return { scope, resource, outputPath };
+  }
+
+  if (scope === "environment") {
+    const environments = listEnvironments();
+    if (environments.length === 0) {
+      throw new Error(
+        "No environments in workspace. Create one with environment create first.",
+      );
+    }
+    const choices = environments.map((environment) => ({
+      name: environment.name,
+      value: environment.name,
+    }));
+    const environment = await promptForSearchableChoice({
+      message: "Which environment?",
+      choices,
+    });
+    const outputPath = await promptForValue({
+      message: "Output file",
+      default: `${environment}.environment.toml`,
+    });
+    return { scope, environment, outputPath };
   }
 
   const outputPath = await promptForValue({

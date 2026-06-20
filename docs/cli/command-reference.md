@@ -120,7 +120,7 @@ Apply layers with `layer apply` (not under this group).
 
 ### Important options
 
-- `scan -h, --harness <slug>` — scan only one harness
+- `scan --harness <slug>` — scan only one harness
 - `scan --dry-run` — preview imports without writing to the DB
 - `scan --overwrite` — replace library rows when scan content differs
 - `scan --skip-existing` — keep existing rows when scan content differs
@@ -219,7 +219,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer doctor --list-checks` — list available checks
 - `layer doctor --format json` — exits `1` when the layer is invalid
 - `layer from-project -d, --description <text>`
-- `layer from-project -h, --harness <slug>`
+- `layer from-project --harness <slug>`
 - `layer pull --as <name>`
 - `layer pull --org <slug>`
 - `layer pull --catalog <slug>` — catalog slug when selector omits catalog (default `default`)
@@ -340,24 +340,19 @@ Manage individual imported resources such as instructions, skills, rules, or age
 
 ## environment (`e`)
 
-Manage named environment bundles (env vars, model config, permissions, and secret references) and active-environment pointers.
+Manage named environment bundles (env vars, model config, permissions, and secret references) and global or per-terminal active-environment pointers.
 
 Environment values are the runtime *how* configuration that plugins satisfy through `needs[]` contracts and MCP env keys. They are distinct from toolkit configuration (`harness_preferences`, `config.jsonc`).
 
 ### Commands
 
 - `environment create <name>` — blank (default), from project (`--from-project`), or from configured layer requirements (`--from-layer`); interactive wizard on TTY when no mode flags are set
-- `environment edit [name]` — interactively edit env vars, secret refs, model config, and permissions
+- `environment edit [name]` — interactively edit values, or use scripting flags for non-interactive updates
 - `environment list`
 - `environment show <name>` — values, secret refs, reverse references; `--layer` analyzes requirement gaps for a configured layer
 - `environment delete [name]`
-- `environment set <name>` — upsert values (`--var`, `--model`, `--permission`)
-- `environment unset <name>`
-- `environment secret set <name>` / `environment secret unset <name>`
-- `environment import <file>` / `environment export <name>`
-- `environment use <name>` — set home active environment; `--reapply` opt-in re-runs last applied layers
-- `environment active` — show active environment and cascade preview
-- `environment resolve` — dry-run merged environment values per cascade tier
+- `environment use <name>` — set the global active environment; `--local` applies only to this terminal session
+- `environment status` — show active environment and terminal env var drift
 
 ### Important options
 
@@ -373,6 +368,10 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 - `environment create --dry-run` — preview without persisting
 - `environment create --interactive` / `-y, --yes`
 - `environment create --format json`
+- `environment edit --var KEY=VALUE` / `--unset-var KEY` — scripting mode env var updates
+- `environment edit --model <name>` / `--model-provider <provider>` / `--unset-model`
+- `environment edit --permission action:pattern` / `--unset-permission <selector>`
+- `environment edit --secret KEY:provider:ref` / `--unset-secret KEY`
 - `environment edit --format json` — read-only edit snapshot (non-TTY)
 - `environment edit --interactive` / `-y, --yes`
 - `environment list --format json`
@@ -380,9 +379,10 @@ Environment values are the runtime *how* configuration that plugins satisfy thro
 - `environment show --format json` — includes `requirement_gaps` when `--layer` is set
 - `environment delete --force` — delete even when referenced
 - `environment delete --interactive` / `-y, --yes`
-- `environment active --format json`
-- `environment resolve --format json`
-- `environment use --reapply`
+- `environment use --local` — session-scoped active environment without changing global pointer
+- `environment status --layers <selectors>` — include configured layer default environments in expected values
+- `environment status --check` — exit non-zero when terminal env vars drift from expected values
+- `environment status --format json`
 
 ## harness (`h`)
 
@@ -419,7 +419,7 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck
 
 ### Commands
 
-- `migrate export [file]` — export workspace, layer, or resource (interactive when `[file]` omitted on a TTY)
+- `migrate export [file]` — export workspace, layer, environment, or resource (interactive when `[file]` omitted on a TTY)
 - `migrate import [file]` — import from archive or TOML (auto-detects scope from file format)
 
 ### Important options
@@ -427,9 +427,10 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck
 - `migrate export --workspace` — full workspace archive (`.tar.gz` or `.json`)
 - `migrate export --layer <name>` — layer bundle TOML (`urn:harnessdeck:layer:v1`); comma-separated for multi-layer
 - `migrate export --resource <selector>` — single resource TOML (`urn:harnessdeck:resource:v1`)
+- `migrate export --environment <name>` — single environment TOML
 - `migrate export -o, --file <path>` — output path (overrides positional)
 - `migrate export --include-plugins` / `--embed-plugins` — embed plugin trees (workspace and layer scope)
-- `migrate import --workspace` / `--layer` / `--resource` — force import scope
+- `migrate import --workspace` / `--layer` / `--resource` / `--environment` — force import scope
 - `migrate export --format json` / `migrate import --format json` — machine-readable summary
 
 Workspace archives include layer bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.

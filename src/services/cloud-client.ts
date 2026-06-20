@@ -69,6 +69,7 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
 
 export { nextPublishVersion };
 
+import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
 import { parseLayerExportToml } from "./transport/index.js";
 
 function exportLayerExportToCloudPayload(layerExportToml: string): { layers: Array<Record<string, unknown>> } {
@@ -102,7 +103,7 @@ export async function requestDeviceCode(
   baseUrl: string,
   opts?: { scopes?: Array<"read" | "publish" | "admin"> },
 ): Promise<DeviceCodeResponse> {
-  const response = await fetch(apiUrl(baseUrl, "/cli/device/code"), {
+  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/code"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ scopes: opts?.scopes ?? [...DEFAULT_DEVICE_SCOPES] }),
@@ -123,7 +124,7 @@ export async function pollDeviceToken(
   const maxPolls = opts?.maxPolls ?? 60;
 
   for (let attempt = 0; attempt < maxPolls; attempt += 1) {
-    const response = await fetch(apiUrl(baseUrl, "/cli/device/token"), {
+    const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/token"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ device_code: deviceCode }),
@@ -169,7 +170,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     if (state.token.expires_at == null || state.token.expires_at > now + 5) return;
     if (!state.token.refresh_token) throw new Error("No refresh token available");
 
-    const response = await fetch(apiUrl(state.baseUrl, "/cli/token/refresh"), {
+    const response = await fetchWithTimeout(apiUrl(state.baseUrl, "/cli/token/refresh"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refresh_token: state.token.refresh_token }),
@@ -196,7 +197,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     const headers = new Headers(init?.headers);
     if (!state.token) throw new Error("Missing auth token");
     headers.set("Authorization", `Bearer ${state.token.access_token}`);
-    return fetch(input, { ...init, headers });
+    return fetchWithTimeout(input, { ...init, headers });
   }
 
   async function listPublishedLayers(orgId: string): Promise<PublishedLayerRecord[]> {

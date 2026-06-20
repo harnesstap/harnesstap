@@ -1,6 +1,10 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { defaultRunCommand, type RunCommand } from "./run-command.js";
+import {
+  DEFAULT_GIT_CLONE_TIMEOUT_MS,
+  runCommandWithTimeout,
+} from "../services/transport/run-command-with-timeout.js";
+import type { RunCommand } from "./run-command.js";
 
 export interface GitRefreshOptions {
   url: string;
@@ -14,7 +18,7 @@ export function refreshGitSource(opts: GitRefreshOptions): {
   sha?: string;
   message: string;
 } {
-  const run = opts.runCommand ?? defaultRunCommand;
+  const run = opts.runCommand ?? runCommandWithTimeout;
 
   if (existsSync(opts.targetDir)) {
     rmSync(opts.targetDir, { recursive: true, force: true });
@@ -25,7 +29,7 @@ export function refreshGitSource(opts: GitRefreshOptions): {
   if (opts.ref) cloneArgs.push("--branch", opts.ref);
   cloneArgs.push(opts.url, opts.targetDir);
 
-  const clone = run("git", cloneArgs);
+  const clone = run("git", cloneArgs, { timeoutMs: DEFAULT_GIT_CLONE_TIMEOUT_MS });
   if (clone.exitCode !== 0) {
     return {
       ok: false,

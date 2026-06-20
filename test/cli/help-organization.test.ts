@@ -4,6 +4,20 @@ import { runCli } from "../helpers/cli.ts";
 import { createTestContext } from "../helpers/db.ts";
 
 describe("CLI help and command organization", () => {
+  it("scan -h shows help instead of requiring --harness value", async () => {
+    const result = await runCli(["scan", "-h"]);
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain("USAGE");
+    expect(result.stderr).toBe("");
+  });
+
+  it("layer from-project -h shows help instead of requiring --harness value", async () => {
+    const result = await runCli(["layer", "from-project", "-h"]);
+    expect(result.exitCode).toBeUndefined();
+    expect(result.stdout).toContain("USAGE");
+    expect(result.stderr).toBe("");
+  });
+
   it("shows grouped command help without throwing when no subcommand is provided", async () => {
     const groupedCommands = [
       ["layer"],
@@ -270,5 +284,20 @@ describe("CLI help and command organization", () => {
   it("hides __complete from top-level help", async () => {
     const result = await runCli(["--help"]);
     expect(result.stdout).not.toContain("__complete");
+  });
+
+  it("documents every environment subcommand in group help", async () => {
+    const result = await runCli(["environment", "-h"]);
+    for (const sub of ["create", "edit", "list", "show", "delete", "use", "status"]) {
+      expect(result.stdout).toContain(sub);
+    }
+    expect(result.stdout).toMatch(/create <name>.*Create/);
+    expect(result.stdout).toMatch(/use <name>.*Set/);
+  });
+
+  it("documents profile list and use in group help", async () => {
+    const result = await runCli(["profile", "-h"]);
+    expect(result.stdout).toMatch(/list \(ls\).*List local profile/);
+    expect(result.stdout).toMatch(/use <name>.*Switch the active profile/);
   });
 });

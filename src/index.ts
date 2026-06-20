@@ -1,4 +1,12 @@
 import { Command } from "commander";
+import {
+  getCommandHelpEntry,
+} from "./services/cli-help-registry.js";
+import {
+  CliUsageError,
+  conflictingOptions,
+  missingRequiredArg,
+} from "./services/cli-errors.js";
 import { PACKAGE_VERSION } from "./version.js";
 import { getDb, closeDb, getDbPath, getHarnessdeckDir } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
@@ -60,7 +68,6 @@ import {
   getProjectByLocalPath,
   getProjectByOrigin,
   applyConfiguredLayerToProject,
-  getProjectConfiguredLayers,
 } from "./models/project.js";
 import {
   getEnvironment,
@@ -76,8 +83,8 @@ import {
   getAllPlatforms,
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
   ImportedSnapshot,
@@ -175,8 +182,6 @@ import { resolveEnvironmentCascadeForApply } from "./services/environment-cascad
 import { substituteResourcesForApply } from "./services/environment-var-substitution.js";
 import {
   deleteEnvironmentCommand,
-  environmentActivePayload,
-  environmentResolvePayload,
   listEnvironmentsCommand,
   setEnvironmentModelConfigCommand,
   setEnvironmentPermissionCommand,
@@ -189,9 +194,9 @@ import {
   unsetEnvironmentSecretCommand,
   unsetEnvironmentVarCommand,
   unsetLayerEnvironmentCommand,
-  useEnvironmentForProjectCommand,
-  useEnvironmentPayload,
+  useEnvironmentCommand,
 } from "./services/environment-commands.js";
+import { detectEnvironmentStatus } from "./services/environment-status.js";
 import { runEnvironmentCreate } from "./services/environment-create.js";
 import { buildEnvironmentEditRows } from "./services/environment-edit.js";
 import { runEnvironmentCreateWizard } from "./services/wizards/environment-create.js";
@@ -199,10 +204,6 @@ import { runEnvironmentDeleteWizard } from "./services/wizards/environment-delet
 import { runEnvironmentEditWizard } from "./services/wizards/environment-edit.js";
 import { analyzeEnvironmentGaps } from "./services/environment-requirements.js";
 import { resolveEnvironmentOrThrow } from "./services/environment-selectors.js";
-import {
-  exportEnvironmentToml,
-  importEnvironmentToml,
-} from "./services/environment-import-export.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
 import { createLayerFromSource } from "./services/layer-from-source.js";
 import {
@@ -339,9 +340,13 @@ function renderCliError(error: unknown, argv: string[] = process.argv): void {
     return;
   }
 
-  const message = error instanceof Error ? error.message : String(error);
-  ui.danger(message);
-  
+  if (error instanceof CliUsageError) {
+    ui.danger(error.message, { hints: error.hints });
+  } else {
+    const message = error instanceof Error ? error.message : String(error);
+    ui.danger(message);
+  }
+
   // Append contextual help for Commander-style errors
   const contextCommand = findContextCommand(argv);
   if (contextCommand) {
@@ -630,6 +635,14 @@ function isHiddenHelpCommand(command: Command): boolean {
   );
 }
 
+function resolveCommandDescription(command: Command): string {
+  return command.description() || getCommandHelpEntry(command)?.description || "";
+}
+
+function isLeafHelpCommand(command: Command): boolean {
+  return command.commands.every((sub) => isHiddenHelpCommand(sub));
+}
+
 function isCommandGroup(command: Command): boolean {
   return command.commands.some((sub) => !isHiddenHelpCommand(sub));
 }
@@ -685,7 +698,7 @@ function renderGroupedCommandHelp(cmd: Command): string {
     const nameStr = commandStrs[i];
     if (!command || !nameStr) continue;
     const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
-    const desc = command.description() || "";
+    const desc = resolveCommandDescription(command);
     lines.push(`  ${ui.theme.command(nameStr)}${padding}${desc}`);
   }
 
@@ -746,7 +759,7 @@ function renderCommandSection(title: string, commands: Command[]): string {
       continue;
     }
     const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
-    lines.push(`  ${ui.theme.command(nameStr)}${padding}${command.description() || ""}`);
+    lines.push(`  ${ui.theme.command(nameStr)}${padding}${resolveCommandDescription(command)}`);
   }
   return lines.join("\n");
 }
@@ -832,8 +845,9 @@ program
           "",
         ];
         
-        if (cmd.description()) {
-          lines.push(cmd.description(), "");
+        const description = resolveCommandDescription(cmd);
+        if (description) {
+          lines.push(description, "");
         }
 
         const args = cmd.registeredArguments?.filter((arg) => arg.description) ?? [];
@@ -846,11 +860,16 @@ program
           lines.push("");
         }
 
-        if (cmd.name() === "completion") {
+        const helpEntry = getCommandHelpEntry(cmd);
+        if (
+          isLeafHelpCommand(cmd)
+          && helpEntry?.examples
+          && helpEntry.examples.length > 0
+        ) {
           lines.push(ui.theme.heading("EXAMPLES"));
-          lines.push(`  ${formatCommand("completion bash >> ~/.bashrc")}`);
-          lines.push(`  ${formatCommand("completion zsh >> ~/.zshrc")}`);
-          lines.push(`  ${formatCommand("completion fish > ~/.config/fish/completions/hd.fish")}`);
+          for (const example of helpEntry.examples) {
+            lines.push(`  ${formatCommand(example)}`);
+          }
           lines.push("");
         }
         
@@ -1380,7 +1399,6 @@ async function handleApplyCommand(
   const { resources, claude } = applyBundle;
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
     configuredLayerIds: applyBundle.configuredLayerIds,
-    projectRoot,
   });
   const mergedPluginPins = (() => {
     const pins = new Map<string, { ref: string; version_constraint: string }>();
@@ -1783,6 +1801,11 @@ function printMigrateExportHuman(result: ScopedExportResult): void {
         `Exported resource ${ui.theme.accent(result.resource)} ${ui.icons.hint} ${result.output}`,
       );
       return;
+    case "environment":
+      ui.success(
+        `Exported environment ${ui.theme.accent(result.environment)} ${ui.icons.hint} ${result.output}`,
+      );
+      return;
     default: {
       const neverResult: never = result;
       throw new Error(`Unsupported export result: ${String(neverResult)}`);
@@ -1805,6 +1828,11 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
     case "resource":
       ui.success(
         `Imported resource ${ui.theme.accent(result.resource)} ${ui.icons.bullet} ${result.action}`,
+      );
+      return;
+    case "environment":
+      ui.success(
+        `Imported environment ${ui.theme.accent(result.environment)} ${ui.icons.bullet} ${formatCount(result.imported_keys.length, "var")}`,
       );
       return;
     default: {
@@ -2360,7 +2388,7 @@ async function handleLayerEditCommand(
 
   if (opts.environment && opts.clearEnvironment) {
     process.exitCode = 1;
-    ui.danger("Cannot use --environment and --clear-environment together");
+    renderCliError(conflictingOptions("--environment", "--clear-environment"));
     return;
   }
 
@@ -2766,42 +2794,6 @@ function renderEnvironmentShowHuman(
   }
 }
 
-function writeHomeActiveEnvironment(name: string): string {
-  const home = getHarnessdeckDir();
-  mkdirSync(home, { recursive: true });
-  const filePath = join(home, "active-environment.json");
-  writeFileSync(filePath, `${JSON.stringify({ name }, null, 2)}\n`, "utf-8");
-  return filePath;
-}
-
-function resolveConfiguredLayersForCascade(
-  projectRoot: string,
-  selectors?: string[],
-): string[] {
-  if (selectors && selectors.length > 0) {
-    return selectors.map((selector) => {
-      const configuredLayer = resolveLayerSelector(selector);
-      if (!configuredLayer) {
-        throw new Error(`Configured layer not found: ${selector}`);
-      }
-      return configuredLayer.id;
-    });
-  }
-  const project = getProjectByLocalPath(projectRoot);
-  if (!project) {
-    throw new Error(`No tracked project found at ${projectRoot}; pass --layers explicitly`);
-  }
-  const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
-    (row) => row.layer_id,
-  );
-  if (configuredLayerIds.length === 0) {
-    throw new Error(
-      `Project ${projectRoot} has no applied configured layers; pass --layers explicitly`,
-    );
-  }
-  return configuredLayerIds;
-}
-
 function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
   return listImportedSnapshots()
     .filter((candidate) =>
@@ -3038,6 +3030,15 @@ async function handleEnvironmentEditCommand(
     format?: string;
     interactive?: boolean;
     yes?: boolean;
+    var?: string[];
+    unsetVar?: string[];
+    model?: string;
+    modelProvider?: string;
+    unsetModel?: string | boolean;
+    permission?: string[];
+    unsetPermission?: string[];
+    secret?: string[];
+    unsetSecret?: string[];
   },
 ): Promise<void> {
   const db = getDb();
@@ -3045,18 +3046,46 @@ async function handleEnvironmentEditCommand(
   const format = parseOutputFormat(opts.format);
   const noInteractive = opts.yes;
 
-  const resolvedName = name ?? await resolveEnvironmentMutationTarget({
-    environmentName: name,
-    interactive: opts.interactive,
-    noInteractive,
-    format: opts.format,
-    message: "Which environment do you want to edit?",
+  const secretEntries = (opts.secret ?? []).map((entry) => {
+    const parts = entry.split(":");
+    if (parts.length < 3) {
+      throw new Error(`Invalid --secret entry "${entry}". Expected KEY:provider:ref.`);
+    }
+    const [key, provider, ...refParts] = parts;
+    const providerValue = provider as "keychain" | "env" | "file";
+    if (!["keychain", "env", "file"].includes(providerValue)) {
+      throw new Error(`Invalid secret provider "${provider}". Use keychain, env, or file.`);
+    }
+    return {
+      key: key!,
+      provider: providerValue,
+      ref: refParts.join(":"),
+    };
   });
+
+  const scripting = (opts.var?.length ?? 0) > 0
+    || (opts.unsetVar?.length ?? 0) > 0
+    || opts.model !== undefined
+    || opts.unsetModel !== undefined
+    || (opts.permission?.length ?? 0) > 0
+    || (opts.unsetPermission?.length ?? 0) > 0
+    || secretEntries.length > 0
+    || (opts.unsetSecret?.length ?? 0) > 0;
+
+  const resolvedName = name ?? (scripting
+    ? undefined
+    : await resolveEnvironmentMutationTarget({
+        environmentName: name,
+        interactive: opts.interactive,
+        noInteractive,
+        format: opts.format,
+        message: "Which environment do you want to edit?",
+      }));
 
   if (!resolvedName) {
     process.exitCode = 1;
     ui.danger(
-      listEnvironments().length > 0
+      scripting || listEnvironments().length > 0
         ? "error: missing required argument 'name'"
         : `No environments found. Create one with \`${formatCommand("environment create <name>")}\` first.`,
     );
@@ -3064,6 +3093,49 @@ async function handleEnvironmentEditCommand(
   }
 
   const environment = resolveEnvironmentOrThrow(resolvedName);
+
+  if (scripting) {
+    let lastPayload: ReturnType<typeof showEnvironmentCommand> | undefined;
+    for (const entry of opts.var ?? []) {
+      const parsed = parseVarAssignment(entry);
+      lastPayload = setEnvironmentVarCommand(resolvedName, parsed.key, parsed.value);
+    }
+    for (const key of opts.unsetVar ?? []) {
+      lastPayload = unsetEnvironmentVarCommand(resolvedName, key);
+    }
+    if (opts.model) {
+      lastPayload = setEnvironmentModelConfigCommand(resolvedName, {
+        model: opts.model,
+        ...(opts.modelProvider ? { provider: opts.modelProvider } : {}),
+      });
+    }
+    if (opts.unsetModel !== undefined) {
+      const modelName =
+        typeof opts.unsetModel === "string" && opts.unsetModel.length > 0
+          ? opts.unsetModel
+          : "default";
+      lastPayload = unsetEnvironmentModelConfigCommand(resolvedName, modelName);
+    }
+    for (const entry of opts.permission ?? []) {
+      lastPayload = setEnvironmentPermissionCommand(resolvedName, parsePermissionPattern(entry));
+    }
+    for (const entry of opts.unsetPermission ?? []) {
+      lastPayload = unsetEnvironmentPermissionCommand(
+        resolvedName,
+        parsePermissionUnsetSelector(entry),
+      );
+    }
+    for (const secret of secretEntries) {
+      lastPayload = setEnvironmentSecretCommand(resolvedName, secret);
+    }
+    for (const key of opts.unsetSecret ?? []) {
+      lastPayload = unsetEnvironmentSecretCommand(resolvedName, key);
+    }
+    const payload = lastPayload ?? showEnvironmentCommand(resolvedName);
+    printEnvironmentMutationResult(payload, format);
+    return;
+  }
+
   const rows = buildEnvironmentEditRows(environment.id);
 
   if (format === "json" && !shouldUseInteractiveEnvironmentEdit({ noInteractive, format: opts.format })) {
@@ -3074,7 +3146,7 @@ async function handleEnvironmentEditCommand(
   if (!shouldUseInteractiveEnvironmentEdit({ noInteractive, format: opts.format })) {
     process.exitCode = 1;
     ui.danger(
-      `environment edit requires an interactive terminal. Use \`${formatCommand("environment edit <name> --format json")}\` for a snapshot.`,
+      `environment edit requires an interactive terminal. Use scripting flags such as \`${formatCommand("environment edit <name> --var KEY=VALUE")}\` or \`${formatCommand("environment edit <name> --format json")}\` for a snapshot.`,
     );
     return;
   }
@@ -3137,11 +3209,9 @@ async function handleEnvironmentDeleteCommand(
 
   const resolvedName = name ?? (useWizard ? await runEnvironmentDeleteWizard() : undefined);
   if (!resolvedName) {
-    throw new Error(
-      !name && useWizard
-        ? "No environment selected for deletion"
-        : "Environment name is required",
-    );
+    throw !name && useWizard
+      ? new Error("No environment selected for deletion")
+      : missingRequiredArg("name", "environment delete");
   }
 
   const environment = resolveEnvironmentOrThrow(resolvedName);
@@ -3355,50 +3425,97 @@ async function handleEnvironmentCreateCommand(
 
 async function handleEnvironmentUseCommand(
   name: string,
-  opts: { project?: string; reapply?: boolean; format?: string },
+  opts: { local?: boolean; format?: string },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const projectRoot = opts.project ? resolve(opts.project) : undefined;
-
-  if (projectRoot) {
-    const payload = useEnvironmentForProjectCommand(name, projectRoot);
-    if (format === "json") {
-      printJson(payload);
-    } else {
-      ui.success(
-        `Set active environment ${ui.theme.accent(payload.environment_name)} for ${projectRoot}`,
-      );
-    }
-
-    if (opts.reapply) {
-      const project = getProjectByLocalPath(projectRoot);
-      if (!project) {
-        ui.warn(`Reapply skipped: no tracked project at ${projectRoot}.`);
-        return;
-      }
-      const configuredLayerIds = getProjectConfiguredLayers(project.id).map(
-        (row) => row.layer_id,
-      );
-      if (configuredLayerIds.length === 0) {
-        ui.warn(`Reapply skipped: no configured layers recorded for ${projectRoot}.`);
-        return;
-      }
-      await handleApplyCommand(configuredLayerIds as [string, ...string[]], {
-        project: projectRoot,
-      });
-    }
-    return;
-  }
-
-  const payload = useEnvironmentPayload(name);
-  const filePath = writeHomeActiveEnvironment(payload.environment_name);
+  const payload = useEnvironmentCommand(name, { local: opts.local });
   if (format === "json") {
-    printJson({ ...payload, written: filePath });
+    printJson(payload);
     return;
   }
-  ui.success(`Set active home environment ${ui.theme.accent(payload.environment_name)}`);
+  const scopeLabel = payload.scope === "local" ? "local session" : "global";
+  ui.success(
+    `Set ${scopeLabel} environment ${ui.theme.accent(payload.environment_name)}`,
+  );
+  if (payload.scope === "local") {
+    ui.hint(
+      `Session override is active for this terminal. Global environment remains ${ui.theme.muted("unchanged")}.`,
+    );
+  }
+}
+
+async function handleEnvironmentStatusCommand(opts: {
+  layers?: string[];
+  check?: boolean;
+  format?: string;
+}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+  const configuredLayerIds = opts.layers?.map((selector) => {
+    const configuredLayer = resolveLayerSelector(selector);
+    if (!configuredLayer) {
+      throw new Error(`Configured layer not found: ${selector}`);
+    }
+    return configuredLayer.id;
+  }) ?? [];
+
+  try {
+    const status = detectEnvironmentStatus({ configuredLayerIds });
+    if (format === "json") {
+      printJson(status);
+    } else {
+      for (const warning of status.secret_warnings) {
+        ui.warn(`${warning.key}: ${warning.message}`);
+      }
+
+      if (!status.effective_environment) {
+        ui.info("No active environment set.");
+        ui.hint(`Run ${formatCommand("environment use <name>")} to select one globally.`);
+      } else if (!status.has_drift) {
+        ui.success(
+          `Terminal environment is in sync with ${ui.theme.accent(status.effective_environment)}.`,
+        );
+        if (status.local_environment) {
+          ui.dim(`Local session override: ${status.local_environment}`);
+        }
+      } else {
+        ui.warn(
+          `Terminal environment is out of sync with ${ui.theme.accent(status.effective_environment)}.`,
+        );
+        if (status.local_environment) {
+          ui.dim(`Local session override: ${status.local_environment}`);
+        }
+        ui.table.print({
+          columns: [
+            { key: "key", header: "KEY", width: 24 },
+            { key: "kind", header: "KIND", width: 10 },
+            { key: "expected", header: "EXPECTED", width: 28 },
+            { key: "actual", header: "ACTUAL", width: 28 },
+          ],
+          rows: status.drift.map((entry) => ({
+            key: entry.key,
+            kind: entry.kind,
+            expected: entry.expected,
+            actual: entry.actual ?? "(unset)",
+          })),
+          empty: "No drift detected.",
+        });
+        ui.hint(
+          `Export expected values in your shell or run ${formatCommand(`environment use ${status.effective_environment}`)} after updating process env.`,
+        );
+      }
+    }
+
+    if (opts.check && status.has_drift) {
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    process.exitCode = 1;
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
 }
 
 function printQuickStartGuide(): void {
@@ -4323,6 +4440,7 @@ async function handleMigrateExportCommand(
     workspace?: boolean;
     layer?: string;
     resource?: string;
+    environment?: string;
     includePlugins?: boolean;
     embedPlugins?: boolean;
     format?: string;
@@ -4347,6 +4465,7 @@ async function handleMigrateExportCommand(
       !exportOpts.file
       && !exportOpts.layer
       && !exportOpts.resource
+      && !exportOpts.environment
       && !exportOpts.workspace,
   });
 
@@ -4358,6 +4477,7 @@ async function handleMigrateExportCommand(
       workspace: wizard.scope === "workspace" ? true : undefined,
       layer: wizard.layer,
       resource: wizard.resource,
+      environment: wizard.environment,
       includePlugins: wizard.embedPlugins,
     };
   }
@@ -4386,6 +4506,7 @@ async function handleMigrateImportCommand(
     workspace?: boolean;
     layer?: boolean;
     resource?: boolean;
+    environment?: boolean;
     format?: string;
     noInteractive?: boolean;
     interactive?: boolean;
@@ -4986,6 +5107,7 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
+  .description("Create a layer from scratch, a skill package, or a project scan")
   .action(
     async (
       name: string,
@@ -5035,6 +5157,7 @@ layerCmd
   .option("--base-url <url>", "HarnessDeck Cloud base URL")
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
+  .description("List local layers and optionally search the remote catalog")
   .action(async (opts: {
     format?: string;
     showId?: boolean;
@@ -5088,11 +5211,11 @@ layerCmd
     });
     if (!resolvedName) {
       process.exitCode = 1;
-      ui.danger(
-        listLayers().length > 0
-          ? "error: missing required argument 'name'"
-          : `No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`,
-      );
+      if (listLayers().length > 0) {
+        renderCliError(missingRequiredArg("name", "layer show"));
+      } else {
+        ui.danger(`No layers found. Create one with \`${formatCommand("layer create <name>")}\` first.`);
+      }
       return;
     }
     handleLayerShowCommand(resolvedName, opts);
@@ -5167,6 +5290,7 @@ layerCmd
   .option("-s, --search <query>", "Filter layers in the delete wizard")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Delete a local layer and its composition attachments")
   .action(async (name: string | undefined, opts: { search?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -5184,11 +5308,9 @@ layerCmd
           : [];
 
       if (selectors.length === 0) {
-        throw new Error(
-          !name && useWizard
-            ? "No layers selected for deletion"
-            : "Layer name is required",
-        );
+        throw !name && useWizard
+          ? new Error("No layers selected for deletion")
+          : missingRequiredArg("name", "layer delete");
       }
 
       for (const resolvedName of selectors) {
@@ -5205,7 +5327,7 @@ layerCmd
       }
     } catch (err) {
       process.exitCode = 1;
-      ui.danger(err instanceof Error ? err.message : String(err));
+      renderCliError(err);
     }
   });
 
@@ -5517,7 +5639,7 @@ layerCmd
   .argument("[name]", "New layer name")
   .option("--project <path>", "Project directory", ".")
   .option("-d, --description <text>", "Layer description")
-  .option("-h, --harness <slug>", "Scan only a specific harness")
+  .option("--harness <slug>", "Scan only a specific harness")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Scan current folder and create a layer from its resources")
@@ -5543,6 +5665,7 @@ profileCmd
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("List local profile layers and remote catalog profiles")
   .action(async (opts: {
     search?: string;
     localOnly?: boolean;
@@ -5661,6 +5784,7 @@ profileCmd
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
   .option("--no-pull", "Do not auto-pull missing published layer dependencies")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Switch the active profile and apply globally to harness home paths")
   .action(async (name: string, opts: {
     dryRun?: boolean;
     harness?: string;
@@ -5912,7 +6036,7 @@ const environmentCmd = configureCommandGroup(
   program
     .command("environment")
     .alias("e")
-    .description("Manage reusable environments and project environment cascade"),
+    .description("Manage reusable environments and layer environment cascade"),
 );
 
 environmentCmd
@@ -5936,6 +6060,7 @@ environmentCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Create a blank, project-scoped, or layer-derived environment")
   .action(async (
     name: string,
     opts: {
@@ -5969,13 +6094,31 @@ environmentCmd
 environmentCmd
   .command("edit")
   .argument("[name]", "Environment name or ID")
+  .option("--var <keyValue>", "Set env var KEY=VALUE (scripting mode)", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--unset-var <key>", "Unset env var key (scripting mode)", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--model <name>", "Set default model name (scripting mode)")
+  .option("--model-provider <provider>", "Provider for --model")
+  .option("--unset-model [name]", "Unset model config (scripting mode)")
+  .option("--permission <actionPattern>", "Set permission action:pattern (scripting mode)", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--unset-permission <selector>", "Unset permission action:pattern or name (scripting mode)", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--secret <keyProviderRef>", "Set secret ref KEY:provider:ref (scripting mode)", (value, previous: string[] = []) => [...previous, value], [])
+  .option("--unset-secret <key>", "Unset secret ref key (scripting mode)", (value, previous: string[] = []) => [...previous, value], [])
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Edit environment values interactively")
+  .description("Edit environment values interactively or via scripting flags")
   .action(async (
     name: string | undefined,
     opts: {
+      var?: string[];
+      unsetVar?: string[];
+      model?: string;
+      modelProvider?: string;
+      unsetModel?: string | boolean;
+      permission?: string[];
+      unsetPermission?: string[];
+      secret?: string[];
+      unsetSecret?: string[];
       interactive?: boolean;
       yes?: boolean;
       format?: string;
@@ -5997,6 +6140,7 @@ environmentCmd
   .command("list")
   .alias("ls")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("List local environments with value and reference counts")
   .action((opts: { format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -6028,6 +6172,7 @@ environmentCmd
   .argument("<name>", "Environment name or ID")
   .option("--layer <selector>", "Analyze requirement gaps for a configured layer")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show environment values, secret refs, and layer references")
   .action((name: string, opts: { format?: string; layer?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -6054,6 +6199,7 @@ environmentCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Delete an environment (blocked when referenced unless --force)")
   .action(async (
     name: string | undefined,
     opts: {
@@ -6076,232 +6222,23 @@ environmentCmd
   });
 
 environmentCmd
-  .command("set")
-  .argument("<name>", "Environment name or ID")
-  .option("--var <keyValue>", "Set env var KEY=VALUE", (value, previous: string[] = []) => [...previous, value], [])
-  .option("--model <name>", "Set default model name")
-  .option("--provider <provider>", "Provider for --model")
-  .option("--permission <actionPattern>", "Set permission action:pattern", (value, previous: string[] = []) => [...previous, value], [])
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { var?: string[]; model?: string; provider?: string; permission?: string[]; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    let lastPayload: ReturnType<typeof showEnvironmentCommand> | undefined;
-    for (const entry of opts.var ?? []) {
-      const parsed = parseVarAssignment(entry);
-      lastPayload = setEnvironmentVarCommand(name, parsed.key, parsed.value);
-    }
-    if (opts.model) {
-      lastPayload = setEnvironmentModelConfigCommand(name, {
-        model: opts.model,
-        ...(opts.provider ? { provider: opts.provider } : {}),
-      });
-    }
-    for (const entry of opts.permission ?? []) {
-      const parsed = parsePermissionPattern(entry);
-      lastPayload = setEnvironmentPermissionCommand(name, parsed);
-    }
-    const payload = lastPayload ?? showEnvironmentCommand(name);
-    const format = parseOutputFormat(opts.format);
-    printEnvironmentMutationResult(payload, format);
-  });
-
-environmentCmd
-  .command("unset")
-  .argument("<name>", "Environment name or ID")
-  .option("--var <key>", "Unset env var key", (value, previous: string[] = []) => [...previous, value], [])
-  .option("--model [name]", "Unset model config (default when omitted)")
-  .option("--permission <selector>", "Unset permission action:pattern or name", (value, previous: string[] = []) => [...previous, value], [])
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, opts: { var?: string[]; model?: string | boolean; permission?: string[]; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    let lastPayload: ReturnType<typeof showEnvironmentCommand> | undefined;
-    for (const key of opts.var ?? []) {
-      lastPayload = unsetEnvironmentVarCommand(name, key);
-    }
-    if (opts.model !== undefined) {
-      const modelName =
-        typeof opts.model === "string" && opts.model.length > 0
-          ? opts.model
-          : "default";
-      lastPayload = unsetEnvironmentModelConfigCommand(name, modelName);
-    }
-    for (const entry of opts.permission ?? []) {
-      lastPayload = unsetEnvironmentPermissionCommand(
-        name,
-        parsePermissionUnsetSelector(entry),
-      );
-    }
-    const payload = lastPayload ?? showEnvironmentCommand(name);
-    const format = parseOutputFormat(opts.format);
-    printEnvironmentMutationResult(payload, format);
-  });
-
-const environmentSecretCmd = configureCommandGroup(
-  environmentCmd
-    .command("secret")
-    .description("Manage environment secret references"),
-);
-
-environmentSecretCmd
-  .command("set")
-  .argument("<name>", "Environment name or ID")
-  .argument("<key>", "Secret key")
-  .requiredOption("--provider <provider>", "Secret provider keychain|env|file")
-  .requiredOption("--ref <value>", "Reference value for provider")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, key: string, opts: { provider: "keychain" | "env" | "file"; ref: string; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const payload = setEnvironmentSecretCommand(name, {
-      key,
-      provider: opts.provider,
-      ref: opts.ref,
-    });
-    const format = parseOutputFormat(opts.format);
-    printEnvironmentMutationResult(payload, format);
-  });
-
-environmentSecretCmd
-  .command("unset")
-  .argument("<name>", "Environment name or ID")
-  .argument("<key>", "Secret key")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, key: string, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const payload = unsetEnvironmentSecretCommand(name, key);
-    const format = parseOutputFormat(opts.format);
-    printEnvironmentMutationResult(payload, format);
-  });
-
-environmentCmd
   .command("use")
   .argument("<name>", "Environment name or ID")
-  .option("--project <path>", "Project directory")
-  .option("--reapply", "Reapply last configured project layers after switching")
+  .option("--local", "Apply only to this terminal session without changing the global active environment")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (name: string, opts: { project?: string; reapply?: boolean; format?: string }) => {
+  .description("Set the global or local (session) active environment")
+  .action(async (name: string, opts: { local?: boolean; format?: string }) => {
     await handleEnvironmentUseCommand(name, opts);
   });
 
 environmentCmd
-  .command("active")
-  .option("--project <path>", "Project directory")
+  .command("status")
+  .option("--layers <layers...>", "Configured layer selectors to include layer default environments")
+  .option("--check", "Exit with code 1 when the terminal environment is out of sync")
   .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { project?: string; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const projectRoot = opts.project ? resolve(opts.project) : undefined;
-    const configuredLayerIds = (() => {
-      if (!projectRoot) return [] as string[];
-      const project = getProjectByLocalPath(projectRoot);
-      if (!project) return [] as string[];
-      return getProjectConfiguredLayers(project.id).map(
-        (row) => row.layer_id,
-      );
-    })();
-    const payload = environmentActivePayload({
-      ...(projectRoot ? { projectRoot } : {}),
-      configuredLayerIds,
-    });
-    if (format === "json") {
-      printJson(payload);
-      return;
-    }
-    ui.panel({
-      title: ["ENVIRONMENT", "active"],
-      rows: [
-        ["Project", projectRoot ?? "(none)"],
-        ["Resolved vars", `${Object.keys(payload.resolved.vars).length}`],
-        ["Resolved secrets", `${Object.keys(payload.resolved.secretRefs).length}`],
-      ],
-    });
-    ui.info(JSON.stringify(payload, null, 2));
-  });
-
-environmentCmd
-  .command("resolve")
-  .requiredOption("--project <path>", "Project directory")
-  .option("--layers <layers...>", "Configured layer selectors")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((opts: { project: string; layers?: string[]; format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const projectRoot = resolve(opts.project);
-    const configuredLayerIds = resolveConfiguredLayersForCascade(
-      projectRoot,
-      opts.layers,
-    );
-    const payload = environmentResolvePayload({
-      projectRoot,
-      configuredLayerIds,
-    });
-    if (format === "json") {
-      printJson(payload);
-      return;
-    }
-    ui.panel({
-      title: ["ENVIRONMENT", "resolve"],
-      rows: [
-        ["Project", projectRoot],
-        ["Layer defaults", `${payload.layer_defaults.length}`],
-        ["Resolved vars", `${Object.keys(payload.resolved.vars).length}`],
-        ["Resolved secrets", `${Object.keys(payload.resolved.secretRefs).length}`],
-      ],
-    });
-    ui.info(JSON.stringify(payload, null, 2));
-  });
-
-environmentCmd
-  .command("import")
-  .argument("<file>", "Environment TOML file")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((file: string, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const raw = readFileSync(resolve(file), "utf-8");
-    const result = importEnvironmentToml(raw);
-    if (format === "json") {
-      printJson(result);
-      return;
-    }
-    ui.success(
-      `Imported environment ${ui.theme.accent(result.environment.name)} ${ui.icons.bullet} ${result.imported_keys.length} vars`,
-    );
-  });
-
-environmentCmd
-  .command("export")
-  .argument("<name>", "Environment name or ID")
-  .argument("[file]", "Output file path")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action((name: string, file: string | undefined, opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const payload = exportEnvironmentToml(name);
-    if (file) {
-      const outPath = resolve(file);
-      writeFileSync(outPath, payload.toml, "utf-8");
-      if (format === "json") {
-        printJson({ environment: payload.environment, file: outPath });
-        return;
-      }
-      ui.success(
-        `Exported environment ${ui.theme.accent(payload.environment.name)} ${ui.icons.hint} ${outPath}`,
-      );
-      return;
-    }
-    if (format === "json") {
-      printJson(payload.environment);
-      return;
-    }
-    console.log(payload.toml);
+  .description("Show the active environment and whether terminal env vars match expected values")
+  .action(async (opts: { layers?: string[]; check?: boolean; format?: string }) => {
+    await handleEnvironmentStatusCommand(opts);
   });
 
 // ── migrate ─────────────────────────────────────────────────────────────
@@ -6310,7 +6247,7 @@ const migrateCmd = configureCommandGroup(
   program
     .command("migrate")
     .alias("m")
-    .description("Export or import workspace, layers, or resources for offline sharing"),
+    .description("Export or import workspace, layers, environments, or resources for offline sharing"),
 );
 
 migrateCmd
@@ -6319,6 +6256,7 @@ migrateCmd
   .option("--workspace", "Export full workspace archive")
   .option("--layer <name>", "Export layer(s); comma-separated names or IDs")
   .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")
+  .option("--environment <name>", "Export one environment as TOML")
   .option("-o, --file <path>", "Output path (overrides positional)")
   .option("--include-plugins", "Embed plugin trees (workspace and layer scope)")
   .option("--embed-plugins", "Alias for --include-plugins")
@@ -6332,6 +6270,7 @@ migrateCmd
   .option("--workspace", "Force workspace archive import")
   .option("--layer", "Force layer bundle import")
   .option("--resource", "Force resource document import")
+  .option("--environment", "Force environment document import")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Import workspace, layer, or resource from file")
   .action(handleMigrateImportCommand);
@@ -6354,6 +6293,7 @@ resourceCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in human-readable tables")
   .option("--all", "Show all resources per type (default: first 10 per type)")
+  .description("List imported resources, optionally filtered by type or search")
   .action(async (
     type: string | undefined,
     opts: {
@@ -6380,6 +6320,7 @@ resourceCmd
   .option("--show-id", "Show IDs in list-oriented human tables")
   .option("--all-fields", "Show all resource metadata fields")
   .option("--interactive", "Prompt instead of relying on explicit flags")
+  .description("Show a resource by name, selector, or ULID")
   .action(async (
     resource: string | undefined,
     opts: {
@@ -6500,6 +6441,7 @@ resourceCmd
   .option("-s, --search <query>", "Filter resources in the delete wizard")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--format <mode>", "Output format: human or json", "human")
+  .description("Delete a resource from the library")
   .action(async (resource: string | undefined, opts: { search?: string; interactive?: boolean; noInteractive?: boolean; format?: string }) => {
     const db = getDb();
     initializeSchema(db);
@@ -6517,11 +6459,11 @@ resourceCmd
 
     if (selectors.length === 0) {
       process.exitCode = 1;
-      ui.danger(
-        !resource && useWizard
-          ? "No resources selected for deletion"
-          : "Resource name is required",
-      );
+      if (!resource && useWizard) {
+        ui.danger("No resources selected for deletion");
+      } else {
+        renderCliError(missingRequiredArg("resource", "resource delete"));
+      }
       return;
     }
 
@@ -6551,7 +6493,7 @@ resourceCmd
 program
   .command("scan")
   .argument("[path]", "Project directory or plugin source to scan", ".")
-  .option("-h, --harness <slugs>", "Harness slug(s): scan filter, or install targets with --global")
+  .option("--harness <slugs>", "Harness slug(s): scan filter, or install targets with --global")
   .option("--dry-run", "Show what would be imported without writing to DB")
   .option("--global", "Install imported plugin sources into global harness locations")
   .option("--overwrite", "Overwrite library resources when scan content differs")
@@ -6893,6 +6835,8 @@ function rewriteProfileShorthandArgv(argv: string[]): string[] {
 
   return [argv[0] ?? "node", argv[1] ?? "harnessdeck", "profile", "use", candidate, ...argv.slice(3)];
 }
+
+export { program };
 
 export async function runHarnessdeckCli(
   argv: string[] = process.argv,

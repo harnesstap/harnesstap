@@ -5,7 +5,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("CLI environment", () => {
-  it("supports create/list/show/delete plus var and secret mutation commands", async () => {
+  it("supports create/list/show/delete plus edit scripting mutations", async () => {
     const context = await createTestContext("cli-environment-crud");
     try {
       await runCli(["init"]);
@@ -28,7 +28,7 @@ describe("CLI environment", () => {
 
       const afterSet = await runCli([
         "environment",
-        "set",
+        "edit",
         "staging",
         "--var",
         "PD_REGION=eu",
@@ -45,14 +45,10 @@ describe("CLI environment", () => {
 
       const afterSecretSet = await runCli([
         "environment",
-        "secret",
-        "set",
+        "edit",
         "staging",
-        "PD_TOKEN",
-        "--provider",
-        "env",
-        "--ref",
-        "PD_TOKEN",
+        "--secret",
+        "PD_TOKEN:env:PD_TOKEN",
         "--format",
         "json",
       ]);
@@ -79,9 +75,9 @@ describe("CLI environment", () => {
 
       const afterUnset = await runCli([
         "environment",
-        "unset",
+        "edit",
         "staging",
-        "--var",
+        "--unset-var",
         "PD_REGION",
         "--format",
         "json",
@@ -96,9 +92,9 @@ describe("CLI environment", () => {
 
       const afterSecretUnset = await runCli([
         "environment",
-        "secret",
-        "unset",
+        "edit",
         "staging",
+        "--unset-secret",
         "PD_TOKEN",
         "--format",
         "json",
@@ -237,8 +233,11 @@ describe("CLI environment", () => {
     }
   });
 
-  it("supports use/active/resolve and surfaces environment cascade in project status", async () => {
+  it("supports use/status and surfaces environment cascade in project status", async () => {
     const context = await createTestContext("cli-environment-cascade");
+    const previousRegion = process.env.PD_REGION;
+    process.env.PD_REGION = "global";
+
     try {
       await runCli(["init"]);
 
@@ -264,168 +263,160 @@ describe("CLI environment", () => {
       });
 
       await runCli(["environment", "create", "default-env"]);
-      await runCli(["environment", "set", "default-env", "--var", "PD_REGION=layer"]);
-      await runCli(["environment", "create", "project-env"]);
-      await runCli(["environment", "set", "project-env", "--var", "PD_REGION=project"]);
+      await runCli(["environment", "edit", "default-env", "--var", "PD_REGION=layer"]);
       await runCli(["layer", "edit", configuredLayer.id, "--environment", "default-env"]);
 
       const useResult = await runCli([
         "environment",
         "use",
-        "project-env",
-        "--project",
-        context.projectDir,
+        "default-env",
         "--format",
         "json",
       ]);
       expect(JSON.parse(useResult.stdout)).toEqual(
         expect.objectContaining({
-          environment_name: "project-env",
-          updated: true,
+          environment_name: "default-env",
+          scope: "global",
         }),
       );
 
-      const active = await runCli([
-        "environment",
-        "active",
-        "--project",
-        context.projectDir,
-        "--format",
-        "json",
-      ]);
-      expect(JSON.parse(active.stdout)).toEqual(
-        expect.objectContaining({
-          resolved: expect.objectContaining({
-            vars: expect.objectContaining({ PD_REGION: "project" }),
-          }),
-        }),
-      );
+      process.env.PD_REGION = "layer";
 
-      const resolved = await runCli([
+      const status = await runCli([
         "environment",
-        "resolve",
-        "--project",
-        context.projectDir,
+        "status",
         "--layers",
         configuredLayer.id,
         "--format",
         "json",
       ]);
-      expect(JSON.parse(resolved.stdout)).toEqual(
+      expect(JSON.parse(status.stdout)).toEqual(
         expect.objectContaining({
-          layer_defaults: expect.arrayContaining([
-            expect.objectContaining({
-              vars: expect.objectContaining({ PD_REGION: "layer" }),
-            }),
-          ]),
+          effective_environment: "default-env",
+          has_drift: false,
           resolved: expect.objectContaining({
-            vars: expect.objectContaining({ PD_REGION: "project" }),
+            vars: expect.objectContaining({ PD_REGION: "layer" }),
           }),
         }),
       );
 
-      const status = await runCli([
+      process.env.PD_REGION = "wrong";
+
+      const driftStatus = await runCli([
+        "environment",
+        "status",
+        "--layers",
+        configuredLayer.id,
+        "--check",
+        "--format",
+        "json",
+      ]);
+      expect(driftStatus.exitCode).toBe(1);
+      expect(JSON.parse(driftStatus.stdout)).toEqual(
+        expect.objectContaining({
+          has_drift: true,
+          drift: expect.arrayContaining([
+            expect.objectContaining({
+              key: "PD_REGION",
+              kind: "mismatch",
+            }),
+          ]),
+        }),
+      );
+
+      const projectStatus = await runCli([
         "status",
         context.projectDir,
         "--format",
         "json",
       ]);
-      expect(JSON.parse(status.stdout)).toEqual(
+      expect(JSON.parse(projectStatus.stdout)).toEqual(
         expect.objectContaining({
           environment_cascade: expect.objectContaining({
             resolved: expect.objectContaining({
-              vars: expect.objectContaining({ PD_REGION: "project" }),
+              vars: expect.objectContaining({ PD_REGION: "layer" }),
             }),
           }),
         }),
       );
     } finally {
+      if (previousRegion === undefined) {
+        delete process.env.PD_REGION;
+      } else {
+        process.env.PD_REGION = previousRegion;
+      }
       await context.cleanup();
     }
   });
 
-  it("writes project active environment for untracked project roots", async () => {
-    const context = await createTestContext("cli-environment-use-untracked");
+  it("supports local use without overriding the global active environment", async () => {
+    const context = await createTestContext("cli-environment-use-local");
     try {
       await runCli(["init"]);
-      await runCli(["environment", "create", "project-env"]);
+      await runCli(["environment", "create", "global-env"]);
+      await runCli(["environment", "create", "local-env"]);
 
-      const useResult = await runCli([
-        "environment",
-        "use",
-        "project-env",
-        "--project",
-        context.projectDir,
-        "--format",
-        "json",
-      ]);
-      expect(JSON.parse(useResult.stdout)).toEqual(
-        expect.objectContaining({
-          environment_name: "project-env",
-          active_environment_file: join(
-            context.projectDir,
-            ".harnessdeck",
-            "active-environment.json",
-          ),
-          updated: true,
-        }),
-      );
+      await runCli(["environment", "use", "global-env"]);
+      await runCli(["environment", "use", "local-env", "--local", "--format", "json"]);
 
-      const activeEnvironment = JSON.parse(
-        readFileSync(
-          join(context.projectDir, ".harnessdeck", "active-environment.json"),
-          "utf-8",
-        ),
-      ) as { name: string };
-      expect(activeEnvironment.name).toBe("project-env");
+      const status = await runCli(["environment", "status", "--format", "json"]);
+      const parsed = JSON.parse(status.stdout) as {
+        global_environment: string | null;
+        local_environment: string | null;
+        effective_environment: string | null;
+      };
+      expect(parsed.global_environment).toBe("global-env");
+      expect(parsed.local_environment).toBe("local-env");
+      expect(parsed.effective_environment).toBe("local-env");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("supports environment export/import roundtrip through CLI", async () => {
+  it("supports environment export/import roundtrip through migrate", async () => {
     const context = await createTestContext("cli-environment-export-import");
     try {
       await runCli(["init"]);
       await runCli(["environment", "create", "portable"]);
-      await runCli(["environment", "set", "portable", "--var", "PD_REGION=eu"]);
+      await runCli(["environment", "edit", "portable", "--var", "PD_REGION=eu"]);
       await runCli([
         "environment",
-        "secret",
-        "set",
+        "edit",
         "portable",
-        "PD_TOKEN",
-        "--provider",
-        "env",
-        "--ref",
-        "PD_TOKEN",
+        "--secret",
+        "PD_TOKEN:env:PD_TOKEN",
       ]);
 
       const filePath = join(context.projectDir, "portable-environment.toml");
       const exported = await runCli([
-        "environment",
+        "migrate",
         "export",
-        "portable",
         filePath,
+        "--environment",
+        "portable",
         "--format",
         "json",
       ]);
       expect(JSON.parse(exported.stdout)).toEqual(
         expect.objectContaining({
-          file: filePath,
-          environment: expect.objectContaining({
-            name: "portable",
-          }),
+          output: filePath,
+          environment: "portable",
+          scope: "environment",
         }),
       );
 
       await runCli(["environment", "delete", "portable"]);
-      const imported = await runCli(["environment", "import", filePath, "--format", "json"]);
+      const imported = await runCli([
+        "migrate",
+        "import",
+        filePath,
+        "--environment",
+        "--format",
+        "json",
+      ]);
       expect(JSON.parse(imported.stdout)).toEqual(
         expect.objectContaining({
-          environment: expect.objectContaining({
-            name: "portable",
-          }),
+          environment: "portable",
           imported_keys: ["PD_REGION"],
           imported_secret_refs: ["PD_TOKEN"],
         }),

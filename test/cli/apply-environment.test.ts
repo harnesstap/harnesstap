@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
@@ -10,7 +10,7 @@ import { createResource } from "../../src/models/resource.ts";
 import { createLayerFromSources } from "../../src/models/layer-model.ts";
 
 describe("CLI apply with environment cascade", () => {
-  it("materializes project active environment over layer default", async () => {
+  it("materializes the global active environment when the layer has no default", async () => {
     const context = await createTestContext("cli-apply-environment");
 
     try {
@@ -18,6 +18,69 @@ describe("CLI apply with environment cascade", () => {
       await runCli(["init"]);
 
       const plugin = createLayer({ name: "env-demo" });
+      addResourceToLayer(
+        plugin.id,
+        createResource({
+          type: "instruction",
+          name: "env-context",
+          description: "",
+          content: "# Env demo",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const staging = createEnvironment({ name: "staging" });
+      addResourceToEnvironment(
+        staging.id,
+        createResource({
+          type: "env_var",
+          name: "PD_REGION",
+          namespace: "staging",
+          description: "",
+          content: "",
+          metadata: { key: "PD_REGION", value: "staging" },
+          source: "manual",
+        }),
+      );
+
+      createLayerFromSources({
+        name: "env-layer",
+        sourceLayerIds: [plugin.id],
+      });
+
+      await runCli(["environment", "use", "staging"]);
+
+      const applyResult = await runCli([
+        "layer", "apply",
+        "env-layer",
+        "--project",
+        context.projectDir,
+        "--harness",
+        "claude-code",
+      ]);
+
+      expect(applyResult.stdout).toContain("claude-code");
+      expect(existsSync(join(context.projectDir, ".claude/settings.json"))).toBe(true);
+
+      const settings = JSON.parse(
+        readFileSync(join(context.projectDir, ".claude/settings.json"), "utf-8"),
+      ) as { env?: Record<string, string> };
+
+      expect(settings.env?.PD_REGION).toBe("staging");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lets layer default environments override the global active environment on apply", async () => {
+    const context = await createTestContext("cli-apply-layer-default-env");
+
+    try {
+      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-layer-env.git");
+      await runCli(["init"]);
+
+      const plugin = createLayer({ name: "env-demo-layer-default" });
       addResourceToLayer(
         plugin.id,
         createResource({
@@ -59,21 +122,16 @@ describe("CLI apply with environment cascade", () => {
       );
 
       createLayerFromSources({
-        name: "env-layer",
+        name: "env-layer-default",
         sourceLayerIds: [plugin.id],
         environmentId: prod.id,
       });
 
-      mkdirSync(join(context.projectDir, ".harnessdeck"), { recursive: true });
-      writeFileSync(
-        join(context.projectDir, ".harnessdeck", "active-environment.json"),
-        JSON.stringify({ name: "staging" }),
-        "utf-8",
-      );
+      await runCli(["environment", "use", "staging"]);
 
       const applyResult = await runCli([
         "layer", "apply",
-        "env-layer",
+        "env-layer-default",
         "--project",
         context.projectDir,
         "--harness",
@@ -81,13 +139,12 @@ describe("CLI apply with environment cascade", () => {
       ]);
 
       expect(applyResult.stdout).toContain("claude-code");
-      expect(existsSync(join(context.projectDir, ".claude/settings.json"))).toBe(true);
 
       const settings = JSON.parse(
         readFileSync(join(context.projectDir, ".claude/settings.json"), "utf-8"),
       ) as { env?: Record<string, string> };
 
-      expect(settings.env?.PD_REGION).toBe("staging");
+      expect(settings.env?.PD_REGION).toBe("prod");
     } finally {
       await context.cleanup();
     }
