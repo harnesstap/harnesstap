@@ -314,7 +314,7 @@ export async function runEnvironmentCreateWizard(input: {
         throw new Error("No configured layers found.");
       }
       layerSelectors = await promptForSearchableMultiSelect({
-        message: "Configured layers to scope capture",
+        message: "Configured layers to scope import",
         choices: layerChoices.map((choice) => ({
           name: choice.name,
           value: choice.value,
@@ -334,7 +334,7 @@ export async function runEnvironmentCreateWizard(input: {
     printFromProjectPreviewSummary(preview);
 
     const confirmed = await promptForConfirmation({
-      message: "Create environment from this capture preview?",
+      message: "Create environment from this project preview?",
       default: true,
     });
     if (!confirmed) {

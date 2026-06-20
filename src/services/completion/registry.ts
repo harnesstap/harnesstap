@@ -59,8 +59,6 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "environment set:0": [completeLocalEnvironments],
   "environment unset:0": [completeLocalEnvironments],
   "environment use:0": [completeLocalEnvironments],
-  "environment capture:0": [completeLocalEnvironments],
-  "environment refresh:0": [completeLocalEnvironments],
   "environment import:0": [completeFilePath],
   "environment export:0": [completeLocalEnvironments],
   "environment export:1": [completeFilePath],

@@ -20,7 +20,7 @@ The product currently supports these main workflows:
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
 - Export or import a machine-transfer archive of local layers, harness preferences, and config.
 - Authenticate with HarnessDeck Cloud; search, install, and publish layers into org **catalogs**.
-- Create **environments** (blank, from project capture, or from configured layer requirements); edit values interactively; bind default environments to layers; switch home active environment; resolve the home → layer-default cascade on `layer apply`.
+- Create **environments** (blank, from a project, or from configured layer requirements); edit values interactively; bind default environments to layers; switch home active environment; resolve the home → layer-default cascade on `layer apply`.
 - Manage **profiles** (layers tagged `profile`) for global machine presets; switch active profile and apply to home harness paths with `profile use`.
 - Authenticate HarnessDeck Cloud with named **accounts** (`cloud-accounts.json`, `--account` on catalog commands).
 
@@ -145,7 +145,7 @@ Layers declare requirements via `needs[]`; MCP server definitions declare env ke
 
 **Toolkit configuration** (`harness_preferences`, `project_harnesses`, `~/.harnessdeck/config.jsonc`) controls HarnessDeck behavior and harness selection. It is not an environment.
 
-See [Environment capture](#environment-capture) for creating or refreshing environments from project state.
+See [Environment from project](#environment-from-project) for creating or updating environments from project state.
 
 ### Resource identity and selectors
 
@@ -255,7 +255,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnessdeck project ...` | Scans projects, drift, mirror, snapshots, and status. |
 | `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
-| `harnessdeck environment ...` | Creates and manages environments (blank, project capture, or layer requirements), edits values, secret refs, active-environment pointers, requirement-gap analysis, and cascade preview. |
+| `harnessdeck environment ...` | Creates and manages environments (blank, from project, or layer requirements), edits values, secret refs, active-environment pointers, requirement-gap analysis, and cascade preview. |
 | `harnessdeck profile ...` | Lists, shows, creates, tags, and switches profile layers; global apply via `profile use`. |
 | `harnessdeck cloud ...` | Authenticates with HarnessDeck Cloud and manages local cloud accounts. |
 
@@ -293,7 +293,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 
 | Command | Behavior |
 | --- | --- |
-| `environment create` | Creates a blank environment (default), from project capture (`--from-project`), or from configured layer requirements (`--from-layer`). Interactive wizard on TTY when no mode flags are set. |
+| `environment create` | Creates a blank environment (default), from a project (`--from-project`), or from configured layer requirements (`--from-layer`). Interactive wizard on TTY when no mode flags are set. |
 | `environment edit` | Edits environment values interactively; `--format json` returns a read-only snapshot on non-TTY. |
 | `environment list` | Lists environments with value counts and layer bindings. |
 | `environment show` | Shows environment values, secret refs, and reverse references; `--layer` analyzes requirement gaps against a configured layer. |
@@ -305,8 +305,6 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `environment use` | Sets the home active environment pointer; `--reapply` opt-in re-runs last applied layers. |
 | `environment active` | Shows active environment and cascade preview. |
 | `environment resolve` | Dry-run merged environment values per cascade tier. |
-| `environment capture` | **Deprecated.** Use `environment create --from-project` (see [Environment capture](#environment-capture)). |
-| `environment refresh` | **Deprecated.** Use `environment create --from-project --refresh`. |
 
 ### `resource` subcommands
 
@@ -405,7 +403,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|status|use`, `environment list|show|edit|active|resolve`, `project status|history|drift`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment create` with `--dry-run`, deprecated `environment capture|refresh` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|status|use`, `environment list|show|edit|active|resolve`, `project status|history|drift`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment create` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -543,13 +541,13 @@ Metadata varies by type. See [Unified composition model](#unified-composition-mo
 
 An environment has a unique `name`, description, ordered **environment values** (`env_var`, `model_config`, `permission` resources linked via `environment_resources`), and optional `environment_secret_refs` (`keychain`, `env`, or `file`). Secret values are not stored in migrate archives or layer exports.
 
-### Environment capture
+### Environment from project
 
-**Environment capture** creates or refreshes an environment from the current state of a project. It is distinct from **apply snapshots** stored during `layer apply` / `project mirror`.
+**Environment from project** creates or updates an environment from the current state of a project. It is distinct from **apply snapshots** stored during `layer apply` / `project mirror`.
 
-Use `environment create <name> --from-project <path>` to capture, or add `--refresh` to update an existing environment. The standalone `environment capture` and `environment refresh` commands remain but are **deprecated** and delegate to the unified create path.
+Use `environment create <name> --from-project <path>` to create from a project, or add `--refresh` to update an existing environment.
 
-Project capture stores only environment values **required by the layer stack in scope** — not the full machine environment:
+Project import stores only environment values **required by the layer stack in scope** — not the full machine environment:
 
 1. Resolve scope: `--from-project <path>` (required), `--layers` (default: project's last-applied configured layers).
 2. Compute requirements from layer `needs[]`, MCP `env` keys, and (by default) agent model metadata in the merged stack.
@@ -557,7 +555,7 @@ Project capture stores only environment values **required by the layer stack in 
 4. Store non-secrets as `env_var` / `model_config` environment values; store likely secrets as secret references (`provider: env`), never literal secret values.
 5. Missing required keys: warn and continue by default; `--strict` exits non-zero.
 
-Permissions are captured only with `--include-permissions`.
+Permissions are included only with `--include-permissions`.
 
 `environment create --from-layer` seeds an environment from configured layer requirements without scanning a project; `--bind` sets the new environment as the configured layer default.
 

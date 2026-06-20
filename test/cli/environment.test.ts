@@ -164,7 +164,7 @@ describe("CLI environment", () => {
     }
   });
 
-  it("supports capture dry-run and refresh strict failure", async () => {
+  it("supports from-project dry-run and refresh strict failure", async () => {
     const context = await createTestContext("cli-environment-capture");
     try {
       await runCli(["init"]);
@@ -189,11 +189,11 @@ describe("CLI environment", () => {
         sourceLayerIds: [plugin.id],
       });
 
-      const captureResult = await runCli([
+      const createResult = await runCli([
         "environment",
-        "capture",
+        "create",
         "captured",
-        "--project",
+        "--from-project",
         context.projectDir,
         "--layers",
         configuredLayer.id,
@@ -201,7 +201,7 @@ describe("CLI environment", () => {
         "--format",
         "json",
       ]);
-      expect(JSON.parse(captureResult.stdout)).toEqual(
+      expect(JSON.parse(createResult.stdout)).toEqual(
         expect.objectContaining({
           persisted: false,
           strict_failed: false,
@@ -211,12 +211,13 @@ describe("CLI environment", () => {
 
       const refreshStrict = await runCli([
         "environment",
-        "refresh",
+        "create",
         "captured",
-        "--project",
+        "--from-project",
         context.projectDir,
         "--layers",
         configuredLayer.id,
+        "--refresh",
         "--strict",
         "--format",
         "json",

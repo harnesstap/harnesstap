@@ -211,56 +211,6 @@ describe("CLI environment revamp", () => {
     }
   });
 
-  it("environment capture alias prints deprecation warning and delegates", async () => {
-    const context = await createTestContext("cli-environment-revamp-capture-alias");
-    try {
-      await runCli(["init"]);
-      await runCli(["harness", "set", "--main", "claude-code"]);
-      await runCli(["environment", "create", "alias-captured"]);
-
-      mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
-      writeFileSync(
-        join(context.projectDir, ".claude", "settings.json"),
-        JSON.stringify({ env: { CAPTURE_KEY: "scan-value" } }),
-        "utf-8",
-      );
-
-      const layerModel = await import("../../src/models/layer-model.ts");
-      const plugin = layerModel.createLayer({
-        name: "alias-capture-plugin",
-        needs: ["CAPTURE_KEY"],
-      });
-      const configuredLayer = layerModel.createLayerFromSources({
-        name: "alias-capture-layer",
-        sourceLayerIds: [plugin.id],
-      });
-
-      const captureResult = await runCli([
-        "environment",
-        "capture",
-        "alias-captured",
-        "--project",
-        context.projectDir,
-        "--layers",
-        configuredLayer.id,
-        "--dry-run",
-        "--format",
-        "json",
-      ]);
-      expect(captureResult.stdout + captureResult.stderr).toContain(
-        "environment capture is deprecated; use environment create --from-project",
-      );
-      expect(JSON.parse(captureResult.stdout)).toEqual(
-        expect.objectContaining({
-          persisted: false,
-          values: expect.objectContaining({ CAPTURE_KEY: "scan-value" }),
-        }),
-      );
-    } finally {
-      await context.cleanup();
-    }
-  });
-
   it("environment show lists REFERENCES when layer has default_environment_id", async () => {
     const context = await createTestContext("cli-environment-revamp-refs");
     try {

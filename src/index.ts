@@ -3207,9 +3207,9 @@ function printEnvironmentCreateResult(
     if (opts.format === "json") {
       printJson(captureResult);
     } else {
-      const captureMode = opts.refresh ? "refresh" : "capture";
+      const action = opts.refresh ? "refresh" : "create";
       ui.panel({
-        title: ["ENVIRONMENT", `${captureMode} ${opts.name}`],
+        title: ["ENVIRONMENT", `${action} ${opts.name}`],
         rows: [
           ["Project", opts.fromProject ? resolve(opts.fromProject) : "—"],
           ["Main harness", captureResult.main_harness],
@@ -3348,89 +3348,6 @@ async function handleEnvironmentCreateCommand(
     refresh: opts.refresh,
     format,
   });
-}
-
-const environmentCaptureDeprecationWarned = new Set<string>();
-
-function warnEnvironmentCaptureDeprecated(
-  command: "capture" | "refresh",
-  format?: string,
-): void {
-  if (environmentCaptureDeprecationWarned.has(command)) {
-    return;
-  }
-  environmentCaptureDeprecationWarned.add(command);
-  const message =
-    command === "refresh"
-      ? "environment refresh is deprecated; use environment create --from-project --refresh"
-      : "environment capture is deprecated; use environment create --from-project";
-  if (parseOutputFormat(format) === "json") {
-    console.warn(message);
-    return;
-  }
-  ui.warn(message);
-}
-
-async function handleEnvironmentCaptureCommand(
-  mode: "capture" | "refresh",
-  name: string,
-  opts: {
-    project: string;
-    layers?: string[];
-    includePermissions?: boolean;
-    dryRun?: boolean;
-    strict?: boolean;
-    format?: string;
-  },
-): Promise<void> {
-  warnEnvironmentCaptureDeprecated(mode, opts.format);
-  const db = getDb();
-  initializeSchema(db);
-  const format = parseOutputFormat(opts.format);
-  const projectRoot = resolve(opts.project);
-  const result = await runEnvironmentCreate({
-    name,
-    fromProject: projectRoot,
-    refresh: mode === "refresh",
-    layers: opts.layers,
-    includePermissions: opts.includePermissions,
-    dryRun: opts.dryRun,
-    strict: opts.strict,
-  });
-
-  if (result.mode !== "from-project") {
-    throw new Error("Expected from-project result from capture delegation.");
-  }
-  const captureResult = result.result;
-
-  if (format === "json") {
-    printJson(captureResult);
-  } else {
-    ui.panel({
-      title: ["ENVIRONMENT", `${mode} ${name}`],
-      rows: [
-        ["Project", projectRoot],
-        ["Main harness", captureResult.main_harness],
-        ["Configured layers", `${captureResult.configured_layer_ids.length}`],
-        ["Persisted", captureResult.persisted ? "yes" : "no"],
-        ["Missing keys", `${captureResult.missing_keys.length}`],
-      ],
-    });
-    if (captureResult.missing_keys.length > 0) {
-      ui.subheader("MISSING KEYS");
-      for (const missing of captureResult.missing_keys) {
-        const sources = missing.sources.length > 0 ? missing.sources.join(", ") : "unknown";
-        ui.warn(`${missing.key} (${sources})`);
-      }
-    }
-  }
-
-  if (captureResult.strict_failed) {
-    process.exitCode = 1;
-    if (format === "human") {
-      ui.danger("Strict mode failed: missing required environment keys.");
-    }
-  }
 }
 
 async function handleEnvironmentUseCommand(
@@ -6254,52 +6171,6 @@ environmentSecretCmd
     const payload = unsetEnvironmentSecretCommand(name, key);
     const format = parseOutputFormat(opts.format);
     printEnvironmentMutationResult(payload, format);
-  });
-
-environmentCmd
-  .command("capture")
-  .argument("<name>", "Environment name")
-  .requiredOption("--project <path>", "Project directory")
-  .option("--layers <layers...>", "Configured layer selectors")
-  .option("--include-permissions", "Capture scanned permission resources")
-  .option("--dry-run", "Preview capture without persisting")
-  .option("--strict", "Fail when required keys are missing")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (
-    name: string,
-    opts: {
-      project: string;
-      layers?: string[];
-      includePermissions?: boolean;
-      dryRun?: boolean;
-      strict?: boolean;
-      format?: string;
-    },
-  ) => {
-    await handleEnvironmentCaptureCommand("capture", name, opts);
-  });
-
-environmentCmd
-  .command("refresh")
-  .argument("<name>", "Environment name")
-  .requiredOption("--project <path>", "Project directory")
-  .option("--layers <layers...>", "Configured layer selectors")
-  .option("--include-permissions", "Capture scanned permission resources")
-  .option("--dry-run", "Preview refresh without persisting")
-  .option("--strict", "Fail when required keys are missing")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .action(async (
-    name: string,
-    opts: {
-      project: string;
-      layers?: string[];
-      includePermissions?: boolean;
-      dryRun?: boolean;
-      strict?: boolean;
-      format?: string;
-    },
-  ) => {
-    await handleEnvironmentCaptureCommand("refresh", name, opts);
   });
 
 environmentCmd
