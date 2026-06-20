@@ -19,6 +19,13 @@ import {
   renderCatalogListTable,
 } from "../../ui/catalog-list-render.js";
 import { theme } from "../../ui/theme.js";
+import {
+  buildHelpLine,
+  clampActiveIndex,
+  interactivePromptTheme,
+  isEscapeKey,
+  isSearchCharacter,
+} from "./prompts/primitives.js";
 
 export type InteractiveCatalogBrowserResult = {
   orgSlug: string;
@@ -41,39 +48,6 @@ type PromptContext = {
   signal?: AbortSignal;
 };
 
-const interactiveCatalogBrowserTheme = {
-  helpMode: "always",
-  style: {
-    keysHelpTip: (keys: Array<[string, string]>) =>
-      keys.map(([key, action]) => `${key} ${action}`).join(" • "),
-  },
-};
-
-function isSearchCharacter(key: {
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-}): key is { sequence: string } {
-  return Boolean(
-    key.sequence
-      && key.sequence.length === 1
-      && key.sequence.trim().length > 0
-      && !key.ctrl
-      && !key.meta,
-  );
-}
-
-function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
-  return key.name === "escape" || key.sequence === "\u001b";
-}
-
-function clampActiveIndex(active: number, length: number): number {
-  if (length === 0) {
-    return 0;
-  }
-  return Math.max(0, Math.min(active, length - 1));
-}
-
 export const promptForInteractiveCatalogBrowser: (
   config: PromptConfig,
   context?: PromptContext,
@@ -81,7 +55,7 @@ export const promptForInteractiveCatalogBrowser: (
   InteractiveCatalogBrowserResult,
   PromptConfig
 >((config, done) => {
-  const promptTheme = makeTheme(interactiveCatalogBrowserTheme, {});
+  const promptTheme = makeTheme(interactivePromptTheme, {});
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -185,7 +159,7 @@ export const promptForInteractiveCatalogBrowser: (
     ? `Install: ${theme.accent(`> ${formatCatalogSelectionLabel(selectedLayer)}`)}`
     : theme.muted(loading ? "Loading layers…" : "No matching layers");
 
-  const helpLine = promptTheme.style.keysHelpTip([
+  const helpLine = buildHelpLine([
     ["↑↓", "select"],
     ["type", "search"],
     ["⌫", "erase"],

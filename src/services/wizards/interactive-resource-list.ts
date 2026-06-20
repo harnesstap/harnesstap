@@ -21,6 +21,13 @@ import {
   type ResourceListRow,
 } from "../../ui/resource-list-render.js";
 import { theme } from "../../ui/theme.js";
+import {
+  buildHelpLine,
+  clampActiveIndex,
+  interactivePromptTheme,
+  isEscapeKey,
+  isSearchCharacter,
+} from "./prompts/primitives.js";
 
 export type InteractiveResourceListResult = {
   query: string;
@@ -44,39 +51,6 @@ type PromptContext = {
   signal?: AbortSignal;
 };
 
-const interactiveResourceListTheme = {
-  helpMode: "always",
-  style: {
-    keysHelpTip: (keys: Array<[string, string]>) =>
-      keys.map(([key, action]) => `${key} ${action}`).join(" • "),
-  },
-};
-
-function isSearchCharacter(key: {
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-}): key is { sequence: string } {
-  return Boolean(
-    key.sequence
-      && key.sequence.length === 1
-      && key.sequence.trim().length > 0
-      && !key.ctrl
-      && !key.meta,
-  );
-}
-
-function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
-  return key.name === "escape" || key.sequence === "\u001b";
-}
-
-function clampActiveIndex(active: number, length: number): number {
-  if (length === 0) {
-    return 0;
-  }
-  return Math.max(0, Math.min(active, length - 1));
-}
-
 export const promptForInteractiveResourceList: (
   config: PromptConfig,
   context?: PromptContext,
@@ -84,7 +58,7 @@ export const promptForInteractiveResourceList: (
   InteractiveResourceListResult,
   PromptConfig
 >((config, done) => {
-  const promptTheme = makeTheme(interactiveResourceListTheme, {});
+  const promptTheme = makeTheme(interactivePromptTheme, {});
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
@@ -149,7 +123,7 @@ export const promptForInteractiveResourceList: (
   });
 
   if (view === "show" && showingResource) {
-    const helpLine = promptTheme.style.keysHelpTip([
+    const helpLine = buildHelpLine([
       ["esc", "back"],
     ]);
 
@@ -168,7 +142,7 @@ export const promptForInteractiveResourceList: (
     ? `Show: ${theme.accent(`> ${formatResourceSelectionLabel(selectedResource)}`)}`
     : theme.muted("No matching resources");
 
-  const helpLine = promptTheme.style.keysHelpTip([
+  const helpLine = buildHelpLine([
     ["↑↓", "select"],
     ["type", "search"],
     ["⌫", "erase"],

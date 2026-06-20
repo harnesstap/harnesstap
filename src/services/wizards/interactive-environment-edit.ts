@@ -11,6 +11,13 @@ import {
 } from "@inquirer/core";
 import type { EnvironmentEditRow } from "../environment-edit.js";
 import { styleResourceType, theme } from "../../ui/theme.js";
+import {
+  buildHelpLine,
+  clampActiveIndex,
+  interactivePromptTheme,
+  isEscapeKey,
+  isSearchCharacter,
+} from "./prompts/primitives.js";
 
 export type InteractiveEnvironmentEditAction =
   | { type: "quit" }
@@ -32,14 +39,6 @@ type PromptContext = {
   signal?: AbortSignal;
 };
 
-const interactiveEnvironmentEditTheme = {
-  helpMode: "always",
-  style: {
-    keysHelpTip: (keys: Array<[string, string]>) =>
-      keys.map(([key, action]) => `${key} ${action}`).join(" • "),
-  },
-};
-
 const KIND_LABELS: Record<EnvironmentEditRow["kind"], string> = {
   env_var: "ENV VARS",
   secret_ref: "SECRET REFS",
@@ -47,38 +46,11 @@ const KIND_LABELS: Record<EnvironmentEditRow["kind"], string> = {
   permission: "PERMISSIONS",
 };
 
-function isSearchCharacter(key: {
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-  shift?: boolean;
-}): key is { sequence: string } {
-  return Boolean(
-    key.sequence
-      && key.sequence.length === 1
-      && key.sequence.trim().length > 0
-      && !key.ctrl
-      && !key.meta
-      && !key.shift,
-  );
-}
-
-function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
-  return key.name === "escape" || key.sequence === "\u001b";
-}
-
 function isLetterKey(
   key: { sequence?: string; ctrl?: boolean; meta?: boolean },
   letter: string,
 ): boolean {
   return key.sequence === letter && !key.ctrl && !key.meta;
-}
-
-function clampActiveIndex(active: number, length: number): number {
-  if (length === 0) {
-    return 0;
-  }
-  return Math.max(0, Math.min(active, length - 1));
 }
 
 function formatEnvironmentEditRowLabel(row: EnvironmentEditRow): string {
@@ -151,7 +123,7 @@ export const promptForInteractiveEnvironmentEdit: (
   InteractiveEnvironmentEditAction,
   PromptConfig
 >((config, done) => {
-  const promptTheme = makeTheme(interactiveEnvironmentEditTheme, {});
+  const promptTheme = makeTheme(interactivePromptTheme, {});
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
@@ -219,7 +191,7 @@ export const promptForInteractiveEnvironmentEdit: (
     ? `Active: ${theme.accent(formatEnvironmentEditRowLabel(activeRow))}`
     : theme.muted("No matching rows");
 
-  const helpLine = promptTheme.style.keysHelpTip([
+  const helpLine = buildHelpLine([
     ["↑↓", "navigate"],
     ["type", "search"],
     ["⌫", "erase"],

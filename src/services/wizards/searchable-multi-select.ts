@@ -11,6 +11,12 @@ import {
   usePrefix,
   useState,
 } from "@inquirer/core";
+import {
+  buildHelpLine,
+  interactivePromptTheme,
+  isEscapeKey,
+  isSearchCharacter,
+} from "./prompts/primitives.js";
 import { PromptBackError } from "./shared.js";
 
 const PROMPT_BACK_SENTINEL = "__harnessdeck_prompt_back__";
@@ -43,18 +49,13 @@ type PromptContext = {
 };
 
 const searchableMultiSelectTheme = {
-  icon: {
-    checked: "[x]",
-    unchecked: "[ ]",
-    cursor: ">",
-  },
-  helpMode: "always",
+  ...interactivePromptTheme,
+  icon: { checked: "[x]", unchecked: "[ ]", cursor: ">" },
   style: {
+    ...interactivePromptTheme.style,
     renderSelectedChoices: <T extends string>(
       selectedChoices: Array<NormalizedChoice<T>>,
     ) => selectedChoices.map((choice) => choice.short ?? choice.name).join(", "),
-    keysHelpTip: (keys: Array<[string, string]>) =>
-      keys.map(([key, action]) => `${key} ${action}`).join(" • "),
   },
 };
 
@@ -80,24 +81,6 @@ function matchesQuery<T extends string>(
   return `${choice.name} ${choice.value} ${choice.description ?? ""}`
     .toLowerCase()
     .includes(normalizedQuery);
-}
-
-function isSearchCharacter(key: {
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-}): key is { sequence: string } {
-  return Boolean(
-    key.sequence
-      && key.sequence.length === 1
-      && key.sequence.trim().length > 0
-      && !key.ctrl
-      && !key.meta,
-  );
-}
-
-function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
-  return key.name === "escape" || key.sequence === "\u001b";
 }
 
 const searchableMultiSelectPrompt = createPrompt<string[], PromptConfig<string>>(
@@ -209,7 +192,7 @@ const searchableMultiSelectPrompt = createPrompt<string[], PromptConfig<string>>
           loop: config.loop ?? false,
         });
 
-  const helpLine = theme.style.keysHelpTip([
+  const helpLine = buildHelpLine([
     ["↑↓", "navigate"],
     ["space", "toggle"],
     ["type", "search"],

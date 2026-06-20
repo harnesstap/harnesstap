@@ -22,6 +22,13 @@ import {
   renderCatalogSearchTable,
 } from "../../ui/catalog-list-render.js";
 import { theme } from "../../ui/theme.js";
+import {
+  buildHelpLine,
+  clampActiveIndex,
+  interactivePromptTheme,
+  isEscapeKey,
+  isSearchCharacter,
+} from "./prompts/primitives.js";
 
 export type InteractiveCatalogSearchSelection = {
   orgSlug: string;
@@ -51,41 +58,6 @@ type PromptContext = {
   signal?: AbortSignal;
 };
 
-const interactiveCatalogSearchTheme = {
-  helpMode: "always",
-  style: {
-    keysHelpTip: (keys: Array<[string, string]>) =>
-      keys.map(([key, action]) => `${key} ${action}`).join(" • "),
-  },
-};
-
-function isSearchCharacter(key: {
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-  shift?: boolean;
-}): key is { sequence: string } {
-  return Boolean(
-    key.sequence
-      && key.sequence.length === 1
-      && key.sequence.trim().length > 0
-      && !key.ctrl
-      && !key.meta
-      && !key.shift,
-  );
-}
-
-function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
-  return key.name === "escape" || key.sequence === "\u001b";
-}
-
-function clampActiveIndex(active: number, length: number): number {
-  if (length === 0) {
-    return 0;
-  }
-  return Math.max(0, Math.min(active, length - 1));
-}
-
 function toSelection(layer: CatalogLayer): InteractiveCatalogSearchSelection {
   return {
     orgSlug: layer.orgSlug,
@@ -108,7 +80,7 @@ export const promptForInteractiveCatalogSearch: (
   InteractiveCatalogSearchResult,
   PromptConfig
 >((config, done) => {
-  const promptTheme = makeTheme(interactiveCatalogSearchTheme, {});
+  const promptTheme = makeTheme(interactivePromptTheme, {});
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
@@ -272,7 +244,7 @@ export const promptForInteractiveCatalogSearch: (
   });
 
   if (view === "show" && showingLayer) {
-    const helpLine = promptTheme.style.keysHelpTip([["esc", "back"]]);
+    const helpLine = buildHelpLine([["esc", "back"]]);
     return [renderCatalogLayerShow(showingLayer), "", helpLine].join("\n");
   }
 
@@ -280,7 +252,7 @@ export const promptForInteractiveCatalogSearch: (
     ? `Active: ${theme.accent(formatCatalogSelectionLabel(activeLayer))}`
     : theme.muted(loading ? "Loading layers…" : "No matching layers");
 
-  const helpLine = promptTheme.style.keysHelpTip([
+  const helpLine = buildHelpLine([
     ["↑↓", "navigate"],
     ["space", "toggle"],
     ["type", "search"],

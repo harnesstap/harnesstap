@@ -23,6 +23,13 @@ import {
   type LayerEditRenderOptions,
 } from "../../ui/resource-list-render.js";
 import { theme } from "../../ui/theme.js";
+import {
+  buildHelpLine,
+  clampActiveIndex,
+  interactivePromptTheme,
+  isEscapeKey,
+  isSearchCharacter,
+} from "./prompts/primitives.js";
 
 export type InteractiveLayerEditResult = {
   rows: LayerEditRow[];
@@ -46,41 +53,6 @@ type PromptContext = {
   signal?: AbortSignal;
 };
 
-const interactiveLayerEditTheme = {
-  helpMode: "always",
-  style: {
-    keysHelpTip: (keys: Array<[string, string]>) =>
-      keys.map(([key, action]) => `${key} ${action}`).join(" • "),
-  },
-};
-
-function isSearchCharacter(key: {
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-  shift?: boolean;
-}): key is { sequence: string } {
-  return Boolean(
-    key.sequence
-      && key.sequence.length === 1
-      && key.sequence.trim().length > 0
-      && !key.ctrl
-      && !key.meta
-      && !key.shift,
-  );
-}
-
-function isEscapeKey(key: { name?: string; sequence?: string }): boolean {
-  return key.name === "escape" || key.sequence === "\u001b";
-}
-
-function clampActiveIndex(active: number, length: number): number {
-  if (length === 0) {
-    return 0;
-  }
-  return Math.max(0, Math.min(active, length - 1));
-}
-
 function requiresVersionConstraint(row: LayerEditRow): boolean {
   return row.type === "plugin_pin" || row.type === "layer";
 }
@@ -103,7 +75,7 @@ export const promptForInteractiveLayerEdit: (
   InteractiveLayerEditResult,
   PromptConfig
 >((config, done) => {
-  const promptTheme = makeTheme(interactiveLayerEditTheme, {});
+  const promptTheme = makeTheme(interactivePromptTheme, {});
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [rows, setRows] = useState(() => config.rows.map((row) => ({ ...row })));
   const [query, setQuery] = useState(config.initialQuery ?? "");
@@ -268,7 +240,7 @@ export const promptForInteractiveLayerEdit: (
 
   if (view === "constraint" && constraintTargetId) {
     const target = rows.find((row) => row.id === constraintTargetId);
-    const helpLine = promptTheme.style.keysHelpTip([
+    const helpLine = buildHelpLine([
       ["type", "constraint"],
       ["⏎", "confirm"],
       ["esc", "cancel"],
@@ -288,7 +260,7 @@ export const promptForInteractiveLayerEdit: (
     const detail = requiresVersionConstraint(showingRow)
       ? renderCompositionShow(showingRow)
       : renderResourceShow(showingRow);
-    const helpLine = promptTheme.style.keysHelpTip([["esc", "back"]]);
+    const helpLine = buildHelpLine([["esc", "back"]]);
     return [detail, "", helpLine].join("\n");
   }
 
@@ -301,7 +273,7 @@ export const promptForInteractiveLayerEdit: (
     ? `Active: ${theme.accent(formatResourceSelectionLabel(activeRow))}`
     : theme.muted("No matching resources");
 
-  const helpLine = promptTheme.style.keysHelpTip([
+  const helpLine = buildHelpLine([
     ["↑↓", "navigate"],
     ["space", "toggle"],
     ["type", "search"],
