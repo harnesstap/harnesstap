@@ -64,7 +64,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
         purpose: "Add a local resource to a layer",
       },
     ],
-    environment_cascade: "home env ◂ layer default env ◂ project active env (last wins on apply)",
+    environment_cascade: "home env ◂ layer default env (last wins on apply)",
   };
 }
 

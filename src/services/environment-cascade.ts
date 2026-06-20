@@ -24,12 +24,10 @@ export interface EnvironmentFragment {
 export interface EnvironmentCascadeInput {
   home?: EnvironmentFragment;
   layerDefaults?: EnvironmentFragment[];
-  projectActive?: EnvironmentFragment;
 }
 
 export interface ResolveEnvironmentCascadeForApplyInput {
   configuredLayerIds: string[];
-  projectRoot: string;
 }
 
 const EMPTY_FRAGMENT: EnvironmentFragment = { vars: {}, secretRefs: {} };
@@ -58,7 +56,6 @@ export function resolveEnvironmentCascade(
   for (const fragment of layers.layerDefaults ?? []) {
     acc = merge(acc, fragment);
   }
-  acc = merge(acc, layers.projectActive);
   return acc;
 }
 
@@ -199,7 +196,6 @@ export function buildEnvironmentCascadeInput(
   return {
     home: loadHomeEnvironmentFragment(),
     layerDefaults: loadLayerDefaultFragments(input.configuredLayerIds),
-    projectActive: loadProjectActiveEnvironmentFragment(input.projectRoot),
   };
 }
 
@@ -238,7 +234,7 @@ export function fragmentToEnvironmentResources(
 
 /**
  * Strip environment resources from the merged layer set, then overlay the
- * resolved cascade (home ◂ layer default ◂ project active).
+ * resolved cascade (home ◂ layer default).
  */
 export function mergeResolvedEnvironmentIntoResources(
   resources: Resource[],

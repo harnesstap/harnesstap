@@ -4,6 +4,7 @@ import {
   type CatalogListResult,
 } from "./catalog-types.js";
 import { DEFAULT_CATALOG_SLUG } from "./layer-selector.js";
+import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
   const params = new URLSearchParams();
@@ -36,7 +37,7 @@ export function createPublicCatalogClient(baseUrl: string) {
     async listLayers(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = buildSearchParams(options);
       const url = `${root}/api/public/layers?${params.toString()}`;
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       if (!response.ok) {
         throw new Error(`Failed to list public layers: ${response.status}`);
       }
@@ -54,7 +55,7 @@ export function createPublicCatalogClient(baseUrl: string) {
       const url = catalogSlug === DEFAULT_CATALOG_SLUG
         ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`
         : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`;
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       if (!response.ok) {
         throw new Error(`Failed to download public layer export: ${response.status}`);
       }

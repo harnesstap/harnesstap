@@ -1,5 +1,14 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  loadHomeEnvironmentFragment,
+  loadLayerDefaultFragments,
+  resolveEnvironmentCascade,
+} from "./environment-cascade.js";
+import {
+  getGlobalActiveEnvironmentName,
+  setGlobalActiveEnvironment,
+  setLocalActiveEnvironment,
+} from "./environment-session.js";
+import { resolveConfiguredLayerOrThrow, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -20,13 +29,6 @@ import {
 import {
   setLayerDefaultEnvironment,
 } from "../models/layer-model.js";
-import {
-  loadHomeEnvironmentFragment,
-  loadLayerDefaultFragments,
-  loadProjectActiveEnvironmentFragment,
-  resolveEnvironmentCascade,
-} from "./environment-cascade.js";
-import { resolveConfiguredLayerOrThrow, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import type {
   EnvVarMetadata,
   Environment,
@@ -250,78 +252,58 @@ export function unsetLayerEnvironmentCommand(layerSelector: string): {
   return { configured_layer_id: configuredLayer.id };
 }
 
+export function useEnvironmentCommand(
+  selector: string,
+  options?: { local?: boolean },
+): {
+  environment_id: string;
+  environment_name: string;
+  scope: "global" | "local";
+  active_environment_file: string;
+} {
+  const environment = resolveEnvironmentOrThrow(selector);
+  const activeEnvironmentFile = options?.local
+    ? setLocalActiveEnvironment(environment.name)
+    : setGlobalActiveEnvironment(environment.name);
+  return {
+    environment_id: environment.id,
+    environment_name: environment.name,
+    scope: options?.local ? "local" : "global",
+    active_environment_file: activeEnvironmentFile,
+  };
+}
+
+/** @deprecated Use useEnvironmentCommand */
 export function useEnvironmentPayload(selector: string): {
   environment_id: string;
   environment_name: string;
   active_environment: { name: string };
 } {
-  const environment = resolveEnvironmentOrThrow(selector);
+  const result = useEnvironmentCommand(selector);
   return {
-    environment_id: environment.id,
-    environment_name: environment.name,
-    active_environment: { name: environment.name },
+    environment_id: result.environment_id,
+    environment_name: result.environment_name,
+    active_environment: { name: result.environment_name },
   };
 }
 
-export function useEnvironmentForProjectCommand(
-  selector: string,
-  projectRoot: string,
-): {
-  environment_id: string;
-  environment_name: string;
-  active_environment_file: string;
-  updated: boolean;
-} {
-  const environment = resolveEnvironmentOrThrow(selector);
-  const harnessdeckDir = join(projectRoot, ".harnessdeck");
-  mkdirSync(harnessdeckDir, { recursive: true });
-  const activeFile = join(harnessdeckDir, "active-environment.json");
-  writeFileSync(activeFile, `${JSON.stringify({ name: environment.name }, null, 2)}\n`, "utf-8");
-  return {
-    environment_id: environment.id,
-    environment_name: environment.name,
-    active_environment_file: activeFile,
-    updated: true,
-  };
-}
-
-export function environmentActivePayload(input: {
-  projectRoot?: string;
+export function environmentCascadePayload(input: {
   configuredLayerIds?: string[];
 }): {
+  global_environment: string | null;
   home?: ReturnType<typeof loadHomeEnvironmentFragment>;
   layer_defaults: ReturnType<typeof loadLayerDefaultFragments>;
-  project_active?: ReturnType<typeof loadProjectActiveEnvironmentFragment>;
   resolved: ReturnType<typeof resolveEnvironmentCascade>;
 } {
   const home = loadHomeEnvironmentFragment();
   const layerDefaults = loadLayerDefaultFragments(input.configuredLayerIds ?? []);
-  const projectActive = input.projectRoot
-    ? loadProjectActiveEnvironmentFragment(input.projectRoot)
-    : undefined;
   return {
+    global_environment: getGlobalActiveEnvironmentName() ?? null,
     ...(home ? { home } : {}),
     layer_defaults: layerDefaults,
-    ...(projectActive ? { project_active: projectActive } : {}),
     resolved: resolveEnvironmentCascade({
       ...(home ? { home } : {}),
       layerDefaults,
-      ...(projectActive ? { projectActive } : {}),
     }),
   };
-}
-
-export function environmentResolvePayload(input: {
-  projectRoot: string;
-  configuredLayerIds: string[];
-}): {
-  home?: ReturnType<typeof loadHomeEnvironmentFragment>;
-  layer_defaults: ReturnType<typeof loadLayerDefaultFragments>;
-  project_active?: ReturnType<typeof loadProjectActiveEnvironmentFragment>;
-  resolved: ReturnType<typeof resolveEnvironmentCascade>;
-} {
-  return environmentActivePayload({
-    projectRoot: input.projectRoot,
-    configuredLayerIds: input.configuredLayerIds,
-  });
 }

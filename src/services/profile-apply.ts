@@ -353,7 +353,6 @@ export async function applyProfileLayer(
   const harnesses = resolveGlobalApplyHarnessTargets(options.harness);
   const homeRoot = resolveHomeRoot();
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
-    projectRoot: homeRoot,
     configuredLayerIds,
   });
 

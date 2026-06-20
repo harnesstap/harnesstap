@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { getActiveProfilePayload } from "./profile-commands.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
-import { environmentActivePayload } from "./environment-commands.js";
+import { environmentCascadePayload } from "./environment-commands.js";
 import { assessProjectScanStatus, type ProjectScanStatus } from "./project-scan-status.js";
 import { validatePluginPinsAgainstInventory } from "./plugin-apply-validation.js";
 import { listAttachedPluginPins } from "./layer-composition.js";
@@ -38,7 +38,7 @@ export interface ProjectStatusPayload {
   project: Project | null;
   drift: ProjectDriftReport | null;
   snapshots_count: number;
-  environment_cascade: ReturnType<typeof environmentActivePayload>;
+  environment_cascade: ReturnType<typeof environmentCascadePayload>;
   profile: {
     active_profile: string | null;
     layer: Layer | null;
@@ -154,10 +154,8 @@ function buildAppliedLayers(project: Project | null): AppliedLayerStatusRow[] {
 
 function buildResolvedSection(
   configuredLayerIds: string[],
-  projectRoot: string,
 ): ProjectStatusPayload["resolved"] {
-  const environmentCascade = environmentActivePayload({
-    projectRoot,
+  const environmentCascade = environmentCascadePayload({
     configuredLayerIds,
   });
 
@@ -240,15 +238,14 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
   const configuredLayerIds = project
     ? getProjectConfiguredLayers(project.id).map((row) => row.layer_id)
     : [];
-  const environmentCascade = environmentActivePayload({
-    projectRoot: resolvedRoot,
+  const environmentCascade = environmentCascadePayload({
     configuredLayerIds,
   });
   const driftReport = project
     ? detectProjectDriftFromLatest(resolvedRoot, project.id)
     : null;
   const appliedLayers = buildAppliedLayers(project);
-  const resolved = buildResolvedSection(configuredLayerIds, resolvedRoot);
+  const resolved = buildResolvedSection(configuredLayerIds);
   const projectResources = await assessProjectScanStatus(resolvedRoot);
 
   return {

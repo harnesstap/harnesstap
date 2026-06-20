@@ -5,6 +5,7 @@ import {
 } from "../config/catalog.js";
 import { listCatalogLayersPage } from "./catalog-client.js";
 import type { CatalogLayer } from "./catalog-types.js";
+import { formatCatalogRequestError } from "./transport/fetch-with-timeout.js";
 
 export type CatalogListSourceKind = "scope" | "registered";
 
@@ -142,7 +143,7 @@ export async function* streamCatalogLayers(
         pageIndex += 1;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = formatCatalogRequestError(error);
       enqueue({ type: "error", sourceLabel: source.label, message });
     } finally {
       sourceFinished();

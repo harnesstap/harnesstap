@@ -17,6 +17,7 @@ import {
 } from "./layer-selector.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
+import { fetchWithTimeout, formatCatalogRequestError } from "./transport/fetch-with-timeout.js";
 
 function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): CatalogListOptions {
   return {
@@ -94,7 +95,7 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
       for (const org of options.orgs ?? []) params.append("org", org);
       for (const selector of options.selectors ?? []) params.append("selector", selector);
 
-      const response = await fetch(`${root}/api/catalog/layers?${params.toString()}`, {
+      const response = await fetchWithTimeout(`${root}/api/catalog/layers?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -132,24 +133,28 @@ export async function listCatalogLayersPage(
   options: CatalogListOptions = {},
   input?: { account?: string; baseUrl?: string },
 ): Promise<CatalogListResult> {
-  const access = await resolveCatalogAccess(input);
-  const scopedOptions = buildScopeParams(access.scope, options);
+  try {
+    const access = await resolveCatalogAccess(input);
+    const scopedOptions = buildScopeParams(access.scope, options);
 
-  if (input?.account) {
-    const accountInfo = await getCloudAccount(input.account);
-    const accessToken = accountInfo.account?.accessToken;
-    if (accessToken) {
-      const client = await createAuthenticatedCatalogClient(access.scope.cloudBaseUrl, accessToken);
-      return client.listLayers(scopedOptions);
+    if (input?.account) {
+      const accountInfo = await getCloudAccount(input.account);
+      const accessToken = accountInfo.account?.accessToken;
+      if (accessToken) {
+        const client = await createAuthenticatedCatalogClient(access.scope.cloudBaseUrl, accessToken);
+        return await client.listLayers(scopedOptions);
+      }
+      return await access.publicClient.listLayers(scopedOptions);
     }
-    return access.publicClient.listLayers(scopedOptions);
-  }
 
-  if (access.authenticatedClient) {
-    return access.authenticatedClient.listLayers(scopedOptions);
-  }
+    if (access.authenticatedClient) {
+      return await access.authenticatedClient.listLayers(scopedOptions);
+    }
 
-  return access.publicClient.listLayers(scopedOptions);
+    return await access.publicClient.listLayers(scopedOptions);
+  } catch (error) {
+    throw new Error(formatCatalogRequestError(error), { cause: error });
+  }
 }
 
 export async function listLayersInScope(
@@ -239,7 +244,7 @@ export async function downloadCatalogBundle(input: {
     const url = catalogSlug === "default"
       ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`
       : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

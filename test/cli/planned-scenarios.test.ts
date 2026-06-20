@@ -340,9 +340,10 @@ describe("CLI planned scenarios", () => {
       });
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("Resource name is required");
+      expect(result.stderr).toContain("missing required argument 'resource'");
       expect(result.stderr).not.toContain("Error:");
-      expect(result.stderr).not.toContain("at ");
+      expect(result.stderr).not.toContain(" at runHarnessdeckCli");
+      expect(result.stderr).not.toContain("node_modules/");
     } finally {
       await context.cleanup();
     }

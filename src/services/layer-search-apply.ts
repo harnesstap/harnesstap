@@ -103,7 +103,6 @@ export async function applyLayersGlobally(
   const configuredLayerIds = merged.layers.map((layer) => layer.id);
   const harnesses = resolveScanGlobalHarnessTargets(options.harness, homeRoot);
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
-    projectRoot: homeRoot,
     configuredLayerIds,
   });
   const mergedPluginPins = mergedPluginPinsFromLayers(configuredLayerIds);

@@ -8,6 +8,7 @@ export interface CommandResult {
 
 export interface RunCommandOptions {
   cwd?: string;
+  timeoutMs?: number;
 }
 
 export type RunCommand = (
