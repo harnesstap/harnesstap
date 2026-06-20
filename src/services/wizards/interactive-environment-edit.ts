@@ -1,6 +1,5 @@
 import {
   createPrompt,
-  ExitPromptError,
   isBackspaceKey,
   isDownKey,
   isEnterKey,
@@ -15,6 +14,7 @@ import { styleResourceType, theme } from "../../ui/theme.js";
 
 export type InteractiveEnvironmentEditAction =
   | { type: "quit" }
+  | { type: "cancel" }
   | { type: "edit"; rowIndex: number }
   | { type: "add" }
   | { type: "delete"; rowIndex: number };
@@ -162,7 +162,8 @@ export const promptForInteractiveEnvironmentEdit: (
 
   useKeypress((key) => {
     if (isEscapeKey(key)) {
-      throw new ExitPromptError("Environment edit cancelled");
+      done({ type: "cancel" });
+      return;
     }
 
     if (isLetterKey(key, "q")) {

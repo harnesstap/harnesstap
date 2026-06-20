@@ -3082,13 +3082,13 @@ async function handleEnvironmentEditCommand(
   try {
     const result = await runEnvironmentEditWizard({ environment });
     if (!result) {
-      process.exitCode = 1;
+      ui.info("Operation cancelled.");
       return;
     }
     ui.success(`Updated environment ${ui.theme.accent(environment.name)}`);
   } catch (error) {
     if (isPromptCancellationError(error)) {
-      process.exitCode = 1;
+      ui.info("Operation cancelled.");
       return;
     }
     throw error;

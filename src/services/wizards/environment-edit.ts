@@ -136,6 +136,10 @@ export async function runEnvironmentEditWizard(input: {
       rows,
     });
 
+    if (action.type === "cancel") {
+      return undefined;
+    }
+
     if (action.type === "quit") {
       return buildEnvironmentEditRows(input.environment.id);
     }
