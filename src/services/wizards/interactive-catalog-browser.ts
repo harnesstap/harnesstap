@@ -26,6 +26,7 @@ import {
   isEscapeKey,
   isSearchCharacter,
 } from "./prompts/primitives.js";
+import { useDebouncedRemoteSearch } from "./prompts/hooks/use-debounced-remote-search.js";
 
 export type InteractiveCatalogBrowserResult = {
   orgSlug: string;
@@ -59,53 +60,10 @@ export const promptForInteractiveCatalogBrowser: (
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const [layers, setLayers] = useState<CatalogLayer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchedQueryRef = useState({ current: "__unset__" })[0];
-  const debounceRef = useState<{ current: ReturnType<typeof setTimeout> | null }>({ current: null })[0];
-  const requestRef = useState({ current: 0 })[0];
-
-  async function runSearch(nextQuery: string) {
-    const requestId = ++requestRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await config.listLayers({
-        q: nextQuery,
-        limit: nextQuery.trim() ? 25 : 10,
-      });
-      if (requestId !== requestRef.current) {
-        return;
-      }
-      setLayers(results);
-      fetchedQueryRef.current = nextQuery;
-    } catch (searchError) {
-      if (requestId !== requestRef.current) {
-        return;
-      }
-      setLayers([]);
-      setError(searchError instanceof Error ? searchError.message : String(searchError));
-    } finally {
-      if (requestId === requestRef.current) {
-        setLoading(false);
-      }
-    }
-  }
-
-  function scheduleSearch(nextQuery: string) {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      void runSearch(nextQuery);
-    }, 300);
-  }
-
-  if (fetchedQueryRef.current === "__unset__") {
-    fetchedQueryRef.current = "";
-    void runSearch("");
-  }
+  const { items: layers, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
+    limitFor: (nextQuery) => (nextQuery.trim() ? 25 : 10),
+    searchFn: (nextQuery, limit) => config.listLayers({ q: nextQuery, limit }),
+  });
 
   const clampedActive = clampActiveIndex(active, layers.length);
   const selectedLayer = layers[clampedActive];

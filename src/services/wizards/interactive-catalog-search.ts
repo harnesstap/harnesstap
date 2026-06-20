@@ -7,10 +7,8 @@ import {
   isSpaceKey,
   isUpKey,
   makeTheme,
-  useEffect,
   useKeypress,
   usePrefix,
-  useRef,
   useState,
 } from "@inquirer/core";
 import type { CatalogLayer } from "../catalog-types.js";
@@ -29,6 +27,7 @@ import {
   isEscapeKey,
   isSearchCharacter,
 } from "./prompts/primitives.js";
+import { useDebouncedRemoteSearch } from "./prompts/hooks/use-debounced-remote-search.js";
 
 export type InteractiveCatalogSearchSelection = {
   orgSlug: string;
@@ -84,62 +83,16 @@ export const promptForInteractiveCatalogSearch: (
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
-  const [layers, setLayers] = useState<CatalogLayer[]>([]);
   const [checkedLayers, setCheckedLayers] = useState<Map<string, CatalogLayer>>(
     () => new Map(),
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<PromptView>("browse");
   const [showingLayer, setShowingLayer] = useState<CatalogLayer | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const requestRef = useRef(0);
-
-  async function runSearch(nextQuery: string) {
-    const requestId = ++requestRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await config.listLayers({
-        q: nextQuery,
-        limit: nextQuery.trim() ? 25 : 10,
-      });
-      if (requestId !== requestRef.current) {
-        return;
-      }
-      setLayers(results);
-    } catch (searchError) {
-      if (requestId !== requestRef.current) {
-        return;
-      }
-      setLayers([]);
-      setError(searchError instanceof Error ? searchError.message : String(searchError));
-    } finally {
-      if (requestId === requestRef.current) {
-        setLoading(false);
-      }
-    }
-  }
-
-  function scheduleSearch(nextQuery: string) {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      void runSearch(nextQuery);
-    }, 300);
-  }
-
-  useEffect(() => {
-    void runSearch(config.initialQuery ?? "");
-    return () => {
-      requestRef.current += 1;
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-    };
-  }, []);
+  const { items: layers, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
+    initialQuery: config.initialQuery,
+    limitFor: (nextQuery) => (nextQuery.trim() ? 25 : 10),
+    searchFn: (nextQuery, limit) => config.listLayers({ q: nextQuery, limit }),
+  });
 
   const clampedActive = clampActiveIndex(active, layers.length);
   const activeLayer = layers[clampedActive];
