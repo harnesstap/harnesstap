@@ -4,9 +4,19 @@ import { runCli } from "../helpers/cli.ts";
 
 describe("parameter errors", () => {
   it("layer show without name reports missing required argument", async () => {
-    const r = await runCli(["layer", "show"]);
-    expect(r.stderr).toContain("missing required argument 'name'");
-    expect(r.stderr).toContain("USAGE");
+    const context = await createTestContext("cli-parameter-errors-layer-show");
+    try {
+      await runCli(["init"]);
+      await runCli(["layer", "create", "team-stack"]);
+
+      const r = await runCli(["layer", "show"], { isTTY: false });
+
+      expect(r.exitCode).toBe(1);
+      expect(r.stderr).toContain("missing required argument 'name'");
+      expect(r.stderr).toContain("USAGE");
+    } finally {
+      await context.cleanup();
+    }
   });
 
   it("layer edit conflicting environment flags", async () => {
