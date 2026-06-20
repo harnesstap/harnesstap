@@ -155,7 +155,10 @@ export async function* streamCatalogLayers(
 
   while (pendingSources > 0 || queue.length > 0) {
     if (queue.length > 0) {
-      const item = queue.shift()!;
+      const item = queue.shift();
+      if (item === undefined) {
+        continue;
+      }
       switch (item.type) {
         case "chunk":
           yield { type: "chunk", chunk: item.chunk };

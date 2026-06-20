@@ -3,6 +3,7 @@ import { formatCount } from "../ui/format.js";
 import {
   detectActiveProfileHarnessSyncBeforeSwitch,
   updateProfileFromMainHarness,
+  type ProfileHarnessSyncStatus,
 } from "./profile-harness-sync.js";
 import { shouldPromptProfileEnable } from "./profile-enable-prompt.js";
 import { promptForConfirmation } from "./wizards/shared.js";
@@ -18,7 +19,7 @@ export async function maybeSyncActiveProfileBeforeSwitch(input: {
     return false;
   }
 
-  let status;
+  let status: ProfileHarnessSyncStatus | null;
   try {
     status = await detectActiveProfileHarnessSyncBeforeSwitch({
       targetProfileName: input.targetProfileName,

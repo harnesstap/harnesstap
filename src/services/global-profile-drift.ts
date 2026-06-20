@@ -5,7 +5,7 @@ import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-s
 import { resolveLayerSelector } from "../models/layer-model.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
-import { applyProfileLayer } from "./profile-apply.js";
+import { applyProfileLayer, type ApplyProfileLayerResult } from "./profile-apply.js";
 import type { DriftFileChange } from "./project-drift.js";
 
 export interface GlobalProfileStatus {
@@ -87,7 +87,7 @@ export async function detectGlobalProfileStatus(input: {
 
   const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
   const homeRoot = resolveHomeRoot();
-  let expectedApply;
+  let expectedApply: ApplyProfileLayerResult;
   try {
     expectedApply = await applyProfileLayer(activeProfile, {
       dryRun: true,
