@@ -13,6 +13,7 @@ import {
   type ResolveApplyLayerSourceOptions,
 } from "./layer-apply-source.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
+import { substituteResourcesForApply } from "./environment-var-substitution.js";
 import { preparePluginPinsForApply } from "./plugin-pin-apply.js";
 import { resolveScanGlobalHarnessTargets } from "./harness-targets.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -127,7 +128,12 @@ export async function applyLayersGlobally(
         }
       : merged.claude;
 
-  const applied = await applyToGlobal(pluginPrepare.applyResources, harnesses, homeRoot, {
+  const applyResources = substituteResourcesForApply(
+    pluginPrepare.applyResources,
+    resolvedEnvironment.vars,
+  ).resources;
+
+  const applied = await applyToGlobal(applyResources, harnesses, homeRoot, {
     conflictPolicy: options.conflictPolicy,
     conflictResolver: options.conflictResolver,
     resolvedEnvironment,

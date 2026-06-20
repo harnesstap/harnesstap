@@ -53,6 +53,7 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "resource delete:0": [completeLocalResources],
   "resource list:0": [completeResourceTypes],
   "resource sync:0": [completeLocalResources],
+  "environment edit:0": [completeLocalEnvironments],
   "environment show:0": [completeLocalEnvironments],
   "environment delete:0": [completeLocalEnvironments],
   "environment set:0": [completeLocalEnvironments],

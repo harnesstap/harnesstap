@@ -8,19 +8,23 @@ import {
   upsertEnvironmentPermission,
 } from "../models/environment.js";
 import { getHarnessPreference, getProjectHarnessConfig } from "../models/harness.js";
-import { getLayerResources, getLayer } from "../models/layer-model.js";
 import { getProjectByLocalPath, getProjectConfiguredLayers } from "../models/project.js";
 import { listResources } from "../models/resource.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
 import { resolveLayerGraph } from "./layer-resolver.js";
+import {
+  collectRequirementsFromPlugins,
+  type EnvironmentRequirementCollection,
+  type RequirementSource,
+} from "./environment-requirements.js";
 import type {
-  AgentMetadata,
   EnvVarMetadata,
   Environment,
-  McpServerMetadata,
   PermissionMetadata,
   Resource,
 } from "../types.js";
+
+export type { EnvironmentRequirementCollection, RequirementSource };
 
 const PROCESS_ENV_SECRET_PATTERNS = [
   /_TOKEN$/i,
@@ -28,16 +32,6 @@ const PROCESS_ENV_SECRET_PATTERNS = [
   /_KEY$/i,
   /_PASSWORD$/i,
 ];
-
-type RequirementSource = "plugin_needs" | "mcp_env";
-
-export interface EnvironmentRequirementCollection {
-  configured_layer_ids: string[];
-  plugin_ids: string[];
-  required_keys: string[];
-  required_models: Array<{ name: string; model: string }>;
-  key_sources: Record<string, RequirementSource[]>;
-}
 
 export interface MissingEnvironmentKey {
   key: string;
@@ -120,61 +114,6 @@ function resolveScopedPluginIds(configuredLayerIds: string[]): string[] {
   return unique(graph.resolved.map((layer) => layer.id));
 }
 
-function collectRequirementsFromPlugins(
-  pluginIds: string[],
-): EnvironmentRequirementCollection {
-  const requiredKeys = new Set<string>();
-  const requiredModels = new Map<string, { name: string; model: string }>();
-  const keySources = new Map<string, Set<RequirementSource>>();
-
-  const rememberKey = (key: string, source: RequirementSource): void => {
-    if (!key) return;
-    requiredKeys.add(key);
-    const current = keySources.get(key) ?? new Set<RequirementSource>();
-    current.add(source);
-    keySources.set(key, current);
-  };
-
-  for (const pluginId of pluginIds) {
-    const plugin = getLayer(pluginId);
-    if (!plugin) continue;
-
-    for (const need of plugin.needs ?? []) {
-      rememberKey(need, "plugin_needs");
-    }
-
-    for (const resource of getLayerResources(pluginId)) {
-      if (resource.type === "mcp_server") {
-        const metadata = resource.metadata as McpServerMetadata;
-        for (const key of Object.keys(metadata.env ?? {})) {
-          rememberKey(key, "mcp_env");
-        }
-      }
-      if (resource.type === "agent") {
-        const metadata = resource.metadata as AgentMetadata;
-        if (metadata.model) {
-          requiredModels.set(resource.name, {
-            name: resource.name,
-            model: metadata.model,
-          });
-        }
-      }
-    }
-  }
-
-  return {
-    configured_layer_ids: [],
-    plugin_ids: pluginIds,
-    required_keys: [...requiredKeys].sort(),
-    required_models: [...requiredModels.values()].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    ),
-    key_sources: Object.fromEntries(
-      [...keySources.entries()].map(([key, sources]) => [key, [...sources].sort()]),
-    ) as Record<string, RequirementSource[]>,
-  };
-}
-
 function valueFromScannedResources(
   resources: Resource[],
   key: string,
@@ -199,7 +138,7 @@ function valueFromLibraryResources(key: string): string | undefined {
   return metadata.value;
 }
 
-function isSecretKey(key: string): boolean {
+export function isSecretKey(key: string): boolean {
   return PROCESS_ENV_SECRET_PATTERNS.some((pattern) => pattern.test(key));
 }
 
@@ -220,7 +159,7 @@ function collectPermissionsFromScan(resources: Resource[]): Array<{
     });
 }
 
-function collectModelConfigsFromRequirements(
+export function collectModelConfigsFromRequirements(
   requirements: EnvironmentRequirementCollection,
 ): Array<{ name: string; model: string }> {
   const libraryModels = listResources({ type: "model_config" });
