@@ -1,3 +1,7 @@
+---
+description: The atomic unit HarnessDeck scans, stores, composes, and re-emits.
+---
+
 # Resources
 
 A **resource** is the atomic unit HarnessDeck scans, stores, composes, and re-emits. Skills, instructions, rules, MCP servers, hooks, agents, commands, and plugin pins are all resources in the canonical library.

@@ -1,3 +1,7 @@
+---
+description: Repositories where HarnessDeck scans, applies, mirrors, and tracks harness configuration.
+---
+
 # Projects
 
 A **project** is a repository (or directory tree) where HarnessDeck materializes harness configuration. Project workflows center on scan, apply, mirror, drift detection, and snapshot revert — all scoped to the working tree rather than machine-wide home paths.

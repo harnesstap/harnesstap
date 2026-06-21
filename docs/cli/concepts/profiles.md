@@ -1,3 +1,7 @@
+---
+description: Machine-wide layers applied to home harness paths, not repository working trees.
+---
+
 # Profiles
 
 A **profile** is a layer tagged `profile` that defines your machine-wide agent harness setup. Profiles apply to **home harness paths** (`~/.claude/`, `~/.codex/`, `~/.cursor/`, …) — not to repository working trees. Use `layer apply` for project-scoped baselines.

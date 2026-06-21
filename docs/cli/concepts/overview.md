@@ -1,3 +1,7 @@
+---
+description: Architecture and the HarnessDeck data model.
+---
+
 # Concepts overview
 
 HarnessDeck keeps assistant configuration in one place while materializing platform-specific files for Claude Code, Codex, Cursor, and dozens of other agent harnesses.

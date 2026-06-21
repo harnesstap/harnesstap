@@ -1,3 +1,7 @@
+---
+description: Versioned context packages you create, diff, export, publish, and apply.
+---
+
 # Layers
 
 A **layer** is HarnessDeck's versioned context package: the unit you create, diff, export, publish, and apply. Layers compose plugins, plugin pins, nested layer refs, and an optional default environment.
