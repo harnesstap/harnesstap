@@ -12,7 +12,7 @@ Typical commands:
 ```bash
 harnessdeck layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
 harnessdeck layer apply my-setup --project . --harness claude-code,codex,cursor
-harnessdeck project status .
+harnessdeck status .
 ```
 
 Plugin-version policy when the layer carries plugin pins:
@@ -27,4 +27,4 @@ harnessdeck layer apply my-setup --ignore-plugin-versions   # skip validation
 Important distinction: applying a layer writes a known baseline onto disk. If
 you later want to sync alias harness outputs from the current on-disk main
 harness without re-specifying the layer, use
-[`harnessdeck project mirror`](./27-project-sync.md) instead.
+[`harnessdeck mirror`](./27-project-sync.md) instead.

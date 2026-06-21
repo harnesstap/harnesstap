@@ -1,6 +1,8 @@
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "bun:test";
 import { ClaudeCodeSerializer } from "../../src/platforms/claude-code.ts";
+import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 import { makeResource } from "../helpers/resources.ts";
 
 const CLAUDE_FIXTURE_DIR = fileURLToPath(
@@ -175,5 +177,57 @@ describe("ClaudeCodeSerializer", () => {
     );
 
     expect(files).toEqual([]);
+  });
+
+  it("round-trips HTTP MCP headers on scan and serialize", async () => {
+    const projectDir = createTempDir("claude-mcp-headers");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".mcp.json"),
+        JSON.stringify({
+          mcpServers: {
+            api: {
+              type: "http",
+              url: "https://mcp.example.com",
+              headers: { Authorization: "Bearer ${API_TOKEN}" },
+            },
+          },
+        }),
+      );
+
+      const serializer = new ClaudeCodeSerializer();
+      const scanned = await serializer.scan(projectDir);
+      const mcp = scanned.find((resource) => resource.type === "mcp_server");
+      expect(mcp?.metadata).toEqual(
+        expect.objectContaining({
+          transport: "http",
+          url: "https://mcp.example.com",
+          headers: { Authorization: "Bearer ${API_TOKEN}" },
+        }),
+      );
+
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "api",
+            metadata: mcp?.metadata ?? {},
+          }),
+        ],
+        ".",
+      );
+
+      const config = JSON.parse(
+        files.find((file) => file.path === ".mcp.json")?.content ?? "{}",
+      );
+      expect(config.mcpServers.api).toEqual({
+        type: "http",
+        url: "https://mcp.example.com",
+        headers: { Authorization: "Bearer ${API_TOKEN}" },
+      });
+    } finally {
+      cleanupDir(projectDir);
+    }
   });
 });

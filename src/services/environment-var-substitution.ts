@@ -1,4 +1,5 @@
 import type { McpServerMetadata, Resource } from "../types.js";
+import { substituteMcpServerMetadata } from "./mcp-config-bridge.js";
 
 const VAR_PATTERN = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
 
@@ -21,54 +22,8 @@ export function substituteEnvironmentVars(
   return { value, missing: uniqueSorted(missing) };
 }
 
-function substituteMcpServerMetadata(
-  metadata: McpServerMetadata,
-  vars: Record<string, string>,
-): { metadata: McpServerMetadata; missing: string[] } {
-  const missing = new Set<string>();
-
-  let command = metadata.command;
-  if (command !== undefined) {
-    const substituted = substituteEnvironmentVars(command, vars);
-    command = substituted.value;
-    for (const key of substituted.missing) {
-      missing.add(key);
-    }
-  }
-
-  let args = metadata.args;
-  if (args !== undefined) {
-    args = args.map((arg) => {
-      const substituted = substituteEnvironmentVars(arg, vars);
-      for (const key of substituted.missing) {
-        missing.add(key);
-      }
-      return substituted.value;
-    });
-  }
-
-  let env = metadata.env;
-  if (env !== undefined) {
-    env = Object.fromEntries(
-      Object.entries(env).map(([envKey, envValue]) => {
-        const substituted = substituteEnvironmentVars(envValue, vars);
-        for (const key of substituted.missing) {
-          missing.add(key);
-        }
-        return [envKey, substituted.value];
-      }),
-    );
-  }
-
-  return {
-    metadata: {
-      ...metadata,
-      ...(command !== undefined ? { command } : {}),
-      ...(args !== undefined ? { args } : {}),
-      ...(env !== undefined ? { env } : {}),
-    },
-    missing: uniqueSorted(missing),
-  };
+export function collectEnvironmentVarPlaceholders(template: string): string[] {
+  return substituteEnvironmentVars(template, {}).missing;
 }
 
 export function substituteResourceMetadata(

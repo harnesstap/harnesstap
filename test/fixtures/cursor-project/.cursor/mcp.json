@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "local-tool": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {
+        "API_KEY": "${API_KEY}"
+      },
+      "envFile": ".env.mcp"
+    },
+    "remote-api": {
+      "url": "https://mcp.example.com/v1",
+      "headers": {
+        "Authorization": "Bearer ${TOKEN}"
+      },
+      "auth": {
+        "CLIENT_ID": "${CLIENT_ID}",
+        "scopes": ["read"]
+      }
+    }
+  }
+}

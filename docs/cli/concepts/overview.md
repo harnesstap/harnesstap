@@ -57,7 +57,7 @@ sequenceDiagram
   participant DB as Local SQLite library
   participant Project as Target project
 
-  User->>CLI: hd project scan .
+  User->>CLI: hd scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
   User->>CLI: hd layer create / edit
@@ -65,7 +65,7 @@ sequenceDiagram
   User->>CLI: hd layer apply layer --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
-  User->>CLI: hd project status / drift / revert
+  User->>CLI: hd status / drift / revert
   CLI->>Project: Compare or restore snapshots
 ```
 
@@ -101,7 +101,7 @@ HarnessDeck materializes configuration in two places:
 | Surface | Scope | Primary commands |
 | --- | --- | --- |
 | **Profiles** | Machine-wide home harness paths (`~/.claude/`, `~/.codex/`, …) | `profile use`, `hd <profile-name>` |
-| **Projects** | Repository working tree | `layer apply`, `project mirror`, `project drift` |
+| **Projects** | Repository working tree | `layer apply`, `mirror`, `status --check` |
 
 Profiles answer "what stack runs on this machine by default?" Projects answer "what baseline does this repo get?" See [Profiles](./profiles.md) and [Projects](./projects.md).
 
@@ -112,6 +112,7 @@ Profiles answer "what stack runs on this machine by default?" Projects answer "w
 | Layers, plugins, pins, catalog | [Layers](./layers.md) |
 | Scan, import, canonical library | [Resources](./resources.md) |
 | Machine-wide home harness state | [Profiles](./profiles.md) |
+| Env vars, secret refs, MCP auth limits | [Environments](./environments.md) |
 | Repo apply, mirror, drift, snapshots | [Projects](./projects.md) |
 | Harness matrix and resource types | [Supported harnesses](../../supported-harnesses.md) |
 | Cross-harness fidelity caveats | [Portability limits](../../portability-limits.md) |

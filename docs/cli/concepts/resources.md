@@ -45,21 +45,21 @@ Environments carry *how* values that override matching layer resources during ap
 | **permissions** | Runtime permission overrides |
 | **secret_ref** | Indirection to secrets (exported as refs, not plaintext) |
 
-See the full harness matrix — which types each harness supports — in [Supported harnesses](../../supported-harnesses.md).
+See the full harness matrix — which types each harness supports — in [Supported harnesses](../../supported-harnesses.md). For env vars, secret refs, MCP token switching, and OAuth limits, see [Environments](./environments.md).
 
 ## Scan and import
 
-`project scan` detects supported harness files in a repository and imports them into the canonical library. `init` also scans registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`).
+`scan` detects supported harness files in a repository and imports them into the canonical library. `init` also scans registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`).
 
 ```bash
 hd init --main codex --aliases claude-code,cursor
-hd project scan .
+hd scan .
 hd resource list
 hd resource list --search helper          # non-interactive filter
 hd resource show skill:research-helper
 ```
 
-`project scan` automatically merges repo-root plugin trees (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `.github/plugin/`) with harness project files when a recognized manifest is present.
+`scan` automatically merges repo-root plugin trees (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `.github/plugin/`) with harness project files when a recognized manifest is present.
 
 Install skills from a remote package without a prior scan:
 
@@ -122,3 +122,4 @@ Before relying on cross-harness apply, review [Portability limits](../../portabi
 - [Command reference](../command-reference.md) — `resource` and `add` commands
 - [Scenario 31](../../scenarios/details/31-dual-mode-plugin-import.md) — dual-mode plugin import
 - [Scenario 35](../../scenarios/details/35-add-skill-package.md) — add skill packages
+- [Environments](./environments.md) — secret refs, cascade, MCP auth limits

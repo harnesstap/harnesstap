@@ -39,12 +39,23 @@ Environments carry **how** values that override matching layer resources during 
 | **env_var** | Plain environment variable key/value pairs |
 | **model_config** | Default model and provider selection |
 | **permission** | Permission allow/deny overrides |
+| **secret_ref** | Indirection to secrets (`keychain`, `env`, `file`) — never embedded in exports |
 
 Only harnesses whose registry entry includes `env_vars`, `model_config`, and/or `permissions` **and** whose native serializer implements those surfaces receive environment values on disk. Today that means **Claude Code** and **Codex** for the full environment trio.
 
+All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}` substitution** from the environment cascade at apply time (tokens in MCP `env` / `args`). OAuth sessions managed by the host IDE are outside this path — see [Environments — MCP authentication limitations](cli/concepts/environments.md#mcp-authentication-limitations).
+
+| Harness | MCP scan/emit | Full env emission | MCP `${VAR}` substitution |
+| ------- | ------------- | ----------------- | ------------------------ |
+| **claude-code** | Yes (`.mcp.json`) | Yes | Yes |
+| **codex** | Yes (`config.toml`) | Yes | Yes |
+| **cursor** | Yes (`.cursor/mcp.json`) | No | Yes |
+| **copilot-cli**, **github-copilot** | Yes | No | Yes |
+| **opencode**, **goose**, generic | Yes | No | Yes |
+
 ## Plugin manifest layouts
 
-`project scan` and plugin-source import recognize these on-disk plugin trees (in addition to per-harness project files):
+`scan` and plugin-source import recognize these on-disk plugin trees (in addition to per-harness project files):
 
 | Manifest path | Harness family | Imported as |
 | ------------- | -------------- | ----------- |
@@ -194,7 +205,7 @@ hd harness list                          # all registered harnesses
 hd harness list --supported              # native serializers only
 hd harness status                        # global main + alias selection
 hd harness project status --project .    # per-project harness prefs + cursor_skill_mode
-hd project scan . --dry-run              # detect harnesses and resources in a repo
+hd scan . --dry-run              # detect harnesses and resources in a repo
 hd environment list                      # named environments (env vars, models, permissions)
 ```
 

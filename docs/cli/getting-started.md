@@ -57,11 +57,11 @@ Apply a public catalog baseline in a few minutes.
 3. **Inspect** project state and next steps.
 
    ```bash
-   hd project status .
+   hd status .
    hd help
    ```
 
-When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd project revert`.
+When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd revert`.
 
 Starter layers such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
 
@@ -72,7 +72,7 @@ After the baseline fits, build and share your own layers.
 1. **Scan** the current repository and review imports.
 
    ```bash
-   hd project scan .
+   hd scan .
    hd resource list
    ```
 
@@ -87,7 +87,7 @@ After the baseline fits, build and share your own layers.
 
    ```bash
    hd layer apply my-setup --project . --harness claude-code,cursor
-   hd project mirror .
+   hd mirror .
    hd auth login
    hd layer catalog register acme/default
    hd layer publish my-setup

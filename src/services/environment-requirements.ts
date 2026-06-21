@@ -4,6 +4,7 @@ import {
   getEnvironmentSecretRefs,
 } from "../models/environment.js";
 import { resolveLayerGraph } from "./layer-resolver.js";
+import { collectEnvironmentVarPlaceholders } from "./environment-var-substitution.js";
 import type { AgentMetadata, EnvVarMetadata, McpServerMetadata } from "../types.js";
 
 export type RequirementSource = "plugin_needs" | "mcp_env";
@@ -69,6 +70,11 @@ export function collectRequirementsFromPlugins(
         const metadata = resource.metadata as McpServerMetadata;
         for (const key of Object.keys(metadata.env ?? {})) {
           rememberKey(key, "mcp_env");
+        }
+        for (const value of Object.values(metadata.headers ?? {})) {
+          for (const key of collectEnvironmentVarPlaceholders(value)) {
+            rememberKey(key, "mcp_env");
+          }
         }
       }
       if (resource.type === "agent") {

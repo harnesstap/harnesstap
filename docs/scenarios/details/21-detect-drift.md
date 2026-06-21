@@ -5,6 +5,6 @@
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnessdeck project drift --project .
-harnessdeck project drift --project . --format json   # exit 1 when drift exists
+harnessdeck status . --check
+harnessdeck status . --check --format json   # exit 1 when drift exists
 ```

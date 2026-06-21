@@ -84,7 +84,7 @@ export function detectHarnessSurfaces(projectRoot: string): HarnessSurface[] {
       harness: "pi",
       path: "pi-extension/",
       category: "pi-extension",
-      message: "Pi extensions install through the Pi CLI, not project mirror.",
+      message: "Pi extensions install through the Pi CLI, not mirror.",
     });
   }
 

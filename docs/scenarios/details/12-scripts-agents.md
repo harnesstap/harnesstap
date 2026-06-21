@@ -16,7 +16,7 @@ harnessdeck harness list --format json
 harnessdeck resource list --format json
 harnessdeck layer show my-setup --format json
 harnessdeck layer doctor my-setup --format json
-harnessdeck project history --project . --format json
+harnessdeck history . --format json
 harnessdeck layer apply my-setup --project . --dry-run --format json
 harnessdeck resource sync --format json --dry-run
 ```
@@ -25,7 +25,7 @@ harnessdeck resource sync --format json --dry-run
 
 - `harnessdeck layer doctor` returns **exit code 1** when any doctor check
   reports an error severity finding.
-- `harnessdeck project drift` returns **exit code 1** when drift exists.
+- `harnessdeck status --check` returns **exit code 1** when drift exists.
 - `harnessdeck layer apply --strict-plugin-versions` returns **exit code 2**
   when a pinned plugin's installed version violates its constraint.
 

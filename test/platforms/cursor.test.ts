@@ -10,12 +10,12 @@ const CURSOR_FIXTURE_DIR = fileURLToPath(
 );
 
 describe("CursorSerializer", () => {
-  it("scans legacy instructions, rules, and skills", async () => {
+  it("scans legacy instructions, rules, skills, and MCP servers", async () => {
     const serializer = new CursorSerializer();
     const resources = await serializer.scan(CURSOR_FIXTURE_DIR);
 
     expect(resources.map((resource) => resource.type)).toEqual(
-      expect.arrayContaining(["instruction", "rule", "skill"]),
+      expect.arrayContaining(["instruction", "rule", "skill", "mcp_server"]),
     );
     expect(resources.find((resource) => resource.type === "instruction")?.name).toBe(
       "cursorrules",
@@ -23,6 +23,32 @@ describe("CursorSerializer", () => {
     expect(resources.find((resource) => resource.type === "rule")?.metadata).toEqual({
       globs: ["src/**/*.ts"],
       always_apply: false,
+    });
+
+    const localMcp = resources.find(
+      (resource) => resource.type === "mcp_server" && resource.name === "local-tool",
+    );
+    expect(localMcp?.source).toBe(".cursor/mcp.json");
+    expect(localMcp?.metadata).toEqual({
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      env: { API_KEY: "${API_KEY}" },
+      connection_type: "stdio",
+      env_file: ".env.mcp",
+    });
+
+    const remoteMcp = resources.find(
+      (resource) => resource.type === "mcp_server" && resource.name === "remote-api",
+    );
+    expect(remoteMcp?.metadata).toEqual({
+      transport: "http",
+      url: "https://mcp.example.com/v1",
+      headers: { Authorization: "Bearer ${TOKEN}" },
+      auth: {
+        CLIENT_ID: "${CLIENT_ID}",
+        scopes: ["read"],
+      },
     });
   });
 
@@ -178,6 +204,111 @@ describe("CursorSerializer", () => {
       expect(resources.find((resource) => resource.name === "broken")).toBeUndefined();
     } finally {
       cleanupDir(projectDir);
+    }
+  });
+
+  it("serializes MCP servers to .cursor/mcp.json", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "mcp_server",
+          name: "local-tool",
+          metadata: {
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "server"],
+            env: { API_KEY: "${API_KEY}" },
+            env_file: ".env.mcp",
+          },
+        }),
+        makeResource({
+          type: "mcp_server",
+          name: "remote-api",
+          metadata: {
+            transport: "http",
+            url: "https://mcp.example.com/v1",
+            headers: { Authorization: "Bearer ${TOKEN}" },
+            auth: { CLIENT_ID: "${CLIENT_ID}", scopes: ["read"] },
+          },
+        }),
+      ],
+      ".",
+    );
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.path).toBe(".cursor/mcp.json");
+    expect(JSON.parse(files[0]?.content ?? "{}")).toEqual({
+      mcpServers: {
+        "local-tool": {
+          type: "stdio",
+          command: "npx",
+          args: ["-y", "server"],
+          env: { API_KEY: "${API_KEY}" },
+          envFile: ".env.mcp",
+        },
+        "remote-api": {
+          url: "https://mcp.example.com/v1",
+          headers: { Authorization: "Bearer ${TOKEN}" },
+          auth: { CLIENT_ID: "${CLIENT_ID}", scopes: ["read"] },
+        },
+      },
+    });
+  });
+
+  it("serializes global MCP servers to ~/.cursor/mcp.json", async () => {
+    const serializer = new CursorSerializer();
+    const files = await serializer.serialize(
+      [
+        makeResource({
+          type: "mcp_server",
+          name: "demo",
+          metadata: { transport: "stdio", command: "npx", args: ["demo-server"] },
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+
+    expect(files.map((file) => file.path)).toEqual([".cursor/mcp.json"]);
+    expect(JSON.parse(files[0]?.content ?? "{}")).toEqual({
+      mcpServers: {
+        demo: {
+          type: "stdio",
+          command: "npx",
+          args: ["demo-server"],
+        },
+      },
+    });
+  });
+
+  it("scans global MCP servers from ~/.cursor/mcp.json", async () => {
+    const homeDir = createTempDir("cursor-global-mcp");
+
+    try {
+      writeTextFile(
+        join(homeDir, ".cursor", "mcp.json"),
+        JSON.stringify({
+          mcpServers: {
+            global: { type: "stdio", command: "node", args: ["global-server.js"] },
+          },
+        }),
+      );
+
+      const serializer = new CursorSerializer();
+      const resources = await serializer.scanGlobal(homeDir);
+      const mcp = resources.find((resource) => resource.type === "mcp_server");
+
+      expect(mcp?.name).toBe("global");
+      expect(mcp?.source).toBe("~/.cursor/mcp.json");
+      expect(mcp?.metadata).toEqual({
+        transport: "stdio",
+        command: "node",
+        args: ["global-server.js"],
+        connection_type: "stdio",
+      });
+    } finally {
+      cleanupDir(homeDir);
     }
   });
 

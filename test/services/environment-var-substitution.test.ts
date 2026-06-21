@@ -89,6 +89,42 @@ describe("environment var substitution", () => {
     });
   });
 
+  it("substitutes mcp_server metadata url, headers, and auth", () => {
+    const resource = makeMcpResource({
+      transport: "http",
+      url: "https://mcp.example.com/${TENANT}",
+      headers: {
+        Authorization: "Bearer ${API_TOKEN}",
+      },
+      auth: {
+        CLIENT_ID: "${CLIENT_ID}",
+        CLIENT_SECRET: "${CLIENT_SECRET}",
+        scopes: ["read"],
+      },
+    });
+
+    const result = substituteResourceMetadata(resource, {
+      TENANT: "acme",
+      API_TOKEN: "token-value",
+      CLIENT_ID: "client-id",
+      CLIENT_SECRET: "client-secret",
+    });
+
+    expect(result.missing).toEqual([]);
+    expect(result.resource.metadata).toEqual({
+      transport: "http",
+      url: "https://mcp.example.com/acme",
+      headers: {
+        Authorization: "Bearer token-value",
+      },
+      auth: {
+        CLIENT_ID: "client-id",
+        CLIENT_SECRET: "client-secret",
+        scopes: ["read"],
+      },
+    });
+  });
+
   it("returns other resource types unchanged", () => {
     const resource = {
       type: "rule" as const,

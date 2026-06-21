@@ -10,9 +10,9 @@ config, rules, hooks, or agent files that you want HarnessDeck to manage.
 Typical commands:
 
 ```bash
-harnessdeck project scan . --dry-run                  # preview what would be imported
-harnessdeck project scan .
-harnessdeck project scan . --harness claude-code     # scope to a single harness
+harnessdeck scan . --dry-run                  # preview what would be imported
+harnessdeck scan .
+harnessdeck scan . --harness claude-code     # scope to a single harness
 harnessdeck resource list
 harnessdeck resource show <resource-name-or-id>
 ```

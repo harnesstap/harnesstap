@@ -78,6 +78,41 @@ describe("environment requirements service", () => {
     }
   });
 
+  it("collectRequirementsFromPlugins extracts header placeholder keys from mcp servers", async () => {
+    const context = await createInitializedTestContext("env-req-mcp-headers");
+
+    try {
+      const plugin = createLayer({ name: "header-req-plugin" });
+      const mcpServer = createResource({
+        type: "mcp_server",
+        name: "remote-api",
+        description: "",
+        content: "",
+        metadata: {
+          transport: "http",
+          url: "https://mcp.example.com",
+          headers: {
+            Authorization: "Bearer ${API_TOKEN}",
+            "X-Tenant": "${TENANT_ID}",
+          },
+        },
+        source: "manual",
+      });
+      addResourceToLayer(plugin.id, mcpServer.id);
+
+      const requirementsService = await import(
+        "../../src/services/environment-requirements.ts"
+      );
+      const result = requirementsService.collectRequirementsFromPlugins([plugin.id]);
+
+      expect(result.required_keys).toEqual(["API_TOKEN", "TENANT_ID"]);
+      expect(result.key_sources.API_TOKEN).toEqual(["mcp_env"]);
+      expect(result.key_sources.TENANT_ID).toEqual(["mcp_env"]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("collectLayerRequirements resolves selectors and sets configured_layer_ids", async () => {
     const context = await createInitializedTestContext("env-req-layers");
 

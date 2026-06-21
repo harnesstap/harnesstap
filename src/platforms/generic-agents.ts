@@ -6,6 +6,7 @@ import {
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
+import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -18,24 +19,13 @@ import type {
   SerializeOptions,
 } from "../types.js";
 
-interface GenericMcpServerConfigEntry {
-  url?: string;
-  protocol?: string;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-}
-
-interface GenericMcpConfig {
-  mcpServers?: Record<string, GenericMcpServerConfigEntry>;
-}
-
 interface GenericSerializedMcpEntry {
   url?: string;
   protocol?: string;
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  headers?: Record<string, string>;
 }
 
 function resolveGlobalPath(homeRoot: string, configuredPath: string): string {
@@ -114,17 +104,10 @@ export class GenericAgentsSerializer extends BaseSerializer {
     const content = this.readFile(fullPath);
     if (content) {
       try {
-        const config = JSON.parse(content) as GenericMcpConfig;
-        for (const [name, srv] of Object.entries(config.mcpServers || {})) {
-          const transport =
-            srv.url && srv.protocol === "sse" ? "http" : "stdio";
-          const metadata: McpServerMetadata = {
-            transport,
-            command: srv.command,
-            url: srv.url,
-            args: srv.args,
-            env: srv.env,
-          };
+        const document = JSON.parse(content) as unknown;
+        for (const [name, metadata] of Object.entries(
+          parseMcpServersDocument(document),
+        )) {
           resources.push(
             this.makeResource("mcp_server", name, "", displayPath, metadata),
           );
@@ -421,7 +404,14 @@ export class GenericAgentsSerializer extends BaseSerializer {
         const meta = r.metadata as McpServerMetadata;
         if (!meta) continue;
         if (meta.transport === "http") {
-          servers[r.name] = { url: meta.url, protocol: "sse", env: meta.env };
+          servers[r.name] = {
+            url: meta.url,
+            protocol: "sse",
+            env: meta.env,
+            ...(meta.headers && Object.keys(meta.headers).length > 0
+              ? { headers: meta.headers }
+              : {}),
+          };
         } else {
           servers[r.name] = {
             command: meta.command,

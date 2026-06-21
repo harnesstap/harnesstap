@@ -33,14 +33,40 @@ are resolved relative to the plugin root (for example `./.claude/skills/` on rep
 like [Impeccable](https://github.com/pbakaus/impeccable)). Claude marketplace
 manifests may use `"source"` instead of `"path"` for plugin entry locations.
 
-`project scan` automatically merges repo-root plugin trees with harness project
+`scan` automatically merges repo-root plugin trees with harness project
 files when a recognized manifest is present. If the manifest exists but the
 conventional `skills/` tree is absent, harness scan still proceeds (dual-mode
 merge no longer aborts the import). When the root manifest yields no resources,
 HarnessDeck falls back to the first plugin pack listed in a repo-root
 `marketplace.json` when present.
 
+## MCP authentication and environments
+
+HarnessDeck environments switch **static** MCP credentials (API keys, bot tokens,
+`${VAR}` placeholders in MCP `env`, `args`, or `headers`) via `secret_ref` and
+the home → layer-default cascade. They do **not** switch **OAuth 2.1** sessions
+that hosts store in OS keychains or private token caches (Cursor, Claude Code,
+Copilot CLI, VS Code).
+
+| Auth model | HarnessDeck can switch? | Mechanism |
+| ---------- | ----------------------- | --------- |
+| API key / PAT / bot token in MCP config | Yes | `environment edit --secret` + `${VAR}` substitution on apply |
+| OAuth HTTP MCP (browser login in IDE) | No | Token lives in host credential store, not in materialized `mcp.json` |
+| Per-host OAuth after `layer apply` | Manual | Log in separately in each target harness |
+
+Full detail, host storage locations, workarounds, and remaining gaps: [Environments — MCP authentication
+limitations](./cli/concepts/environments.md#mcp-authentication-limitations).
+
 ## Partially bridgeable
+
+### MCP HTTP headers (Cursor)
+
+Cursor HTTP MCP servers often use a `headers` map (for example `Authorization:
+Bearer …`). HarnessDeck round-trips `headers` through `McpServerMetadata` and
+`mcp-config-bridge`: scan/import preserves them, `${VAR}` substitution applies at
+apply time, and the Cursor serializer re-emits them in `.cursor/mcp.json`. OAuth
+access tokens in host keychains are still outside this path — see [MCP authentication
+and environments](#mcp-authentication-and-environments).
 
 ### Agent host-specific fields
 
@@ -50,7 +76,7 @@ Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcp
 
 Skill `scripts/` and `reference(s)/` directories are listed during scan and
 emitted on `layer apply` when HarnessDeck can still read the original tree
-(typically `origin_ref` from `project scan` or `layer from-project`). Layer
+(typically `origin_ref` from `scan` or `layer from-project`). Layer
 export to another machine without embedded plugin trees still drops auxiliary
 files unless you use `hd add` (full tree install) or `--embed-plugins` on export.
 
@@ -92,7 +118,7 @@ Copilot's runtime may require specific naming conventions or a
 
 HarnessDeck scans as much as possible from every supported layout. When a
 surface is native to one harness and cannot be transposed to the main harness
-or alias harnesses during `project mirror`, HarnessDeck emits a warning per
+or alias harnesses during `mirror`, HarnessDeck emits a warning per
 surface (human output and `surface_warnings` in JSON).
 
 Examples of surfaces that stay on their native harness:
@@ -186,7 +212,7 @@ Repos with `AGENTS.md` plus `.claude-plugin/plugin.json` but no `.claude/` tree
 are scanned automatically — plugin-source resources merge with harness files:
 
 ```bash
-harnessdeck project scan . --dry-run
+harnessdeck scan . --dry-run
 harnessdeck layer from-project my-layer --project .
 ```
 
@@ -195,8 +221,8 @@ harnessdeck layer from-project my-layer --project .
 When the main harness has no on-disk tree (plugin-only layout):
 
 ```bash
-harnessdeck project mirror . --reference auto --dry-run
-harnessdeck project mirror . --reference plugin
+harnessdeck mirror . --reference auto --dry-run
+harnessdeck mirror . --reference plugin
 ```
 
 `--reference auto` tries the main harness first, then plugin source, then
@@ -212,7 +238,7 @@ copilot plugin install <source>
 harnessdeck resource sync --overwrite
 ```
 
-Then re-run `layer apply` or `project mirror` if alias harnesses need refreshed
+Then re-run `layer apply` or `mirror` if alias harnesses need refreshed
 copies.
 
 ## Related scenarios
@@ -221,3 +247,4 @@ copies.
 - [Scenario 32](./scenarios/details/32-instruction-tier-apply.md) — apply to instruction-tier harnesses
 - [Scenario 33](./scenarios/details/33-mirror-plugin-fallback.md) — mirror with plugin-source fallback
 - [Scenario 34](./scenarios/details/34-portability-limits.md) — understand portability limits
+- [Scenario 39](./scenarios/details/39-mcp-auth-and-environments.md) — MCP auth, environments, account switching
