@@ -47,7 +47,7 @@ To run the CLI commands during development without having to build it first, you
 
 ```bash
 # Option 1: Using the start script defined in package.json
-bun run start -- project status .
+bun run start -- status .
 
 # Option 2: Execute the TypeScript file directly
 bun src/index.ts layer apply <layer-name> --project .
@@ -62,7 +62,7 @@ build the repository and install the current checkout globally with Bun.
 bun install
 bun run build
 bun link
-harnessdeck project status .
+harnessdeck status .
 ```
 
 Re-run `bun run build && bun link` after changes when you want the global

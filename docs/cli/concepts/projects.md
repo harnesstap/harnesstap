@@ -13,7 +13,7 @@ A **project** is a repository (or directory tree) where HarnessDeck materializes
 ```bash
 hd layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
 hd layer apply my-setup --project . --harness claude-code,codex,cursor
-hd project status .
+hd status .
 ```
 
 Stack multiple layers in one command (see [Scenario 25](../../scenarios/details/25-stack-layers.md)). `layer apply` resolves bare catalog names at apply time, so public baselines work without a prior `layer pull`:
@@ -37,7 +37,7 @@ Applying a layer writes a known baseline onto disk. It is distinct from **mirror
 Discover existing configuration before composing layers:
 
 ```bash
-hd project scan .
+hd scan .
 hd resource list
 hd layer from-project inferred-stack --project .
 ```
@@ -46,22 +46,22 @@ When the target repository has a git `origin`, `layer apply` stores a **snapshot
 
 | Command | Git requirement |
 | --- | --- |
-| `project history` | Git-backed project with `origin` |
-| `project drift` | Git-backed project |
+| `history` | Git-backed project with `origin` |
+| `status --check` | Git-backed project |
 | `layer apply` (with snapshot) | Git `origin` on target project |
-| `project revert` | Snapshot ID from `project history` |
+| `revert` | Snapshot ID from `history` |
 | `harness project set` / `harness project status` | Git-backed project |
 
 `layer apply` can write files outside git, but snapshot and history support only works when the target project has a git `origin`.
 
 ## Mirror
 
-`project mirror` propagates configuration from the **main** harness to **alias** harnesses in the same repository — useful after manual edits to the primary harness files:
+`mirror` propagates configuration from the **main** harness to **alias** harnesses in the same repository — useful after manual edits to the primary harness files:
 
 ```bash
-hd project mirror .
-hd project mirror . --force-shift-reference codex
-hd project mirror . --dry-run
+hd mirror .
+hd mirror . --force-shift-reference codex
+hd mirror . --dry-run
 ```
 
 Mirror compares and shifts references between harness-specific file layouts. It does not re-resolve layer composition; use `layer apply` when you need a fresh baseline from the library.
@@ -73,13 +73,13 @@ See [Scenario 27](../../scenarios/details/27-project-sync.md) for the cross-harn
 After apply, teammates may edit generated files directly. HarnessDeck tracks drift against the last apply or mirror snapshot:
 
 ```bash
-hd project drift --project .
-hd project drift --project . --format json   # exit 1 when drift exists
-hd project history --project .
-hd project revert <snapshot-id> --project .
+hd status . --check
+hd status . --check --format json   # exit 1 when drift exists
+hd history .
+hd revert <snapshot-id>
 ```
 
-`project drift` compares the current working tree against the latest apply/mirror snapshot. Exit code `1` means actionable drift was found — useful in CI guardrails.
+`status --check` compares the current working tree against the latest apply/mirror snapshot. Exit code `1` means actionable drift was found — useful in CI guardrails.
 
 See [Scenario 21](../../scenarios/details/21-detect-drift.md).
 
@@ -92,7 +92,7 @@ hd harness project status .
 hd harness project set --main claude-code --aliases cursor
 ```
 
-These require a git-backed project and influence which harnesses `layer apply` and `project mirror` target by default.
+These require a git-backed project and influence which harnesses `layer apply` and `mirror` target by default.
 
 ## Snapshots in practice
 
@@ -100,8 +100,8 @@ Typical lifecycle:
 
 1. `hd layer apply team-baseline --project .` — writes files, stores snapshot (when git `origin` exists)
 2. Developer edits `.cursor/rules/foo.mdc` by hand
-3. `hd project drift .` — reports divergence from snapshot
-4. Either re-apply the layer, mirror from main, or `hd project revert <id>` to restore
+3. `hd status . --check` — reports divergence from snapshot
+4. Either re-apply the layer, mirror from main, or `hd revert <id>` to restore
 
 Preview before writing:
 
@@ -118,7 +118,7 @@ See [Scenario 7](../../scenarios/details/07-preview-apply-layer.md).
 | **Scope** | Machine home harness paths | Repository working tree |
 | **Primary command** | `profile use` | `layer apply` |
 | **Typical use** | Work/personal machine presets | Team repo baselines |
-| **Drift / revert** | Not tracked | `project drift` / `project revert` |
+| **Drift / revert** | Not tracked | `status --check` / `revert` |
 
 Use [Profiles](./profiles.md) for machine-wide defaults and projects for repository-specific configuration.
 
@@ -128,7 +128,7 @@ Use [Profiles](./profiles.md) for machine-wide defaults and projects for reposit
 - [Resources](./resources.md) — what scan imports
 - [Profiles](./profiles.md) — machine-wide apply
 - [Portability limits](../../portability-limits.md) — cross-harness mirror caveats
-- [Command reference](../command-reference.md) — `project` and `layer apply`
+- [Command reference](../command-reference.md) — `scan`, `mirror`, `status`, `history`, `revert`, and `layer apply`
 - [Scenario 7](../../scenarios/details/07-preview-apply-layer.md) — preview and apply
 - [Scenario 21](../../scenarios/details/21-detect-drift.md) — detect drift
-- [Scenario 27](../../scenarios/details/27-project-sync.md) — project mirror
+- [Scenario 27](../../scenarios/details/27-project-sync.md) — mirror

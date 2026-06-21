@@ -13,7 +13,7 @@ The product currently supports these main workflows:
 - Initialize local state, discover supported home-directory defaults, and choose global harness preferences.
 - Scan an existing repository (or plugin source) and import agent configuration into a local database.
 - Group imported resources into versioned **local layers** (`name` + `version` only).
-- Diff, doctor, export, import, publish, search, install, or derive layers from a project scan.
+- Diff, doctor, export, import, publish, search, install, or derive layers from a scan.
 - Compose layers by attaching context-side material resources, **`plugin_pin`** references (host marketplace/local plugins), and nested **`layer`** references through one attachment model.
 - Apply one or more layers, a local bundle file, or a layer export URL to a project.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
@@ -70,7 +70,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
 - `project`: a git-backed directory tracked by HarnessDeck, keyed by normalized `origin` when available.
-- `snapshot`: a saved copy of files generated during layer application or project mirror.
+- `snapshot`: a saved copy of files generated during layer application or mirror.
 
 ### Layer identity & scope
 
@@ -253,7 +253,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harnessdeck layer ...` | Layer CRUD, **apply**, composition attach/detach, bundle export/import, cloud catalog workflows, diff, and doctor. |
 | `harnessdeck migrate ...` | Exports or imports a machine-transfer archive (offline workspace sharing). |
 | `harnessdeck resource ...` | Lists, shows, deletes, and syncs canonical resources. |
-| `harnessdeck project ...` | Scans projects, drift, mirror, snapshots, and status. |
+| `harnessdeck scan`, `mirror`, `status`, `history`, `revert` | Scans, mirrors, reports status/drift, and manages snapshots for git-backed projects. |
 | `harnessdeck harness ...` | Lists harness targets and manages global/project main/alias preferences. |
 | `harnessdeck environment ...` | Creates and manages environments (blank, from project, or layer requirements), edits values, secret refs, active-environment pointers, requirement-gap analysis, and cascade preview. |
 | `harnessdeck profile ...` | Lists, shows, creates, tags, and switches profile layers; global apply via `profile use`. |
@@ -315,16 +315,16 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `resource sync` | Refreshes `plugin_pin` resources and `marketplace_link` children from install roots. Supports `--on-conflict`, `--prune`, `--force`, `--dry-run`. |
 | `resource delete` | Deletes a resource by selector or ID. |
 
-### `project` subcommands
+### Project-local commands (top-level)
 
 | Command | Current behavior |
 | --- | --- |
-| `project scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnessdeckignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
-| `project drift` | Compares working tree against the latest apply/sync snapshot. |
-| `project mirror` | Re-materializes alias harness outputs from the main harness reference. |
-| `project history` | Lists stored snapshots (requires git-backed project). |
-| `project revert` | Restores files from a snapshot. |
-| `project status` | Shows harnesses, applied layers, snapshots, and harness preferences. |
+| `scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnessdeckignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
+| `status --check` | Compares working tree against the latest apply/sync snapshot. |
+| `mirror` | Re-materializes alias harness outputs from the main harness reference. |
+| `history` | Lists stored snapshots (requires git-backed project). |
+| `revert` | Restores files from a snapshot. |
+| `status` | Shows harnesses, applied layers, snapshots, and harness preferences. |
 
 ### `harness` subcommands
 
@@ -403,7 +403,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|status|use`, `environment list|show|edit|active|resolve`, `project status|history|drift`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment create` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|status|use`, `environment list|show|edit|active|resolve`, `status|history`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment create` with `--dry-run`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -414,7 +414,7 @@ Mutation commands return concise human verdict lines unless they already expose 
 - **Published layers:** `org/catalog/name`, `org/catalog/name@version`, or ULID when stored locally after `layer pull`.
 - During migration, `org/library[@version]` resolves as `org/<default-catalog>/library`.
 - **Resources:** `name`, `type:name`, `type:name@namespace`, or ULID.
-- **Snapshots:** full snapshot IDs in `project history`; `project revert` accepts the same ID.
+- **Snapshots:** full snapshot IDs in `history`; `revert` accepts the same ID.
 
 Ambiguous selectors are errors. Human mode lists candidates; JSON mode returns a structured ambiguity payload. The CLI never silently picks the first match.
 
@@ -424,7 +424,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 - `resource list --show-id` prints full resource IDs (hidden by default in list tables).
 - `layer show` prints resource IDs in the resources sub-table when `--show-id` is set.
-- `project history` prints full snapshot IDs.
+- `history` prints full snapshot IDs.
 
 ### Error handling
 
@@ -459,7 +459,7 @@ The CLI renders human mode through `src/ui/` primitives (`table`, `panel`, `diff
 - One visual language across commands (semantic colors, `✓` / `⚠` / `✗` verdicts, boxed tables).
 - List tables use uppercase muted headers and optional summary footers.
 - Diff and drift output color rows by change kind (`+` / `−` / `~`).
-- Spinners for long operations (`project scan`, `layer apply`, `project mirror`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
+- Spinners for long operations (`scan`, `layer apply`, `mirror`, `resource sync`) resolve to verdict lines in TTY mode; JSON mode and non-TTY runs skip spinners.
 - `--no-color` and `NO_COLOR` disable styling; box-drawing degrades to ASCII when not a TTY.
 
 JSON output is unchanged by the visual layer.
@@ -521,13 +521,13 @@ Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
 
 ### Project tracking
 
-Project identity uses a normalized git `origin` remote. `project history`, `project drift`, `harness project set`, and `harness project status` require a git-backed project.
+Project identity uses a normalized git `origin` remote. `history`, `status --check`, `harness project set`, and `harness project status` require a git-backed project.
 
-During `project scan`, `layer apply`, and `project mirror`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
+During `scan`, `layer apply`, and `mirror`, HarnessDeck reads `origin`, normalizes it, and uses it as the durable key. The last known local path is stored for convenience.
 
 ### Snapshot behavior
 
-Snapshots are created during `layer apply` and `project mirror` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `project revert` restores those files. `project drift` compares the latest snapshot to the working tree.
+Snapshots are created during `layer apply` and `mirror` when the target has a git origin. A snapshot stores the generated file map for the main harness and every alias harness materialized in that operation. `revert` restores those files. `status --check` compares the latest snapshot to the working tree.
 
 ## Canonical model
 
@@ -543,7 +543,7 @@ An environment has a unique `name`, description, ordered **environment values** 
 
 ### Environment from project
 
-**Environment from project** creates or updates an environment from the current state of a project. It is distinct from **apply snapshots** stored during `layer apply` / `project mirror`.
+**Environment from project** creates or updates an environment from the current state of a project. It is distinct from **apply snapshots** stored during `layer apply` / `mirror`.
 
 Use `environment create <name> --from-project <path>` to create from a project, or add `--refresh` to update an existing environment.
 
@@ -598,7 +598,7 @@ The local workspace is the single SQLite library at `~/.harnessdeck/harnessdeck.
 
 Harness support splits between a registry and serializers. The registry declares capability flags and default project/global paths. Serializers implement scan, canonicalization, aliasing rules, and write behavior.
 
-Not every host surface round-trips through apply or mirror. Static resources (skills, instructions, rules, MCP, commands, agents) bridge faithfully; hooks with install-time `${*_PLUGIN_ROOT}` paths, OpenCode `.mjs` server plugins, pi extensions, runtime mode state, and host-specific statusline integrations do not. Registry metadata such as `skillEmission: instruction-only` and project `cursor_skill_mode` control how skills are re-emitted per harness. See [Portability limits](docs/portability-limits.md) for the full fidelity matrix, workarounds (`resource sync`, plugin pins, `project mirror --reference`), and related scenarios 31–34.
+Not every host surface round-trips through apply or mirror. Static resources (skills, instructions, rules, MCP, commands, agents) bridge faithfully; hooks with install-time `${*_PLUGIN_ROOT}` paths, OpenCode `.mjs` server plugins, pi extensions, runtime mode state, and host-specific statusline integrations do not. Registry metadata such as `skillEmission: instruction-only` and project `cursor_skill_mode` control how skills are re-emitted per harness. See [Portability limits](docs/portability-limits.md) for the full fidelity matrix, workarounds (`resource sync`, plugin pins, `mirror --reference`), and related scenarios 31–34.
 
 ### Native serializers
 
@@ -618,15 +618,15 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 ### Scan
 
-`project scan` detects harnesses by declared project paths, reads resources through serializers, and deduplicates within a run before upserting into SQLite (`origin_kind=local_snapshot`).
+`scan` detects harnesses by declared project paths, reads resources through serializers, and deduplicates within a run before upserting into SQLite (`origin_kind=local_snapshot`).
 
 **Shared instruction canonicalization:** when multiple AGENTS-based platforms share one `AGENTS.md`, the scanner imports a single canonical instruction instead of per-platform `*-instructions` synthetic names. Rescans remove stale synthetic duplicates when content matches.
 
-**`.harnessdeckignore`:** gitignore-style patterns at the project root exclude paths from project scan and `layer from-project`. Applies to project-derived flows only (not home-default discovery during `init`).
+**`.harnessdeckignore`:** gitignore-style patterns at the project root exclude paths from scan and `layer from-project`. Applies to project-derived flows only (not home-default discovery during `init`).
 
 **Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
 
-**Dual-mode repos:** when a project has both harness files and a plugin manifest, `project scan` automatically merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
+**Dual-mode repos:** when a project has both harness files and a plugin manifest, `scan` automatically merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
 
 **Symlinked `AGENTS.md`:** platform detection ignores symlinked `AGENTS.md` so a link to `CLAUDE.md` does not register a spurious AGENTS-based harness.
 
@@ -663,11 +663,11 @@ For `layer apply`, when no `--harness` list is passed, platforms are detected fr
 
 ### Project sync
 
-`project mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing. `--reference auto|main|plugin|agents` selects the on-disk source; `auto` merges repo-root plugin skills when the main harness has instructions but no on-disk skills, and falls back to plugin-source then `AGENTS.md` instructions when the main harness tree is empty.
+`mirror` materializes alias harness outputs from the main harness reference, preferring symlinks and falling back to copies. `--force-shift-reference` shifts the project's reference harness before syncing. `--reference auto|main|plugin|agents` selects the on-disk source; `auto` merges repo-root plugin skills when the main harness has instructions but no on-disk skills, and falls back to plugin-source then `AGENTS.md` instructions when the main harness tree is empty.
 
 ### Project drift
 
-`project drift` loads the latest snapshot and reports added, modified, or deleted generated files.
+`status --check` loads the latest snapshot and reports added, modified, or deleted generated files.
 
 ### `resource sync`
 
@@ -754,7 +754,7 @@ Local integration behavior:
 
 Executable terminal demos supplement written scenarios in `docs/scenarios/`. Sources live under `docs/scenarios/vhs/tapes/`; rendered GIFs under `docs/scenarios/vhs/output/`. Regenerate with `bun run docs:vhs` (`scripts/generate-vhs-scenarios.sh`). Demos run against isolated fixture workspaces — not contributor home directories. VHS is not part of `bun run preflight`.
 
-The primary walkthrough is a single adoption story (`init` → `project scan` → `resource list` → `layer list` → `layer apply` → `project status`) embedded from the root README.
+The primary walkthrough is a single adoption story (`init` → `scan` → `resource list` → `layer list` → `layer apply` → `status`) embedded from the root README.
 
 ## Build, test, and release workflow
 

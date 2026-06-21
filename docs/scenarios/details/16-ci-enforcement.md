@@ -10,7 +10,7 @@ or its pinned plugin versions.
 Typical commands (each exits non-zero on a problem):
 
 ```bash
-harnessdeck project drift --project . --format json
+harnessdeck status . --check --format json
 harnessdeck layer doctor my-setup --format json
 harnessdeck layer apply my-setup --project . --dry-run --strict-plugin-versions --format json
 harnessdeck resource sync --format json --dry-run
@@ -18,6 +18,6 @@ harnessdeck resource sync --format json --dry-run
 
 This pairs naturally with Scenario 12. The `--dry-run` keeps CI from writing
 files, while `--strict-plugin-versions` forces failure (exit 2) on a pin
-violation. Use `project drift` exit code 1 as the "working tree changed
+violation. Use `status --check` exit code 1 as the "working tree changed
 since last apply/sync" signal, and `layer doctor` exit code 1 as the "layer
 definition is invalid" signal.

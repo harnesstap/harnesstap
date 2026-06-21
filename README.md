@@ -83,12 +83,12 @@ Initialise HarnessDeck, scan an existing repository, browse catalog layers, appl
 
 ```bash
 harnessdeck init --main codex --aliases claude-code,cursor
-harnessdeck project scan .                    # detect existing resources
+harnessdeck scan .                    # detect existing resources
 harnessdeck resource list                     # review discovered resources
 harnessdeck layer search foundation           # browse catalog layers
 harnessdeck layer apply engineering-foundation \
   --project .                                 # apply a catalog baseline
-harnessdeck project status .                  # confirm the final state
+harnessdeck status .                  # confirm the final state
 ```
 
 ---
@@ -170,11 +170,11 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
 
 3. **Inspect** project state and next steps.
    ```bash
-   hd project status .
+   hd status .
    hd help
    ```
 
-When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd project revert`.
+When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd revert`.
 
 ### Follow-up: scan, compose, and publish
 
@@ -182,7 +182,7 @@ After the baseline fits, build and share your own layers:
 
 1. **Scan** the current repository and review imports.
    ```bash
-   hd project scan .
+   hd scan .
    hd resource list
    ```
 
@@ -195,7 +195,7 @@ After the baseline fits, build and share your own layers:
 3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
    ```bash
    hd layer apply my-setup --project . --harness claude-code,cursor
-   hd project mirror .
+   hd mirror .
    hd auth login
    hd layer catalog register acme/default
    hd layer publish my-setup
@@ -256,7 +256,7 @@ sequenceDiagram
   participant DB as Local SQLite library
   participant Project as Target project
 
-  User->>CLI: hd project scan .
+  User->>CLI: hd scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
   User->>CLI: hd layer create / edit
@@ -264,7 +264,7 @@ sequenceDiagram
   User->>CLI: hd layer apply layer --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
-  User->>CLI: hd project status / drift / revert
+  User->>CLI: hd status / drift / revert
   CLI->>Project: Compare or restore snapshots
 ```
 
@@ -381,7 +381,7 @@ HarnessDeck intentionally uses non-zero exit codes for actionable findings:
 
 | Exit code | Meaning | Examples |
 | --- | --- | --- |
-| `0` | Success / no actionable issue | `layer doctor` with no findings, `project drift` with no changes |
+| `0` | Success / no actionable issue | `layer doctor` with no findings, `status --check` with no changes |
 | `1` | Actionable finding or user-correctable error | `layer doctor` failures, drift detected, invalid command input |
 | `2` | Strict validation failure during apply | `layer apply --strict-plugin-versions` with mismatched plugin pins |
 
@@ -392,19 +392,19 @@ HarnessDeck intentionally uses non-zero exit codes for actionable findings:
 HarnessDeck keeps snapshots of generated project files for tracked repositories, which lets you inspect drift, sync alias harnesses, and move your local setup to another machine.
 
 ```bash
-hd project drift --project .
-hd project mirror . --force-shift-reference claude-code
+hd status . --check
+hd mirror . --force-shift-reference claude-code
 hd migrate export ./harnessdeck-migrate.tar.gz
 hd migrate import ./harnessdeck-migrate.tar.gz
 ```
 
-`project drift` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud accounts remain in `cloud-accounts.json`.
+`status --check` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud accounts remain in `cloud-accounts.json`.
 
 **Project command preconditions**
 
-- `project history` and `project drift` require a git-backed project.
+- `history` and `status --check` require a git-backed project.
 - `layer apply` can write files outside git, but snapshot/history support only works when the target project has a git `origin`.
-- `project revert` requires a snapshot ID from `project history`.
+- `revert` requires a snapshot ID from `history`.
 - `harness project set` and `harness project status` require a git-backed project.
 
 ---

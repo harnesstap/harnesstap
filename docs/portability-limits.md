@@ -33,7 +33,7 @@ are resolved relative to the plugin root (for example `./.claude/skills/` on rep
 like [Impeccable](https://github.com/pbakaus/impeccable)). Claude marketplace
 manifests may use `"source"` instead of `"path"` for plugin entry locations.
 
-`project scan` automatically merges repo-root plugin trees with harness project
+`scan` automatically merges repo-root plugin trees with harness project
 files when a recognized manifest is present. If the manifest exists but the
 conventional `skills/` tree is absent, harness scan still proceeds (dual-mode
 merge no longer aborts the import). When the root manifest yields no resources,
@@ -76,7 +76,7 @@ Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcp
 
 Skill `scripts/` and `reference(s)/` directories are listed during scan and
 emitted on `layer apply` when HarnessDeck can still read the original tree
-(typically `origin_ref` from `project scan` or `layer from-project`). Layer
+(typically `origin_ref` from `scan` or `layer from-project`). Layer
 export to another machine without embedded plugin trees still drops auxiliary
 files unless you use `hd add` (full tree install) or `--embed-plugins` on export.
 
@@ -118,7 +118,7 @@ Copilot's runtime may require specific naming conventions or a
 
 HarnessDeck scans as much as possible from every supported layout. When a
 surface is native to one harness and cannot be transposed to the main harness
-or alias harnesses during `project mirror`, HarnessDeck emits a warning per
+or alias harnesses during `mirror`, HarnessDeck emits a warning per
 surface (human output and `surface_warnings` in JSON).
 
 Examples of surfaces that stay on their native harness:
@@ -212,7 +212,7 @@ Repos with `AGENTS.md` plus `.claude-plugin/plugin.json` but no `.claude/` tree
 are scanned automatically — plugin-source resources merge with harness files:
 
 ```bash
-harnessdeck project scan . --dry-run
+harnessdeck scan . --dry-run
 harnessdeck layer from-project my-layer --project .
 ```
 
@@ -221,8 +221,8 @@ harnessdeck layer from-project my-layer --project .
 When the main harness has no on-disk tree (plugin-only layout):
 
 ```bash
-harnessdeck project mirror . --reference auto --dry-run
-harnessdeck project mirror . --reference plugin
+harnessdeck mirror . --reference auto --dry-run
+harnessdeck mirror . --reference plugin
 ```
 
 `--reference auto` tries the main harness first, then plugin source, then
@@ -238,7 +238,7 @@ copilot plugin install <source>
 harnessdeck resource sync --overwrite
 ```
 
-Then re-run `layer apply` or `project mirror` if alias harnesses need refreshed
+Then re-run `layer apply` or `mirror` if alias harnesses need refreshed
 copies.
 
 ## Related scenarios

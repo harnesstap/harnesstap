@@ -55,7 +55,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 
 ## Plugin manifest layouts
 
-`project scan` and plugin-source import recognize these on-disk plugin trees (in addition to per-harness project files):
+`scan` and plugin-source import recognize these on-disk plugin trees (in addition to per-harness project files):
 
 | Manifest path | Harness family | Imported as |
 | ------------- | -------------- | ----------- |
@@ -205,7 +205,7 @@ hd harness list                          # all registered harnesses
 hd harness list --supported              # native serializers only
 hd harness status                        # global main + alias selection
 hd harness project status --project .    # per-project harness prefs + cursor_skill_mode
-hd project scan . --dry-run              # detect harnesses and resources in a repo
+hd scan . --dry-run              # detect harnesses and resources in a repo
 hd environment list                      # named environments (env vars, models, permissions)
 ```
 

@@ -5107,7 +5107,7 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
-  .description("Create a layer from scratch, a skill package, or a project scan")
+  .description("Create a layer from scratch, a skill package, or a scan")
   .action(
     async (
       name: string,

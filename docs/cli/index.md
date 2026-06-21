@@ -22,7 +22,7 @@ HarnessDeck is an agent harness configuration toolkit for Claude Code, Codex, Cu
 hd init --main codex --aliases claude-code,cursor
 hd layer search foundation
 hd layer apply engineering-foundation
-hd project status .
+hd status .
 ```
 
 Use `hd` as shorthand for `harnessdeck`. For automation, prefer `--format json` on reporting commands.

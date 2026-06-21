@@ -76,7 +76,7 @@ hd harness status --format json
 hd harness set --main claude-code --aliases cursor,codex
 ```
 
-The **main** harness is the primary write target during profile apply. **Aliases** receive mirrored output when you run `project mirror` in a repo, or when profile apply includes multiple harnesses via `--harness`.
+The **main** harness is the primary write target during profile apply. **Aliases** receive mirrored output when you run `mirror` in a repo, or when profile apply includes multiple harnesses via `--harness`.
 
 ## Cloud-backed profiles
 
@@ -97,8 +97,8 @@ hd profile publish work --org acme --catalog default
 | --- | --- |
 | Separate work / personal / client setups on one machine | Profiles (`profile use`, `hd <name>`) |
 | Repo-specific team baseline | `layer apply --project .` |
-| Sync alias harness files from on-disk main without re-applying a layer | `project mirror` |
-| Detect manual edits after apply | `project drift` |
+| Sync alias harness files from on-disk main without re-applying a layer | `mirror` |
+| Detect manual edits after apply | `status --check` |
 
 Profiles answer "what runs on this machine by default?" Projects answer "what does this repository get?"
 

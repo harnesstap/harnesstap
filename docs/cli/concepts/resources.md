@@ -49,17 +49,17 @@ See the full harness matrix — which types each harness supports — in [Suppor
 
 ## Scan and import
 
-`project scan` detects supported harness files in a repository and imports them into the canonical library. `init` also scans registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`).
+`scan` detects supported harness files in a repository and imports them into the canonical library. `init` also scans registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`).
 
 ```bash
 hd init --main codex --aliases claude-code,cursor
-hd project scan .
+hd scan .
 hd resource list
 hd resource list --search helper          # non-interactive filter
 hd resource show skill:research-helper
 ```
 
-`project scan` automatically merges repo-root plugin trees (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `.github/plugin/`) with harness project files when a recognized manifest is present.
+`scan` automatically merges repo-root plugin trees (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `.github/plugin/`) with harness project files when a recognized manifest is present.
 
 Install skills from a remote package without a prior scan:
 

@@ -4,7 +4,7 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when `project mirror` would fail because the project's **main harness**
+Use this when `mirror` would fail because the project's **main harness**
 has no on-disk resource tree — common in plugin-only repos that ship
 `.claude-plugin/plugin.json` and repo-root `skills/` but no `.claude/` directory.
 The `--reference` flag chooses which on-disk source drives alias harness output.
@@ -13,20 +13,20 @@ Typical commands:
 
 ```bash
 # Default: main harness only (unchanged behavior)
-harnessdeck project mirror . --dry-run
+harnessdeck mirror . --dry-run
 
 # Auto fallback: main → plugin source → AGENTS.md instructions
-harnessdeck project mirror . --reference auto --dry-run
-harnessdeck project mirror . --reference auto
+harnessdeck mirror . --reference auto --dry-run
+harnessdeck mirror . --reference auto
 
 # Force plugin-source as the reference
-harnessdeck project mirror . --reference plugin --dry-run
+harnessdeck mirror . --reference plugin --dry-run
 
 # Force shared AGENTS.md instruction scan across alias harnesses
-harnessdeck project mirror . --reference agents --dry-run
+harnessdeck mirror . --reference agents --dry-run
 
 # Shift main harness before mirroring (when codex is the real canonical tree)
-harnessdeck project mirror . --force-shift-reference codex --reference auto
+harnessdeck mirror . --force-shift-reference codex --reference auto
 ```
 
 **Reference strategies:**
@@ -41,8 +41,8 @@ harnessdeck project mirror . --force-shift-reference codex --reference auto
 When mirror fails with an empty main harness, the error suggests:
 
 ```text
-Try: harnessdeck project mirror --reference plugin
-or harnessdeck project scan .
+Try: harnessdeck mirror --reference plugin
+or harnessdeck scan .
 or harnessdeck harness project set --main codex
 ```
 

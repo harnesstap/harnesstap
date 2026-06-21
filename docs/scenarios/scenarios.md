@@ -27,7 +27,7 @@ A few CLI renames matter up front:
   ([Scenarios 7](./details/07-preview-apply-layer.md), [25](./details/25-stack-layers.md)).
   Share a full workspace offline with `migrate export` / `import`
   ([Scenario 28](./details/28-machine-migration.md)).
-- The current CLI exposes `harnessdeck project mirror`
+- The current CLI exposes top-level `mirror`
   command ([Scenario 27](./details/27-project-sync.md)). Use it when you want to mirror alias harness outputs from the on-disk main
   harness. Re-applying a layer to selected harnesses ([Scenarios 7](./details/07-preview-apply-layer.md) and [15](./details/15-subset-platforms.md))
   remains the right path when you want to push a known layer baseline onto
@@ -58,7 +58,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [15](./details/15-subset-platforms.md) | Apply to a subset of target platforms               | Common     | Shipped |
 | [25](./details/25-stack-layers.md) | Stack multiple layers                              | Common     | Shipped |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer        | Common     | Shipped |
-| [27](./details/27-project-sync.md) | True cross-harness `project mirror`                 | Common     | Shipped |
+| [27](./details/27-project-sync.md) | True cross-harness `mirror`                 | Common     | Shipped |
 | [36](./details/36-switch-profile.md) | Switch global profile presets                    | Common     | Shipped |
 | [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
@@ -108,7 +108,7 @@ one repo needs different harness defaults than your machine-wide setup.
 | [15](./details/15-subset-platforms.md) | Apply a layer to a subset of target platforms |
 | [25](./details/25-stack-layers.md) | Stack multiple layers in one apply |
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer |
-| [27](./details/27-project-sync.md) | True cross-harness `project mirror` |
+| [27](./details/27-project-sync.md) | True cross-harness `mirror` |
 | [36](./details/36-switch-profile.md) | Switch global profile presets on the machine |
 
 ---

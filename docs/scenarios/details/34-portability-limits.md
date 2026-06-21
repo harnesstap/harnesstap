@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when planning a multi-harness rollout, evaluating a plugin repo, or
-debugging why `layer apply` / `project mirror` did not reproduce every on-disk
+debugging why `layer apply` / `mirror` did not reproduce every on-disk
 artifact from the source repo.
 
 Start with the full reference:
@@ -16,13 +16,13 @@ Quick checklist:
 
 ```bash
 # See what HarnessDeck can import from a dual-mode repo
-harnessdeck project scan . --dry-run
+harnessdeck scan . --dry-run
 
 # Preview what each harness would receive
 harnessdeck layer apply my-setup --project . --harness claude-code,codex,windsurf,opencode --dry-run
 
 # Check mirror warnings for harness-specific surfaces
-harnessdeck project mirror . --dry-run --format json
+harnessdeck mirror . --dry-run --format json
 
 # Check registry capabilities before targeting unfamiliar harnesses
 harnessdeck harness list --supported
