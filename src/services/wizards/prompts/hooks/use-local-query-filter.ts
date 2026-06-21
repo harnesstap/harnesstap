@@ -1,5 +1,5 @@
 import { isBackspaceKey } from "@inquirer/core";
-import { isSearchCharacter } from "../primitives.js";
+import { isSearchCharacter, toInquirerKey, type InteractiveKeypress } from "../primitives.js";
 
 export function appendToQuery(query: string, char: string): string {
   return query + char;
@@ -25,20 +25,15 @@ export type SearchKeypressParams = {
   query: string;
   setQuery: (query: string) => void;
   setActive: (active: number) => void;
-  key: {
-    name?: string;
-    sequence?: string;
-    ctrl?: boolean;
-    meta?: boolean;
-    shift?: boolean;
-  };
+  key: InteractiveKeypress;
   onQueryChange?: (nextQuery: string) => void;
 };
 
 export function handleSearchKeypress(params: SearchKeypressParams): boolean {
   const { query, setQuery, setActive, key, onQueryChange } = params;
+  const inquirerKey = toInquirerKey(key);
 
-  if (isBackspaceKey(key)) {
+  if (isBackspaceKey(inquirerKey)) {
     const nextQuery = backspaceQuery(query);
     setQuery(nextQuery);
     setActive(0);

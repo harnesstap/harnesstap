@@ -42,7 +42,7 @@ function isLetterKey(
   return key.sequence === letter && !key.ctrl && !key.meta;
 }
 
-export const createActionListPrompt = createPrompt<
+const actionListPromptBase = createPrompt<
   ActionListPromptAction,
   ActionListPromptConfig<unknown>
 >((config, done) => {
@@ -110,3 +110,17 @@ export const createActionListPrompt = createPrompt<
     activeRow,
   });
 });
+
+type PromptContext = {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  clearPromptOnDone?: boolean;
+  signal?: AbortSignal;
+};
+
+export function createActionListPrompt<T>(
+  config: ActionListPromptConfig<T>,
+  context?: PromptContext,
+): Promise<ActionListPromptAction> & { cancel: () => void } {
+  return actionListPromptBase(config as ActionListPromptConfig<unknown>, context);
+}

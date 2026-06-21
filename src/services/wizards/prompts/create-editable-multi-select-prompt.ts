@@ -69,7 +69,7 @@ export type EditableMultiSelectPromptConfig<T extends EditableMultiSelectRow> = 
   }) => string;
 };
 
-export const createEditableMultiSelectPrompt = createPrompt<
+const editableMultiSelectPromptBase = createPrompt<
   EditableMultiSelectPromptResult<EditableMultiSelectRow>,
   EditableMultiSelectPromptConfig<EditableMultiSelectRow>
 >((config, done) => {
@@ -262,3 +262,20 @@ export const createEditableMultiSelectPrompt = createPrompt<
     checkedCount,
   });
 });
+
+type PromptContext = {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  clearPromptOnDone?: boolean;
+  signal?: AbortSignal;
+};
+
+export function createEditableMultiSelectPrompt<T extends EditableMultiSelectRow>(
+  config: EditableMultiSelectPromptConfig<T>,
+  context?: PromptContext,
+): Promise<EditableMultiSelectPromptResult<T>> & { cancel: () => void } {
+  return editableMultiSelectPromptBase(
+    config as unknown as EditableMultiSelectPromptConfig<EditableMultiSelectRow>,
+    context,
+  ) as Promise<EditableMultiSelectPromptResult<T>> & { cancel: () => void };
+}

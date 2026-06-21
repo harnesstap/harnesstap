@@ -41,7 +41,7 @@ export type FilterListPromptConfig<T> = {
   renderShow: (item: T) => string;
 };
 
-export const createFilterListPrompt = createPrompt<
+const filterListPromptBase = createPrompt<
   FilterListPromptResult,
   FilterListPromptConfig<unknown>
 >((config, done) => {
@@ -110,3 +110,17 @@ export const createFilterListPrompt = createPrompt<
     navigable,
   });
 });
+
+type PromptContext = {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  clearPromptOnDone?: boolean;
+  signal?: AbortSignal;
+};
+
+export function createFilterListPrompt<T>(
+  config: FilterListPromptConfig<T>,
+  context?: PromptContext,
+): Promise<FilterListPromptResult> & { cancel: () => void } {
+  return filterListPromptBase(config as FilterListPromptConfig<unknown>, context);
+}

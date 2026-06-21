@@ -1,5 +1,5 @@
 import { isDownKey, isUpKey } from "@inquirer/core";
-import { clampActiveIndex } from "../primitives.js";
+import { clampActiveIndex, toInquirerKey, type InteractiveKeypress } from "../primitives.js";
 
 export function moveActiveIndex(
   active: number,
@@ -22,18 +22,19 @@ export type NavigationKeypressParams = {
   clampedActive: number;
   length: number;
   setActive: (active: number) => void;
-  key: { name?: string; sequence?: string };
+  key: InteractiveKeypress;
   loop?: boolean;
 };
 
 export function handleNavigationKeypress(params: NavigationKeypressParams): boolean {
   const { clampedActive, length, setActive, key, loop = false } = params;
+  const inquirerKey = toInquirerKey(key);
 
-  if (length === 0 || (!isUpKey(key) && !isDownKey(key))) {
+  if (length === 0 || (!isUpKey(inquirerKey) && !isDownKey(inquirerKey))) {
     return false;
   }
 
-  const direction = isUpKey(key) ? -1 : 1;
+  const direction = isUpKey(inquirerKey) ? -1 : 1;
   setActive(moveActiveIndex(clampedActive, direction, length, loop));
   return true;
 }

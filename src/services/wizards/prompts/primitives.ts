@@ -2,12 +2,27 @@ export function isEscapeKey(key: { name?: string; sequence?: string }): boolean 
   return key.name === "escape" || key.sequence === "\u001b";
 }
 
-export function isSearchCharacter(key: {
+/** Key shape from @inquirer/core useKeypress, shared by prompt helpers. */
+export type InteractiveKeypress = {
+  name?: string;
   sequence?: string;
   ctrl?: boolean;
   meta?: boolean;
   shift?: boolean;
-}): key is { sequence: string } {
+};
+
+/** Widen partial key events for @inquirer/core key guards. */
+export function toInquirerKey(key: InteractiveKeypress) {
+  return {
+    name: key.name ?? "",
+    sequence: key.sequence ?? "",
+    ctrl: key.ctrl ?? false,
+    meta: key.meta ?? false,
+    shift: key.shift ?? false,
+  };
+}
+
+export function isSearchCharacter(key: InteractiveKeypress): key is InteractiveKeypress & { sequence: string } {
   return Boolean(
     key.sequence
       && key.sequence.length === 1

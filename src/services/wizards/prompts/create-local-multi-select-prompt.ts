@@ -77,7 +77,7 @@ const localMultiSelectTheme = {
   },
 };
 
-export const createLocalMultiSelectPrompt = createPrompt<
+const localMultiSelectPromptBase = createPrompt<
   string[],
   LocalMultiSelectConfig<string>
 >((config, done) => {
@@ -177,3 +177,20 @@ export const createLocalMultiSelectPrompt = createPrompt<
     helpLine,
   ].join("\n");
 });
+
+type PromptContext = {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  clearPromptOnDone?: boolean;
+  signal?: AbortSignal;
+};
+
+export function createLocalMultiSelectPrompt<T extends string>(
+  config: LocalMultiSelectConfig<T>,
+  context?: PromptContext,
+): Promise<string[]> & { cancel: () => void } {
+  return localMultiSelectPromptBase(
+    config as LocalMultiSelectConfig<string>,
+    context,
+  ) as Promise<string[]> & { cancel: () => void };
+}
