@@ -196,7 +196,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer list --account <name>` / `--base-url <url>` — cloud account and base URL for remote listing
 - `layer list --no-interactive` — disable TTY browse wizard (streaming print-only)
 
-See [Interactive list keyboard reference](interactive-lists.md) for TTY browse/search shortcuts.
+See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/search shortcuts.
 
 - `layer show --format json`
 - `layer edit --type <type>` — restrict tables to one attachment type
@@ -328,7 +328,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource list --type <type>`
 - `resource list --search <query>`
 
-See [Interactive list keyboard reference](interactive-lists.md) for TTY browse/search shortcuts.
+See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/search shortcuts.
 - `resource list --show-id`
 - `resource show --format json`
 - `resource show --show-id`
