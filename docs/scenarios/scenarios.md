@@ -139,6 +139,7 @@ baselines, or when integrating HarnessDeck into tooling.
 | [32](./details/32-instruction-tier-apply.md) | Apply layers to instruction-tier harnesses (windsurf, cline, copilot, …) |
 | [33](./details/33-mirror-plugin-fallback.md) | Mirror alias harnesses when main harness tree is empty |
 | [34](./details/34-portability-limits.md) | Review what transfers across harnesses and what does not |
+| [39](./details/39-mcp-auth-and-environments.md) | Switch MCP tokens via environments; OAuth limits |
 
 ---
 

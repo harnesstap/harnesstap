@@ -200,15 +200,21 @@ describe("applier services", () => {
 
       expect(result.cancelled).toBe(false);
       expect(existsSync(join(context.homeDir, ".copilot/mcp-config.json"))).toBe(true);
-      expect(existsSync(join(context.homeDir, ".cursor/mcp-config.json"))).toBe(false);
+      expect(existsSync(join(context.homeDir, ".cursor/mcp.json"))).toBe(true);
 
       const installs = snapshots.listImportedSnapshotInstalls(snapshot.id);
-      expect(installs).toHaveLength(1);
-      expect(installs[0]).toEqual(
-        expect.objectContaining({
-          platform_id: "github-copilot",
-          files: [".copilot/mcp-config.json"],
-        }),
+      expect(installs).toHaveLength(2);
+      expect(installs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            platform_id: "github-copilot",
+            files: [".copilot/mcp-config.json"],
+          }),
+          expect.objectContaining({
+            platform_id: "cursor",
+            files: [".cursor/mcp.json"],
+          }),
+        ]),
       );
     } finally {
       await context.cleanup();

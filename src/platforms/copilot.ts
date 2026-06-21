@@ -5,6 +5,7 @@ import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
+import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -15,19 +16,6 @@ import type {
   SerializeOptions,
 } from "../types.js";
 
-interface CopilotMcpConfigEntry {
-  type?: string;
-  command?: string;
-  args?: string[];
-  url?: string;
-  env?: Record<string, string>;
-}
-
-interface CopilotMcpConfig {
-  mcpServers?: Record<string, CopilotMcpConfigEntry>;
-  mcp?: Record<string, CopilotMcpConfigEntry>;
-}
-
 interface CopilotSerializedMcpEntry {
   type: "http" | "local";
   tools: string[];
@@ -35,6 +23,7 @@ interface CopilotSerializedMcpEntry {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  headers?: Record<string, string>;
 }
 
 export class CopilotSerializer extends BaseSerializer {
@@ -95,27 +84,19 @@ export class CopilotSerializer extends BaseSerializer {
       const configContent = this.readFile(configPath);
       if (configContent) {
         try {
-          const config = JSON.parse(configContent) as CopilotMcpConfig;
-          const servers = config.mcpServers || config.mcp; // Support both
-          if (servers) {
-            for (const [name, mcp] of Object.entries(servers)) {
-              const metadata: McpServerMetadata = {
-                transport: mcp.type === "http" ? "http" : "stdio",
-                command: mcp.command,
-                args: mcp.args,
-                url: mcp.url,
-                env: mcp.env,
-              };
-              resources.push(
-                this.makeResource(
-                  "mcp_server",
-                  name,
-                  "",
-                  configPathValue,
-                  metadata,
-                ),
-              );
-            }
+          const document = JSON.parse(configContent) as unknown;
+          for (const [name, metadata] of Object.entries(
+            parseMcpServersDocument(document),
+          )) {
+            resources.push(
+              this.makeResource(
+                "mcp_server",
+                name,
+                "",
+                configPathValue,
+                metadata,
+              ),
+            );
           }
         } catch {
           // ignore invalid JSON
@@ -147,27 +128,19 @@ export class CopilotSerializer extends BaseSerializer {
       const configContent = this.readFile(configPath);
       if (configContent) {
         try {
-          const config = JSON.parse(configContent) as CopilotMcpConfig;
-          const servers = config.mcpServers || config.mcp;
-          if (servers) {
-            for (const [name, mcp] of Object.entries(servers)) {
-              const metadata: McpServerMetadata = {
-                transport: mcp.type === "http" ? "http" : "stdio",
-                command: mcp.command,
-                args: mcp.args,
-                url: mcp.url,
-                env: mcp.env,
-              };
-              resources.push(
-                this.makeResource(
-                  "mcp_server",
-                  name,
-                  "",
-                  settingsPath,
-                  metadata,
-                ),
-              );
-            }
+          const document = JSON.parse(configContent) as unknown;
+          for (const [name, metadata] of Object.entries(
+            parseMcpServersDocument(document),
+          )) {
+            resources.push(
+              this.makeResource(
+                "mcp_server",
+                name,
+                "",
+                settingsPath,
+                metadata,
+              ),
+            );
           }
         } catch {
           // ignore invalid JSON
@@ -268,6 +241,9 @@ export class CopilotSerializer extends BaseSerializer {
             type: "http",
             url: meta.url,
             tools: ["*"],
+            ...(meta.headers && Object.keys(meta.headers).length > 0
+              ? { headers: meta.headers }
+              : {}),
           };
         } else {
           mcpServers[r.name] = {

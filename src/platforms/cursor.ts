@@ -6,9 +6,14 @@ import {
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
+import {
+  emitCursorMcpServerEntry,
+  parseMcpServersDocument,
+} from "../services/mcp-config-bridge.js";
 import type {
   AgentMetadata,
   HookMetadata,
+  McpServerMetadata,
   PlatformDefinition,
   Resource,
   ResourceCreateInput,
@@ -123,6 +128,11 @@ export class CursorSerializer extends BaseSerializer {
       ),
     );
 
+    // 7. MCP servers: .cursor/mcp.json
+    resources.push(
+      ...this.scanMcpConfig(join(projectRoot, ".cursor", "mcp.json"), ".cursor/mcp.json"),
+    );
+
     return resources;
   }
 
@@ -190,6 +200,37 @@ export class CursorSerializer extends BaseSerializer {
       ),
     );
 
+    if (this.platform.globalPaths.settings) {
+      resources.push(
+        ...this.scanMcpConfig(
+          this.resolveHomePath(homeRoot, this.platform.globalPaths.settings),
+          this.platform.globalPaths.settings,
+        ),
+      );
+    }
+
+    return resources;
+  }
+
+  private scanMcpConfig(
+    configPath: string,
+    displayPath: string,
+  ): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
+    const configContent = this.readFile(configPath);
+    if (!configContent) {
+      return resources;
+    }
+
+    try {
+      const document = JSON.parse(configContent) as unknown;
+      for (const [name, metadata] of Object.entries(parseMcpServersDocument(document))) {
+        resources.push(this.makeResource("mcp_server", name, "", displayPath, metadata));
+      }
+    } catch {
+      // invalid JSON — skip
+    }
+
     return resources;
   }
 
@@ -206,6 +247,10 @@ export class CursorSerializer extends BaseSerializer {
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
     const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
     const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
+    const mcpPath = this.toTargetRelativePath(
+      target === "global" ? targetPaths.settings : targetPaths.mcp,
+      target,
+    );
 
     for (const r of resources) {
       switch (r.type) {
@@ -299,6 +344,20 @@ export class CursorSerializer extends BaseSerializer {
           null,
           2,
         ),
+      });
+    }
+
+    const mcps = resources.filter((r) => r.type === "mcp_server");
+    if (mcps.length > 0 && mcpPath) {
+      const mcpServers: Record<string, Record<string, unknown>> = {};
+      for (const resource of mcps) {
+        mcpServers[resource.name] = emitCursorMcpServerEntry(
+          resource.metadata as McpServerMetadata,
+        );
+      }
+      files.push({
+        path: mcpPath,
+        content: JSON.stringify({ mcpServers }, null, 2),
       });
     }
 

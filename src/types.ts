@@ -51,12 +51,22 @@ export interface SkillMetadata {
   references?: string[];
 }
 
+export interface McpOAuthAuthMetadata {
+  CLIENT_ID?: string;
+  CLIENT_SECRET?: string;
+  scopes?: string[];
+}
+
 export interface McpServerMetadata {
   transport: "stdio" | "http";
   command?: string;
   url?: string;
   args?: string[];
   env?: Record<string, string>;
+  headers?: Record<string, string>;
+  connection_type?: string;
+  env_file?: string;
+  auth?: McpOAuthAuthMetadata;
 }
 
 export interface PermissionMetadata {

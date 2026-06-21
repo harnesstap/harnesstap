@@ -112,6 +112,7 @@ Profiles answer "what stack runs on this machine by default?" Projects answer "w
 | Layers, plugins, pins, catalog | [Layers](./layers.md) |
 | Scan, import, canonical library | [Resources](./resources.md) |
 | Machine-wide home harness state | [Profiles](./profiles.md) |
+| Env vars, secret refs, MCP auth limits | [Environments](./environments.md) |
 | Repo apply, mirror, drift, snapshots | [Projects](./projects.md) |
 | Harness matrix and resource types | [Supported harnesses](../../supported-harnesses.md) |
 | Cross-harness fidelity caveats | [Portability limits](../../portability-limits.md) |

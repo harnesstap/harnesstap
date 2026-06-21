@@ -40,7 +40,33 @@ merge no longer aborts the import). When the root manifest yields no resources,
 HarnessDeck falls back to the first plugin pack listed in a repo-root
 `marketplace.json` when present.
 
+## MCP authentication and environments
+
+HarnessDeck environments switch **static** MCP credentials (API keys, bot tokens,
+`${VAR}` placeholders in MCP `env`, `args`, or `headers`) via `secret_ref` and
+the home → layer-default cascade. They do **not** switch **OAuth 2.1** sessions
+that hosts store in OS keychains or private token caches (Cursor, Claude Code,
+Copilot CLI, VS Code).
+
+| Auth model | HarnessDeck can switch? | Mechanism |
+| ---------- | ----------------------- | --------- |
+| API key / PAT / bot token in MCP config | Yes | `environment edit --secret` + `${VAR}` substitution on apply |
+| OAuth HTTP MCP (browser login in IDE) | No | Token lives in host credential store, not in materialized `mcp.json` |
+| Per-host OAuth after `layer apply` | Manual | Log in separately in each target harness |
+
+Full detail, host storage locations, workarounds, and remaining gaps: [Environments — MCP authentication
+limitations](./cli/concepts/environments.md#mcp-authentication-limitations).
+
 ## Partially bridgeable
+
+### MCP HTTP headers (Cursor)
+
+Cursor HTTP MCP servers often use a `headers` map (for example `Authorization:
+Bearer …`). HarnessDeck round-trips `headers` through `McpServerMetadata` and
+`mcp-config-bridge`: scan/import preserves them, `${VAR}` substitution applies at
+apply time, and the Cursor serializer re-emits them in `.cursor/mcp.json`. OAuth
+access tokens in host keychains are still outside this path — see [MCP authentication
+and environments](#mcp-authentication-and-environments).
 
 ### Agent host-specific fields
 
@@ -221,3 +247,4 @@ copies.
 - [Scenario 32](./scenarios/details/32-instruction-tier-apply.md) — apply to instruction-tier harnesses
 - [Scenario 33](./scenarios/details/33-mirror-plugin-fallback.md) — mirror with plugin-source fallback
 - [Scenario 34](./scenarios/details/34-portability-limits.md) — understand portability limits
+- [Scenario 39](./scenarios/details/39-mcp-auth-and-environments.md) — MCP auth, environments, account switching

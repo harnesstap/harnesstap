@@ -6,6 +6,7 @@ import {
   emitMarkdownAgent,
 } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
+import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
 import type {
   AgentMetadata,
   HookMetadata,
@@ -87,19 +88,10 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     const mcpContent = this.readFile(join(projectRoot, ".mcp.json"));
     if (mcpContent) {
       try {
-        const mcpConfig = JSON.parse(mcpContent) as {
-          mcpServers?: Record<string, Record<string, unknown>>;
-        };
-        for (const [name, config] of Object.entries(
-          mcpConfig.mcpServers ?? {},
+        const document = JSON.parse(mcpContent) as unknown;
+        for (const [name, metadata] of Object.entries(
+          parseMcpServersDocument(document),
         )) {
-          const metadata: McpServerMetadata = {
-            transport: config["url"] ? "http" : "stdio",
-            command: config["command"] as string | undefined,
-            url: config["url"] as string | undefined,
-            args: config["args"] as string[] | undefined,
-            env: config["env"] as Record<string, string> | undefined,
-          };
           resources.push(
             this.makeResource("mcp_server", name, "", ".mcp.json", metadata),
           );
@@ -385,6 +377,9 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         if (meta.transport === "http" && meta.url) {
           entry["type"] = "http";
           entry["url"] = meta.url;
+          if (meta.headers && Object.keys(meta.headers).length > 0) {
+            entry["headers"] = meta.headers;
+          }
         } else {
           if (meta.command) entry["command"] = meta.command;
           if (meta.args) entry["args"] = meta.args;
