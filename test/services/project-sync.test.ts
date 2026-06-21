@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
+import { writeTextFile } from "../helpers/fs.ts";
 
 const ponytailFixture = join(import.meta.dirname, "../fixtures/ponytail/full");
 const superpowersFixture = join(
@@ -164,6 +165,8 @@ describe("syncProject reference strategies", () => {
     const geminiFixture = join(import.meta.dirname, "../fixtures/ponytail/gemini");
 
     try {
+      writeTextFile(join(geminiFixture, ".cursor", "mcp.json"), "{}");
+
       const { syncProject } = await import("../../src/services/project-sync.ts");
       const result = await syncProject({
         projectRoot: geminiFixture,

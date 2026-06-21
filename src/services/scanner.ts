@@ -1,4 +1,4 @@
-import { existsSync, lstatSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
@@ -73,14 +73,34 @@ function platformHasConfiguredPath(projectRoot: string, configuredPath: string):
   return pathCountsForPlatformDetection(projectRoot, configuredPath);
 }
 
-/** Check if a platform has any recognizable files in the project. */
+function buildSharedProjectPathSet(): Set<string> {
+  const platformCounts = new Map<string, number>();
+  for (const platform of getAllPlatforms()) {
+    const uniquePaths = new Set(configuredProjectPaths(platform.projectPaths));
+    for (const path of uniquePaths) {
+      platformCounts.set(path, (platformCounts.get(path) ?? 0) + 1);
+    }
+  }
+
+  return new Set(
+    [...platformCounts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([path]) => path),
+  );
+}
+
+/** Check if a platform has harness-specific files in the project. */
 function platformHasFiles(platformId: string, projectRoot: string): boolean {
   const platform = getAllPlatforms().find((p) => p.id === platformId);
   if (!platform) return false;
 
-  return configuredProjectPaths(platform.projectPaths).some((configuredPath) =>
-    platformHasConfiguredPath(projectRoot, configuredPath),
+  const sharedProjectPaths = buildSharedProjectPathSet();
+  const existingPaths = configuredProjectPaths(platform.projectPaths).filter(
+    (configuredPath) => platformHasConfiguredPath(projectRoot, configuredPath),
   );
+  if (existingPaths.length === 0) return false;
+
+  return existingPaths.some((configuredPath) => !sharedProjectPaths.has(configuredPath));
 }
 
 /** Detect all platforms with configuration in a project directory. */
@@ -96,15 +116,16 @@ export interface DetectedHomePlatform {
 }
 
 function buildSharedGlobalPathSet(): Set<string> {
-  const counts = new Map<string, number>();
+  const platformCounts = new Map<string, number>();
   for (const platform of getAllPlatforms()) {
-    for (const path of configuredProjectPaths(platform.globalPaths)) {
-      counts.set(path, (counts.get(path) ?? 0) + 1);
+    const uniquePaths = new Set(configuredProjectPaths(platform.globalPaths));
+    for (const path of uniquePaths) {
+      platformCounts.set(path, (platformCounts.get(path) ?? 0) + 1);
     }
   }
 
   return new Set(
-    [...counts.entries()]
+    [...platformCounts.entries()]
       .filter(([, count]) => count > 1)
       .map(([path]) => path),
   );
@@ -215,9 +236,94 @@ const SHARED_PROJECT_INSTRUCTION_NAMES = new Map<string, string>([
   ["AGENTS.md", "agents-instructions"],
 ]);
 
+const SHARED_PROJECT_SKILL_ROOT = ".agents/skills/";
+
+export const SHARED_SCAN_PLATFORM_ID = "shared";
+
 const SYNTHETIC_INSTRUCTION_NAMES = new Set(
   getAllPlatforms().map((platform) => `${platform.id}-instructions`),
 );
+
+export function hasSharedProjectInstructionFiles(projectRoot: string): boolean {
+  const ignore = loadScanIgnore(projectRoot);
+  for (const source of SHARED_PROJECT_INSTRUCTION_NAMES.keys()) {
+    if (!platformHasConfiguredPath(projectRoot, source)) continue;
+    if (ignore.ignores(source)) continue;
+    return true;
+  }
+  return false;
+}
+
+export function hasSharedProjectResourceFiles(projectRoot: string): boolean {
+  if (hasSharedProjectInstructionFiles(projectRoot)) {
+    return true;
+  }
+  return existsSync(join(projectRoot, SHARED_PROJECT_SKILL_ROOT));
+}
+
+function isSharedProjectSkillSource(source: string): boolean {
+  return (
+    source === SHARED_PROJECT_SKILL_ROOT
+    || source.startsWith(SHARED_PROJECT_SKILL_ROOT)
+  );
+}
+
+async function readSharedProjectSkills(
+  projectRoot: string,
+): Promise<ResourceCreateInput[]> {
+  const skillsDir = join(projectRoot, SHARED_PROJECT_SKILL_ROOT);
+  if (!existsSync(skillsDir)) {
+    return [];
+  }
+
+  const serializer = getPlatformSerializer("codex");
+  const resources = await serializer.scan(projectRoot);
+  return resources.filter(
+    (resource) =>
+      resource.type === "skill" && isSharedProjectSkillSource(resource.source),
+  );
+}
+
+async function readSharedProjectResources(
+  projectRoot: string,
+): Promise<ResourceCreateInput[]> {
+  return [
+    ...readSharedProjectInstructions(projectRoot),
+    ...await readSharedProjectSkills(projectRoot),
+  ];
+}
+
+function readSharedProjectInstructions(
+  projectRoot: string,
+): ResourceCreateInput[] {
+  const ignore = loadScanIgnore(projectRoot);
+  const resources: ResourceCreateInput[] = [];
+
+  for (const [source, canonicalName] of SHARED_PROJECT_INSTRUCTION_NAMES) {
+    if (!platformHasConfiguredPath(projectRoot, source)) continue;
+    if (ignore.ignores(source)) continue;
+
+    const fullPath = join(projectRoot, source);
+    let content: string;
+    try {
+      content = readFileSync(fullPath, "utf-8");
+    } catch {
+      continue;
+    }
+    if (!content.trim()) continue;
+
+    resources.push({
+      type: "instruction",
+      name: canonicalName,
+      description: "",
+      content,
+      metadata: {},
+      source,
+    });
+  }
+
+  return resources;
+}
 
 /** Scan a single platform in a project directory. */
 export async function scanPlatform(
@@ -239,6 +345,17 @@ export async function scanProject(
     : detectPlatforms(projectRoot);
 
   const results: ScanResult[] = [];
+
+  if (!platformFilter) {
+    const sharedResources = await readSharedProjectResources(projectRoot);
+    if (sharedResources.length > 0) {
+      results.push({
+        platformId: SHARED_SCAN_PLATFORM_ID,
+        resources: sharedResources,
+      });
+    }
+  }
+
   for (const pid of platforms) {
     results.push(await scanPlatform(pid, projectRoot));
   }
@@ -322,6 +439,19 @@ function normalizeProjectScanResults(
   results: ScanResult[],
 ): ScanResult[] {
   const ignore = loadScanIgnore(projectRoot);
+  const sharedSources = new Set(SHARED_PROJECT_INSTRUCTION_NAMES.keys());
+  const hasDedicatedSharedScan = results.some(
+    (result) => result.platformId === SHARED_SCAN_PLATFORM_ID,
+  );
+  const sharedScanIncludesSkills =
+    hasDedicatedSharedScan
+    && results.some((result) =>
+      result.platformId === SHARED_SCAN_PLATFORM_ID
+      && result.resources.some(
+        (resource) =>
+          resource.type === "skill" && isSharedProjectSkillSource(resource.source),
+      ),
+    );
   const seenSharedSources = new Set<string>();
 
   return results.map((result) => ({
@@ -336,15 +466,37 @@ function normalizeProjectScanResults(
           ? canonicalInstructionNameForSource(resource.source)
           : undefined;
 
+      const isSharedInstruction =
+        resource.type === "instruction" && sharedSources.has(resource.source);
+
+      if (
+        isSharedInstruction
+        && hasDedicatedSharedScan
+        && result.platformId !== SHARED_SCAN_PLATFORM_ID
+      ) {
+        return [];
+      }
+
+      if (
+        resource.type === "skill"
+        && isSharedProjectSkillSource(resource.source)
+        && sharedScanIncludesSkills
+        && result.platformId !== SHARED_SCAN_PLATFORM_ID
+      ) {
+        return [];
+      }
+
       if (!canonicalName) {
         return [resource];
       }
 
-      if (seenSharedSources.has(resource.source)) {
-        return [];
+      if (!hasDedicatedSharedScan) {
+        if (seenSharedSources.has(resource.source)) {
+          return [];
+        }
+        seenSharedSources.add(resource.source);
       }
 
-      seenSharedSources.add(resource.source);
       return [{ ...resource, name: canonicalName }];
     }),
   }));

@@ -31,8 +31,9 @@ describe("CLI scan", () => {
       // Proper singular/plural: "1 resource" not "1 resources"
       expect(result.stdout).toMatch(/\d+ resources?/);
       expect(result.stdout).not.toContain("1 resources");
-      // Project registration verdict
-      expect(result.stdout).toContain("Project registered");
+      // Project registration verdict on first scan
+      expect(result.stdout).toContain("Project linked");
+      expect(result.stdout).toContain("snapshots");
       expect(resourceModel.listResources().length).toBeGreaterThan(0);
       expect(
         projectModel.getProjectByOrigin("git@github.com:acme/harnessdeck-fixture.git"),
@@ -56,7 +57,44 @@ describe("CLI scan", () => {
       expect(result.stdout).toContain("[dry run]");
       expect(result.stdout).toContain("claude-code");
       // No project registration in dry-run
-      expect(result.stdout).not.toContain("Project registered");
+      expect(result.stdout).not.toContain("Project linked");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("shows shared instructions under shared and hides empty harness rows", async () => {
+    const context = await createTestContext("cli-scan-shared-display");
+
+    try {
+      initGitRepo(context.projectDir);
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Shared agents instructions");
+
+      await runCli(["init"]);
+      const result = await runCli(["scan", context.projectDir, "--dry-run"]);
+
+      expect(result.stdout).toContain("shared");
+      expect(result.stdout).toContain("agents-instructions");
+      expect(result.stdout).not.toContain("codex");
+      expect(result.stdout).not.toContain("0 resources");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("is silent about project linking on rescan", async () => {
+    const context = await createTestContext("cli-scan-rescan-quiet");
+
+    try {
+      initGitRepo(context.projectDir);
+      writeTextFile(`${context.projectDir}/CLAUDE.md`, "# Claude instructions");
+
+      await runCli(["init"]);
+      const first = await runCli(["scan", context.projectDir]);
+      const second = await runCli(["scan", context.projectDir]);
+
+      expect(first.stdout).toContain("Project linked");
+      expect(second.stdout).not.toContain("Project linked");
     } finally {
       await context.cleanup();
     }
@@ -409,9 +447,9 @@ describe("CLI scan", () => {
         "../../src/models/imported-snapshot.ts"
       );
 
-      expect(result.stdout).toContain("codex");
+      expect(result.stdout).toContain("shared");
       expect(result.stdout).toContain("embedded-plugin");
-      expect(result.stdout).toContain("Project registered");
+      expect(result.stdout).toContain("Project linked");
       expect(importedSnapshotModel.listImportedSnapshots()).toHaveLength(1);
     } finally {
       await context.cleanup();

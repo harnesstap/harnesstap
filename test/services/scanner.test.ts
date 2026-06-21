@@ -7,6 +7,30 @@ import { writeTextFile } from "../helpers/fs.ts";
 const pluginImportFixtureRoot = join(import.meta.dirname, "../fixtures/plugin-import");
 
 describe("scanner services", () => {
+  it("imports shared AGENTS.md instructions under the shared scan bucket", async () => {
+    const context = await createInitializedTestContext("scanner-shared-bucket");
+
+    try {
+      writeTextFile(`${context.projectDir}/AGENTS.md`, "# Shared agents instructions");
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const results = await scanner.scanProject(context.projectDir);
+
+      expect(scanner.detectPlatforms(context.projectDir)).toEqual([]);
+      expect(results).toHaveLength(1);
+      expect(results[0]?.platformId).toBe("shared");
+      expect(results[0]?.resources).toEqual([
+        expect.objectContaining({
+          type: "instruction",
+          name: "agents-instructions",
+          source: "AGENTS.md",
+        }),
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("detects platforms and scans a filtered platform", async () => {
     const context = await createInitializedTestContext("scanner-filter");
 
@@ -25,7 +49,7 @@ describe("scanner services", () => {
       const detected = scanner.detectPlatforms(context.projectDir);
 
       expect(detected).toContain("claude-code");
-      expect(detected).toContain("codex");
+      expect(detected).not.toContain("codex");
 
       const results = await scanner.scanProject(
         context.projectDir,

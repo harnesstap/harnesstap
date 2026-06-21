@@ -21,10 +21,11 @@ import {
   projectNameFromUrl,
 } from "./services/git.js";
 import {
-  type scanProject,
+  type ScanResult,
   type persistScanResults,
   applyScanConflicts,
   detectPlatforms,
+  hasSharedProjectResourceFiles,
   isPluginSourcePath,
   scanProjectWithPluginSource,
   persistMergedProjectScan,
@@ -951,16 +952,21 @@ function parseReferenceStrategy(
   }
 }
 
-function printHarnessScanDryRun(
-  results: Awaited<ReturnType<typeof scanProject>>,
+function printProjectScanResults(
+  results: ScanResult[],
+  options: { dryRun?: boolean; importedCounts?: Map<string, number> } = {},
 ): void {
   for (const result of results) {
-    const count = result.resources.length;
-    const dryTag = ui.theme.muted("[dry run] ");
+    if (result.resources.length === 0) continue;
+
+    const count = options.dryRun
+      ? result.resources.length
+      : (options.importedCounts?.get(result.platformId) ?? result.resources.length);
+    const prefix = options.dryRun ? ui.theme.muted("[dry run] ") : "";
     const verdict = ui.theme.success(
       `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${formatCount(count, "resource")}`,
     );
-    console.log(dryTag + verdict);
+    console.log(prefix + verdict);
     for (const resource of result.resources) {
       console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
     }
@@ -1019,7 +1025,9 @@ async function handleScanCommand(
   initializeSchema(db);
   const projectRoot = resolve(path);
   const detected = detectPlatforms(projectRoot);
-  const pluginSourcePath = detected.length === 0 && isPluginSourcePath(projectRoot);
+  const hasHarnessSignals =
+    detected.length > 0 || hasSharedProjectResourceFiles(projectRoot);
+  const pluginSourcePath = !hasHarnessSignals && isPluginSourcePath(projectRoot);
   const scanHarnessFilter = opts.global ? undefined : opts.harness;
 
   if (pluginSourcePath && opts.harness && !opts.global) {
@@ -1089,7 +1097,7 @@ async function handleScanCommand(
     throw new Error("--global is only supported when scanning a plugin source");
   }
 
-  if (detected.length === 0) {
+  if (!hasHarnessSignals && !isPluginSourcePath(projectRoot)) {
     ui.warn(`No harness resources found in this directory (${projectRoot}).`);
     ui.hint(
       `If you need to scan your global harness configuration, use \`${formatCommand("harness init")}\`.`,
@@ -1102,7 +1110,7 @@ async function handleScanCommand(
       scanHarnessFilter,
     );
     const harness = dropHarnessSkillsDuplicatingPluginSource(rawHarness, plugin);
-    printHarnessScanDryRun(harness);
+    printProjectScanResults(harness, { dryRun: true });
     if (plugin.length > 0) {
       printPluginScanDryRun(plugin);
     }
@@ -1136,13 +1144,9 @@ async function handleScanCommand(
     );
   }
 
-  for (const result of merged.scan.harness) {
-    const importedCount = harnessPersisted.importedCounts.get(result.platformId) ?? 0;
-    ui.success(`${result.platformId} ${ui.icons.bullet} ${formatCount(importedCount, "resource")}`);
-    for (const resource of result.resources) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${resource.type} ${resource.name}`));
-    }
-  }
+  printProjectScanResults(merged.scan.harness, {
+    importedCounts: harnessPersisted.importedCounts,
+  });
 
   if (merged.scan.plugin.length > 0) {
     for (const result of merged.scan.plugin) {
@@ -1160,12 +1164,22 @@ async function handleScanCommand(
 
   const normalized = normalizeGitUrl(gitOrigin);
   const name = projectNameFromUrl(gitOrigin);
+  const existingProject = getProjectByOrigin(normalized);
   upsertProject({
     git_origin: normalized,
     name,
     local_path: projectRoot,
   });
-  ui.success(`Project registered: ${name} (${normalized})`);
+
+  if (!existingProject) {
+    console.log("");
+    ui.success(`Project linked: ${name}`);
+    ui.hint(
+      "Enables apply snapshots, drift checks (status --check), history, and revert for this repository.",
+    );
+  } else if (resolve(existingProject.local_path) !== resolve(projectRoot)) {
+    ui.hint(`Updated local path for ${name}.`);
+  }
 
 }
 

@@ -16,11 +16,23 @@ describe("detectPlatforms symlink AGENTS.md", () => {
     expect(detected.filter((id) => id !== "claude-code" && id !== "gemini-cli").length).toBeLessThan(5);
   });
 
-  it("still detects codex from a real AGENTS.md file", () => {
+  it("does not detect AGENTS-only harnesses from a shared AGENTS.md file", () => {
     const projectDir = createTempDir("agents-real-file");
 
     try {
       writeTextFile(join(projectDir, "AGENTS.md"), "# Codex agents");
+      expect(detectPlatforms(projectDir)).toEqual([]);
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects codex from a harness-specific project path", () => {
+    const projectDir = createTempDir("codex-config");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Codex agents");
+      writeTextFile(join(projectDir, ".codex", "config.toml"), "[mcp]\n");
       expect(detectPlatforms(projectDir)).toContain("codex");
     } finally {
       cleanupDir(projectDir);
