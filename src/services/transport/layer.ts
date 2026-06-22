@@ -85,7 +85,7 @@ function parseDependency(value: unknown): LayerExportDependency {
   };
 }
 
-function parseLayerEntry(value: unknown): LayerExportEntry {
+export function parseLayerEntry(value: unknown): LayerExportEntry {
   if (!isRecord(value)) {
     throw new Error("Layer entry must be a table");
   }
