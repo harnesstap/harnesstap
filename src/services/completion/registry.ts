@@ -15,6 +15,7 @@ import { completeLayerEditAddAttachment, completeLayerEditRemoveAttachment } fro
 import { completeLocalEnvironments } from "./providers/local-environment.js";
 import { completeLocalLayers } from "./providers/local-layer.js";
 import { completeProfileLayers } from "./providers/profile-layer.js";
+import { completeProjectProfileKeys } from "./providers/project-profile.js";
 import { completeLocalResources } from "./providers/local-resource.js";
 import { completeResourceTypes } from "./providers/resource-type.js";
 import { completeScenarioIds } from "./providers/scenario-id.js";
@@ -42,6 +43,8 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "layer search:0": [completeCatalogLayers],
   "layer publish:0": [completeLocalLayers],
   "profile use:0": [completeProfileLayers],
+  "use:profile": [completeProjectProfileKeys],
+  "profile use:profile": [completeProjectProfileKeys],
   "profile show:0": [completeProfileLayers],
   "profile delete:0": [completeProfileLayers],
   "profile pull:0": [completeCatalogProfiles],
