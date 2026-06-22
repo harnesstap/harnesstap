@@ -56,11 +56,13 @@ export const promptForInteractiveResourceList: (
         query,
         selectedItem,
         filtered,
+        terminalWidth,
       }) => {
         const renderOpts: ResourceListRenderOptions = {
           showId: config.showId ?? false,
           showAll: config.showAll,
           selectedResourceId: selectedItem?.id,
+          maxWidth: terminalWidth,
         };
         const tables = config.typeFilter
           ? renderFlatResourceListTable(filtered, renderOpts)
@@ -78,7 +80,7 @@ export const promptForInteractiveResourceList: (
 
         return [
           `${prefix} ${styledMessage}`,
-          `Search: ${query || "(type to filter)"}`,
+          `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
           selectionLine,
           "",
           tables,
