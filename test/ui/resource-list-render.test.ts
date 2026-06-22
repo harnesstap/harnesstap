@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   filterResourcesBySearch,
+  formatResourceListNamespace,
   renderGroupedResourceListTables,
   toResourceListRows,
 } from "../../src/ui/resource-list-render.ts";
@@ -98,5 +99,27 @@ describe("resource list render", () => {
     expect(output).toContain("rule-11");
     expect(output).toContain("rule-12");
     expect(output).not.toContain("… and");
+  });
+
+  it("formatResourceListNamespace enriches marketplace_link origin_ref", () => {
+    const row = toResourceListRows([{
+      ...makeResourceInput({ type: "skill", name: "team" }),
+      id: "1", namespace: "cursor-team-kit", origin_kind: "marketplace_link",
+      origin_ref: "cursor-team-kit@team-marketplace",
+      created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z",
+    }])[0];
+    expect(formatResourceListNamespace(row)).toBe("team-marketplace/cursor-team-kit");
+  });
+
+  it("renders bare name in NAME column without @namespace suffix", () => {
+    const rows = toResourceListRows([{
+      ...makeResourceInput({ type: "skill", name: "migrating-dbt-core-to-fusion" }),
+      id: "1", namespace: "dbt-labs/dbt-agent-skills",
+      created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z",
+    }]);
+    const output = renderGroupedResourceListTables(rows, { showId: false, maxWidth: 100 });
+    expect(output).toContain("migrating-dbt-core-to-fusion");
+    expect(output).not.toContain("migrating-dbt-core-to-fusion@");
+    expect(output).toContain("dbt-labs/dbt-agent-skills");
   });
 });
