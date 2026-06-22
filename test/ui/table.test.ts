@@ -59,6 +59,35 @@ describe("ui table", () => {
     expect(output).not.toMatch(ansiEscapeRegex);
   });
 
+  it("wraps hyphenated content across multiple lines when maxWidth caps column", () => {
+    const output = renderTable({
+      maxWidth: 40,
+      wordWrap: true,
+      columns: [
+        { key: "name", header: "NAME", width: 10, wrapOnWordBoundary: false },
+      ],
+      rows: [{ name: "migrating-dbt-core-to-fusion-with-extra" }],
+    });
+    expect(output).toContain("migrating-dbt-core-to-fusion");
+    expect(output.split("\n").length).toBeGreaterThan(4);
+    expect(output).not.toContain("…");
+  });
+
+  it("computeColumnWidths distributes proportionally within maxWidth", async () => {
+    const { computeColumnWidths } = await import("../../src/ui/table.ts");
+    const widths = computeColumnWidths(
+      [
+        { key: "name", header: "NAME", width: 28, widthShare: 0.45 },
+        { key: "namespace", header: "NAMESPACE", width: 20, widthShare: 0.3 },
+        { key: "updated_at", header: "UPDATED", width: 16, widthShare: 0.15 },
+      ],
+      [{ name: "x", namespace: "y", updated_at: "1 day ago" }],
+      80,
+    );
+    expect(widths.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(80);
+    expect(widths[0]).toBeGreaterThan(widths[1]);
+  });
+
   it("applies column styles for resource types", async () => {
     const chalkModule = await import("chalk");
     const originalLevel = chalkModule.default.level;
