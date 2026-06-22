@@ -25,6 +25,8 @@ import {
   type ProjectLayerTable,
   type ResolvedProjectConfig,
 } from "./project-config.js";
+import { promptForProjectProfile } from "./wizards/project-use.js";
+import { shouldUseWizard } from "./wizards/shared.js";
 import { useProfileCommand } from "./profile-commands.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./profile-switch-prompt.js";
 import type { ApplyProfileLayerResult } from "./profile-apply.js";
@@ -48,6 +50,8 @@ export interface ProjectUseOptions {
   onConflict?: string;
   format?: string;
   yes?: boolean;
+  interactive?: boolean;
+  noInteractive?: boolean;
 }
 
 export type ProjectUseResult =
@@ -115,13 +119,19 @@ function writeInlineLayerImportFile(layerTable: ProjectLayerTable): string {
   return filePath;
 }
 
-function resolveProfileKey(
+export async function resolveProjectProfileKey(
   config: ResolvedProjectConfig,
-  profile?: string,
-): string {
-  if (profile) {
-    return profile;
+  options: Pick<ProjectUseOptions, "profile" | "format" | "interactive" | "noInteractive">,
+): Promise<string> {
+  if (options.profile) {
+    getProfileEntry(config, options.profile);
+    return options.profile;
   }
+
+  if (config.profiles.length === 0) {
+    throw new Error("Project config has no profiles");
+  }
+
   if (config.profiles.length === 1) {
     const [onlyProfile] = config.profiles;
     if (!onlyProfile) {
@@ -129,12 +139,19 @@ function resolveProfileKey(
     }
     return onlyProfile.name;
   }
-  if (config.profiles.length === 0) {
-    throw new Error("Project config has no profiles");
+
+  if (
+    shouldUseWizard({
+      interactive: options.interactive,
+      noInteractive: options.noInteractive,
+      format: options.format,
+      missingRequiredArgs: !options.profile,
+    })
+  ) {
+    return promptForProjectProfile(config);
   }
-  throw new Error(
-    "multiple profiles configured; pass --profile <name> or run interactively",
-  );
+
+  throw new Error("multiple profiles configured; pass --profile <name>");
 }
 
 export async function resolveProjectProfileLayerName(
@@ -248,7 +265,12 @@ export async function executeProjectUse(
     );
   }
 
-  const profileKey = resolveProfileKey(config, options.profile);
+  const profileKey = await resolveProjectProfileKey(config, {
+    profile: options.profile,
+    format: options.format,
+    interactive: options.interactive,
+    noInteractive: options.noInteractive,
+  });
   const entry = getProfileEntry(config, profileKey);
   const environmentName = resolveProfileEnvironment(config, entry);
   const expectedLayerName = resolveExpectedLayerName(config, entry);
