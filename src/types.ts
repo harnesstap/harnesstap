@@ -262,6 +262,9 @@ export interface ProjectLayer {
 export const DECK_SCHEMA = "urn:harnessdeck:deck:v1" as const;
 export const DECK_JSON_VERSION = 1 as const;
 
+export const PROJECT_SCHEMA = "urn:harnessdeck:project:v1" as const;
+export const PROJECT_SCHEMA_VERSION = 1 as const;
+
 export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
 export const BUNDLE_SCHEMA_VERSION = 1 as const;
 
