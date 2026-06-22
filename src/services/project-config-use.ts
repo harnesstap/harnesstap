@@ -74,24 +74,39 @@ function assertProfileLayer(layer: { name: string; tags: string[] }, context: st
   }
 }
 
+function resolveLayerNameFromSelector(selector: string): string {
+  const existing = resolveLayerSelector(selector);
+  if (existing) {
+    return existing.name;
+  }
+  return parseLayerSelector(selector).name;
+}
+
 function resolveExpectedLayerName(
   config: ResolvedProjectConfig,
   entry: ProjectProfileEntry,
-): string | undefined {
+): string {
   switch (entry.source) {
     case "catalog":
     case "local": {
-      return resolveLayerSelector(entry.selector!)?.name;
+      return resolveLayerNameFromSelector(entry.selector!);
     }
     case "inline": {
       const inlineLayer = config.layers.find((layer) => layer.name === entry.layer);
-      return inlineLayer?.name ?? entry.layer;
+      return inlineLayer?.name ?? entry.layer!;
     }
     default: {
       const unhandledSource: never = entry.source;
       throw new Error(`Unhandled profile source: ${unhandledSource}`);
     }
   }
+}
+
+function resolvePreviewLayerName(
+  config: ResolvedProjectConfig,
+  entry: ProjectProfileEntry,
+): string {
+  return resolveExpectedLayerName(config, entry);
 }
 
 function findInlineLayerTable(
@@ -274,9 +289,7 @@ export async function executeProjectUse(
   const entry = getProfileEntry(config, profileKey);
   const environmentName = resolveProfileEnvironment(config, entry);
   const expectedLayerName = resolveExpectedLayerName(config, entry);
-  if (!expectedLayerName) {
-    throw new Error(`Unable to resolve layer name for profile: ${profileKey}`);
-  }
+  const dryRun = options.dryRun === true;
 
   if (
     await shouldSkipProjectUse({
@@ -294,27 +307,34 @@ export async function executeProjectUse(
     };
   }
 
-  await importProjectConfigEnvironments(config);
-  const layerName = await resolveProjectProfileLayerName(config, entry, {
-    pull: options.pull ?? true,
-    account: options.account,
-    baseUrl: options.baseUrl,
-  });
+  if (!dryRun) {
+    await importProjectConfigEnvironments(config);
+  }
 
-  if (environmentName) {
+  const layerName = dryRun
+    ? resolvePreviewLayerName(config, entry)
+    : await resolveProjectProfileLayerName(config, entry, {
+        pull: options.pull ?? true,
+        account: options.account,
+        baseUrl: options.baseUrl,
+      });
+
+  if (environmentName && !dryRun) {
     useEnvironmentCommand(environmentName);
   }
 
-  await maybeSyncActiveProfileBeforeSwitch({
-    targetProfileName: layerName,
-    harness: options.harness,
-    yes: options.yes,
-    format: options.format,
-  });
+  if (!dryRun) {
+    await maybeSyncActiveProfileBeforeSwitch({
+      targetProfileName: layerName,
+      harness: options.harness,
+      yes: options.yes,
+      format: options.format,
+    });
+  }
 
   const conflictPolicy = resolveApplyConflictPolicy({
     onConflict: options.onConflict,
-    noInteractive: options.format === "json",
+    noInteractive: options.noInteractive ?? options.format === "json",
   });
   const applied = await useProfileCommand(layerName, {
     harness: options.harness,

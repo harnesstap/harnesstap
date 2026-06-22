@@ -229,6 +229,77 @@ selector = "solo"
     }
   });
 
+  it("resolves catalog selector before pull attempt", async () => {
+    const context = await createInitializedTestContext("project-use-catalog-resolve");
+    try {
+      writeProjectConfig(
+        context.projectDir,
+        `schema = "urn:harnessdeck:project:v1"
+version = 1
+
+[[profiles]]
+name = "prod"
+source = "catalog"
+selector = "acme/platform/frontend@1.0.0"
+`,
+      );
+
+      await expect(
+        executeProjectUse({
+          project: context.projectDir,
+          profile: "prod",
+          pull: false,
+        }),
+      ).rejects.toThrow(/not found locally/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not import environments on dry-run", async () => {
+    const context = await createInitializedTestContext("project-use-dry-run-env");
+    try {
+      createProfileLayer("team-stack");
+      await applyProfileLayer("team-stack", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      writeProjectConfig(
+        context.projectDir,
+        `schema = "urn:harnessdeck:project:v1"
+version = 1
+
+[[profiles]]
+name = "dev"
+source = "local"
+selector = "team-stack"
+environment = "staging"
+
+[[environments]]
+name = "staging"
+
+[environments.values]
+REGION = "eu"
+`,
+      );
+
+      const before = getGlobalActiveEnvironmentName();
+      await executeProjectUse({
+        project: context.projectDir,
+        profile: "dev",
+        dryRun: true,
+        harness: "claude-code",
+        onConflict: "replace",
+        force: true,
+      });
+      expect(getGlobalActiveEnvironmentName()).toBe(before);
+      expect(getEnvironmentByName("staging")).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("imports environments and sets the active environment", async () => {
     const context = await createInitializedTestContext("project-use-env");
     try {

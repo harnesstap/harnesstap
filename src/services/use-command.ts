@@ -187,6 +187,7 @@ export async function handleUseCommand(opts: UseCommandOptions): Promise<void> {
 
 export function mapProfileUseDelegationOptions(opts: {
   profile?: string;
+  project?: string;
   dryRun?: boolean;
   harness?: string;
   onConflict?: string;
@@ -200,6 +201,7 @@ export function mapProfileUseDelegationOptions(opts: {
 }): ProjectUseOptions {
   return {
     profile: opts.profile,
+    project: opts.project,
     dryRun: opts.dryRun,
     force: opts.force,
     pull: opts.pull,
@@ -216,7 +218,7 @@ export function mapProfileUseDelegationOptions(opts: {
 export async function handleProfileUseProjectDelegation(
   opts: Parameters<typeof mapProfileUseDelegationOptions>[0],
 ): Promise<boolean> {
-  const config = findProjectConfig(process.cwd());
+  const config = findProjectConfig(resolve(opts.project ?? process.cwd()));
   if (!config) {
     return false;
   }

@@ -5795,6 +5795,7 @@ profileCmd
   .command("use")
   .argument("[name]", "Profile layer name or selector")
   .option("--profile <name>", "Profile key from .harnessdeck/config.toml")
+  .option("--project <path>", "Project directory for config.toml discovery", ".")
   .option("--dry-run", "Show what would be written")
   .option(
     "--harness <slugs>",
@@ -5814,6 +5815,7 @@ profileCmd
   .description("Switch the active profile and apply globally to harness home paths")
   .action(async (name: string | undefined, opts: {
     profile?: string;
+    project?: string;
     dryRun?: boolean;
     harness?: string;
     onConflict?: string;

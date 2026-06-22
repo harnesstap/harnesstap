@@ -46,13 +46,35 @@ function buildProjectProfileShowRows(config: ResolvedProjectConfig): ProjectProf
   }));
 }
 
-function requireProjectConfig(projectPath: string): ResolvedProjectConfig | null {
-  const config = findProjectConfig(projectPath);
+function requireProjectConfig(
+  projectPath: string,
+  format: "human" | "json",
+): ResolvedProjectConfig | null {
+  let config: ResolvedProjectConfig | null;
+  try {
+    config = findProjectConfig(projectPath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.exitCode = 1;
+    if (format === "json") {
+      printJson({ error: message });
+    } else {
+      ui.danger(message);
+    }
+    return null;
+  }
   if (!config) {
     process.exitCode = 1;
-    ui.danger(
-      "No project config found. Create `.harnessdeck/config.toml` or run `hd config init` when available.",
-    );
+    if (format === "json") {
+      printJson({
+        error:
+          "No project config found. Create `.harnessdeck/config.toml` or run `hd config init` when available.",
+      });
+    } else {
+      ui.danger(
+        "No project config found. Create `.harnessdeck/config.toml` or run `hd config init` when available.",
+      );
+    }
     return null;
   }
   return config;
@@ -75,7 +97,7 @@ function summarizeConfigForJson(config: ResolvedProjectConfig) {
 export function handleConfigShowCommand(opts: ConfigCommandOptions): void {
   const format = parseOutputFormat(opts.format);
   const projectPath = resolve(opts.project ?? process.cwd());
-  const config = requireProjectConfig(projectPath);
+  const config = requireProjectConfig(projectPath, format);
   if (!config) {
     return;
   }
