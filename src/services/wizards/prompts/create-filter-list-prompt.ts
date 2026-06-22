@@ -2,10 +2,12 @@ import {
   createPrompt,
   isEnterKey,
   makeTheme,
+  useEffect,
   useKeypress,
   usePrefix,
   useState,
 } from "@inquirer/core";
+import { createPromptScreen } from "../../../ui/prompt-screen.js";
 import {
   handleEnterToShow,
   handleShowViewEscape,
@@ -13,6 +15,7 @@ import {
 } from "./hooks/use-browse-show-view.js";
 import { handleNavigationKeypress } from "./hooks/use-list-navigation.js";
 import { handleSearchKeypress } from "./hooks/use-local-query-filter.js";
+import { useTerminalSize } from "./hooks/use-terminal-size.js";
 import {
   clampActiveIndex,
   interactivePromptTheme,
@@ -37,6 +40,7 @@ export type FilterListPromptConfig<T> = {
     selectedItem: T | undefined;
     filtered: T[];
     navigable: T[];
+    terminalWidth: number;
   }) => string;
   renderShow: (item: T) => string;
 };
@@ -51,6 +55,13 @@ const filterListPromptBase = createPrompt<
   const [active, setActive] = useState(0);
   const [view, setView] = useState<BrowseShowView>("browse");
   const [showingItem, setShowingItem] = useState<unknown | null>(null);
+  const terminalWidth = useTerminalSize();
+
+  useEffect(() => {
+    const screen = createPromptScreen();
+    screen.enter();
+    return () => screen.exit();
+  }, []);
 
   const { filtered, navigable } = config.resolveItems(query);
   const clampedActive = clampActiveIndex(active, navigable.length);
@@ -108,6 +119,7 @@ const filterListPromptBase = createPrompt<
     selectedItem,
     filtered,
     navigable,
+    terminalWidth,
   });
 });
 

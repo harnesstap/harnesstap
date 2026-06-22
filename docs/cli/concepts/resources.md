@@ -80,7 +80,7 @@ hd resource sync <plugin-pin-selector> [--force]
 hd resource delete <selector>
 ```
 
-Use `--format json` for scripting. Interactive `resource list` opens a filter overlay; see [Interactive UX](../interactive-ux.md).
+Use `--format json` for scripting. Interactive `resource list` opens a filter overlay; see [Interactive UX](../interactive-ux.md). Human list tables show bare names in the NAME column and plugin or package paths in NAMESPACE; compose with `name@namespace` selectors as documented in the command reference.
 
 ## From resources to layers
 

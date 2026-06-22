@@ -2,7 +2,7 @@ import type { Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import * as format from "./format.js";
 import { renderTable, type Column } from "./table.js";
-import { theme } from "./theme.js";
+import { terminalColumns, theme } from "./theme.js";
 
 export const DEFAULT_RESOURCE_LIST_PER_TYPE_LIMIT = 10;
 
@@ -16,6 +16,7 @@ export type ResourceListRenderOptions = {
   showAll?: boolean;
   perTypeLimit?: number;
   selectedResourceId?: string;
+  maxWidth?: number;
 };
 
 export type LayerEditTableRow = ResourceListRow & {
@@ -29,7 +30,34 @@ export type LayerEditRenderOptions = ResourceListRenderOptions & {
 
 type ResourceListDisplayRow = ResourceListRow & {
   list_display_name: string;
+  list_namespace: string;
 };
+
+export function formatResourceListNamespace(resource: ResourceListRow): string {
+  const ns = resource.namespace.trim();
+  if (!ns) return "";
+  if (resource.origin_kind === "marketplace_link" && resource.origin_ref.includes("@")) {
+    const [plugin, marketplace] = resource.origin_ref.split("@", 2);
+    if (plugin && marketplace && ns === plugin) {
+      return `${marketplace}/${plugin}`;
+    }
+  }
+  return ns;
+}
+
+function hasListNamespace(rows: ResourceListRow[]): boolean {
+  return rows.some((row) => formatResourceListNamespace(row).length > 0);
+}
+
+function resourceListTableLayout(opts: ResourceListRenderOptions): {
+  maxWidth: number;
+  wordWrap: true;
+} {
+  return {
+    maxWidth: opts.maxWidth ?? terminalColumns(),
+    wordWrap: true,
+  };
+}
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
   return showId
@@ -37,6 +65,7 @@ function makeIdColumn(showId: boolean, width = 12): Column[] {
         key: "id",
         header: "ID",
         width,
+        widthShare: 0.10,
         transform: (value: string) => format.shortenId(String(value)),
       }]
     : [];
@@ -64,18 +93,29 @@ function makeResourceListColumns(
       key: "list_display_name",
       header: "NAME",
       width: 28,
+      widthShare: 0.45,
+      wrapOnWordBoundary: false,
       style: highlightSelection
         ? (value) => (value.startsWith("> ") ? theme.accent(value) : value)
         : undefined,
     },
     ...(hasNamespace
-      ? [{ key: "namespace", header: "NAMESPACE", width: 20 } as const]
+      ? [{
+          key: "list_namespace",
+          header: "NAMESPACE",
+          width: 20,
+          widthShare: 0.3,
+          style: (value: string) =>
+            value ? theme.path(value) : theme.muted("—"),
+        } as const]
       : []),
     {
       key: "updated_at",
       header: "UPDATED",
       width: 16,
+      widthShare: 0.15,
       transform: (value) => format.formatRelativeTime(String(value)),
+      style: (value) => theme.muted(value),
     },
   ];
 }
@@ -108,7 +148,7 @@ export function filterResourcesBySearch(
   }
 
   return resources.filter((resource) =>
-    `${resource.name} ${resource.description ?? ""} ${resource.display_name}`
+    `${resource.name} ${resource.description ?? ""} ${resource.display_name} ${formatResourceListNamespace(resource)}`
       .toLowerCase()
       .includes(normalizedSearch),
   );
@@ -211,7 +251,8 @@ function decorateRowsForCheckboxes(
         : "";
     return {
       ...row,
-      list_display_name: `${cursor}${checkbox} ${row.display_name}${constraint}`,
+      list_display_name: `${cursor}${checkbox} ${row.name}${constraint}`,
+      list_namespace: formatResourceListNamespace(row),
     };
   });
 }
@@ -245,7 +286,7 @@ export function renderGroupedLayerEditTables(
     return "No resources found.";
   }
 
-  const hasNamespace = rows.some((row) => row.namespace.length > 0);
+  const hasNamespace = hasListNamespace(rows);
   const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
   const perTypeLimit = resolvePerTypeLimit(opts);
   const lines: string[] = [];
@@ -271,6 +312,7 @@ export function renderGroupedLayerEditTables(
     lines.push(renderTable({
       columns,
       rows: decorateRowsForCheckboxes(visible, opts),
+      ...resourceListTableLayout(opts),
     }));
     if (hiddenCount > 0) {
       lines.push(renderHiddenRowsHint(hiddenCount));
@@ -291,7 +333,7 @@ export function renderFlatLayerEditTable(
     return "No resources found.";
   }
 
-  const hasNamespace = rows.some((row) => row.namespace.length > 0);
+  const hasNamespace = hasListNamespace(rows);
   const sortedRows = sortLayerEditRowsForDisplay(rows);
   const perTypeLimit = resolvePerTypeLimit(opts);
   const { visible, hiddenCount } = limitRows(
@@ -305,6 +347,7 @@ export function renderFlatLayerEditTable(
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, true),
       rows: decorateRowsForCheckboxes(visible, opts),
       summary: `${checkedCount} selected ${theme.muted(`(${sortedRows.length} resources)`)}`,
+      ...resourceListTableLayout(opts),
     }),
   ];
   if (hiddenCount > 0) {
@@ -320,13 +363,14 @@ function decorateRowsForSelection(
   return rows.map((row) => ({
     ...row,
     list_display_name: row.id === selectedResourceId
-      ? `> ${row.display_name}`
-      : `  ${row.display_name}`,
+      ? `> ${row.name}`
+      : `  ${row.name}`,
+    list_namespace: formatResourceListNamespace(row),
   }));
 }
 
 export function formatResourceSelectionLabel(resource: ResourceListRow): string {
-  return `${resource.type} ${resource.display_name}`;
+  return `${resource.type} ${resource.name}`;
 }
 
 function renderHiddenRowsHint(hiddenCount: number): string {
@@ -343,7 +387,7 @@ export function renderGroupedResourceListTables(
     return "No resources found.";
   }
 
-  const hasNamespace = resources.some((resource) => resource.namespace.length > 0);
+  const hasNamespace = hasListNamespace(resources);
   const highlightSelection = Boolean(opts.selectedResourceId);
   const columns = makeResourceListColumns(opts.showId, false, hasNamespace, highlightSelection);
   const perTypeLimit = resolvePerTypeLimit(opts);
@@ -370,6 +414,7 @@ export function renderGroupedResourceListTables(
     lines.push(renderTable({
       columns,
       rows: decorateRowsForSelection(visible, opts.selectedResourceId),
+      ...resourceListTableLayout(opts),
     }));
     if (hiddenCount > 0) {
       lines.push(renderHiddenRowsHint(hiddenCount));
@@ -389,7 +434,7 @@ export function renderFlatResourceListTable(
     return "No resources found.";
   }
 
-  const hasNamespace = resources.some((resource) => resource.namespace.length > 0);
+  const hasNamespace = hasListNamespace(resources);
   const sortedRows = sortResourcesByUpdatedAt(resources);
   const perTypeLimit = resolvePerTypeLimit(opts);
   const highlightSelection = Boolean(opts.selectedResourceId);
@@ -403,6 +448,7 @@ export function renderFlatResourceListTable(
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, highlightSelection),
       rows: decorateRowsForSelection(visible, opts.selectedResourceId),
       summary: `${sortedRows.length} resources`,
+      ...resourceListTableLayout(opts),
     }),
   ];
   if (hiddenCount > 0) {
