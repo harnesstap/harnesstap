@@ -1444,6 +1444,7 @@ async function handleApplyCommand(
     pins: mergedPluginPins,
     baseResources: resources,
     projectRoot,
+    claudeConfig: claude,
     skipSync: skipPluginSync,
     syncAll: opts.syncPlugins,
     scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),

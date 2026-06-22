@@ -111,6 +111,7 @@ export async function applyLayersGlobally(
     pins: mergedPluginPins,
     baseResources: merged.resources,
     projectRoot: homeRoot,
+    claudeConfig: merged.claude,
     scope: "user",
     skipSync: mergedPluginPins.length === 0,
   });

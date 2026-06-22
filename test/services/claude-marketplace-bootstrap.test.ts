@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  ensureClaudeMarketplacesFromConfig,
   extractMarketplaceRepos,
   marketplaceRepoKey,
 } from "../../src/services/claude-marketplace-bootstrap.ts";
@@ -45,5 +46,28 @@ describe("marketplaceRepoKey", () => {
     expect(marketplaceRepoKey("outbrain/claude-plugins")).toBe(
       "outbrain/claude-plugins",
     );
+  });
+});
+
+describe("ensureClaudeMarketplacesFromConfig", () => {
+  it("adds unconfigured marketplaces via claude plugin marketplace add", () => {
+    const calls: string[][] = [];
+    const config: ClaudeLayerConfig = {
+      marketplaces: {
+        "teads-plugins": {
+          source: { source: "github", repo: "outbrain/claude-plugins" },
+        },
+      },
+    };
+    const added = ensureClaudeMarketplacesFromConfig(config, {
+      homeRoot: "/tmp/empty-home-teads-bootstrap-test",
+      projectRoot: "/tmp/project",
+      runClaudePlugin: (args) => {
+        calls.push(args);
+        return { exitCode: 0 };
+      },
+    });
+    expect(added).toEqual(["teads-plugins"]);
+    expect(calls).toEqual([["marketplace", "add", "outbrain/claude-plugins"]]);
   });
 });

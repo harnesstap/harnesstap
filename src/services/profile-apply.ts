@@ -371,6 +371,7 @@ export async function applyProfileLayer(
     pins: merged.pluginPins,
     baseResources: merged.resources,
     projectRoot: homeRoot,
+    claudeConfig: merged.claude,
     scope: "user",
     skipSync: options.dryRun || merged.pluginPins.length === 0,
   });

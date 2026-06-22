@@ -20,6 +20,10 @@ import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
 import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import {
+  ensureClaudeMarketplacesFromConfig,
+} from "./claude-marketplace-bootstrap.js";
+import type { ClaudeLayerConfig } from "../types.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
 
@@ -51,6 +55,7 @@ export interface PreparePluginPinsForApplyOptions {
   pins: PluginConstraintPin[];
   baseResources: Resource[];
   projectRoot: string;
+  claudeConfig?: ClaudeLayerConfig;
   /** When true, skip install/sync and only expand resources + validate pins. */
   skipSync?: boolean;
   syncAll?: boolean;
@@ -221,6 +226,13 @@ export async function preparePluginPinsForApply(
     syncedResourceCount: 0,
     unresolvedPins: [],
   };
+
+  if (!options.skipSync && options.claudeConfig) {
+    ensureClaudeMarketplacesFromConfig(options.claudeConfig, {
+      homeRoot: options.homeRoot ?? resolveHomeRoot(),
+      projectRoot: options.projectRoot,
+    });
+  }
 
   if (!options.skipSync && options.pins.length > 0) {
     syncResult = await syncPluginPinsForApply({

@@ -1,3 +1,5 @@
+import { marketplaceIsConfigured } from "../plugins/claude-plugin-ref.js";
+import { defaultRunCommand } from "../plugins/run-command.js";
 import type { ClaudeLayerConfig } from "../types.js";
 
 export interface MarketplaceRepoEntry {
@@ -33,4 +35,31 @@ export function extractMarketplaceRepos(
   }
 
   return entries;
+}
+
+export interface EnsureMarketplacesOptions {
+  homeRoot: string;
+  projectRoot: string;
+  runClaudePlugin?: (args: string[]) => { exitCode: number };
+}
+
+export function ensureClaudeMarketplacesFromConfig(
+  config: ClaudeLayerConfig | undefined,
+  options: EnsureMarketplacesOptions,
+): string[] {
+  const run =
+    options.runClaudePlugin ??
+    ((args) => {
+      const result = defaultRunCommand("claude", ["plugin", ...args], {
+        cwd: options.projectRoot,
+      });
+      return { exitCode: result.exitCode };
+    });
+  const added: string[] = [];
+  for (const { name, repo } of extractMarketplaceRepos(config)) {
+    if (marketplaceIsConfigured(options.homeRoot, name)) continue;
+    const result = run(["marketplace", "add", repo]);
+    if (result.exitCode === 0) added.push(name);
+  }
+  return added;
 }
