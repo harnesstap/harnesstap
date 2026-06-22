@@ -4,9 +4,8 @@ import {
   filterResourcesBySearch,
   formatResourceSelectionLabel,
   listNavigableResources,
-  renderFlatResourceListTable,
-  renderGroupedResourceListTables,
-  type ResourceListRenderOptions,
+  renderFlatResourceListViewport,
+  renderGroupedResourceListViewport,
   type ResourceListRow,
 } from "../../ui/resource-list-render.js";
 import { theme } from "../../ui/theme.js";
@@ -56,17 +55,23 @@ export const promptForInteractiveResourceList: (
         query,
         selectedItem,
         filtered,
+        navigable,
         terminalWidth,
+        terminalRows,
+        active,
       }) => {
-        const renderOpts: ResourceListRenderOptions = {
+        const renderOpts = {
           showId: config.showId ?? false,
           showAll: config.showAll,
           selectedResourceId: selectedItem?.id,
           maxWidth: terminalWidth,
+          activeIndex: active,
+          navigable,
+          terminalRows,
         };
         const tables = config.typeFilter
-          ? renderFlatResourceListTable(filtered, renderOpts)
-          : renderGroupedResourceListTables(filtered, renderOpts);
+          ? renderFlatResourceListViewport(filtered, renderOpts)
+          : renderGroupedResourceListViewport(filtered, renderOpts);
         const selectionLine = selectedItem
           ? `Show: ${theme.accent(`> ${formatResourceSelectionLabel(selectedItem)}`)}`
           : theme.muted("No matching resources");

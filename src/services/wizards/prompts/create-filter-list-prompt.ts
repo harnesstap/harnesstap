@@ -5,9 +5,10 @@ import {
   useEffect,
   useKeypress,
   usePrefix,
+  useRef,
   useState,
 } from "@inquirer/core";
-import { createPromptScreen } from "../../../ui/prompt-screen.js";
+import { createPromptScreen, type PromptScreen } from "../../../ui/prompt-screen.js";
 import {
   handleEnterToShow,
   handleShowViewEscape,
@@ -41,6 +42,8 @@ export type FilterListPromptConfig<T> = {
     filtered: T[];
     navigable: T[];
     terminalWidth: number;
+    terminalRows: number;
+    active: number;
   }) => string;
   renderShow: (item: T) => string;
 };
@@ -55,12 +58,15 @@ const filterListPromptBase = createPrompt<
   const [active, setActive] = useState(0);
   const [view, setView] = useState<BrowseShowView>("browse");
   const [showingItem, setShowingItem] = useState<unknown | null>(null);
-  const terminalWidth = useTerminalSize();
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
+  const promptScreenRef = useRef<PromptScreen | null>(null);
+  if (promptScreenRef.current === null) {
+    promptScreenRef.current = createPromptScreen();
+    promptScreenRef.current.enter();
+  }
 
   useEffect(() => {
-    const screen = createPromptScreen();
-    screen.enter();
-    return () => screen.exit();
+    return () => promptScreenRef.current?.exit();
   }, []);
 
   const { filtered, navigable } = config.resolveItems(query);
@@ -120,6 +126,8 @@ const filterListPromptBase = createPrompt<
     filtered,
     navigable,
     terminalWidth,
+    terminalRows,
+    active: clampedActive,
   });
 });
 

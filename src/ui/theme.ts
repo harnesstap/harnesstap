@@ -76,6 +76,10 @@ export function terminalColumns(): number {
   return process.stdout.columns ?? 80;
 }
 
+export function terminalRows(): number {
+  return process.stdout.rows ?? 24;
+}
+
 export function getTableChars() {
   return isTty() && !process.env.NO_COLOR
     ? {}
