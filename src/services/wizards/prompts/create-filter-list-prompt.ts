@@ -42,6 +42,8 @@ export type FilterListPromptConfig<T> = {
     filtered: T[];
     navigable: T[];
     terminalWidth: number;
+    terminalRows: number;
+    active: number;
   }) => string;
   renderShow: (item: T) => string;
 };
@@ -56,7 +58,7 @@ const filterListPromptBase = createPrompt<
   const [active, setActive] = useState(0);
   const [view, setView] = useState<BrowseShowView>("browse");
   const [showingItem, setShowingItem] = useState<unknown | null>(null);
-  const terminalWidth = useTerminalSize();
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
   const promptScreenRef = useRef<PromptScreen | null>(null);
   if (promptScreenRef.current === null) {
     promptScreenRef.current = createPromptScreen();
@@ -124,6 +126,8 @@ const filterListPromptBase = createPrompt<
     filtered,
     navigable,
     terminalWidth,
+    terminalRows,
+    active: clampedActive,
   });
 });
 

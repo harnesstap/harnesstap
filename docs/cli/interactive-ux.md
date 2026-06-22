@@ -32,6 +32,8 @@ Esc always exits with whatever is typed. An empty query means "no filter" and sh
 
 **Columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
 
+**Viewport:** On height-constrained terminals, browse shows one resource type at a time with a sliding window of rows. Overflow hints show rows above/below and adjacent types. Static `resource list --no-interactive` still prints all type sections.
+
 ### `select-one` — pick one item
 
 Used by: `layer list` catalog browser (install).

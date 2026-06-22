@@ -49,6 +49,189 @@ function hasListNamespace(rows: ResourceListRow[]): boolean {
   return rows.some((row) => formatResourceListNamespace(row).length > 0);
 }
 
+export type SectionViewport = {
+  start: number;
+  end: number;
+};
+
+const INTERACTIVE_CHROME_LINES = 6;
+const SECTION_TABLE_OVERHEAD_LINES = 5;
+
+export function computeMaxVisibleRows(terminalRowCount: number): number {
+  const budget = terminalRowCount - INTERACTIVE_CHROME_LINES - SECTION_TABLE_OVERHEAD_LINES;
+  return Math.max(3, budget - 1);
+}
+
+export function resolveSectionViewport(
+  sectionLength: number,
+  activeIndex: number,
+  maxVisibleRows: number,
+): SectionViewport {
+  if (sectionLength <= maxVisibleRows) {
+    return { start: 0, end: sectionLength };
+  }
+  const middle = Math.floor(maxVisibleRows / 2);
+  let start = activeIndex - middle;
+  if (start < 0) start = 0;
+  if (start + maxVisibleRows > sectionLength) {
+    start = sectionLength - maxVisibleRows;
+  }
+  return { start, end: start + maxVisibleRows };
+}
+
+export type ActiveSectionContext = {
+  type: ResourceType;
+  indexInSection: number;
+  sectionRows: ResourceListRow[];
+  prevSection?: { type: ResourceType; count: number };
+  nextSection?: { type: ResourceType; count: number };
+};
+
+function sectionCount(navigable: ResourceListRow[], type: ResourceType): number {
+  return navigable.filter((row) => row.type === type).length;
+}
+
+export function resolveActiveSectionContext(
+  navigable: ResourceListRow[],
+  active: number,
+): ActiveSectionContext {
+  const selected = navigable[active];
+  if (!selected) {
+    return { type: "skill", indexInSection: 0, sectionRows: [] };
+  }
+  const type = selected.type;
+  const sectionRows = navigable.filter((row) => row.type === type);
+  const indexInSection = sectionRows.findIndex((row) => row.id === selected.id);
+
+  const typeIndex = RESOURCE_TYPES.indexOf(type);
+  const prevSection = RESOURCE_TYPES.slice(0, typeIndex)
+    .reverse()
+    .map((sectionType) => ({
+      type: sectionType,
+      count: sectionCount(navigable, sectionType),
+    }))
+    .find((section) => section.count > 0);
+  const nextSection = RESOURCE_TYPES.slice(typeIndex + 1)
+    .map((sectionType) => ({
+      type: sectionType,
+      count: sectionCount(navigable, sectionType),
+    }))
+    .find((section) => section.count > 0);
+
+  return { type, indexInSection, sectionRows, prevSection, nextSection };
+}
+
+export type ResourceListViewportOptions = ResourceListRenderOptions & {
+  activeIndex: number;
+  navigable: ResourceListRow[];
+  terminalRows: number;
+  selectedResourceId?: string;
+};
+
+function clampIndex(index: number, length: number): number {
+  if (length === 0) return 0;
+  return Math.max(0, Math.min(index, length - 1));
+}
+
+function renderViewportOverflowHints(
+  ctx: ActiveSectionContext,
+  viewport: SectionViewport,
+): string[] {
+  const hints: string[] = [];
+  const hiddenBelow = ctx.sectionRows.length - viewport.end;
+  const hiddenAbove = viewport.start;
+  if (hiddenAbove > 0) {
+    hints.push(theme.muted(`  ↑ ${hiddenAbove} above`));
+  }
+  if (hiddenBelow > 0) {
+    hints.push(theme.muted(`  ↓ ${hiddenBelow} more in ${ctx.type}`));
+  }
+  if (ctx.nextSection) {
+    hints.push(
+      theme.muted(
+        `  ${ctx.nextSection.type} (${ctx.nextSection.count}) · ↓ next type`,
+      ),
+    );
+  }
+  if (viewport.start === 0 && ctx.prevSection) {
+    hints.push(
+      theme.muted(
+        `  ${ctx.prevSection.type} (${ctx.prevSection.count}) · ↑ prev type`,
+      ),
+    );
+  }
+  return hints;
+}
+
+export function renderGroupedResourceListViewport(
+  resources: ResourceListRow[],
+  opts: ResourceListViewportOptions,
+): string {
+  if (resources.length === 0) {
+    return "No resources found.";
+  }
+
+  const ctx = resolveActiveSectionContext(opts.navigable, opts.activeIndex);
+  if (ctx.sectionRows.length === 0) {
+    return "No resources found.";
+  }
+
+  const maxVisibleRows = computeMaxVisibleRows(opts.terminalRows);
+  const viewport = resolveSectionViewport(
+    ctx.sectionRows.length,
+    ctx.indexInSection,
+    maxVisibleRows,
+  );
+  const visibleRows = ctx.sectionRows.slice(viewport.start, viewport.end);
+  const hasNamespace = hasListNamespace(visibleRows);
+  const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
+
+  return [
+    renderResourceTypeSubheader(ctx.type, ctx.sectionRows.length),
+    renderTable({
+      columns,
+      rows: decorateRowsForSelection(visibleRows, opts.selectedResourceId),
+      ...resourceListTableLayout(opts),
+    }),
+    ...renderViewportOverflowHints(ctx, viewport),
+  ].join("\n");
+}
+
+export function renderFlatResourceListViewport(
+  resources: ResourceListRow[],
+  opts: ResourceListViewportOptions,
+): string {
+  if (resources.length === 0) {
+    return "No resources found.";
+  }
+
+  const maxVisibleRows = computeMaxVisibleRows(opts.terminalRows);
+  const activeIndex = clampIndex(opts.activeIndex, resources.length);
+  const viewport = resolveSectionViewport(resources.length, activeIndex, maxVisibleRows);
+  const visibleRows = resources.slice(viewport.start, viewport.end);
+  const hasNamespace = hasListNamespace(visibleRows);
+  const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
+  const selectedId = resources[activeIndex]?.id;
+
+  const hints: string[] = [];
+  if (viewport.start > 0) {
+    hints.push(theme.muted(`  ↑ ${viewport.start} above`));
+  }
+  if (viewport.end < resources.length) {
+    hints.push(theme.muted(`  ↓ ${resources.length - viewport.end} more`));
+  }
+
+  return [
+    renderTable({
+      columns,
+      rows: decorateRowsForSelection(visibleRows, selectedId),
+      summary: `${resources.length} resources`,
+      ...resourceListTableLayout(opts),
+    }),
+    ...hints,
+  ].join("\n");
+}
+
 function resourceListTableLayout(opts: ResourceListRenderOptions): {
   maxWidth: number;
   wordWrap: true;
