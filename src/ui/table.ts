@@ -66,7 +66,9 @@ export function computeColumnWidths(
     const shares = columns.map((col) => col.widthShare ?? 0);
     const widths = shares.map((share) => Math.floor(available * share));
     const allocated = widths.reduce((sum, width) => sum + width, 0);
-    widths[0] += available - allocated;
+    if (widths.length > 0) {
+      widths[0] = (widths[0] ?? 0) + available - allocated;
+    }
     return widths;
   }
 
@@ -77,7 +79,7 @@ export function computeColumnWidths(
 
   const available = maxWidth - overhead;
   const minWidths = columns.map((col, index) =>
-    Math.min(col.width + 2, contentWidths[index]),
+    Math.min(col.width + 2, contentWidths[index] ?? col.width + 2),
   );
   const minTotal = minWidths.reduce((sum, width) => sum + width, 0);
 
@@ -93,7 +95,7 @@ export function computeColumnWidths(
     });
   }
 
-  const extra = contentWidths.map((width, index) => width - minWidths[index]);
+  const extra = contentWidths.map((width, index) => width - (minWidths[index] ?? 0));
   const extraTotal = extra.reduce((sum, width) => sum + width, 0);
   const budget = available - minTotal;
 
@@ -101,11 +103,13 @@ export function computeColumnWidths(
     if (extraTotal === 0) {
       return min;
     }
-    return min + Math.floor((budget * extra[index]) / extraTotal);
+    return min + Math.floor((budget * (extra[index] ?? 0)) / extraTotal);
   });
 
-  let allocated = widths.reduce((sum, width) => sum + width, 0);
-  widths[0] += available - allocated;
+  const allocated = widths.reduce((sum, width) => sum + width, 0);
+  if (widths.length > 0) {
+    widths[0] = (widths[0] ?? 0) + available - allocated;
+  }
   return widths;
 }
 

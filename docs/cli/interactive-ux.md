@@ -28,6 +28,10 @@ Used by: `resource list` interactive filter.
 
 Esc always exits with whatever is typed. An empty query means "no filter" and shows the full list. Help label: `esc exit`.
 
+**Display behavior:** The filter runs on an alternate terminal screen so typing and scrolling do not leave ghost lines in your scrollback. When you exit, the main screen is restored and the final filtered list prints normally. The table reflows when you resize the terminal.
+
+**Columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
+
 ### `select-one` — pick one item
 
 Used by: `layer list` catalog browser (install).
