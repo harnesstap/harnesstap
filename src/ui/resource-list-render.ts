@@ -2,7 +2,7 @@ import type { Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import * as format from "./format.js";
 import { renderTable, type Column } from "./table.js";
-import { theme } from "./theme.js";
+import { terminalColumns, theme } from "./theme.js";
 
 export const DEFAULT_RESOURCE_LIST_PER_TYPE_LIMIT = 10;
 
@@ -47,6 +47,16 @@ export function formatResourceListNamespace(resource: ResourceListRow): string {
 
 function hasListNamespace(rows: ResourceListRow[]): boolean {
   return rows.some((row) => formatResourceListNamespace(row).length > 0);
+}
+
+function resourceListTableLayout(opts: ResourceListRenderOptions): {
+  maxWidth: number;
+  wordWrap: true;
+} {
+  return {
+    maxWidth: opts.maxWidth ?? terminalColumns(),
+    wordWrap: true,
+  };
 }
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
@@ -302,8 +312,7 @@ export function renderGroupedLayerEditTables(
     lines.push(renderTable({
       columns,
       rows: decorateRowsForCheckboxes(visible, opts),
-      maxWidth: opts.maxWidth,
-      wordWrap: opts.maxWidth !== undefined,
+      ...resourceListTableLayout(opts),
     }));
     if (hiddenCount > 0) {
       lines.push(renderHiddenRowsHint(hiddenCount));
@@ -338,8 +347,7 @@ export function renderFlatLayerEditTable(
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, true),
       rows: decorateRowsForCheckboxes(visible, opts),
       summary: `${checkedCount} selected ${theme.muted(`(${sortedRows.length} resources)`)}`,
-      maxWidth: opts.maxWidth,
-      wordWrap: opts.maxWidth !== undefined,
+      ...resourceListTableLayout(opts),
     }),
   ];
   if (hiddenCount > 0) {
@@ -406,8 +414,7 @@ export function renderGroupedResourceListTables(
     lines.push(renderTable({
       columns,
       rows: decorateRowsForSelection(visible, opts.selectedResourceId),
-      maxWidth: opts.maxWidth,
-      wordWrap: opts.maxWidth !== undefined,
+      ...resourceListTableLayout(opts),
     }));
     if (hiddenCount > 0) {
       lines.push(renderHiddenRowsHint(hiddenCount));
@@ -441,8 +448,7 @@ export function renderFlatResourceListTable(
       columns: makeResourceListColumns(opts.showId, false, hasNamespace, highlightSelection),
       rows: decorateRowsForSelection(visible, opts.selectedResourceId),
       summary: `${sortedRows.length} resources`,
-      maxWidth: opts.maxWidth,
-      wordWrap: opts.maxWidth !== undefined,
+      ...resourceListTableLayout(opts),
     }),
   ];
   if (hiddenCount > 0) {
