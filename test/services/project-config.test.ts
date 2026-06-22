@@ -6,6 +6,7 @@ import {
   mergeProjectConfigLocalOverrides,
   parseProjectConfigFile,
   resolveProfileEnvironment,
+  validateProjectConfig,
 } from "../../src/services/project-config.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
@@ -276,6 +277,74 @@ selector = "team-stack"
         default_environment: undefined,
       };
       expect(resolveProfileEnvironment(configWithoutDefault, profileWithoutEnv)).toBeUndefined();
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("validateProjectConfig accepts valid inline layer references", () => {
+    const root = createTempDir("project-config-validate-valid");
+    try {
+      const configPath = join(root, ".harnessdeck", "config.toml");
+      writeTextFile(configPath, VALID_PROJECT_CONFIG);
+      const config = parseProjectConfigFile(configPath);
+
+      expect(validateProjectConfig(config)).toEqual({ valid: true, errors: [] });
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("validateProjectConfig rejects unknown inline layer references", () => {
+    const root = createTempDir("project-config-validate-inline");
+    try {
+      const configPath = join(root, ".harnessdeck", "config.toml");
+      writeTextFile(
+        configPath,
+        `schema = "urn:harnessdeck:project:v1"
+version = 1
+
+[[profiles]]
+name = "custom"
+source = "inline"
+layer = "missing-layer"
+`,
+      );
+      const config = parseProjectConfigFile(configPath);
+
+      expect(validateProjectConfig(config)).toEqual({
+        valid: false,
+        errors: [
+          "Profile custom with inline source references unknown layer: missing-layer",
+        ],
+      });
+    } finally {
+      cleanupDir(root);
+    }
+  });
+
+  it("validateProjectConfig rejects unknown default_profile", () => {
+    const root = createTempDir("project-config-validate-default-profile");
+    try {
+      const configPath = join(root, ".harnessdeck", "config.toml");
+      writeTextFile(
+        configPath,
+        `schema = "urn:harnessdeck:project:v1"
+version = 1
+default_profile = "missing"
+
+[[profiles]]
+name = "dev"
+source = "local"
+selector = "team-stack"
+`,
+      );
+      const config = parseProjectConfigFile(configPath);
+
+      expect(validateProjectConfig(config)).toEqual({
+        valid: false,
+        errors: ["default_profile references unknown profile: missing"],
+      });
     } finally {
       cleanupDir(root);
     }

@@ -250,6 +250,11 @@ import {
   handleProfileUseProjectDelegation,
   handleUseCommand,
 } from "./services/use-command.js";
+import {
+  handleConfigInitCommand,
+  handleConfigShowCommand,
+  handleConfigValidateCommand,
+} from "./services/config-command.js";
 import { detectGlobalProfileStatus } from "./services/global-profile-drift.js";
 import { maybePromptProfileEnable } from "./services/profile-enable-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./services/profile-switch-prompt.js";
@@ -6568,6 +6573,37 @@ program
   .option("--interactive", "Enable interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
   .action(handleUseCommand);
+
+const configCmd = configureCommandGroup(
+  program
+    .command("config")
+    .description("Inspect and validate project profile config (.harnessdeck/config.toml)"),
+);
+
+configCmd
+  .command("show")
+  .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show resolved project profile config")
+  .action((opts: { project?: string; format?: string }) => {
+    handleConfigShowCommand(opts);
+  });
+
+configCmd
+  .command("validate")
+  .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Validate project profile config references")
+  .action((opts: { project?: string; format?: string }) => {
+    handleConfigValidateCommand(opts);
+  });
+
+configCmd
+  .command("init")
+  .description("Create a starter .harnessdeck/config.toml (not yet implemented)")
+  .action(() => {
+    handleConfigInitCommand();
+  });
 
 program
   .command("mirror")

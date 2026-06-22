@@ -298,6 +298,6 @@ describe("CLI help and command organization", () => {
   it("documents profile list and use in group help", async () => {
     const result = await runCli(["profile", "-h"]);
     expect(result.stdout).toMatch(/list \(ls\).*List local profile/);
-    expect(result.stdout).toMatch(/use <name>.*Switch the active profile/);
+    expect(result.stdout).toMatch(/use \[name\].*Switch the active profile/);
   });
 });

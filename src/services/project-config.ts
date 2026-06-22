@@ -341,3 +341,47 @@ export function resolveProfileEnvironment(
   }
   return config.default_environment;
 }
+
+export interface ProjectConfigValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export function validateProjectConfig(config: ProjectConfig): ProjectConfigValidationResult {
+  const errors: string[] = [];
+  const profileNames = new Set(config.profiles.map((profile) => profile.name));
+  const environmentNames = new Set(config.environments.map((environment) => environment.name));
+  const layerNames = new Set(config.layers.map((layer) => layer.name));
+
+  if (config.default_profile && !profileNames.has(config.default_profile)) {
+    errors.push(`default_profile references unknown profile: ${config.default_profile}`);
+  }
+
+  if (config.default_environment && !environmentNames.has(config.default_environment)) {
+    errors.push(
+      `default_environment references unknown environment: ${config.default_environment}`,
+    );
+  }
+
+  for (const profile of config.profiles) {
+    if (profile.environment && !environmentNames.has(profile.environment)) {
+      errors.push(
+        `Profile ${profile.name} references unknown environment: ${profile.environment}`,
+      );
+    }
+
+    if (profile.source === "inline") {
+      const layerKey = profile.layer;
+      if (!layerKey || !layerNames.has(layerKey)) {
+        errors.push(
+          `Profile ${profile.name} with inline source references unknown layer: ${layerKey ?? "(missing)"}`,
+        );
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}

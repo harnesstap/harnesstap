@@ -66,6 +66,24 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "use --profile dev --dry-run --format json",
     ],
   },
+  "config.show": {
+    description: "Show resolved project profile config",
+    examples: [
+      "config show",
+      "config show --project . --format json",
+    ],
+  },
+  "config.validate": {
+    description: "Validate project profile config references",
+    examples: [
+      "config validate",
+      "config validate --format json",
+    ],
+  },
+  "config.init": {
+    description: "Create a starter .harnessdeck/config.toml (not yet implemented)",
+    examples: ["config init"],
+  },
   status: {
     description: "Show current project status and drift summary",
     examples: [
