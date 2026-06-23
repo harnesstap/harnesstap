@@ -9,7 +9,7 @@ export const DEFAULT_SECTION_TABLE_OVERHEAD_LINES = 5;
 export const BORDERED_TABLE_LINES_PER_ROW = 2;
 
 export const VIEWPORT_CHROME_LINES = {
-  resourceList: 6,
+  resourceList: 5,
   catalogBrowse: 8,
   catalogSearch: 10,
   layerEdit: 7,

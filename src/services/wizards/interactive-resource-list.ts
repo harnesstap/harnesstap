@@ -2,7 +2,6 @@ import type { ResourceType } from "../../types.js";
 import { renderResourceShow } from "../resource-show.js";
 import {
   filterResourcesBySearch,
-  formatResourceSelectionLabel,
   listNavigableResources,
   renderFlatResourceListViewport,
   renderGroupedResourceListViewport,
@@ -72,9 +71,6 @@ export const promptForInteractiveResourceList: (
         const tables = config.typeFilter
           ? renderFlatResourceListViewport(filtered, renderOpts)
           : renderGroupedResourceListViewport(filtered, renderOpts);
-        const selectionLine = selectedItem
-          ? `Show: ${theme.accent(`> ${formatResourceSelectionLabel(selectedItem)}`)}`
-          : theme.muted("No matching resources");
         const helpLine = buildHelpLine([
           ["↑↓", "select"],
           ["type", "search"],
@@ -86,7 +82,6 @@ export const promptForInteractiveResourceList: (
         return [
           `${prefix} ${styledMessage}`,
           `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
-          selectionLine,
           "",
           tables,
           "",

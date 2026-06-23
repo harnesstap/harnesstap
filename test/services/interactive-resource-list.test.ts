@@ -89,4 +89,19 @@ describe("interactive resource list prompt", () => {
 
     await expect(answer).resolves.toEqual({ query: "" });
   });
+
+  it("does not render Active or Show selection line in browse view", async () => {
+    const { getScreen } = await render(
+      promptForInteractiveResourceList,
+      {
+        message: "Filter resources",
+        resources: [...sampleResources],
+      },
+      { clearPromptOnDone: true },
+    );
+
+    const frame = getScreen();
+    expect(frame).not.toMatch(/\nShow: /);
+    expect(frame).not.toMatch(/\nActive: /);
+  });
 });
