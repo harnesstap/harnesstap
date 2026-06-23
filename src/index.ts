@@ -263,7 +263,6 @@ import {
 } from "./services/wizards/shared.js";
 import {
   toLayerChoices,
-  toResourceChoices,
 } from "./services/completion/choices.js";
 import {
   applyLayerEdit,
@@ -278,6 +277,7 @@ import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
 import { runLayerApplyWizard } from "./services/wizards/layer-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import { runResourceShowWizard } from "./services/wizards/resource-show.js";
 import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
 import { runAddPackageWizard } from "./services/wizards/add-package.js";
@@ -6356,16 +6356,7 @@ resourceCmd
         format,
         missingRequiredArgs: !resource,
       }),
-      prompt: async () => {
-        const choices = toResourceChoices();
-        if (choices.length === 0) {
-          return undefined;
-        }
-        return promptForSearchableChoice({
-          message: "Which resource do you want to show?",
-          choices,
-        });
-      },
+      prompt: async () => runResourceShowWizard(),
     });
     if (!resolvedResource) {
       process.exitCode = 1;
