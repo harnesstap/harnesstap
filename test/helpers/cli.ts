@@ -6,6 +6,8 @@ import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } fr
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
 import type { runLayerEditWizard as RunLayerEditWizard } from "../../src/services/wizards/layer-edit.js";
 import type { runInteractiveCatalogSearch as RunInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.js";
+import type { runInteractiveCatalogBrowser as RunInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.js";
+import type { runInteractiveLayerListBrowse as RunInteractiveLayerListBrowse } from "../../src/services/wizards/interactive-layer-list-browse.js";
 
 export interface CliResult {
   stdout: string;
@@ -158,16 +160,7 @@ mock.module("../../src/services/wizards/layer-edit.js", () => ({
   runLayerEditWizard: layerEditWizardMock,
 }));
 
-const interactiveCatalogBrowserMock = mock(async (
-  ...args: Parameters<typeof RunInteractiveCatalogBrowser>
-) => {
-  if (!runCliHarnessActive) {
-    const actualWizard = await import(
-      "../../src/services/wizards/interactive-catalog-browser.ts?actual"
-    );
-    return actualWizard.runInteractiveCatalogBrowser(...args);
-  }
-  const value = shiftSinglePromptValue();
+function resolveInteractiveLayerInstallSelection(value: unknown) {
   if (typeof value === "string") {
     const parts = value.split("/").filter(Boolean);
     if (parts.length === 2) {
@@ -210,12 +203,40 @@ const interactiveCatalogBrowserMock = mock(async (
     }
   }
   throw new Error(
-    "Interactive catalog browser responses must resolve to org/library string or selection object",
+    "Interactive layer install responses must resolve to org/library string or selection object",
   );
+}
+
+const interactiveCatalogBrowserMock = mock(async (
+  ...args: Parameters<typeof RunInteractiveCatalogBrowser>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/interactive-catalog-browser.ts?actual"
+    );
+    return actualWizard.runInteractiveCatalogBrowser(...args);
+  }
+  return resolveInteractiveLayerInstallSelection(shiftSinglePromptValue());
 });
 
 mock.module("../../src/services/wizards/interactive-catalog-browser.js", () => ({
   runInteractiveCatalogBrowser: interactiveCatalogBrowserMock,
+}));
+
+const interactiveLayerListBrowseMock = mock(async (
+  ...args: Parameters<typeof RunInteractiveLayerListBrowse>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/interactive-layer-list-browse.ts?actual"
+    );
+    return actualWizard.runInteractiveLayerListBrowse(...args);
+  }
+  return resolveInteractiveLayerInstallSelection(shiftSinglePromptValue());
+});
+
+mock.module("../../src/services/wizards/interactive-layer-list-browse.js", () => ({
+  runInteractiveLayerListBrowse: interactiveLayerListBrowseMock,
 }));
 
 const interactiveCatalogSearchMock = mock(async (

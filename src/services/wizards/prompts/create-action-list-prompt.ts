@@ -8,6 +8,7 @@ import {
 } from "@inquirer/core";
 import { handleNavigationKeypress } from "./hooks/use-list-navigation.js";
 import { handleSearchKeypress } from "./hooks/use-local-query-filter.js";
+import { useTerminalSize } from "./hooks/use-terminal-size.js";
 import {
   clampActiveIndex,
   interactivePromptTheme,
@@ -32,6 +33,9 @@ export type ActionListPromptConfig<T> = {
     query: string;
     filteredRows: T[];
     activeRow: T | undefined;
+    active: number;
+    terminalWidth: number;
+    terminalRows: number;
   }) => string;
 };
 
@@ -50,6 +54,7 @@ const actionListPromptBase = createPrompt<
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
 
   const filteredRows = config.filterRows(config.rows, query);
   const clampedActive = clampActiveIndex(active, filteredRows.length);
@@ -108,6 +113,9 @@ const actionListPromptBase = createPrompt<
     query,
     filteredRows: filteredRows as unknown[],
     activeRow,
+    active: clampedActive,
+    terminalWidth,
+    terminalRows,
   });
 });
 

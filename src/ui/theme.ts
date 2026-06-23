@@ -16,6 +16,7 @@ export const icons = {
   danger: "✗",
   hint: "→",
   bullet: "·",
+  profile: "◎",
   added: "+",
   removed: "−",
   modified: "~",

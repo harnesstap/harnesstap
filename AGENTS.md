@@ -32,3 +32,4 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 ## Documentation
 
 - Don't reference spec / plan files in documentation. Prefer including direct content in the documentation file itself.
+- Don't commit spec / plan files to the repository.

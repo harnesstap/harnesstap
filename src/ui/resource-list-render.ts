@@ -2,6 +2,10 @@ import type { Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import * as format from "./format.js";
 import {
+  matchesListSearchQuery,
+  parseListSearchQuery,
+} from "./list-search.js";
+import {
   computeMaxVisibleTableRows,
   renderFoldedHintLine,
   resolveSectionViewport,
@@ -416,16 +420,28 @@ export function filterResourcesBySearch(
   resources: ResourceListRow[],
   search: string,
 ): ResourceListRow[] {
-  const normalizedSearch = search.trim().toLowerCase();
-  if (normalizedSearch.length === 0) {
+  const parsed = parseListSearchQuery(search);
+  if (parsed.raw.length === 0) {
     return resources;
   }
 
-  return resources.filter((resource) =>
-    `${resource.name} ${resource.description ?? ""} ${resource.display_name} ${formatResourceListNamespace(resource)}`
-      .toLowerCase()
-      .includes(normalizedSearch),
-  );
+  const sectionIsResourceType =
+    parsed.section !== undefined
+    && (RESOURCE_TYPES as readonly string[]).includes(parsed.section);
+
+  const textQuery = sectionIsResourceType
+    ? parsed
+    : parsed.section !== undefined
+      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+      : parsed;
+
+  return resources.filter((resource) => {
+    if (sectionIsResourceType && resource.type !== parsed.section) {
+      return false;
+    }
+    const haystack = `${resource.name} ${resource.description ?? ""} ${resource.display_name} ${formatResourceListNamespace(resource)}`;
+    return matchesListSearchQuery(haystack, textQuery);
+  });
 }
 
 export function filterLayerEditRowsBySearch(

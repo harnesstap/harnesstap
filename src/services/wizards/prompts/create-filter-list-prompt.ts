@@ -58,12 +58,12 @@ const filterListPromptBase = createPrompt<
   const [active, setActive] = useState(0);
   const [view, setView] = useState<BrowseShowView>("browse");
   const [showingItem, setShowingItem] = useState<unknown | null>(null);
-  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
   const promptScreenRef = useRef<PromptScreen | null>(null);
   if (promptScreenRef.current === null) {
     promptScreenRef.current = createPromptScreen();
     promptScreenRef.current.enter();
   }
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
 
   useEffect(() => {
     return () => promptScreenRef.current?.exit();

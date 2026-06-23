@@ -6,14 +6,18 @@ export type TerminalSize = {
   height: number;
 };
 
-export function useTerminalSize(): TerminalSize {
-  const [size, setSize] = useState<TerminalSize>({
+export function readTerminalSize(): TerminalSize {
+  return {
     width: terminalColumns(),
     height: terminalRows(),
-  });
+  };
+}
+
+export function useTerminalSize(): TerminalSize {
+  const [size, setSize] = useState<TerminalSize>(readTerminalSize);
   useEffect(() => {
-    const onResize = () =>
-      setSize({ width: terminalColumns(), height: terminalRows() });
+    const onResize = () => setSize(readTerminalSize());
+    onResize();
     process.stdout.on("resize", onResize);
     return () => process.stdout.off("resize", onResize);
   }, []);

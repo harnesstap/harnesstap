@@ -10,6 +10,25 @@ import {
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("resource list render", () => {
+  it("filters by skill:dbt type prefix", () => {
+    const rows = toResourceListRows([
+      {
+        ...makeResourceInput({ type: "skill", name: "migrating-dbt-core" }),
+        id: "s1",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-02T00:00:00.000Z",
+      },
+      {
+        ...makeResourceInput({ type: "rule", name: "dbt-style-guide" }),
+        id: "r1",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-03T00:00:00.000Z",
+      },
+    ]);
+    const filtered = filterResourcesBySearch(rows, "skill:dbt");
+    expect(filtered.map((row) => row.name)).toEqual(["migrating-dbt-core"]);
+  });
+
   it("filters resources by name and description", () => {
     const rows = toResourceListRows([
       {

@@ -17,8 +17,8 @@ import {
   catalogLayerKey,
   formatCatalogSelectionLabel,
   renderCatalogLayerShow,
-  renderCatalogListTable,
-  renderCatalogSearchTable,
+  renderCatalogListViewport,
+  renderCatalogSearchViewport,
 } from "../../../ui/catalog-list-render.js";
 import { theme } from "../../../ui/theme.js";
 import {
@@ -29,6 +29,7 @@ import {
   isSearchCharacter,
 } from "./primitives.js";
 import { useDebouncedRemoteSearch } from "./hooks/use-debounced-remote-search.js";
+import { useTerminalSize } from "./hooks/use-terminal-size.js";
 import type {
   RemoteCatalogListApplyResult,
   RemoteCatalogListConfig,
@@ -76,6 +77,7 @@ export const createRemoteCatalogListPrompt: (
   );
   const [view, setView] = useState<PromptView>("browse");
   const [showingLayer, setShowingLayer] = useState<CatalogLayer | null>(null);
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
   const { items: layers, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
     initialQuery: config.initialQuery,
     limitFor: (nextQuery) => (nextQuery.trim() ? 25 : 10),
@@ -231,8 +233,16 @@ export const createRemoteCatalogListPrompt: (
   const tableSection = error
     ? theme.danger(error)
     : isApplyMode
-      ? renderCatalogSearchTable(layers, new Set(checkedLayers.keys()), { activeLayerKey })
-      : renderCatalogListTable(layers, {
+      ? renderCatalogSearchViewport(layers, new Set(checkedLayers.keys()), {
+          activeLayerKey,
+          activeIndex: clampedActive,
+          terminalRows,
+          maxWidth: terminalWidth,
+        })
+      : renderCatalogListViewport(layers, {
+          activeIndex: clampedActive,
+          terminalRows,
+          maxWidth: terminalWidth,
           selectedSelector: activeLayer
             ? formatCatalogSelectionLabel(activeLayer)
             : undefined,

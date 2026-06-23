@@ -8,6 +8,7 @@ import { listLayers } from "../models/layer-model.js";
 import type { Layer } from "../types.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
 import { renderCatalogListChunk } from "../ui/catalog-list-render.js";
+import { formatLocalLayerListName } from "../ui/layer-list-render.js";
 import type { Column } from "../ui/table.js";
 import { ui } from "../ui/index.js";
 import { renderWarn } from "../ui/status.js";
@@ -30,7 +31,7 @@ import {
   resolveApplyConflictPolicy,
 } from "./materialization-conflicts.js";
 import { getActiveProfileName } from "./active-profile.js";
-import { runInteractiveCatalogBrowser } from "./wizards/interactive-catalog-browser.js";
+import { runInteractiveLayerListBrowse as promptInteractiveLayerListBrowse } from "./wizards/interactive-layer-list-browse.js";
 import { runInteractiveCatalogSearch } from "./wizards/interactive-catalog-search.js";
 import { shouldUseWizard, isPromptCancellationError } from "./wizards/shared.js";
 
@@ -173,7 +174,10 @@ export function renderLocalLayerListTable(
         transform: (value) => value || "—",
       },
     ],
-    rows: layers,
+    rows: layers.map((layer) => ({
+      ...layer,
+      name: formatLocalLayerListName(layer, { static: true }),
+    })),
     summary: `${layers.length} layers ${ui.icons.bullet} run \`${formatCommand("layer show <name>")}\` for details`,
     empty: "No layers found.",
   });
@@ -199,7 +203,7 @@ function renderProfileLocalLayerListTable(layers: Layer[]): string {
       },
     ],
     rows: layers.map((layer) => ({
-      name: layer.name,
+      name: formatLocalLayerListName(layer, { static: true }),
       version: layer.version,
       active: activeProfile === layer.name ? "yes" : "",
       description: layer.description ?? "",
@@ -261,21 +265,16 @@ async function runInteractiveLayerListBrowse(opts: HandleLayerListCommandOpts): 
   const localLayers = resolveLocalLayers(opts);
   const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
 
-  ui.header(
-    opts.profileMode
-      ? `Local profiles (${localLayers.length})`
-      : `Local layers (${localLayers.length})`,
-  );
-  console.log(renderLocalLayerListSection(localLayers, opts));
-  console.log("");
-
   try {
-    const selected = await runInteractiveCatalogBrowser({
+    const selected = await promptInteractiveLayerListBrowse({
       message: opts.profileMode
         ? "Select a profile layer to install"
         : "Select a layer to install",
       scopeLabel: formatCatalogScopeLabel(scope),
-      listLayers: ({ q, limit }) => listRemoteLayersForBrowse(opts, { q, limit }),
+      localLayers,
+      profileMode: opts.profileMode,
+      showId: Boolean(opts.showId),
+      listRemoteLayers: ({ q, limit }) => listRemoteLayersForBrowse(opts, { q, limit }),
     });
 
     if (!interactiveDeps) {

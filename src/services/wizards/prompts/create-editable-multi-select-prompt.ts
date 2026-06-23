@@ -16,6 +16,7 @@ import {
 } from "./hooks/use-browse-show-view.js";
 import { handleNavigationKeypress } from "./hooks/use-list-navigation.js";
 import { handleSearchKeypress } from "./hooks/use-local-query-filter.js";
+import { useTerminalSize } from "./hooks/use-terminal-size.js";
 import {
   buildHelpLine,
   clampActiveIndex,
@@ -57,7 +58,10 @@ export type EditableMultiSelectPromptConfig<T extends EditableMultiSelectRow> = 
     filtered: T[];
     navigable: T[];
     activeRow: T | undefined;
+    active: number;
     checkedCount: number;
+    terminalWidth: number;
+    terminalRows: number;
   }) => string;
   renderShow: (row: T) => string;
   renderConstraint: (args: {
@@ -82,6 +86,7 @@ const editableMultiSelectPromptBase = createPrompt<
   const [showingRow, setShowingRow] = useState<EditableMultiSelectRow | null>(null);
   const [constraintDraft, setConstraintDraft] = useState("latest");
   const [constraintTargetId, setConstraintTargetId] = useState<string | null>(null);
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
 
   const { filtered, navigable } = config.resolveItems(rows, query);
   const clampedActive = clampActiveIndex(active, navigable.length);
@@ -259,7 +264,10 @@ const editableMultiSelectPromptBase = createPrompt<
     filtered,
     navigable,
     activeRow,
+    active: clampedActive,
     checkedCount,
+    terminalWidth,
+    terminalRows,
   });
 });
 
