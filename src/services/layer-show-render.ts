@@ -191,6 +191,23 @@ export function renderLayerShow(
   return sections.join("\n");
 }
 
+export function renderLayerListShow(
+  layer: Layer,
+  opts?: LayerShowRenderOptions,
+): string {
+  return renderPanel({
+    title: ["LAYER", formatLayerLabel(layer)],
+    rows: [
+      ["Description", layer.description || "—"],
+      ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+      ...(opts?.profileExtras
+        ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
+        : []),
+      ["Updated", formatRelativeTimeWithAbsolute(layer.updated_at)],
+    ],
+  });
+}
+
 export function renderLayerShowForLayer(
   layer: Layer,
   opts?: LayerShowRenderOptions,

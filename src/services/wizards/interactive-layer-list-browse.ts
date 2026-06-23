@@ -23,7 +23,7 @@ import {
   toRemoteBrowseRows,
   type LayerListBrowseRow,
 } from "../../ui/layer-list-render.js";
-import { renderLayerShowForLayer } from "../../services/layer-show-render.js";
+import { renderLayerListShow } from "../../services/layer-show-render.js";
 import {
   computeShowViewportBounds,
   renderScrollableShowContent,
@@ -258,7 +258,7 @@ export const promptForInteractiveLayerListBrowse: (
       }
 
       const showContent = showingRow.section === "local"
-        ? renderLayerShowForLayer(showingRow.layer, {
+        ? renderLayerListShow(showingRow.layer, {
             showId: config.showId,
             profileExtras: config.profileMode && activeProfileName
               ? { active: activeProfileName === showingRow.layer.name }
@@ -335,7 +335,7 @@ export const promptForInteractiveLayerListBrowse: (
   }
 
   if (view === "show" && showingRow?.section === "local") {
-    const showContent = renderLayerShowForLayer(showingRow.layer, {
+    const showContent = renderLayerListShow(showingRow.layer, {
       showId: config.showId,
       profileExtras: config.profileMode && activeProfileName
         ? { active: activeProfileName === showingRow.layer.name }
