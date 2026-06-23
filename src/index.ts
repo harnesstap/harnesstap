@@ -246,6 +246,15 @@ import {
   tagProfileCommand,
   useProfileCommand,
 } from "./services/profile-commands.js";
+import {
+  handleProfileUseProjectDelegation,
+  handleUseCommand,
+} from "./services/use-command.js";
+import {
+  handleConfigInitCommand,
+  handleConfigShowCommand,
+  handleConfigValidateCommand,
+} from "./services/config-command.js";
 import { detectGlobalProfileStatus } from "./services/global-profile-drift.js";
 import { maybePromptProfileEnable } from "./services/profile-enable-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./services/profile-switch-prompt.js";
@@ -5785,7 +5794,9 @@ profileCmd
 
 profileCmd
   .command("use")
-  .argument("<name>", "Profile layer name or selector")
+  .argument("[name]", "Profile layer name or selector")
+  .option("--profile <name>", "Profile key from .harnessdeck/config.toml")
+  .option("--project <path>", "Project directory for config.toml discovery", ".")
   .option("--dry-run", "Show what would be written")
   .option(
     "--harness <slugs>",
@@ -5798,22 +5809,45 @@ profileCmd
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
   .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--force", "Apply even when the profile is already active and in sync")
+  .option("--no-interactive", "Disable interactive prompts")
+  .option("--interactive", "Enable interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Switch the active profile and apply globally to harness home paths")
-  .action(async (name: string, opts: {
+  .action(async (name: string | undefined, opts: {
+    profile?: string;
+    project?: string;
     dryRun?: boolean;
     harness?: string;
     onConflict?: string;
     account?: string;
     baseUrl?: string;
     pull?: boolean;
+    force?: boolean;
+    interactive?: boolean;
+    noInteractive?: boolean;
     format?: string;
   }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
+
+    if (!name) {
+      if (await handleProfileUseProjectDelegation(opts)) {
+        return;
+      }
+      const globalProfileName = opts.profile;
+      if (!globalProfileName) {
+        process.exitCode = 1;
+        ui.danger("Profile name is required when no project config is present.");
+        return;
+      }
+      name = globalProfileName;
+    }
+
     const conflictPolicy = resolveApplyConflictPolicy({
       onConflict: opts.onConflict,
+      noInteractive: opts.noInteractive ?? format === "json",
     });
     try {
       if (!opts.dryRun) {
@@ -6518,6 +6552,61 @@ program
     "Scan a project directory or plugin source and import configurations into the database",
   )
   .action(handleScanCommand);
+
+program
+  .command("use")
+  .description("Switch to a project-configured profile and environment")
+  .option("--profile <name>", "Profile key from .harnessdeck/config.toml")
+  .option("--project <path>", "Project directory", ".")
+  .option("--list", "List profiles from project config without applying")
+  .option("--dry-run", "Show what would be written without applying")
+  .option("--force", "Apply even when the profile is already active and in sync")
+  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to global harness preference)",
+  )
+  .option("--account <name>", "Cloud account name for dependency pulls")
+  .option("--base-url <url>", "Cloud base URL for dependency pulls")
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt",
+  )
+  .option("--no-interactive", "Disable interactive prompts")
+  .option("--interactive", "Enable interactive prompts")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .action(handleUseCommand);
+
+const configCmd = configureCommandGroup(
+  program
+    .command("config")
+    .description("Inspect and validate project profile config (.harnessdeck/config.toml)"),
+);
+
+configCmd
+  .command("show")
+  .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Show resolved project profile config")
+  .action((opts: { project?: string; format?: string }) => {
+    handleConfigShowCommand(opts);
+  });
+
+configCmd
+  .command("validate")
+  .option("--project <path>", "Project directory", ".")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Validate project profile config references")
+  .action((opts: { project?: string; format?: string }) => {
+    handleConfigValidateCommand(opts);
+  });
+
+configCmd
+  .command("init")
+  .description("Create a starter .harnessdeck/config.toml (not yet implemented)")
+  .action(() => {
+    handleConfigInitCommand();
+  });
 
 program
   .command("mirror")

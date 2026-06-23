@@ -1,0 +1,35 @@
+# Scenario 40: Use project profile config
+
+**Frequency: Common** · **Status: Shipped**
+
+[← Back to scenarios index](../scenarios.md)
+
+Use this when a repository ships `.harnessdeck/config.toml` with named profiles
+so teammates can switch stacks without remembering layer selectors.
+
+## Inspect the config
+
+```bash
+hd config show
+hd config validate
+hd use --list
+```
+
+`config validate` checks that inline profiles reference layers defined in the
+same file and that default profile/environment keys resolve.
+
+## Switch profiles
+
+```bash
+hd use --profile dev
+hd use --profile prod --dry-run
+hd use                        # interactive picker when multiple profiles exist
+```
+
+`hd use` resolves the profile source (local layer, catalog selector, or inline
+layer table), applies the profile to home harness paths, and optionally switches
+the active environment.
+
+For machine-wide presets outside a repo, use `profile use` instead
+([Scenario 36](./36-switch-profile.md)). For repo baselines without project
+config, use `layer apply` ([Scenario 7](./07-preview-apply-layer.md)).

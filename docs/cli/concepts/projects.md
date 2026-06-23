@@ -122,6 +122,63 @@ See [Scenario 7](../../scenarios/details/07-preview-apply-layer.md).
 
 Use [Profiles](./profiles.md) for machine-wide defaults and projects for repository-specific configuration.
 
+## Project profile config
+
+Repositories can declare named **profiles** in `.harnessdeck/config.toml` (or legacy `deck.toml`). This file maps profile keys to local layers, catalog selectors, or inline layer tables — plus optional project-scoped environments.
+
+Example:
+
+```toml
+schema = "urn:harnessdeck:project:v1"
+version = 1
+default_profile = "dev"
+default_environment = "shared"
+
+[[profiles]]
+name = "dev"
+source = "local"
+selector = "team-stack"
+
+[[profiles]]
+name = "prod"
+source = "catalog"
+selector = "acme/platform/frontend@1.0.0"
+
+[[profiles]]
+name = "custom"
+source = "inline"
+layer = "embedded-layer"
+
+[[environments]]
+name = "shared"
+
+[environments.values]
+REGION = "us"
+
+[[layers]]
+name = "embedded-layer"
+description = "Small inline layer bundled with the repo"
+```
+
+Inspect and validate the resolved config:
+
+```bash
+hd config show
+hd config show --format json
+hd config validate --project .
+hd config validate --format json   # exit 1 when invalid
+```
+
+Switch to a configured profile with `hd use`:
+
+```bash
+hd use                        # interactive picker when multiple profiles exist
+hd use --profile dev          # apply the dev profile directly
+hd use --list                 # list profiles without applying
+```
+
+Project profiles reuse the same layer sources as machine-wide [Profiles](./profiles.md), but apply through `hd use` in the repository instead of `profile use` at home paths. See [Scenario 40](../../scenarios/details/40-use-project-profile.md).
+
 ## Related
 
 - [Layers](./layers.md) — what you apply

@@ -8,6 +8,7 @@ export type RepoProfile =
   | "plugin-source"
   | "layer-bundle"
   | "deck-repo"
+  | "project-config"
   | "harness-project"
   | "unknown";
 
@@ -28,6 +29,12 @@ export function classifyRepo(rootPath: string): RepoClassification {
   if (existsSync(join(rootPath, ".harnessdeck", "deck.toml"))) {
     profiles.push("deck-repo");
   }
+  if (
+    existsSync(join(rootPath, ".harnessdeck", "config.toml")) ||
+    existsSync(join(rootPath, ".harnessdeck", "deck.toml"))
+  ) {
+    profiles.push("project-config");
+  }
   if (detectPlatforms(rootPath).length > 0) {
     profiles.push("harness-project");
   }
@@ -38,9 +45,11 @@ export function classifyRepo(rootPath: string): RepoClassification {
       ? "plugin-source"
       : profiles.includes("deck-repo")
         ? "deck-repo"
-        : profiles.includes("harness-project")
-          ? "harness-project"
-          : "unknown";
+        : profiles.includes("project-config")
+          ? "project-config"
+          : profiles.includes("harness-project")
+            ? "harness-project"
+            : "unknown";
 
   return { primary, profiles };
 }

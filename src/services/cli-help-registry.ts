@@ -56,6 +56,34 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "mirror --reference auto --format json",
     ],
   },
+  use: {
+    description:
+      "Switch to a project-configured profile and environment from .harnessdeck/config.toml",
+    examples: [
+      "use",
+      "use --profile dev",
+      "use --list",
+      "use --profile dev --dry-run --format json",
+    ],
+  },
+  "config.show": {
+    description: "Show resolved project profile config",
+    examples: [
+      "config show",
+      "config show --project . --format json",
+    ],
+  },
+  "config.validate": {
+    description: "Validate project profile config references",
+    examples: [
+      "config validate",
+      "config validate --format json",
+    ],
+  },
+  "config.init": {
+    description: "Create a starter .harnessdeck/config.toml (not yet implemented)",
+    examples: ["config init"],
+  },
   status: {
     description: "Show current project status and drift summary",
     examples: [
@@ -249,9 +277,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "profile.use": {
     description:
-      "Merge profile stack, apply globally, and set active pointer",
+      "Merge profile stack, apply globally, and set active pointer; delegates to project config when present",
     examples: [
       "profile use work",
+      "profile use --profile dev",
       "profile use work --dry-run",
       "profile use work --harness claude-code",
     ],
