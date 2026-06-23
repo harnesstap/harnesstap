@@ -2,7 +2,8 @@ import { ExitPromptError } from "@inquirer/core";
 import inquirer from "inquirer";
 import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
-import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
+import type { runResourceDeleteWizard as RunResourceDeleteWizard } from "../../src/services/wizards/resource-delete.js";
+import type { runLayerShowWizard as RunLayerShowWizard } from "../../src/services/wizards/layer-show.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
 import type { runLayerEditWizard as RunLayerEditWizard } from "../../src/services/wizards/layer-edit.js";
 import type { runInteractiveCatalogSearch as RunInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.js";
@@ -73,7 +74,7 @@ const searchPromptMock = mock(async (...args: Parameters<typeof search>) => {
   return value;
 });
 const searchableMultiSelectMock = mock(async (
-  ...args: Parameters<typeof SearchableMultiSelectPrompt>
+  ...args: Parameters<typeof import("../../src/services/wizards/searchable-multi-select.js").promptForSearchableMultiSelect>
 ) => {
   if (!runCliHarnessActive) {
     const actualPromptModule = await import(
@@ -90,6 +91,60 @@ const searchableMultiSelectMock = mock(async (
   return value;
 });
 
+function normalizeDeleteWizardSelection(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value.length > 0 ? [value] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === "string");
+  }
+  throw new Error(
+    "Delete wizard responses must resolve to a string id or array of ids in runCli test harness",
+  );
+}
+
+const resourceDeleteWizardMock = mock(async (
+  ...args: Parameters<typeof RunResourceDeleteWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/resource-delete.ts?actual"
+    );
+    return actualWizard.runResourceDeleteWizard(...args);
+  }
+  return normalizeDeleteWizardSelection(shiftSinglePromptValue());
+});
+
+const layerDeleteWizardMock = mock(async (
+  ...args: Parameters<typeof RunLayerDeleteWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/layer-delete.ts?actual"
+    );
+    return actualWizard.runLayerDeleteWizard(...args);
+  }
+  return normalizeDeleteWizardSelection(shiftSinglePromptValue());
+});
+
+const layerShowWizardMock = mock(async (
+  ...args: Parameters<typeof RunLayerShowWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/layer-show.ts?actual"
+    );
+    return actualWizard.runLayerShowWizard(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value !== "string") {
+    throw new Error(
+      "Layer show wizard responses must resolve to a string in runCli test harness",
+    );
+  }
+  return value.length > 0 ? value : undefined;
+});
+
 mock.module("inquirer", () => ({
   default: {
     prompt: promptMock,
@@ -102,6 +157,18 @@ mock.module("@inquirer/search", () => ({
 
 mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
   promptForSearchableMultiSelect: searchableMultiSelectMock,
+}));
+
+mock.module("../../src/services/wizards/resource-delete.js", () => ({
+  runResourceDeleteWizard: resourceDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/layer-delete.js", () => ({
+  runLayerDeleteWizard: layerDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/layer-show.js", () => ({
+  runLayerShowWizard: layerShowWizardMock,
 }));
 
 const resourceListWizardMock = mock(async (

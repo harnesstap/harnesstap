@@ -262,9 +262,6 @@ import {
   shouldUseWizard,
 } from "./services/wizards/shared.js";
 import {
-  toLayerChoices,
-} from "./services/completion/choices.js";
-import {
   applyLayerEdit,
   applyLayerEditScripting,
   attachmentKey,
@@ -278,6 +275,7 @@ import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project
 import { runLayerApplyWizard } from "./services/wizards/layer-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
 import { runResourceShowWizard } from "./services/wizards/resource-show.js";
+import { runLayerShowWizard } from "./services/wizards/layer-show.js";
 import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
 import { runAddPackageWizard } from "./services/wizards/add-package.js";
@@ -391,9 +389,9 @@ async function resolveLayerMutationTarget(input: {
   noInteractive?: boolean;
   format?: string;
   message: string;
+  profileMode?: boolean;
 }): Promise<string | undefined> {
   const format = parseOutputFormat(input.format);
-  const choices = toLayerChoices();
 
   return resolveOrPrompt({
     value: input.layerName,
@@ -403,15 +401,7 @@ async function resolveLayerMutationTarget(input: {
       format,
       missingRequiredArgs: !input.layerName,
     }),
-    prompt: async () => {
-      if (choices.length === 0) {
-        return undefined;
-      }
-      return promptForSearchableChoice({
-        message: input.message,
-        choices,
-      });
-    },
+    prompt: async () => runLayerShowWizard({ profileMode: input.profileMode }),
   });
 }
 
@@ -5718,14 +5708,36 @@ profileCmd
 
 profileCmd
   .command("show")
-  .argument("<name>", "Profile layer name or selector")
+  .argument("[name]", "Profile layer name or selector")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Show profile layer details, resources, and dependencies")
-  .action((name: string, opts: { format?: string; showId?: boolean }) => {
+  .action(async (
+    name: string | undefined,
+    opts: {
+      format?: string;
+      showId?: boolean;
+      interactive?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
     const db = getDb();
     initializeSchema(db);
-    const payload = showProfileCommand(name);
+    const resolvedName = name ?? await resolveLayerMutationTarget({
+      layerName: name,
+      profileMode: true,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+      message: "Which profile do you want to show?",
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      renderCliError(missingRequiredArg("name", "profile show"));
+      return;
+    }
+    const payload = showProfileCommand(resolvedName);
     handleLayerShowCommand(formatLayerLabel(payload.profile), opts, {
       active: payload.active,
     });

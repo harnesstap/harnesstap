@@ -32,15 +32,22 @@ Esc always exits with whatever is typed. An empty query means "no filter" and sh
 
 **Columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
 
-**Viewport:** On height-constrained terminals, browse shows one resource type at a time with a sliding window of rows. Overflow hints show rows above/below and adjacent types. Static `resource list --no-interactive` still prints all type sections.
+**Viewport:** On height-constrained terminals, browse shows one resource type at a time with a sliding window of rows. Overflow hints fold onto one line when the terminal is wide enough (for example `↑ 7 above · ↓ 4 more in skill · plugin_pin (14) · ↓ next type`). Static `resource list --no-interactive` still prints all type sections.
+
+**Search prefixes:** Type `skill:dbt` to filter skills whose names or descriptions contain `dbt`. Unknown prefixes are treated as plain text.
+
+**Shortcuts:** `d` deletes the active row after an inline `[y/N]` confirm.
+
+**Chrome:** Selection is shown only in the table (`>` marker and accent color). There is no separate `Active:` / `Show:` line above the table.
 
 ### `select-one` — pick one item
 
-Used by: `layer list` catalog browser (install).
+Used by: `resource show`, `resource delete`, `layer show`, `layer delete`, `profile show`, and `layer list` remote install.
 
 | Key | Behavior |
 | --- | --- |
 | Enter | Confirm the active item and exit |
+| `d` | Delete the active item (delete intents only; inline confirm) |
 | Esc (browse) | **Cancel** the prompt |
 
 Help label: `esc cancel`.

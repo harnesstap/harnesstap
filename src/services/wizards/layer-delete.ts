@@ -1,23 +1,21 @@
 import { listLayers } from "../../models/layer-model.js";
-import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
+import { createLocalLayerPickAdapter } from "./adapters/layer-table-browser.js";
+import { createTableBrowserPrompt } from "./prompts/create-table-browser-prompt.js";
 import { promptForValue } from "./shared.js";
+import { matchesListSearchQuery, parseListSearchQuery } from "../../ui/list-search.js";
 
-function filterLayersBySearch<T extends {
-  name: string;
-  version: string;
-  description?: string;
-  id: string;
-}>(layers: T[], search?: string): T[] {
-  const normalizedSearch = search?.trim().toLowerCase();
-  if (!normalizedSearch) {
+function filterLayersBySearch(
+  layers: ReturnType<typeof listLayers>,
+  search?: string,
+): ReturnType<typeof listLayers> {
+  if (!search?.trim()) {
     return layers;
   }
-
-  return layers.filter((layer) =>
-    `${layer.name} ${layer.version} ${layer.description ?? ""} ${layer.id}`
-      .toLowerCase()
-      .includes(normalizedSearch),
-  );
+  const parsed = parseListSearchQuery(search);
+  return layers.filter((layer) => {
+    const haystack = `${layer.name} ${layer.version} ${layer.description ?? ""} ${layer.id}`;
+    return matchesListSearchQuery(haystack, parsed);
+  });
 }
 
 export async function runLayerDeleteWizard(input?: {
@@ -25,17 +23,21 @@ export async function runLayerDeleteWizard(input?: {
 }): Promise<string[]> {
   const layers = filterLayersBySearch(listLayers(), input?.search);
   if (layers.length > 0) {
-    return promptForSearchableMultiSelect({
-      message: "Which layers do you want to delete?",
+    const result = await createTableBrowserPrompt({
+      message: "Which layer do you want to delete?",
       initialQuery: input?.search,
-      choices: layers.map((layer) => ({
-        name: `${layer.name}@${layer.version}`,
-        value: `${layer.name}@${layer.version}`,
-        description: layer.description,
-      })),
-      pageSize: 10,
-      loop: false,
+      intent: { kind: "pick-one", action: "delete" },
+      adapter: createLocalLayerPickAdapter({
+        layers,
+        onPick: (layer) => `${layer.name}@${layer.version}`,
+      }),
     });
+
+    if (result.kind === "pick-one") {
+      return [result.value];
+    }
+
+    return [];
   }
 
   const selector = await promptForValue({

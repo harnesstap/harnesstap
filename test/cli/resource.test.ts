@@ -300,7 +300,7 @@ describe("CLI resource", () => {
         ["resource", "delete", "--search", "copilot"],
         {
           isTTY: true,
-          promptResponses: [{ value: [instruction.id] }],
+          promptResponses: [{ value: instruction.id }],
         },
       );
 
@@ -311,8 +311,8 @@ describe("CLI resource", () => {
     }
   });
 
-  it("resource delete prompts for searchable multi-select on TTY and deletes selected resources", async () => {
-    const context = await createTestContext("cli-resource-delete-multi-select");
+  it("resource delete prompts for table browser on TTY and deletes selected resource", async () => {
+    const context = await createTestContext("cli-resource-delete-pick-one");
 
     try {
       await runCli(["init"]);
@@ -332,7 +332,7 @@ describe("CLI resource", () => {
           content: "# Delete A",
         }),
       );
-      const deleteB = resourceModel.createResource(
+      resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
           name: "delete-b",
@@ -342,13 +342,11 @@ describe("CLI resource", () => {
 
       const deleteResult = await runCli(["resource", "delete"], {
         isTTY: true,
-        promptResponses: [{ value: [deleteA.id, deleteB.id] }],
+        promptResponses: [{ value: deleteA.id }],
       });
 
       expect(deleteResult.stdout).toContain('"delete-a"');
-      expect(deleteResult.stdout).toContain('"delete-b"');
       expect(resourceModel.getResource(deleteA.id)).toBeUndefined();
-      expect(resourceModel.getResource(deleteB.id)).toBeUndefined();
       expect(resourceModel.getResource(keep.id)?.name).toBe("keep-me");
     } finally {
       await context.cleanup();
