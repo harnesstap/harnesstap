@@ -15,7 +15,6 @@ import type { CatalogLayer } from "../../catalog-types.js";
 import { formatCanonicalPublishedSelectorWithVersion } from "../../layer-selector.js";
 import {
   catalogLayerKey,
-  formatCatalogSelectionLabel,
   renderCatalogLayerShow,
   renderCatalogListViewport,
   renderCatalogSearchViewport,
@@ -204,12 +203,6 @@ export const createRemoteCatalogListPrompt: (
     return [renderCatalogLayerShow(showingLayer), "", helpLine].join("\n");
   }
 
-  const selectionLine = activeLayer
-    ? isApplyMode
-      ? `Active: ${theme.accent(formatCatalogSelectionLabel(activeLayer))}`
-      : `Install: ${theme.accent(`> ${formatCatalogSelectionLabel(activeLayer)}`)}`
-    : theme.muted(loading ? "Loading layers…" : "No matching layers");
-
   const helpLine = isApplyMode
     ? buildHelpLine([
         ["↑↓", "navigate"],
@@ -243,9 +236,6 @@ export const createRemoteCatalogListPrompt: (
           activeIndex: clampedActive,
           terminalRows,
           maxWidth: terminalWidth,
-          selectedSelector: activeLayer
-            ? formatCatalogSelectionLabel(activeLayer)
-            : undefined,
         });
 
   return [
@@ -254,9 +244,9 @@ export const createRemoteCatalogListPrompt: (
     ...(isApplyMode
       ? [theme.muted("Apply writes harness files — choose project or global scope after selecting")]
       : []),
-    `Search: ${query || "(type to filter)"}`,
+    `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
     ...(isApplyMode ? [`Selected: ${checkedLayers.size} to apply`] : []),
-    selectionLine,
+    ...(loading && layers.length === 0 ? [theme.muted("Loading layers…")] : []),
     "",
     tableSection,
     "",

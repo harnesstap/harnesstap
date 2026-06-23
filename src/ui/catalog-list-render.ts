@@ -3,8 +3,9 @@ import { formatPublishedSelector } from "../services/layer-selector.js";
 import * as format from "./format.js";
 import {
   computeMaxVisibleTableRows,
-  renderFlatOverflowHints,
+  renderFoldedHintLine,
   resolveSectionViewport,
+  type SectionViewport,
   VIEWPORT_CHROME_LINES,
 } from "./list-viewport.js";
 import { renderSubheader } from "./section.js";
@@ -165,6 +166,34 @@ function catalogTableLayout(maxWidth?: number): {
   };
 }
 
+function buildCatalogViewportHintSegments(
+  viewport: SectionViewport,
+  totalLength: number,
+): string[] {
+  const segments: string[] = [];
+  const hiddenAbove = viewport.start;
+  const hiddenBelow = totalLength - viewport.end;
+  if (hiddenAbove > 0) {
+    segments.push(`↑ ${hiddenAbove} above`);
+  }
+  if (hiddenBelow > 0) {
+    segments.push(`↓ ${hiddenBelow} more`);
+  }
+  return segments;
+}
+
+function renderCatalogViewportOverflowHints(
+  viewport: SectionViewport,
+  totalLength: number,
+  maxWidth: number,
+): string {
+  const folded = renderFoldedHintLine(
+    buildCatalogViewportHintSegments(viewport, totalLength),
+    maxWidth,
+  );
+  return folded.length > 0 ? theme.muted(folded) : "";
+}
+
 export function renderCatalogListViewport(
   layers: CatalogLayer[],
   opts: CatalogListViewportOptions,
@@ -189,8 +218,10 @@ export function renderCatalogListViewport(
     };
   });
 
-  const hints = renderFlatOverflowHints(viewport, rows.length).map((hint) =>
-    theme.muted(hint),
+  const hints = renderCatalogViewportOverflowHints(
+    viewport,
+    rows.length,
+    opts.maxWidth ?? terminalColumns(),
   );
 
   return [
@@ -200,8 +231,8 @@ export function renderCatalogListViewport(
       summary: `${rows.length} layers`,
       ...catalogTableLayout(opts.maxWidth),
     }),
-    ...hints,
-  ].join("\n");
+    hints,
+  ].filter(Boolean).join("\n");
 }
 
 export function renderCatalogSearchViewport(
@@ -226,8 +257,10 @@ export function renderCatalogSearchViewport(
     { activeLayerKey: activeKey },
   );
   const checkedCount = baseRows.filter((row) => row.checked).length;
-  const hints = renderFlatOverflowHints(viewport, baseRows.length).map((hint) =>
-    theme.muted(hint),
+  const hints = renderCatalogViewportOverflowHints(
+    viewport,
+    baseRows.length,
+    opts.maxWidth ?? terminalColumns(),
   );
 
   return [
@@ -237,8 +270,8 @@ export function renderCatalogSearchViewport(
       summary: `${checkedCount} selected • ${baseRows.length} layers`,
       ...catalogTableLayout(opts.maxWidth),
     }),
-    ...hints,
-  ].join("\n");
+    hints,
+  ].filter(Boolean).join("\n");
 }
 
 export function renderCatalogListTable(
