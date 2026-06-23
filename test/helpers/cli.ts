@@ -2,6 +2,8 @@ import { ExitPromptError } from "@inquirer/core";
 import inquirer from "inquirer";
 import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
+import type { runEnvironmentDeleteWizard as RunEnvironmentDeleteWizard } from "../../src/services/wizards/environment-delete.js";
+import type { runEnvironmentShowWizard as RunEnvironmentShowWizard } from "../../src/services/wizards/environment-show.js";
 import type { runResourceDeleteWizard as RunResourceDeleteWizard } from "../../src/services/wizards/resource-delete.js";
 import type { runLayerShowWizard as RunLayerShowWizard } from "../../src/services/wizards/layer-show.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
@@ -103,6 +105,36 @@ function normalizeDeleteWizardSelection(value: unknown): string[] {
   );
 }
 
+const environmentDeleteWizardMock = mock(async (
+  ...args: Parameters<typeof RunEnvironmentDeleteWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/environment-delete.ts?actual"
+    );
+    return actualWizard.runEnvironmentDeleteWizard(...args);
+  }
+  return normalizeDeleteWizardSelection(shiftSinglePromptValue());
+});
+
+const environmentShowWizardMock = mock(async (
+  ...args: Parameters<typeof RunEnvironmentShowWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/environment-show.ts?actual"
+    );
+    return actualWizard.runEnvironmentShowWizard(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value !== "string") {
+    throw new Error(
+      "Environment show wizard responses must resolve to a string in runCli test harness",
+    );
+  }
+  return value.length > 0 ? value : undefined;
+});
+
 const resourceDeleteWizardMock = mock(async (
   ...args: Parameters<typeof RunResourceDeleteWizard>
 ) => {
@@ -157,6 +189,14 @@ mock.module("@inquirer/search", () => ({
 
 mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
   promptForSearchableMultiSelect: searchableMultiSelectMock,
+}));
+
+mock.module("../../src/services/wizards/environment-delete.js", () => ({
+  runEnvironmentDeleteWizard: environmentDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/environment-show.js", () => ({
+  runEnvironmentShowWizard: environmentShowWizardMock,
 }));
 
 mock.module("../../src/services/wizards/resource-delete.js", () => ({

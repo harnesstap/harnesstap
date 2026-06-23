@@ -2,7 +2,7 @@ import { createEnvironmentTableBrowserAdapter } from "./adapters/environment-tab
 import {
   createTableBrowserPrompt,
 } from "./prompts/create-table-browser-prompt.js";
-import type { FilterListPromptResult } from "./prompts/create-filter-list-prompt.js";
+import type { FilterListPromptResult } from "./prompts/table-browser-types.js";
 import type { EnvironmentListRow } from "../../ui/environment-list-render.js";
 
 export type InteractiveEnvironmentListResult = FilterListPromptResult;

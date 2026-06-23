@@ -3,7 +3,7 @@ import { createResourceTableBrowserAdapter } from "./adapters/resource-table-bro
 import {
   createTableBrowserPrompt,
 } from "./prompts/create-table-browser-prompt.js";
-import type { FilterListPromptResult } from "./prompts/create-filter-list-prompt.js";
+import type { FilterListPromptResult } from "./prompts/table-browser-types.js";
 import type { ResourceListRow } from "../../ui/resource-list-render.js";
 
 export type InteractiveResourceListResult = FilterListPromptResult;

@@ -3,8 +3,12 @@ import { describe, expect, it } from "bun:test";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { promptForInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.ts?actual";
 import { promptForInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.ts?actual";
+import { promptForInteractiveEnvironmentList } from "../../src/services/wizards/interactive-environment-list.ts?actual";
+import { promptForInteractiveLayerListBrowse } from "../../src/services/wizards/interactive-layer-list-browse.ts?actual";
 import { promptForInteractiveResourceList } from "../../src/services/wizards/interactive-resource-list.ts?actual";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.ts?actual";
+import type { EnvironmentListRow } from "../../src/ui/environment-list-render.ts";
+import type { Layer } from "../../src/types.js";
 
 const sampleResources = [
   {
@@ -25,6 +29,60 @@ const sampleResources = [
   },
 ] as const;
 
+function makeOverflowResources() {
+  const skills = Array.from({ length: 6 }, (_, index) => ({
+    id: `skill-${index + 1}`,
+    type: "skill" as const,
+    name: `skill-${index + 1}`,
+    namespace: "",
+    display_name: `skill-${index + 1}`,
+    description: "Skill row",
+    source: "manual" as const,
+    origin_kind: "manual" as const,
+    origin_ref: "",
+    content_hash: "",
+    content: "# Skill",
+    metadata: {},
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  }));
+  return [
+    ...skills,
+    {
+      id: "rule-1",
+      type: "rule" as const,
+      name: "rule-1",
+      namespace: "",
+      display_name: "rule-1",
+      description: "Rule row",
+      source: "manual" as const,
+      origin_kind: "manual" as const,
+      origin_ref: "",
+      content_hash: "",
+      content: "# Rule",
+      metadata: {},
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-02T00:00:00.000Z",
+    },
+  ];
+}
+
+function makeEnvironmentRow(name: string): EnvironmentListRow {
+  const now = "2026-01-01T00:00:00.000Z";
+  return {
+    environment: {
+      id: `env-${name}`,
+      name,
+      description: `${name} environment`,
+      created_at: now,
+      updated_at: now,
+    },
+    value_count: 1,
+    secret_ref_count: 0,
+    reference_count: 0,
+  };
+}
+
 const sampleLayers: CatalogLayer[] = [
   {
     orgSlug: "harnessdeck-cloud",
@@ -38,6 +96,31 @@ const sampleLayers: CatalogLayer[] = [
     visibility: "public",
   },
 ];
+
+const localLayers: Layer[] = [
+  {
+    id: "layer-1",
+    name: "team-stack",
+    version: "1.0.0",
+    org_slug: "",
+    catalog_slug: "",
+    description: "Installed locally",
+    tags: [],
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-02T00:00:00.000Z",
+  },
+];
+
+function overflowHintLines(frame: string): string[] {
+  return frame.split("\n").filter((line) =>
+    line.includes("above") || line.includes("next type") || line.includes("more in"),
+  );
+}
+
+function expectNoSelectionLine(frame: string): void {
+  expect(frame).not.toMatch(/\nShow: /);
+  expect(frame).not.toMatch(/\nActive: /);
+}
 
 describe("interactive list keyboard contract", () => {
   it("resource list shows esc exit (not esc cancel)", async () => {
@@ -53,9 +136,67 @@ describe("interactive list keyboard contract", () => {
     const frame = getScreen();
     expect(frame).toContain("esc exit");
     expect(frame).not.toContain("esc cancel");
+    expectNoSelectionLine(frame);
   });
 
-  it("catalog browser shows esc cancel", async () => {
+  it("resource list footer folds overflow hints", async () => {
+    const { getScreen } = await render(
+      promptForInteractiveResourceList,
+      {
+        message: "Filter resources",
+        resources: makeOverflowResources(),
+      },
+      { clearPromptOnDone: true },
+    );
+
+    const hintLines = overflowHintLines(getScreen());
+    expect(hintLines.length).toBeGreaterThan(0);
+    expect(hintLines.length).toBeLessThanOrEqual(2);
+    if (hintLines.length === 1) {
+      expect(hintLines[0]).toContain(" · ");
+    }
+  });
+
+  it("environment list shows esc exit and unified chrome", async () => {
+    const { getScreen } = await render(
+      promptForInteractiveEnvironmentList,
+      {
+        message: "Filter environments",
+        environments: [
+          makeEnvironmentRow("production"),
+          makeEnvironmentRow("staging"),
+        ],
+      },
+      { clearPromptOnDone: true },
+    );
+
+    const frame = getScreen();
+    expect(frame).toContain("esc exit");
+    expect(frame).not.toContain("esc cancel");
+    expect(frame).toContain("Search:");
+    expectNoSelectionLine(frame);
+  });
+
+  it("layer list browse shows esc cancel and unified chrome", async () => {
+    const { getScreen, nextRender } = await render(
+      promptForInteractiveLayerListBrowse,
+      {
+        message: "Select a layer to install",
+        scopeLabel: "harnessdeck-cloud",
+        localLayers,
+        listRemoteLayers: async () => sampleLayers,
+      },
+      { clearPromptOnDone: true },
+    );
+
+    await nextRender();
+    const frame = getScreen();
+    expect(frame).toContain("esc cancel");
+    expect(frame).toContain("Search:");
+    expectNoSelectionLine(frame);
+  });
+
+  it("catalog browser shows esc cancel and unified chrome", async () => {
     const { getScreen, nextRender } = await render(
       promptForInteractiveCatalogBrowser,
       {
@@ -67,7 +208,10 @@ describe("interactive list keyboard contract", () => {
     );
 
     await nextRender();
-    expect(getScreen()).toContain("esc cancel");
+    const frame = getScreen();
+    expect(frame).toContain("esc cancel");
+    expect(frame).toContain("Search:");
+    expectNoSelectionLine(frame);
   });
 
   it("searchable multi-select shows esc back", async () => {
@@ -102,5 +246,6 @@ describe("interactive list keyboard contract", () => {
     const frame = getScreen();
     expect(frame).toContain("ctrl+s");
     expect(frame).toContain("esc cancel");
+    expectNoSelectionLine(frame);
   });
 });

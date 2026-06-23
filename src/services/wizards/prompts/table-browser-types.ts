@@ -1,5 +1,8 @@
 export type HelpAction = [string, string];
 
+/** Filter-intent wrapper return shape (legacy alias). */
+export type FilterListPromptResult = { query: string };
+
 export type TableBrowserIntent =
   | { kind: "filter" }
   | { kind: "pick-one"; action?: "show" | "delete" }
