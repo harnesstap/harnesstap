@@ -45,7 +45,7 @@ describe("environment delete wizard", () => {
       const frame = getScreen();
       expect(frame).not.toMatch(/\nShow: /);
       expect(frame).not.toMatch(/\nActive: /);
-      expect(frame).toMatch(/\bd\b.*delete/);
+      expect(frame).toMatch(/⏎.*delete/);
     } finally {
       await context.cleanup();
     }

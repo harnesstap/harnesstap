@@ -12,11 +12,7 @@ import { promptForValue } from "./shared.js";
 export async function runResourceDeleteWizard(input?: {
   search?: string;
 }): Promise<string[]> {
-  const resources = sortResourcesByUpdatedAt(
-    toResourceListRows(
-      listResources(input?.search ? { search: input.search } : undefined),
-    ),
-  );
+  const resources = sortResourcesByUpdatedAt(toResourceListRows(listResources()));
   const filtered = input?.search
     ? filterResourcesBySearch(resources, input.search)
     : resources;
@@ -33,7 +29,6 @@ export async function runResourceDeleteWizard(input?: {
           ["↑↓", "select"],
           ["type", "search"],
           ["⏎", "delete"],
-          ["d", "delete"],
           ["esc", "cancel"],
         ],
       },

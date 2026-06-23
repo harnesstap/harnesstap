@@ -5,6 +5,7 @@ import { mock, spyOn } from "bun:test";
 import type { runEnvironmentDeleteWizard as RunEnvironmentDeleteWizard } from "../../src/services/wizards/environment-delete.js";
 import type { runEnvironmentShowWizard as RunEnvironmentShowWizard } from "../../src/services/wizards/environment-show.js";
 import type { runResourceDeleteWizard as RunResourceDeleteWizard } from "../../src/services/wizards/resource-delete.js";
+import type { runLayerDeleteWizard as RunLayerDeleteWizard } from "../../src/services/wizards/layer-delete.js";
 import type { runLayerShowWizard as RunLayerShowWizard } from "../../src/services/wizards/layer-show.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
 import type { runLayerEditWizard as RunLayerEditWizard } from "../../src/services/wizards/layer-edit.js";

@@ -5,6 +5,7 @@ import { createLocalLayerPickAdapter } from "./adapters/layer-table-browser.js";
 import { createTableBrowserPrompt } from "./prompts/create-table-browser-prompt.js";
 
 export async function runLayerShowWizard(input?: {
+  message?: string;
   search?: string;
   profileMode?: boolean;
 }): Promise<string | undefined> {
@@ -16,9 +17,11 @@ export async function runLayerShowWizard(input?: {
   }
 
   const result = await createTableBrowserPrompt({
-    message: input?.profileMode
-      ? "Which profile do you want to show?"
-      : "Which layer do you want to show?",
+    message:
+      input?.message
+      ?? (input?.profileMode
+        ? "Which profile do you want to show?"
+        : "Which layer do you want to show?"),
     initialQuery: input?.search,
     intent: { kind: "pick-one", action: "show" },
     adapter: createLocalLayerPickAdapter({

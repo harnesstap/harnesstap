@@ -53,7 +53,7 @@ export function createResourceTableBrowserAdapter(
       ["type", "search"],
       ["⌫", "erase"],
       ["⏎", "show"],
-      ["d", "delete"],
+      ...(config.onDelete ? ([["d", "delete"]] as Array<[string, string]>) : []),
       ["esc", "exit"],
     ],
   };

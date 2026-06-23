@@ -407,7 +407,8 @@ async function resolveLayerMutationTarget(input: {
       format,
       missingRequiredArgs: !input.layerName,
     }),
-    prompt: async () => runLayerShowWizard({ profileMode: input.profileMode }),
+    prompt: async () =>
+      runLayerShowWizard({ message: input.message, profileMode: input.profileMode }),
   });
 }
 
