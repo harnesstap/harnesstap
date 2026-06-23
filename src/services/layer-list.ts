@@ -13,7 +13,8 @@ import type { Column } from "../ui/table.js";
 import { ui } from "../ui/index.js";
 import { renderWarn } from "../ui/status.js";
 import { catalogAliasHint } from "./catalog-aliases.js";
-import { listLayersInScope, fetchCatalogLayer } from "./catalog-client.js";
+import { listLayersInScope } from "./catalog-client.js";
+import { renderCatalogLayerPreviewShow } from "./catalog-layer-preview.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 import {
   buildCatalogListSources,
@@ -282,7 +283,6 @@ async function listRemoteLayersForBrowse(
 async function runInteractiveLayerListBrowse(opts: HandleLayerListCommandOpts): Promise<void> {
   const localLayers = resolveLocalLayers(opts);
   const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
-  const catalogOptions = { account: opts.account, baseUrl: opts.baseUrl };
 
   if (!interactiveDeps) {
     throw new Error("Interactive layer list is not configured");
@@ -299,7 +299,11 @@ async function runInteractiveLayerListBrowse(opts: HandleLayerListCommandOpts): 
         profileMode: opts.profileMode,
         showId: Boolean(opts.showId),
         listRemoteLayers: ({ q, limit }) => listRemoteLayersForBrowse(opts, { q, limit }),
-        fetchRemoteLayerDetails: (layer) => fetchCatalogLayer(layer, catalogOptions),
+        fetchRemoteLayerShow: (layer) => renderCatalogLayerPreviewShow(layer, {
+          account: opts.account,
+          baseUrl: opts.baseUrl,
+          showId: Boolean(opts.showId),
+        }),
       });
 
       switch (result.action) {

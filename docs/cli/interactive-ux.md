@@ -110,13 +110,15 @@ Used by: `layer list`, `profile list` (interactive browse with local + remote se
 | Key | Behavior |
 | --- | --- |
 | Enter | Open detail view for the active row |
-| `ctrl+e` | Edit the active **local** layer (returns to the list after edit) |
-| `ctrl+x` | Delete the active **local** layer after inline `[y/N]` confirm |
+| `ctrl+e` | Edit the active **local** layer, or a **manageable** remote catalog layer (returns to the list after edit) |
+| `ctrl+x` | Delete the active **local** layer, or a **manageable** remote catalog entry, after inline `[y/N]` confirm |
 | Esc (browse) | **Cancel** the prompt |
 
 **Detail view (local):** `e` edit, `d` delete (with confirm), `esc` back to browse.
 
-**Detail view (remote):** `i` install, `a` apply to project or globally, `esc` back to browse.
+**Detail view (remote):** `i` install, `a` apply to project or globally, `e` edit catalog (pull + composition edit + optional publish) and `d` delete catalog entry when manageable, `esc` back to browse.
+
+Remote edit/delete requires authentication with `publish` scope in the layer's owning organization. Deleting a catalog entry does not remove a local install.
 
 Help label: `esc cancel`.
 

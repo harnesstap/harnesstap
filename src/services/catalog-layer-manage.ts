@@ -47,8 +47,11 @@ async function createAuthenticatedCloudClient(opts?: {
     baseUrl: opts?.baseUrl ?? account.cloudBaseUrl,
     token: {
       access_token: account.accessToken,
-      refresh_token: account.refresh_token,
-      expires_at: account.expires_at,
+      refresh_token: account.refreshToken,
+      expires_at:
+        typeof account.accessTokenExpiresAt === "string"
+          ? Number(account.accessTokenExpiresAt)
+          : (account.accessTokenExpiresAt as number | undefined),
     },
   });
 }

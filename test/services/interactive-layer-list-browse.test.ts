@@ -37,6 +37,23 @@ const remoteLayers: CatalogLayer[] = [
   },
 ];
 
+const manageableRemoteLayers: CatalogLayer[] = [
+  {
+    orgSlug: "acme",
+    catalogSlug: "default",
+    slug: "team-stack",
+    name: "Team Stack",
+    summary: "Team baseline",
+    latestVersion: "1.0.0",
+    updatedAt: "2026-01-03T00:00:00.000Z",
+    tags: [],
+    visibility: "organization",
+    layerId: "layer-remote-1",
+    orgId: "org-acme",
+    manageable: true,
+  },
+];
+
 describe("interactive layer list browse prompt", () => {
   promptIt("shows local and remote sections in one frame", async () => {
     await withPrompt(
@@ -67,10 +84,12 @@ describe("interactive layer list browse prompt", () => {
         scopeLabel: "harnessdeck-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
-        fetchRemoteLayerDetails: async (layer) => ({
-          ...layer,
-          summary: "Fetched fullstack details",
-        }),
+        fetchRemoteLayerShow: async () => [
+          "LAYER  harnessdeck-cloud/default/fullstack@1.0.0",
+          "  Description           Fetched fullstack details",
+          "RESOURCES",
+          "│ TYPE           │ NAME                          │",
+        ].join("\n"),
       },
       { clearPromptOnDone: true },
     );
@@ -78,9 +97,14 @@ describe("interactive layer list browse prompt", () => {
     await nextRender();
     events.keypress("down");
     events.keypress("enter");
-    await nextRender();
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await nextRender();
+      if (getScreen().includes("Fetched fullstack details")) {
+        break;
+      }
+    }
     expect(getScreen()).toContain("Fetched fullstack details");
-    expect(getScreen()).toContain("Description");
+    expect(getScreen()).toContain("RESOURCES");
     expect(getScreen()).not.toContain("Catalog layer not found");
     events.keypress("i");
 
@@ -178,6 +202,52 @@ describe("interactive layer list browse prompt", () => {
     events.keypress("y");
 
     await expect(answer).resolves.toEqual({ action: "delete", name: "team-stack" });
+  });
+
+  promptIt("edits a manageable remote catalog layer with ctrl+e from browse", async () => {
+    const { answer, events, nextRender } = await render(
+      promptForInteractiveLayerListBrowse,
+      {
+        message: "Select a layer",
+        scopeLabel: "acme",
+        localLayers: [],
+        listRemoteLayers: async () => manageableRemoteLayers,
+      },
+      { clearPromptOnDone: true },
+    );
+
+    await nextRender();
+    events.keypress(CTRL_E);
+
+    await expect(answer).resolves.toEqual({
+      action: "edit-remote",
+      selection: expect.objectContaining({ slug: "team-stack" }),
+      catalogLayer: manageableRemoteLayers[0],
+    });
+  });
+
+  promptIt("deletes a manageable remote catalog layer with ctrl+x after confirm", async () => {
+    const { answer, events, nextRender } = await render(
+      promptForInteractiveLayerListBrowse,
+      {
+        message: "Select a layer",
+        scopeLabel: "acme",
+        localLayers: [],
+        listRemoteLayers: async () => manageableRemoteLayers,
+      },
+      { clearPromptOnDone: true },
+    );
+
+    await nextRender();
+    events.keypress(CTRL_X);
+    await nextRender();
+    events.keypress("y");
+
+    await expect(answer).resolves.toEqual({
+      action: "delete-remote",
+      selection: expect.objectContaining({ slug: "team-stack" }),
+      catalogLayer: manageableRemoteLayers[0],
+    });
   });
 
   promptIt("cancels with escape", async () => {

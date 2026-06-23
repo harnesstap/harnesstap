@@ -19,6 +19,7 @@ import { RESOURCE_TYPES } from "../types.js";
 export type LayerShowRenderOptions = {
   showId?: boolean;
   profileExtras?: { active: boolean };
+  layerLabel?: string;
 };
 
 function formatCount(count: number, noun: string, plural = `${noun}s`): string {
@@ -117,9 +118,10 @@ export function renderLayerShow(
     ? getEnvironment(configuredLayer.default_environment_id)
     : undefined;
 
+  const layerLabel = opts?.layerLabel ?? formatLayerLabel(layer);
   const sections: string[] = [
     renderPanel({
-      title: ["LAYER", formatLayerLabel(layer)],
+      title: ["LAYER", layerLabel],
       rows: [
         ["Description", layer.description || "—"],
         ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
@@ -196,7 +198,7 @@ export function renderLayerListShow(
   opts?: LayerShowRenderOptions,
 ): string {
   return renderPanel({
-    title: ["LAYER", formatLayerLabel(layer)],
+    title: ["LAYER", opts?.layerLabel ?? formatLayerLabel(layer)],
     rows: [
       ["Description", layer.description || "—"],
       ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],

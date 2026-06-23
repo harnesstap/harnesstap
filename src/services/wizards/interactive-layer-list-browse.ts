@@ -19,7 +19,6 @@ import {
 } from "../catalog-layer-manage.js";
 import { formatCanonicalPublishedSelectorWithVersion } from "../layer-selector.js";
 import { getActiveProfileName } from "../active-profile.js";
-import { renderCatalogLayerShow } from "../../ui/catalog-list-render.js";
 import {
   filterLocalBrowseRows,
   listNavigableLayerListBrowseRows,
@@ -27,7 +26,7 @@ import {
   toRemoteBrowseRows,
   type LayerListBrowseRow,
 } from "../../ui/layer-list-render.js";
-import { renderLayerListShow } from "../../services/layer-show-render.js";
+import { renderLayerShowForLayer } from "../../services/layer-show-render.js";
 import {
   computeShowViewportBounds,
   renderScrollableShowContent,
@@ -76,7 +75,7 @@ type PromptConfig = {
   profileMode?: boolean;
   showId?: boolean;
   listRemoteLayers: (input: { q: string; limit: number }) => Promise<CatalogLayer[]>;
-  fetchRemoteLayerDetails?: (layer: CatalogLayer) => Promise<CatalogLayer>;
+  fetchRemoteLayerShow?: (layer: CatalogLayer) => Promise<string>;
 };
 
 type PromptContext = {
@@ -189,9 +188,9 @@ export const promptForInteractiveLayerListBrowse: (
   const [view, setView] = useState<PromptView>("browse");
   const [showingRow, setShowingRow] = useState<LayerListBrowseRow | null>(null);
   const [showScrollOffset, setShowScrollOffset] = useState(0);
-  const [remoteDetails, setRemoteDetails] = useState<CatalogLayer | null>(null);
-  const [remoteDetailsLoading, setRemoteDetailsLoading] = useState(false);
-  const [remoteDetailsError, setRemoteDetailsError] = useState<string | null>(null);
+  const [remoteShowContent, setRemoteShowContent] = useState<string | null>(null);
+  const [remoteShowLoading, setRemoteShowLoading] = useState(false);
+  const [remoteShowError, setRemoteShowError] = useState<string | null>(null);
   const [pendingDeleteRow, setPendingDeleteRow] = useState<LayerListBrowseRow | null>(null);
   const [pendingExitMessage, setPendingExitMessage] = useState<string | null>(null);
   const promptScreenRef = useRef<PromptScreen | null>(null);
@@ -207,37 +206,38 @@ export const promptForInteractiveLayerListBrowse: (
 
   useEffect(() => {
     if (view !== "show" || showingRow?.section !== "remote") {
-      setRemoteDetails(null);
-      setRemoteDetailsLoading(false);
-      setRemoteDetailsError(null);
+      setRemoteShowContent(null);
+      setRemoteShowLoading(false);
+      setRemoteShowError(null);
       return;
     }
 
     const layer = showingRow.catalogLayer;
-    setRemoteDetails(layer);
-    if (!config.fetchRemoteLayerDetails) {
-      setRemoteDetailsLoading(false);
-      setRemoteDetailsError(null);
+    if (!config.fetchRemoteLayerShow) {
+      setRemoteShowContent(null);
+      setRemoteShowLoading(false);
+      setRemoteShowError(null);
       return;
     }
 
     let cancelled = false;
-    setRemoteDetailsLoading(true);
-    setRemoteDetailsError(null);
-    void config.fetchRemoteLayerDetails(layer).then(
-      (fetched) => {
+    setRemoteShowContent(null);
+    setRemoteShowLoading(true);
+    setRemoteShowError(null);
+    void config.fetchRemoteLayerShow(layer).then(
+      (content) => {
         if (cancelled) {
           return;
         }
-        setRemoteDetails(fetched);
-        setRemoteDetailsLoading(false);
+        setRemoteShowContent(content);
+        setRemoteShowLoading(false);
       },
       (error: unknown) => {
         if (cancelled) {
           return;
         }
-        setRemoteDetailsError(error instanceof Error ? error.message : String(error));
-        setRemoteDetailsLoading(false);
+        setRemoteShowError(error instanceof Error ? error.message : String(error));
+        setRemoteShowLoading(false);
       },
     );
 
@@ -267,13 +267,22 @@ export const promptForInteractiveLayerListBrowse: (
     setView("show");
   }
 
-  function renderRemoteShowContent(layer: CatalogLayer): string {
+  function localLayerShowOptions(): Parameters<typeof renderLayerShowForLayer>[1] {
+    return {
+      showId: config.showId,
+      profileExtras: config.profileMode && activeProfileName && showingRow?.section === "local"
+        ? { active: activeProfileName === showingRow.layer.name }
+        : undefined,
+    };
+  }
+
+  function renderRemoteShowContent(): string {
     const sections = [
-      remoteDetailsLoading ? theme.muted("Loading layer details…") : "",
-      remoteDetailsError && !remoteDetails
-        ? theme.danger(remoteDetailsError)
+      remoteShowLoading ? theme.muted("Loading layer details…") : "",
+      remoteShowError && !remoteShowContent
+        ? theme.danger(remoteShowError)
         : "",
-      renderCatalogLayerShow(remoteDetails ?? layer),
+      remoteShowContent ?? "",
     ].filter((section) => section.length > 0);
     return sections.join("\n");
   }
@@ -304,7 +313,7 @@ export const promptForInteractiveLayerListBrowse: (
       }
 
       if (showingRow.section === "remote") {
-        const displayLayer = remoteDetails ?? showingRow.catalogLayer;
+        const displayLayer = showingRow.catalogLayer;
         if (isLetterKey(key, "i")) {
           finishBrowseAction(done, "install", displayLayer);
           return;
@@ -337,13 +346,8 @@ export const promptForInteractiveLayerListBrowse: (
       }
 
       const showContent = showingRow.section === "local"
-        ? renderLayerListShow(showingRow.layer, {
-            showId: config.showId,
-            profileExtras: config.profileMode && activeProfileName
-              ? { active: activeProfileName === showingRow.layer.name }
-              : undefined,
-          })
-        : renderRemoteShowContent(remoteDetails ?? showingRow.catalogLayer);
+        ? renderLayerShowForLayer(showingRow.layer, localLayerShowOptions())
+        : renderRemoteShowContent();
       const { maxScroll } = computeShowViewportBounds(
         showContent.split("\n").length,
         showScrollOffset,
@@ -426,12 +430,7 @@ export const promptForInteractiveLayerListBrowse: (
   }
 
   if (view === "show" && showingRow?.section === "local") {
-    const showContent = renderLayerListShow(showingRow.layer, {
-      showId: config.showId,
-      profileExtras: config.profileMode && activeProfileName
-        ? { active: activeProfileName === showingRow.layer.name }
-        : undefined,
-    });
+    const showContent = renderLayerShowForLayer(showingRow.layer, localLayerShowOptions());
     const helpLine = buildHelpLine([
       ["↑↓", "scroll"],
       ["e", "edit"],
@@ -451,8 +450,8 @@ export const promptForInteractiveLayerListBrowse: (
   }
 
   if (view === "show" && showingRow?.section === "remote") {
-    const displayLayer = remoteDetails ?? showingRow.catalogLayer;
-    const showContent = renderRemoteShowContent(displayLayer);
+    const displayLayer = showingRow.catalogLayer;
+    const showContent = renderRemoteShowContent();
     const remoteHelp: Array<[string, string]> = [
       ["↑↓", "scroll"],
       ["i", "install"],
@@ -523,7 +522,7 @@ export async function runInteractiveLayerListBrowse(input: {
   profileMode?: boolean;
   showId?: boolean;
   listRemoteLayers: PromptConfig["listRemoteLayers"];
-  fetchRemoteLayerDetails?: PromptConfig["fetchRemoteLayerDetails"];
+  fetchRemoteLayerShow?: PromptConfig["fetchRemoteLayerShow"];
 }): Promise<InteractiveLayerListBrowseResult> {
   return promptForInteractiveLayerListBrowse(input);
 }
