@@ -8,10 +8,12 @@ import {
 } from "./catalog-list-render.js";
 import {
   computeMaxVisibleTableRows,
+  renderFoldedHintLine,
   resolveSectionViewport,
   VIEWPORT_CHROME_LINES,
   type SectionViewport,
 } from "./list-viewport.js";
+import { matchesListSearchQuery, parseListSearchQuery } from "./list-search.js";
 import { renderTable, type Column } from "./table.js";
 import { icons, terminalColumns, theme } from "./theme.js";
 
@@ -75,17 +77,24 @@ export function filterLocalBrowseRows(
   layers: Layer[],
   search: string,
 ): LayerListBrowseRow[] {
-  const normalizedSearch = search.trim().toLowerCase();
-  const filtered = normalizedSearch.length === 0
-    ? layers
-    : layers.filter((layer) => {
-        const haystack = [
-          layer.name,
-          layer.description,
-          ...layer.tags,
-        ].join(" ").toLowerCase();
-        return haystack.includes(normalizedSearch);
-      });
+  const parsed = parseListSearchQuery(search);
+  if (parsed.raw.length === 0) {
+    return toLocalBrowseRows(layers);
+  }
+
+  const sectionIsLocal = parsed.section === "local";
+  const textQuery = parsed.section !== undefined && parsed.section !== "local"
+    ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+    : parsed;
+
+  if (parsed.section !== undefined && parsed.section !== "local" && !sectionIsLocal) {
+    return [];
+  }
+
+  const filtered = layers.filter((layer) => {
+    const haystack = [layer.name, layer.description, ...layer.tags].join(" ");
+    return matchesListSearchQuery(haystack, textQuery);
+  });
   return toLocalBrowseRows(filtered);
 }
 
@@ -165,43 +174,53 @@ function renderSectionSubheader(
   return `${theme.accent(label)}${suffix}`;
 }
 
-function renderViewportOverflowHints(
+export function buildLayerViewportHintSegments(
   ctx: LayerListBrowseActiveSectionContext,
   viewport: SectionViewport,
   profileMode: boolean,
   scopeLabel?: string,
 ): string[] {
-  const hints: string[] = [];
+  const segments: string[] = [];
   const hiddenBelow = ctx.sectionRows.length - viewport.end;
   const hiddenAbove = viewport.start;
   if (hiddenAbove > 0) {
-    hints.push(theme.muted(`  ↑ ${hiddenAbove} above`));
+    segments.push(`↑ ${hiddenAbove} above`);
   }
   if (hiddenBelow > 0) {
-    hints.push(
-      theme.muted(
-        `  ↓ ${hiddenBelow} more in ${sectionLabel(ctx.section, profileMode).toLowerCase()}`,
-      ),
+    segments.push(
+      `↓ ${hiddenBelow} more in ${sectionLabel(ctx.section, profileMode).toLowerCase()}`,
     );
   }
   if (ctx.nextSection) {
-    hints.push(
-      theme.muted(
-        `  ${sectionLabel(ctx.nextSection.section, profileMode)} (${ctx.nextSection.count}) · ↓ next section`,
-      ),
+    segments.push(
+      `${sectionLabel(ctx.nextSection.section, profileMode)} (${ctx.nextSection.count})`,
     );
+    segments.push("↓ next section");
   }
   if (viewport.start === 0 && ctx.prevSection) {
-    hints.push(
-      theme.muted(
-        `  ${sectionLabel(ctx.prevSection.section, profileMode)} (${ctx.prevSection.count}) · ↑ prev section`,
-      ),
+    segments.push(
+      `${sectionLabel(ctx.prevSection.section, profileMode)} (${ctx.prevSection.count})`,
     );
+    segments.push("↑ prev section");
   }
   if (ctx.section === "remote" && scopeLabel && ctx.sectionRows.length === 0) {
-    hints.push(theme.muted(`  Catalog: ${scopeLabel}`));
+    segments.push(`Catalog: ${scopeLabel}`);
   }
-  return hints;
+  return segments;
+}
+
+function renderViewportOverflowHints(
+  ctx: LayerListBrowseActiveSectionContext,
+  viewport: SectionViewport,
+  profileMode: boolean,
+  maxWidth: number,
+  scopeLabel?: string,
+): string {
+  const folded = renderFoldedHintLine(
+    buildLayerViewportHintSegments(ctx, viewport, profileMode, scopeLabel),
+    maxWidth,
+  );
+  return folded.length > 0 ? theme.muted(folded) : "";
 }
 
 type LocalTableRow = {
@@ -377,6 +396,7 @@ export function renderGroupedLayerListBrowseViewport(
   }
 
   const profileMode = Boolean(opts.profileMode);
+  const maxWidth = opts.maxWidth ?? terminalColumns();
   const maxVisibleRows = computeMaxVisibleTableRows(
     opts.terminalRows,
     VIEWPORT_CHROME_LINES.layerListBrowse,
@@ -408,8 +428,10 @@ export function renderGroupedLayerListBrowseViewport(
       opts.scopeLabel,
     ),
     table,
-    ...renderViewportOverflowHints(ctx, viewport, profileMode, opts.scopeLabel),
-  ].join("\n");
+    renderViewportOverflowHints(ctx, viewport, profileMode, maxWidth, opts.scopeLabel),
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
 }
 
 export function formatLayerListBrowseSelectionLabel(row: LayerListBrowseRow): string {

@@ -14,7 +14,7 @@ export const VIEWPORT_CHROME_LINES = {
   catalogSearch: 10,
   layerEdit: 7,
   environmentEdit: 6,
-  layerListBrowse: 8,
+  layerListBrowse: 6,
 } as const;
 
 export function computeRemoteListFetchLimit(

@@ -18,7 +18,6 @@ import { getActiveProfileName } from "../active-profile.js";
 import { renderCatalogLayerShow } from "../../ui/catalog-list-render.js";
 import {
   filterLocalBrowseRows,
-  formatLayerListBrowseSelectionLabel,
   listNavigableLayerListBrowseRows,
   renderGroupedLayerListBrowseViewport,
   renderLocalLayerBrowseShow,
@@ -179,12 +178,6 @@ export const promptForInteractiveLayerListBrowse: (
     return [renderCatalogLayerShow(showingRow.catalogLayer), "", helpLine].join("\n");
   }
 
-  const selectionLine = activeRow
-    ? activeRow.section === "local"
-      ? `Local: ${theme.accent(`> ${formatLayerListBrowseSelectionLabel(activeRow)}`)}`
-      : `Install: ${theme.accent(`> ${formatLayerListBrowseSelectionLabel(activeRow)}`)}`
-    : theme.muted(loading ? "Loading layers…" : "No matching layers");
-
   const helpLine = buildHelpLine([
     ["↑↓", "select"],
     ["type", "search"],
@@ -195,7 +188,9 @@ export const promptForInteractiveLayerListBrowse: (
 
   const tableSection = error
     ? theme.danger(error)
-    : renderGroupedLayerListBrowseViewport({
+    : loading && navigable.length === 0
+      ? theme.muted("Loading layers…")
+      : renderGroupedLayerListBrowseViewport({
         activeIndex: clampedActive,
         navigable,
         terminalRows,
@@ -209,7 +204,6 @@ export const promptForInteractiveLayerListBrowse: (
   return [
     `${prefix} ${styledMessage}`,
     `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
-    selectionLine,
     "",
     tableSection,
     "",
