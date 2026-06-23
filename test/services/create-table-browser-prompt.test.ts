@@ -1,3 +1,4 @@
+import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
 import { describe, expect, it } from "bun:test";
 import { createTableBrowserPrompt } from "../../src/services/wizards/prompts/create-table-browser-prompt.ts";
@@ -63,6 +64,41 @@ describe("createTableBrowserPrompt", () => {
     );
     events.keypress("enter");
     await expect(answer).resolves.toEqual({ kind: "pick-one", value: "1" });
+  });
+
+  it("pick-one intent rejects on escape without uncaught throw", async () => {
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<Row, string>(
+          {
+            message: "Pick item",
+            intent: { kind: "pick-one", action: "show" },
+            adapter: {
+              resolveItems: () => ({
+                filtered: [{ id: "1", label: "alpha" }],
+                navigable: [{ id: "1", label: "alpha" }],
+              }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              onPick: (row) => row.id,
+              helpActions: [["⏎", "select"], ["esc", "cancel"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+
+    events.keypress("escape");
+    let rejected: unknown;
+    try {
+      await answer;
+      throw new Error("Expected prompt to reject on escape");
+    } catch (error) {
+      rejected = error;
+    }
+    expect(rejected).toBeInstanceOf(ExitPromptError);
+    expect((rejected as Error).message).toBe("Table browser cancelled.");
   });
 
   it("pick-many intent toggles with space and commits on ctrl+s", async () => {

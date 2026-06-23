@@ -90,6 +90,7 @@ export const promptForInteractiveLayerListBrowse: (
   const [active, setActive] = useState(0);
   const [view, setView] = useState<PromptView>("browse");
   const [showingRow, setShowingRow] = useState<LayerListBrowseRow | null>(null);
+  const [pendingExitMessage, setPendingExitMessage] = useState<string | null>(null);
   const promptScreenRef = useRef<PromptScreen | null>(null);
   if (promptScreenRef.current === null) {
     promptScreenRef.current = createPromptScreen();
@@ -126,7 +127,8 @@ export const promptForInteractiveLayerListBrowse: (
     }
 
     if (isEscapeKey(key)) {
-      throw new ExitPromptError("Layer list cancelled.");
+      setPendingExitMessage("Layer list cancelled.");
+      return;
     }
 
     if (isEnterKey(key)) {
@@ -163,6 +165,10 @@ export const promptForInteractiveLayerListBrowse: (
       scheduleSearch(nextQuery);
     }
   });
+
+  if (pendingExitMessage) {
+    throw new ExitPromptError(pendingExitMessage);
+  }
 
   if (view === "show" && showingRow?.section === "local") {
     const helpLine = buildHelpLine([["esc", "back"]]);

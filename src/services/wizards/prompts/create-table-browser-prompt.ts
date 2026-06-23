@@ -109,6 +109,7 @@ const tableBrowserPromptBase = createPrompt<
   );
   const [constraintDraft, setConstraintDraft] = useState("latest");
   const [constraintTargetKey, setConstraintTargetKey] = useState<string | null>(null);
+  const [pendingExitMessage, setPendingExitMessage] = useState<string | null>(null);
   const promptScreenRef = useRef<PromptScreen | null>(null);
   if (promptScreenRef.current === null) {
     promptScreenRef.current = createPromptScreen();
@@ -238,9 +239,8 @@ const tableBrowserPromptBase = createPrompt<
         finishManage({ type: "cancel" });
         return;
       }
-      throw new ExitPromptError(
-        config.cancelMessage ?? "Table browser cancelled.",
-      );
+      setPendingExitMessage(config.cancelMessage ?? "Table browser cancelled.");
+      return;
     }
 
     if (config.intent.kind === "manage") {
@@ -411,6 +411,10 @@ const tableBrowserPromptBase = createPrompt<
 
     handleSearchKeypress({ query, setQuery, setActive, key });
   });
+
+  if (pendingExitMessage) {
+    throw new ExitPromptError(pendingExitMessage);
+  }
 
   if (view === "show" && showingItem && config.adapter.renderShow) {
     const helpLine = buildHelpLine([["esc", "back"]]);

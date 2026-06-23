@@ -76,6 +76,7 @@ export const createRemoteCatalogListPrompt: (
   );
   const [view, setView] = useState<PromptView>("browse");
   const [showingLayer, setShowingLayer] = useState<CatalogLayer | null>(null);
+  const [pendingExitMessage, setPendingExitMessage] = useState<string | null>(null);
   const { width: terminalWidth, height: terminalRows } = useTerminalSize();
   const { items: layers, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
     initialQuery: config.initialQuery,
@@ -136,9 +137,10 @@ export const createRemoteCatalogListPrompt: (
     }
 
     if (isEscapeKey(key)) {
-      throw new ExitPromptError(
+      setPendingExitMessage(
         isApplyMode ? "Catalog search cancelled." : "Catalog browse cancelled.",
       );
+      return;
     }
 
     if (isApplyMode && key.ctrl && key.name === "s") {
@@ -197,6 +199,10 @@ export const createRemoteCatalogListPrompt: (
       scheduleSearch(nextQuery);
     }
   });
+
+  if (pendingExitMessage) {
+    throw new ExitPromptError(pendingExitMessage);
+  }
 
   if (isApplyMode && view === "show" && showingLayer) {
     const helpLine = buildHelpLine([["esc", "back"]]);

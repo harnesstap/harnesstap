@@ -131,7 +131,15 @@ describe("interactive catalog search prompt", () => {
       { clearPromptOnDone: true },
     );
 
-    expect(() => events.keypress("escape")).toThrow(ExitPromptError);
-    void answer.catch(() => undefined);
+    events.keypress("escape");
+    let rejected: unknown;
+    try {
+      await answer;
+      throw new Error("Expected prompt to reject on escape");
+    } catch (error) {
+      rejected = error;
+    }
+    expect(rejected).toBeInstanceOf(ExitPromptError);
+    expect((rejected as Error).message).toBe("Catalog search cancelled.");
   });
 });
