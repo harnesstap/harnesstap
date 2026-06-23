@@ -467,6 +467,46 @@ export function getLayerByCatalogVersion(
   return row ? rowToLayer(row) : undefined;
 }
 
+export function listLatestPublishedLayersBySlug(slug: string): Layer[] {
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT * FROM layers WHERE name = ?`)
+    .all(slug) as LayerRow[];
+  const published = rows.filter(
+    (row) => row.org_slug !== "" || row.catalog_slug !== "",
+  );
+  const latestByIdentity = new Map<string, LayerRow>();
+  for (const row of published) {
+    const key = `${row.org_slug}/${row.catalog_slug}`;
+    const existing = latestByIdentity.get(key);
+    if (!existing) {
+      latestByIdentity.set(key, row);
+      continue;
+    }
+    try {
+      if (semver.rcompare(row.version, existing.version) > 0) {
+        latestByIdentity.set(key, row);
+      }
+    } catch {
+      latestByIdentity.set(key, row);
+    }
+  }
+  return [...latestByIdentity.values()].map(rowToLayer);
+}
+
+export function formatPublishedLayerSelector(layer: Pick<Layer, "org_slug" | "catalog_slug" | "name" | "version">): string {
+  return `${layer.org_slug}/${layer.catalog_slug}/${layer.name}@${layer.version}`;
+}
+
+export function isSamePublishedLayerIdentity(
+  layer: Pick<Layer, "org_slug" | "catalog_slug" | "name">,
+  identity: { org_slug: string; catalog_slug: string; layer_slug: string },
+): boolean {
+  return layer.org_slug === identity.org_slug
+    && layer.catalog_slug === identity.catalog_slug
+    && layer.name === identity.layer_slug;
+}
+
 export function listLayers(): Layer[] {
   const db = getDb();
   const rows = db

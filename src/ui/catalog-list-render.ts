@@ -1,6 +1,7 @@
 import type { CatalogLayer } from "../services/catalog-types.js";
 import { formatPublishedSelector } from "../services/layer-selector.js";
 import * as format from "./format.js";
+import { renderPanel } from "./panel.js";
 import {
   computeMaxVisibleTableRows,
   renderFoldedHintLine,
@@ -114,21 +115,25 @@ function decorateCatalogSearchRows(
   });
 }
 
+function formatCatalogLayerShowLabel(layer: CatalogLayer): string {
+  const selector = catalogLayerKey(layer);
+  return layer.latestVersion ? `${selector}@${layer.latestVersion}` : selector;
+}
+
 export function renderCatalogLayerShow(layer: CatalogLayer): string {
-  const lines = [
-    `${theme.accent(catalogLayerKey(layer))}`,
-    `Name: ${layer.name}`,
-    `Summary: ${layer.summary || theme.muted("—")}`,
-    `Version: ${layer.latestVersion ?? theme.muted("—")}`,
-    `Tags: ${layer.tags.length > 0 ? layer.tags.join(", ") : theme.muted("—")}`,
-    `Visibility: ${layer.visibility}`,
-    `Updated: ${
-      layer.updatedAt
-        ? format.formatRelativeTimeWithAbsolute(layer.updatedAt)
-        : theme.muted("—")
-    }`,
-  ];
-  return lines.join("\n");
+  return renderPanel({
+    title: ["LAYER", formatCatalogLayerShowLabel(layer)],
+    rows: [
+      ["Description", layer.summary || "—"],
+      ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+      [
+        "Updated",
+        layer.updatedAt
+          ? format.formatRelativeTimeWithAbsolute(layer.updatedAt)
+          : "—",
+      ],
+    ],
+  });
 }
 
 export function renderCatalogListChunk(chunk: {

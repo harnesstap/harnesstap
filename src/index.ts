@@ -150,6 +150,10 @@ import {
   warnProfileSearchDeprecated,
 } from "./services/layer-list.js";
 import {
+  deleteCatalogLayer,
+  editCatalogLayerComposition,
+} from "./services/catalog-layer-manage.js";
+import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "./constants/onboarding.js";
@@ -164,7 +168,6 @@ import { renderShellCompletion } from "./services/shell-completion.js";
 import { runCompleteCommand } from "./services/completion/run-complete.js";
 import {
   formatPublishedSelector,
-  resolveRemoteLayerSelector,
 } from "./services/layer-selector.js";
 import {
   preparePluginPinsForApply,
@@ -217,7 +220,7 @@ import {
   resolveApplyLayerSource,
   type ResolveApplyLayerSourceOptions,
 } from "./services/layer-apply-source.js";
-import { LayerAmbiguityError, LayerResolveError } from "./services/layer-bare-name-resolve.js";
+import { LayerAmbiguityError, LayerResolveError, resolveInstallSelector } from "./services/layer-bare-name-resolve.js";
 import { installLayerFromCatalog } from "./services/layer-catalog-install.js";
 import {
   promptMaterializationConflict,
@@ -1752,6 +1755,40 @@ configureLayerListInteractiveDeps({
   onDelete: async (name, _deleteOpts) => {
     await deleteLocalLayerByName(name);
   },
+  onEditRemote: async (catalogLayer, selection, remoteOpts) => {
+    try {
+      await editCatalogLayerComposition(catalogLayer, selection, {
+        account: remoteOpts.account,
+        baseUrl: remoteOpts.baseUrl,
+        onEditLocal: async (name) => {
+          await handleLayerEditCommand(name, {
+            format: remoteOpts.format,
+            interactive: true,
+          });
+        },
+        onPublish: async (layerName, catalogSelector, publishOpts) => {
+          await handleLayerPublishCommand(layerName, catalogSelector, {
+            account: publishOpts.account,
+            format: remoteOpts.format,
+          });
+        },
+      });
+    } catch (err) {
+      process.exitCode = 1;
+      renderCliError(err);
+    }
+  },
+  onDeleteRemote: async (catalogLayer, remoteOpts) => {
+    try {
+      await deleteCatalogLayer(catalogLayer, {
+        account: remoteOpts.account,
+        baseUrl: remoteOpts.baseUrl,
+      });
+    } catch (err) {
+      process.exitCode = 1;
+      renderCliError(err);
+    }
+  },
 });
 
 function handleHistoryCommand(
@@ -1984,24 +2021,25 @@ async function handleLayerInstallCommand(
     return undefined;
   }
 
-  let parsed: ReturnType<typeof resolveRemoteLayerSelector>;
+  let parsed: Awaited<ReturnType<typeof resolveInstallSelector>>;
   try {
-    parsed = resolveRemoteLayerSelector(selector, {
+    parsed = await resolveInstallSelector(selector, {
       org: opts.org,
       catalog: opts.catalog,
       version: opts.version,
+      account: opts.account,
+      baseUrl: opts.baseUrl,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: parseOutputFormat(opts.format),
     });
   } catch (err) {
     process.exitCode = 1;
+    if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
+      ui.danger(err.message, { hints: err.hints });
+      return undefined;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
-    return undefined;
-  }
-
-  const localName = opts.as ?? parsed.layer_slug;
-  const existing = getLayer(localName);
-  if (existing && !opts.as) {
-    process.exitCode = 1;
-    ui.danger(`Layer name already exists: ${localName}. Use --as to install under a different name.`);
     return undefined;
   }
 

@@ -10,6 +10,10 @@ import {
   resolveRemoteLayerSelector,
   type ResolvedRemoteLayerSelector,
 } from "./layer-selector.js";
+import {
+  isLayerExportFilePath,
+  isLayerUrl,
+} from "./layer-source.js";
 import { catalogLayerKey } from "../ui/catalog-list-render.js";
 import { promptForChoice, shouldUseWizard } from "./wizards/shared.js";
 
@@ -49,6 +53,33 @@ export type ResolveBareNameOptions = {
     candidates: CatalogLayer[];
   }) => Promise<CatalogLayer>;
 };
+
+export type ResolveInstallSelectorOptions = ResolveBareNameOptions & {
+  org?: string;
+  catalog?: string;
+  version?: string;
+};
+
+export function isBareInstallSelector(selector: string): boolean {
+  if (isLayerUrl(selector) || isLayerExportFilePath(selector)) {
+    return false;
+  }
+  return !selector.includes("/");
+}
+
+export async function resolveInstallSelector(
+  selector: string,
+  options: ResolveInstallSelectorOptions = {},
+): Promise<ResolvedRemoteLayerSelector> {
+  if (isBareInstallSelector(selector)) {
+    return resolveBareNameFromCatalog(selector, options);
+  }
+  return resolveRemoteLayerSelector(selector, {
+    org: options.org,
+    catalog: options.catalog,
+    version: options.version,
+  });
+}
 
 function exactCatalogMatches(layers: CatalogLayer[], searchName: string): CatalogLayer[] {
   const normalized = searchName.trim().toLowerCase();

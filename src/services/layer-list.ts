@@ -32,6 +32,7 @@ import {
 } from "./materialization-conflicts.js";
 import { getActiveProfileName } from "./active-profile.js";
 import { runInteractiveLayerListBrowse as promptInteractiveLayerListBrowse } from "./wizards/interactive-layer-list-browse.js";
+import type { InteractiveLayerListBrowseSelection } from "./wizards/interactive-layer-list-browse.js";
 import { runInteractiveCatalogSearch } from "./wizards/interactive-catalog-search.js";
 import { shouldUseWizard, isPromptCancellationError } from "./wizards/shared.js";
 
@@ -85,6 +86,15 @@ export type LayerListInteractiveDeps = {
   onDelete: (
     name: string,
     opts: { format?: string },
+  ) => Promise<void>;
+  onEditRemote: (
+    catalogLayer: CatalogLayer,
+    selection: InteractiveLayerListBrowseSelection,
+    opts: { account?: string; baseUrl?: string; format?: string },
+  ) => Promise<void>;
+  onDeleteRemote: (
+    catalogLayer: CatalogLayer,
+    opts: { account?: string; baseUrl?: string; format?: string },
   ) => Promise<void>;
 };
 
@@ -346,6 +356,21 @@ async function runInteractiveLayerListBrowse(opts: HandleLayerListCommandOpts): 
         case "delete":
           await interactiveDeps.onDelete(result.name, { format: opts.format });
           localLayers.splice(0, localLayers.length, ...resolveLocalLayers(opts));
+          continue;
+        case "edit-remote":
+          await interactiveDeps.onEditRemote(result.catalogLayer, result.selection, {
+            account: opts.account,
+            baseUrl: opts.baseUrl,
+            format: opts.format,
+          });
+          localLayers.splice(0, localLayers.length, ...resolveLocalLayers(opts));
+          continue;
+        case "delete-remote":
+          await interactiveDeps.onDeleteRemote(result.catalogLayer, {
+            account: opts.account,
+            baseUrl: opts.baseUrl,
+            format: opts.format,
+          });
           continue;
         default: {
           const _exhaustive: never = result;

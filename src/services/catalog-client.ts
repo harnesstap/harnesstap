@@ -162,21 +162,33 @@ export async function fetchCatalogLayer(
   layer: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">,
   input?: { account?: string; baseUrl?: string },
 ): Promise<CatalogLayer> {
+  const key = catalogLayerKey(layer);
   const selector = formatCanonicalPublishedSelector({
     org: layer.orgSlug,
     catalog: layer.catalogSlug,
     name: layer.slug,
   });
-  const layers = await listLayersInScope(
-    { selectors: [selector], limit: 1 },
-    input,
-  );
-  const key = catalogLayerKey(layer);
-  const found = layers.find((candidate) => catalogLayerKey(candidate) === key);
-  if (!found) {
-    throw new Error(`Catalog layer not found: ${key}`);
-  }
-  return found;
+
+  let cursor: string | null = null;
+  do {
+    const result = await listCatalogLayersPage(
+      {
+        selectors: [selector],
+        orgs: [layer.orgSlug],
+        catalog: layer.catalogSlug,
+        limit: 50,
+        cursor,
+      },
+      input,
+    );
+    const found = result.layers.find((candidate) => catalogLayerKey(candidate) === key);
+    if (found) {
+      return found;
+    }
+    cursor = result.nextCursor;
+  } while (cursor);
+
+  throw new Error(`Catalog layer not found: ${key}`);
 }
 
 export async function listLayersInScope(

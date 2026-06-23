@@ -154,6 +154,7 @@ export interface CloudClient {
   listOrgs(): Promise<Record<string, unknown>[]>;
   planLayerPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
   publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string): Promise<Record<string, unknown>>;
+  deletePublishedLayer(input: { orgId: string; layerId: string }): Promise<void>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 }
@@ -364,6 +365,17 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         version: published.version.version,
         url: `${state.baseUrl}/catalogs/${catalogSlug}/${slug}`,
       };
+    },
+
+    async deletePublishedLayer(input: { orgId: string; layerId: string }) {
+      const response = await authFetch(
+        `${apiUrl(state.baseUrl, `/layers/${encodeURIComponent(input.layerId)}`)}?orgId=${encodeURIComponent(input.orgId)}`,
+        { method: "DELETE" },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(`delete layer failed: ${response.status} ${parseApiError(body)}`);
+      }
     },
 
     async revokeRefreshToken() {

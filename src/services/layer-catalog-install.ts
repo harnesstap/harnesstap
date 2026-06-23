@@ -1,12 +1,12 @@
 import { downloadCatalogBundle } from "./catalog-client.js";
 import { importFromFile } from "./layer-import.js";
-import { getLayer } from "../models/layer-model.js";
 import { updateLayerPublishedIdentity } from "../models/layer-model.js";
 import {
   formatPublishedSelectorWithVersion,
   type ResolvedRemoteLayerSelector,
 } from "./layer-selector.js";
 import { writeLayerExportToTempFile } from "./layer-source.js";
+import { assertInstallLayerNameAvailable } from "./layer-install-conflicts.js";
 
 export interface InstallLayerFromCatalogOptions {
   as?: string;
@@ -25,13 +25,7 @@ export async function installLayerFromCatalog(
   parsed: ResolvedRemoteLayerSelector,
   opts: InstallLayerFromCatalogOptions = {},
 ): Promise<InstallLayerFromCatalogResult> {
-  const localName = opts.as ?? parsed.layer_slug;
-  const existing = getLayer(localName);
-  if (existing && !opts.as) {
-    throw new Error(
-      `Layer name already exists: ${localName}. Use --as to install under a different name.`,
-    );
-  }
+  assertInstallLayerNameAvailable(parsed, opts);
 
   const downloaded = await downloadCatalogBundle({
     orgSlug: parsed.org_slug,

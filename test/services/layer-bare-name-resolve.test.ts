@@ -8,6 +8,8 @@ import {
   LayerAmbiguityError,
   LayerResolveError,
   resolveBareNameFromCatalog,
+  resolveInstallSelector,
+  isBareInstallSelector,
 } from "../../src/services/layer-bare-name-resolve.ts";
 
 const teamLayers = [
@@ -139,5 +141,41 @@ describe("resolveBareNameFromCatalog", () => {
     } finally {
       await context.cleanup();
     }
+  });
+});
+
+describe("resolveInstallSelector", () => {
+  it("routes bare selectors through catalog bare resolve", async () => {
+    const context = await createInitializedTestContext("install-selector-bare");
+    try {
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [teamLayers[0]!],
+      });
+
+      const resolved = await resolveInstallSelector("team", { baseUrl: "https://mock" });
+      expect(resolved.org_slug).toBe("harnessdeck-cloud");
+      expect(resolved.layer_slug).toBe("team");
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("routes qualified selectors through remote layer selector", async () => {
+    const resolved = await resolveInstallSelector("acme/default/team@2.0.0");
+    expect(resolved).toEqual({
+      org_slug: "acme",
+      catalog_slug: "default",
+      layer_slug: "team",
+      version: "2.0.0",
+    });
+  });
+
+  it("detects bare install selectors", () => {
+    expect(isBareInstallSelector("team")).toBe(true);
+    expect(isBareInstallSelector("acme/default/team")).toBe(false);
+    expect(isBareInstallSelector("https://example.com/layer.tgz")).toBe(false);
   });
 });

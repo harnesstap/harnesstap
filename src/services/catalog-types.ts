@@ -10,6 +10,9 @@ export interface CatalogLayer {
   updatedAt: string | null;
   tags: string[];
   visibility: CatalogLayerVisibility;
+  layerId?: string;
+  orgId?: string;
+  manageable?: boolean;
 }
 
 export function normalizeCatalogLayer(
@@ -25,6 +28,9 @@ export function normalizeCatalogLayer(
     updatedAt: layer.updatedAt ?? null,
     tags: layer.tags ?? [],
     visibility: layer.visibility ?? "public",
+    layerId: layer.layerId,
+    orgId: layer.orgId,
+    manageable: layer.manageable,
   };
 }
 

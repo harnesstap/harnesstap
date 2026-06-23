@@ -1,8 +1,10 @@
 import type { Layer } from "../types.js";
 import {
-  getLayerByCatalogVersion,
+  formatPublishedLayerSelector,
   getLayerByName,
+  getLayerByCatalogVersion,
   getLayerByPublishedIdentity,
+  listLatestPublishedLayersBySlug,
   resolveLayerSelector,
 } from "../models/layer-model.js";
 import {
@@ -15,6 +17,8 @@ import {
   LayerResolveError,
   resolveBareNameFromCatalog,
 } from "./layer-bare-name-resolve.js";
+import { satisfiesConstraint } from "./plugin-constraints.js";
+import { promptForChoice, shouldUseWizard } from "./wizards/shared.js";
 import {
   fetchLayerExportToTempFile,
   isLayerExportFilePath,
@@ -85,6 +89,118 @@ function isBareLayerName(selector: string): boolean {
   return !selector.includes("/");
 }
 
+function filterLayersByVersionConstraint(
+  layers: Layer[],
+  versionConstraint?: string,
+): Layer[] {
+  if (!versionConstraint) {
+    return layers;
+  }
+  return layers.filter((layer) => satisfiesConstraint(versionConstraint, layer.version));
+}
+
+function getUnpublishedLocalByName(name: string): Layer | undefined {
+  const layer = getLayerByName(name);
+  if (!layer) {
+    return undefined;
+  }
+  if (layer.org_slug || layer.catalog_slug) {
+    return undefined;
+  }
+  return layer;
+}
+
+function formatLocalPublishedAmbiguity(selector: string, layers: Layer[]): string {
+  const lines = layers.map((layer) => formatPublishedLayerSelector(layer));
+  return `Ambiguous layer name: ${selector}\n${lines.map((line) => `  ${line}`).join("\n")}`;
+}
+
+async function promptLocalPublishedAmbiguity(
+  selector: string,
+  layers: Layer[],
+): Promise<Layer> {
+  const selected = await promptForChoice({
+    message: `Multiple installed layers match "${selector}". Which one?`,
+    choices: layers.map((layer) => ({
+      name: formatPublishedLayerSelector(layer),
+      value: layer.id,
+    })),
+  });
+  const match = layers.find((layer) => layer.id === selected);
+  if (!match) {
+    throw new LayerResolveError(`Layer not found: ${selector}`);
+  }
+  return match;
+}
+
+async function pickLocalPublishedLayer(
+  selector: string,
+  layers: Layer[],
+  options: ResolveApplyLayerSourceOptions,
+): Promise<Layer> {
+  if (layers.length === 1) {
+    const only = layers[0];
+    if (!only) {
+      throw new LayerResolveError(`Layer not found: ${selector}`);
+    }
+    return only;
+  }
+
+  const canPrompt = shouldUseWizard({
+    interactive: options.interactive ?? true,
+    noInteractive: options.noInteractive,
+    format: options.format ?? "human",
+    missingRequiredArgs: false,
+  });
+
+  if (!canPrompt) {
+    throw new LayerResolveError(formatLocalPublishedAmbiguity(selector, layers), [
+      "Use a fully qualified selector: org/catalog/slug@version",
+    ]);
+  }
+
+  return promptLocalPublishedAmbiguity(selector, layers);
+}
+
+async function resolveBareApplyLayerSource(
+  selector: string,
+  options: ResolveApplyLayerSourceOptions,
+): Promise<ResolvedApplyLayerSource> {
+  const parsed = parseLayerSelector(selector);
+  if (parsed.scope !== "local") {
+    throw new LayerResolveError(`Layer not found: ${selector}`);
+  }
+
+  const publishedLocals = filterLayersByVersionConstraint(
+    listLatestPublishedLayersBySlug(parsed.name),
+    parsed.version,
+  );
+  if (publishedLocals.length > 0) {
+    const layer = await pickLocalPublishedLayer(selector, publishedLocals, options);
+    return { kind: "local", layerId: layer.id };
+  }
+
+  const unpublishedLocal = getUnpublishedLocalByName(parsed.name);
+  if (unpublishedLocal) {
+    return { kind: "local", layerId: unpublishedLocal.id };
+  }
+
+  const remote = await resolveBareNameFromCatalog(selector, {
+    account: options.account,
+    baseUrl: options.baseUrl,
+    interactive: options.interactive,
+    noInteractive: options.noInteractive,
+    format: options.format,
+    promptAmbiguity: options.promptAmbiguity,
+  });
+  const installed = await installLayerFromCatalog(remote, {
+    account: options.account,
+    baseUrl: options.baseUrl,
+  });
+  options.onFetched?.(installed.sourceLabel);
+  return { kind: "local", layerId: installed.layerId };
+}
+
 export async function resolveApplyLayerSource(
   selector: string,
   options: ResolveApplyLayerSourceOptions = {},
@@ -99,25 +215,12 @@ export async function resolveApplyLayerSource(
   }
 
   const localLayer = resolveLocalLayer(selector);
-  if (localLayer) {
+  if (localLayer && !isBareLayerName(selector)) {
     return { kind: "local", layerId: localLayer.id };
   }
 
   if (isBareLayerName(selector)) {
-    const parsed = await resolveBareNameFromCatalog(selector, {
-      account: options.account,
-      baseUrl: options.baseUrl,
-      interactive: options.interactive,
-      noInteractive: options.noInteractive,
-      format: options.format,
-      promptAmbiguity: options.promptAmbiguity,
-    });
-    const installed = await installLayerFromCatalog(parsed, {
-      account: options.account,
-      baseUrl: options.baseUrl,
-    });
-    options.onFetched?.(installed.sourceLabel);
-    return { kind: "local", layerId: installed.layerId };
+    return resolveBareApplyLayerSource(selector, options);
   }
 
   if (!isPublishedSelector(selector)) {

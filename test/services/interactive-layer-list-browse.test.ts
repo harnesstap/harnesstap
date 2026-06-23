@@ -80,6 +80,8 @@ describe("interactive layer list browse prompt", () => {
     events.keypress("enter");
     await nextRender();
     expect(getScreen()).toContain("Fetched fullstack details");
+    expect(getScreen()).toContain("Description");
+    expect(getScreen()).not.toContain("Catalog layer not found");
     events.keypress("i");
 
     await expect(answer).resolves.toEqual({

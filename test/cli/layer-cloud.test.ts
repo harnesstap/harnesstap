@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
@@ -945,6 +947,61 @@ describe("CLI cloud layer workflows", () => {
       );
 
       restorePublishFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer pull rejects ambiguous bare slugs with candidate selectors", async () => {
+    const context = await createTestContext("cli-layer-pull-bare-ambiguous");
+    try {
+      await runCli(["init"]);
+      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      mkdirSync(harnessdeckDir, { recursive: true });
+      const catalog = await import("../../src/config/catalog.ts");
+      catalog.connectCatalogOrg("acme", harnessdeckDir);
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [
+          {
+            orgSlug: "harnessdeck-cloud",
+            slug: "team",
+            name: "Team",
+            summary: "A",
+            latestVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+          {
+            orgSlug: "acme",
+            slug: "team",
+            name: "Team",
+            summary: "B",
+            latestVersion: "2.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+        ],
+      });
+
+      const result = await runCli([
+        "layer",
+        "pull",
+        "team",
+        "--base-url",
+        "https://mock",
+        "--no-interactive",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Ambiguous layer name: team");
+      expect(result.stderr).toContain("harnessdeck-cloud/default/team");
+      expect(result.stderr).toContain("acme/default/team");
+
+      restoreFetch();
     } finally {
       await context.cleanup();
     }

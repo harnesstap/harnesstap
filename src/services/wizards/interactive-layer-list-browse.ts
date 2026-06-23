@@ -13,6 +13,10 @@ import {
   useState,
 } from "@inquirer/core";
 import type { CatalogLayer } from "../catalog-types.js";
+import {
+  formatCatalogLayerManageLabel,
+  isCatalogLayerManageable,
+} from "../catalog-layer-manage.js";
 import { formatCanonicalPublishedSelectorWithVersion } from "../layer-selector.js";
 import { getActiveProfileName } from "../active-profile.js";
 import { renderCatalogLayerShow } from "../../ui/catalog-list-render.js";
@@ -59,7 +63,9 @@ export type InteractiveLayerListBrowseResult =
   | { action: "install"; selection: InteractiveLayerListBrowseSelection }
   | { action: "apply"; selection: InteractiveLayerListBrowseSelection }
   | { action: "edit"; name: string }
-  | { action: "delete"; name: string };
+  | { action: "delete"; name: string }
+  | { action: "edit-remote"; selection: InteractiveLayerListBrowseSelection; catalogLayer: CatalogLayer }
+  | { action: "delete-remote"; selection: InteractiveLayerListBrowseSelection; catalogLayer: CatalogLayer };
 
 type PromptView = "browse" | "show" | "confirm-delete";
 
@@ -101,6 +107,64 @@ function finishBrowseAction(
   layer: CatalogLayer,
 ): void {
   done({ action, selection: toBrowseSelection(layer) });
+}
+
+function isManageableRemoteRow(row: LayerListBrowseRow | null | undefined): row is Extract<
+  LayerListBrowseRow,
+  { section: "remote" }
+> {
+  return row?.section === "remote" && isCatalogLayerManageable(row.catalogLayer);
+}
+
+function finishRemoteManageAction(
+  done: (value: InteractiveLayerListBrowseResult) => void,
+  action: "edit-remote" | "delete-remote",
+  layer: CatalogLayer,
+): void {
+  done({
+    action,
+    selection: toBrowseSelection(layer),
+    catalogLayer: layer,
+  });
+}
+
+function formatPendingDeletePrompt(row: LayerListBrowseRow): string {
+  if (row.section === "local") {
+    return `Delete layer "${row.layer.name}"? [y/N]`;
+  }
+  return `Delete catalog layer "${formatCatalogLayerManageLabel(row.catalogLayer)}"? [y/N] (local install is kept)`;
+}
+
+function buildBrowseHelpLine(activeRow: LayerListBrowseRow | undefined): string {
+  if (activeRow?.section === "remote" && isCatalogLayerManageable(activeRow.catalogLayer)) {
+    return buildHelpLine([
+      ["↑↓", "select"],
+      ["type", "search"],
+      ["⌫", "erase"],
+      ["⏎", "show"],
+      ["ctrl+e", "edit catalog"],
+      ["ctrl+x", "delete catalog"],
+      ["esc", "cancel"],
+    ]);
+  }
+  if (activeRow?.section === "local") {
+    return buildHelpLine([
+      ["↑↓", "select"],
+      ["type", "search"],
+      ["⌫", "erase"],
+      ["⏎", "show"],
+      ["ctrl+e", "edit local"],
+      ["ctrl+x", "delete local"],
+      ["esc", "cancel"],
+    ]);
+  }
+  return buildHelpLine([
+    ["↑↓", "select"],
+    ["type", "search"],
+    ["⌫", "erase"],
+    ["⏎", "show"],
+    ["esc", "cancel"],
+  ]);
 }
 
 function isConfirmYes(key: Parameters<typeof isLetterKey>[0]): boolean {
@@ -206,16 +270,22 @@ export const promptForInteractiveLayerListBrowse: (
   function renderRemoteShowContent(layer: CatalogLayer): string {
     const sections = [
       remoteDetailsLoading ? theme.muted("Loading layer details…") : "",
-      remoteDetailsError ? theme.danger(remoteDetailsError) : "",
-      renderCatalogLayerShow(layer),
+      remoteDetailsError && !remoteDetails
+        ? theme.danger(remoteDetailsError)
+        : "",
+      renderCatalogLayerShow(remoteDetails ?? layer),
     ].filter((section) => section.length > 0);
     return sections.join("\n");
   }
 
   useKeypress((key) => {
     if (view === "confirm-delete") {
-      if (isConfirmYes(key) && pendingDeleteRow?.section === "local") {
-        done({ action: "delete", name: pendingDeleteRow.layer.name });
+      if (isConfirmYes(key) && pendingDeleteRow) {
+        if (pendingDeleteRow.section === "local") {
+          done({ action: "delete", name: pendingDeleteRow.layer.name });
+          return;
+        }
+        finishRemoteManageAction(done, "delete-remote", pendingDeleteRow.catalogLayer);
         return;
       }
       if (isConfirmNo(key)) {
@@ -241,6 +311,15 @@ export const promptForInteractiveLayerListBrowse: (
         }
         if (isLetterKey(key, "a")) {
           finishBrowseAction(done, "apply", displayLayer);
+          return;
+        }
+        if (isCatalogLayerManageable(displayLayer) && isLetterKey(key, "e")) {
+          finishRemoteManageAction(done, "edit-remote", displayLayer);
+          return;
+        }
+        if (isCatalogLayerManageable(displayLayer) && isLetterKey(key, "d")) {
+          setPendingDeleteRow(showingRow);
+          setView("confirm-delete");
           return;
         }
       }
@@ -308,6 +387,18 @@ export const promptForInteractiveLayerListBrowse: (
       }
     }
 
+    if (isManageableRemoteRow(activeRow)) {
+      if (key.ctrl && key.name === "e") {
+        finishRemoteManageAction(done, "edit-remote", activeRow.catalogLayer);
+        return;
+      }
+      if (key.ctrl && key.name === "x") {
+        setPendingDeleteRow(activeRow);
+        setView("confirm-delete");
+        return;
+      }
+    }
+
     if (navigable.length > 0 && (isUpKey(key) || isDownKey(key))) {
       const direction = isUpKey(key) ? -1 : 1;
       setActive(clampActiveIndex(clampedActive + direction, navigable.length));
@@ -360,13 +451,18 @@ export const promptForInteractiveLayerListBrowse: (
   }
 
   if (view === "show" && showingRow?.section === "remote") {
-    const showContent = renderRemoteShowContent(remoteDetails ?? showingRow.catalogLayer);
-    const helpLine = buildHelpLine([
+    const displayLayer = remoteDetails ?? showingRow.catalogLayer;
+    const showContent = renderRemoteShowContent(displayLayer);
+    const remoteHelp: Array<[string, string]> = [
       ["↑↓", "scroll"],
       ["i", "install"],
       ["a", "apply"],
-      ["esc", "back"],
-    ]);
+    ];
+    if (isCatalogLayerManageable(displayLayer)) {
+      remoteHelp.push(["e", "edit"], ["d", "delete"]);
+    }
+    remoteHelp.push(["esc", "back"]);
+    const helpLine = buildHelpLine(remoteHelp);
     return [
       renderScrollableShowContent(
         showContent,
@@ -379,15 +475,7 @@ export const promptForInteractiveLayerListBrowse: (
     ].join("\n");
   }
 
-  const helpLine = buildHelpLine([
-    ["↑↓", "select"],
-    ["type", "search"],
-    ["⌫", "erase"],
-    ["⏎", "show"],
-    ["ctrl+e", "edit local"],
-    ["ctrl+x", "delete local"],
-    ["esc", "cancel"],
-  ]);
+  const helpLine = buildBrowseHelpLine(activeRow);
 
   const tableSection = error
     ? theme.danger(error)
@@ -405,7 +493,7 @@ export const promptForInteractiveLayerListBrowse: (
         localLayers: config.localLayers,
       });
 
-  if (view === "confirm-delete" && pendingDeleteRow?.section === "local") {
+  if (view === "confirm-delete" && pendingDeleteRow) {
     return [
       `${prefix} ${styledMessage}`,
       `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
@@ -414,7 +502,7 @@ export const promptForInteractiveLayerListBrowse: (
       "",
       helpLine,
       "",
-      theme.danger(`Delete layer "${pendingDeleteRow.layer.name}"? [y/N]`),
+      theme.danger(formatPendingDeletePrompt(pendingDeleteRow)),
     ].join("\n");
   }
 

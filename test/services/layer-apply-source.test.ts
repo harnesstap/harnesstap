@@ -5,6 +5,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { resolveApplyLayerSource } from "../../src/services/layer-apply-source.ts";
 import { LayerAmbiguityError, LayerResolveError } from "../../src/services/layer-bare-name-resolve.ts";
+import { createLayer, updateLayerPublishedIdentity } from "../../src/models/layer-model.ts";
 import { connectCatalogOrg, saveCatalogSettings } from "../../src/config/catalog.ts";
 
 describe("resolveApplyLayerSource", () => {
@@ -188,6 +189,47 @@ describe("resolveApplyLayerSource", () => {
       await expect(resolveApplyLayerSource("missing-local-layer")).rejects.toThrow(
         "Layer not found: missing-local-layer",
       );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("prefers a locally installed published layer over catalog fetch for bare names", async () => {
+    const context = await createInitializedTestContext("resolve-apply-layer-source-local-published");
+    try {
+      const layer = createLayer({ name: "team", version: "1.0.0" });
+      updateLayerPublishedIdentity(layer.id, {
+        org_slug: "acme",
+        catalog_slug: "default",
+        version: "1.0.0",
+      });
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [
+          {
+            orgSlug: "harnessdeck-cloud",
+            slug: "team",
+            name: "Team",
+            summary: "Remote",
+            latestVersion: "9.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+        ],
+      });
+      const fetchedLabels: string[] = [];
+
+      const resolved = await resolveApplyLayerSource("team", {
+        baseUrl: "https://mock",
+        onFetched: (label) => fetchedLabels.push(label),
+      });
+
+      expect(resolved).toEqual({ kind: "local", layerId: layer.id });
+      expect(fetchedLabels).toEqual([]);
+
+      restoreFetch();
     } finally {
       await context.cleanup();
     }
