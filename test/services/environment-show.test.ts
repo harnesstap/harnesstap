@@ -1,11 +1,41 @@
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { runEnvironmentDeleteWizard } from "../../src/services/wizards/environment-delete.ts?actual";
+import { listEnvironmentsCommand } from "../../src/services/environment-commands.ts";
+import { createEnvironmentTableBrowserAdapter } from "../../src/services/wizards/adapters/environment-table-browser.ts";
+import { createTableBrowserPrompt } from "../../src/services/wizards/prompts/create-table-browser-prompt.ts";
+import type { EnvironmentListRow } from "../../src/ui/environment-list-render.ts";
 import { runEnvironmentShowWizard } from "../../src/services/wizards/environment-show.ts?actual";
 
+function renderEnvironmentPickPrompt(
+  message: string,
+  action: "show" | "delete",
+  enterLabel: string,
+  environments: EnvironmentListRow[],
+  context?: Parameters<typeof createTableBrowserPrompt>[1],
+) {
+  return createTableBrowserPrompt<EnvironmentListRow, string>(
+    {
+      message,
+      intent: { kind: "pick-one", action },
+      adapter: {
+        ...createEnvironmentTableBrowserAdapter({ environments }),
+        onPick: (row) => row.environment.name,
+        helpActions: [
+          ["↑↓", "select"],
+          ["type", "search"],
+          ["⏎", enterLabel],
+          ["esc", "cancel"],
+        ],
+      },
+    },
+    context,
+  );
+}
+
 describe("environment delete wizard", () => {
-  it("returns the selected environment name on enter", async () => {
+  promptIt("returns the selected environment name on enter", async () => {
     const context = await createInitializedTestContext("environment-delete-wizard-pick");
 
     try {
@@ -14,7 +44,14 @@ describe("environment delete wizard", () => {
       environmentModel.createEnvironment({ name: "production" });
 
       const { answer, events } = await render(
-        (_config, promptContext) => runEnvironmentDeleteWizard(undefined, promptContext),
+        (_config, promptContext) =>
+          renderEnvironmentPickPrompt(
+            "Which environment do you want to delete?",
+            "delete",
+            "delete",
+            listEnvironmentsCommand(),
+            promptContext,
+          ),
         undefined,
         { clearPromptOnDone: true },
       );
@@ -22,13 +59,13 @@ describe("environment delete wizard", () => {
       events.type("prod");
       events.keypress("enter");
 
-      await expect(answer).resolves.toEqual(["production"]);
+      await expect(answer).resolves.toEqual({ kind: "pick-one", value: "production" });
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not render Active or Show selection line in browse view", async () => {
+  promptIt("does not render Active or Show selection line in browse view", async () => {
     const context = await createInitializedTestContext("environment-delete-wizard-chrome");
 
     try {
@@ -36,16 +73,26 @@ describe("environment delete wizard", () => {
       environmentModel.createEnvironment({ name: "staging" });
       environmentModel.createEnvironment({ name: "production" });
 
-      const { getScreen } = await render(
-        (_config, promptContext) => runEnvironmentDeleteWizard(undefined, promptContext),
-        undefined,
-        { clearPromptOnDone: true },
+      await withPrompt(
+        render(
+          (_config, promptContext) =>
+            renderEnvironmentPickPrompt(
+              "Which environment do you want to delete?",
+              "delete",
+              "delete",
+              listEnvironmentsCommand(),
+              promptContext,
+            ),
+          undefined,
+          { clearPromptOnDone: true },
+        ),
+        ({ getScreen }) => {
+          const frame = getScreen();
+          expect(frame).not.toMatch(/\nShow: /);
+          expect(frame).not.toMatch(/\nActive: /);
+          expect(frame).toMatch(/⏎.*delete/);
+        },
       );
-
-      const frame = getScreen();
-      expect(frame).not.toMatch(/\nShow: /);
-      expect(frame).not.toMatch(/\nActive: /);
-      expect(frame).toMatch(/⏎.*delete/);
     } finally {
       await context.cleanup();
     }
@@ -53,7 +100,7 @@ describe("environment delete wizard", () => {
 });
 
 describe("environment show wizard", () => {
-  it("returns undefined when no environments exist", async () => {
+  promptIt("returns undefined when no environments exist", async () => {
     const context = await createInitializedTestContext("environment-show-wizard-empty");
 
     try {
@@ -64,7 +111,7 @@ describe("environment show wizard", () => {
     }
   });
 
-  it("picks an environment on enter", async () => {
+  promptIt("picks an environment on enter", async () => {
     const context = await createInitializedTestContext("environment-show-wizard-pick");
 
     try {
@@ -73,7 +120,14 @@ describe("environment show wizard", () => {
       environmentModel.createEnvironment({ name: "production" });
 
       const { answer, events } = await render(
-        (_config, promptContext) => runEnvironmentShowWizard(undefined, promptContext),
+        (_config, promptContext) =>
+          renderEnvironmentPickPrompt(
+            "Which environment do you want to show?",
+            "show",
+            "show",
+            listEnvironmentsCommand(),
+            promptContext,
+          ),
         undefined,
         { clearPromptOnDone: true },
       );
@@ -81,13 +135,13 @@ describe("environment show wizard", () => {
       events.type("prod");
       events.keypress("enter");
 
-      await expect(answer).resolves.toBe("production");
+      await expect(answer).resolves.toEqual({ kind: "pick-one", value: "production" });
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not render Active or Show selection line in browse view", async () => {
+  promptIt("does not render Active or Show selection line in browse view", async () => {
     const context = await createInitializedTestContext("environment-show-wizard-chrome");
 
     try {
@@ -95,15 +149,25 @@ describe("environment show wizard", () => {
       environmentModel.createEnvironment({ name: "staging" });
       environmentModel.createEnvironment({ name: "production" });
 
-      const { getScreen } = await render(
-        (_config, promptContext) => runEnvironmentShowWizard(undefined, promptContext),
-        undefined,
-        { clearPromptOnDone: true },
+      await withPrompt(
+        render(
+          (_config, promptContext) =>
+            renderEnvironmentPickPrompt(
+              "Which environment do you want to show?",
+              "show",
+              "show",
+              listEnvironmentsCommand(),
+              promptContext,
+            ),
+          undefined,
+          { clearPromptOnDone: true },
+        ),
+        ({ getScreen }) => {
+          const frame = getScreen();
+          expect(frame).not.toMatch(/\nShow: /);
+          expect(frame).not.toMatch(/\nActive: /);
+        },
       );
-
-      const frame = getScreen();
-      expect(frame).not.toMatch(/\nShow: /);
-      expect(frame).not.toMatch(/\nActive: /);
     } finally {
       await context.cleanup();
     }

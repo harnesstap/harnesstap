@@ -6,6 +6,27 @@ export type TerminalSize = {
   height: number;
 };
 
+const resizeSubscribers = new Set<() => void>();
+
+function notifyResizeSubscribers(): void {
+  for (const subscriber of resizeSubscribers) {
+    subscriber();
+  }
+}
+
+function subscribeResize(onResize: () => void): () => void {
+  resizeSubscribers.add(onResize);
+  if (resizeSubscribers.size === 1 && process.stdout.isTTY) {
+    process.stdout.on("resize", notifyResizeSubscribers);
+  }
+  return () => {
+    resizeSubscribers.delete(onResize);
+    if (resizeSubscribers.size === 0 && process.stdout.isTTY) {
+      process.stdout.off("resize", notifyResizeSubscribers);
+    }
+  };
+}
+
 export function readTerminalSize(): TerminalSize {
   return {
     width: terminalColumns(),
@@ -15,11 +36,6 @@ export function readTerminalSize(): TerminalSize {
 
 export function useTerminalSize(): TerminalSize {
   const [size, setSize] = useState<TerminalSize>(readTerminalSize);
-  useEffect(() => {
-    const onResize = () => setSize(readTerminalSize());
-    onResize();
-    process.stdout.on("resize", onResize);
-    return () => process.stdout.off("resize", onResize);
-  }, []);
+  useEffect(() => subscribeResize(() => setSize(readTerminalSize())), []);
   return size;
 }

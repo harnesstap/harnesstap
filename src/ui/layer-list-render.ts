@@ -1,11 +1,14 @@
+import semver from "semver";
 import type { CatalogLayer } from "../services/catalog-types.js";
 import { isProfileLayer } from "../constants/profile.js";
 import type { Layer } from "../types.js";
 import * as format from "./format.js";
 import {
   catalogLayerKey,
+  formatCatalogScopePath,
   formatCatalogSelectionLabel,
 } from "./catalog-list-render.js";
+import { formatVersionWithDrift } from "./version-render.js";
 import {
   computeMaxVisibleTableRows,
   renderFoldedHintLine,
@@ -31,6 +34,19 @@ export function formatLocalLayerListName(
   }
   const cursor = opts?.selected ? ">" : " ";
   return `${cursor}${kind}${layer.name}`;
+}
+
+export function formatCatalogLayerListSlug(
+  layer: Pick<CatalogLayer, "slug" | "tags">,
+  opts?: { selected?: boolean },
+): string {
+  const slug = isProfileLayer(layer)
+    ? `${theme.accent(icons.profile)} ${layer.slug}`
+    : layer.slug;
+  if (opts?.selected) {
+    return `> ${slug}`;
+  }
+  return opts === undefined ? slug : `  ${slug}`;
 }
 
 export function formatCatalogLayerListName(layer: Pick<CatalogLayer, "name" | "tags">): string {
@@ -265,23 +281,22 @@ function makeLocalColumns(showId: boolean, profileMode: boolean): Column[] {
 function makeRemoteColumns(highlightSelection: boolean): Column[] {
   return [
     {
-      key: "list_display_name",
-      header: "ORG/CATALOG/LAYER",
-      width: 40,
+      key: "catalog",
+      header: "CATALOG",
+      width: 28,
+    },
+    {
+      key: "slug",
+      header: "LAYER",
+      width: 26,
       style: highlightSelection
         ? (value) => (value.startsWith(">") ? theme.accent(value) : value)
         : undefined,
     },
     {
-      key: "name",
-      header: "NAME",
-      width: 22,
-    },
-    {
-      key: "visibility",
-      header: "VIS",
-      width: 8,
-      transform: (value) => String(value).slice(0, 4),
+      key: "version",
+      header: "VERSION",
+      width: 12,
     },
     {
       key: "updatedAt",
@@ -291,6 +306,36 @@ function makeRemoteColumns(highlightSelection: boolean): Column[] {
         value ? format.formatRelativeTime(String(value)) : theme.muted("—"),
     },
   ];
+}
+
+function findInstalledLocalLayer(
+  catalogLayer: CatalogLayer,
+  localLayers: Layer[],
+): Layer | undefined {
+  const publishedMatches = localLayers.filter(
+    (layer) =>
+      layer.org_slug === catalogLayer.orgSlug
+      && layer.catalog_slug === catalogLayer.catalogSlug
+      && layer.name === catalogLayer.slug,
+  );
+  if (publishedMatches.length === 0) {
+    return undefined;
+  }
+  return [...publishedMatches].sort((left, right) => semver.rcompare(left.version, right.version))[0];
+}
+
+function formatRemoteCatalogVersion(
+  catalogLayer: CatalogLayer,
+  localLayers: Layer[],
+): string {
+  const latestVersion = catalogLayer.latestVersion;
+  if (!latestVersion) {
+    return theme.muted("—");
+  }
+
+  const installed = findInstalledLocalLayer(catalogLayer, localLayers);
+  const displayVersion = installed?.version ?? latestVersion;
+  return formatVersionWithDrift(displayVersion, latestVersion);
 }
 
 function tableLayout(maxWidth?: number): { maxWidth: number; wordWrap: true } {
@@ -342,7 +387,7 @@ function renderLocalSectionTable(
 function renderRemoteSectionTable(
   rows: LayerListBrowseRow[],
   activeRow: LayerListBrowseRow | undefined,
-  opts: { maxWidth?: number },
+  opts: { maxWidth?: number; localLayers?: Layer[] },
 ): string {
   const remoteRows = rows.filter((row): row is Extract<LayerListBrowseRow, { section: "remote" }> =>
     row.section === "remote",
@@ -354,14 +399,14 @@ function renderRemoteSectionTable(
   const activeKey = activeRow?.section === "remote"
     ? catalogLayerKey(activeRow.catalogLayer)
     : undefined;
+  const localLayers = opts.localLayers ?? [];
   const tableRows = remoteRows.map((row) => {
-    const listDisplayName = formatCatalogLayerListSelector(row.catalogLayer, {
-      selected: catalogLayerKey(row.catalogLayer) === activeKey,
-    });
+    const isSelected = catalogLayerKey(row.catalogLayer) === activeKey;
     return {
-      ...row.catalogLayer,
-      list_display_name: listDisplayName,
-      name: formatCatalogLayerListName(row.catalogLayer),
+      catalog: formatCatalogScopePath(row.catalogLayer),
+      slug: formatCatalogLayerListSlug(row.catalogLayer, { selected: isSelected }),
+      version: formatRemoteCatalogVersion(row.catalogLayer, localLayers),
+      updatedAt: row.catalogLayer.updatedAt ?? "",
     };
   });
 
@@ -381,6 +426,7 @@ export type LayerListBrowseViewportOptions = {
   profileMode?: boolean;
   activeProfileName?: string | null;
   scopeLabel?: string;
+  localLayers?: Layer[];
 };
 
 export function renderGroupedLayerListBrowseViewport(
@@ -418,6 +464,7 @@ export function renderGroupedLayerListBrowseViewport(
       })
     : renderRemoteSectionTable(visibleRows, activeRow, {
         maxWidth: opts.maxWidth,
+        localLayers: opts.localLayers,
       });
 
   return [
@@ -443,23 +490,4 @@ export function formatLayerListBrowseSelectionLabel(row: LayerListBrowseRow): st
   return isProfileLayer(row.catalogLayer)
     ? `${icons.profile} ${formatCatalogSelectionLabel(row.catalogLayer)}`
     : formatCatalogSelectionLabel(row.catalogLayer);
-}
-
-export function renderLocalLayerBrowseShow(
-  layer: Layer,
-  opts?: { activeProfileName?: string | null },
-): string {
-  const lines = [
-    `${theme.accent(layer.name)}`,
-    ...(isProfileLayer(layer) ? [`Type: ${theme.accent(`${icons.profile} profile`)}`] : []),
-    `Version: ${layer.version}`,
-  ];
-  if (opts?.activeProfileName === layer.name) {
-    lines.push(theme.info("Active profile"));
-  }
-  lines.push(`Description: ${layer.description || theme.muted("—")}`);
-  if (layer.tags.length > 0) {
-    lines.push(`Tags: ${layer.tags.join(", ")}`);
-  }
-  return lines.join("\n");
 }

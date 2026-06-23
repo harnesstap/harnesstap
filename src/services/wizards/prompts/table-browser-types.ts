@@ -44,6 +44,7 @@ export type TableBrowserAdapter<T, TResult> = {
   renderViewport: (args: ViewportRenderArgs<T>) => string;
   renderShow?: (item: T) => string;
   onPick?: (item: T) => TResult;
+  onEdit?: (item: T) => TResult;
   onDelete?: (item: T) => Promise<boolean>;
   helpActions: HelpAction[];
   formatDeleteConfirm?: (item: T) => string;
@@ -66,6 +67,8 @@ export type TableBrowserConfig<T, TResult> = {
 
 export type TableBrowserResult<TResult> =
   | { kind: "filter"; query: string }
+  | { kind: "edit"; value: TResult }
+  | { kind: "delete"; value: TResult }
   | { kind: "pick-one"; value: TResult }
   | { kind: "pick-many"; values: TResult[] }
   | { kind: "manage"; action: ManageAction }

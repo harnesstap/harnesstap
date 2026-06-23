@@ -1,3 +1,4 @@
+import { renderPanel } from "./panel.js";
 import type { Environment } from "../types.js";
 import {
   computeMaxVisibleTableRows,
@@ -195,12 +196,13 @@ export function renderEnvironmentListTable(
 }
 
 export function renderEnvironmentListShow(row: EnvironmentListRow): string {
-  const lines = [
-    `${theme.accent(row.environment.name)}`,
-    `Description: ${row.environment.description || theme.muted("—")}`,
-    `Values: ${row.value_count}`,
-    `Secret refs: ${row.secret_ref_count}`,
-    `Layer references: ${row.reference_count}`,
-  ];
-  return lines.join("\n");
+  return renderPanel({
+    title: ["ENVIRONMENT", row.environment.name],
+    rows: [
+      ["Description", row.environment.description || "—"],
+      ["Values", `${row.value_count}`],
+      ["Secret refs", `${row.secret_ref_count}`],
+      ["Layer references", `${row.reference_count}`],
+    ],
+  });
 }

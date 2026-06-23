@@ -2,6 +2,10 @@ export function isEscapeKey(key: { name?: string; sequence?: string }): boolean 
   return key.name === "escape" || key.sequence === "\u001b";
 }
 
+export function isLetterKey(key: InteractiveKeypress, letter: string): boolean {
+  return !key.ctrl && !key.meta && key.name === letter;
+}
+
 /** Key shape from @inquirer/core useKeypress, shared by prompt helpers. */
 export type InteractiveKeypress = {
   name?: string;

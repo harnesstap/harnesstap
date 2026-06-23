@@ -3,29 +3,26 @@ import {
   filterEnvironmentsBySearch,
   type EnvironmentListRow,
 } from "../../ui/environment-list-render.js";
-import { promptForInteractiveEnvironmentList } from "./interactive-environment-list.js";
+import {
+  promptForInteractiveEnvironmentList,
+  type InteractiveEnvironmentListResult,
+} from "./interactive-environment-list.js";
 
-export type EnvironmentListWizardResult = {
-  search?: string;
-};
+export type EnvironmentListWizardResult = InteractiveEnvironmentListResult;
 
 export async function runEnvironmentListWizard(input?: {
   search?: string;
 }): Promise<EnvironmentListWizardResult | undefined> {
   const environments = listEnvironmentsCommand();
   if (environments.length === 0) {
-    return input?.search ? { search: input.search } : undefined;
+    return input?.search ? { action: "filter", query: input.search } : undefined;
   }
 
-  const result = await promptForInteractiveEnvironmentList({
+  return promptForInteractiveEnvironmentList({
     message: "Filter environments",
     environments,
     initialQuery: input?.search,
   });
-
-  return {
-    search: result.query.length > 0 ? result.query : undefined,
-  };
 }
 
 export function filterEnvironmentListRows(

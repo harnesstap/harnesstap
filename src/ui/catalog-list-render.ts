@@ -80,6 +80,12 @@ export function formatCatalogSelectionLabel(library: CatalogLayer): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }
 
+export function formatCatalogScopePath(
+  library: Pick<CatalogLayer, "orgSlug" | "catalogSlug">,
+): string {
+  return `${library.orgSlug}/${library.catalogSlug}`;
+}
+
 export function catalogLayerKey(library: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }

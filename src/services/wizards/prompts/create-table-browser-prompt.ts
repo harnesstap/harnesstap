@@ -12,6 +12,10 @@ import {
   useState,
 } from "@inquirer/core";
 import { createPromptScreen, type PromptScreen } from "../../../ui/prompt-screen.js";
+import {
+  computeShowViewportBounds,
+  renderScrollableShowContent,
+} from "../../../ui/show-viewport.js";
 import { theme } from "../../../ui/theme.js";
 import {
   handleEnterToShow,
@@ -101,6 +105,7 @@ const tableBrowserPromptBase = createPrompt<
   const [active, setActive] = useState(0);
   const [view, setView] = useState<BrowseSubview>("browse");
   const [showingItem, setShowingItem] = useState<unknown | null>(null);
+  const [showScrollOffset, setShowScrollOffset] = useState(0);
   const [pendingDeleteItem, setPendingDeleteItem] = useState<unknown | null>(null);
   const [pickManyItems, setPickManyItems] = useState<unknown[]>(() =>
     config.pickManyItems
@@ -182,6 +187,18 @@ const tableBrowserPromptBase = createPrompt<
     done({ kind: "manage", action });
   };
 
+  const enterShowView = (item: unknown | undefined | null) => {
+    if (!item) {
+      return;
+    }
+    setShowScrollOffset(0);
+    handleEnterToShow({
+      item,
+      setView: (next) => setView(next),
+      setShowingItem,
+    });
+  };
+
   useKeypress((key) => {
     if (view === "constraint") {
       if (isEscapeKey(key)) {
@@ -208,6 +225,20 @@ const tableBrowserPromptBase = createPrompt<
       if (isConfirmYes(key)) {
         const item = pendingDeleteItem;
         setPendingDeleteItem(null);
+        if (
+          item
+          && (config.intent.kind === "filter" || config.intent.kind === "pick-one")
+        ) {
+          const value = config.adapter.onPick
+            ? config.adapter.onPick(item)
+            : item;
+          done(
+            config.intent.kind === "filter"
+              ? { kind: "delete", value }
+              : { kind: "pick-one", value },
+          );
+          return;
+        }
         setView("browse");
         if (item && config.adapter.onDelete) {
           void config.adapter.onDelete(item).then(() => undefined);
@@ -215,6 +246,42 @@ const tableBrowserPromptBase = createPrompt<
       } else if (isConfirmNo(key)) {
         setPendingDeleteItem(null);
         setView("browse");
+      }
+      return;
+    }
+
+    if (view === "show" && showingItem && config.adapter.renderShow) {
+      if (
+        handleShowViewEscape({
+          view: "show",
+          setView: (next) => {
+            setView(next);
+            if (next === "browse") {
+              setShowScrollOffset(0);
+            }
+          },
+          setShowingItem,
+          key,
+        })
+      ) {
+        return;
+      }
+
+      const showContent = config.adapter.renderShow(showingItem);
+      const { maxScroll } = computeShowViewportBounds(
+        showContent.split("\n").length,
+        showScrollOffset,
+        terminalRows,
+      );
+      if (
+        handleNavigationKeypress({
+          clampedActive: showScrollOffset,
+          length: maxScroll + 1,
+          setActive: setShowScrollOffset,
+          key,
+        })
+      ) {
+        return;
       }
       return;
     }
@@ -269,10 +336,22 @@ const tableBrowserPromptBase = createPrompt<
     }
 
     if (
-      config.intent.kind !== "manage"
-      && isLetterKey(key, "d")
+      config.intent.kind === "filter"
+      && key.ctrl
+      && key.name === "e"
       && selectedItem
-      && config.adapter.onDelete
+      && config.adapter.onEdit
+    ) {
+      done({ kind: "edit", value: config.adapter.onEdit(selectedItem) });
+      return;
+    }
+
+    if (
+      (config.intent.kind === "filter" || config.intent.kind === "pick-one")
+      && key.ctrl
+      && key.name === "x"
+      && selectedItem
+      && (config.adapter.onDelete || config.adapter.formatDeleteConfirm)
     ) {
       setPendingDeleteItem(selectedItem);
       setView("confirm-delete");
@@ -287,11 +366,7 @@ const tableBrowserPromptBase = createPrompt<
 
       if (isEnterKey(key)) {
         if (config.adapter.renderShow) {
-          handleEnterToShow({
-            item: selectedItem,
-            setView: (next) => setView(next),
-            setShowingItem,
-          });
+          enterShowView(selectedItem);
         }
         return;
       }
@@ -381,11 +456,7 @@ const tableBrowserPromptBase = createPrompt<
       }
 
       if (config.adapter.renderShow) {
-        handleEnterToShow({
-          item: selectedItem,
-          setView: (next) => setView(next),
-          setShowingItem,
-        });
+        enterShowView(selectedItem);
       }
       return;
     }
@@ -417,8 +488,18 @@ const tableBrowserPromptBase = createPrompt<
   }
 
   if (view === "show" && showingItem && config.adapter.renderShow) {
-    const helpLine = buildHelpLine([["esc", "back"]]);
-    return [config.adapter.renderShow(showingItem), "", helpLine].join("\n");
+    const showContent = config.adapter.renderShow(showingItem);
+    const helpLine = buildHelpLine([["↑↓", "scroll"], ["esc", "back"]]);
+    return [
+      renderScrollableShowContent(
+        showContent,
+        showScrollOffset,
+        terminalRows,
+        terminalWidth,
+      ),
+      "",
+      helpLine,
+    ].join("\n");
   }
 
   if (view === "constraint" && constraintTargetKey && config.renderConstraint) {

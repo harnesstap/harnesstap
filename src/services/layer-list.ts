@@ -13,7 +13,7 @@ import type { Column } from "../ui/table.js";
 import { ui } from "../ui/index.js";
 import { renderWarn } from "../ui/status.js";
 import { catalogAliasHint } from "./catalog-aliases.js";
-import { listLayersInScope } from "./catalog-client.js";
+import { listLayersInScope, fetchCatalogLayer } from "./catalog-client.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 import {
   buildCatalogListSources,
@@ -77,6 +77,14 @@ export type LayerListInteractiveDeps = {
   onInstall: (
     selector: string,
     opts: LayerListInstallContext & { version?: string },
+  ) => Promise<void>;
+  onEdit: (
+    name: string,
+    opts: { format?: string },
+  ) => Promise<void>;
+  onDelete: (
+    name: string,
+    opts: { format?: string },
   ) => Promise<void>;
 };
 
@@ -264,32 +272,87 @@ async function listRemoteLayersForBrowse(
 async function runInteractiveLayerListBrowse(opts: HandleLayerListCommandOpts): Promise<void> {
   const localLayers = resolveLocalLayers(opts);
   const scope = resolveCatalogScope({ baseUrl: opts.baseUrl });
+  const catalogOptions = { account: opts.account, baseUrl: opts.baseUrl };
+
+  if (!interactiveDeps) {
+    throw new Error("Interactive layer list is not configured");
+  }
 
   try {
-    const selected = await promptInteractiveLayerListBrowse({
-      message: opts.profileMode
-        ? "Select a profile layer to install"
-        : "Select a layer to install",
-      scopeLabel: formatCatalogScopeLabel(scope),
-      localLayers,
-      profileMode: opts.profileMode,
-      showId: Boolean(opts.showId),
-      listRemoteLayers: ({ q, limit }) => listRemoteLayersForBrowse(opts, { q, limit }),
-    });
+    while (true) {
+      const result = await promptInteractiveLayerListBrowse({
+        message: opts.profileMode
+          ? "Select a profile layer"
+          : "Select a layer",
+        scopeLabel: formatCatalogScopeLabel(scope),
+        localLayers,
+        profileMode: opts.profileMode,
+        showId: Boolean(opts.showId),
+        listRemoteLayers: ({ q, limit }) => listRemoteLayersForBrowse(opts, { q, limit }),
+        fetchRemoteLayerDetails: (layer) => fetchCatalogLayer(layer, catalogOptions),
+      });
 
-    if (!interactiveDeps) {
-      throw new Error("Interactive install is not configured");
+      switch (result.action) {
+        case "install":
+          await interactiveDeps.onInstall(result.selection.selector, {
+            ...opts.installContext,
+            account: opts.account ?? opts.installContext?.account,
+            baseUrl: opts.baseUrl ?? opts.installContext?.baseUrl,
+            format: opts.format ?? opts.installContext?.format,
+            noInteractive: opts.noInteractive ?? opts.installContext?.noInteractive,
+            interactive: opts.interactive ?? opts.installContext?.interactive,
+            version: opts.installContext?.version,
+          });
+          return;
+        case "apply": {
+          const selectors = [result.selection.selector] as [string, ...string[]];
+          const applyScope = await promptCatalogSearchApplyScope();
+          const onFetched = (sourceLabel: string) => {
+            ui.info(`Fetched ${sourceLabel} from catalog`);
+          };
+
+          if (applyScope === "project") {
+            await interactiveDeps.applyToProject(selectors, {
+              account: opts.account,
+              baseUrl: opts.baseUrl,
+              format: opts.format,
+              noInteractive: opts.noInteractive,
+            });
+            return;
+          }
+
+          const conflictPolicy = resolveApplyConflictPolicy({
+            noInteractive: opts.noInteractive,
+          });
+          const conflictResolver =
+            conflictPolicy === "prompt" ? promptMaterializationConflict : undefined;
+          const applied = await applyLayersGlobally(selectors, {
+            account: opts.account,
+            baseUrl: opts.baseUrl,
+            conflictPolicy,
+            conflictResolver,
+            onFetched,
+          });
+          if (applied.cancelled) {
+            process.exitCode = 1;
+            ui.danger("Apply cancelled due to file conflicts");
+          }
+          return;
+        }
+        case "edit":
+          await interactiveDeps.onEdit(result.name, { format: opts.format });
+          localLayers.splice(0, localLayers.length, ...resolveLocalLayers(opts));
+          continue;
+        case "delete":
+          await interactiveDeps.onDelete(result.name, { format: opts.format });
+          localLayers.splice(0, localLayers.length, ...resolveLocalLayers(opts));
+          continue;
+        default: {
+          const _exhaustive: never = result;
+          throw _exhaustive;
+        }
+      }
     }
-
-    await interactiveDeps.onInstall(selected.selector, {
-      ...opts.installContext,
-      account: opts.account ?? opts.installContext?.account,
-      baseUrl: opts.baseUrl ?? opts.installContext?.baseUrl,
-      format: opts.format ?? opts.installContext?.format,
-      noInteractive: opts.noInteractive ?? opts.installContext?.noInteractive,
-      interactive: opts.interactive ?? opts.installContext?.interactive,
-      version: selected.version ?? opts.installContext?.version,
-    });
   } catch (error) {
     if (isPromptCancellationError(error)) {
       process.exitCode = 1;

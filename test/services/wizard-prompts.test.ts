@@ -4,7 +4,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 const searchableMultiSelectMock = mock(() => Promise.resolve([] as string[]));
-const interactiveResourceListMock = mock(() => Promise.resolve({ query: "" }));
+const interactiveResourceListMock = mock(() => Promise.resolve({ action: "filter", query: "" }));
 const resourceDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
 const layerDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
 
@@ -109,7 +109,7 @@ describe("wizard prompts", () => {
   it("uses an interactive resource list prompt with live tables when listing resources", async () => {
     const context = await createInitializedTestContext("wizard-resource-list-prompts");
     interactiveResourceListMock.mockReset();
-    interactiveResourceListMock.mockResolvedValueOnce({ query: "shared" });
+    interactiveResourceListMock.mockResolvedValueOnce({ action: "filter", query: "shared" });
 
     try {
       const resourceModel = await import("../../src/models/resource.ts");
@@ -120,7 +120,7 @@ describe("wizard prompts", () => {
       const { runResourceListWizard } = await import("../../src/services/wizards/resource-list.ts");
       const result = await runResourceListWizard();
 
-      expect(result).toEqual({ search: "shared" });
+      expect(result).toEqual({ action: "filter", query: "shared" });
       expect(interactiveResourceListMock).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Filter resources",

@@ -12,6 +12,7 @@ import {
   type CatalogListResult,
 } from "./catalog-types.js";
 import {
+  formatCanonicalPublishedSelector,
   formatPublishedSelector,
   parseLayerSelector,
 } from "./layer-selector.js";
@@ -27,7 +28,7 @@ function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): Cat
   };
 }
 
-function catalogLayerKey(layer: CatalogLayer): string {
+function catalogLayerKey(layer: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">): string {
   return `${layer.orgSlug}/${layer.catalogSlug}/${layer.slug}`;
 }
 
@@ -155,6 +156,27 @@ export async function listCatalogLayersPage(
   } catch (error) {
     throw new Error(formatCatalogRequestError(error), { cause: error });
   }
+}
+
+export async function fetchCatalogLayer(
+  layer: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">,
+  input?: { account?: string; baseUrl?: string },
+): Promise<CatalogLayer> {
+  const selector = formatCanonicalPublishedSelector({
+    org: layer.orgSlug,
+    catalog: layer.catalogSlug,
+    name: layer.slug,
+  });
+  const layers = await listLayersInScope(
+    { selectors: [selector], limit: 1 },
+    input,
+  );
+  const key = catalogLayerKey(layer);
+  const found = layers.find((candidate) => catalogLayerKey(candidate) === key);
+  if (!found) {
+    throw new Error(`Catalog layer not found: ${key}`);
+  }
+  return found;
 }
 
 export async function listLayersInScope(

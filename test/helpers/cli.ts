@@ -223,19 +223,22 @@ const resourceListWizardMock = mock(async (
   }
   const value = shiftSinglePromptValue();
   if (typeof value === "string") {
-    return value.length > 0 ? { search: value } : undefined;
+    return value.length > 0 ? { action: "filter", query: value } : undefined;
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
+    if (record.action === "delete" || record.action === "edit") {
+      return record;
+    }
     const query = typeof record.query === "string"
       ? record.query
       : typeof record.search === "string"
         ? record.search
         : "";
-    if (!query) {
+    if (!query && record.action !== "filter") {
       return undefined;
     }
-    return { search: query };
+    return { action: "filter", query };
   }
   throw new Error(
     "Resource list wizard responses must resolve to a string query or result object in runCli test harness",
@@ -315,6 +318,16 @@ function resolveInteractiveLayerInstallSelection(value: unknown) {
   );
 }
 
+function resolveInteractiveLayerBrowseResult(value: unknown) {
+  if (value && typeof value === "object" && "action" in value) {
+    return value;
+  }
+  return {
+    action: "install",
+    selection: resolveInteractiveLayerInstallSelection(value),
+  };
+}
+
 const interactiveCatalogBrowserMock = mock(async (
   ...args: Parameters<typeof RunInteractiveCatalogBrowser>
 ) => {
@@ -340,7 +353,7 @@ const interactiveLayerListBrowseMock = mock(async (
     );
     return actualWizard.runInteractiveLayerListBrowse(...args);
   }
-  return resolveInteractiveLayerInstallSelection(shiftSinglePromptValue());
+  return resolveInteractiveLayerBrowseResult(shiftSinglePromptValue());
 });
 
 mock.module("../../src/services/wizards/interactive-layer-list-browse.js", () => ({

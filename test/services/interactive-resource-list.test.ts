@@ -1,6 +1,9 @@
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import { promptForInteractiveResourceList } from "../../src/services/wizards/interactive-resource-list.ts?actual";
+
+const CTRL_X = { name: "x", ctrl: true } as const;
 
 const sampleResources = [
   {
@@ -38,7 +41,7 @@ const sampleResources = [
 ] as const;
 
 describe("interactive resource list prompt", () => {
-  it("filters grouped tables as you type and exits with the query on esc", async () => {
+  promptIt("filters grouped tables as you type and exits with the query on esc", async () => {
     const { answer, events } = await render(
       promptForInteractiveResourceList,
       {
@@ -51,10 +54,10 @@ describe("interactive resource list prompt", () => {
     events.type("api");
     events.keypress("escape");
 
-    await expect(answer).resolves.toEqual({ query: "api" });
+    await expect(answer).resolves.toEqual({ action: "filter", query: "api" });
   });
 
-  it("shows a resource on enter and returns to browse on esc", async () => {
+  promptIt("shows a resource on enter and returns to browse on esc", async () => {
     const { answer, events } = await render(
       promptForInteractiveResourceList,
       {
@@ -69,10 +72,10 @@ describe("interactive resource list prompt", () => {
     events.keypress("escape");
     events.keypress("escape");
 
-    await expect(answer).resolves.toEqual({ query: "api" });
+    await expect(answer).resolves.toEqual({ action: "filter", query: "api" });
   });
 
-  it("moves selection with arrow keys before showing a resource", async () => {
+  promptIt("moves selection with arrow keys before showing a resource", async () => {
     const { answer, events } = await render(
       promptForInteractiveResourceList,
       {
@@ -87,11 +90,11 @@ describe("interactive resource list prompt", () => {
     events.keypress("escape");
     events.keypress("escape");
 
-    await expect(answer).resolves.toEqual({ query: "" });
+    await expect(answer).resolves.toEqual({ action: "filter", query: "" });
   });
 
-  it("does not render Active or Show selection line in browse view", async () => {
-    const { getScreen } = await render(
+  promptIt("deletes a resource with ctrl+x after confirm", async () => {
+    const { answer, events } = await render(
       promptForInteractiveResourceList,
       {
         message: "Filter resources",
@@ -100,8 +103,27 @@ describe("interactive resource list prompt", () => {
       { clearPromptOnDone: true },
     );
 
-    const frame = getScreen();
-    expect(frame).not.toMatch(/\nShow: /);
-    expect(frame).not.toMatch(/\nActive: /);
+    events.keypress(CTRL_X);
+    events.keypress("y");
+
+    await expect(answer).resolves.toEqual({ action: "delete", name: "skill-1" });
+  });
+
+  promptIt("does not render Active or Show selection line in browse view", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveResourceList,
+        {
+          message: "Filter resources",
+          resources: [...sampleResources],
+        },
+        { clearPromptOnDone: true },
+      ),
+      ({ getScreen }) => {
+        const frame = getScreen();
+        expect(frame).not.toMatch(/\nShow: /);
+        expect(frame).not.toMatch(/\nActive: /);
+      },
+    );
   });
 });

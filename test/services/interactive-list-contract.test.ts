@@ -1,6 +1,7 @@
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
+import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import { promptForInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.ts?actual";
 import { promptForInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.ts?actual";
 import { promptForInteractiveEnvironmentList } from "../../src/services/wizards/interactive-environment-list.ts?actual";
@@ -123,129 +124,150 @@ function expectNoSelectionLine(frame: string): void {
 }
 
 describe("interactive list keyboard contract", () => {
-  it("resource list shows esc exit (not esc cancel)", async () => {
-    const { getScreen } = await render(
-      promptForInteractiveResourceList,
-      {
-        message: "Filter resources",
-        resources: [...sampleResources],
+  promptIt("resource list shows esc exit (not esc cancel)", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveResourceList,
+        {
+          message: "Filter resources",
+          resources: [...sampleResources],
+        },
+        { clearPromptOnDone: true },
+      ),
+      ({ getScreen }) => {
+        const frame = getScreen();
+        expect(frame).toContain("esc exit");
+        expect(frame).not.toContain("esc cancel");
+        expectNoSelectionLine(frame);
       },
-      { clearPromptOnDone: true },
     );
-
-    const frame = getScreen();
-    expect(frame).toContain("esc exit");
-    expect(frame).not.toContain("esc cancel");
-    expectNoSelectionLine(frame);
   });
 
-  it("resource list footer folds overflow hints", async () => {
-    const { getScreen } = await render(
-      promptForInteractiveResourceList,
-      {
-        message: "Filter resources",
-        resources: makeOverflowResources(),
+  promptIt("resource list footer folds overflow hints", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveResourceList,
+        {
+          message: "Filter resources",
+          resources: makeOverflowResources(),
+        },
+        { clearPromptOnDone: true },
+      ),
+      ({ getScreen }) => {
+        const hintLines = overflowHintLines(getScreen());
+        expect(hintLines.length).toBeGreaterThan(0);
+        expect(hintLines.length).toBeLessThanOrEqual(2);
+        if (hintLines.length === 1) {
+          expect(hintLines[0]).toContain(" · ");
+        }
       },
-      { clearPromptOnDone: true },
     );
-
-    const hintLines = overflowHintLines(getScreen());
-    expect(hintLines.length).toBeGreaterThan(0);
-    expect(hintLines.length).toBeLessThanOrEqual(2);
-    if (hintLines.length === 1) {
-      expect(hintLines[0]).toContain(" · ");
-    }
   });
 
-  it("environment list shows esc exit and unified chrome", async () => {
-    const { getScreen } = await render(
-      promptForInteractiveEnvironmentList,
-      {
-        message: "Filter environments",
-        environments: [
-          makeEnvironmentRow("production"),
-          makeEnvironmentRow("staging"),
-        ],
+  promptIt("environment list shows esc exit and unified chrome", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveEnvironmentList,
+        {
+          message: "Filter environments",
+          environments: [
+            makeEnvironmentRow("production"),
+            makeEnvironmentRow("staging"),
+          ],
+        },
+        { clearPromptOnDone: true },
+      ),
+      ({ getScreen }) => {
+        const frame = getScreen();
+        expect(frame).toContain("esc exit");
+        expect(frame).not.toContain("esc cancel");
+        expect(frame).toContain("Search:");
+        expectNoSelectionLine(frame);
       },
-      { clearPromptOnDone: true },
     );
-
-    const frame = getScreen();
-    expect(frame).toContain("esc exit");
-    expect(frame).not.toContain("esc cancel");
-    expect(frame).toContain("Search:");
-    expectNoSelectionLine(frame);
   });
 
-  it("layer list browse shows esc cancel and unified chrome", async () => {
-    const { getScreen, nextRender } = await render(
-      promptForInteractiveLayerListBrowse,
-      {
-        message: "Select a layer to install",
-        scopeLabel: "harnessdeck-cloud",
-        localLayers,
-        listRemoteLayers: async () => sampleLayers,
+  promptIt("layer list browse shows esc cancel and unified chrome", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveLayerListBrowse,
+        {
+          message: "Select a layer to install",
+          scopeLabel: "harnessdeck-cloud",
+          localLayers,
+          listRemoteLayers: async () => sampleLayers,
+        },
+        { clearPromptOnDone: true },
+      ),
+      async ({ getScreen, nextRender }) => {
+        await nextRender();
+        const frame = getScreen();
+        expect(frame).toContain("esc cancel");
+        expect(frame).toContain("Search:");
+        expectNoSelectionLine(frame);
       },
-      { clearPromptOnDone: true },
     );
-
-    await nextRender();
-    const frame = getScreen();
-    expect(frame).toContain("esc cancel");
-    expect(frame).toContain("Search:");
-    expectNoSelectionLine(frame);
   });
 
-  it("catalog browser shows esc cancel and unified chrome", async () => {
-    const { getScreen, nextRender } = await render(
-      promptForInteractiveCatalogBrowser,
-      {
-        message: "Browse catalog layers to install",
-        scopeLabel: "harnessdeck-cloud",
-        listLayers: async () => sampleLayers,
+  promptIt("catalog browser shows esc cancel and unified chrome", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveCatalogBrowser,
+        {
+          message: "Browse catalog layers to install",
+          scopeLabel: "harnessdeck-cloud",
+          listLayers: async () => sampleLayers,
+        },
+        { clearPromptOnDone: true },
+      ),
+      async ({ getScreen, nextRender }) => {
+        await nextRender();
+        const frame = getScreen();
+        expect(frame).toContain("esc cancel");
+        expect(frame).toContain("Search:");
+        expectNoSelectionLine(frame);
       },
-      { clearPromptOnDone: true },
     );
-
-    await nextRender();
-    const frame = getScreen();
-    expect(frame).toContain("esc cancel");
-    expect(frame).toContain("Search:");
-    expectNoSelectionLine(frame);
   });
 
-  it("searchable multi-select shows esc back", async () => {
-    const { getScreen } = await render(
-      promptForSearchableMultiSelect,
-      {
-        message: "Select alias harnesses",
-        choices: [
-          { name: "Claude Code", value: "claude-code" },
-          { name: "Cursor", value: "cursor" },
-        ],
+  promptIt("searchable multi-select shows esc back", async () => {
+    await withPrompt(
+      render(
+        promptForSearchableMultiSelect,
+        {
+          message: "Select alias harnesses",
+          choices: [
+            { name: "Claude Code", value: "claude-code" },
+            { name: "Cursor", value: "cursor" },
+          ],
+        },
+        { clearPromptOnDone: true },
+      ),
+      ({ getScreen }) => {
+        expect(getScreen()).toContain("esc back");
       },
-      { clearPromptOnDone: true },
     );
-
-    expect(getScreen()).toContain("esc back");
   });
 
-  it("catalog search apply mode shows ctrl+s and esc cancel", async () => {
-    const { getScreen, nextRender } = await render(
-      promptForInteractiveCatalogSearch,
-      {
-        message: "Search catalog layers to apply",
-        scopeLabel: "harnessdeck-cloud",
-        initialQuery: "fullstack",
-        listLayers: async () => sampleLayers,
+  promptIt("catalog search apply mode shows ctrl+s and esc cancel", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveCatalogSearch,
+        {
+          message: "Search catalog layers to apply",
+          scopeLabel: "harnessdeck-cloud",
+          initialQuery: "fullstack",
+          listLayers: async () => sampleLayers,
+        },
+        { clearPromptOnDone: true },
+      ),
+      async ({ getScreen, nextRender }) => {
+        await nextRender();
+        const frame = getScreen();
+        expect(frame).toContain("ctrl+s");
+        expect(frame).toContain("esc cancel");
+        expectNoSelectionLine(frame);
       },
-      { clearPromptOnDone: true },
     );
-
-    await nextRender();
-    const frame = getScreen();
-    expect(frame).toContain("ctrl+s");
-    expect(frame).toContain("esc cancel");
-    expectNoSelectionLine(frame);
   });
 });

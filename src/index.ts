@@ -58,7 +58,6 @@ import {
   addResourceToLayer,
   getLayerResources,
   listLayerDependencies,
-  parseLayerSelectorString,
   getLayerById,
   resolveLayerSelector,
   mergeLayersById,
@@ -97,7 +96,6 @@ import type {
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import { listAttachedLayerRefs, listAttachedPluginPins } from "./services/layer-composition.js";
-import type { PluginPinMetadata } from "./types.js";
 import {
   getHarnessPreference,
   setHarnessPreference,
@@ -204,6 +202,8 @@ import { runEnvironmentCreateWizard } from "./services/wizards/environment-creat
 import { runEnvironmentDeleteWizard } from "./services/wizards/environment-delete.js";
 import { runEnvironmentEditWizard } from "./services/wizards/environment-edit.js";
 import { runEnvironmentShowWizard } from "./services/wizards/environment-show.js";
+import { renderEnvironmentShow } from "./services/environment-show-render.js";
+import { renderLayerShow } from "./services/layer-show-render.js";
 import {
   filterEnvironmentListRows,
   runEnvironmentListWizard,
@@ -439,31 +439,6 @@ function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
   return `${layer.name}@${layer.version}`;
 }
 
-function dependencyLayerName(dependencyName: string): string {
-  const parsed = parseLayerSelectorString(dependencyName);
-  if (parsed.kind === "id") return dependencyName;
-  return parsed.name;
-}
-
-function resolveDependencyLayerVersion(
-  dependencyName: string,
-  versionConstraint: string,
-): string {
-  const name = dependencyLayerName(dependencyName);
-  const resolved = getLayer(`${name}@${versionConstraint}`);
-  return resolved?.version ?? "—";
-}
-
-function formatLayerDependencyRows(
-  dependencies: Array<{ dependency_name: string; version_constraint: string }>,
-): Array<{ name: string; version: string; constraint: string }> {
-  return dependencies.map((dep) => ({
-    name: dependencyLayerName(dep.dependency_name),
-    version: resolveDependencyLayerVersion(dep.dependency_name, dep.version_constraint),
-    constraint: dep.version_constraint,
-  }));
-}
-
 function makeIdColumn(showId: boolean, width = 12): Column[] {
   return showId
     ? [{
@@ -538,6 +513,39 @@ function resourceListRenderOptions(opts: {
   };
 }
 
+async function deleteLibraryResource(selector: string): Promise<void> {
+  const result = resolveResource(selector);
+  if (result.status === "not_found") {
+    ui.danger(`Resource not found: ${selector}`);
+    return;
+  }
+  if (result.status === "ambiguous") {
+    ui.danger(`Ambiguous resource name: ${selector}`);
+    for (const match of result.matches) {
+      ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+    }
+    return;
+  }
+  if (deleteResource(result.resource.id)) {
+    ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
+    return;
+  }
+  ui.danger(`Resource not found: ${selector}`);
+}
+
+async function deleteLocalLayerByName(nameOrId: string): Promise<void> {
+  const layer = getLayer(nameOrId);
+  if (!layer) {
+    ui.danger(`Layer not found: ${nameOrId}`);
+    return;
+  }
+  if (!deleteLayer(layer.id)) {
+    ui.danger(`Failed to delete layer ${formatLayerLabel(layer)}`);
+    return;
+  }
+  ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
+}
+
 async function handleResourceListCommand(
   positionalType: string | undefined,
   opts: {
@@ -565,12 +573,34 @@ async function handleResourceListCommand(
   let search = opts.search;
   if (shouldUseInteractiveResourceList(opts)) {
     try {
-      const wizardResult = await runResourceListWizard({
-        type: resolvedType,
-        search: opts.search,
-        ...resourceListRenderOptions(opts),
-      });
-      search = wizardResult?.search ?? opts.search;
+      while (true) {
+        const wizardResult = await runResourceListWizard({
+          type: resolvedType,
+          search,
+          ...resourceListRenderOptions(opts),
+        });
+        if (!wizardResult) {
+          break;
+        }
+
+        switch (wizardResult.action) {
+          case "delete":
+            await deleteLibraryResource(wizardResult.name);
+            search = undefined;
+            continue;
+          case "filter":
+            search = wizardResult.query.length > 0 ? wizardResult.query : undefined;
+            break;
+          case "edit":
+            search = undefined;
+            continue;
+          default: {
+            const _exhaustive: never = wizardResult;
+            throw _exhaustive;
+          }
+        }
+        break;
+      }
     } catch (error) {
       if (isPromptCancellationError(error)) {
         process.exitCode = 1;
@@ -1360,6 +1390,9 @@ async function handleApplyCommand(
       {
         account: opts.account,
         baseUrl: opts.baseUrl,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: outputFormat,
         onFetched:
           outputFormat === "human"
             ? (sourceLabel) => {
@@ -1699,6 +1732,15 @@ configureLayerListInteractiveDeps({
       interactive: installOpts.interactive,
       noInteractive: installOpts.noInteractive,
     });
+  },
+  onEdit: async (name, editOpts) => {
+    await handleLayerEditCommand(name, {
+      format: editOpts.format,
+      interactive: true,
+    });
+  },
+  onDelete: async (name, _deleteOpts) => {
+    await deleteLocalLayerByName(name);
   },
 });
 
@@ -2264,70 +2306,10 @@ function handleLayerShowCommand(
     return;
   }
 
-  ui.panel({
-    title: ["LAYER", formatLayerLabel(layer)],
-    rows: [
-      ["Description", layer.description || "—"],
-      ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
-      ...(profileExtras
-        ? [["Active", profileExtras.active ? "yes" : "no"]] as [string, string][]
-        : []),
-      ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
-      ["Plugin pins", pluginPinRows.length === 0 ? "(none pinned)" : `${pluginPinRows.length}`],
-      ...(configuredLayer
-        ? [[
-            "Default environment",
-            configuredLayerDefaultEnvironment?.name
-              ?? configuredLayer.default_environment_id
-              ?? "—",
-          ]] as [string, string][]
-        : []),
-      ["Updated", ui.format.formatRelativeTimeWithAbsolute(layer.updated_at)],
-    ],
-  });
-
-  ui.subheader("RESOURCES");
-  ui.table.print({
-    columns: [
-      ...makeIdColumn(Boolean(opts.showId)),
-      makeResourceTypeColumn(),
-      { key: "name", header: "NAME", width: 26 },
-    ],
-    rows: resources,
-    empty: "No resources in this layer.",
-  });
-
-  if (dependencies.length > 0) {
-    ui.subheader("LAYER DEPENDENCIES");
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 22 },
-        { key: "version", header: "VERSION", width: 12 },
-        { key: "constraint", header: "CONSTRAINT", width: 20 },
-      ],
-      rows: formatLayerDependencyRows(dependencies),
-    });
-  }
-  if (pluginPinRows.length > 0) {
-    ui.subheader("PLUGIN PINS");
-    ui.table.print({
-      columns: [
-        { key: "ref", header: "REF", width: 28 },
-        { key: "version", header: "VERSION", width: 12 },
-        { key: "constraint", header: "CONSTRAINT", width: 20 },
-        { key: "sync", header: "SYNC", width: 14 },
-      ],
-      rows: pluginPins.map((pin) => {
-        const metadata = pin.resource.metadata as PluginPinMetadata;
-        return {
-          ref: pin.ref,
-          version: metadata.resolved_version ?? "—",
-          constraint: pin.version_constraint || "latest",
-          sync: metadata.sync_status ?? "never_synced",
-        };
-      }),
-    });
-  }
+  console.log(renderLayerShow(layer, name, {
+    showId: opts.showId,
+    profileExtras,
+  }));
 }
 
 function shouldUseInteractiveLayerEdit(input: {
@@ -2707,102 +2689,7 @@ function renderEnvironmentShowHuman(
   payload: ReturnType<typeof showEnvironmentCommand>,
   requirementGaps?: ReturnType<typeof analyzeEnvironmentGaps>,
 ): void {
-  ui.panel({
-    title: ["ENVIRONMENT", payload.environment.name],
-    rows: [
-      ["Description", payload.environment.description || "—"],
-      ["Env vars", `${Object.keys(payload.values.env_vars).length}`],
-      ["Model configs", `${payload.values.model_configs.length}`],
-      ["Permissions", `${payload.values.permissions.length}`],
-      ["Secret refs", `${Object.keys(payload.secret_refs).length}`],
-    ],
-  });
-
-  if (Object.keys(payload.values.env_vars).length > 0) {
-    ui.subheader("ENV VARS");
-    ui.table.print({
-      columns: [
-        { key: "key", header: "KEY", width: 28 },
-        { key: "value", header: "VALUE", width: 60 },
-      ],
-      rows: Object.entries(payload.values.env_vars).map(([key, value]) => ({ key, value })),
-    });
-  }
-
-  if (payload.values.model_configs.length > 0) {
-    ui.subheader("MODEL CONFIGS");
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 24 },
-        { key: "model", header: "MODEL", width: 28 },
-        { key: "provider", header: "PROVIDER", width: 20 },
-      ],
-      rows: payload.values.model_configs.map((entry) => ({
-        ...entry,
-        provider: entry.provider ?? "—",
-      })),
-    });
-  }
-
-  if (payload.values.permissions.length > 0) {
-    ui.subheader("PERMISSIONS");
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 30 },
-        { key: "action", header: "ACTION", width: 10 },
-        { key: "pattern", header: "PATTERN", width: 38 },
-      ],
-      rows: payload.values.permissions,
-    });
-  }
-
-  if (Object.keys(payload.secret_refs).length > 0) {
-    ui.subheader("SECRET REFS");
-    ui.table.print({
-      columns: [
-        { key: "key", header: "KEY", width: 24 },
-        { key: "provider", header: "PROVIDER", width: 12 },
-        { key: "ref", header: "REF", width: 40 },
-      ],
-      rows: Object.entries(payload.secret_refs).map(([key, value]) => ({
-        key,
-        provider: value.provider,
-        ref: value.ref,
-      })),
-    });
-  }
-
-  if (payload.references.layers.length > 0) {
-    ui.subheader("REFERENCES");
-    ui.table.print({
-      columns: [
-        { key: "layer", header: "LAYER", width: 40 },
-      ],
-      rows: payload.references.layers.map((ref) => {
-        const layer = getLayerById(ref.id);
-        return {
-          layer: layer ? formatLayerLabel(layer) : ref.name,
-        };
-      }),
-    });
-  }
-
-  if (requirementGaps !== undefined) {
-    ui.subheader("REQUIREMENT GAPS");
-    ui.table.print({
-      columns: [
-        { key: "key", header: "KEY", width: 28 },
-        { key: "sources", header: "SOURCES", width: 24 },
-        { key: "status", header: "STATUS", width: 12 },
-      ],
-      rows: requirementGaps.map((gap) => ({
-        key: gap.key,
-        sources: gap.sources.join(", "),
-        status: gap.status,
-      })),
-      empty: "No requirement gaps found.",
-    });
-  }
+  console.log(renderEnvironmentShow(payload, { requirementGaps }));
 }
 
 function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
@@ -3018,8 +2905,37 @@ async function handleEnvironmentListCommand(opts: {
   let search = opts.search;
   if (shouldUseInteractiveEnvironmentList(opts)) {
     try {
-      const wizardResult = await runEnvironmentListWizard({ search: opts.search });
-      search = wizardResult?.search ?? opts.search;
+      while (true) {
+        const wizardResult = await runEnvironmentListWizard({ search });
+        if (!wizardResult) {
+          break;
+        }
+
+        switch (wizardResult.action) {
+          case "edit":
+            await handleEnvironmentEditCommand(wizardResult.name, {
+              format: opts.format,
+              interactive: true,
+            });
+            search = undefined;
+            continue;
+          case "delete":
+            await handleEnvironmentDeleteCommand(wizardResult.name, {
+              format: opts.format,
+              interactive: true,
+            });
+            search = undefined;
+            continue;
+          case "filter":
+            search = wizardResult.query.length > 0 ? wizardResult.query : undefined;
+            break;
+          default: {
+            const _exhaustive: never = wizardResult;
+            throw _exhaustive;
+          }
+        }
+        break;
+      }
     } catch (error) {
       if (isPromptCancellationError(error)) {
         process.exitCode = 1;

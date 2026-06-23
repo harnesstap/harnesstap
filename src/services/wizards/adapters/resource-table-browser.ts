@@ -12,18 +12,18 @@ import type {
   TableBrowserAdapter,
   ViewportRenderArgs,
 } from "../prompts/table-browser-types.js";
+import { buildFilterListHelpActions } from "../list-browser-hub.js";
 
 export type ResourceTableBrowserConfig = {
   resources: ResourceListRow[];
   typeFilter?: ResourceType;
   showId?: boolean;
   showAll?: boolean;
-  onDelete?: (resource: ResourceListRow) => Promise<boolean>;
 };
 
 export function createResourceTableBrowserAdapter(
   config: ResourceTableBrowserConfig,
-): TableBrowserAdapter<ResourceListRow, ResourceListRow> {
+): TableBrowserAdapter<ResourceListRow, string> {
   return {
     resolveItems: (query) => {
       const filtered = filterResourcesBySearch(config.resources, query);
@@ -45,16 +45,9 @@ export function createResourceTableBrowserAdapter(
         : renderGroupedResourceListViewport(args.filtered, renderOpts);
     },
     renderShow: (resource) => renderResourceShow(resource),
-    onDelete: config.onDelete,
+    onPick: (resource) => resource.id,
     formatDeleteConfirm: (resource) =>
       `Delete ${resource.type} "${formatResourceSelectionLabel(resource)}"?`,
-    helpActions: [
-      ["↑↓", "select"],
-      ["type", "search"],
-      ["⌫", "erase"],
-      ["⏎", "show"],
-      ...(config.onDelete ? ([["d", "delete"]] as Array<[string, string]>) : []),
-      ["esc", "exit"],
-    ],
+    helpActions: buildFilterListHelpActions({ delete: true }),
   };
 }

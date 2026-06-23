@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
   filterEnvironmentsBySearch,
-  renderEnvironmentListShow,
   renderEnvironmentListTable,
   renderEnvironmentListViewport,
   type EnvironmentListRow,
@@ -85,21 +84,5 @@ describe("environment list render", () => {
     });
     expect(output).toContain("env-11");
     expect(output).toMatch(/↑ \d+ above/);
-  });
-
-  it("renders environment show summary", () => {
-    const row = makeRow({
-      name: "prod",
-      description: "Production",
-      value_count: 4,
-      secret_ref_count: 2,
-      reference_count: 1,
-    });
-    const output = renderEnvironmentListShow(row);
-    expect(output).toContain("prod");
-    expect(output).toContain("Production");
-    expect(output).toContain("Values: 4");
-    expect(output).toContain("Secret refs: 2");
-    expect(output).toContain("Layer references: 1");
   });
 });

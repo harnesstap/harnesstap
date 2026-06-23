@@ -8,10 +8,11 @@ import type {
   TableBrowserAdapter,
   ViewportRenderArgs,
 } from "../prompts/table-browser-types.js";
+import { buildFilterListHelpActions } from "../list-browser-hub.js";
 
 export function createEnvironmentTableBrowserAdapter(config: {
   environments: EnvironmentListRow[];
-}): TableBrowserAdapter<EnvironmentListRow, EnvironmentListRow> {
+}): TableBrowserAdapter<EnvironmentListRow, string> {
   return {
     resolveItems: (query) => {
       const filtered = filterEnvironmentsBySearch(config.environments, query);
@@ -25,12 +26,9 @@ export function createEnvironmentTableBrowserAdapter(config: {
         maxWidth: args.terminalWidth,
       }),
     renderShow: (row) => renderEnvironmentListShow(row),
-    helpActions: [
-      ["↑↓", "select"],
-      ["type", "search"],
-      ["⌫", "erase"],
-      ["⏎", "show"],
-      ["esc", "exit"],
-    ],
+    onPick: (row) => row.environment.name,
+    onEdit: (row) => row.environment.name,
+    formatDeleteConfirm: (row) => `Delete environment "${row.environment.name}"?`,
+    helpActions: buildFilterListHelpActions({ edit: true, delete: true }),
   };
 }

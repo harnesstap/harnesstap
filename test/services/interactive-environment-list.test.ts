@@ -1,7 +1,11 @@
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import { promptForInteractiveEnvironmentList } from "../../src/services/wizards/interactive-environment-list.ts?actual";
 import type { EnvironmentListRow } from "../../src/ui/environment-list-render.ts";
+
+const CTRL_E = { name: "e", ctrl: true } as const;
+const CTRL_X = { name: "x", ctrl: true } as const;
 
 function makeRow(name: string, description = ""): EnvironmentListRow {
   const now = "2026-01-01T00:00:00.000Z";
@@ -25,7 +29,7 @@ const sampleEnvironments = [
 ];
 
 describe("interactive environment list prompt", () => {
-  it("filters the table as you type and exits with the query on esc", async () => {
+  promptIt("filters the table as you type and exits with the query on esc", async () => {
     const { answer, events } = await render(
       promptForInteractiveEnvironmentList,
       {
@@ -38,10 +42,10 @@ describe("interactive environment list prompt", () => {
     events.type("prod");
     events.keypress("escape");
 
-    await expect(answer).resolves.toEqual({ query: "prod" });
+    await expect(answer).resolves.toEqual({ action: "filter", query: "prod" });
   });
 
-  it("shows an environment on enter and returns to browse on esc", async () => {
+  promptIt("shows an environment on enter and returns to browse on esc", async () => {
     const { answer, events } = await render(
       promptForInteractiveEnvironmentList,
       {
@@ -56,11 +60,31 @@ describe("interactive environment list prompt", () => {
     events.keypress("escape");
     events.keypress("escape");
 
-    await expect(answer).resolves.toEqual({ query: "prod" });
+    await expect(answer).resolves.toEqual({ action: "filter", query: "prod" });
   });
 
-  it("does not render Active or Show selection line in browse view", async () => {
-    const { getScreen } = await render(
+  promptIt("does not render Active or Show selection line in browse view", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveEnvironmentList,
+        {
+          message: "Filter environments",
+          environments: sampleEnvironments,
+        },
+        { clearPromptOnDone: true },
+      ),
+      ({ getScreen }) => {
+        const frame = getScreen();
+        expect(frame).not.toMatch(/\nShow: /);
+        expect(frame).not.toMatch(/\nActive: /);
+        expect(frame).toMatch(/ctrl\+e.*edit/);
+        expect(frame).toMatch(/ctrl\+x.*delete/);
+      },
+    );
+  });
+
+  promptIt("opens edit for the active environment on ctrl+e", async () => {
+    const { answer, events } = await render(
       promptForInteractiveEnvironmentList,
       {
         message: "Filter environments",
@@ -69,8 +93,26 @@ describe("interactive environment list prompt", () => {
       { clearPromptOnDone: true },
     );
 
-    const frame = getScreen();
-    expect(frame).not.toMatch(/\nShow: /);
-    expect(frame).not.toMatch(/\nActive: /);
+    events.type("prod");
+    events.keypress(CTRL_E);
+
+    await expect(answer).resolves.toEqual({ action: "edit", name: "production" });
+  });
+
+  promptIt("confirms delete for the active environment on ctrl+x and y", async () => {
+    const { answer, events } = await render(
+      promptForInteractiveEnvironmentList,
+      {
+        message: "Filter environments",
+        environments: sampleEnvironments,
+      },
+      { clearPromptOnDone: true },
+    );
+
+    events.type("prod");
+    events.keypress(CTRL_X);
+    events.keypress("y");
+
+    await expect(answer).resolves.toEqual({ action: "delete", name: "production" });
   });
 });

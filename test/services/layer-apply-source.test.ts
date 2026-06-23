@@ -106,8 +106,60 @@ describe("resolveApplyLayerSource", () => {
       });
 
       await expect(
-        resolveApplyLayerSource("team", { baseUrl: "https://mock" }),
+        resolveApplyLayerSource("team", {
+          baseUrl: "https://mock",
+          noInteractive: true,
+          format: "human",
+        }),
       ).rejects.toBeInstanceOf(LayerAmbiguityError);
+
+      restoreFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resolves ambiguous bare names interactively", async () => {
+    const context = await createInitializedTestContext("resolve-apply-layer-source-ambiguous-prompt");
+    try {
+      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      mkdirSync(harnessdeckDir, { recursive: true });
+      connectCatalogOrg("acme", harnessdeckDir);
+
+      const restoreFetch = createCatalogFetchMock({
+        baseUrl: "https://mock",
+        layers: [
+          {
+            orgSlug: "harnessdeck-cloud",
+            slug: "team",
+            name: "Team",
+            summary: "A",
+            latestVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+          {
+            orgSlug: "acme",
+            slug: "team",
+            name: "Team",
+            summary: "B",
+            latestVersion: "2.0.0",
+            updatedAt: new Date().toISOString(),
+            tags: [],
+            visibility: "public",
+          },
+        ],
+      });
+
+      const resolved = await resolveApplyLayerSource("team", {
+        baseUrl: "https://mock",
+        interactive: true,
+        promptAmbiguity: async ({ candidates }) =>
+          candidates.find((layer) => layer.orgSlug === "acme")!,
+      });
+
+      expect(resolved.kind).toBe("local");
 
       restoreFetch();
     } finally {

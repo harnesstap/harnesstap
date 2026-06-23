@@ -150,7 +150,36 @@ describe("layer list browse render", () => {
       scopeLabel: "harnessdeck-cloud",
     });
     expect(output).toContain(icons.profile);
-    expect(output).toContain("Work");
+    expect(output).toContain("work-profile");
+    expect(output).toContain("CATALOG");
+    expect(output).toContain("harnessdeck-cloud/default");
+  });
+
+  it("renders remote catalog table with catalog path, slug, and version drift", () => {
+    const local = makeLayer({
+      name: "fullstack",
+      version: "1.0.1",
+      org_slug: "harnessdeck-cloud",
+      catalog_slug: "default",
+    });
+    const navigable = listNavigableLayerListBrowseRows(
+      toLocalBrowseRows([local]),
+      toRemoteBrowseRows([
+        makeCatalogLayer({ slug: "fullstack", latestVersion: "1.2.3" }),
+      ]),
+    );
+    const output = renderGroupedLayerListBrowseViewport({
+      activeIndex: 1,
+      navigable,
+      terminalRows: 24,
+      maxWidth: 120,
+      scopeLabel: "harnessdeck-cloud",
+      localLayers: [local],
+    });
+    expect(output).toContain("harnessdeck-cloud/default");
+    expect(output).toContain("fullstack");
+    expect(output).toContain("1.0.1");
+    expect(output).not.toContain("ORG/CATALOG/LAYER");
   });
 
   it("limits a 13-row remote section on a typical terminal height", () => {

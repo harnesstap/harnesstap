@@ -10,6 +10,8 @@ import {
   resolveRemoteLayerSelector,
   type ResolvedRemoteLayerSelector,
 } from "./layer-selector.js";
+import { catalogLayerKey } from "../ui/catalog-list-render.js";
+import { promptForChoice, shouldUseWizard } from "./wizards/shared.js";
 
 export class LayerResolveError extends Error {
   readonly hints: string[];
@@ -30,11 +32,23 @@ export class LayerAmbiguityError extends LayerResolveError {
     );
     super(
       `Ambiguous layer name: ${selector}\n${lines.map((line) => `  ${line}`).join("\n")}`,
-      ["Use a fully qualified selector: org/catalog/name@version"],
+      ["Use a fully qualified selector: org/catalog/slug@version"],
     );
     this.candidates = candidates;
   }
 }
+
+export type ResolveBareNameOptions = {
+  account?: string;
+  baseUrl?: string;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  format?: "human" | "json";
+  promptAmbiguity?: (input: {
+    selector: string;
+    candidates: CatalogLayer[];
+  }) => Promise<CatalogLayer>;
+};
 
 function exactCatalogMatches(layers: CatalogLayer[], searchName: string): CatalogLayer[] {
   const normalized = searchName.trim().toLowerCase();
@@ -45,22 +59,85 @@ function exactCatalogMatches(layers: CatalogLayer[], searchName: string): Catalo
   );
 }
 
-function formatCatalogSelector(layer: CatalogLayer, version?: string): string {
+function dedupeCatalogLayersByIdentity(layers: CatalogLayer[]): CatalogLayer[] {
+  const byKey = new Map<string, CatalogLayer>();
+  for (const layer of layers) {
+    byKey.set(catalogLayerKey(layer), layer);
+  }
+  return [...byKey.values()];
+}
+
+export function formatCatalogSelector(layer: CatalogLayer, version?: string): string {
   const base = `${layer.orgSlug}/${layer.catalogSlug}/${layer.slug}`;
   const resolvedVersion = version ?? layer.latestVersion ?? undefined;
   return resolvedVersion ? `${base}@${resolvedVersion}` : base;
 }
 
+function formatCatalogLayerChoiceLabel(layer: CatalogLayer): string {
+  const selector = formatCatalogSelector(layer, layer.latestVersion ?? undefined);
+  const summary = layer.summary?.trim() || layer.name;
+  return `${selector} — ${summary}`;
+}
+
+export async function promptCatalogLayerAmbiguity(
+  selector: string,
+  candidates: CatalogLayer[],
+): Promise<CatalogLayer> {
+  const selectedKey = await promptForChoice({
+    message: `Multiple catalog layers match "${selector}". Which one?`,
+    choices: candidates.map((layer) => ({
+      name: formatCatalogLayerChoiceLabel(layer),
+      value: catalogLayerKey(layer),
+    })),
+  });
+  const match = candidates.find((layer) => catalogLayerKey(layer) === selectedKey);
+  if (!match) {
+    throw new LayerResolveError(`Layer not found: ${selector}`);
+  }
+  return match;
+}
+
+async function pickCatalogLayerMatch(
+  selector: string,
+  matches: CatalogLayer[],
+  options: ResolveBareNameOptions,
+): Promise<CatalogLayer> {
+  const unique = dedupeCatalogLayersByIdentity(matches);
+  if (unique.length === 1) {
+    const only = unique[0];
+    if (!only) {
+      throw new LayerResolveError(`Layer not found: ${selector}`);
+    }
+    return only;
+  }
+
+  if (options.promptAmbiguity) {
+    return options.promptAmbiguity({ selector, candidates: unique });
+  }
+
+  const canPrompt = shouldUseWizard({
+    interactive: options.interactive ?? true,
+    noInteractive: options.noInteractive,
+    format: options.format ?? "human",
+    missingRequiredArgs: false,
+  });
+  if (!canPrompt) {
+    throw new LayerAmbiguityError(selector, unique);
+  }
+
+  return promptCatalogLayerAmbiguity(selector, unique);
+}
+
 export async function resolveBareNameFromCatalog(
   selector: string,
-  options: { account?: string; baseUrl?: string } = {},
+  options: ResolveBareNameOptions = {},
 ): Promise<ResolvedRemoteLayerSelector> {
   if (!isPublicCatalogEnabled()) {
     throw new LayerResolveError(
       `Layer not found: ${selector}`,
       [
         "Enable catalog.publicCatalog in ~/.harnessdeck/config.jsonc",
-        "Or use a published selector: org/catalog/name",
+        "Or use a published selector: org/catalog/slug",
       ],
     );
   }
@@ -74,34 +151,23 @@ export async function resolveBareNameFromCatalog(
     { q: parsed.name, limit: 100, sort: "name" },
     { account: options.account, baseUrl: options.baseUrl },
   );
-  const matches = exactCatalogMatches(catalogResults, parsed.name);
+  let matches = exactCatalogMatches(catalogResults, parsed.name);
 
   if (matches.length === 0) {
     const aliasTarget = resolveCatalogLayerAlias(parsed.name);
     if (aliasTarget) {
       const aliasResults = await listLayersInScope(
         { q: aliasTarget, limit: 100, sort: "name" },
-        options,
+        { account: options.account, baseUrl: options.baseUrl },
       );
-      const aliasMatches = exactCatalogMatches(aliasResults, aliasTarget);
-      if (aliasMatches.length === 1) {
-        const aliasMatch = aliasMatches[0];
-        if (!aliasMatch) {
-          throw new LayerResolveError(`Layer not found: ${selector}`);
-        }
-        return resolveRemoteLayerSelector(
-          formatCatalogSelector(
-            aliasMatch,
-            parsed.version ?? aliasMatch.latestVersion ?? undefined,
-          ),
-          {},
-        );
-      }
+      matches = exactCatalogMatches(aliasResults, aliasTarget);
     }
+  }
 
+  if (matches.length === 0) {
     const hints = [
       "hd layer search <query>",
-      "hd layer pull org/catalog/name",
+      "hd layer pull org/catalog/slug",
       "hd layer list",
     ];
     const aliasHint = catalogAliasHint(parsed.name);
@@ -111,14 +177,7 @@ export async function resolveBareNameFromCatalog(
     throw new LayerResolveError(`Layer not found: ${selector}`, hints);
   }
 
-  if (matches.length > 1) {
-    throw new LayerAmbiguityError(selector, matches);
-  }
-
-  const match = matches[0];
-  if (!match) {
-    throw new LayerResolveError(`Layer not found: ${selector}`);
-  }
+  const match = await pickCatalogLayerMatch(selector, matches, options);
 
   return resolveRemoteLayerSelector(
     formatCatalogSelector(match, parsed.version ?? match.latestVersion ?? undefined),

@@ -62,10 +62,13 @@ Used by: `resource list`, `environment list` (interactive `env ls`).
 | Key | Behavior |
 | --- | --- |
 | Enter | Open detail view for the active item (when one exists) |
+| `ctrl+e` | Edit the active environment (`environment list` only) |
+| `ctrl+x` | Delete the active row after an inline `[y/N]` confirm |
 | Esc (browse) | **Commit** the current query and exit |
-| `d` | Delete the active row after an inline `[y/N]` confirm (resources only) |
 
 Esc always exits with whatever is typed. An empty query means "no filter" and shows the full list. Help label: `esc exit`.
+
+**Resource list:** `ctrl+x` deletes the active resource (no edit shortcut — use `resource show` or re-import flows). **Environment list:** `ctrl+e` opens the environment editor; `ctrl+x` deletes after confirm.
 
 **Resource columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
 
@@ -80,7 +83,7 @@ Used by: `resource show`, `resource delete`, `layer show`, `layer delete`, `prof
 | Key | Behavior |
 | --- | --- |
 | Enter | Confirm the active item and exit |
-| `d` | Delete the active item (delete intents only; inline confirm) |
+| `ctrl+x` | Delete the active item after inline `[y/N]` confirm (when `formatDeleteConfirm` is set) |
 | Esc (browse) | **Cancel** the prompt |
 
 Help label: `esc cancel`.
@@ -100,14 +103,20 @@ Used by: `layer edit` interactive composition, catalog search apply (`layer list
 
 When Enter opens a detail view, use **Ctrl+S** to save or apply. Help label: `esc cancel`.
 
-### `install` — pick a remote catalog layer
+### `install` — layer / profile list browser
 
-Used by: `layer list` remote install, catalog browser.
+Used by: `layer list`, `profile list` (interactive browse with local + remote sections).
 
 | Key | Behavior |
 | --- | --- |
-| Enter | Install the active remote layer (or show local layer details) |
+| Enter | Open detail view for the active row |
+| `ctrl+e` | Edit the active **local** layer (returns to the list after edit) |
+| `ctrl+x` | Delete the active **local** layer after inline `[y/N]` confirm |
 | Esc (browse) | **Cancel** the prompt |
+
+**Detail view (local):** `e` edit, `d` delete (with confirm), `esc` back to browse.
+
+**Detail view (remote):** `i` install, `a` apply to project or globally, `esc` back to browse.
 
 Help label: `esc cancel`.
 

@@ -3,10 +3,13 @@ import { createResourceTableBrowserAdapter } from "./adapters/resource-table-bro
 import {
   createTableBrowserPrompt,
 } from "./prompts/create-table-browser-prompt.js";
-import type { FilterListPromptResult } from "./prompts/table-browser-types.js";
 import type { ResourceListRow } from "../../ui/resource-list-render.js";
+import {
+  mapFilterTableBrowserResult,
+  type ListHubResult,
+} from "./list-browser-hub.js";
 
-export type InteractiveResourceListResult = FilterListPromptResult;
+export type InteractiveResourceListResult = ListHubResult;
 
 type PromptConfig = {
   message: string;
@@ -15,7 +18,6 @@ type PromptConfig = {
   showId?: boolean;
   showAll?: boolean;
   initialQuery?: string;
-  onDelete?: (resource: ResourceListRow) => Promise<boolean>;
 };
 
 type PromptContext = {
@@ -29,7 +31,7 @@ export const promptForInteractiveResourceList: (
   config: PromptConfig,
   context?: PromptContext,
 ) => Promise<InteractiveResourceListResult> = async (config, context) => {
-  const result = await createTableBrowserPrompt<ResourceListRow, ResourceListRow>(
+  const result = await createTableBrowserPrompt<ResourceListRow, string>(
     {
       message: config.message,
       initialQuery: config.initialQuery,
@@ -39,15 +41,10 @@ export const promptForInteractiveResourceList: (
         typeFilter: config.typeFilter,
         showId: config.showId,
         showAll: config.showAll,
-        onDelete: config.onDelete,
       }),
     },
     context,
   );
 
-  if (result.kind === "filter") {
-    return { query: result.query };
-  }
-
-  return { query: "" };
+  return mapFilterTableBrowserResult(result);
 };

@@ -5,6 +5,8 @@ import { createTableBrowserPrompt } from "../../src/services/wizards/prompts/cre
 
 type Row = { id: string; label: string; checked?: boolean };
 
+const CTRL_E = { name: "e", ctrl: true } as const;
+const CTRL_X = { name: "x", ctrl: true } as const;
 const CTRL_S = { name: "s", ctrl: true } as const;
 
 describe("createTableBrowserPrompt", () => {
@@ -38,6 +40,62 @@ describe("createTableBrowserPrompt", () => {
     events.type("al");
     events.keypress("escape");
     await expect(answer).resolves.toEqual({ kind: "filter", query: "al" });
+  });
+
+  it("filter intent edits the active row on e when onEdit is set", async () => {
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<Row, string>(
+          {
+            message: "Filter items",
+            intent: { kind: "filter" },
+            adapter: {
+              resolveItems: () => ({
+                filtered: [{ id: "1", label: "alpha" }],
+                navigable: [{ id: "1", label: "alpha" }],
+              }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              onEdit: (row) => row.id,
+              helpActions: [["ctrl+e", "edit"], ["esc", "exit"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+
+    events.keypress(CTRL_E);
+    await expect(answer).resolves.toEqual({ kind: "edit", value: "1" });
+  });
+
+  it("filter intent deletes the active row on d and y when formatDeleteConfirm is set", async () => {
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<Row, string>(
+          {
+            message: "Filter items",
+            intent: { kind: "filter" },
+            adapter: {
+              resolveItems: () => ({
+                filtered: [{ id: "1", label: "alpha" }],
+                navigable: [{ id: "1", label: "alpha" }],
+              }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              onPick: (row) => row.id,
+              formatDeleteConfirm: (row) => `Delete ${row.label}?`,
+              helpActions: [["ctrl+x", "delete"], ["esc", "exit"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+
+    events.keypress(CTRL_X);
+    events.keypress("y");
+    await expect(answer).resolves.toEqual({ kind: "delete", value: "1" });
   });
 
   it("pick-one intent confirms active row on enter", async () => {
@@ -224,5 +282,38 @@ describe("createTableBrowserPrompt", () => {
     );
     events.keypress("enter");
     await expect(answer).resolves.toEqual({ kind: "install", value: "1" });
+  });
+
+  it("filter intent scrolls tall show output before returning to browse", async () => {
+    const tallShow = Array.from({ length: 30 }, (_, index) => `detail-${index + 1}`).join("\n");
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<Row, string>(
+          {
+            message: "Filter items",
+            intent: { kind: "filter" },
+            adapter: {
+              resolveItems: () => ({
+                filtered: [{ id: "1", label: "alpha" }],
+                navigable: [{ id: "1", label: "alpha" }],
+              }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              renderShow: () => tallShow,
+              helpActions: [["esc", "exit"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true, terminalSize: { columns: 80, rows: 12 } },
+    );
+
+    events.keypress("enter");
+    events.keypress("down");
+    events.keypress("down");
+    events.keypress("escape");
+    events.keypress("escape");
+
+    await expect(answer).resolves.toEqual({ kind: "filter", query: "" });
   });
 });

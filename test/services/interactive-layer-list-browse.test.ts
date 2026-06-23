@@ -1,9 +1,13 @@
 import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { promptForInteractiveLayerListBrowse } from "../../src/services/wizards/interactive-layer-list-browse.ts?actual";
 import type { Layer } from "../../src/types.js";
+
+const CTRL_E = { name: "e", ctrl: true } as const;
+const CTRL_X = { name: "x", ctrl: true } as const;
 
 const localLayers: Layer[] = [
   {
@@ -34,29 +38,67 @@ const remoteLayers: CatalogLayer[] = [
 ];
 
 describe("interactive layer list browse prompt", () => {
-  it("shows local and remote sections in one frame", async () => {
-    const { getScreen, nextRender } = await render(
+  promptIt("shows local and remote sections in one frame", async () => {
+    await withPrompt(
+      render(
+        promptForInteractiveLayerListBrowse,
+        {
+          message: "Select a layer",
+          scopeLabel: "harnessdeck-cloud",
+          localLayers,
+          listRemoteLayers: async () => remoteLayers,
+        },
+        { clearPromptOnDone: true },
+      ),
+      async ({ getScreen, nextRender }) => {
+        await nextRender();
+        const frame = getScreen();
+        expect(frame).toContain("team-stack");
+        expect(frame).toContain("Local layers");
+      },
+    );
+  });
+
+  promptIt("shows remote catalog details on enter and installs from show view", async () => {
+    const { answer, events, getScreen, nextRender } = await render(
       promptForInteractiveLayerListBrowse,
       {
-        message: "Select a layer to install",
+        message: "Select a layer",
         scopeLabel: "harnessdeck-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
+        fetchRemoteLayerDetails: async (layer) => ({
+          ...layer,
+          summary: "Fetched fullstack details",
+        }),
       },
       { clearPromptOnDone: true },
     );
 
     await nextRender();
-    const frame = getScreen();
-    expect(frame).toContain("team-stack");
-    expect(frame).toContain("Local layers");
+    events.keypress("down");
+    events.keypress("enter");
+    await nextRender();
+    expect(getScreen()).toContain("Fetched fullstack details");
+    events.keypress("i");
+
+    await expect(answer).resolves.toEqual({
+      action: "install",
+      selection: {
+        orgSlug: "harnessdeck-cloud",
+        catalogSlug: "default",
+        slug: "fullstack",
+        version: "1.0.0",
+        selector: expect.stringContaining("fullstack"),
+      },
+    });
   });
 
-  it("installs a remote layer after navigating down", async () => {
+  promptIt("returns apply action from remote show view", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveLayerListBrowse,
       {
-        message: "Select a layer to install",
+        message: "Select a layer",
         scopeLabel: "harnessdeck-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
@@ -67,21 +109,22 @@ describe("interactive layer list browse prompt", () => {
     await nextRender();
     events.keypress("down");
     events.keypress("enter");
+    await nextRender();
+    events.keypress("a");
 
     await expect(answer).resolves.toEqual({
-      orgSlug: "harnessdeck-cloud",
-      catalogSlug: "default",
-      slug: "fullstack",
-      version: "1.0.0",
-      selector: expect.stringContaining("fullstack"),
+      action: "apply",
+      selection: expect.objectContaining({
+        slug: "fullstack",
+      }),
     });
   });
 
-  it("shows local layer details on enter", async () => {
+  promptIt("shows local layer details on enter", async () => {
     const { getScreen, events, nextRender } = await render(
       promptForInteractiveLayerListBrowse,
       {
-        message: "Select a layer to install",
+        message: "Select a layer",
         scopeLabel: "harnessdeck-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
@@ -94,11 +137,48 @@ describe("interactive layer list browse prompt", () => {
     expect(getScreen()).toContain("Installed locally");
   });
 
-  it("cancels with escape", async () => {
+  promptIt("edits a local layer with ctrl+e from browse", async () => {
+    const { answer, events, nextRender } = await render(
+      promptForInteractiveLayerListBrowse,
+      {
+        message: "Select a layer",
+        scopeLabel: "harnessdeck-cloud",
+        localLayers,
+        listRemoteLayers: async () => remoteLayers,
+      },
+      { clearPromptOnDone: true },
+    );
+
+    await nextRender();
+    events.keypress(CTRL_E);
+
+    await expect(answer).resolves.toEqual({ action: "edit", name: "team-stack" });
+  });
+
+  promptIt("deletes a local layer with ctrl+x after confirm", async () => {
+    const { answer, events, nextRender } = await render(
+      promptForInteractiveLayerListBrowse,
+      {
+        message: "Select a layer",
+        scopeLabel: "harnessdeck-cloud",
+        localLayers,
+        listRemoteLayers: async () => remoteLayers,
+      },
+      { clearPromptOnDone: true },
+    );
+
+    await nextRender();
+    events.keypress(CTRL_X);
+    events.keypress("y");
+
+    await expect(answer).resolves.toEqual({ action: "delete", name: "team-stack" });
+  });
+
+  promptIt("cancels with escape", async () => {
     const { answer, events } = await render(
       promptForInteractiveLayerListBrowse,
       {
-        message: "Select a layer to install",
+        message: "Select a layer",
         scopeLabel: "harnessdeck-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,

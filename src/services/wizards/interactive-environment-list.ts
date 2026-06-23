@@ -2,10 +2,13 @@ import { createEnvironmentTableBrowserAdapter } from "./adapters/environment-tab
 import {
   createTableBrowserPrompt,
 } from "./prompts/create-table-browser-prompt.js";
-import type { FilterListPromptResult } from "./prompts/table-browser-types.js";
 import type { EnvironmentListRow } from "../../ui/environment-list-render.js";
+import {
+  mapFilterTableBrowserResult,
+  type ListHubResult,
+} from "./list-browser-hub.js";
 
-export type InteractiveEnvironmentListResult = FilterListPromptResult;
+export type InteractiveEnvironmentListResult = ListHubResult;
 
 type PromptConfig = {
   message: string;
@@ -24,7 +27,7 @@ export const promptForInteractiveEnvironmentList: (
   config: PromptConfig,
   context?: PromptContext,
 ) => Promise<InteractiveEnvironmentListResult> = async (config, context) => {
-  const result = await createTableBrowserPrompt<EnvironmentListRow, EnvironmentListRow>(
+  const result = await createTableBrowserPrompt<EnvironmentListRow, string>(
     {
       message: config.message,
       initialQuery: config.initialQuery,
@@ -36,9 +39,5 @@ export const promptForInteractiveEnvironmentList: (
     context,
   );
 
-  if (result.kind === "filter") {
-    return { query: result.query };
-  }
-
-  return { query: "" };
+  return mapFilterTableBrowserResult(result);
 };
