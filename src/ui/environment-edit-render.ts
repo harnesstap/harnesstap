@@ -1,11 +1,12 @@
 import type { EnvironmentEditRow } from "../services/environment-edit.js";
 import {
   computeMaxVisibleRows,
+  renderFoldedHintLine,
   resolveSectionViewport,
   VIEWPORT_CHROME_LINES,
   type SectionViewport,
 } from "./list-viewport.js";
-import { styleResourceType, theme } from "./theme.js";
+import { styleResourceType, terminalColumns, theme } from "./theme.js";
 
 export const ENVIRONMENT_EDIT_KINDS: EnvironmentEditRow["kind"][] = [
   "env_var",
@@ -96,40 +97,47 @@ export function resolveEnvironmentActiveSectionContext(
   return { kind, indexInSection, sectionRows, prevSection, nextSection };
 }
 
-function renderEnvironmentViewportOverflowHints(
+export function buildEnvironmentEditViewportHintSegments(
   ctx: EnvironmentEditActiveSectionContext,
   viewport: SectionViewport,
 ): string[] {
-  const hints: string[] = [];
+  const segments: string[] = [];
   const hiddenBelow = ctx.sectionRows.length - viewport.end;
   const hiddenAbove = viewport.start;
   if (hiddenAbove > 0) {
-    hints.push(theme.muted(`  ↑ ${hiddenAbove} above`));
+    segments.push(`↑ ${hiddenAbove} above`);
   }
   if (hiddenBelow > 0) {
-    hints.push(theme.muted(`  ↓ ${hiddenBelow} more in ${ENVIRONMENT_EDIT_KIND_LABELS[ctx.kind]}`));
+    segments.push(`↓ ${hiddenBelow} more in ${ENVIRONMENT_EDIT_KIND_LABELS[ctx.kind]}`);
   }
   if (ctx.nextSection) {
-    hints.push(
-      theme.muted(
-        `  ${ENVIRONMENT_EDIT_KIND_LABELS[ctx.nextSection.kind]} (${ctx.nextSection.count}) · ↓ next section`,
-      ),
-    );
+    segments.push(`${ENVIRONMENT_EDIT_KIND_LABELS[ctx.nextSection.kind]} (${ctx.nextSection.count})`);
+    segments.push("↓ next section");
   }
   if (viewport.start === 0 && ctx.prevSection) {
-    hints.push(
-      theme.muted(
-        `  ${ENVIRONMENT_EDIT_KIND_LABELS[ctx.prevSection.kind]} (${ctx.prevSection.count}) · ↑ prev section`,
-      ),
-    );
+    segments.push(`${ENVIRONMENT_EDIT_KIND_LABELS[ctx.prevSection.kind]} (${ctx.prevSection.count})`);
+    segments.push("↑ prev section");
   }
-  return hints;
+  return segments;
+}
+
+function renderEnvironmentViewportOverflowHints(
+  ctx: EnvironmentEditActiveSectionContext,
+  viewport: SectionViewport,
+  maxWidth: number,
+): string {
+  const folded = renderFoldedHintLine(
+    buildEnvironmentEditViewportHintSegments(ctx, viewport),
+    maxWidth,
+  );
+  return folded.length > 0 ? theme.muted(folded) : "";
 }
 
 export type EnvironmentEditViewportOptions = {
   activeIndex: number;
   navigable: EnvironmentEditRow[];
   terminalRows: number;
+  maxWidth?: number;
 };
 
 export function renderGroupedEnvironmentEditViewport(
@@ -157,6 +165,7 @@ export function renderGroupedEnvironmentEditViewport(
   );
   const visibleRows = ctx.sectionRows.slice(viewport.start, viewport.end);
   const activeRow = opts.navigable[opts.activeIndex];
+  const maxWidth = opts.maxWidth ?? terminalColumns();
 
   const body = [
     styleResourceType(ctx.kind),
@@ -165,10 +174,10 @@ export function renderGroupedEnvironmentEditViewport(
       const marker = row === activeRow ? theme.accent(">") : " ";
       return `${marker} ${formatEnvironmentEditRowLabel(row)}`;
     }),
-    ...renderEnvironmentViewportOverflowHints(ctx, viewport),
+    renderEnvironmentViewportOverflowHints(ctx, viewport, maxWidth),
   ];
 
-  return body.join("\n");
+  return body.filter((line) => line.length > 0).join("\n");
 }
 
 export function renderGroupedEnvironmentEditTable(

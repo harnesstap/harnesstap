@@ -57,18 +57,16 @@ export const promptForInteractiveEnvironmentEdit: (
         styledMessage,
         query,
         filteredRows,
-        activeRow,
         active,
+        terminalWidth,
         terminalRows,
       }) => {
         const tables = renderGroupedEnvironmentEditViewport(filteredRows, {
           activeIndex: active,
           navigable: filteredRows,
           terminalRows,
+          maxWidth: terminalWidth,
         });
-        const selectionLine = activeRow
-          ? `Active: ${theme.accent(formatEnvironmentEditRowLabel(activeRow))}`
-          : theme.muted("No matching rows");
         const helpLine = buildHelpLine([
           ["↑↓", "navigate"],
           ["type", "search"],
@@ -82,8 +80,7 @@ export const promptForInteractiveEnvironmentEdit: (
 
         return [
           `${prefix} ${styledMessage}`,
-          `Search: ${query || "(type to filter)"}`,
-          selectionLine,
+          `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
           "",
           tables,
           "",

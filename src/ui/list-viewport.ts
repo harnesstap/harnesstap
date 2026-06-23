@@ -13,7 +13,7 @@ export const VIEWPORT_CHROME_LINES = {
   catalogBrowse: 8,
   catalogSearch: 10,
   layerEdit: 7,
-  environmentEdit: 6,
+  environmentEdit: 5,
   environmentList: 5,
   layerListBrowse: 6,
 } as const;

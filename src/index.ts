@@ -203,6 +203,7 @@ import { buildEnvironmentEditRows } from "./services/environment-edit.js";
 import { runEnvironmentCreateWizard } from "./services/wizards/environment-create.js";
 import { runEnvironmentDeleteWizard } from "./services/wizards/environment-delete.js";
 import { runEnvironmentEditWizard } from "./services/wizards/environment-edit.js";
+import { runEnvironmentShowWizard } from "./services/wizards/environment-show.js";
 import {
   filterEnvironmentListRows,
   runEnvironmentListWizard,
@@ -3256,6 +3257,7 @@ function renderEnvironmentDeleteReferences(
 async function handleEnvironmentDeleteCommand(
   name: string | undefined,
   opts: {
+    search?: string;
     force?: boolean;
     format?: string;
     interactive?: boolean;
@@ -3272,7 +3274,13 @@ async function handleEnvironmentDeleteCommand(
     missingRequiredArgs: !name,
   });
 
-  const resolvedName = name ?? (useWizard ? await runEnvironmentDeleteWizard() : undefined);
+  const selectors = name
+    ? [name]
+    : useWizard
+      ? await runEnvironmentDeleteWizard({ search: opts.search })
+      : [];
+
+  const resolvedName = selectors[0];
   if (!resolvedName) {
     throw !name && useWizard
       ? new Error("No environment selected for deletion")
@@ -6240,15 +6248,44 @@ environmentCmd
 
 environmentCmd
   .command("show")
-  .argument("<name>", "Environment name or ID")
+  .argument("[name]", "Environment name or ID")
   .option("--layer <selector>", "Analyze requirement gaps for a configured layer")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--no-interactive", "Disable interactive wizards")
   .description("Show environment values, secret refs, and layer references")
-  .action((name: string, opts: { format?: string; layer?: string }) => {
+  .action(async (
+    name: string | undefined,
+    opts: {
+      format?: string;
+      layer?: string;
+      interactive?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
     const db = getDb();
     initializeSchema(db);
-    const payload = showEnvironmentCommand(name);
     const format = parseOutputFormat(opts.format);
+    const resolvedName = await resolveOrPrompt({
+      value: name,
+      shouldPrompt: shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format,
+        missingRequiredArgs: !name,
+      }),
+      prompt: async () => runEnvironmentShowWizard(),
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger(
+        listEnvironments().length > 0
+          ? "error: missing required argument 'name'"
+          : `No environments found. Create one with \`${formatCommand("environment create <name>")}\` first.`,
+      );
+      return;
+    }
+    const payload = showEnvironmentCommand(resolvedName);
     const requirementGaps = opts.layer
       ? analyzeEnvironmentGaps(payload.environment.id, opts.layer)
       : undefined;
@@ -6266,6 +6303,7 @@ environmentCmd
 environmentCmd
   .command("delete")
   .argument("[name]", "Environment name or ID")
+  .option("-s, --search <query>", "Filter environments in the delete wizard")
   .option("--force", "Delete even if references exist")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
@@ -6274,6 +6312,7 @@ environmentCmd
   .action(async (
     name: string | undefined,
     opts: {
+      search?: string;
       force?: boolean;
       format?: string;
       interactive?: boolean;
