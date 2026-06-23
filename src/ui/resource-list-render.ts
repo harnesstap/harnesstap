@@ -1,8 +1,22 @@
 import type { Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 import * as format from "./format.js";
+import {
+  computeMaxVisibleTableRows,
+  renderFoldedHintLine,
+  resolveSectionViewport,
+  VIEWPORT_CHROME_LINES,
+  type SectionViewport,
+} from "./list-viewport.js";
 import { renderTable, type Column } from "./table.js";
 import { terminalColumns, theme } from "./theme.js";
+
+export {
+  computeMaxVisibleRows,
+  computeMaxVisibleTableRows,
+  resolveSectionViewport,
+  type SectionViewport,
+} from "./list-viewport.js";
 
 export const DEFAULT_RESOURCE_LIST_PER_TYPE_LIMIT = 10;
 
@@ -47,36 +61,6 @@ export function formatResourceListNamespace(resource: ResourceListRow): string {
 
 function hasListNamespace(rows: ResourceListRow[]): boolean {
   return rows.some((row) => formatResourceListNamespace(row).length > 0);
-}
-
-export type SectionViewport = {
-  start: number;
-  end: number;
-};
-
-const INTERACTIVE_CHROME_LINES = 6;
-const SECTION_TABLE_OVERHEAD_LINES = 5;
-
-export function computeMaxVisibleRows(terminalRowCount: number): number {
-  const budget = terminalRowCount - INTERACTIVE_CHROME_LINES - SECTION_TABLE_OVERHEAD_LINES;
-  return Math.max(3, budget - 1);
-}
-
-export function resolveSectionViewport(
-  sectionLength: number,
-  activeIndex: number,
-  maxVisibleRows: number,
-): SectionViewport {
-  if (sectionLength <= maxVisibleRows) {
-    return { start: 0, end: sectionLength };
-  }
-  const middle = Math.floor(maxVisibleRows / 2);
-  let start = activeIndex - middle;
-  if (start < 0) start = 0;
-  if (start + maxVisibleRows > sectionLength) {
-    start = sectionLength - maxVisibleRows;
-  }
-  return { start, end: start + maxVisibleRows };
 }
 
 export type ActiveSectionContext = {
@@ -133,34 +117,40 @@ function clampIndex(index: number, length: number): number {
   return Math.max(0, Math.min(index, length - 1));
 }
 
-function renderViewportOverflowHints(
+export function buildResourceViewportHintSegments(
   ctx: ActiveSectionContext,
   viewport: SectionViewport,
 ): string[] {
-  const hints: string[] = [];
+  const segments: string[] = [];
   const hiddenBelow = ctx.sectionRows.length - viewport.end;
   const hiddenAbove = viewport.start;
   if (hiddenAbove > 0) {
-    hints.push(theme.muted(`  ↑ ${hiddenAbove} above`));
+    segments.push(`↑ ${hiddenAbove} above`);
   }
   if (hiddenBelow > 0) {
-    hints.push(theme.muted(`  ↓ ${hiddenBelow} more in ${ctx.type}`));
+    segments.push(`↓ ${hiddenBelow} more in ${ctx.type}`);
   }
   if (ctx.nextSection) {
-    hints.push(
-      theme.muted(
-        `  ${ctx.nextSection.type} (${ctx.nextSection.count}) · ↓ next type`,
-      ),
-    );
+    segments.push(`${ctx.nextSection.type} (${ctx.nextSection.count})`);
+    segments.push("↓ next type");
   }
   if (viewport.start === 0 && ctx.prevSection) {
-    hints.push(
-      theme.muted(
-        `  ${ctx.prevSection.type} (${ctx.prevSection.count}) · ↑ prev type`,
-      ),
-    );
+    segments.push(`${ctx.prevSection.type} (${ctx.prevSection.count})`);
+    segments.push("↑ prev type");
   }
-  return hints;
+  return segments;
+}
+
+function renderViewportOverflowHints(
+  ctx: ActiveSectionContext,
+  viewport: SectionViewport,
+  maxWidth: number,
+): string {
+  const folded = renderFoldedHintLine(
+    buildResourceViewportHintSegments(ctx, viewport),
+    maxWidth,
+  );
+  return folded.length > 0 ? theme.muted(folded) : "";
 }
 
 export function renderGroupedResourceListViewport(
@@ -176,7 +166,10 @@ export function renderGroupedResourceListViewport(
     return "No resources found.";
   }
 
-  const maxVisibleRows = computeMaxVisibleRows(opts.terminalRows);
+  const maxVisibleRows = computeMaxVisibleTableRows(
+    opts.terminalRows,
+    VIEWPORT_CHROME_LINES.resourceList,
+  );
   const viewport = resolveSectionViewport(
     ctx.sectionRows.length,
     ctx.indexInSection,
@@ -186,6 +179,8 @@ export function renderGroupedResourceListViewport(
   const hasNamespace = hasListNamespace(visibleRows);
   const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
 
+  const maxWidth = opts.maxWidth ?? terminalColumns();
+
   return [
     renderResourceTypeSubheader(ctx.type, ctx.sectionRows.length),
     renderTable({
@@ -193,7 +188,100 @@ export function renderGroupedResourceListViewport(
       rows: decorateRowsForSelection(visibleRows, opts.selectedResourceId),
       ...resourceListTableLayout(opts),
     }),
-    ...renderViewportOverflowHints(ctx, viewport),
+    renderViewportOverflowHints(ctx, viewport, maxWidth),
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
+export type LayerEditViewportOptions = LayerEditRenderOptions & {
+  activeIndex: number;
+  navigable: LayerEditTableRow[];
+  terminalRows: number;
+};
+
+export function renderGroupedLayerEditViewport(
+  rows: LayerEditTableRow[],
+  opts: LayerEditViewportOptions,
+): string {
+  if (rows.length === 0) {
+    return "No resources found.";
+  }
+
+  const ctx = resolveActiveSectionContext(opts.navigable, opts.activeIndex);
+  if (ctx.sectionRows.length === 0) {
+    return "No resources found.";
+  }
+
+  const maxVisibleRows = computeMaxVisibleTableRows(
+    opts.terminalRows,
+    VIEWPORT_CHROME_LINES.layerEdit,
+  );
+  const viewport = resolveSectionViewport(
+    ctx.sectionRows.length,
+    ctx.indexInSection,
+    maxVisibleRows,
+  );
+  const visibleRows = ctx.sectionRows.slice(viewport.start, viewport.end) as LayerEditTableRow[];
+  const hasNamespace = hasListNamespace(visibleRows);
+  const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
+  const checkedCount = rows.filter((row) => row.checked).length;
+  const maxWidth = opts.maxWidth ?? terminalColumns();
+
+  return [
+    renderResourceTypeSubheader(ctx.type, ctx.sectionRows.length),
+    renderTable({
+      columns,
+      rows: decorateRowsForCheckboxes(visibleRows, opts),
+      ...resourceListTableLayout(opts),
+    }),
+    renderViewportOverflowHints(ctx, viewport, maxWidth),
+    "",
+    theme.info(`${checkedCount} selected • ${rows.length} resources`),
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
+export function renderFlatLayerEditViewport(
+  rows: LayerEditTableRow[],
+  opts: LayerEditViewportOptions,
+): string {
+  if (rows.length === 0) {
+    return "No resources found.";
+  }
+
+  const maxVisibleRows = computeMaxVisibleTableRows(
+    opts.terminalRows,
+    VIEWPORT_CHROME_LINES.layerEdit,
+  );
+  const activeIndex = clampIndex(opts.activeIndex, opts.navigable.length);
+  const viewport = resolveSectionViewport(
+    opts.navigable.length,
+    activeIndex,
+    maxVisibleRows,
+  );
+  const visibleRows = opts.navigable.slice(viewport.start, viewport.end);
+  const hasNamespace = hasListNamespace(visibleRows);
+  const activeRowId = opts.navigable[activeIndex]?.id;
+  const checkedCount = rows.filter((row) => row.checked).length;
+
+  const hints: string[] = [];
+  if (viewport.start > 0) {
+    hints.push(theme.muted(`  ↑ ${viewport.start} above`));
+  }
+  if (viewport.end < opts.navigable.length) {
+    hints.push(theme.muted(`  ↓ ${opts.navigable.length - viewport.end} more`));
+  }
+
+  return [
+    renderTable({
+      columns: makeResourceListColumns(opts.showId, false, hasNamespace, true),
+      rows: decorateRowsForCheckboxes(visibleRows, { ...opts, activeRowId }),
+      summary: `${checkedCount} selected ${theme.muted(`(${opts.navigable.length} resources)`)}`,
+      ...resourceListTableLayout(opts),
+    }),
+    ...hints,
   ].join("\n");
 }
 
@@ -205,7 +293,10 @@ export function renderFlatResourceListViewport(
     return "No resources found.";
   }
 
-  const maxVisibleRows = computeMaxVisibleRows(opts.terminalRows);
+  const maxVisibleRows = computeMaxVisibleTableRows(
+    opts.terminalRows,
+    VIEWPORT_CHROME_LINES.resourceList,
+  );
   const activeIndex = clampIndex(opts.activeIndex, resources.length);
   const viewport = resolveSectionViewport(resources.length, activeIndex, maxVisibleRows);
   const visibleRows = resources.slice(viewport.start, viewport.end);
