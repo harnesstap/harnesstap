@@ -1,5 +1,6 @@
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt } from "../helpers/prompt-test.ts";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.ts?actual";
 import { PromptBackError } from "../../src/services/wizards/shared.ts";
 
@@ -24,7 +25,7 @@ function renderPrompt(defaults: string[] = []) {
 }
 
 describe("searchable multi-select prompt", () => {
-  it("filters choices as you type and toggles the filtered alias with space", async () => {
+  promptIt("filters choices as you type and toggles the filtered alias with space", async () => {
     const { answer, events } = await renderPrompt();
 
     events.type("copilot");
@@ -34,7 +35,7 @@ describe("searchable multi-select prompt", () => {
     await expect(answer).resolves.toEqual(["copilot-cli"]);
   });
 
-  it("selects all visible filtered aliases with ctrl+a", async () => {
+  promptIt("selects all visible filtered aliases with ctrl+a", async () => {
     const { answer, events } = await renderPrompt(["cursor"]);
 
     events.type("copilot");
@@ -44,7 +45,7 @@ describe("searchable multi-select prompt", () => {
     await expect(answer).resolves.toEqual(["copilot-cli", "cursor"]);
   });
 
-  it("clears only the visible filtered aliases with ctrl+x", async () => {
+  promptIt("clears only the visible filtered aliases with ctrl+x", async () => {
     const { answer, events } = await renderPrompt(["cursor", "copilot-cli"]);
 
     events.type("copilot");
@@ -54,7 +55,7 @@ describe("searchable multi-select prompt", () => {
     await expect(answer).resolves.toEqual(["cursor"]);
   });
 
-  it("starts with an initial query filter when provided", async () => {
+  promptIt("starts with an initial query filter when provided", async () => {
     const { answer, events } = await render(
       promptForSearchableMultiSelect,
       {
@@ -75,7 +76,7 @@ describe("searchable multi-select prompt", () => {
     await expect(answer).resolves.toEqual(["copilot-cli"]);
   });
 
-  it("rejects with PromptBackError when escape is pressed", async () => {
+  promptIt("rejects with PromptBackError when escape is pressed", async () => {
     const { answer, events } = await renderPrompt();
 
     events.keypress("escape");

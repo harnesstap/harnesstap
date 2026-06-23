@@ -121,20 +121,24 @@ describe("interactive layer list browse prompt", () => {
   });
 
   promptIt("shows local layer details on enter", async () => {
-    const { getScreen, events, nextRender } = await render(
-      promptForInteractiveLayerListBrowse,
-      {
-        message: "Select a layer",
-        scopeLabel: "harnessdeck-cloud",
-        localLayers,
-        listRemoteLayers: async () => remoteLayers,
+    await withPrompt(
+      render(
+        promptForInteractiveLayerListBrowse,
+        {
+          message: "Select a layer",
+          scopeLabel: "harnessdeck-cloud",
+          localLayers,
+          listRemoteLayers: async () => remoteLayers,
+        },
+        { clearPromptOnDone: true },
+      ),
+      async ({ getScreen, events, nextRender }) => {
+        await nextRender();
+        events.keypress("enter");
+        await nextRender();
+        expect(getScreen()).toContain("Installed locally");
       },
-      { clearPromptOnDone: true },
     );
-
-    await nextRender();
-    events.keypress("enter");
-    expect(getScreen()).toContain("Installed locally");
   });
 
   promptIt("edits a local layer with ctrl+e from browse", async () => {

@@ -1,6 +1,7 @@
 import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt } from "../helpers/prompt-test.ts";
 import { createTableBrowserPrompt } from "../../src/services/wizards/prompts/create-table-browser-prompt.ts";
 
 type Row = { id: string; label: string; checked?: boolean };
@@ -10,7 +11,7 @@ const CTRL_X = { name: "x", ctrl: true } as const;
 const CTRL_S = { name: "s", ctrl: true } as const;
 
 describe("createTableBrowserPrompt", () => {
-  it("filter intent commits query on esc", async () => {
+  promptIt("filter intent commits query on esc", async () => {
     const { answer, events } = await render(
       (_config, context) =>
         createTableBrowserPrompt<Row, { query: string }>(
@@ -42,7 +43,7 @@ describe("createTableBrowserPrompt", () => {
     await expect(answer).resolves.toEqual({ kind: "filter", query: "al" });
   });
 
-  it("filter intent edits the active row on e when onEdit is set", async () => {
+  promptIt("filter intent edits the active row on e when onEdit is set", async () => {
     const { answer, events } = await render(
       (_config, context) =>
         createTableBrowserPrompt<Row, string>(
@@ -69,7 +70,7 @@ describe("createTableBrowserPrompt", () => {
     await expect(answer).resolves.toEqual({ kind: "edit", value: "1" });
   });
 
-  it("filter intent deletes the active row on d and y when formatDeleteConfirm is set", async () => {
+  promptIt("filter intent deletes the active row on d and y when formatDeleteConfirm is set", async () => {
     const { answer, events } = await render(
       (_config, context) =>
         createTableBrowserPrompt<Row, string>(
@@ -98,7 +99,7 @@ describe("createTableBrowserPrompt", () => {
     await expect(answer).resolves.toEqual({ kind: "delete", value: "1" });
   });
 
-  it("pick-one intent confirms active row on enter", async () => {
+  promptIt("pick-one intent confirms active row on enter", async () => {
     const { answer, events } = await render(
       (_config, context) =>
         createTableBrowserPrompt<Row, string>(
@@ -124,7 +125,7 @@ describe("createTableBrowserPrompt", () => {
     await expect(answer).resolves.toEqual({ kind: "pick-one", value: "1" });
   });
 
-  it("pick-one intent rejects on escape without uncaught throw", async () => {
+  promptIt("pick-one intent rejects on escape without uncaught throw", async () => {
     const { answer, events } = await render(
       (_config, context) =>
         createTableBrowserPrompt<Row, string>(
@@ -159,7 +160,7 @@ describe("createTableBrowserPrompt", () => {
     expect((rejected as Error).message).toBe("Table browser cancelled.");
   });
 
-  it("pick-many intent toggles with space and commits on ctrl+s", async () => {
+  promptIt("pick-many intent toggles with space and commits on ctrl+s", async () => {
     const rows: Row[] = [
       { id: "1", label: "alpha", checked: false },
       { id: "2", label: "beta", checked: false },
@@ -203,7 +204,7 @@ describe("createTableBrowserPrompt", () => {
     });
   });
 
-  it("manage intent returns edit on enter", async () => {
+  promptIt("manage intent returns edit on enter", async () => {
     const rows = [{ id: "1", label: "alpha" }];
     const { answer, events } = await render(
       (_config, context) =>
@@ -231,7 +232,7 @@ describe("createTableBrowserPrompt", () => {
     });
   });
 
-  it("manage intent returns add on a", async () => {
+  promptIt("manage intent returns add on a", async () => {
     const rows = [{ id: "1", label: "alpha" }];
     const { answer, events } = await render(
       (_config, context) =>
@@ -258,7 +259,7 @@ describe("createTableBrowserPrompt", () => {
     });
   });
 
-  it("install intent confirms active row on enter", async () => {
+  promptIt("install intent confirms active row on enter", async () => {
     const { answer, events } = await render(
       (_config, context) =>
         createTableBrowserPrompt<Row, string>(
@@ -284,7 +285,7 @@ describe("createTableBrowserPrompt", () => {
     await expect(answer).resolves.toEqual({ kind: "install", value: "1" });
   });
 
-  it("filter intent scrolls tall show output before returning to browse", async () => {
+  promptIt("filter intent scrolls tall show output before returning to browse", async () => {
     const tallShow = Array.from({ length: 30 }, (_, index) => `detail-${index + 1}`).join("\n");
     const { answer, events } = await render(
       (_config, context) =>

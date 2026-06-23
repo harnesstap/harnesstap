@@ -1,6 +1,7 @@
 import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt } from "../helpers/prompt-test.ts";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { promptForInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.ts?actual";
 
@@ -30,7 +31,7 @@ const sampleLayers: CatalogLayer[] = [
 ];
 
 describe("interactive catalog browser prompt", () => {
-  it("installs the selected layer on enter", async () => {
+  promptIt("installs the selected layer on enter", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogBrowser,
       {
@@ -53,7 +54,7 @@ describe("interactive catalog browser prompt", () => {
     });
   });
 
-  it("does not re-fetch on every render when listLayers resolves synchronously", async () => {
+  promptIt("does not re-fetch on every render when listLayers resolves synchronously", async () => {
     let callCount = 0;
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogBrowser,
@@ -80,7 +81,7 @@ describe("interactive catalog browser prompt", () => {
     );
   });
 
-  it("cancels with escape", async () => {
+  promptIt("cancels with escape", async () => {
     const { answer, events } = await render(
       promptForInteractiveCatalogBrowser,
       {
