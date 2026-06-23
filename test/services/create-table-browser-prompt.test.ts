@@ -2,7 +2,9 @@ import { render } from "@inquirer/testing";
 import { describe, expect, it } from "bun:test";
 import { createTableBrowserPrompt } from "../../src/services/wizards/prompts/create-table-browser-prompt.ts";
 
-type Row = { id: string; label: string };
+type Row = { id: string; label: string; checked?: boolean };
+
+const CTRL_S = { name: "s", ctrl: true } as const;
 
 describe("createTableBrowserPrompt", () => {
   it("filter intent commits query on esc", async () => {
@@ -61,5 +63,130 @@ describe("createTableBrowserPrompt", () => {
     );
     events.keypress("enter");
     await expect(answer).resolves.toEqual({ kind: "pick-one", value: "1" });
+  });
+
+  it("pick-many intent toggles with space and commits on ctrl+s", async () => {
+    const rows: Row[] = [
+      { id: "1", label: "alpha", checked: false },
+      { id: "2", label: "beta", checked: false },
+    ];
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<Row, Row>(
+          {
+            message: "Pick items",
+            intent: { kind: "pick-many" },
+            pickManyItems: rows,
+            resolvePickManyItems: (items, query) => {
+              const filtered = query
+                ? items.filter((row) => row.label.includes(query))
+                : items;
+              return { filtered, navigable: filtered };
+            },
+            onCommitPickMany: (items) => items,
+            adapter: {
+              resolveItems: () => ({ filtered: [], navigable: [] }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              getItemKey: (row) => row.id,
+              helpActions: [["space", "toggle"], ["ctrl+s", "save"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+
+    events.keypress("space");
+    events.keypress(CTRL_S);
+
+    await expect(answer).resolves.toEqual({
+      kind: "pick-many",
+      values: [
+        { id: "1", label: "alpha", checked: true },
+        { id: "2", label: "beta", checked: false },
+      ],
+    });
+  });
+
+  it("manage intent returns edit on enter", async () => {
+    const rows = [{ id: "1", label: "alpha" }];
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<(typeof rows)[number], never>(
+          {
+            message: "Manage items",
+            intent: { kind: "manage" },
+            manageSourceRows: rows,
+            adapter: {
+              resolveItems: () => ({ filtered: rows, navigable: rows }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              helpActions: [["⏎", "edit"], ["a", "add"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+
+    events.keypress("enter");
+    await expect(answer).resolves.toEqual({
+      kind: "manage",
+      action: { type: "edit", rowIndex: 0 },
+    });
+  });
+
+  it("manage intent returns add on a", async () => {
+    const rows = [{ id: "1", label: "alpha" }];
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<(typeof rows)[number], never>(
+          {
+            message: "Manage items",
+            intent: { kind: "manage" },
+            manageSourceRows: rows,
+            adapter: {
+              resolveItems: () => ({ filtered: rows, navigable: rows }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              helpActions: [["a", "add"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+    events.keypress("a");
+    await expect(answer).resolves.toEqual({
+      kind: "manage",
+      action: { type: "add" },
+    });
+  });
+
+  it("install intent confirms active row on enter", async () => {
+    const { answer, events } = await render(
+      (_config, context) =>
+        createTableBrowserPrompt<Row, string>(
+          {
+            message: "Install item",
+            intent: { kind: "install" },
+            adapter: {
+              resolveItems: () => ({
+                filtered: [{ id: "1", label: "alpha" }],
+                navigable: [{ id: "1", label: "alpha" }],
+              }),
+              renderViewport: ({ navigable }) => navigable.map((row) => row.label).join("\n"),
+              onPick: (row) => row.id,
+              helpActions: [["⏎", "install"], ["i", "install"]],
+            },
+          },
+          context,
+        ),
+      undefined,
+      { clearPromptOnDone: true },
+    );
+    events.keypress("enter");
+    await expect(answer).resolves.toEqual({ kind: "install", value: "1" });
   });
 });
