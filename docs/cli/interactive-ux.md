@@ -1,10 +1,10 @@
 # Interactive list keyboard guide
 
-HarnessDeck's TTY browse and search prompts share one keyboard contract. A help line at the bottom of each prompt shows the keys available in that mode.
+HarnessDeck's TTY entity lists share one **table browser**: grouped tables, a search line, a dense folded footer, and a help line. Selection is shown only in the table (`>` marker and accent color)—there is no separate `Active:` / `Show:` line above the table.
 
 ## Universal keys
 
-These work in every interactive list prompt.
+These work in every interactive table browser prompt.
 
 | Key | Behavior |
 | --- | --- |
@@ -13,55 +13,84 @@ These work in every interactive list prompt.
 | Backspace | Delete the last query character; active item resets to the top |
 | Esc in **detail** view | Return to the browse list (does not exit the prompt) |
 
-## Modes
+## Chrome
 
-Each prompt runs in one of five modes. **Enter** and **Esc** behavior depends on the mode.
+Every browse frame follows the same layout:
+
+```
+? Filter resources
+Search: skill:dbt
+
+skill (3)
+┌──────────┬───────────┬─────────┐
+│ NAME     │ NAMESPACE │ UPDATED │
+├──────────┼───────────┼─────────┤
+│ > beta   │ …         │ 1d ago  │
+└──────────┴───────────┴─────────┘
+  ↑ 7 above · ↓ 4 more in skill · rule (1) · ↓ next type
+
+↑↓ select · type search · ⏎ show · d delete · esc exit
+```
+
+**Folded footer:** When rows or sections overflow the viewport, hint segments join with ` · ` on one line when the terminal is wide enough (for example `↑ 7 above · ↓ 4 more in skill · rule (1) · ↓ next type`). On narrow terminals, segments wrap at ` · ` boundaries onto additional indented lines.
+
+**Display behavior:** Filter and pick prompts run on an alternate terminal screen so typing and scrolling do not leave ghost lines in your scrollback. When you exit, the main screen is restored. Tables reflow when you resize the terminal.
+
+## Search prefixes
+
+Type `section:text` to scope search to a section or column family. Unknown prefixes are treated as plain text.
+
+| Prefix | Used by | Matches |
+| --- | --- | --- |
+| `skill:dbt` | Resource list | Skills whose name or description contains `dbt` |
+| `rule:api` | Resource list | Rules matching `api` |
+| `name:prod` | Environment list | Environment names |
+| `desc:staging` | Environment list | Environment descriptions |
+| `local:foo` | Layer / profile list | Locally installed layers |
+| `remote:full` | Layer / profile list | Remote catalog layers |
+
+Free text (no prefix) matches across the default fields for that list.
+
+## Intents
+
+Each prompt runs with one **intent**. **Enter** and **Esc** behavior depends on the intent.
 
 ### `filter` — live search overlay
 
-Used by: `resource list` interactive filter.
+Used by: `resource list`, `environment list` (interactive `env ls`).
 
 | Key | Behavior |
 | --- | --- |
 | Enter | Open detail view for the active item (when one exists) |
+| `ctrl+e` | Edit the active environment (`environment list` only) |
+| `ctrl+x` | Delete the active row after an inline `[y/N]` confirm |
 | Esc (browse) | **Commit** the current query and exit |
 
 Esc always exits with whatever is typed. An empty query means "no filter" and shows the full list. Help label: `esc exit`.
 
-**Display behavior:** The filter runs on an alternate terminal screen so typing and scrolling do not leave ghost lines in your scrollback. When you exit, the main screen is restored and the final filtered list prints normally. The table reflows when you resize the terminal.
+**Resource list:** `ctrl+x` deletes the active resource (no edit shortcut — use `resource show` or re-import flows). **Environment list:** `ctrl+e` opens the environment editor; `ctrl+x` deletes after confirm.
 
-**Columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
+**Resource columns:** NAME shows the bare resource name. NAMESPACE shows plugin or package provenance (marketplace-linked resources display as `marketplace/plugin`). Selectors and JSON output still use `name@namespace` where applicable.
 
-**Viewport:** On height-constrained terminals, browse shows one resource type at a time with a sliding window of rows. Overflow hints show rows above/below and adjacent types. Static `resource list --no-interactive` still prints all type sections.
+**Resource viewport:** On height-constrained terminals, browse shows one resource type at a time with a sliding window of rows. Static `resource list --no-interactive` still prints all type sections.
 
-### `select-one` — pick one item
+**Environment columns:** NAME, VALUES, SECRETS, REFS counts.
 
-Used by: `layer list` catalog browser (install).
+### `pick-one` — pick one item
+
+Used by: `resource show`, `resource delete`, `layer show`, `layer delete`, `profile show`, `environment show`, `environment delete`.
 
 | Key | Behavior |
 | --- | --- |
 | Enter | Confirm the active item and exit |
+| `ctrl+x` | Delete the active item after inline `[y/N]` confirm (when `formatDeleteConfirm` is set) |
 | Esc (browse) | **Cancel** the prompt |
 
 Help label: `esc cancel`.
 
-### `select-many` (wizard) — multi-select in a wizard step
+### `pick-many` — multi-select with detail view
 
-Used by: wizard alias multi-select flows.
-
-| Key | Behavior |
-| --- | --- |
-| Enter | Submit checked items |
-| Esc (browse) | Go **back** to the previous wizard step |
-| Space | Toggle the active item |
-| Ctrl+A | Select all visible items |
-| Ctrl+X | Clear selection on all visible items |
-
-Help label: `esc back`.
-
-### `select-many` (action) — multi-select with detail view
-
-Used by: `layer list` catalog search (apply), `layer edit` interactive composition.
+Used by: `layer edit` interactive composition, catalog search apply (`layer list` apply mode).
 
 | Key | Behavior |
 | --- | --- |
@@ -72,9 +101,26 @@ Used by: `layer list` catalog search (apply), `layer edit` interactive compositi
 | Ctrl+A | Select all visible items |
 | Ctrl+X | Clear selection on all visible items |
 
-When Enter opens a detail view, use **Ctrl+S** to save or apply — the same affordance as "save" in editors. Help label: `esc cancel`.
+When Enter opens a detail view, use **Ctrl+S** to save or apply. Help label: `esc cancel`.
 
-### `action-menu` — row actions with shortcuts
+### `install` — layer / profile list browser
+
+Used by: `layer list`, `profile list` (interactive browse with local + remote sections).
+
+| Key | Behavior |
+| --- | --- |
+| Enter | Open detail view for the active row |
+| `ctrl+e` | Edit the active **local** layer (returns to the list after edit) |
+| `ctrl+x` | Delete the active **local** layer after inline `[y/N]` confirm |
+| Esc (browse) | **Cancel** the prompt |
+
+**Detail view (local):** `e` edit, `d` delete (with confirm), `esc` back to browse.
+
+**Detail view (remote):** `i` install, `a` apply to project or globally, `esc` back to browse.
+
+Help label: `esc cancel`.
+
+### `manage` — row actions with shortcuts
 
 Used by: `environment edit`.
 
@@ -85,6 +131,22 @@ Used by: `environment edit`.
 | `a` | Add a row |
 | `d` | Delete the active row |
 | `q` | Quit and save |
+
+Help label: `esc cancel`.
+
+### Wizard multi-select (legacy)
+
+Used by: wizard alias multi-select flows (`promptForSearchableMultiSelect`).
+
+| Key | Behavior |
+| --- | --- |
+| Enter | Submit checked items |
+| Esc (browse) | Go **back** to the previous wizard step |
+| Space | Toggle the active item |
+| Ctrl+A | Select all visible items |
+| Ctrl+X | Clear selection on all visible items |
+
+Help label: `esc back`.
 
 ## Help labels
 
@@ -105,5 +167,5 @@ Prompts use consistent labels so Esc behavior is predictable.
 
 ## Related
 
-- [Command reference](./command-reference.md) — `layer list`, `resource list`, `layer edit`, and other commands that use these prompts
+- [Command reference](./command-reference.md) — `layer list`, `resource list`, `environment list`, `layer edit`, and other commands that use these prompts
 - [Getting started](./getting-started.md) — first-run workflow

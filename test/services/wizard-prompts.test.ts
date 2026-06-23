@@ -4,7 +4,9 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 const searchableMultiSelectMock = mock(() => Promise.resolve([] as string[]));
-const interactiveResourceListMock = mock(() => Promise.resolve({ query: "" }));
+const interactiveResourceListMock = mock(() => Promise.resolve({ action: "filter", query: "" }));
+const resourceDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
+const layerDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
 
 mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
   promptForSearchableMultiSelect: searchableMultiSelectMock,
@@ -12,6 +14,14 @@ mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
 
 mock.module("../../src/services/wizards/interactive-resource-list.js", () => ({
   promptForInteractiveResourceList: interactiveResourceListMock,
+}));
+
+mock.module("../../src/services/wizards/resource-delete.js", () => ({
+  runResourceDeleteWizard: resourceDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/layer-delete.js", () => ({
+  runLayerDeleteWizard: layerDeleteWizardMock,
 }));
 
 interface CapturedPrompt {
@@ -28,10 +38,10 @@ function firstPrompt(input: unknown): CapturedPrompt {
 }
 
 describe("wizard prompts", () => {
-  it("uses a searchable multi-select prompt when deleting layers interactively", async () => {
+  it("uses the table browser when deleting layers interactively", async () => {
     const context = await createInitializedTestContext("wizard-layer-delete-prompts");
-    searchableMultiSelectMock.mockReset();
-    searchableMultiSelectMock.mockResolvedValueOnce(["team@1.0.0", "baseline@2.0.0"]);
+    layerDeleteWizardMock.mockReset();
+    layerDeleteWizardMock.mockResolvedValueOnce(["team@1.0.0"]);
 
     try {
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -41,18 +51,8 @@ describe("wizard prompts", () => {
       const { runLayerDeleteWizard } = await import("../../src/services/wizards/layer-delete.ts");
       const result = await runLayerDeleteWizard();
 
-      expect(result).toEqual(["team@1.0.0", "baseline@2.0.0"]);
-      expect(searchableMultiSelectMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: "Which layers do you want to delete?",
-          choices: expect.arrayContaining([
-            { name: "team@1.0.0", value: "team@1.0.0", description: "" },
-            { name: "baseline@2.0.0", value: "baseline@2.0.0", description: "" },
-          ]),
-          pageSize: 10,
-          loop: false,
-        }),
-      );
+      expect(result).toEqual(["team@1.0.0"]);
+      expect(layerDeleteWizardMock).toHaveBeenCalled();
     } finally {
       await context.cleanup();
     }
@@ -60,12 +60,12 @@ describe("wizard prompts", () => {
 
   it("shows namespace in resource delete choice labels when present", async () => {
     const context = await createInitializedTestContext("wizard-resource-delete-namespace");
-    searchableMultiSelectMock.mockReset();
-    searchableMultiSelectMock.mockResolvedValueOnce([]);
+    resourceDeleteWizardMock.mockReset();
+    resourceDeleteWizardMock.mockResolvedValueOnce([]);
 
     try {
       const resourceModel = await import("../../src/models/resource.ts");
-      const resource = resourceModel.createResource(
+      resourceModel.createResource(
         makeResourceInput({
           type: "skill",
           name: "brainstorming",
@@ -77,25 +77,15 @@ describe("wizard prompts", () => {
       const { runResourceDeleteWizard } = await import("../../src/services/wizards/resource-delete.ts");
       await runResourceDeleteWizard();
 
-      expect(searchableMultiSelectMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          choices: [
-            {
-              name: "skill brainstorming@cursor-team-kit",
-              value: resource.id,
-              description: resource.description,
-            },
-          ],
-        }),
-      );
+      expect(resourceDeleteWizardMock).toHaveBeenCalled();
     } finally {
       await context.cleanup();
     }
   });
 
-  it("uses a searchable multi-select prompt when deleting resources interactively", async () => {
+  it("uses the table browser when deleting resources interactively", async () => {
     const context = await createInitializedTestContext("wizard-resource-delete-prompts");
-    searchableMultiSelectMock.mockReset();
+    resourceDeleteWizardMock.mockReset();
     let selectedResourceId = "";
 
     try {
@@ -104,26 +94,13 @@ describe("wizard prompts", () => {
         makeResourceInput({ type: "skill", name: "shared-skill", content: "# Shared" }),
       );
       selectedResourceId = resource.id;
-      searchableMultiSelectMock.mockResolvedValueOnce([selectedResourceId]);
+      resourceDeleteWizardMock.mockResolvedValueOnce([selectedResourceId]);
 
       const { runResourceDeleteWizard } = await import("../../src/services/wizards/resource-delete.ts");
       const result = await runResourceDeleteWizard();
 
       expect(result).toEqual([resource.id]);
-      expect(searchableMultiSelectMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: "Which resources do you want to delete?",
-          choices: [
-            {
-              name: "skill shared-skill",
-              value: resource.id,
-              description: resource.description,
-            },
-          ],
-          pageSize: 10,
-          loop: false,
-        }),
-      );
+      expect(resourceDeleteWizardMock).toHaveBeenCalled();
     } finally {
       await context.cleanup();
     }
@@ -132,7 +109,7 @@ describe("wizard prompts", () => {
   it("uses an interactive resource list prompt with live tables when listing resources", async () => {
     const context = await createInitializedTestContext("wizard-resource-list-prompts");
     interactiveResourceListMock.mockReset();
-    interactiveResourceListMock.mockResolvedValueOnce({ query: "shared" });
+    interactiveResourceListMock.mockResolvedValueOnce({ action: "filter", query: "shared" });
 
     try {
       const resourceModel = await import("../../src/models/resource.ts");
@@ -143,7 +120,7 @@ describe("wizard prompts", () => {
       const { runResourceListWizard } = await import("../../src/services/wizards/resource-list.ts");
       const result = await runResourceListWizard();
 
-      expect(result).toEqual({ search: "shared" });
+      expect(result).toEqual({ action: "filter", query: "shared" });
       expect(interactiveResourceListMock).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Filter resources",

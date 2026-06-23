@@ -1,9 +1,16 @@
 import type { CatalogLayer } from "../services/catalog-types.js";
 import { formatPublishedSelector } from "../services/layer-selector.js";
 import * as format from "./format.js";
+import {
+  computeMaxVisibleTableRows,
+  renderFoldedHintLine,
+  resolveSectionViewport,
+  type SectionViewport,
+  VIEWPORT_CHROME_LINES,
+} from "./list-viewport.js";
 import { renderSubheader } from "./section.js";
 import { renderTable, type Column } from "./table.js";
-import { theme } from "./theme.js";
+import { terminalColumns, theme } from "./theme.js";
 
 export type CatalogListRow = CatalogLayer & {
   selector: string;
@@ -73,6 +80,12 @@ export function formatCatalogSelectionLabel(library: CatalogLayer): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }
 
+export function formatCatalogScopePath(
+  library: Pick<CatalogLayer, "orgSlug" | "catalogSlug">,
+): string {
+  return `${library.orgSlug}/${library.catalogSlug}`;
+}
+
 export function catalogLayerKey(library: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }
@@ -135,6 +148,136 @@ export function renderCatalogListChunk(chunk: {
     renderSubheader(heading),
     renderCatalogListTable(chunk.layers),
   ].join("\n");
+}
+
+export type CatalogListViewportOptions = CatalogListRenderOptions & {
+  activeIndex: number;
+  terminalRows: number;
+  maxWidth?: number;
+};
+
+export type CatalogSearchViewportOptions = CatalogSearchRenderOptions & {
+  activeIndex: number;
+  terminalRows: number;
+  maxWidth?: number;
+};
+
+function catalogTableLayout(maxWidth?: number): {
+  maxWidth: number;
+  wordWrap: true;
+} {
+  return {
+    maxWidth: maxWidth ?? terminalColumns(),
+    wordWrap: true,
+  };
+}
+
+function buildCatalogViewportHintSegments(
+  viewport: SectionViewport,
+  totalLength: number,
+): string[] {
+  const segments: string[] = [];
+  const hiddenAbove = viewport.start;
+  const hiddenBelow = totalLength - viewport.end;
+  if (hiddenAbove > 0) {
+    segments.push(`↑ ${hiddenAbove} above`);
+  }
+  if (hiddenBelow > 0) {
+    segments.push(`↓ ${hiddenBelow} more`);
+  }
+  return segments;
+}
+
+function renderCatalogViewportOverflowHints(
+  viewport: SectionViewport,
+  totalLength: number,
+  maxWidth: number,
+): string {
+  const folded = renderFoldedHintLine(
+    buildCatalogViewportHintSegments(viewport, totalLength),
+    maxWidth,
+  );
+  return folded.length > 0 ? theme.muted(folded) : "";
+}
+
+export function renderCatalogListViewport(
+  layers: CatalogLayer[],
+  opts: CatalogListViewportOptions,
+): string {
+  const rows = toRows(layers);
+  if (rows.length === 0) {
+    return theme.muted("No matching layers.");
+  }
+
+  const activeIndex = Math.max(0, Math.min(opts.activeIndex, rows.length - 1));
+  const selectedId = rows[activeIndex]?.list_display_name;
+  const maxVisibleRows = computeMaxVisibleTableRows(
+    opts.terminalRows,
+    VIEWPORT_CHROME_LINES.catalogBrowse,
+  );
+  const viewport = resolveSectionViewport(rows.length, activeIndex, maxVisibleRows);
+  const visibleRows = rows.slice(viewport.start, viewport.end).map((row) => {
+    const isSelected = row.list_display_name === selectedId;
+    return {
+      ...row,
+      list_display_name: isSelected ? `> ${row.list_display_name}` : row.list_display_name,
+    };
+  });
+
+  const hints = renderCatalogViewportOverflowHints(
+    viewport,
+    rows.length,
+    opts.maxWidth ?? terminalColumns(),
+  );
+
+  return [
+    renderTable({
+      columns: makeColumns(true),
+      rows: visibleRows,
+      summary: `${rows.length} layers`,
+      ...catalogTableLayout(opts.maxWidth),
+    }),
+    hints,
+  ].filter(Boolean).join("\n");
+}
+
+export function renderCatalogSearchViewport(
+  layers: CatalogLayer[],
+  checkedKeys: ReadonlySet<string>,
+  opts: CatalogSearchViewportOptions,
+): string {
+  const baseRows = toCatalogSearchRows(layers, checkedKeys);
+  if (baseRows.length === 0) {
+    return theme.muted("No matching layers.");
+  }
+
+  const activeIndex = Math.max(0, Math.min(opts.activeIndex, baseRows.length - 1));
+  const activeKey = baseRows[activeIndex] ? catalogLayerKey(baseRows[activeIndex]) : undefined;
+  const maxVisibleRows = computeMaxVisibleTableRows(
+    opts.terminalRows,
+    VIEWPORT_CHROME_LINES.catalogSearch,
+  );
+  const viewport = resolveSectionViewport(baseRows.length, activeIndex, maxVisibleRows);
+  const visibleRows = decorateCatalogSearchRows(
+    baseRows.slice(viewport.start, viewport.end),
+    { activeLayerKey: activeKey },
+  );
+  const checkedCount = baseRows.filter((row) => row.checked).length;
+  const hints = renderCatalogViewportOverflowHints(
+    viewport,
+    baseRows.length,
+    opts.maxWidth ?? terminalColumns(),
+  );
+
+  return [
+    renderTable({
+      columns: makeColumns(true),
+      rows: visibleRows,
+      summary: `${checkedCount} selected • ${baseRows.length} layers`,
+      ...catalogTableLayout(opts.maxWidth),
+    }),
+    hints,
+  ].filter(Boolean).join("\n");
 }
 
 export function renderCatalogListTable(

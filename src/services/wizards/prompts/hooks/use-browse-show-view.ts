@@ -41,7 +41,7 @@ export function handleShowViewEscape<T>(params: ShowViewEscapeParams<T>): boolea
     return true;
   }
 
-  return true;
+  return false;
 }
 
 export type EnterToShowParams<T> = {

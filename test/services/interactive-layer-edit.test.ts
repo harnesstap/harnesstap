@@ -1,6 +1,7 @@
 import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt } from "../helpers/prompt-test.ts";
 import { promptForInteractiveLayerEdit } from "../../src/services/wizards/interactive-layer-edit.ts?actual";
 import type { LayerEditRow } from "../../src/services/layer-edit.ts";
 
@@ -44,7 +45,7 @@ const sampleRows: LayerEditRow[] = [
 ];
 
 describe("interactive layer edit prompt", () => {
-  it("toggles a material resource with space and saves on ctrl+s", async () => {
+  promptIt("toggles a material resource with space and saves on ctrl+s", async () => {
     const { answer, events } = await render(
       promptForInteractiveLayerEdit,
       {
@@ -64,7 +65,7 @@ describe("interactive layer edit prompt", () => {
     });
   });
 
-  it("prompts for version constraint when checking a plugin pin", async () => {
+  promptIt("prompts for version constraint when checking a plugin pin", async () => {
     const { answer, events } = await render(
       promptForInteractiveLayerEdit,
       {
@@ -90,7 +91,7 @@ describe("interactive layer edit prompt", () => {
     });
   });
 
-  it("cancels on escape", async () => {
+  promptIt("cancels on escape", async () => {
     const { answer, events } = await render(
       promptForInteractiveLayerEdit,
       {
@@ -100,7 +101,15 @@ describe("interactive layer edit prompt", () => {
       { clearPromptOnDone: true },
     );
 
-    expect(() => events.keypress("escape")).toThrow(ExitPromptError);
-    void answer.catch(() => undefined);
+    events.keypress("escape");
+    let rejected: unknown;
+    try {
+      await answer;
+      throw new Error("Expected prompt to reject on escape");
+    } catch (error) {
+      rejected = error;
+    }
+    expect(rejected).toBeInstanceOf(ExitPromptError);
+    expect((rejected as Error).message).toBe("Layer edit cancelled");
   });
 });

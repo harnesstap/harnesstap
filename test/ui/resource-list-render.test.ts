@@ -2,12 +2,33 @@ import { describe, expect, it } from "bun:test";
 import {
   filterResourcesBySearch,
   formatResourceListNamespace,
+  listNavigableResources,
   renderGroupedResourceListTables,
+  renderGroupedResourceListViewport,
   toResourceListRows,
 } from "../../src/ui/resource-list-render.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("resource list render", () => {
+  it("filters by skill:dbt type prefix", () => {
+    const rows = toResourceListRows([
+      {
+        ...makeResourceInput({ type: "skill", name: "migrating-dbt-core" }),
+        id: "s1",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-02T00:00:00.000Z",
+      },
+      {
+        ...makeResourceInput({ type: "rule", name: "dbt-style-guide" }),
+        id: "r1",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-03T00:00:00.000Z",
+      },
+    ]);
+    const filtered = filterResourcesBySearch(rows, "skill:dbt");
+    expect(filtered.map((row) => row.name)).toEqual(["migrating-dbt-core"]);
+  });
+
   it("filters resources by name and description", () => {
     const rows = toResourceListRows([
       {
@@ -121,5 +142,57 @@ describe("resource list render", () => {
     expect(output).toContain("migrating-dbt-core-to-fusion");
     expect(output).not.toContain("migrating-dbt-core-to-fusion@");
     expect(output).toContain("dbt-labs/dbt-agent-skills");
+  });
+});
+
+describe("resource viewport footer hints", () => {
+  it("builds foldable hint segments for overflow", () => {
+    const rows = toResourceListRows(
+      Array.from({ length: 8 }, (_, i) => ({
+        ...makeResourceInput({ type: "skill", name: `skill-${i + 1}` }),
+        id: `skill-${i + 1}`,
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+      })),
+    );
+    const navigable = listNavigableResources(rows);
+    const output = renderGroupedResourceListViewport(rows, {
+      showId: false,
+      activeIndex: 5,
+      navigable,
+      terminalRows: 12,
+      maxWidth: 120,
+    });
+    expect(output).toContain("above");
+  });
+
+  it("folds footer hints on one line when width allows", () => {
+    const skillRows = toResourceListRows(
+      Array.from({ length: 6 }, (_, i) => ({
+        ...makeResourceInput({ type: "skill", name: `skill-${i + 1}` }),
+        id: `skill-${i + 1}`,
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+      })),
+    );
+    const ruleRows = toResourceListRows([
+      {
+        ...makeResourceInput({ type: "rule", name: "rule-1" }),
+        id: "rule-1",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    const rows = [...skillRows, ...ruleRows];
+    const navigable = listNavigableResources(rows);
+    const output = renderGroupedResourceListViewport(rows, {
+      showId: false,
+      activeIndex: 5,
+      navigable,
+      terminalRows: 14,
+      maxWidth: 120,
+    });
+    const footerLines = output.split("\n").filter((line) => line.includes("next type"));
+    expect(footerLines.length).toBe(1);
   });
 });

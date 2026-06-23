@@ -1,6 +1,7 @@
 import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
-import { describe, expect, it } from "bun:test";
+import { describe, expect } from "bun:test";
+import { promptIt } from "../helpers/prompt-test.ts";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { promptForInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.ts?actual";
 
@@ -32,7 +33,7 @@ const sampleLayers: CatalogLayer[] = [
 ];
 
 describe("interactive catalog search prompt", () => {
-  it("toggles layers with space and applies checked layers on ctrl+s", async () => {
+  promptIt("toggles layers with space and applies checked layers on ctrl+s", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogSearch,
       {
@@ -59,7 +60,7 @@ describe("interactive catalog search prompt", () => {
     });
   });
 
-  it("shows layer details on enter and returns to browse on esc", async () => {
+  promptIt("shows layer details on enter and returns to browse on esc", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogSearch,
       {
@@ -88,7 +89,7 @@ describe("interactive catalog search prompt", () => {
     });
   });
 
-  it("does not re-fetch on every render when listLayers resolves synchronously", async () => {
+  promptIt("does not re-fetch on every render when listLayers resolves synchronously", async () => {
     let callCount = 0;
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogSearch,
@@ -119,7 +120,7 @@ describe("interactive catalog search prompt", () => {
     });
   });
 
-  it("cancels with escape", async () => {
+  promptIt("cancels with escape", async () => {
     const { answer, events } = await render(
       promptForInteractiveCatalogSearch,
       {
@@ -131,7 +132,15 @@ describe("interactive catalog search prompt", () => {
       { clearPromptOnDone: true },
     );
 
-    expect(() => events.keypress("escape")).toThrow(ExitPromptError);
-    void answer.catch(() => undefined);
+    events.keypress("escape");
+    let rejected: unknown;
+    try {
+      await answer;
+      throw new Error("Expected prompt to reject on escape");
+    } catch (error) {
+      rejected = error;
+    }
+    expect(rejected).toBeInstanceOf(ExitPromptError);
+    expect((rejected as Error).message).toBe("Catalog search cancelled.");
   });
 });

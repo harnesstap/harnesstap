@@ -135,4 +135,27 @@ describe("resolveRemoteLayerSelector", () => {
       version: "1.0.0",
     });
   });
+
+  it("rejects duplicate version in selector and --version", () => {
+    expect(() =>
+      resolveRemoteLayerSelector("acme/default/frontend@1.0.0", {
+        version: "1.0.0",
+      }),
+    ).toThrow(/--version conflicts with version in selector/);
+  });
+
+  it("accepts browse selections that embed version only in the selector", () => {
+    const selector = formatCanonicalPublishedSelectorWithVersion({
+      org: "harnessdeck-cloud",
+      catalog: DEFAULT_CATALOG_SLUG,
+      name: "fullstack",
+      version: "1.0.0",
+    });
+    expect(resolveRemoteLayerSelector(selector, {})).toEqual({
+      org_slug: "harnessdeck-cloud",
+      catalog_slug: DEFAULT_CATALOG_SLUG,
+      layer_slug: "fullstack",
+      version: "1.0.0",
+    });
+  });
 });

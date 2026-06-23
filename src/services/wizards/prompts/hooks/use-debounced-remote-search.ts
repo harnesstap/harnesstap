@@ -75,11 +75,13 @@ export function useDebouncedRemoteSearch<T>(config: DebouncedRemoteSearchConfig<
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const runnerRef = useRef<DebouncedRemoteSearchRunner | null>(null);
+  const limitForRef = useRef(config.limitFor);
+  limitForRef.current = config.limitFor;
 
   if (!runnerRef.current) {
     runnerRef.current = createDebouncedRemoteSearchRunner({
       debounceMs: config.debounceMs,
-      limitFor: config.limitFor,
+      limitFor: (query) => limitForRef.current(query),
       searchFn: config.searchFn,
       setItems,
       setLoading,

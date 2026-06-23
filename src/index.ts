@@ -58,7 +58,6 @@ import {
   addResourceToLayer,
   getLayerResources,
   listLayerDependencies,
-  parseLayerSelectorString,
   getLayerById,
   resolveLayerSelector,
   mergeLayersById,
@@ -97,7 +96,6 @@ import type {
 } from "./types.js";
 import { RESOURCE_TYPES } from "./types.js";
 import { listAttachedLayerRefs, listAttachedPluginPins } from "./services/layer-composition.js";
-import type { PluginPinMetadata } from "./types.js";
 import {
   getHarnessPreference,
   setHarnessPreference,
@@ -203,6 +201,14 @@ import { buildEnvironmentEditRows } from "./services/environment-edit.js";
 import { runEnvironmentCreateWizard } from "./services/wizards/environment-create.js";
 import { runEnvironmentDeleteWizard } from "./services/wizards/environment-delete.js";
 import { runEnvironmentEditWizard } from "./services/wizards/environment-edit.js";
+import { runEnvironmentShowWizard } from "./services/wizards/environment-show.js";
+import { renderEnvironmentShow } from "./services/environment-show-render.js";
+import { renderLayerShow } from "./services/layer-show-render.js";
+import {
+  filterEnvironmentListRows,
+  runEnvironmentListWizard,
+} from "./services/wizards/environment-list.js";
+import { renderEnvironmentListTable } from "./ui/environment-list-render.js";
 import { analyzeEnvironmentGaps } from "./services/environment-requirements.js";
 import { resolveEnvironmentOrThrow } from "./services/environment-selectors.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
@@ -271,10 +277,6 @@ import {
   shouldUseWizard,
 } from "./services/wizards/shared.js";
 import {
-  toLayerChoices,
-  toResourceChoices,
-} from "./services/completion/choices.js";
-import {
   applyLayerEdit,
   applyLayerEditScripting,
   attachmentKey,
@@ -287,6 +289,8 @@ import { runLayerDeleteWizard } from "./services/wizards/layer-delete.js";
 import { runLayerFromProjectWizard } from "./services/wizards/layer-from-project.js";
 import { runLayerApplyWizard } from "./services/wizards/layer-apply.js";
 import { runResourceDeleteWizard } from "./services/wizards/resource-delete.js";
+import { runResourceShowWizard } from "./services/wizards/resource-show.js";
+import { runLayerShowWizard } from "./services/wizards/layer-show.js";
 import { printResourceShow } from "./services/resource-show.js";
 import { runResourceListWizard } from "./services/wizards/resource-list.js";
 import { runAddPackageWizard } from "./services/wizards/add-package.js";
@@ -400,9 +404,9 @@ async function resolveLayerMutationTarget(input: {
   noInteractive?: boolean;
   format?: string;
   message: string;
+  profileMode?: boolean;
 }): Promise<string | undefined> {
   const format = parseOutputFormat(input.format);
-  const choices = toLayerChoices();
 
   return resolveOrPrompt({
     value: input.layerName,
@@ -412,15 +416,8 @@ async function resolveLayerMutationTarget(input: {
       format,
       missingRequiredArgs: !input.layerName,
     }),
-    prompt: async () => {
-      if (choices.length === 0) {
-        return undefined;
-      }
-      return promptForSearchableChoice({
-        message: input.message,
-        choices,
-      });
-    },
+    prompt: async () =>
+      runLayerShowWizard({ message: input.message, profileMode: input.profileMode }),
   });
 }
 
@@ -449,31 +446,6 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
 
 function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
   return `${layer.name}@${layer.version}`;
-}
-
-function dependencyLayerName(dependencyName: string): string {
-  const parsed = parseLayerSelectorString(dependencyName);
-  if (parsed.kind === "id") return dependencyName;
-  return parsed.name;
-}
-
-function resolveDependencyLayerVersion(
-  dependencyName: string,
-  versionConstraint: string,
-): string {
-  const name = dependencyLayerName(dependencyName);
-  const resolved = getLayer(`${name}@${versionConstraint}`);
-  return resolved?.version ?? "—";
-}
-
-function formatLayerDependencyRows(
-  dependencies: Array<{ dependency_name: string; version_constraint: string }>,
-): Array<{ name: string; version: string; constraint: string }> {
-  return dependencies.map((dep) => ({
-    name: dependencyLayerName(dep.dependency_name),
-    version: resolveDependencyLayerVersion(dep.dependency_name, dep.version_constraint),
-    constraint: dep.version_constraint,
-  }));
 }
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
@@ -550,6 +522,39 @@ function resourceListRenderOptions(opts: {
   };
 }
 
+async function deleteLibraryResource(selector: string): Promise<void> {
+  const result = resolveResource(selector);
+  if (result.status === "not_found") {
+    ui.danger(`Resource not found: ${selector}`);
+    return;
+  }
+  if (result.status === "ambiguous") {
+    ui.danger(`Ambiguous resource name: ${selector}`);
+    for (const match of result.matches) {
+      ui.dim(`  ${match.id} ${match.type.padEnd(14)} ${match.name}`);
+    }
+    return;
+  }
+  if (deleteResource(result.resource.id)) {
+    ui.success(`Deleted ${result.resource.type} ${ui.theme.accent(`"${result.resource.name}"`)}`);
+    return;
+  }
+  ui.danger(`Resource not found: ${selector}`);
+}
+
+async function deleteLocalLayerByName(nameOrId: string): Promise<void> {
+  const layer = getLayer(nameOrId);
+  if (!layer) {
+    ui.danger(`Layer not found: ${nameOrId}`);
+    return;
+  }
+  if (!deleteLayer(layer.id)) {
+    ui.danger(`Failed to delete layer ${formatLayerLabel(layer)}`);
+    return;
+  }
+  ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
+}
+
 async function handleResourceListCommand(
   positionalType: string | undefined,
   opts: {
@@ -577,12 +582,34 @@ async function handleResourceListCommand(
   let search = opts.search;
   if (shouldUseInteractiveResourceList(opts)) {
     try {
-      const wizardResult = await runResourceListWizard({
-        type: resolvedType,
-        search: opts.search,
-        ...resourceListRenderOptions(opts),
-      });
-      search = wizardResult?.search ?? opts.search;
+      while (true) {
+        const wizardResult = await runResourceListWizard({
+          type: resolvedType,
+          search,
+          ...resourceListRenderOptions(opts),
+        });
+        if (!wizardResult) {
+          break;
+        }
+
+        switch (wizardResult.action) {
+          case "delete":
+            await deleteLibraryResource(wizardResult.name);
+            search = undefined;
+            continue;
+          case "filter":
+            search = wizardResult.query.length > 0 ? wizardResult.query : undefined;
+            break;
+          case "edit":
+            search = undefined;
+            continue;
+          default: {
+            const _exhaustive: never = wizardResult;
+            throw _exhaustive;
+          }
+        }
+        break;
+      }
     } catch (error) {
       if (isPromptCancellationError(error)) {
         process.exitCode = 1;
@@ -1372,6 +1399,9 @@ async function handleApplyCommand(
       {
         account: opts.account,
         baseUrl: opts.baseUrl,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: outputFormat,
         onFetched:
           outputFormat === "human"
             ? (sourceLabel) => {
@@ -1712,6 +1742,15 @@ configureLayerListInteractiveDeps({
       interactive: installOpts.interactive,
       noInteractive: installOpts.noInteractive,
     });
+  },
+  onEdit: async (name, editOpts) => {
+    await handleLayerEditCommand(name, {
+      format: editOpts.format,
+      interactive: true,
+    });
+  },
+  onDelete: async (name, _deleteOpts) => {
+    await deleteLocalLayerByName(name);
   },
 });
 
@@ -2277,70 +2316,10 @@ function handleLayerShowCommand(
     return;
   }
 
-  ui.panel({
-    title: ["LAYER", formatLayerLabel(layer)],
-    rows: [
-      ["Description", layer.description || "—"],
-      ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
-      ...(profileExtras
-        ? [["Active", profileExtras.active ? "yes" : "no"]] as [string, string][]
-        : []),
-      ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
-      ["Plugin pins", pluginPinRows.length === 0 ? "(none pinned)" : `${pluginPinRows.length}`],
-      ...(configuredLayer
-        ? [[
-            "Default environment",
-            configuredLayerDefaultEnvironment?.name
-              ?? configuredLayer.default_environment_id
-              ?? "—",
-          ]] as [string, string][]
-        : []),
-      ["Updated", ui.format.formatRelativeTimeWithAbsolute(layer.updated_at)],
-    ],
-  });
-
-  ui.subheader("RESOURCES");
-  ui.table.print({
-    columns: [
-      ...makeIdColumn(Boolean(opts.showId)),
-      makeResourceTypeColumn(),
-      { key: "name", header: "NAME", width: 26 },
-    ],
-    rows: resources,
-    empty: "No resources in this layer.",
-  });
-
-  if (dependencies.length > 0) {
-    ui.subheader("LAYER DEPENDENCIES");
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 22 },
-        { key: "version", header: "VERSION", width: 12 },
-        { key: "constraint", header: "CONSTRAINT", width: 20 },
-      ],
-      rows: formatLayerDependencyRows(dependencies),
-    });
-  }
-  if (pluginPinRows.length > 0) {
-    ui.subheader("PLUGIN PINS");
-    ui.table.print({
-      columns: [
-        { key: "ref", header: "REF", width: 28 },
-        { key: "version", header: "VERSION", width: 12 },
-        { key: "constraint", header: "CONSTRAINT", width: 20 },
-        { key: "sync", header: "SYNC", width: 14 },
-      ],
-      rows: pluginPins.map((pin) => {
-        const metadata = pin.resource.metadata as PluginPinMetadata;
-        return {
-          ref: pin.ref,
-          version: metadata.resolved_version ?? "—",
-          constraint: pin.version_constraint || "latest",
-          sync: metadata.sync_status ?? "never_synced",
-        };
-      }),
-    });
-  }
+  console.log(renderLayerShow(layer, name, {
+    showId: opts.showId,
+    profileExtras,
+  }));
 }
 
 function shouldUseInteractiveLayerEdit(input: {
@@ -2720,102 +2699,7 @@ function renderEnvironmentShowHuman(
   payload: ReturnType<typeof showEnvironmentCommand>,
   requirementGaps?: ReturnType<typeof analyzeEnvironmentGaps>,
 ): void {
-  ui.panel({
-    title: ["ENVIRONMENT", payload.environment.name],
-    rows: [
-      ["Description", payload.environment.description || "—"],
-      ["Env vars", `${Object.keys(payload.values.env_vars).length}`],
-      ["Model configs", `${payload.values.model_configs.length}`],
-      ["Permissions", `${payload.values.permissions.length}`],
-      ["Secret refs", `${Object.keys(payload.secret_refs).length}`],
-    ],
-  });
-
-  if (Object.keys(payload.values.env_vars).length > 0) {
-    ui.subheader("ENV VARS");
-    ui.table.print({
-      columns: [
-        { key: "key", header: "KEY", width: 28 },
-        { key: "value", header: "VALUE", width: 60 },
-      ],
-      rows: Object.entries(payload.values.env_vars).map(([key, value]) => ({ key, value })),
-    });
-  }
-
-  if (payload.values.model_configs.length > 0) {
-    ui.subheader("MODEL CONFIGS");
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 24 },
-        { key: "model", header: "MODEL", width: 28 },
-        { key: "provider", header: "PROVIDER", width: 20 },
-      ],
-      rows: payload.values.model_configs.map((entry) => ({
-        ...entry,
-        provider: entry.provider ?? "—",
-      })),
-    });
-  }
-
-  if (payload.values.permissions.length > 0) {
-    ui.subheader("PERMISSIONS");
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 30 },
-        { key: "action", header: "ACTION", width: 10 },
-        { key: "pattern", header: "PATTERN", width: 38 },
-      ],
-      rows: payload.values.permissions,
-    });
-  }
-
-  if (Object.keys(payload.secret_refs).length > 0) {
-    ui.subheader("SECRET REFS");
-    ui.table.print({
-      columns: [
-        { key: "key", header: "KEY", width: 24 },
-        { key: "provider", header: "PROVIDER", width: 12 },
-        { key: "ref", header: "REF", width: 40 },
-      ],
-      rows: Object.entries(payload.secret_refs).map(([key, value]) => ({
-        key,
-        provider: value.provider,
-        ref: value.ref,
-      })),
-    });
-  }
-
-  if (payload.references.layers.length > 0) {
-    ui.subheader("REFERENCES");
-    ui.table.print({
-      columns: [
-        { key: "layer", header: "LAYER", width: 40 },
-      ],
-      rows: payload.references.layers.map((ref) => {
-        const layer = getLayerById(ref.id);
-        return {
-          layer: layer ? formatLayerLabel(layer) : ref.name,
-        };
-      }),
-    });
-  }
-
-  if (requirementGaps !== undefined) {
-    ui.subheader("REQUIREMENT GAPS");
-    ui.table.print({
-      columns: [
-        { key: "key", header: "KEY", width: 28 },
-        { key: "sources", header: "SOURCES", width: 24 },
-        { key: "status", header: "STATUS", width: 12 },
-      ],
-      rows: requirementGaps.map((gap) => ({
-        key: gap.key,
-        sources: gap.sources.join(", "),
-        status: gap.status,
-      })),
-      empty: "No requirement gaps found.",
-    });
-  }
+  console.log(renderEnvironmentShow(payload, { requirementGaps }));
 }
 
 function listRelatedImportedSnapshotIds(snapshot: ImportedSnapshot): string[] {
@@ -3000,6 +2884,91 @@ function shouldUseInteractiveEnvironmentEdit(input: {
     format: parseOutputFormat(input.format),
     missingRequiredArgs: true,
   });
+}
+
+function shouldUseInteractiveEnvironmentList(input: {
+  noInteractive?: boolean;
+  format?: string;
+  search?: string;
+}): boolean {
+  if (input.search) {
+    return false;
+  }
+
+  return shouldUseWizard({
+    interactive: true,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+}
+
+async function handleEnvironmentListCommand(opts: {
+  format?: string;
+  search?: string;
+  noInteractive?: boolean;
+}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+
+  let search = opts.search;
+  if (shouldUseInteractiveEnvironmentList(opts)) {
+    try {
+      while (true) {
+        const wizardResult = await runEnvironmentListWizard({ search });
+        if (!wizardResult) {
+          break;
+        }
+
+        switch (wizardResult.action) {
+          case "edit":
+            await handleEnvironmentEditCommand(wizardResult.name, {
+              format: opts.format,
+              interactive: true,
+            });
+            search = undefined;
+            continue;
+          case "delete":
+            await handleEnvironmentDeleteCommand(wizardResult.name, {
+              format: opts.format,
+              interactive: true,
+            });
+            search = undefined;
+            continue;
+          case "filter":
+            search = wizardResult.query.length > 0 ? wizardResult.query : undefined;
+            break;
+          default: {
+            const _exhaustive: never = wizardResult;
+            throw _exhaustive;
+          }
+        }
+        break;
+      }
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        process.exitCode = 1;
+        return;
+      }
+      throw error;
+    }
+  }
+
+  const environments = filterEnvironmentListRows(listEnvironmentsCommand(), search);
+  if (format === "json") {
+    printJson(environments);
+    return;
+  }
+
+  if (environments.length === 0) {
+    console.log(
+      `No environments found.\n  → Run \`${formatCommand("environment create <name>")}\` to add one.`,
+    );
+    return;
+  }
+
+  console.log(renderEnvironmentListTable(environments));
 }
 
 async function resolveEnvironmentMutationTarget(input: {
@@ -3215,6 +3184,7 @@ function renderEnvironmentDeleteReferences(
 async function handleEnvironmentDeleteCommand(
   name: string | undefined,
   opts: {
+    search?: string;
     force?: boolean;
     format?: string;
     interactive?: boolean;
@@ -3231,7 +3201,13 @@ async function handleEnvironmentDeleteCommand(
     missingRequiredArgs: !name,
   });
 
-  const resolvedName = name ?? (useWizard ? await runEnvironmentDeleteWizard() : undefined);
+  const selectors = name
+    ? [name]
+    : useWizard
+      ? await runEnvironmentDeleteWizard({ search: opts.search })
+      : [];
+
+  const resolvedName = selectors[0];
   if (!resolvedName) {
     throw !name && useWizard
       ? new Error("No environment selected for deletion")
@@ -5728,14 +5704,36 @@ profileCmd
 
 profileCmd
   .command("show")
-  .argument("<name>", "Profile layer name or selector")
+  .argument("[name]", "Profile layer name or selector")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Show profile layer details, resources, and dependencies")
-  .action((name: string, opts: { format?: string; showId?: boolean }) => {
+  .action(async (
+    name: string | undefined,
+    opts: {
+      format?: string;
+      showId?: boolean;
+      interactive?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
     const db = getDb();
     initializeSchema(db);
-    const payload = showProfileCommand(name);
+    const resolvedName = name ?? await resolveLayerMutationTarget({
+      layerName: name,
+      profileMode: true,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+      message: "Which profile do you want to show?",
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      renderCliError(missingRequiredArg("name", "profile show"));
+      return;
+    }
+    const payload = showProfileCommand(resolvedName);
     handleLayerShowCommand(formatLayerLabel(payload.profile), opts, {
       active: payload.active,
     });
@@ -6188,45 +6186,58 @@ environmentCmd
 environmentCmd
   .command("list")
   .alias("ls")
+  .option("-s, --search <query>", "Search by name or description (skips interactive filter)")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("List local environments with value and reference counts")
-  .action((opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const environments = listEnvironmentsCommand();
-    if (format === "json") {
-      printJson(environments);
-      return;
+  .action(async (opts: { format?: string; search?: string; noInteractive?: boolean }) => {
+    try {
+      await handleEnvironmentListCommand(opts);
+    } catch (error) {
+      process.exitCode = 1;
+      renderCliError(error);
     }
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 24 },
-        { key: "value_count", header: "VALUES", width: 8 },
-        { key: "secret_ref_count", header: "SECRETS", width: 8 },
-        { key: "reference_count", header: "REFS", width: 8 },
-      ],
-      rows: environments.map((entry) => ({
-        name: entry.environment.name,
-        value_count: entry.value_count,
-        secret_ref_count: entry.secret_ref_count,
-        reference_count: entry.reference_count,
-      })),
-      empty: "No environments found.",
-    });
   });
 
 environmentCmd
   .command("show")
-  .argument("<name>", "Environment name or ID")
+  .argument("[name]", "Environment name or ID")
   .option("--layer <selector>", "Analyze requirement gaps for a configured layer")
   .option("--format <mode>", "Output format: human or json", "human")
+  .option("--interactive", "Prompt instead of relying on explicit flags")
+  .option("--no-interactive", "Disable interactive wizards")
   .description("Show environment values, secret refs, and layer references")
-  .action((name: string, opts: { format?: string; layer?: string }) => {
+  .action(async (
+    name: string | undefined,
+    opts: {
+      format?: string;
+      layer?: string;
+      interactive?: boolean;
+      noInteractive?: boolean;
+    },
+  ) => {
     const db = getDb();
     initializeSchema(db);
-    const payload = showEnvironmentCommand(name);
     const format = parseOutputFormat(opts.format);
+    const resolvedName = await resolveOrPrompt({
+      value: name,
+      shouldPrompt: shouldUseWizard({
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format,
+        missingRequiredArgs: !name,
+      }),
+      prompt: async () => runEnvironmentShowWizard(),
+    });
+    if (!resolvedName) {
+      process.exitCode = 1;
+      ui.danger(
+        listEnvironments().length > 0
+          ? "error: missing required argument 'name'"
+          : `No environments found. Create one with \`${formatCommand("environment create <name>")}\` first.`,
+      );
+      return;
+    }
+    const payload = showEnvironmentCommand(resolvedName);
     const requirementGaps = opts.layer
       ? analyzeEnvironmentGaps(payload.environment.id, opts.layer)
       : undefined;
@@ -6244,6 +6255,7 @@ environmentCmd
 environmentCmd
   .command("delete")
   .argument("[name]", "Environment name or ID")
+  .option("-s, --search <query>", "Filter environments in the delete wizard")
   .option("--force", "Delete even if references exist")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
@@ -6252,6 +6264,7 @@ environmentCmd
   .action(async (
     name: string | undefined,
     opts: {
+      search?: string;
       force?: boolean;
       format?: string;
       interactive?: boolean;
@@ -6391,16 +6404,7 @@ resourceCmd
         format,
         missingRequiredArgs: !resource,
       }),
-      prompt: async () => {
-        const choices = toResourceChoices();
-        if (choices.length === 0) {
-          return undefined;
-        }
-        return promptForSearchableChoice({
-          message: "Which resource do you want to show?",
-          choices,
-        });
-      },
+      prompt: async () => runResourceShowWizard(),
     });
     if (!resolvedResource) {
       process.exitCode = 1;

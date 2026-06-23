@@ -5,8 +5,8 @@ import {
   filterLayerEditRowsBySearch,
   formatResourceSelectionLabel,
   listNavigableLayerEditRows,
-  renderFlatLayerEditTable,
-  renderGroupedLayerEditTables,
+  renderFlatLayerEditViewport,
+  renderGroupedLayerEditViewport,
   type LayerEditRenderOptions,
 } from "../../ui/resource-list-render.js";
 import { theme } from "../../ui/theme.js";
@@ -69,17 +69,28 @@ export const promptForInteractiveLayerEdit: (
         styledMessage,
         query,
         filtered,
+        navigable,
         activeRow,
+        active,
         checkedCount,
+        terminalWidth,
+        terminalRows,
       }) => {
         const renderOpts: LayerEditRenderOptions = {
           showId: config.showId ?? false,
           showAll: config.showAll,
           activeRowId: activeRow?.id,
+          maxWidth: terminalWidth,
+        };
+        const viewportOpts = {
+          ...renderOpts,
+          activeIndex: active,
+          navigable,
+          terminalRows,
         };
         const tables = config.typeFilter
-          ? renderFlatLayerEditTable(filtered, renderOpts)
-          : renderGroupedLayerEditTables(filtered, renderOpts);
+          ? renderFlatLayerEditViewport(filtered, viewportOpts)
+          : renderGroupedLayerEditViewport(filtered, viewportOpts);
         const selectionLine = activeRow
           ? `Active: ${theme.accent(formatResourceSelectionLabel(activeRow as LayerEditRow))}`
           : theme.muted("No matching resources");

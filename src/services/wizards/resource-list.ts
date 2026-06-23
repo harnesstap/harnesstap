@@ -4,11 +4,12 @@ import {
   sortResourcesByUpdatedAt,
   toResourceListRows,
 } from "../../ui/resource-list-render.js";
-import { promptForInteractiveResourceList } from "./interactive-resource-list.js";
+import {
+  promptForInteractiveResourceList,
+  type InteractiveResourceListResult,
+} from "./interactive-resource-list.js";
 
-export type ResourceListWizardResult = {
-  search?: string;
-};
+export type ResourceListWizardResult = InteractiveResourceListResult;
 
 export async function runResourceListWizard(input?: {
   type?: ResourceType;
@@ -22,10 +23,10 @@ export async function runResourceListWizard(input?: {
     ),
   );
   if (resources.length === 0) {
-    return input?.search ? { search: input.search } : undefined;
+    return input?.search ? { action: "filter", query: input.search } : undefined;
   }
 
-  const result = await promptForInteractiveResourceList({
+  return promptForInteractiveResourceList({
     message: "Filter resources",
     resources,
     typeFilter: input?.type,
@@ -33,8 +34,4 @@ export async function runResourceListWizard(input?: {
     showAll: input?.showAll,
     initialQuery: input?.search,
   });
-
-  return {
-    search: result.query.length > 0 ? result.query : undefined,
-  };
 }

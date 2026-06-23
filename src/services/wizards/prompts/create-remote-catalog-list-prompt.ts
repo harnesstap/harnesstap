@@ -15,10 +15,9 @@ import type { CatalogLayer } from "../../catalog-types.js";
 import { formatCanonicalPublishedSelectorWithVersion } from "../../layer-selector.js";
 import {
   catalogLayerKey,
-  formatCatalogSelectionLabel,
   renderCatalogLayerShow,
-  renderCatalogListTable,
-  renderCatalogSearchTable,
+  renderCatalogListViewport,
+  renderCatalogSearchViewport,
 } from "../../../ui/catalog-list-render.js";
 import { theme } from "../../../ui/theme.js";
 import {
@@ -29,6 +28,7 @@ import {
   isSearchCharacter,
 } from "./primitives.js";
 import { useDebouncedRemoteSearch } from "./hooks/use-debounced-remote-search.js";
+import { useTerminalSize } from "./hooks/use-terminal-size.js";
 import type {
   RemoteCatalogListApplyResult,
   RemoteCatalogListConfig,
@@ -76,6 +76,8 @@ export const createRemoteCatalogListPrompt: (
   );
   const [view, setView] = useState<PromptView>("browse");
   const [showingLayer, setShowingLayer] = useState<CatalogLayer | null>(null);
+  const [pendingExitMessage, setPendingExitMessage] = useState<string | null>(null);
+  const { width: terminalWidth, height: terminalRows } = useTerminalSize();
   const { items: layers, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
     initialQuery: config.initialQuery,
     limitFor: (nextQuery) => (nextQuery.trim() ? 25 : 10),
@@ -135,9 +137,10 @@ export const createRemoteCatalogListPrompt: (
     }
 
     if (isEscapeKey(key)) {
-      throw new ExitPromptError(
+      setPendingExitMessage(
         isApplyMode ? "Catalog search cancelled." : "Catalog browse cancelled.",
       );
+      return;
     }
 
     if (isApplyMode && key.ctrl && key.name === "s") {
@@ -197,16 +200,14 @@ export const createRemoteCatalogListPrompt: (
     }
   });
 
+  if (pendingExitMessage) {
+    throw new ExitPromptError(pendingExitMessage);
+  }
+
   if (isApplyMode && view === "show" && showingLayer) {
     const helpLine = buildHelpLine([["esc", "back"]]);
     return [renderCatalogLayerShow(showingLayer), "", helpLine].join("\n");
   }
-
-  const selectionLine = activeLayer
-    ? isApplyMode
-      ? `Active: ${theme.accent(formatCatalogSelectionLabel(activeLayer))}`
-      : `Install: ${theme.accent(`> ${formatCatalogSelectionLabel(activeLayer)}`)}`
-    : theme.muted(loading ? "Loading layers…" : "No matching layers");
 
   const helpLine = isApplyMode
     ? buildHelpLine([
@@ -231,11 +232,16 @@ export const createRemoteCatalogListPrompt: (
   const tableSection = error
     ? theme.danger(error)
     : isApplyMode
-      ? renderCatalogSearchTable(layers, new Set(checkedLayers.keys()), { activeLayerKey })
-      : renderCatalogListTable(layers, {
-          selectedSelector: activeLayer
-            ? formatCatalogSelectionLabel(activeLayer)
-            : undefined,
+      ? renderCatalogSearchViewport(layers, new Set(checkedLayers.keys()), {
+          activeLayerKey,
+          activeIndex: clampedActive,
+          terminalRows,
+          maxWidth: terminalWidth,
+        })
+      : renderCatalogListViewport(layers, {
+          activeIndex: clampedActive,
+          terminalRows,
+          maxWidth: terminalWidth,
         });
 
   return [
@@ -244,9 +250,9 @@ export const createRemoteCatalogListPrompt: (
     ...(isApplyMode
       ? [theme.muted("Apply writes harness files — choose project or global scope after selecting")]
       : []),
-    `Search: ${query || "(type to filter)"}`,
+    `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
     ...(isApplyMode ? [`Selected: ${checkedLayers.size} to apply`] : []),
-    selectionLine,
+    ...(loading && layers.length === 0 ? [theme.muted("Loading layers…")] : []),
     "",
     tableSection,
     "",

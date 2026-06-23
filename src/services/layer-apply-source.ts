@@ -9,6 +9,7 @@ import {
   parseLayerSelector,
   resolveRemoteLayerSelector,
 } from "./layer-selector.js";
+import type { CatalogLayer } from "./catalog-types.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
 import {
   LayerResolveError,
@@ -28,6 +29,13 @@ export interface ResolveApplyLayerSourceOptions {
   account?: string;
   baseUrl?: string;
   onFetched?: (sourceLabel: string) => void;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  format?: "human" | "json";
+  promptAmbiguity?: (input: {
+    selector: string;
+    candidates: CatalogLayer[];
+  }) => Promise<CatalogLayer>;
 }
 
 function resolveLocalLayer(selector: string): Layer | undefined {
@@ -96,7 +104,14 @@ export async function resolveApplyLayerSource(
   }
 
   if (isBareLayerName(selector)) {
-    const parsed = await resolveBareNameFromCatalog(selector, options);
+    const parsed = await resolveBareNameFromCatalog(selector, {
+      account: options.account,
+      baseUrl: options.baseUrl,
+      interactive: options.interactive,
+      noInteractive: options.noInteractive,
+      format: options.format,
+      promptAmbiguity: options.promptAmbiguity,
+    });
     const installed = await installLayerFromCatalog(parsed, {
       account: options.account,
       baseUrl: options.baseUrl,

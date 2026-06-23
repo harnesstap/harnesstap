@@ -1,18 +1,5 @@
-import {
-  createPrompt,
-  isEnterKey,
-  makeTheme,
-  useKeypress,
-  usePrefix,
-  useState,
-} from "@inquirer/core";
-import { handleNavigationKeypress } from "./hooks/use-list-navigation.js";
-import { handleSearchKeypress } from "./hooks/use-local-query-filter.js";
-import {
-  clampActiveIndex,
-  interactivePromptTheme,
-  isEscapeKey,
-} from "./primitives.js";
+import { createTableBrowserPrompt } from "./create-table-browser-prompt.js";
+import type { ManageAction } from "./table-browser-types.js";
 
 export type ActionListPromptAction =
   | { type: "quit" }
@@ -32,84 +19,11 @@ export type ActionListPromptConfig<T> = {
     query: string;
     filteredRows: T[];
     activeRow: T | undefined;
+    active: number;
+    terminalWidth: number;
+    terminalRows: number;
   }) => string;
 };
-
-function isLetterKey(
-  key: { sequence?: string; ctrl?: boolean; meta?: boolean },
-  letter: string,
-): boolean {
-  return key.sequence === letter && !key.ctrl && !key.meta;
-}
-
-const actionListPromptBase = createPrompt<
-  ActionListPromptAction,
-  ActionListPromptConfig<unknown>
->((config, done) => {
-  const promptTheme = makeTheme(interactivePromptTheme, {});
-  const prefix = usePrefix({ status: "idle", theme: promptTheme });
-  const [query, setQuery] = useState(config.initialQuery ?? "");
-  const [active, setActive] = useState(0);
-
-  const filteredRows = config.filterRows(config.rows, query);
-  const clampedActive = clampActiveIndex(active, filteredRows.length);
-  const activeRow = filteredRows[clampedActive] as unknown | undefined;
-  const styledMessage = promptTheme.style.message(config.message, "idle");
-
-  useKeypress((key) => {
-    if (isEscapeKey(key)) {
-      done({ type: "cancel" });
-      return;
-    }
-
-    if (isLetterKey(key, "q")) {
-      done({ type: "quit" });
-      return;
-    }
-
-    if (isLetterKey(key, "a")) {
-      done({ type: "add" });
-      return;
-    }
-
-    if (isLetterKey(key, "d") && activeRow) {
-      const rowIndex = config.rows.indexOf(activeRow);
-      if (rowIndex >= 0) {
-        done({ type: "delete", rowIndex });
-      }
-      return;
-    }
-
-    if (isEnterKey(key) && activeRow) {
-      const rowIndex = config.rows.indexOf(activeRow);
-      if (rowIndex >= 0) {
-        done({ type: "edit", rowIndex });
-      }
-      return;
-    }
-
-    if (
-      handleNavigationKeypress({
-        clampedActive,
-        length: filteredRows.length,
-        setActive,
-        key,
-      })
-    ) {
-      return;
-    }
-
-    handleSearchKeypress({ query, setQuery, setActive, key });
-  });
-
-  return config.renderBrowse({
-    prefix,
-    styledMessage,
-    query,
-    filteredRows: filteredRows as unknown[],
-    activeRow,
-  });
-});
 
 type PromptContext = {
   input?: NodeJS.ReadableStream;
@@ -118,9 +32,60 @@ type PromptContext = {
   signal?: AbortSignal;
 };
 
+function mapManageAction(action: ManageAction): ActionListPromptAction {
+  switch (action.type) {
+    case "quit":
+    case "cancel":
+    case "add":
+      return action;
+    case "edit":
+    case "delete":
+      return action;
+    default: {
+      const _exhaustive: never = action;
+      return _exhaustive;
+    }
+  }
+}
+
 export function createActionListPrompt<T>(
   config: ActionListPromptConfig<T>,
   context?: PromptContext,
 ): Promise<ActionListPromptAction> & { cancel: () => void } {
-  return actionListPromptBase(config as ActionListPromptConfig<unknown>, context);
+  const prompt = createTableBrowserPrompt<T, never>(
+    {
+      message: config.message,
+      initialQuery: config.initialQuery,
+      intent: { kind: "manage" },
+      manageSourceRows: config.rows,
+      adapter: {
+        resolveItems: (query) => {
+          const filtered = config.filterRows(config.rows, query);
+          return { filtered, navigable: filtered };
+        },
+        renderViewport: (args) =>
+          config.renderBrowse({
+            prefix: args.prefix,
+            styledMessage: args.styledMessage,
+            query: args.query,
+            filteredRows: args.navigable,
+            activeRow: args.selectedItem,
+            active: args.active,
+            terminalWidth: args.terminalWidth,
+            terminalRows: args.terminalRows,
+          }),
+        helpActions: [],
+      },
+    },
+    context,
+  );
+
+  const mapped = prompt.then((result) => {
+    if (result.kind === "manage") {
+      return mapManageAction(result.action);
+    }
+    throw new Error(`Unexpected table browser result: ${result.kind}`);
+  }) as Promise<ActionListPromptAction> & { cancel: () => void };
+  mapped.cancel = prompt.cancel;
+  return mapped;
 }

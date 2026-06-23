@@ -2,10 +2,16 @@ import { ExitPromptError } from "@inquirer/core";
 import inquirer from "inquirer";
 import search from "@inquirer/search";
 import { mock, spyOn } from "bun:test";
-import type { promptForSearchableMultiSelect as SearchableMultiSelectPrompt } from "../../src/services/wizards/searchable-multi-select.js";
+import type { runEnvironmentDeleteWizard as RunEnvironmentDeleteWizard } from "../../src/services/wizards/environment-delete.js";
+import type { runEnvironmentShowWizard as RunEnvironmentShowWizard } from "../../src/services/wizards/environment-show.js";
+import type { runResourceDeleteWizard as RunResourceDeleteWizard } from "../../src/services/wizards/resource-delete.js";
+import type { runLayerDeleteWizard as RunLayerDeleteWizard } from "../../src/services/wizards/layer-delete.js";
+import type { runLayerShowWizard as RunLayerShowWizard } from "../../src/services/wizards/layer-show.js";
 import type { runResourceListWizard as RunResourceListWizard } from "../../src/services/wizards/resource-list.js";
 import type { runLayerEditWizard as RunLayerEditWizard } from "../../src/services/wizards/layer-edit.js";
 import type { runInteractiveCatalogSearch as RunInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.js";
+import type { runInteractiveCatalogBrowser as RunInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.js";
+import type { runInteractiveLayerListBrowse as RunInteractiveLayerListBrowse } from "../../src/services/wizards/interactive-layer-list-browse.js";
 
 export interface CliResult {
   stdout: string;
@@ -71,7 +77,7 @@ const searchPromptMock = mock(async (...args: Parameters<typeof search>) => {
   return value;
 });
 const searchableMultiSelectMock = mock(async (
-  ...args: Parameters<typeof SearchableMultiSelectPrompt>
+  ...args: Parameters<typeof import("../../src/services/wizards/searchable-multi-select.js").promptForSearchableMultiSelect>
 ) => {
   if (!runCliHarnessActive) {
     const actualPromptModule = await import(
@@ -88,6 +94,90 @@ const searchableMultiSelectMock = mock(async (
   return value;
 });
 
+function normalizeDeleteWizardSelection(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value.length > 0 ? [value] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === "string");
+  }
+  throw new Error(
+    "Delete wizard responses must resolve to a string id or array of ids in runCli test harness",
+  );
+}
+
+const environmentDeleteWizardMock = mock(async (
+  ...args: Parameters<typeof RunEnvironmentDeleteWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/environment-delete.ts?actual"
+    );
+    return actualWizard.runEnvironmentDeleteWizard(...args);
+  }
+  return normalizeDeleteWizardSelection(shiftSinglePromptValue());
+});
+
+const environmentShowWizardMock = mock(async (
+  ...args: Parameters<typeof RunEnvironmentShowWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/environment-show.ts?actual"
+    );
+    return actualWizard.runEnvironmentShowWizard(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value !== "string") {
+    throw new Error(
+      "Environment show wizard responses must resolve to a string in runCli test harness",
+    );
+  }
+  return value.length > 0 ? value : undefined;
+});
+
+const resourceDeleteWizardMock = mock(async (
+  ...args: Parameters<typeof RunResourceDeleteWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/resource-delete.ts?actual"
+    );
+    return actualWizard.runResourceDeleteWizard(...args);
+  }
+  return normalizeDeleteWizardSelection(shiftSinglePromptValue());
+});
+
+const layerDeleteWizardMock = mock(async (
+  ...args: Parameters<typeof RunLayerDeleteWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/layer-delete.ts?actual"
+    );
+    return actualWizard.runLayerDeleteWizard(...args);
+  }
+  return normalizeDeleteWizardSelection(shiftSinglePromptValue());
+});
+
+const layerShowWizardMock = mock(async (
+  ...args: Parameters<typeof RunLayerShowWizard>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/layer-show.ts?actual"
+    );
+    return actualWizard.runLayerShowWizard(...args);
+  }
+  const value = shiftSinglePromptValue();
+  if (typeof value !== "string") {
+    throw new Error(
+      "Layer show wizard responses must resolve to a string in runCli test harness",
+    );
+  }
+  return value.length > 0 ? value : undefined;
+});
+
 mock.module("inquirer", () => ({
   default: {
     prompt: promptMock,
@@ -102,6 +192,26 @@ mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
   promptForSearchableMultiSelect: searchableMultiSelectMock,
 }));
 
+mock.module("../../src/services/wizards/environment-delete.js", () => ({
+  runEnvironmentDeleteWizard: environmentDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/environment-show.js", () => ({
+  runEnvironmentShowWizard: environmentShowWizardMock,
+}));
+
+mock.module("../../src/services/wizards/resource-delete.js", () => ({
+  runResourceDeleteWizard: resourceDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/layer-delete.js", () => ({
+  runLayerDeleteWizard: layerDeleteWizardMock,
+}));
+
+mock.module("../../src/services/wizards/layer-show.js", () => ({
+  runLayerShowWizard: layerShowWizardMock,
+}));
+
 const resourceListWizardMock = mock(async (
   ...args: Parameters<typeof RunResourceListWizard>
 ) => {
@@ -113,19 +223,22 @@ const resourceListWizardMock = mock(async (
   }
   const value = shiftSinglePromptValue();
   if (typeof value === "string") {
-    return value.length > 0 ? { search: value } : undefined;
+    return value.length > 0 ? { action: "filter", query: value } : undefined;
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
+    if (record.action === "delete" || record.action === "edit") {
+      return record;
+    }
     const query = typeof record.query === "string"
       ? record.query
       : typeof record.search === "string"
         ? record.search
         : "";
-    if (!query) {
+    if (!query && record.action !== "filter") {
       return undefined;
     }
-    return { search: query };
+    return { action: "filter", query };
   }
   throw new Error(
     "Resource list wizard responses must resolve to a string query or result object in runCli test harness",
@@ -158,16 +271,7 @@ mock.module("../../src/services/wizards/layer-edit.js", () => ({
   runLayerEditWizard: layerEditWizardMock,
 }));
 
-const interactiveCatalogBrowserMock = mock(async (
-  ...args: Parameters<typeof RunInteractiveCatalogBrowser>
-) => {
-  if (!runCliHarnessActive) {
-    const actualWizard = await import(
-      "../../src/services/wizards/interactive-catalog-browser.ts?actual"
-    );
-    return actualWizard.runInteractiveCatalogBrowser(...args);
-  }
-  const value = shiftSinglePromptValue();
+function resolveInteractiveLayerInstallSelection(value: unknown) {
   if (typeof value === "string") {
     const parts = value.split("/").filter(Boolean);
     if (parts.length === 2) {
@@ -210,12 +314,50 @@ const interactiveCatalogBrowserMock = mock(async (
     }
   }
   throw new Error(
-    "Interactive catalog browser responses must resolve to org/library string or selection object",
+    "Interactive layer install responses must resolve to org/library string or selection object",
   );
+}
+
+function resolveInteractiveLayerBrowseResult(value: unknown) {
+  if (value && typeof value === "object" && "action" in value) {
+    return value;
+  }
+  return {
+    action: "install",
+    selection: resolveInteractiveLayerInstallSelection(value),
+  };
+}
+
+const interactiveCatalogBrowserMock = mock(async (
+  ...args: Parameters<typeof RunInteractiveCatalogBrowser>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/interactive-catalog-browser.ts?actual"
+    );
+    return actualWizard.runInteractiveCatalogBrowser(...args);
+  }
+  return resolveInteractiveLayerInstallSelection(shiftSinglePromptValue());
 });
 
 mock.module("../../src/services/wizards/interactive-catalog-browser.js", () => ({
   runInteractiveCatalogBrowser: interactiveCatalogBrowserMock,
+}));
+
+const interactiveLayerListBrowseMock = mock(async (
+  ...args: Parameters<typeof RunInteractiveLayerListBrowse>
+) => {
+  if (!runCliHarnessActive) {
+    const actualWizard = await import(
+      "../../src/services/wizards/interactive-layer-list-browse.ts?actual"
+    );
+    return actualWizard.runInteractiveLayerListBrowse(...args);
+  }
+  return resolveInteractiveLayerBrowseResult(shiftSinglePromptValue());
+});
+
+mock.module("../../src/services/wizards/interactive-layer-list-browse.js", () => ({
+  runInteractiveLayerListBrowse: interactiveLayerListBrowseMock,
 }));
 
 const interactiveCatalogSearchMock = mock(async (

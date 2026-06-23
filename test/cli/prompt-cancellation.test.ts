@@ -30,4 +30,21 @@ describe("prompt cancellation", () => {
       await context.cleanup();
     }
   });
+
+  it("layer list exits quietly when the browser is cancelled", async () => {
+    const context = await createTestContext("cli-layer-list-esc");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["layer", "list"], {
+        isTTY: true,
+        promptResponses: [{ __promptCancel: true }],
+      });
+
+      expect(result.exitCode ?? 0).toBe(1);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).not.toMatch(/ExitPromptError|Layer list cancelled/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
