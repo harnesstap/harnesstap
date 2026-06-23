@@ -203,6 +203,11 @@ import { buildEnvironmentEditRows } from "./services/environment-edit.js";
 import { runEnvironmentCreateWizard } from "./services/wizards/environment-create.js";
 import { runEnvironmentDeleteWizard } from "./services/wizards/environment-delete.js";
 import { runEnvironmentEditWizard } from "./services/wizards/environment-edit.js";
+import {
+  filterEnvironmentListRows,
+  runEnvironmentListWizard,
+} from "./services/wizards/environment-list.js";
+import { renderEnvironmentListTable } from "./ui/environment-list-render.js";
 import { analyzeEnvironmentGaps } from "./services/environment-requirements.js";
 import { resolveEnvironmentOrThrow } from "./services/environment-selectors.js";
 import { createLayerFromProject } from "./services/layer-from-project.js";
@@ -2980,6 +2985,62 @@ function shouldUseInteractiveEnvironmentEdit(input: {
     format: parseOutputFormat(input.format),
     missingRequiredArgs: true,
   });
+}
+
+function shouldUseInteractiveEnvironmentList(input: {
+  noInteractive?: boolean;
+  format?: string;
+  search?: string;
+}): boolean {
+  if (input.search) {
+    return false;
+  }
+
+  return shouldUseWizard({
+    interactive: true,
+    noInteractive: input.noInteractive,
+    format: parseOutputFormat(input.format),
+    missingRequiredArgs: true,
+  });
+}
+
+async function handleEnvironmentListCommand(opts: {
+  format?: string;
+  search?: string;
+  noInteractive?: boolean;
+}): Promise<void> {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+
+  let search = opts.search;
+  if (shouldUseInteractiveEnvironmentList(opts)) {
+    try {
+      const wizardResult = await runEnvironmentListWizard({ search: opts.search });
+      search = wizardResult?.search ?? opts.search;
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        process.exitCode = 1;
+        return;
+      }
+      throw error;
+    }
+  }
+
+  const environments = filterEnvironmentListRows(listEnvironmentsCommand(), search);
+  if (format === "json") {
+    printJson(environments);
+    return;
+  }
+
+  if (environments.length === 0) {
+    console.log(
+      `No environments found.\n  → Run \`${formatCommand("environment create <name>")}\` to add one.`,
+    );
+    return;
+  }
+
+  console.log(renderEnvironmentListTable(environments));
 }
 
 async function resolveEnvironmentMutationTarget(input: {
@@ -6165,32 +6226,16 @@ environmentCmd
 environmentCmd
   .command("list")
   .alias("ls")
+  .option("-s, --search <query>", "Search by name or description (skips interactive filter)")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("List local environments with value and reference counts")
-  .action((opts: { format?: string }) => {
-    const db = getDb();
-    initializeSchema(db);
-    const format = parseOutputFormat(opts.format);
-    const environments = listEnvironmentsCommand();
-    if (format === "json") {
-      printJson(environments);
-      return;
+  .action(async (opts: { format?: string; search?: string; noInteractive?: boolean }) => {
+    try {
+      await handleEnvironmentListCommand(opts);
+    } catch (error) {
+      process.exitCode = 1;
+      renderCliError(error);
     }
-    ui.table.print({
-      columns: [
-        { key: "name", header: "NAME", width: 24 },
-        { key: "value_count", header: "VALUES", width: 8 },
-        { key: "secret_ref_count", header: "SECRETS", width: 8 },
-        { key: "reference_count", header: "REFS", width: 8 },
-      ],
-      rows: environments.map((entry) => ({
-        name: entry.environment.name,
-        value_count: entry.value_count,
-        secret_ref_count: entry.secret_ref_count,
-        reference_count: entry.reference_count,
-      })),
-      empty: "No environments found.",
-    });
   });
 
 environmentCmd
