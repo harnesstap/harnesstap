@@ -1,5 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
+function jsonResponse(
+  status: number,
+  body: unknown,
+  init: { ok?: boolean; headers?: Headers } = {},
+) {
+  const text = JSON.stringify(body);
+  return {
+    ok: init.ok ?? (status >= 200 && status < 300),
+    status,
+    headers: init.headers ?? new Headers(),
+    json: async () => body,
+    text: async () => text,
+  };
+}
+
 describe("cloud client primitives", () => {
   let originalFetch: typeof globalThis.fetch;
 
@@ -13,37 +28,21 @@ describe("cloud client primitives", () => {
 
   it("polls device auth until a token is issued", async () => {
     const fetchMock = mock()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          device_code: "dc-123",
-          user_code: "UC-ABC",
-          verification_uri: "https://example.com/verify",
-          expires_in: 600,
-          interval: 1,
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: { code: "authorization_pending" } }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: { code: "authorization_pending" } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          access_token: "AT-XYZ",
-          refresh_token: "RT-XYZ",
-          expires_in: 3600,
-          token_type: "Bearer",
-        }),
-      });
+      .mockResolvedValueOnce(jsonResponse(200, {
+        device_code: "dc-123",
+        user_code: "UC-ABC",
+        verification_uri: "https://example.com/verify",
+        expires_in: 600,
+        interval: 1,
+      }))
+      .mockResolvedValueOnce(jsonResponse(400, { error: { code: "authorization_pending" } }, { ok: false }))
+      .mockResolvedValueOnce(jsonResponse(400, { error: { code: "authorization_pending" } }, { ok: false }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        access_token: "AT-XYZ",
+        refresh_token: "RT-XYZ",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }));
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -56,29 +55,47 @@ describe("cloud client primitives", () => {
     expect(token.access_token).toBe("AT-XYZ");
   });
 
-  it("waits and retries when device token polling is rate limited", async () => {
+  it("retries device token polling on transient empty responses", async () => {
     const fetchMock = mock()
       .mockResolvedValueOnce({
         ok: false,
-        status: 429,
-        headers: new Headers({ "retry-after": "1" }),
-        json: async () => ({ error: { code: "rate_limit_exceeded", message: "Too many device token polling requests." } }),
+        status: 502,
+        headers: new Headers(),
+        json: async () => {
+          throw new Error("not json");
+        },
+        text: async () => "",
       })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: { code: "authorization_pending" } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          access_token: "AT-XYZ",
-          refresh_token: "RT-XYZ",
-          expires_in: 3600,
-          token_type: "Bearer",
-        }),
-      });
+      .mockResolvedValueOnce(jsonResponse(400, { error: { code: "authorization_pending" } }, { ok: false }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        access_token: "AT-XYZ",
+        refresh_token: "RT-XYZ",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }));
+
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { pollDeviceToken } = await import("../../src/services/cloud-client");
+    const token = await pollDeviceToken("https://api.example", "dc-123", { interval: 0.01, maxPolls: 5 });
+    expect(token.access_token).toBe("AT-XYZ");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("waits and retries when device token polling is rate limited", async () => {
+    const fetchMock = mock()
+      .mockResolvedValueOnce(jsonResponse(
+        429,
+        { error: { code: "rate_limit_exceeded", message: "Too many device token polling requests." } },
+        { ok: false, headers: new Headers({ "retry-after": "1" }) },
+      ))
+      .mockResolvedValueOnce(jsonResponse(400, { error: { code: "authorization_pending" } }, { ok: false }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        access_token: "AT-XYZ",
+        refresh_token: "RT-XYZ",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }));
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -92,21 +109,13 @@ describe("cloud client primitives", () => {
 
   it("refreshes an expired profile before listing orgs", async () => {
     const fetchMock = mock()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          access_token: "NEW-AT",
-          refresh_token: "NEW-RT",
-          expires_in: 3600,
-          token_type: "Bearer",
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ orgs: [{ id: "org-1", slug: "acme", name: "Acme" }] }),
-      });
+      .mockResolvedValueOnce(jsonResponse(200, {
+        access_token: "NEW-AT",
+        refresh_token: "NEW-RT",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }))
+      .mockResolvedValueOnce(jsonResponse(200, { orgs: [{ id: "org-1", slug: "acme", name: "Acme" }] }));
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -131,11 +140,7 @@ describe("cloud client primitives", () => {
   });
 
   it("skips refresh when token has no expires_at", async () => {
-    const fetchMock = mock().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ user: { id: "user-1" } }),
-    });
+    const fetchMock = mock().mockResolvedValueOnce(jsonResponse(200, { user: { id: "user-1" } }));
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
