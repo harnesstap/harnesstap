@@ -1,6 +1,7 @@
 import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
 import { describe, expect } from "bun:test";
+import { createInitializedTestContext } from "../helpers/db.ts";
 import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { promptForInteractiveLayerListBrowse } from "../../src/services/wizards/interactive-layer-list-browse.ts?actual";
@@ -147,24 +148,29 @@ describe("interactive layer list browse prompt", () => {
   });
 
   promptIt("shows local layer details on enter", async () => {
-    await withPrompt(
-      render(
-        promptForInteractiveLayerListBrowse,
-        {
-          message: "Select a layer",
-          scopeLabel: "harnessdeck-cloud",
-          localLayers,
-          listRemoteLayers: async () => remoteLayers,
+    const context = await createInitializedTestContext("interactive-layer-list-browse-local-show");
+    try {
+      await withPrompt(
+        render(
+          promptForInteractiveLayerListBrowse,
+          {
+            message: "Select a layer",
+            scopeLabel: "harnessdeck-cloud",
+            localLayers,
+            listRemoteLayers: async () => remoteLayers,
+          },
+          { clearPromptOnDone: true },
+        ),
+        async ({ getScreen, events, nextRender }) => {
+          await nextRender();
+          events.keypress("enter");
+          await nextRender();
+          expect(getScreen()).toContain("Installed locally");
         },
-        { clearPromptOnDone: true },
-      ),
-      async ({ getScreen, events, nextRender }) => {
-        await nextRender();
-        events.keypress("enter");
-        await nextRender();
-        expect(getScreen()).toContain("Installed locally");
-      },
-    );
+      );
+    } finally {
+      await context.cleanup();
+    }
   });
 
   promptIt("edits a local layer with ctrl+e from browse", async () => {

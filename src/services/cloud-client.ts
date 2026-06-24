@@ -115,13 +115,27 @@ export async function requestDeviceCode(
   return await response.json() as DeviceCodeResponse;
 }
 
+function parseRetryAfterMs(response: Response, fallbackMs: number): number {
+  const retryAfter = response.headers.get("retry-after")?.trim();
+  if (!retryAfter) return fallbackMs;
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+  const retryAt = Date.parse(retryAfter);
+  if (Number.isFinite(retryAt)) {
+    return Math.max(0, retryAt - Date.now());
+  }
+  return fallbackMs;
+}
+
 export async function pollDeviceToken(
   baseUrl: string,
   deviceCode: string,
   opts?: { interval?: number; maxPolls?: number },
 ): Promise<DeviceTokenResponse> {
-  const interval = (opts?.interval ?? 5) * 1000;
-  const maxPolls = opts?.maxPolls ?? 60;
+  let pollIntervalMs = (opts?.interval ?? 5) * 1000;
+  const maxPolls = opts?.maxPolls ?? 120;
 
   for (let attempt = 0; attempt < maxPolls; attempt += 1) {
     const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/token"), {
@@ -138,8 +152,18 @@ export async function pollDeviceToken(
     const code = body && typeof body === "object" && "error" in body
       ? (body as { error?: { code?: string } }).error?.code
       : undefined;
-    if (code === "authorization_pending" || code === "slow_down") {
-      await new Promise((resolve) => setTimeout(resolve, interval));
+    if (code === "authorization_pending") {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      continue;
+    }
+    if (code === "slow_down") {
+      pollIntervalMs += 5000;
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      continue;
+    }
+    if (code === "rate_limit_exceeded") {
+      const waitMs = parseRetryAfterMs(response, pollIntervalMs);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
       continue;
     }
 
