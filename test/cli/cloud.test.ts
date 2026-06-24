@@ -6,6 +6,21 @@ import { runCli } from "../helpers/cli.ts";
 import * as cloudAccounts from "../../src/config/cloud-accounts";
 import { saveCatalogSettings } from "../../src/config/catalog";
 
+function jsonResponse(
+  status: number,
+  body: unknown,
+  init: { ok?: boolean; headers?: Headers } = {},
+) {
+  const text = JSON.stringify(body);
+  return {
+    ok: init.ok ?? (status >= 200 && status < 300),
+    status,
+    headers: init.headers ?? new Headers(),
+    json: async () => body,
+    text: async () => text,
+  };
+}
+
 describe("auth CLI flow", () => {
   let originalFetch: typeof globalThis.fetch;
 
@@ -20,9 +35,20 @@ describe("auth CLI flow", () => {
   it("login -> status (json) -> orgs --switch -> logout", async () => {
     // Device flow: device code, two polls (pending), then token
     const fetchMock = mock()
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ device_code: "dc-123", user_code: "UC-ABC", verification_uri: "https://verify.example", expires_in: 600, interval: 1 }) })
-      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: { code: "authorization_pending" } }) })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ access_token: "AT-XYZ", refresh_token: "RT-XYZ", expires_in: 3600, token_type: "Bearer" }) });
+      .mockResolvedValueOnce(jsonResponse(200, {
+        device_code: "dc-123",
+        user_code: "UC-ABC",
+        verification_uri: "https://verify.example",
+        expires_in: 600,
+        interval: 1,
+      }))
+      .mockResolvedValueOnce(jsonResponse(400, { error: { code: "authorization_pending" } }, { ok: false }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        access_token: "AT-XYZ",
+        refresh_token: "RT-XYZ",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }));
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -61,27 +87,19 @@ describe("auth CLI flow", () => {
     process.env.HARNESSDECK_HOME = harnessdeckDir;
 
     const fetchMock = mock()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          device_code: "dc-123",
-          user_code: "UC-ABC",
-          verification_uri: "https://0.0.0.0:3000/cli/auth/device",
-          expires_in: 600,
-          interval: 1,
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          access_token: "AT-XYZ",
-          refresh_token: "RT-XYZ",
-          expires_in: 3600,
-          token_type: "Bearer",
-        }),
-      });
+      .mockResolvedValueOnce(jsonResponse(200, {
+        device_code: "dc-123",
+        user_code: "UC-ABC",
+        verification_uri: "https://0.0.0.0:3000/cli/auth/device",
+        expires_in: 600,
+        interval: 1,
+      }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        access_token: "AT-XYZ",
+        refresh_token: "RT-XYZ",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }));
 
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 

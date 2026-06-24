@@ -47,6 +47,13 @@ function apiUrl(baseUrl: string, path: string): string {
   return `${normalized}/api${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+function extractApiErrorCode(body: unknown): string | undefined {
+  if (body && typeof body === "object" && "error" in body) {
+    return (body as { error?: { code?: string } }).error?.code;
+  }
+  return undefined;
+}
+
 function parseApiError(body: unknown): string {
   if (body && typeof body === "object" && "error" in body) {
     const error = (body as { error?: { message?: string; code?: string } }).error;
@@ -54,6 +61,38 @@ function parseApiError(body: unknown): string {
     if (error?.code) return error.code;
   }
   return JSON.stringify(body);
+}
+
+async function readResponseBody(response: Response): Promise<{ body: unknown; text: string }> {
+  const text = await response.text();
+  if (!text.trim()) {
+    return { body: {}, text: "" };
+  }
+  try {
+    return { body: JSON.parse(text) as unknown, text };
+  } catch {
+    return { body: {}, text };
+  }
+}
+
+function describeApiFailure(response: Response, body: unknown, text: string): string {
+  const parsed = parseApiError(body);
+  if (parsed !== "{}") {
+    return `${response.status} ${parsed}`;
+  }
+  const trimmed = text.trim();
+  if (trimmed) {
+    const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}…` : trimmed;
+    return `${response.status} ${preview}`;
+  }
+  return `${response.status} empty response (try again)`;
+}
+
+function isTransientPollFailure(response: Response, body: unknown, text: string): boolean {
+  if (response.status >= 500) return true;
+  if (response.status === 408 || response.status === 425) return true;
+  if (!response.ok && !extractApiErrorCode(body) && !text.trim()) return true;
+  return false;
 }
 
 function toSlug(value: string): string {
@@ -109,8 +148,8 @@ export async function requestDeviceCode(
     body: JSON.stringify({ scopes: opts?.scopes ?? [...DEFAULT_DEVICE_SCOPES] }),
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(`Failed to request device code: ${response.status} ${parseApiError(body)}`);
+    const { body, text } = await readResponseBody(response);
+    throw new Error(`Failed to request device code: ${describeApiFailure(response, body, text)}`);
   }
   return await response.json() as DeviceCodeResponse;
 }
@@ -145,13 +184,12 @@ export async function pollDeviceToken(
     });
 
     if (response.ok) {
-      return await response.json() as DeviceTokenResponse;
+      const { body } = await readResponseBody(response);
+      return body as DeviceTokenResponse;
     }
 
-    const body = await response.json().catch(() => ({}));
-    const code = body && typeof body === "object" && "error" in body
-      ? (body as { error?: { code?: string } }).error?.code
-      : undefined;
+    const { body, text } = await readResponseBody(response);
+    const code = extractApiErrorCode(body);
     if (code === "authorization_pending") {
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
       continue;
@@ -166,8 +204,12 @@ export async function pollDeviceToken(
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       continue;
     }
+    if (isTransientPollFailure(response, body, text)) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      continue;
+    }
 
-    throw new Error(`Failed to poll device token: ${parseApiError(body)}`);
+    throw new Error(`Failed to poll device token: ${describeApiFailure(response, body, text)}`);
   }
 
   throw new Error("Timed out polling device token");
