@@ -77,6 +77,7 @@ jobs:
               - 'src/plugins/**'
             services:
               - 'src/services/**'
+              - 'test/services/**'
             cli:
               - 'src/ui/**'
               - 'test/cli/**'
@@ -93,10 +94,13 @@ jobs:
               echo "${area}=true" >> "$GITHUB_OUTPUT"
             done
           else
-            for area in global core platforms plugins services cli docs; do
-              value="${{ steps.filter.outputs[area] }}"
-              echo "${area}=${value:-false}" >> "$GITHUB_OUTPUT"
-            done
+            echo "global=${{ steps.filter.outputs.global }}" >> "$GITHUB_OUTPUT"
+            echo "core=${{ steps.filter.outputs.core }}" >> "$GITHUB_OUTPUT"
+            echo "platforms=${{ steps.filter.outputs.platforms }}" >> "$GITHUB_OUTPUT"
+            echo "plugins=${{ steps.filter.outputs.plugins }}" >> "$GITHUB_OUTPUT"
+            echo "services=${{ steps.filter.outputs.services }}" >> "$GITHUB_OUTPUT"
+            echo "cli=${{ steps.filter.outputs.cli }}" >> "$GITHUB_OUTPUT"
+            echo "docs=${{ steps.filter.outputs.docs }}" >> "$GITHUB_OUTPUT"
           fi
 
   test-core:
