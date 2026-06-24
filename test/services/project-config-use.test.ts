@@ -191,6 +191,7 @@ selector = "beta"
           project: context.projectDir,
           harness: "claude-code",
           onConflict: "replace",
+          noInteractive: true,
         }),
       ).rejects.toThrow("multiple profiles configured");
     } finally {
