@@ -56,6 +56,40 @@ describe("cloud client primitives", () => {
     expect(token.access_token).toBe("AT-XYZ");
   });
 
+  it("waits and retries when device token polling is rate limited", async () => {
+    const fetchMock = mock()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: new Headers({ "retry-after": "1" }),
+        json: async () => ({ error: { code: "rate_limit_exceeded", message: "Too many device token polling requests." } }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { code: "authorization_pending" } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          access_token: "AT-XYZ",
+          refresh_token: "RT-XYZ",
+          expires_in: 3600,
+          token_type: "Bearer",
+        }),
+      });
+
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { pollDeviceToken } = await import("../../src/services/cloud-client");
+    const startedAt = Date.now();
+    const token = await pollDeviceToken("https://api.example", "dc-123", { interval: 0.01, maxPolls: 5 });
+    expect(token.access_token).toBe("AT-XYZ");
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(900);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("refreshes an expired profile before listing orgs", async () => {
     const fetchMock = mock()
       .mockResolvedValueOnce({
