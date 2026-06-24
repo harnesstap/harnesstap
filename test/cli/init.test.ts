@@ -99,7 +99,7 @@ describe("CLI init", () => {
       expect(defaultLayer).toBeDefined();
       const db = context.connection.getDb();
       db.prepare("DELETE FROM layer_resources WHERE layer_id = ?").run(
-        defaultLayer!.id,
+        defaultLayer?.id,
       );
 
       const rerun = await runCli(["init"]);

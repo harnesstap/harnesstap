@@ -900,7 +900,6 @@ function scanPluginRoot(
         return fallback;
       }
     } catch {
-      continue;
     }
   }
 

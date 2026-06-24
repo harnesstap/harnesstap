@@ -103,9 +103,9 @@ describe("layer-edit", () => {
       } as LayerEditRow,
     ];
     const pending: LayerEditRow[] = [
-      { ...initial[0]!, checked: true },
-      { ...initial[1]!, checked: false },
-      { ...initial[2]!, checked: true },
+      { ...initial[0], checked: true },
+      { ...initial[1], checked: false },
+      { ...initial[2], checked: true },
     ];
 
     const diff = computeLayerEditDiff(initial, pending);

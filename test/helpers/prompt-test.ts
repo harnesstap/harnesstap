@@ -1,4 +1,4 @@
-import { render } from "@inquirer/testing";
+import type { render } from "@inquirer/testing";
 
 /** Default per-test timeout for interactive prompt tests. */
 export const PROMPT_TEST_TIMEOUT_MS = 10_000;

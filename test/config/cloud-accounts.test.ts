@@ -27,7 +27,7 @@ test("round-trips a saved account under HARNESSDECK_HOME", async () => {
   const got = await cp.getCloudAccount("my-account");
   expect(got.accountName).toBe("my-account");
   expect(got.account).toBeTruthy();
-  expect(got.account!.cloudBaseUrl).toBe("https://harnessdeck.kayrnt.fr");
+  expect(got.account?.cloudBaseUrl).toBe("https://harnessdeck.kayrnt.fr");
 
   const p = cp.getCloudAccountsPath();
   expect(fs.existsSync(p)).toBe(true);
@@ -54,11 +54,11 @@ test("updates default account and clears token material on logout", async () => 
   });
 
   let got = await cp.getCloudAccount("two");
-  expect(got.account!.accessToken).toBe("abc");
-  expect(got.account!.refreshToken).toBe("ref");
+  expect(got.account?.accessToken).toBe("abc");
+  expect(got.account?.refreshToken).toBe("ref");
 
   await cp.clearCloudTokens("two");
   got = await cp.getCloudAccount("two");
-  expect(got.account!.accessToken).toBeUndefined();
-  expect(got.account!.refreshToken).toBeUndefined();
+  expect(got.account?.accessToken).toBeUndefined();
+  expect(got.account?.refreshToken).toBeUndefined();
 });

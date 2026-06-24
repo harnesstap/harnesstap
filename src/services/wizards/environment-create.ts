@@ -355,7 +355,7 @@ export async function runEnvironmentCreateWizard(input: {
     let layerSelector: string | undefined;
     let resolved: EnvironmentFromLayerResolved | undefined;
 
-    layerSelection: while (true) {
+    while (true) {
       try {
         layerSelector = await withPromptBack(() =>
           promptForSearchableChoice({
@@ -366,14 +366,14 @@ export async function runEnvironmentCreateWizard(input: {
       } catch (error) {
         if (isPromptBackError(error)) {
           layerSelector = undefined;
-          break layerSelection;
+          break;
         }
         throw error;
       }
 
       try {
         resolved = await collectFromLayerResolutions({ layerSelector });
-        break layerSelection;
+        break;
       } catch (error) {
         if (isPromptBackError(error)) {
           continue;

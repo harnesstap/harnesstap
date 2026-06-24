@@ -3,8 +3,8 @@ import type { Command } from "commander";
 function bashCompletion(): string {
   return `# harnessdeck bash completion
 _harnessdeck_completions() {
-  local line="\${COMP_LINE:0:\$COMP_POINT}"
-  mapfile -t COMPREPLY < <(hd __complete bash -- "\$line" 2>/dev/null)
+  local line="\${COMP_LINE:0:$COMP_POINT}"
+  mapfile -t COMPREPLY < <(hd __complete bash -- "$line" 2>/dev/null)
 }
 complete -F _harnessdeck_completions hd harnessdeck
 `;
@@ -16,19 +16,19 @@ function zshCompletion(): string {
 _harnessdeck() {
   local -a suggestions args descr
   local line has_descr=0
-  suggestions=("\${(@f)\$(hd __complete zsh -- "\${BUFFER[1,\$CURSOR]}" 2>/dev/null)}")
+  suggestions=("\${(@f)$(hd __complete zsh -- "\${BUFFER[1,$CURSOR]}" 2>/dev/null)}")
   if (( \${#suggestions} )); then
-    for line in \$suggestions; do
-      if [[ \$line == *$'\\t'* ]]; then
+    for line in $suggestions; do
+      if [[ $line == *$'\\t'* ]]; then
         args+=(\${line%%$'\\t'*})
         descr+=(\${line#*$'\\t'})
       else
-        args+=(\$line)
+        args+=($line)
         descr+=("")
       fi
     done
-    for line in \$descr; do
-      if [[ -n \$line ]]; then
+    for line in $descr; do
+      if [[ -n $line ]]; then
         has_descr=1
         break
       fi

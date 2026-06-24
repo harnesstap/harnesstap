@@ -89,11 +89,19 @@ function resolveExpectedLayerName(
   switch (entry.source) {
     case "catalog":
     case "local": {
-      return resolveLayerNameFromSelector(entry.selector!);
+      const selector = entry.selector;
+      if (!selector) {
+        throw new Error(`Profile ${entry.name} is missing a layer selector.`);
+      }
+      return resolveLayerNameFromSelector(selector);
     }
     case "inline": {
-      const inlineLayer = config.layers.find((layer) => layer.name === entry.layer);
-      return inlineLayer?.name ?? entry.layer!;
+      const layerKey = entry.layer;
+      if (!layerKey) {
+        throw new Error(`Inline profile ${entry.name} is missing a layer reference.`);
+      }
+      const inlineLayer = config.layers.find((layer) => layer.name === layerKey);
+      return inlineLayer?.name ?? layerKey;
     }
     default: {
       const unhandledSource: never = entry.source;
@@ -178,7 +186,10 @@ export async function resolveProjectProfileLayerName(
 
   switch (entry.source) {
     case "catalog": {
-      const selector = entry.selector!;
+      const selector = entry.selector;
+      if (!selector) {
+        throw new Error(`Catalog profile ${entry.name} is missing a layer selector.`);
+      }
       const existing = resolveLayerSelector(selector);
       if (existing) {
         assertProfileLayer(existing, `catalog profile ${entry.name}`);
@@ -208,15 +219,23 @@ export async function resolveProjectProfileLayerName(
       throw new Error(`Profile layer not found locally: ${selector}`);
     }
     case "local": {
-      const layer = resolveLayerSelector(entry.selector!);
+      const selector = entry.selector;
+      if (!selector) {
+        throw new Error(`Local profile ${entry.name} is missing a layer selector.`);
+      }
+      const layer = resolveLayerSelector(selector);
       if (!layer) {
-        throw new Error(`Profile layer not found locally: ${entry.selector}`);
+        throw new Error(`Profile layer not found locally: ${selector}`);
       }
       assertProfileLayer(layer, `local profile ${entry.name}`);
       return layer.name;
     }
     case "inline": {
-      const layerTable = findInlineLayerTable(config, entry.layer!);
+      const layerKey = entry.layer;
+      if (!layerKey) {
+        throw new Error(`Inline profile ${entry.name} is missing a layer reference.`);
+      }
+      const layerTable = findInlineLayerTable(config, layerKey);
       const tempPath = writeInlineLayerImportFile(layerTable);
       const imported = importFromFile(tempPath);
       assertProfileLayer(imported.layer, `inline profile ${entry.name}`);

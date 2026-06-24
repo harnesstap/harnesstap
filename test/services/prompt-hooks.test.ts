@@ -159,9 +159,13 @@ describe("use-checkbox-selection", () => {
   it("clears only visible items", () => {
     const hidden = { id: "hidden", label: "Hidden" };
     const visible = [{ id: "one", label: "One" }];
+    const [firstVisible] = visible;
+    if (!firstVisible) {
+      throw new Error("Expected visible item");
+    }
     const initial = new Map<string, { id: string; label: string }>([
       ["hidden", hidden],
-      ["one", visible[0]!],
+      ["one", firstVisible],
     ]);
 
     const next = clearVisible(initial, visible, keyFn);

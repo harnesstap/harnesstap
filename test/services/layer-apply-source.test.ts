@@ -156,8 +156,13 @@ describe("resolveApplyLayerSource", () => {
       const resolved = await resolveApplyLayerSource("team", {
         baseUrl: "https://mock",
         interactive: true,
-        promptAmbiguity: async ({ candidates }) =>
-          candidates.find((layer) => layer.orgSlug === "acme")!,
+        promptAmbiguity: async ({ candidates }) => {
+          const match = candidates.find((layer) => layer.orgSlug === "acme");
+          if (!match) {
+            throw new Error("Expected acme org candidate");
+          }
+          return match;
+        },
       });
 
       expect(resolved.kind).toBe("local");

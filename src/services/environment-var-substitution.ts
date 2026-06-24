@@ -13,8 +13,11 @@ export function substituteEnvironmentVars(
 ): { value: string; missing: string[] } {
   const missing = new Set<string>();
   const value = template.replace(VAR_PATTERN, (match, key: string) => {
-    if (Object.prototype.hasOwnProperty.call(vars, key)) {
-      return vars[key]!;
+    if (Object.hasOwn(vars, key)) {
+      const resolved = vars[key];
+      if (resolved !== undefined) {
+        return resolved;
+      }
     }
     missing.add(key);
     return match;

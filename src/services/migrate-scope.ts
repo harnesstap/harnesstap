@@ -289,7 +289,7 @@ export function exportScopedMigration(
       if (layers.length === 0) {
         throw new Error("Provide at least one layer name or ID to export.");
       }
-      const exportSelector = layers.length === 1 ? layers[0]! : layers;
+      const exportSelector = layers.length === 1 ? (layers[0] ?? layers) : layers;
       exportToFile(exportSelector, resolved.outputPath, {
         embedPlugins: includePlugins,
       });

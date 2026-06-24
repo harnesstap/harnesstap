@@ -392,7 +392,7 @@ describe("CLI profile", () => {
       const orphan = createLayer({ name: "orphan-profile" });
       setLayerTags(orphan.id, ["profile"]);
 
-      const depTarget = createLayer({ name: "local-dep" });
+      const _depTarget = createLayer({ name: "local-dep" });
       const depProfile = createLayer({ name: "dep-profile" });
       setLayerTags(depProfile.id, ["profile"]);
       const composition = await import("../../src/services/layer-composition.ts");

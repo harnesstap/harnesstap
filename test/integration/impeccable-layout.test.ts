@@ -30,10 +30,13 @@ describe("impeccable-layout integration", () => {
       const entries = await scanPluginSource(fixture);
       const skillInput = entries[0]?.resources.find((r) => r.type === "skill");
       expect(skillInput).toBeDefined();
+      if (!skillInput) {
+        throw new Error("Expected scanned skill resource");
+      }
 
       const resources: Resource[] = [
         makeResource({
-          ...skillInput!,
+          ...skillInput,
           id: "impeccable-skill",
         }),
       ];

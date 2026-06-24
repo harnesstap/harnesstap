@@ -37,6 +37,11 @@ const teamLayers = [
   },
 ];
 
+const [firstTeamLayer] = teamLayers;
+if (!firstTeamLayer) {
+  throw new Error("Expected team layer fixture");
+}
+
 describe("resolveBareNameFromCatalog", () => {
   it("rejects ambiguous bare slugs in non-interactive mode", async () => {
     const context = await createInitializedTestContext("bare-name-ambiguous");
@@ -107,8 +112,8 @@ describe("resolveBareNameFromCatalog", () => {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [
-          teamLayers[0]!,
-          { ...teamLayers[0]!, summary: "Duplicate list row" },
+          firstTeamLayer,
+          { ...firstTeamLayer, summary: "Duplicate list row" },
         ],
       });
 
@@ -150,7 +155,7 @@ describe("resolveInstallSelector", () => {
     try {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        layers: [teamLayers[0]!],
+        layers: [firstTeamLayer],
       });
 
       const resolved = await resolveInstallSelector("team", { baseUrl: "https://mock" });
@@ -171,6 +176,36 @@ describe("resolveInstallSelector", () => {
       layer_slug: "team",
       version: "2.0.0",
     });
+  });
+
+  it("routes bare selectors with --org through remote layer selector", async () => {
+    const resolved = await resolveInstallSelector("my-library", {
+      org: "harnessdeck-cloud",
+      version: "latest",
+    });
+    expect(resolved).toEqual({
+      org_slug: "harnessdeck-cloud",
+      catalog_slug: "default",
+      layer_slug: "my-library",
+      version: "latest",
+    });
+  });
+
+  it("requires org for bare selectors when public catalog is disabled", async () => {
+    const context = await createInitializedTestContext("install-selector-no-catalog");
+    try {
+      const catalog = await import("../../src/config/catalog.ts");
+      catalog.saveCatalogSettings(
+        { publicCatalog: false },
+        join(context.homeDir, ".harnessdeck"),
+      );
+
+      await expect(
+        resolveInstallSelector("library-name"),
+      ).rejects.toThrow("org is required");
+    } finally {
+      await context.cleanup();
+    }
   });
 
   it("detects bare install selectors", () => {

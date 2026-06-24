@@ -1,5 +1,4 @@
 import { describe, expect, it, mock, spyOn } from "bun:test";
-import inquirer from "inquirer";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
@@ -30,7 +29,7 @@ interface CapturedPrompt {
   choices?: unknown;
 }
 
-function firstPrompt(input: unknown): CapturedPrompt {
+function _firstPrompt(input: unknown): CapturedPrompt {
   if (!Array.isArray(input)) {
     return input as CapturedPrompt;
   }

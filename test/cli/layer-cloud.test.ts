@@ -481,6 +481,12 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
+      const catalog = await import("../../src/config/catalog.ts");
+      catalog.saveCatalogSettings(
+        { publicCatalog: false },
+        join(context.homeDir, ".harnessdeck"),
+      );
+
       const result = await runCli([
         "layer",
         "pull",

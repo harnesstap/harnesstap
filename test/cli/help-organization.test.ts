@@ -244,9 +244,9 @@ describe("CLI help and command organization", () => {
     const result = await runCli(["--help"]);
     expect(result.stdout).toContain("help");
     expect(result.stdout).toContain("completion");
-    expect(result.stdout).not.toMatch(/\n  concepts/);
-    expect(result.stdout).not.toMatch(/\n  guide/);
-    expect(result.stdout).not.toMatch(/\n  scenario /);
+    expect(result.stdout).not.toMatch(/\n {2}concepts/);
+    expect(result.stdout).not.toMatch(/\n {2}guide/);
+    expect(result.stdout).not.toMatch(/\n {2}scenario /);
   });
 
   it("shows grouped layer help sections", async () => {

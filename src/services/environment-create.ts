@@ -263,11 +263,15 @@ export async function runEnvironmentCreate(input: {
   }
 
   if (mode === "from-project") {
+    const projectRoot = input.fromProject;
+    if (!projectRoot) {
+      throw new Error("Missing --from-project path.");
+    }
     const captureMode = input.refresh ? "refresh" : "capture";
     const result = await captureOrRefreshEnvironment({
       mode: captureMode,
       environmentName: input.name,
-      projectRoot: input.fromProject!,
+      projectRoot,
       layerSelectors: input.layers,
       includePermissions: input.includePermissions,
       dryRun: input.dryRun,
@@ -279,9 +283,13 @@ export async function runEnvironmentCreate(input: {
     };
   }
 
+  const fromLayer = input.fromLayer;
+  if (fromLayer === undefined) {
+    throw new Error("Missing --from-layer selector.");
+  }
   return runFromLayerCreate({
     name: input.name,
-    fromLayer: input.fromLayer!,
+    fromLayer,
     bind: input.bind,
     strict: input.strict,
     dryRun: input.dryRun,

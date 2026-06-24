@@ -28,6 +28,9 @@
       "complexity": {
         "useLiteralKeys": "off",
         "useOptionalChain": "off"
+      },
+      "suspicious": {
+        "noTemplateCurlyInString": "off"
       }
     }
   }

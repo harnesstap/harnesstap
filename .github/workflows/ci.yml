@@ -34,9 +34,187 @@ jobs:
         run: |
           echo "Docs changed — run \`bun run sync:cli-docs\` in harnessdeck-cloud with sibling harnessdeck checkout."
 
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      global: ${{ steps.resolve.outputs.global }}
+      core: ${{ steps.resolve.outputs.core }}
+      platforms: ${{ steps.resolve.outputs.platforms }}
+      plugins: ${{ steps.resolve.outputs.plugins }}
+      services: ${{ steps.resolve.outputs.services }}
+      cli: ${{ steps.resolve.outputs.cli }}
+      docs: ${{ steps.resolve.outputs.docs }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths on pull request
+        if: github.event_name == 'pull_request'
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            global:
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - 'biome.json'
+              - 'tsup.config.ts'
+              - 'src/types.ts'
+              - 'src/version.ts'
+              - 'src/index.ts'
+              - 'src/cli/**'
+              - 'test/helpers/**'
+            core:
+              - 'src/db/**'
+              - 'src/models/**'
+              - 'src/config/**'
+              - 'src/constants/**'
+              - 'src/utils/**'
+            platforms:
+              - 'src/platforms/**'
+            plugins:
+              - 'src/plugins/**'
+            services:
+              - 'src/services/**'
+            cli:
+              - 'src/ui/**'
+              - 'test/cli/**'
+              - 'test/ui/**'
+            docs:
+              - 'docs/**'
+              - 'test/docs/**'
+
+      - name: Resolve change flags
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            for area in global core platforms plugins services cli docs; do
+              echo "${area}=true" >> "$GITHUB_OUTPUT"
+            done
+          else
+            for area in global core platforms plugins services cli docs; do
+              value="${{ steps.filter.outputs[area] }}"
+              echo "${area}=${value:-false}" >> "$GITHUB_OUTPUT"
+            done
+          fi
+
+  test-core:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.services == 'true' ||
+      needs.detect-changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:core
+
+  test-platforms:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.platforms == 'true' ||
+      needs.detect-changes.outputs.services == 'true' ||
+      needs.detect-changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:platforms
+
+  test-plugins:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.plugins == 'true' ||
+      needs.detect-changes.outputs.services == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:plugins
+
+  test-services:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.platforms == 'true' ||
+      needs.detect-changes.outputs.plugins == 'true' ||
+      needs.detect-changes.outputs.services == 'true' ||
+      needs.detect-changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:services
+
+  test-cli:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.core == 'true' ||
+      needs.detect-changes.outputs.services == 'true' ||
+      needs.detect-changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:cli
+
+  test-docs:
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.global == 'true' ||
+      needs.detect-changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run test:docs
+
   validate:
     runs-on: ubuntu-latest
-
+    needs:
+      - detect-changes
+      - test-core
+      - test-platforms
+      - test-plugins
+      - test-services
+      - test-cli
+      - test-docs
+    if: >-
+      always() &&
+      (needs.test-core.result == 'success' || needs.test-core.result == 'skipped') &&
+      (needs.test-platforms.result == 'success' || needs.test-platforms.result == 'skipped') &&
+      (needs.test-plugins.result == 'success' || needs.test-plugins.result == 'skipped') &&
+      (needs.test-services.result == 'success' || needs.test-services.result == 'skipped') &&
+      (needs.test-cli.result == 'success' || needs.test-cli.result == 'skipped') &&
+      (needs.test-docs.result == 'success' || needs.test-docs.result == 'skipped') &&
+      (needs.test-core.result == 'success' || needs.test-platforms.result == 'success' || needs.test-plugins.result == 'success' || needs.test-services.result == 'success' || needs.test-cli.result == 'success' || needs.test-docs.result == 'success')
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -48,9 +226,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Run tests
-        run: bun test --dots --parallel=1 --max-concurrency=1
 
       - name: Run Biome lint
         run: bun run lint

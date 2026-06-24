@@ -332,7 +332,7 @@ describe("CLI layer", () => {
 
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const resource = resourceModel.createResource(
+      const _resource = resourceModel.createResource(
         makeResourceInput({
           type: "skill",
           name: "shared-skill",

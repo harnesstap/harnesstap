@@ -72,6 +72,16 @@ export async function resolveInstallSelector(
   options: ResolveInstallSelectorOptions = {},
 ): Promise<ResolvedRemoteLayerSelector> {
   if (isBareInstallSelector(selector)) {
+    const hasRemoteHelpers = Boolean(
+      options.org || options.catalog || options.version,
+    );
+    if (hasRemoteHelpers || !isPublicCatalogEnabled()) {
+      return resolveRemoteLayerSelector(selector, {
+        org: options.org,
+        catalog: options.catalog,
+        version: options.version,
+      });
+    }
     return resolveBareNameFromCatalog(selector, options);
   }
   return resolveRemoteLayerSelector(selector, {

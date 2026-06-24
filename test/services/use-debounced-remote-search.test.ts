@@ -31,10 +31,10 @@ describe("createDebouncedRemoteSearchRunner", () => {
     const first = runner.runSearch("slow");
     const second = runner.runSearch("fast");
 
-    resolveSecond!(["fast-result"]);
+    resolveSecond?.(["fast-result"]);
     await second;
 
-    resolveFirst!(["stale-result"]);
+    resolveFirst?.(["stale-result"]);
     await first;
 
     expect(currentItems).toEqual(["fast-result"]);
@@ -69,10 +69,10 @@ describe("createDebouncedRemoteSearchRunner", () => {
     const first = runner.runSearch("slow");
     const second = runner.runSearch("fast");
 
-    resolveSecond!();
+    resolveSecond?.();
     await second;
 
-    resolveFirst!(["stale-result"]);
+    resolveFirst?.(["stale-result"]);
     await first;
 
     expect(currentError).toBe("search failed");

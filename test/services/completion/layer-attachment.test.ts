@@ -17,7 +17,7 @@ describe("layer edit attachment completion", () => {
     try {
       const targetLayer = createLayer({ name: "target-layer", version: "1.0.0" });
       createLayer({ name: "dep-layer", version: "1.0.0" });
-      const skill = createResource(makeResourceInput({ name: "combine-skill" }));
+      const _skill = createResource(makeResourceInput({ name: "combine-skill" }));
 
       const candidates = completeLayerEditAddAttachment({
         commandPath: ["layer", "edit"],

@@ -1,14 +1,18 @@
-import { Command } from "commander";
 import {
-  getCommandHelpEntry,
-} from "./services/cli-help-registry.js";
-import {
-  CliUsageError,
   conflictingOptions,
   missingRequiredArg,
 } from "./services/cli-errors.js";
-import { PACKAGE_VERSION } from "./version.js";
-import { getDb, closeDb, getDbPath, getHarnessdeckDir } from "./db/connection.js";
+import { configureCommandGroup } from "./cli/help.js";
+import { program } from "./cli/program.js";
+import { registerCommands } from "./cli/register-commands.js";
+import { renderCliError, runHarnessdeckCli } from "./cli/runtime.js";
+import {
+  collectRepeatedOption,
+  formatCommand,
+  GUIDE_SCENARIOS_URL,
+  reportNoGitOrigin,
+} from "./cli/shared.js";
+import { getDb, getDbPath, getHarnessdeckDir } from "./db/connection.js";
 import { initializeSchema } from "./db/schema.js";
 import { ui } from "./ui/index.js";
 import {
@@ -84,7 +88,7 @@ import {
 } from "./platforms/registry.js";
 import { getDedicatedSerializerPlatformIds } from "./services/platform-serializers.js";
 import { existsSync, readFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { resolve } from "node:path";
 import { resolveHomeRoot } from "./utils/home-root.js";
 import type {
   ImportedSnapshot,
@@ -111,16 +115,6 @@ import {
   uniqueHarnessTargets,
 } from "./services/harness-targets.js";
 import { parseOutputFormat, printJson } from "./utils/output-format.js";
-import { getCloudAccount, saveCloudAccount, setDefaultCloudAccount, updateCloudAccount, removeCloudAccount } from "./config/cloud-accounts.js";
-import {
-  deviceVerificationUri,
-  requestDeviceCode,
-  pollDeviceToken,
-  createCloudClient,
-} from "./services/cloud-client.js";
-import {
-  resolveCloudBaseUrl,
-} from "./config/catalog.js";
 import {
   handleLayerCatalogConnectLayerCommand,
   handleLayerCatalogConnectOrgCommand,
@@ -312,95 +306,6 @@ import {
   toResourceListRows,
 } from "./ui/resource-list-render.js";
 
-const program = new Command();
-
-function resolveInvocationName(): "harnessdeck" | "hd" {
-  return basename(process.argv[1] ?? "") === "hd" ? "hd" : "harnessdeck";
-}
-
-function formatCommand(path: string): string {
-  return `${resolveInvocationName()} ${path}`.trim();
-}
-
-function collectRepeatedOption(value: string, previous: string[]): string[] {
-  return [...previous, value];
-}
-
-const GUIDE_SCENARIOS_URL =
-  "https://github.com/harnessdeck/harnessdeck/blob/main/docs/scenarios/scenarios.md";
-
-const GIT_ORIGIN_HINTS = [
-  "Add a remote: git remote add origin <url>",
-  "Snapshots, drift, history, and revert require a git repository with origin configured.",
-];
-
-function reportNoGitOrigin(retryCommand?: string): void {
-  process.exitCode = 1;
-  const hints = [...GIT_ORIGIN_HINTS];
-  if (retryCommand) {
-    hints.push(`Then retry: ${retryCommand}`);
-  }
-  ui.danger("No git remote origin configured.", { hints });
-}
-
-function isVerboseMode(argv: string[] = process.argv): boolean {
-  return argv.includes("-v") || argv.includes("--verbose");
-}
-
-function renderCliError(error: unknown, argv: string[] = process.argv): void {
-  if (isVerboseMode(argv)) {
-    if (error instanceof Error && error.stack) {
-      console.error(error.stack);
-      return;
-    }
-    console.error(String(error));
-    return;
-  }
-
-  if (error instanceof CliUsageError) {
-    ui.danger(error.message, { hints: error.hints });
-  } else {
-    const message = error instanceof Error ? error.message : String(error);
-    ui.danger(message);
-  }
-
-  // Append contextual help for Commander-style errors
-  const contextCommand = findContextCommand(argv);
-  if (contextCommand) {
-    console.error(`\n${contextCommand.helpInformation()}`);
-  }
-}
-
-function findContextCommand(argv: string[]): Command | null {
-  // Skip node path and script path
-  const args = argv.slice(2);
-  
-  // Try to find the deepest matching command
-  let currentCommand: Command = program;
-  
-  for (const arg of args) {
-    // Skip flags
-    if (arg.startsWith("-")) {
-      continue;
-    }
-    
-    // Try to find a subcommand matching this arg
-    const subCommand = currentCommand.commands.find(
-      (cmd) => cmd.name() === arg || cmd.aliases().includes(arg)
-    );
-    
-    if (subCommand) {
-      currentCommand = subCommand;
-    } else {
-      // No matching subcommand, use current level
-      break;
-    }
-  }
-  
-  // Only return if we found a subcommand (not the root program)
-  return currentCommand !== program ? currentCommand : null;
-}
-
 async function resolveLayerMutationTarget(input: {
   layerName?: string;
   interactive?: boolean;
@@ -423,11 +328,6 @@ async function resolveLayerMutationTarget(input: {
       runLayerShowWizard({ message: input.message, profileMode: input.profileMode }),
   });
 }
-
-program.exitOverride();
-program.hook("preAction", () => {
-  process.exitCode = 0;
-});
 
 function formatCount(count: number, noun: string, plural = `${noun}s`): string {
   return `${count} ${count === 1 ? noun : plural}`;
@@ -668,298 +568,7 @@ function relativeDiscoveredPaths(
     .join(", ");
 }
 
-function isHiddenHelpCommand(command: Command): boolean {
-  return (
-    command.name() === "__complete"
-    || (command.description() as unknown) === false
-  );
-}
-
-function resolveCommandDescription(command: Command): string {
-  return command.description() || getCommandHelpEntry(command)?.description || "";
-}
-
-function isLeafHelpCommand(command: Command): boolean {
-  return command.commands.every((sub) => isHiddenHelpCommand(sub));
-}
-
-function isCommandGroup(command: Command): boolean {
-  return command.commands.some((sub) => !isHiddenHelpCommand(sub));
-}
-
-function renderTopLevelCommandHelp(cmd: Command): string {
-  const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
-  const groups = commands.filter(isCommandGroup);
-  const direct = commands.filter((command) => !isCommandGroup(command));
-
-  const sections = [
-    renderCommandSection("COMMAND GROUPS", groups),
-    renderCommandSection("PROJECT", direct),
-  ].filter((section) => section.length > 0);
-
-  return sections.join("\n\n");
-}
-
-function renderGroupedCommandHelp(cmd: Command): string {
-  const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
-
-  if (commands.length === 0) {
-    return "";
-  }
-
-  const lines: string[] = [];
-  
-  // Calculate max length for alignment
-  const commandStrs = commands.map((c) => {
-    const name = c.name();
-    const aliases = c.aliases();
-    const args = c.registeredArguments?.map((arg) => {
-      if (arg.required) {
-        return `<${arg.name()}>`;
-      }
-      return `[${arg.name()}]`;
-    }).join(" ") || "";
-    
-    let fullStr = name;
-    if (aliases.length) {
-      fullStr += ` (${aliases.join(", ")})`;
-    }
-    if (args) {
-      fullStr += ` ${args}`;
-    }
-    
-    return fullStr;
-  });
-  
-  const maxNameLength = commandStrs.length > 0 ? Math.max(...commandStrs.map((s) => s.length)) : 0;
-
-  for (let i = 0; i < commands.length; i++) {
-    const command = commands[i];
-    const nameStr = commandStrs[i];
-    if (!command || !nameStr) continue;
-    const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
-    const desc = resolveCommandDescription(command);
-    lines.push(`  ${ui.theme.command(nameStr)}${padding}${desc}`);
-  }
-
-  return lines.join("\n");
-}
-
-const LAYER_HELP_LOCAL_COMMANDS = new Set([
-  "create",
-  "list",
-  "show",
-  "edit",
-  "editor",
-  "delete",
-  "export",
-  "import",
-  "apply",
-  "diff",
-  "doctor",
-  "from-project",
-]);
-
-const LAYER_HELP_REMOTE_COMMANDS = new Set([
-  "search",
-  "catalog",
-  "pull",
-  "publish",
-]);
-
-function renderCommandSection(title: string, commands: Command[]): string {
-  if (commands.length === 0) {
-    return "";
-  }
-
-  const commandStrs = commands.map((c) => {
-    const name = c.name();
-    const aliases = c.aliases();
-    const args = c.registeredArguments?.map((arg) => {
-      if (arg.required) {
-        return `<${arg.name()}>`;
-      }
-      return `[${arg.name()}]`;
-    }).join(" ") || "";
-    let fullStr = name;
-    if (aliases.length) {
-      fullStr += ` (${aliases.join(", ")})`;
-    }
-    if (args) {
-      fullStr += ` ${args}`;
-    }
-    return fullStr;
-  });
-  const maxNameLength = Math.max(...commandStrs.map((entry) => entry.length));
-  const lines = [ui.theme.heading(title)];
-  for (let i = 0; i < commands.length; i++) {
-    const command = commands[i];
-    const nameStr = commandStrs[i];
-    if (!command || !nameStr) {
-      continue;
-    }
-    const padding = " ".repeat(Math.max(2, maxNameLength - nameStr.length + 2));
-    lines.push(`  ${ui.theme.command(nameStr)}${padding}${resolveCommandDescription(command)}`);
-  }
-  return lines.join("\n");
-}
-
-function renderLayerGroupedCommandHelp(cmd: Command): string {
-  const local = cmd.commands.filter((command) =>
-    LAYER_HELP_LOCAL_COMMANDS.has(command.name()),
-  );
-  const remote = cmd.commands.filter((command) =>
-    LAYER_HELP_REMOTE_COMMANDS.has(command.name()),
-  );
-  return [
-    renderCommandSection("LOCAL LIBRARY", local),
-    "",
-    renderCommandSection("REMOTE CATALOG", remote),
-  ].join("\n");
-}
-
-function configureCommandGroup(cmd: Command): Command {
-  cmd.helpCommand(false);
-  cmd.action(() => {
-    cmd.outputHelp();
-  });
-  return cmd;
-}
-
-function isGroupedCommandFallbackError(error: unknown): error is {
-  code: string;
-  exitCode: number;
-  message: string;
-} {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-
-  const candidate = error as {
-    code?: unknown;
-    exitCode?: unknown;
-    message?: unknown;
-  };
-
-  return candidate.code === "commander.excessArguments"
-    && candidate.exitCode === 1
-    && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|plugin|auth|migrate|harness|environment|profile)'/i.test(candidate.message);
-}
-
 const NATIVE_HARNESS_IDS = new Set(getDedicatedSerializerPlatformIds());
-
-program
-  .name("harnessdeck")
-  .description(
-    "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
-  )
-  .version(PACKAGE_VERSION, "-V, --harnessdeck-version")
-  .option("-v, --verbose", "Show verbose error output")
-  .option("--no-color", "Disable color output")
-  .option("--no-interactive", "Disable interactive prompts")
-  .helpCommand(false)
-  .configureOutput({
-    outputError: () => {},
-  })
-  .hook("preAction", (command) => {
-    const opts = command.optsWithGlobals<{ color?: boolean }>();
-    if (opts.color === false) {
-      ui.disableColor();
-    }
-  })
-  .configureHelp({
-    formatHelp: (cmd) => {
-      // Check for --no-color early before rendering help
-      if (process.argv.includes("--no-color")) {
-        ui.disableColor();
-      }
-      
-      const isTopLevel = cmd.parent === null;
-      
-      if (!isTopLevel) {
-        const lines = [
-          "",
-          ui.theme.heading("USAGE"),
-          `  ${cmd.name()} ${cmd.usage()}`,
-          "",
-        ];
-        
-        const description = resolveCommandDescription(cmd);
-        if (description) {
-          lines.push(description, "");
-        }
-
-        const args = cmd.registeredArguments?.filter((arg) => arg.description) ?? [];
-        if (args.length > 0) {
-          lines.push(ui.theme.heading("ARGUMENTS"));
-          for (const arg of args) {
-            const name = arg.required ? `<${arg.name()}>` : `[${arg.name()}]`;
-            lines.push(`  ${ui.theme.flag(name)}  ${arg.description}`);
-          }
-          lines.push("");
-        }
-
-        const helpEntry = getCommandHelpEntry(cmd);
-        if (
-          isLeafHelpCommand(cmd)
-          && helpEntry?.examples
-          && helpEntry.examples.length > 0
-        ) {
-          lines.push(ui.theme.heading("EXAMPLES"));
-          for (const example of helpEntry.examples) {
-            lines.push(`  ${formatCommand(example)}`);
-          }
-          lines.push("");
-        }
-        
-        const opts = cmd.options.filter((opt) => !opt.hidden);
-        if (opts.length > 0) {
-          lines.push(ui.theme.heading("OPTIONS"));
-          for (const opt of opts) {
-            const flags = opt.flags;
-            const desc = opt.description || "";
-            lines.push(`  ${ui.theme.flag(flags)}  ${desc}`);
-          }
-          lines.push("");
-        }
-        
-        const subcommands = cmd.name() === "layer"
-          ? renderLayerGroupedCommandHelp(cmd)
-          : renderGroupedCommandHelp(cmd);
-        if (subcommands) {
-          if (cmd.name() !== "layer") {
-            lines.push(ui.theme.heading("COMMANDS"));
-          }
-          lines.push(subcommands);
-          lines.push("");
-        }
-        
-        return lines.join("\n");
-      }
-      
-      const lines = [
-        "",
-        `${ui.theme.primary(resolveInvocationName())} ${ui.theme.muted(`v${PACKAGE_VERSION}`)}`,
-        "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
-        "",
-        ui.theme.heading("USAGE"),
-        `  ${resolveInvocationName()} [options] [command]`,
-        "",
-        ui.theme.heading("OPTIONS"),
-        `  ${ui.theme.flag("-V, --harnessdeck-version")}  output the version number`,
-        `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
-        `  ${ui.theme.flag("--no-color")}               disable color output`,
-        `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
-        `  ${ui.theme.flag("-h, --help")}               display help for command`,
-        "",
-        renderTopLevelCommandHelp(cmd),
-        "",
-      ];
-      
-      return lines.join("\n");
-    },
-  });
 
 function resolveScanConflictPolicy(opts: {
   overwrite?: boolean;
@@ -3083,12 +2692,15 @@ async function handleEnvironmentEditCommand(
       throw new Error(`Invalid --secret entry "${entry}". Expected KEY:provider:ref.`);
     }
     const [key, provider, ...refParts] = parts;
+    if (!key || !provider) {
+      throw new Error(`Invalid --secret entry "${entry}". Expected KEY:provider:ref.`);
+    }
     const providerValue = provider as "keychain" | "env" | "file";
     if (!["keychain", "env", "file"].includes(providerValue)) {
       throw new Error(`Invalid secret provider "${provider}". Use keychain, env, or file.`);
     }
     return {
-      key: key!,
+      key,
       provider: providerValue,
       ref: refParts.join(":"),
     };
@@ -6750,285 +6362,10 @@ harnessProjectCmd
   .description("Show project-scoped harness preferences")
   .action(handleHarnessProjectStatusCommand);
 
-// ── cleanup ─────────────────────────────────────────────────────────────
+registerCommands(program);
 
-process.on("exit", () => closeDb());
-
-// ── cloud ───────────────────────────────────────────────────────────────
-
-async function handleCloudLoginCommand(accountName: string | undefined, opts: { baseUrl?: string } = {}): Promise<void> {
-  const name = accountName ?? "default";
-  const baseUrl = resolveCloudBaseUrl(opts.baseUrl);
-  try {
-    const device = await requestDeviceCode(baseUrl);
-    console.log(`Visit: ${deviceVerificationUri(baseUrl)}`);
-    console.log(`Code:  ${device.user_code}`);
-    const token = await pollDeviceToken(baseUrl, device.device_code, { interval: 0.1, maxPolls: 300 });
-    const now = Math.floor(Date.now() / 1000);
-    const account = {
-      cloudBaseUrl: baseUrl,
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
-      accessTokenExpiresAt: token.expires_in ? now + token.expires_in : undefined,
-      refreshTokenExpiresAt: undefined,
-      orgId: token.orgId,
-      orgSlug: token.orgSlug,
-      scopes: token.scopes ?? [],
-    };
-    await saveCloudAccount(name, account);
-    await setDefaultCloudAccount(name);
-    ui.success(`Saved cloud account: ${name}`);
-  } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-  }
-}
-
-async function handleCloudWhoamiCommand(opts: { account?: string; format?: string } = {}): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  const { account } = await getCloudAccount(opts.account);
-  if (!account || !account.accessToken) {
-    if (format === "json") {
-      printJson({});
-      return;
-    }
-    ui.warn("Not authenticated to cloud.");
-    return;
-  }
-  try {
-    const client = createCloudClient({
-      baseUrl: account.cloudBaseUrl,
-      token: {
-        access_token: account.accessToken as string,
-        refresh_token: account.refreshToken as string | undefined,
-        expires_at: typeof account.accessTokenExpiresAt === "number"
-          ? (account.accessTokenExpiresAt as number)
-          : undefined,
-      },
-    });
-    const info = await client.whoami();
-    if (format === "json") {
-      printJson(info);
-      return;
-    }
-    ui.info(JSON.stringify(info));
-  } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-  }
-}
-
-async function handleCloudOrgsCommand(opts: { account?: string; switch?: string; format?: string } = {}): Promise<void> {
-  const format = parseOutputFormat(opts.format);
-  const { accountName, account } = await getCloudAccount(opts.account);
-  if (!account || !account.accessToken) {
-    if (format === "json") {
-      printJson([]);
-      return;
-    }
-    ui.warn("Not authenticated to cloud.");
-    return;
-  }
-  try {
-    const client = createCloudClient({
-      baseUrl: account.cloudBaseUrl,
-      token: {
-        access_token: account.accessToken as string,
-        refresh_token: account.refreshToken as string | undefined,
-        expires_at: typeof account.accessTokenExpiresAt === "number"
-          ? (account.accessTokenExpiresAt as number)
-          : undefined,
-      },
-    });
-    const orgs = await client.listOrgs();
-    if (opts.switch) {
-      const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)['slug']) === opts.switch || String((o as Record<string, unknown>)['id']) === opts.switch);
-      if (!target) {
-        process.exitCode = 1;
-        ui.danger(`Organization not found: ${opts.switch}`);
-        return;
-      }
-      if (accountName) {
-      await updateCloudAccount(accountName, { orgId: String((target as Record<string, unknown>)['id']), orgSlug: String((target as Record<string, unknown>)['slug']) });
-      }
-      ui.success(`Switched to org: ${String((target as Record<string, unknown>)["slug"])}`);
-      if (format === "json") {
-        printJson(target);
-      }
-      return;
-    }
-    if (format === "json") {
-      printJson(orgs);
-      return;
-    }
-    for (const o of orgs as Record<string, unknown>[]) {
-      ui.info(`${String(o["slug"])} ${String(o["name"])}`);
-    }
-  } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-  }
-}
-
-async function handleCloudLogoutCommand(opts: { account?: string } = {}): Promise<void> {
-  const { accountName, account } = await getCloudAccount(opts.account);
-  if (!accountName) {
-    ui.warn("No cloud account configured.");
-    return;
-  }
-  try {
-    if (account?.refreshToken) {
-      try {
-        const client = createCloudClient({
-          baseUrl: account.cloudBaseUrl,
-          token: {
-            access_token: account.accessToken as string || "",
-            refresh_token: account.refreshToken as string,
-            expires_at: typeof account.accessTokenExpiresAt === "number"
-              ? (account.accessTokenExpiresAt as number)
-              : undefined,
-          },
-        });
-        await client.revokeRefreshToken();
-      } catch (_) {
-        // ignore revoke errors
-      }
-    }
-    await removeCloudAccount(accountName);
-    ui.success(`Logged out: ${accountName}`);
-  } catch (err) {
-    ui.danger(err instanceof Error ? err.message : String(err));
-  }
-}
-
-// ── auth ────────────────────────────────────────────────────────────────
-
-const authCmd = configureCommandGroup(
-  program
-    .command("auth")
-    .alias("a")
-    .description("Authenticate with HarnessDeck Cloud and manage cloud accounts"),
-);
-
-authCmd
-  .command("login [account]")
-  .option("--base-url <url>", "Cloud base URL")
-  .description("Log into HarnessDeck Cloud via device authentication")
-  .action(async (account: string | undefined, opts: { baseUrl?: string }) => {
-    await handleCloudLoginCommand(account, opts);
-  });
-
-authCmd
-  .command("status")
-  .option("--account <name>", "Account name")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("Show authenticated user and account context")
-  .action(async (opts: { account?: string; format?: string }) => {
-    await handleCloudWhoamiCommand(opts);
-  });
-
-authCmd
-  .command("orgs")
-  .option("--account <name>", "Account name")
-  .option("--switch <org_slug>", "Switch to the given organization slug")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .description("List organizations and optionally switch")
-  .action(async (opts: { account?: string; switch?: string; format?: string }) => {
-    await handleCloudOrgsCommand(opts);
-  });
-
-authCmd
-  .command("logout")
-  .option("--account <name>", "Account name")
-  .description("Log out and remove local cloud account")
-  .action(async (opts: { account?: string }) => {
-    await handleCloudLogoutCommand(opts);
-  });
-
-function knownTopLevelCommandTokens(): Set<string> {
-  const reserved = new Set<string>();
-  for (const command of program.commands) {
-    reserved.add(command.name());
-    for (const alias of command.aliases()) {
-      reserved.add(alias);
-    }
-  }
-  return reserved;
-}
-
-function rewriteProfileShorthandArgv(argv: string[]): string[] {
-  const candidate = argv[2];
-  if (!candidate || candidate.startsWith("-")) {
-    return argv;
-  }
-
-  // Top-level command names and aliases are reserved and always win.
-  if (knownTopLevelCommandTokens().has(candidate)) {
-    return argv;
-  }
-
-  let profileNames: Set<string>;
-  try {
-    const db = getDb();
-    initializeSchema(db);
-    profileNames = new Set(
-      listProfileLayersCommand().map((profile) => profile.name),
-    );
-  } catch {
-    return argv;
-  }
-
-  if (!profileNames.has(candidate)) {
-    return argv;
-  }
-
-  return [argv[0] ?? "node", argv[1] ?? "harnessdeck", "profile", "use", candidate, ...argv.slice(3)];
-}
-
-export { program };
-
-export async function runHarnessdeckCli(
-  argv: string[] = process.argv,
-): Promise<void> {
-  program.name(resolveInvocationName());
-  process.exitCode = 0;
-  if (argv.length <= 2) {
-    program.outputHelp();
-    return;
-  }
-  const effectiveArgv = rewriteProfileShorthandArgv(argv);
-  try {
-    await program.parseAsync(effectiveArgv);
-  } catch (error) {
-    if (isPromptCancellationError(error)) {
-      return;
-    }
-
-    const code =
-      error && typeof error === "object" && "code" in error
-        ? String((error as { code: unknown }).code)
-        : "";
-    if (isGroupedCommandFallbackError(error)) {
-      const match = error.message.match(/too many arguments for '([^']+)'\. Expected 0 arguments but got \d+\./i);
-      const commandName = match?.[1] ?? "command";
-      const commandIndex = effectiveArgv.findIndex(
-        (value, index) => index >= 2 && value === commandName,
-      );
-      const attemptedSubcommand =
-        commandIndex >= 0 ? effectiveArgv[commandIndex + 1] : undefined;
-      error.code = "commander.unknownCommand";
-      error.message = attemptedSubcommand
-        ? `error: unknown command '${commandName} ${attemptedSubcommand}'`
-        : `error: unknown command '${commandName}'`;
-      throw error;
-    }
-    if (
-      code === "commander.help" ||
-      code === "commander.helpDisplayed" ||
-      code === "commander.version"
-    ) {
-      return;
-    }
-    throw error;
-  }
-}
+export { program } from "./cli/program.js";
+export { runHarnessdeckCli } from "./cli/runtime.js";
 
 if (import.meta.main) {
   try {
