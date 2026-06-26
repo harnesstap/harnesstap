@@ -14,7 +14,7 @@ Type "harnessdeck resource list"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck layer search foundation"
+Type "harnessdeck layer list --search foundation --remote-only"
 Enter
 Sleep 3000ms
 

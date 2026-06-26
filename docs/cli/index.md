@@ -20,7 +20,7 @@ HarnessDeck is an agent harness configuration toolkit for Claude Code, Codex, Cu
 
 ```bash
 hd init --main codex --aliases claude-code,cursor
-hd layer search foundation
+hd layer list --search foundation --remote-only
 hd layer apply engineering-foundation
 hd status .
 ```

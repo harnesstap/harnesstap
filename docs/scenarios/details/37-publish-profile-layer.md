@@ -15,7 +15,7 @@ harnessdeck auth login work
 harnessdeck profile create work --description "Work machine preset"
 harnessdeck layer edit work --add layer:engineering-foundation
 harnessdeck profile publish work --account work
-harnessdeck profile search foundation --account work
+harnessdeck profile list --search foundation --remote-only --account work
 harnessdeck profile pull harnessdeck-cloud/default/work@1.0.0
 harnessdeck profile use work
 ```

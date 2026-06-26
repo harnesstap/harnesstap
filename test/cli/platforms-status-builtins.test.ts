@@ -67,7 +67,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
     }
   });
 
-  it("rejects the removed platform list command", async () => {
+  it("rejects unknown platform subcommands", async () => {
     await expect(runCli(["platform", "list"], { commandName: "hd" })).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,

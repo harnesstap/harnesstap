@@ -22,7 +22,7 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 **Workspace** — The single implicit local library in `~/.harnessdeck/harnessdeck.db`: all layers, resources, and environments live here. Share offline with `migrate export` / `migrate import` (`--workspace`, `--layer`, or `--resource`).
 
-**Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer search`, `layer pull`). Users cherry-pick catalog layers into their local workspace or profile stack.
+**Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer list --search`, `layer pull`). Users cherry-pick catalog layers into their local workspace or profile stack.
 
 **Account** — Local HarnessDeck Cloud login identity (tokens, org context) stored in `cloud-accounts.json`. Distinct from a **profile** layer (global agent preset).
 

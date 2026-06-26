@@ -10,7 +10,7 @@ artifact from the source repo.
 
 Start with the full reference:
 
-**[Portability limits](../portability-limits.md)**
+**[Portability limits](../../portability-limits.md)**
 
 Quick checklist:
 
@@ -24,8 +24,8 @@ harnessdeck layer apply my-setup --project . --harness claude-code,codex,windsur
 # Check mirror warnings for harness-specific surfaces
 harnessdeck mirror . --dry-run --format json
 
-# Check registry capabilities before targeting unfamiliar harnesses
-harnessdeck harness list --supported
+# List harness capabilities (use --supported for natively serialized hosts only)
+harnessdeck harness list --format json
 ```
 
 **Fully bridgeable:** skills, instructions, rules, MCP (stdio/http), static

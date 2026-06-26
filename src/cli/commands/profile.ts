@@ -7,7 +7,7 @@ import { listAttachedLayerRefs } from "../../services/layer-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
 import { createLayerFromSource } from "../../services/layer-from-source.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
-import { handleLayerListCommand, warnProfileSearchDeprecated } from "../../services/layer-list.js";
+import { handleLayerListCommand } from "../../services/layer-list.js";
 import {
   promptMaterializationConflict,
   resolveApplyConflictPolicy,
@@ -24,7 +24,14 @@ import { detectGlobalProfileStatus } from "../../services/global-profile-drift.j
 import { maybePromptProfileEnable } from "../../services/profile-enable-prompt.js";
 import { maybePromptProfileLayerDelete } from "../../services/profile-delete-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "../../services/profile-switch-prompt.js";
-import { handleProfileUseProjectDelegation } from "../../services/use-command.js";
+import { resolveProfileUseSelection } from "../../services/profile-use-resolve.js";
+import {
+  executeProjectUse,
+} from "../../services/project-config-use.js";
+import {
+  mapProfileUseDelegationOptions,
+  renderProjectUseHuman,
+} from "../../services/use-command.js";
 import {
   resolveSkillPackageCheckout,
   type LayerSourceConflictPolicy,
@@ -50,22 +57,6 @@ import { handleLayerShowCommand } from "../handlers/layer-show-command.js";
 import { resolveLayerMutationTarget } from "../handlers/resolve-layer-mutation-target.js";
 import { renderCliError } from "../runtime.js";
 import { collectRepeatedOption, formatCommand } from "../shared.js";
-async function handleProfileSearchCommand(
-  query: string,
-  opts: { account?: string; format?: string; baseUrl?: string; noInteractive?: boolean },
-) {
-  warnProfileSearchDeprecated();
-  await handleLayerListCommand({
-    search: query,
-    remoteOnly: true,
-    tag: PROFILE_LAYER_TAG,
-    profileMode: true,
-    format: parseOutputFormat(opts.format),
-    account: opts.account,
-    baseUrl: opts.baseUrl,
-    noInteractive: opts.noInteractive,
-  });
-}
 
 async function handleProfilePullCommand(
   selector: string,
@@ -544,16 +535,39 @@ profileCmd
     const format = parseOutputFormat(opts.format);
 
     if (!name) {
-      if (await handleProfileUseProjectDelegation(opts)) {
-        return;
-      }
-      const globalProfileName = opts.profile;
-      if (!globalProfileName) {
+      try {
+        const selection = await resolveProfileUseSelection({
+          name,
+          profile: opts.profile,
+          project: opts.project,
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+          format: opts.format,
+        });
+        if (!selection) {
+          process.exitCode = 1;
+          ui.danger(
+            "Profile name is required. Pass a profile layer name, --profile <key> from project config, or run interactively.",
+          );
+          return;
+        }
+        if (selection.kind === "project") {
+          const result = await executeProjectUse(
+            mapProfileUseDelegationOptions({ ...opts, profile: selection.profileKey }),
+          );
+          if (format === "json") {
+            printJson(result);
+            return;
+          }
+          renderProjectUseHuman(result);
+          return;
+        }
+        name = selection.layerName;
+      } catch (err) {
         process.exitCode = 1;
-        ui.danger("Profile name is required when no project config is present.");
+        ui.danger(err instanceof Error ? err.message : String(err));
         return;
       }
-      name = globalProfileName;
     }
 
     const conflictPolicy = resolveApplyConflictPolicy({
@@ -731,23 +745,6 @@ profileCmd
       }
       ui.danger(err instanceof Error ? err.message : String(err));
     }
-  });
-
-profileCmd
-  .command("search")
-  .argument("<query>", "Search query")
-  .option("--account <name>", "Cloud account name")
-  .option("--base-url <url>", "Cloud base URL")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option("--no-interactive", "Disable interactive wizards")
-  .description("Search catalog profile layers (deprecated: use profile list --search)")
-  .action(async (query: string, opts: {
-    account?: string;
-    baseUrl?: string;
-    format?: string;
-    noInteractive?: boolean;
-  }) => {
-    await handleProfileSearchCommand(query, opts);
   });
 
 profileCmd

@@ -18,8 +18,8 @@ harnessdeck layer apply my-setup --project . --harness windsurf,cline,github-cop
 # Apply to instruction-tier harnesses alongside native-skill hosts
 harnessdeck layer apply my-setup --project . --harness claude-code,codex,windsurf,cursor
 
-# Inspect which harnesses support which surfaces
-harnessdeck harness list --supported
+# List all harnesses; instruction-tier hosts have skillEmission: instruction-only
+harnessdeck harness list --format json
 ```
 
 **Expected emission paths** (instruction-tier hosts):
@@ -53,5 +53,5 @@ harnessdeck harness project status --project . --format json
 ```
 
 Compare dry-run output across harnesses before writing. See
-[portability limits](../portability-limits.md) for intentional per-host
+[portability limits](../../portability-limits.md) for intentional per-host
 tailoring vs hand-tuned adapter copies.

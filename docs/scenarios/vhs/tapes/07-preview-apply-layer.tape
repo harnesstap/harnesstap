@@ -6,7 +6,7 @@ Type "harnessdeck init --main codex --aliases claude-code,cursor"
 Enter
 Sleep 1500ms
 
-Type "harnessdeck layer search foundation"
+Type "harnessdeck layer list --search foundation --remote-only"
 Enter
 Sleep 2500ms
 

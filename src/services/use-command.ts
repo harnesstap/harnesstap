@@ -3,6 +3,7 @@ import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
 import { ui } from "../ui/index.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
+import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
 import {
   executeProjectUse,
   type ProjectUseOptions,
@@ -96,7 +97,7 @@ function listProjectProfiles(config: ResolvedProjectConfig, format: "human" | "j
   });
 }
 
-function renderProjectUseHuman(result: ProjectUseResult): void {
+export function renderProjectUseHuman(result: ProjectUseResult): void {
   if (result.skipped) {
     const environmentSuffix = result.environment_name
       ? ` with environment ${ui.theme.accent(result.environment_name)}`
@@ -161,9 +162,7 @@ export async function handleUseCommand(opts: UseCommandOptions): Promise<void> {
     const config = findProjectConfig(projectPath);
     if (!config) {
       process.exitCode = 1;
-      ui.danger(
-        "No project config found. Run `hd config init` to create `.harnessdeck/config.toml`.",
-      );
+      ui.danger(MISSING_PROJECT_CONFIG_MESSAGE);
       return;
     }
     listProjectProfiles(config, format);

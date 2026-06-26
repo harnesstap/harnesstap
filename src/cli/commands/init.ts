@@ -87,7 +87,7 @@ function printQuickStartGuide(): void {
   console.log("");
   console.log(`  ${formatCommand("profile use default")}`);
   console.log(
-    `  ${formatCommand(`layer search ${CANONICAL_CATALOG_SEARCH_HINT}`)}`,
+    `  ${formatCommand(`layer list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
   );
   console.log(
     `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,

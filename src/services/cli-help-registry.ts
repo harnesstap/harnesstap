@@ -81,8 +81,12 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "config.init": {
-    description: "Create a starter .harnessdeck/config.toml (not yet implemented)",
-    examples: ["config init"],
+    description: "Create a starter .harnessdeck/config.toml from local profile layers",
+    examples: [
+      "config init",
+      "config init --profile work --profile personal --default work",
+      "config init --force --format json",
+    ],
   },
   status: {
     description: "Show current project status and drift summary",
@@ -114,7 +118,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "layer.list": {
     description:
-      "List local layers plus streamed remote catalog layers (default); use --local-only for legacy local-only output",
+      "List local layers plus streamed remote catalog layers (default); use --local-only for local library only",
     examples: [
       "layer list",
       "layer list --search foundation",
@@ -155,14 +159,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "layer apply my-layer",
       "layer apply team-base team-overrides --project .",
       "layer apply my-layer --dry-run",
-    ],
-  },
-  "layer.search": {
-    description:
-      "Search remote layer libraries (deprecated: use layer list --search)",
-    examples: [
-      "layer search foundation",
-      "layer search typescript --format json",
     ],
   },
   "layer.catalog.list": {
@@ -300,14 +296,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     examples: [
       "profile delete work",
       "profile delete work --layer -y",
-    ],
-  },
-  "profile.search": {
-    description:
-      "Search catalog profile layers (deprecated: use profile list --search)",
-    examples: [
-      "profile search foundation",
-      "profile search work --format json",
     ],
   },
   "profile.pull": {

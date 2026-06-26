@@ -29,6 +29,5 @@ plugin declarations in the library. Then compare:
 `layer apply --strict-plugin-versions` is the enforcement path when you want
 CI or automation to fail on a mismatch.
 
-There is no longer a dedicated `plugin list` / `plugin show` inventory
-command; inspect the settings files directly when scope merge is the root
-cause.
+When scope merge is the root cause, inspect `.claude/settings.json` in the
+repo and `~/.claude/settings.json` at user scope directly.

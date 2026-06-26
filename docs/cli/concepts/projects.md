@@ -124,7 +124,7 @@ Use [Profiles](./profiles.md) for machine-wide defaults and projects for reposit
 
 ## Project profile config
 
-Repositories can declare named **profiles** in `.harnessdeck/config.toml` (or legacy `deck.toml`). This file maps profile keys to local layers, catalog selectors, or inline layer tables — plus optional project-scoped environments.
+Repositories can declare named **profiles** in `.harnessdeck/config.toml`. This file maps profile keys to local layers, catalog selectors, or inline layer tables — plus optional project-scoped environments.
 
 Example:
 
@@ -169,6 +169,16 @@ hd config validate --project .
 hd config validate --format json   # exit 1 when invalid
 ```
 
+Create a starter config from local profile layers:
+
+```bash
+hd config init
+hd config init --profile work --profile personal --default work
+hd config init --force   # overwrite an existing file
+```
+
+`config init` maps each selected profile layer to a `source = "local"` entry and sets `default_profile`.
+
 Switch to a configured profile with `hd use`:
 
 ```bash
@@ -177,7 +187,7 @@ hd use --profile dev          # apply the dev profile directly
 hd use --list                 # list profiles without applying
 ```
 
-Project profiles reuse the same layer sources as machine-wide [Profiles](./profiles.md), but apply through `hd use` in the repository instead of `profile use` at home paths. See [Scenario 40](../../scenarios/details/40-use-project-profile.md).
+Project profiles reuse the same layer sources as machine-wide [Profiles](./profiles.md), but apply through `hd use` in the repository instead of `profile use` at home paths.
 
 ## Related
 

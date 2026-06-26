@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import { ui } from "../ui/index.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
+import { executeConfigInit } from "./config-init.js";
+import { MISSING_PROJECT_CONFIG_MESSAGE, PROJECT_CONFIG_EXISTS_MESSAGE } from "./project-config-messages.js";
 import {
   findProjectConfig,
   resolveProfileEnvironment,
@@ -68,12 +70,10 @@ function requireProjectConfig(
     if (format === "json") {
       printJson({
         error:
-          "No project config found. Create `.harnessdeck/config.toml` or run `hd config init` when available.",
+          MISSING_PROJECT_CONFIG_MESSAGE,
       });
     } else {
-      ui.danger(
-        "No project config found. Create `.harnessdeck/config.toml` or run `hd config init` when available.",
-      );
+      ui.danger(MISSING_PROJECT_CONFIG_MESSAGE);
     }
     return null;
   }
@@ -162,13 +162,11 @@ export function handleConfigValidateCommand(opts: ConfigCommandOptions): void {
     if (format === "json") {
       printJson({
         valid: false,
-        errors: ["No project config found at .harnessdeck/config.toml"],
+        errors: [MISSING_PROJECT_CONFIG_MESSAGE],
       });
       return;
     }
-    ui.danger(
-      "No project config found. Create `.harnessdeck/config.toml` or run `hd config init` when available.",
-    );
+    ui.danger(MISSING_PROJECT_CONFIG_MESSAGE);
     return;
   }
 
@@ -193,9 +191,47 @@ export function handleConfigValidateCommand(opts: ConfigCommandOptions): void {
   }
 }
 
-export function handleConfigInitCommand(): void {
-  process.exitCode = 1;
-  ui.warn(
-    "config init is not available yet. Create `.harnessdeck/config.toml` manually — see `hd help scenario 40` or docs/cli/concepts/projects.md.",
-  );
+export async function handleConfigInitCommand(opts: {
+  project?: string;
+  force?: boolean;
+  profile?: string[];
+  defaultProfile?: string;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  format?: string;
+}): Promise<void> {
+  const format = parseOutputFormat(opts.format);
+  try {
+    const result = await executeConfigInit({
+      project: opts.project,
+      force: opts.force,
+      profiles: opts.profile,
+      defaultProfile: opts.defaultProfile,
+      interactive: opts.interactive,
+      noInteractive: opts.noInteractive,
+      format: opts.format,
+    });
+    if (format === "json") {
+      printJson(result);
+      return;
+    }
+    ui.success(`Created project config at ${result.config_path}.`);
+    ui.kvBlock([
+      { key: "Default profile", value: result.default_profile },
+      { key: "Profiles", value: result.profiles.join(", ") },
+    ]);
+    ui.hint("Run `hd config show` to inspect or `hd use` to switch profiles.");
+  } catch (err) {
+    process.exitCode = 1;
+    const message = err instanceof Error ? err.message : String(err);
+    if (format === "json") {
+      printJson({ error: message });
+      return;
+    }
+    if (message === PROJECT_CONFIG_EXISTS_MESSAGE) {
+      ui.warn(message);
+      return;
+    }
+    ui.danger(message);
+  }
 }

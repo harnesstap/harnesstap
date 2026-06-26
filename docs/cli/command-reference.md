@@ -152,13 +152,12 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 ### Commands
 
 - `layer create <name>`
-- `layer list` — local layers plus streamed remote catalog layers (default); use `--local-only` for legacy local-only output
+- `layer list` — local layers plus streamed remote catalog layers (default); use `--local-only` for local layers only
 - `layer show <name>`
 - `layer edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `layer delete [name]`
 - `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
-- `layer search <query>` — **deprecated**; use `layer list --search <query> --remote-only`
-- `layer pull [selector]` — download a remote layer bundle and import it; without a selector on TTY, opens `layer list` browse (deprecated path)
+- `layer pull <selector>` — download a remote layer bundle and import it
 - `layer catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
 - `layer catalog` — interactive publish-binding wizard (layer picker → catalog checkboxes)
 - `layer catalog bindings [layer]` — show effective publish targets (non-TTY) or edit bindings (`--add`, `--remove`, `--clear`; `--add` replaces the full allow list)
@@ -190,7 +189,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer list --format json`
 - `layer list --show-id`
 - `layer list -s, --search <query>` — filter local and remote layers by name, description, or tags
-- `layer list --local-only` — list only local layers (JSON shape matches legacy `layer list`)
+- `layer list --local-only` — list only local layers
 - `layer list --remote-only` — skip local section; remote-only JSON emits a top-level array
 - `layer list --tag <tag>` — filter remote catalog layers by tag
 - `layer list --account <name>` / `--base-url <url>` — cloud account and base URL for remote listing
@@ -229,8 +228,6 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `layer pull --version <constraint>`
 - `layer pull --account <name>`
 - `layer pull --base-url <url>`
-- `layer search --account <name>`
-- `layer search --base-url <url>`
 - `layer publish org/catalog` — one-off publish to a single catalog (does not change bindings)
 - `layer publish --org <slug> --catalog <slug>` — one-off override (same as positional `org/catalog`)
 - `layer publish --account <name>`
@@ -277,7 +274,6 @@ Root shorthand: when the first argument is not a known command and matches a loc
 - `profile use <name>` — merge profile stack, apply globally, set active pointer
 - `profile create <name>` — create profile layer, promote an existing layer, or import from `--from`
 - `profile delete <name>` — demote a profile layer and optionally delete the underlying layer
-- `profile search <query>` — **deprecated**; use `profile list --search <query> --remote-only`
 - `profile pull <selector>` — install from catalog (`layer pull` alias; warns if not profile-tagged)
 - `profile publish <name>` — publish with profile validation warnings (`layer publish` alias)
 
@@ -306,7 +302,6 @@ Root shorthand: when the first argument is not a known command and matches a loc
 - `profile use --base-url <url>`
 - `profile use --no-pull` — fail when composition refs are missing locally
 - `profile use --format json`
-- `profile search --account <name>` / `--base-url <url>` / `--format json`
 - `profile pull` — same flags as `layer pull` (`--as`, `--org`, `--catalog`, `--version`, `--account`, `--base-url`)
 - `profile publish --org <slug>` / `--catalog <slug>` / `--account <name>` / `--format json`
 

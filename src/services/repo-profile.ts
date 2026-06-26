@@ -7,7 +7,6 @@ export type RepoProfile =
   | "skill-package"
   | "plugin-source"
   | "layer-bundle"
-  | "deck-repo"
   | "project-config"
   | "harness-project"
   | "unknown";
@@ -26,13 +25,7 @@ export function classifyRepo(rootPath: string): RepoClassification {
   if (hasPluginSourceLayout(rootPath)) {
     profiles.push("plugin-source");
   }
-  if (existsSync(join(rootPath, ".harnessdeck", "deck.toml"))) {
-    profiles.push("deck-repo");
-  }
-  if (
-    existsSync(join(rootPath, ".harnessdeck", "config.toml")) ||
-    existsSync(join(rootPath, ".harnessdeck", "deck.toml"))
-  ) {
+  if (existsSync(join(rootPath, ".harnessdeck", "config.toml"))) {
     profiles.push("project-config");
   }
   if (detectPlatforms(rootPath).length > 0) {
@@ -43,13 +36,11 @@ export function classifyRepo(rootPath: string): RepoClassification {
     ? "skill-package"
     : profiles.includes("plugin-source")
       ? "plugin-source"
-      : profiles.includes("deck-repo")
-        ? "deck-repo"
-        : profiles.includes("project-config")
-          ? "project-config"
-          : profiles.includes("harness-project")
-            ? "harness-project"
-            : "unknown";
+      : profiles.includes("project-config")
+        ? "project-config"
+        : profiles.includes("harness-project")
+          ? "harness-project"
+          : "unknown";
 
   return { primary, profiles };
 }

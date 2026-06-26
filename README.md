@@ -85,7 +85,7 @@ Initialise HarnessDeck, scan an existing repository, browse catalog layers, appl
 harnessdeck init --main codex --aliases claude-code,cursor
 harnessdeck scan .                    # detect existing resources
 harnessdeck resource list                     # review discovered resources
-harnessdeck layer search foundation           # browse catalog layers
+harnessdeck layer list --search foundation --remote-only  # browse catalog layers
 harnessdeck layer apply engineering-foundation \
   --project .                                 # apply a catalog baseline
 harnessdeck status .                  # confirm the final state
@@ -164,7 +164,7 @@ Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`.
 
 2. **Apply** a catalog layer by bare name (fetches from the public `harnessdeck-cloud` catalog when needed).
    ```bash
-   hd layer search foundation
+   hd layer list --search foundation --remote-only
    hd layer apply engineering-foundation
    ```
 
@@ -304,7 +304,7 @@ flowchart LR
 Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd layer apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
 
 ```bash
-hd layer search foundation
+hd layer list --search foundation --remote-only
 hd layer apply engineering-foundation
 ```
 
@@ -477,7 +477,7 @@ HarnessDeck Cloud supports publishing, searching, and installing shared layers. 
 
 5. **Search** the remote layer catalog.
    ```bash
-   harnessdeck layer search <query> [--account <name>] [--format human|json]
+   harnessdeck layer list --search <query> --remote-only [--account <name>] [--format human|json]
    ```
 
 6. **Add** a layer from the cloud.

@@ -11,7 +11,7 @@ Typical commands:
 
 ```bash
 harnessdeck init --main codex --aliases claude-code,cursor
-harnessdeck layer search foundation
+harnessdeck layer list --search foundation --remote-only
 harnessdeck layer apply engineering-foundation
 ```
 

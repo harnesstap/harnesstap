@@ -16,7 +16,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("Database");
       expect(result.stdout).toContain("NEXT STEPS");
       expect(result.stdout).not.toContain("already exists");
-      expect(result.stdout).toContain("layer search foundation");
+      expect(result.stdout).toContain("layer list --search foundation");
       expect(result.stdout).toContain("profile use default");
       expect(result.stdout).toContain("layer apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);

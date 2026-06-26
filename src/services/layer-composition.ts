@@ -322,22 +322,17 @@ export function resolveAttachmentType(
   context?: { layerName?: string },
 ): ResourceType {
   const parsed = parseResourceSelector(selector);
-  const normalizedExplicit =
-    explicitType === "layer-dependency" ? "layer" : explicitType;
   if (parsed.type) {
-    if ((parsed.type as string) === "layer-dependency") {
-      return "layer";
-    }
     if (!(RESOURCE_TYPES as readonly string[]).includes(parsed.type)) {
       throw new Error(`Invalid --type: ${parsed.type}`);
     }
     return parsed.type;
   }
-  if (normalizedExplicit) {
-    if (!(RESOURCE_TYPES as readonly string[]).includes(normalizedExplicit)) {
+  if (explicitType) {
+    if (!(RESOURCE_TYPES as readonly string[]).includes(explicitType)) {
       throw new Error(`Invalid --type: ${explicitType}`);
     }
-    return normalizedExplicit as ResourceType;
+    return explicitType as ResourceType;
   }
   throw new LayerAttachmentHintError(
     `Attachment type required for selector "${selector}"`,
@@ -373,23 +368,15 @@ export function attachmentTypeRequiredHints(
   ];
 }
 
-const LAYER_ATTACHMENT_TYPE_ALIASES = [
-  ...LAYER_ATTACHMENT_TYPES,
-  "layer-dependency",
-] as const;
-
 export type LayerAttachmentType = (typeof LAYER_ATTACHMENT_TYPES)[number];
 
 export function validateLayerAttachmentType(type: string | undefined): string | undefined {
   if (!type) {
     return undefined;
   }
-  if (type === "layer-dependency") {
-    return "layer";
-  }
   if (!(LAYER_ATTACHMENT_TYPES as readonly string[]).includes(type)) {
     throw new Error(
-      `Invalid --type. Valid: ${LAYER_ATTACHMENT_TYPE_ALIASES.join(", ")}`,
+      `Invalid --type. Valid: ${LAYER_ATTACHMENT_TYPES.join(", ")}`,
     );
   }
   return type;
@@ -436,18 +423,11 @@ function resolveTypedResource(selector: string, type: ResourceType) {
   return resourceResult.resource;
 }
 
-function normalizeLegacyType(type: string | undefined): string | undefined {
-  if (type === "layer-dependency") {
-    return "layer";
-  }
-  return type;
-}
-
 function normalizeAttachmentSelector(selector: string, explicitType?: string): string {
   if (selector.includes(":")) {
-    return selector.replace(/^layer-dependency:/, "layer:");
+    return selector;
   }
-  const type = normalizeLegacyType(explicitType);
+  const type = explicitType;
   if (type === "plugin_pin") {
     return `plugin_pin:${selector}`;
   }
@@ -467,7 +447,7 @@ function normalizeAttachmentSelector(selector: string, explicitType?: string): s
 }
 
 export async function addLayerAttachment(input: AddLayerAttachmentInput): Promise<string> {
-  const explicitType = normalizeLegacyType(input.type);
+  const explicitType = input.type;
   const selector = normalizeAttachmentSelector(input.selector, explicitType);
   const attachmentType = resolveAttachmentType(selector, explicitType, {
     layerName: input.layer.name,
@@ -527,7 +507,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
   message: string;
   removed: boolean;
 } {
-  const explicitType = normalizeLegacyType(input.type);
+  const explicitType = input.type;
   const selector = normalizeAttachmentSelector(input.selector, explicitType);
   const attachmentType = resolveAttachmentType(selector, explicitType, {
     layerName: input.layer.name,

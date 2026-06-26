@@ -18,9 +18,6 @@ export function isLayerAttachmentOnlyType(type: string | undefined): boolean {
   if (!type) {
     return false;
   }
-  if (type === "layer-dependency") {
-    return true;
-  }
   return type === "plugin_pin" || type === "layer";
 }
 

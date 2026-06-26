@@ -65,7 +65,7 @@ Cloud accounts are stored in `~/.harnessdeck/cloud-accounts.json` (or under `HAR
 Search the shared layer catalog in your active cloud organization to find reusable layers before you install them locally.
 
 ```bash
-harnessdeck layer search <query> [--account <name>] [--format human|json]
+harnessdeck layer list --search <query> --remote-only [--account <name>] [--format human|json]
 ```
 
 ### Pull a shared layer locally
@@ -133,7 +133,7 @@ harnessdeck auth orgs --switch org-slug
 Browse the layer catalog for stacks and workflows your team already maintains.
 
 ```bash
-harnessdeck layer search react
+harnessdeck layer list --search react --remote-only
 ```
 
 ### 5. Apply or pull a shared layer

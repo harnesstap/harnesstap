@@ -25,6 +25,7 @@ import {
   type ProjectLayerTable,
   type ResolvedProjectConfig,
 } from "./project-config.js";
+import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
 import { promptForProjectProfile } from "./wizards/project-use.js";
 import { shouldUseWizard } from "./wizards/shared.js";
 import { useProfileCommand } from "./profile-commands.js";
@@ -82,7 +83,7 @@ function resolveLayerNameFromSelector(selector: string): string {
   return parseLayerSelector(selector).name;
 }
 
-function resolveExpectedLayerName(
+export function resolveExpectedLayerName(
   config: ResolvedProjectConfig,
   entry: ProjectProfileEntry,
 ): string {
@@ -294,9 +295,7 @@ export async function executeProjectUse(
 ): Promise<ProjectUseResult> {
   const config = findProjectConfig(options.project ?? process.cwd());
   if (!config) {
-    throw new Error(
-      "No project config found. Run `hd config init` to create `.harnessdeck/config.toml`.",
-    );
+    throw new Error(MISSING_PROJECT_CONFIG_MESSAGE);
   }
 
   const profileKey = await resolveProjectProfileKey(config, {

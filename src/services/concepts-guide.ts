@@ -52,7 +52,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
         purpose: "Sync alias harnesses from on-disk main",
       },
       {
-        command: `layer search ${CANONICAL_CATALOG_SEARCH_HINT}`,
+        command: `layer list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`,
         purpose: "Browse public catalog layers",
       },
       {

@@ -5,12 +5,13 @@ import {
   handleConfigValidateCommand,
 } from "../../services/config-command.js";
 import { configureCommandGroup } from "../help.js";
+import { collectRepeatedOption } from "../shared.js";
 
 export function registerConfigCommands(root: Command): void {
   const configCmd = configureCommandGroup(
     root
       .command("config")
-      .description("Inspect and validate project profile config (.harnessdeck/config.toml)"),
+      .description("Manage project profile config (.harnessdeck/config.toml)"),
   );
 
   configCmd
@@ -33,8 +34,36 @@ export function registerConfigCommands(root: Command): void {
 
   configCmd
     .command("init")
-    .description("Create a starter .harnessdeck/config.toml (not yet implemented)")
-    .action(() => {
-      handleConfigInitCommand();
+    .option("--project <path>", "Project directory", ".")
+    .option("--force", "Overwrite an existing .harnessdeck/config.toml")
+    .option(
+      "--profile <name>",
+      "Profile layer to include (repeatable; defaults to all local profile layers)",
+      collectRepeatedOption,
+      [],
+    )
+    .option("--default <name>", "Default profile key in project config")
+    .option("--no-interactive", "Disable interactive prompts")
+    .option("--interactive", "Enable interactive prompts")
+    .option("--format <mode>", "Output format: human or json", "human")
+    .description("Create a starter .harnessdeck/config.toml from local profile layers")
+    .action(async (opts: {
+      project?: string;
+      force?: boolean;
+      profile?: string[];
+      default?: string;
+      noInteractive?: boolean;
+      interactive?: boolean;
+      format?: string;
+    }) => {
+      await handleConfigInitCommand({
+        project: opts.project,
+        force: opts.force,
+        profile: opts.profile,
+        defaultProfile: opts.default,
+        interactive: opts.interactive,
+        noInteractive: opts.noInteractive,
+        format: opts.format,
+      });
     });
 }

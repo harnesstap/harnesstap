@@ -134,8 +134,10 @@ describe("CLI output format", () => {
       try {
         const search = await runCli([
           "layer",
-          "search",
+          "list",
+          "--search",
           "x",
+          "--remote-only",
           "--account",
           "test",
           "--base-url",

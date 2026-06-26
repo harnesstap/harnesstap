@@ -84,7 +84,7 @@ Search, pull, and publish profile-tagged layers through HarnessDeck Cloud:
 
 ```bash
 hd auth login
-hd profile search react
+hd profile list --search react --remote-only
 hd profile pull org/work-stack
 hd profile publish work --org acme --catalog default
 ```

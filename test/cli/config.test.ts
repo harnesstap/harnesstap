@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
+import { createLayer, setLayerTags } from "../../src/models/layer-model.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
@@ -127,14 +128,52 @@ layer = "missing-layer"
     }
   });
 
-  it("stubs config init with a hint", async () => {
+  it("creates project config from local profile layers", async () => {
     const context = await createTestContext("cli-config-init");
 
     try {
-      const result = await runCli(["config", "init"]);
+      await runCli(["init", "--no-default-profile"]);
+      const work = createLayer({ name: "work" });
+      setLayerTags(work.id, ["profile"]);
+      const personal = createLayer({ name: "personal" });
+      setLayerTags(personal.id, ["profile"]);
+
+      const result = await runCli([
+        "config",
+        "init",
+        "--no-interactive",
+        "--profile",
+        "work",
+        "--profile",
+        "personal",
+        "--default",
+        "work",
+      ]);
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stdout).toContain("Created project config");
+      expect(result.stdout).toContain("work");
+      expect(result.stdout).toContain("personal");
+
+      const show = await runCli(["config", "show", "--format", "json"]);
+      const payload = JSON.parse(show.stdout);
+      expect(payload.default_profile).toBe("work");
+      expect(payload.profiles).toHaveLength(2);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("refuses to overwrite existing project config without --force", async () => {
+    const context = await createTestContext("cli-config-init-existing");
+
+    try {
+      await runCli(["init"]);
+      writeProjectConfig(context.projectDir);
+      const result = await runCli(["config", "init", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stdout).toMatch(/not available yet/i);
+      expect(result.stdout).toMatch(/already exists/i);
     } finally {
       await context.cleanup();
     }

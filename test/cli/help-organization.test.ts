@@ -67,7 +67,7 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("keeps removed layer subcommands as unknown commands", async () => {
+  it("rejects unknown layer subcommands", async () => {
     for (const args of [
       ["layer", "validate", "empty-layer"],
       ["layer", "export", "empty-layer"],
@@ -234,7 +234,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("layer");
     expect(result.stdout).toContain("layer apply");
     expect(result.stdout).toContain("mirror .");
-    expect(result.stdout).toContain("layer search foundation");
+    expect(result.stdout).toContain("layer list --search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
     expect(result.stdout).toContain("hd help scenario");
     expect(result.stdout).toMatch(/11\s+Start from a catalog baseline/);

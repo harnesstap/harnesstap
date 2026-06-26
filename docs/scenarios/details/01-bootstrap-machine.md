@@ -13,7 +13,7 @@ Typical commands:
 harnessdeck init
 harnessdeck init --main claude-code --aliases cursor,codex
 harnessdeck harness list
-harnessdeck layer search fullstack
+harnessdeck layer list --search fullstack --remote-only
 ```
 
 What this gives you:

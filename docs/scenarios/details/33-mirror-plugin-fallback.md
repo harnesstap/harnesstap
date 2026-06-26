@@ -54,6 +54,6 @@ harness tree is completely empty.
 
 Pair with [Scenario 31](./31-dual-mode-plugin-import.md) to import plugin
 resources into the local database first. See [Scenario 27](./27-project-sync.md)
-for the baseline mirror workflow and [portability limits](../portability-limits.md)
+for the baseline mirror workflow and [portability limits](../../portability-limits.md)
 for harness-specific surfaces that emit mirror warnings (runtime plugins, pi
 extensions, Gemini manifests).

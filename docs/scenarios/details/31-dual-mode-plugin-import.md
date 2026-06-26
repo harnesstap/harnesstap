@@ -29,5 +29,5 @@ Dry-run output shows two sections when both sides contribute: harness platforms
 and plugin imports. Imported plugin resources carry provenance metadata
 (`source_plugin_kind`, `relative_path`) for audit and `resource sync`.
 
-See [portability limits](../portability-limits.md) for what plugin import does
+See [portability limits](../../portability-limits.md) for what plugin import does
 and does not cover (hooks with install-time paths, runtime-only adapters).

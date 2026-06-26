@@ -34,7 +34,7 @@ export interface ResolvedProjectConfig extends ProjectConfig {
   configPath: string;
 }
 
-const CONFIG_FILE_NAMES = ["config.toml", "deck.toml"] as const;
+const CONFIG_FILE_NAMES = ["config.toml"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);

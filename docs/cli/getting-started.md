@@ -50,7 +50,7 @@ Apply a public catalog baseline in a few minutes.
 2. **Apply** a catalog layer by bare name (fetches from the public HarnessDeck Cloud catalog when needed).
 
    ```bash
-   hd layer search foundation
+   hd layer list --search foundation --remote-only
    hd layer apply engineering-foundation
    ```
 

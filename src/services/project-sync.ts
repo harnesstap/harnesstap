@@ -364,7 +364,7 @@ export async function syncProject(
     };
     createSnapshot({
       project_id: projectId,
-      label: `Before project sync (${harnesses.main_harness})`,
+      label: `Before mirror (${harnesses.main_harness})`,
       state: snapshotState,
     });
   }

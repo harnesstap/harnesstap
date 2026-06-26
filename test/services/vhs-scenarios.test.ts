@@ -147,7 +147,7 @@ describe("VHS scenario manifest", () => {
     // Tape contains the visible commands from the approved story
     expect(tape).toContain('Type "harnessdeck scan ."');
     expect(tape).toContain('Type "harnessdeck resource list"');
-    expect(tape).toContain('Type "harnessdeck layer search foundation"');
+    expect(tape).toContain('Type "harnessdeck layer list --search foundation --remote-only"');
     expect(tape).toContain('Type "harnessdeck layer apply engineering-foundation"');
     expect(tape).toContain('Type "harnessdeck status ."');
 

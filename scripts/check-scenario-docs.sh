@@ -12,6 +12,9 @@ FORBIDDEN=(
   'project sync'
   'cloud login'
   'built-in starter'
+  '](../portability-limits.md)'
+  'layer search'
+  'profile search'
 )
 
 failures=0
@@ -22,6 +25,13 @@ for pattern in "${FORBIDDEN[@]}"; do
     failures=$((failures + 1))
   fi
 done
+
+# Legacy project config filename (not *.harnessdeck.toml export bundles).
+if rg -n -P '(?<![\w.-])deck\.toml' "$DETAILS" >/tmp/scenario-docs-drift.txt 2>/dev/null; then
+  echo "Forbidden pattern in scenario docs: deck.toml (legacy project config)"
+  cat /tmp/scenario-docs-drift.txt
+  failures=$((failures + 1))
+fi
 
 if [[ "$failures" -gt 0 ]]; then
   echo "Scenario docs drift check failed ($failures pattern group(s))."

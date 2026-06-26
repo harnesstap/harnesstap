@@ -9,14 +9,15 @@ import {
 describe("scenario guide", () => {
   it("lists all scenario ids", () => {
     const ids = listScenarioIds();
-    expect(ids.length).toBeGreaterThanOrEqual(28);
+    expect(ids.length).toBe(38);
     expect(ids).toContain(11);
     expect(ids).toContain(28);
+    expect(ids).toContain(40);
   });
 
   it("lists scenario summaries with titles", () => {
     const summaries = listScenarioSummaries();
-    expect(summaries.length).toBeGreaterThanOrEqual(28);
+    expect(summaries.length).toBe(38);
     const scenario11 = summaries.find((summary) => summary.id === 11);
     expect(scenario11?.title.toLowerCase()).toContain("catalog");
     expect(scenario11?.frequency).toBeTruthy();

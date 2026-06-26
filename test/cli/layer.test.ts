@@ -128,7 +128,7 @@ describe("CLI layer", () => {
   });
 
 
-  it("layer combine/detach --type layer-dependency manage dependencies via CLI", async () => {
+  it("layer combine/detach --type layer manage dependencies via CLI", async () => {
     const context = await createTestContext("cli-layer-dependency");
     try {
       await runCli(["init"]);
@@ -136,7 +136,7 @@ describe("CLI layer", () => {
 
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--no-interactive"]);
+      await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer", "--version", "^1.0.0", "--no-interactive"]);
 
       const layer = layerModel.getLayer("team-stack@1.2.0");
       if (!layer) throw new Error("Expected layer to exist");
@@ -146,7 +146,7 @@ describe("CLI layer", () => {
       expect(deps[0].dependency_name).toBe("baseline");
       expect(deps[0].version_constraint).toBe("^1.0.0");
 
-      await runCli(["layer", "edit", "team-stack@1.2.0", "--remove", "baseline", "--type", "layer-dependency", "--no-interactive"]);
+      await runCli(["layer", "edit", "team-stack@1.2.0", "--remove", "baseline", "--type", "layer", "--no-interactive"]);
 
       const afterRemove = layerModel.listLayerDependencies(layer.id);
       expect(afterRemove).toHaveLength(0);
@@ -155,12 +155,12 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer combine --type layer-dependency reports error for invalid layer selector instead of crashing", async () => {
+  it("layer combine --type layer reports error for invalid layer selector instead of crashing", async () => {
     const context = await createTestContext("cli-layer-dep-invalid-selector");
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["layer", "edit", "team-stack@not-semver", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--no-interactive"]);
+      const result = await runCli(["layer", "edit", "team-stack@not-semver", "--add", "baseline", "--type", "layer", "--version", "^1.0.0", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/invalid version constraint/i);
@@ -171,12 +171,12 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer combine --type layer-dependency sets a failing exit code when the layer is missing", async () => {
+  it("layer combine --type layer sets a failing exit code when the layer is missing", async () => {
     const context = await createTestContext("cli-layer-dep-missing-layer");
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["layer", "edit", "missing-layer", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--no-interactive"]);
+      const result = await runCli(["layer", "edit", "missing-layer", "--add", "baseline", "--type", "layer", "--version", "^1.0.0", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/layer not found: missing-layer/i);
@@ -186,13 +186,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer combine --type layer-dependency sets a failing exit code for an invalid version constraint", async () => {
+  it("layer combine --type layer sets a failing exit code for an invalid version constraint", async () => {
     const context = await createTestContext("cli-layer-dep-invalid-version");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer-dependency", "--version", "not-semver", "--no-interactive"]);
+      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer", "--version", "not-semver", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/invalid version constraint/i);
@@ -201,12 +201,12 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer uncombine --type layer-dependency sets a failing exit code when the layer is missing", async () => {
+  it("layer uncombine --type layer sets a failing exit code when the layer is missing", async () => {
     const context = await createTestContext("cli-layer-remove-dep-missing-layer");
     try {
       await runCli(["init"]);
 
-      const result = await runCli(["layer", "edit", "missing-layer", "--remove", "baseline", "--type", "layer-dependency", "--no-interactive"]);
+      const result = await runCli(["layer", "edit", "missing-layer", "--remove", "baseline", "--type", "layer", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/layer not found: missing-layer/i);
@@ -215,13 +215,13 @@ describe("CLI layer", () => {
     }
   });
 
-  it("layer uncombine --type layer-dependency sets a failing exit code when the dependency is missing", async () => {
+  it("layer uncombine --type layer sets a failing exit code when the dependency is missing", async () => {
     const context = await createTestContext("cli-layer-remove-dep-missing-dependency");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--remove", "baseline", "--type", "layer-dependency", "--no-interactive"]);
+      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--remove", "baseline", "--type", "layer", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toMatch(/dependency "baseline" not found/i);
@@ -659,7 +659,7 @@ describe("CLI layer", () => {
     }
   });
 
-  it("rejects the removed layer validate command", async () => {
+  it("rejects unknown layer validate subcommand", async () => {
     await expect(runCli(["layer", "validate", "empty-layer"])).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
@@ -667,7 +667,7 @@ describe("CLI layer", () => {
     } satisfies Partial<CommanderError>);
   });
 
-  it("rejects the removed layer export command", async () => {
+  it("rejects unknown layer export subcommand", async () => {
     await expect(runCli(["layer", "export", "team-setup"])).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
@@ -675,7 +675,7 @@ describe("CLI layer", () => {
     } satisfies Partial<CommanderError>);
   });
 
-  it("rejects the removed layer import command", async () => {
+  it("rejects unknown layer import subcommand", async () => {
     await expect(runCli(["layer", "import", "./team.harnessdeck.toml"])).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
@@ -933,7 +933,8 @@ describe("CLI layer", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Invalid --type. Valid:");
       expect(result.stderr).toContain("plugin_pin");
-      expect(result.stderr).toContain("layer-dependency");
+      expect(result.stderr).toContain("layer");
+      expect(result.stderr).not.toContain("layer-dependency");
     } finally {
       await context.cleanup();
     }
@@ -988,7 +989,7 @@ describe("CLI layer", () => {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
-      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer-dependency", "--version", "^1.0.0", "--embed", "--no-interactive"]);
+      const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer", "--version", "^1.0.0", "--embed", "--no-interactive"]);
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("--embed is only supported for plugin_pin attachments");

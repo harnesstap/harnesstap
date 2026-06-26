@@ -92,7 +92,6 @@ import { resolveCatalogSearchProjectRoot } from "../../services/layer-search-app
 import {
   configureLayerListInteractiveDeps,
   handleLayerListCommand,
-  warnLayerSearchDeprecated,
 } from "../../services/layer-list.js";
 import {
   deleteCatalogLayer,
@@ -1858,45 +1857,6 @@ addApplyCommandOptions(
   await handleApplyCommand(layers as [string, ...string[]] | [], opts);
 });
 
-layerCmd
-  .command("search")
-  .argument("<query>", "Search query for layers on the cloud catalog")
-  .option("--account <name>", "Cloud account to use")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
-  .option("--format <mode>", "Output format: human or json", "human")
-  .option("--no-interactive", "Disable interactive wizards")
-  .description("Search remote layer libraries (deprecated: use layer list --search)")
-  .action(async (
-    query: string,
-    opts: {
-      account?: string;
-      baseUrl?: string;
-      format?: string;
-      noInteractive?: boolean;
-    },
-  ) => {
-    const db = getDb();
-    initializeSchema(db);
-    warnLayerSearchDeprecated();
-    try {
-      await handleLayerListCommand({
-        search: query,
-        remoteOnly: true,
-        format: parseOutputFormat(opts.format),
-        account: opts.account,
-        baseUrl: opts.baseUrl,
-        noInteractive: opts.noInteractive,
-      });
-    } catch (error) {
-      if (isPromptCancellationError(error)) {
-        process.exitCode = 1;
-        return;
-      }
-      process.exitCode = 1;
-      ui.danger(error instanceof Error ? error.message : String(error));
-    }
-  });
-
 const layerCatalogCmd = layerCmd
   .command("catalog")
   .description("Manage publish catalog bindings and connected pull sources");
@@ -2088,7 +2048,7 @@ layerCatalogCmd
 
 layerCmd
   .command("pull")
-  .argument("[selector]", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
+  .argument("<selector>", "Remote selector: org/catalog/layer[@version], org/layer[@version], or layer[@version] with --org")
   .option("--as <name>", "Install under a different local layer name")
   .option("--org <slug>", "Organization slug (when selector omits org)")
   .option("--catalog <slug>", "Catalog slug (default: default)")

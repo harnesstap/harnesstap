@@ -74,7 +74,7 @@ Switch the home active environment to change runtime values without rebuilding t
 Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessDeck Cloud public catalog**, not inside the npm package.
 
 ```bash
-hd layer search foundation
+hd layer list --search foundation --remote-only
 hd layer apply engineering-foundation
 ```
 

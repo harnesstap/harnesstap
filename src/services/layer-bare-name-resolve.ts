@@ -1,9 +1,5 @@
 import { listLayersInScope } from "./catalog-client.js";
 import { isPublicCatalogEnabled } from "../config/catalog.js";
-import {
-  catalogAliasHint,
-  resolveCatalogLayerAlias,
-} from "./catalog-aliases.js";
 import type { CatalogLayer } from "./catalog-types.js";
 import {
   parseLayerSelector,
@@ -195,27 +191,11 @@ export async function resolveBareNameFromCatalog(
   let matches = exactCatalogMatches(catalogResults, parsed.name);
 
   if (matches.length === 0) {
-    const aliasTarget = resolveCatalogLayerAlias(parsed.name);
-    if (aliasTarget) {
-      const aliasResults = await listLayersInScope(
-        { q: aliasTarget, limit: 100, sort: "name" },
-        { account: options.account, baseUrl: options.baseUrl },
-      );
-      matches = exactCatalogMatches(aliasResults, aliasTarget);
-    }
-  }
-
-  if (matches.length === 0) {
-    const hints = [
-      "hd layer search <query>",
+    throw new LayerResolveError(`Layer not found: ${selector}`, [
+      "hd layer list --search <query> --remote-only",
       "hd layer pull org/catalog/slug",
       "hd layer list",
-    ];
-    const aliasHint = catalogAliasHint(parsed.name);
-    if (aliasHint) {
-      hints.unshift(aliasHint);
-    }
-    throw new LayerResolveError(`Layer not found: ${selector}`, hints);
+    ]);
   }
 
   const match = await pickCatalogLayerMatch(selector, matches, options);

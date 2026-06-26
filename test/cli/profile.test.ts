@@ -278,7 +278,7 @@ describe("CLI profile", () => {
     }
   });
 
-  it("supports profile search with profile tag filter", async () => {
+  it("supports profile list --search with profile tag filter", async () => {
     const context = await createTestContext("cli-profile-search");
     try {
       await runCli(["init"]);
@@ -320,8 +320,10 @@ describe("CLI profile", () => {
 
       const result = await runCli([
         "profile",
-        "search",
+        "list",
+        "--search",
         "work",
+        "--remote-only",
         "--account",
         "test",
         "--base-url",

@@ -7,6 +7,8 @@
 Use this when a repository ships `.harnessdeck/config.toml` with named profiles
 so teammates can switch stacks without remembering layer selectors.
 
+Create the file with `hd config init` (from local profile layers) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `urn:harnessdeck:project:v1` schema.
+
 ## Inspect the config
 
 ```bash

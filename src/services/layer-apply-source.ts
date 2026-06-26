@@ -225,7 +225,7 @@ export async function resolveApplyLayerSource(
 
   if (!isPublishedSelector(selector)) {
     throw new LayerResolveError(`Layer not found: ${selector}`, [
-      "hd layer search <query>",
+      "hd layer list --search <query> --remote-only",
       "hd layer pull org/catalog/name",
       "hd layer list",
     ]);

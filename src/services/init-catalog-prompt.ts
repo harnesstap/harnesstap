@@ -23,7 +23,7 @@ export async function maybePromptInitCatalogInstall(input: {
     message: "Browse public catalog layers now?",
     choices: [
       { name: "Yes — install a layer into the local library", value: "yes" as const },
-      { name: "No — I'll use layer search / layer apply later", value: "no" as const },
+      { name: "No — I'll use layer list / layer apply later", value: "no" as const },
     ],
   });
 

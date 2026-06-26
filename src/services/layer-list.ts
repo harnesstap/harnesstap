@@ -11,8 +11,6 @@ import { renderCatalogListChunk } from "../ui/catalog-list-render.js";
 import { formatLocalLayerListName } from "../ui/layer-list-render.js";
 import type { Column } from "../ui/table.js";
 import { ui } from "../ui/index.js";
-import { renderWarn } from "../ui/status.js";
-import { catalogAliasHint } from "./catalog-aliases.js";
 import { listLayersInScope } from "./catalog-client.js";
 import { renderCatalogLayerPreviewShow } from "./catalog-layer-preview.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
@@ -103,46 +101,6 @@ let interactiveDeps: LayerListInteractiveDeps | null = null;
 
 export function configureLayerListInteractiveDeps(deps: LayerListInteractiveDeps): void {
   interactiveDeps = deps;
-}
-
-let layerSearchDeprecationWarned = false;
-let layerPullBrowseDeprecationWarned = false;
-let profileSearchDeprecationWarned = false;
-
-export function warnLayerSearchDeprecated(): void {
-  if (layerSearchDeprecationWarned) {
-    return;
-  }
-  layerSearchDeprecationWarned = true;
-  console.warn(
-    renderWarn(
-      `\`layer search\` is deprecated; use \`${formatCommand("layer list --search <query>")}\` instead`,
-    ),
-  );
-}
-
-export function warnLayerPullBrowseDeprecated(): void {
-  if (layerPullBrowseDeprecationWarned) {
-    return;
-  }
-  layerPullBrowseDeprecationWarned = true;
-  console.warn(
-    renderWarn(
-      `\`layer pull\` without a selector is deprecated; use \`${formatCommand("layer list")}\` to browse and install`,
-    ),
-  );
-}
-
-export function warnProfileSearchDeprecated(): void {
-  if (profileSearchDeprecationWarned) {
-    return;
-  }
-  profileSearchDeprecationWarned = true;
-  console.warn(
-    renderWarn(
-      `\`profile search\` is deprecated; use \`${formatCommand("profile list --search <query>")}\` instead`,
-    ),
-  );
 }
 
 function formatCommand(path: string): string {
@@ -690,12 +648,7 @@ export async function handleLayerListCommand(opts: HandleLayerListCommandOpts): 
       && opts.search?.trim()
       && remoteCount === 0
     ) {
-      const aliasHint = catalogAliasHint(opts.search.trim());
-      if (aliasHint) {
-        ui.hint(aliasHint);
-      } else {
-        ui.dim("No remote results.");
-      }
+      ui.dim("No remote results.");
     }
 
     printListSummaryFooter(localLayers.length, remoteCount, sourceCount, includeLocal, includeRemote);
