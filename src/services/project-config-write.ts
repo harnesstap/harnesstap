@@ -27,7 +27,7 @@ export function writeStarterProjectConfig(input: {
   force?: boolean;
 }): { configPath: string } {
   const root = resolve(input.projectPath);
-  const configDir = join(root, ".harnessdeck");
+  const configDir = join(root, ".harnesstap");
   const configPath = join(configDir, "config.toml");
 
   if (existsSync(configPath) && !input.force) {

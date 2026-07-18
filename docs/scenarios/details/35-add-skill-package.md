@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when you want to install skills from a GitHub repo or local skill
-package in one step — similar to `skills add`, but with HarnessDeck library
+package in one step — similar to `skills add`, but with HarnessTap library
 import and optional layer composition.
 
 Typical commands:
@@ -27,9 +27,9 @@ harnessdeck add ./vendor/skills --project . --skill triage --yes
 The command:
 
 1. Resolves the source (GitHub shorthand, URL, or local path) and clones into
-   `~/.harnessdeck/cache/sources/` when remote.
+   `~/.harnesstap/cache/sources/` when remote.
 2. Discovers skills recursively under `skills/` or `.agents/skills/`.
-3. Imports **all** discovered skills into the HarnessDeck library under a
+3. Imports **all** discovered skills into the HarnessTap library under a
    source namespace (for example `mattpocock/skills`).
 4. Installs the selected subset to the hub at `~/.agents/skills/{name}/` (global)
    or `{project}/.agents/skills/{name}/` (project), with fan-out symlinks to

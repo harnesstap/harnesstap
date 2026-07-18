@@ -65,7 +65,7 @@ describe("resolveSecretRef", () => {
     expect(() =>
       resolveSecretRef({
         provider: "keychain",
-        ref: "harnessdeck/__missing_hd_secret_item__",
+        ref: "harnesstap/__missing_ht_secret_item__",
       }),
     ).toThrow(/keychain item/i);
   });

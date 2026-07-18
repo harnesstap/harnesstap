@@ -20,7 +20,7 @@ export const RESOURCE_TYPES = [
   ...COMPOSITION_RESOURCE_TYPES,
 ] as const;
 
-/** Resource types shown in default `hd resource list` (excludes layer composition refs). */
+/** Resource types shown in default `ht resource list` (excludes layer composition refs). */
 export const LISTABLE_RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
   "plugin_pin",

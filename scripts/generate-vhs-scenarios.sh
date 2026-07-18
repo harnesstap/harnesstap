@@ -64,8 +64,8 @@ prepare_git_repo() {
   local dir="$1"
   git -C "$dir" init -q
   git -C "$dir" config user.email "demo@example.com"
-  git -C "$dir" config user.name "HarnessDeck Demo"
-  git -C "$dir" remote add origin "git@github.com:acme/harnessdeck-demo.git"
+  git -C "$dir" config user.name "HarnessTap Demo"
+  git -C "$dir" remote add origin "git@github.com:acme/harnesstap-demo.git"
   git -C "$dir" add -A
   git -C "$dir" commit --allow-empty -q -m "init"
 }
@@ -76,26 +76,27 @@ create_vhs_commands() {
   local hd_dir="$3"
   local project_dir="$4"
 
-  cat >"$bin_dir/harnessdeck" <<EOF
+  cat >"$bin_dir/harnesstap" <<EOF
 #!/usr/bin/env bash
 export HOME="$home_dir"
-export HARNESSDECK_HOME="$hd_dir"
-export HARNESSDECK_NO_INTERACTIVE=1
+export HARNESSTAP_HOME="$hd_dir"
+export HARNESSTAP_NO_INTERACTIVE=1
 cd "$project_dir"
 exec node "$ROOT/dist/index.js" "\$@"
 EOF
 
-  chmod +x "$bin_dir/harnessdeck"
+  cp "$bin_dir/harnesstap" "$bin_dir/ht"
+  chmod +x "$bin_dir/harnesstap" "$bin_dir/ht"
 }
 
 cd "$ROOT"
 
 for row in "${SCENARIOS[@]}"; do
   IFS=$'\t' read -r key tape output fixture <<<"$row"
-  work_root="$(mktemp -d "${TMPDIR:-/tmp}/harnessdeck-vhs-${key}-XXXX")"
+  work_root="$(mktemp -d "${TMPDIR:-/tmp}/harnesstap-vhs-${key}-XXXX")"
   bin_dir="$work_root/bin"
   home_dir="$work_root/home"
-  hd_dir="$work_root/harnessdeck-home"
+  hd_dir="$work_root/harnesstap-home"
   project_dir="$work_root/project"
   mkdir -p "$bin_dir" "$home_dir" "$hd_dir" "$project_dir"
 
@@ -108,8 +109,8 @@ for row in "${SCENARIOS[@]}"; do
 
   PATH="$bin_dir:$PATH" \
   HOME="$home_dir" \
-  HARNESSDECK_HOME="$hd_dir" \
-  HARNESSDECK_NO_INTERACTIVE=1 \
+  HARNESSTAP_HOME="$hd_dir" \
+  HARNESSTAP_NO_INTERACTIVE=1 \
   HD_PROJECT_ROOT="$project_dir" \
   HD_SCENARIO_KEY="$key" \
   vhs "$ROOT/$tape"

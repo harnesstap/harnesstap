@@ -65,9 +65,9 @@ describe("project-config", () => {
   it("walk-up finds nearest ancestor config in monorepo fixture", () => {
     const root = createTempDir("project-config-monorepo");
     try {
-      writeTextFile(join(root, ".harnessdeck", "config.toml"), VALID_PROJECT_CONFIG);
+      writeTextFile(join(root, ".harnesstap", "config.toml"), VALID_PROJECT_CONFIG);
       writeTextFile(
-        join(root, "packages", "app", ".harnessdeck", "config.toml"),
+        join(root, "packages", "app", ".harnesstap", "config.toml"),
         `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "app"
@@ -85,7 +85,7 @@ selector = "app-layer"
       const resolved = findProjectConfig(deepPath);
       expect(resolved).not.toBeNull();
       expect(resolved?.rootPath).toBe(join(root, "packages", "app"));
-      expect(resolved?.configPath).toBe(join(root, "packages", "app", ".harnessdeck", "config.toml"));
+      expect(resolved?.configPath).toBe(join(root, "packages", "app", ".harnesstap", "config.toml"));
       expect(resolved?.default_profile).toBe("app");
     } finally {
       cleanupDir(root);
@@ -95,7 +95,7 @@ selector = "app-layer"
   it("parses valid config with multiple profiles", () => {
     const root = createTempDir("project-config-valid");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(configPath, VALID_PROJECT_CONFIG);
 
       const config = parseProjectConfigFile(configPath);
@@ -159,7 +159,7 @@ selector = "app-layer"
   it("rejects layer v1 schema at config path", () => {
     const root = createTempDir("project-config-layer-collision");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(
         configPath,
         `schema = "urn:harnesstap:layer:v1"
@@ -181,7 +181,7 @@ description = "layer bundle misplaced in project config"
   it("rejects unknown profile source", () => {
     const root = createTempDir("project-config-unknown-source");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(
         configPath,
         `schema = "urn:harnesstap:project:v1"
@@ -203,7 +203,7 @@ selector = "team-stack"
   it("rejects duplicate profile names", () => {
     const root = createTempDir("project-config-duplicate-profiles");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(
         configPath,
         `schema = "urn:harnesstap:project:v1"
@@ -230,7 +230,7 @@ selector = "acme/platform/two"
   it("local.toml overrides default_profile", () => {
     const root = createTempDir("project-config-local-overrides");
     try {
-      const configDir = join(root, ".harnessdeck");
+      const configDir = join(root, ".harnesstap");
       writeTextFile(
         join(configDir, "config.toml"),
         `schema = "urn:harnesstap:project:v1"
@@ -262,7 +262,7 @@ selector = "team-stack"
   it("resolveProfileEnvironment uses entry, then default_environment", () => {
     const root = createTempDir("project-config-env-precedence");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(configPath, VALID_PROJECT_CONFIG);
       const config = parseProjectConfigFile(configPath);
 
@@ -285,7 +285,7 @@ selector = "team-stack"
   it("validateProjectConfig accepts valid inline layer references", () => {
     const root = createTempDir("project-config-validate-valid");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(configPath, VALID_PROJECT_CONFIG);
       const config = parseProjectConfigFile(configPath);
 
@@ -298,7 +298,7 @@ selector = "team-stack"
   it("validateProjectConfig rejects unknown inline layer references", () => {
     const root = createTempDir("project-config-validate-inline");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(
         configPath,
         `schema = "urn:harnesstap:project:v1"
@@ -326,7 +326,7 @@ layer = "missing-layer"
   it("validateProjectConfig rejects unknown default_profile", () => {
     const root = createTempDir("project-config-validate-default-profile");
     try {
-      const configPath = join(root, ".harnessdeck", "config.toml");
+      const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(
         configPath,
         `schema = "urn:harnesstap:project:v1"

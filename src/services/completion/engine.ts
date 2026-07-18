@@ -8,7 +8,7 @@ import type {
 } from "./types.js";
 import { normalizeFlagName } from "./utils.js";
 
-const INVOCATION_NAMES = new Set(["hd", "harnessdeck"]);
+const INVOCATION_NAMES = new Set(["ht", "harnesstap"]);
 
 const GLOBAL_FLAG_NAMES = [
   "-v",
@@ -417,7 +417,7 @@ export function collectCommandPaths(
   prefix: string[] = [],
 ): string[] {
   const name = command.name();
-  const path = name === "harnessdeck" || name === "hd" ? prefix : [...prefix, name];
+  const path = name === "harnesstap" || name === "ht" ? prefix : [...prefix, name];
   const paths: string[] = [];
 
   if (path.length > 0) {

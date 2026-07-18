@@ -4,7 +4,7 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when plugin install trees on disk have changed and HarnessDeck's
+Use this when plugin install trees on disk have changed and HarnessTap's
 library copies are stale or missing resolved versions.
 
 Typical commands:
@@ -21,4 +21,4 @@ resources, re-importing from install paths under `~/.claude/plugins`,
 plugin is not installed locally yet.
 
 For layer-level validation of plugin refs and version constraints, use
-`harnessdeck layer doctor my-setup --check plugin-metadata`.
+`harnesstap layer doctor my-setup --check plugin-metadata`.

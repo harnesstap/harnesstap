@@ -58,11 +58,11 @@ describe("transport TOML round-trip", () => {
     expect(parsed.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
   });
 
-  it("writes layer exports to .harnessdeck.toml paths", () => {
+  it("writes layer exports to .harnesstap.toml paths", () => {
     const dir = mkdtempSync(join(tmpdir(), "hd-transport-layer-"));
     tempDirs.push(dir);
 
-    const bundlePath = join(dir, "bundle.harnessdeck.toml");
+    const bundlePath = join(dir, "bundle.harnesstap.toml");
     writeLayerExportToml(
       bundlePath,
       makeSingleLayerExport({ name: "exported-layer" }),

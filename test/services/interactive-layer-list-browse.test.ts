@@ -26,7 +26,7 @@ const localLayers: Layer[] = [
 
 const remoteLayers: CatalogLayer[] = [
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "fullstack",
     name: "Fullstack",
@@ -62,7 +62,7 @@ describe("interactive layer list browse prompt", () => {
         promptForInteractiveLayerListBrowse,
         {
           message: "Select a layer",
-          scopeLabel: "harnessdeck-cloud",
+          scopeLabel: "harnesstap-cloud",
           localLayers,
           listRemoteLayers: async () => remoteLayers,
         },
@@ -82,11 +82,11 @@ describe("interactive layer list browse prompt", () => {
       promptForInteractiveLayerListBrowse,
       {
         message: "Select a layer",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
         fetchRemoteLayerShow: async () => [
-          "LAYER  harnessdeck-cloud/default/fullstack@1.0.0",
+          "LAYER  harnesstap-cloud/default/fullstack@1.0.0",
           "  Description           Fetched fullstack details",
           "RESOURCES",
           "│ TYPE           │ NAME                          │",
@@ -112,7 +112,7 @@ describe("interactive layer list browse prompt", () => {
     await expect(answer).resolves.toEqual({
       action: "install",
       selection: {
-        orgSlug: "harnessdeck-cloud",
+        orgSlug: "harnesstap-cloud",
         catalogSlug: "default",
         slug: "fullstack",
         version: "1.0.0",
@@ -126,7 +126,7 @@ describe("interactive layer list browse prompt", () => {
       promptForInteractiveLayerListBrowse,
       {
         message: "Select a layer",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
       },
@@ -155,7 +155,7 @@ describe("interactive layer list browse prompt", () => {
           promptForInteractiveLayerListBrowse,
           {
             message: "Select a layer",
-            scopeLabel: "harnessdeck-cloud",
+            scopeLabel: "harnesstap-cloud",
             localLayers,
             listRemoteLayers: async () => remoteLayers,
           },
@@ -178,7 +178,7 @@ describe("interactive layer list browse prompt", () => {
       promptForInteractiveLayerListBrowse,
       {
         message: "Select a layer",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
       },
@@ -196,7 +196,7 @@ describe("interactive layer list browse prompt", () => {
       promptForInteractiveLayerListBrowse,
       {
         message: "Select a layer",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
       },
@@ -261,7 +261,7 @@ describe("interactive layer list browse prompt", () => {
       promptForInteractiveLayerListBrowse,
       {
         message: "Select a layer",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         localLayers,
         listRemoteLayers: async () => remoteLayers,
       },

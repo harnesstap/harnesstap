@@ -43,7 +43,7 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
     const firstLayer = layer.split(",")[0]?.trim() ?? "layer";
     const outputPath = await promptForValue({
       message: "Output file",
-      default: `${firstLayer}.harnessdeck.toml`,
+      default: `${firstLayer}.harnesstap.toml`,
     });
     const { embed } = await inquirer.prompt<{ embed: boolean }>([
       {
@@ -79,7 +79,7 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
     const name = rest?.split("@")[0] ?? "resource";
     const outputPath = await promptForValue({
       message: "Output file",
-      default: `${type}-${name}.harnessdeck.toml`,
+      default: `${type}-${name}.harnesstap.toml`,
     });
     return { scope, resource, outputPath };
   }
@@ -108,7 +108,7 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
 
   const outputPath = await promptForValue({
     message: "Output archive path",
-    default: "./harnessdeck-backup.tar.gz",
+    default: "./harnesstap-backup.tar.gz",
   });
   const { embed } = await inquirer.prompt<{ embed: boolean }>([
     {

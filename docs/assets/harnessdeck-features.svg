@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title" aria-describedby="desc">
-  <title id="title">HarnessDeck feature map</title>
-  <desc id="desc">HarnessDeck connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins and layers, portable decks, apply with environment cascade, sync and mirror, snapshots, drift detection, plugin pins, layer dependencies, catalog baselines, cloud catalogs, and machine migration.</desc>
+  <title id="title">HarnessTap feature map</title>
+  <desc id="desc">HarnessTap connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins and layers, portable decks, apply with environment cascade, sync and mirror, snapshots, drift detection, plugin pins, layer dependencies, catalog baselines, cloud catalogs, and machine migration.</desc>
   <defs>
     <radialGradient id="bg" cx="50%" cy="28%" r="88%">
       <stop offset="0%" stop-color="#24316d"/>
@@ -66,7 +66,7 @@
   <circle cx="1310" cy="170" r="240" fill="#ff6bcb" opacity="0.08"/>
   <circle cx="800" cy="760" r="360" fill="#8b5cf6" opacity="0.08"/>
 
-  <text x="800" y="92" class="title" text-anchor="middle">HarnessDeck</text>
+  <text x="800" y="92" class="title" text-anchor="middle">HarnessTap</text>
   <text x="800" y="130" class="subtitle" text-anchor="middle">Agent harness configuration toolkit</text>
 
   <g filter="url(#softShadow)">
@@ -108,7 +108,7 @@
     <rect x="470" y="390" width="660" height="110" rx="34" fill="#0b1227" stroke="url(#accent)" stroke-width="2.2"/>
     <circle cx="548" cy="445" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
     <path d="M532 445 H564 M548 429 V461" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
-    <text x="606" y="438" class="hubTitle">HarnessDeck</text>
+    <text x="606" y="438" class="hubTitle">HarnessTap</text>
     <text x="606" y="468" class="hubCopy">scan · plugin · layer · deck · apply · sync · mirror</text>
   </g>
 

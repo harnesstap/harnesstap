@@ -16,8 +16,8 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-version-change");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.toml");
-      const rightPath = join(tmpDir, "right.harnessdeck.toml");
+      const leftPath = join(tmpDir, "left.harnesstap.toml");
+      const rightPath = join(tmpDir, "right.harnesstap.toml");
 
       writeLayerExportToml(leftPath, makeSingleLayerExport({ name: "test", version: "1.0.0" }));
       writeLayerExportToml(rightPath, makeSingleLayerExport({ name: "test", version: "2.0.0" }));
@@ -43,8 +43,8 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-version-same");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.toml");
-      const rightPath = join(tmpDir, "right.harnessdeck.toml");
+      const leftPath = join(tmpDir, "left.harnesstap.toml");
+      const rightPath = join(tmpDir, "right.harnesstap.toml");
 
       writeLayerExportToml(leftPath, makeSingleLayerExport({ name: "test", version: "1.0.0" }));
       writeLayerExportToml(rightPath, makeSingleLayerExport({ name: "test", version: "1.0.0" }));
@@ -67,8 +67,8 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-change");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.toml");
-      const rightPath = join(tmpDir, "right.harnessdeck.toml");
+      const leftPath = join(tmpDir, "left.harnesstap.toml");
+      const rightPath = join(tmpDir, "right.harnesstap.toml");
 
       writeLayerExportToml(
         leftPath,
@@ -104,8 +104,8 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-same");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.toml");
-      const rightPath = join(tmpDir, "right.harnessdeck.toml");
+      const leftPath = join(tmpDir, "left.harnesstap.toml");
+      const rightPath = join(tmpDir, "right.harnesstap.toml");
 
       const bundle = makeSingleLayerExport({
         name: "test",
@@ -132,8 +132,8 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-order-irrelevant");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.toml");
-      const rightPath = join(tmpDir, "right.harnessdeck.toml");
+      const leftPath = join(tmpDir, "left.harnesstap.toml");
+      const rightPath = join(tmpDir, "right.harnesstap.toml");
 
       writeLayerExportToml(
         leftPath,
@@ -168,8 +168,8 @@ describe("diffLayers - metadata: version and dependencies", () => {
       const { createTempDir } = await import("../helpers/fs.ts");
       const tmpDir = createTempDir("diff-deps-reorder");
 
-      const leftPath = join(tmpDir, "left.harnessdeck.toml");
-      const rightPath = join(tmpDir, "right.harnessdeck.toml");
+      const leftPath = join(tmpDir, "left.harnesstap.toml");
+      const rightPath = join(tmpDir, "right.harnesstap.toml");
 
       writeLayerExportToml(
         leftPath,
@@ -214,7 +214,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       layerModel.createLayer({ name: "local-layer", version: "3.0.0" });
 
-      const bundlePath = join(tmpDir, "bundle.harnessdeck.toml");
+      const bundlePath = join(tmpDir, "bundle.harnesstap.toml");
       writeLayerExportToml(
         bundlePath,
         makeSingleLayerExport({ name: "local-layer", version: "1.0.0" }),
@@ -243,7 +243,7 @@ describe("diffLayers - metadata: version and dependencies", () => {
 
       layerModel.createLayer({ name: "local-layer", version: "1.0.0" });
 
-      const bundlePath = join(tmpDir, "multi.harnessdeck.toml");
+      const bundlePath = join(tmpDir, "multi.harnesstap.toml");
       writeLayerExportToml(
         bundlePath,
         makeMultiLayerExport([

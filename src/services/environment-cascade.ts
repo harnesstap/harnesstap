@@ -175,7 +175,7 @@ export function loadHomeEnvironmentFragment(): EnvironmentFragment | undefined {
 export function loadProjectActiveEnvironmentFragment(
   projectRoot: string,
 ): EnvironmentFragment | undefined {
-  return loadActiveEnvironmentFragment(join(projectRoot, ".harnessdeck"));
+  return loadActiveEnvironmentFragment(join(projectRoot, ".harnesstap"));
 }
 
 export function loadLayerDefaultFragments(

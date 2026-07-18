@@ -9,7 +9,7 @@ describe("renderShellCompletion", () => {
     expect(script).toContain("compadd -d descr -a args");
     expect(script).toContain("*$'\\t'*");
     expect(script).toContain("${BUFFER[1,$CURSOR]}");
-    expect(script).toContain("compdef _harnessdeck hd harnessdeck");
-    expect(script).not.toContain("_harnessdeck\n");
+    expect(script).toContain("compdef _harnesstap ht harnesstap");
+    expect(script).not.toContain("_harnesstap\n");
   });
 });

@@ -14,7 +14,7 @@ describe("CLI apply with environment cascade", () => {
     const context = await createTestContext("cli-apply-environment");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-env.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-env.git");
       await runCli(["init"]);
 
       const plugin = createLayer({ name: "env-demo" });
@@ -77,7 +77,7 @@ describe("CLI apply with environment cascade", () => {
     const context = await createTestContext("cli-apply-layer-default-env");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-layer-env.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-layer-env.git");
       await runCli(["init"]);
 
       const plugin = createLayer({ name: "env-demo-layer-default" });

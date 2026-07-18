@@ -6,11 +6,11 @@
 
 Use this when you want to understand which plugin resources are in the local
 library, which plugin pins a layer carries, and whether installed plugin trees
-are still in sync with HarnessDeck.
+are still in sync with HarnessTap.
 
 There are two related surfaces:
 
-**Library plugin resources** — what HarnessDeck knows about installed plugins:
+**Library plugin resources** — what HarnessTap knows about installed plugins:
 
 ```bash
 harnessdeck resource list --type plugin_pin_pin

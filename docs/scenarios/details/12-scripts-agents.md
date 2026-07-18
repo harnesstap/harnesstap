@@ -1,4 +1,4 @@
-# Scenario 12: Drive HarnessDeck from scripts or other agents
+# Scenario 12: Drive HarnessTap from scripts or other agents
 
 **Frequency: Occasional** (often daily in CI, less often for interactive
 users) · **Status: Shipped**
@@ -23,12 +23,12 @@ harnessdeck resource sync --format json --dry-run
 
 **Exit codes worth scripting against**:
 
-- `harnessdeck layer doctor` returns **exit code 1** when any doctor check
+- `harnesstap layer doctor` returns **exit code 1** when any doctor check
   reports an error severity finding.
-- `harnessdeck status --check` returns **exit code 1** when drift exists.
-- `harnessdeck layer apply --strict-plugin-versions` returns **exit code 2**
+- `harnesstap status --check` returns **exit code 1** when drift exists.
+- `harnesstap layer apply --strict-plugin-versions` returns **exit code 2**
   when a pinned plugin's installed version violates its constraint.
 
-This matters for agent-harness optimization because HarnessDeck is not only a
+This matters for agent-harness optimization because HarnessTap is not only a
 human CLI; it can also be the state and serialization layer that other agents
 inspect before deciding how to update a repo's assistant environment.

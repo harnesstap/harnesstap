@@ -53,7 +53,7 @@ describe("resource import/export service", () => {
       );
 
       const dir = mkdtempSync(join(tmpdir(), "hd-resource-export-"));
-      const outPath = join(dir, "shared-skill.harnessdeck.toml");
+      const outPath = join(dir, "shared-skill.harnesstap.toml");
       exportResourceToFile(`skill:${created.name}`, outPath);
 
       const raw = readFileSync(outPath, "utf-8");
@@ -72,7 +72,7 @@ describe("resource import/export service", () => {
       initializeSchema(getDb());
 
       const dir = mkdtempSync(join(tmpdir(), "hd-resource-import-"));
-      const outPath = join(dir, "shared-skill.harnessdeck.toml");
+      const outPath = join(dir, "shared-skill.harnesstap.toml");
       writeFileSync(
         outPath,
         formatResourceExportToml({

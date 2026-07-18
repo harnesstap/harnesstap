@@ -72,10 +72,10 @@ function explainMissingProjectLayers(inspection: ProjectLayerScopeInspection): v
   console.log("");
   if (inspection.kind === "untracked") {
     console.log(
-      `No HarnessDeck project is tracked at ${inspection.projectRoot}.`,
+      `No HarnessTap project is tracked at ${inspection.projectRoot}.`,
     );
     console.log(
-      "Run `hd layer apply` in that directory first, or pick layers from your library to define which env vars are required.",
+      "Run `ht layer apply` in that directory first, or pick layers from your library to define which env vars are required.",
     );
     return;
   }
@@ -84,7 +84,7 @@ function explainMissingProjectLayers(inspection: ProjectLayerScopeInspection): v
     `Project ${inspection.projectRoot} is tracked, but no layers have been applied yet.`,
   );
   console.log(
-    "Run `hd layer apply` there, or pick layers from your library to define which env vars are required.",
+    "Run `ht layer apply` there, or pick layers from your library to define which env vars are required.",
   );
 }
 
@@ -120,8 +120,8 @@ async function promptLayerSelectorsFromLibrary(): Promise<PromptLayerSelection> 
   const layerChoices = toLayerChoices();
   if (layerChoices.length === 0) {
     console.log("");
-    console.log("No layers found in your HarnessDeck library.");
-    console.log("Create a layer first with `hd layer create`, then retry.");
+    console.log("No layers found in your HarnessTap library.");
+    console.log("Create a layer first with `ht layer create`, then retry.");
     return [];
   }
 

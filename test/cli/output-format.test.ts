@@ -30,7 +30,7 @@ describe("CLI output format", () => {
       expect(Array.isArray(combined.local)).toBe(true);
       expect(Array.isArray(combined.remote)).toBe(true);
 
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-output.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-output.git");
       const layerModel = await import("../../src/models/layer-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "dry-run-layer" });
@@ -119,7 +119,7 @@ describe("CLI output format", () => {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [{
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "lib",
           name: "Lib Layer",
           summary: "Remote layer",
@@ -150,7 +150,7 @@ describe("CLI output format", () => {
         const install = await runCli([
           "layer",
           "pull",
-          "harnessdeck-cloud/default/lib@1.0",
+          "harnesstap-cloud/default/lib@1.0",
           "--as",
           "lib-local",
           "--account",

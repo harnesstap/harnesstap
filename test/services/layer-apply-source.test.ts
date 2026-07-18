@@ -25,14 +25,14 @@ describe("resolveApplyLayerSource", () => {
       const restoreFetch = createCatalogFetchMock({ baseUrl: "https://mock" });
       const fetchedLabels: string[] = [];
 
-      const resolved = await resolveApplyLayerSource("harnessdeck-cloud/default/team@1.0", {
+      const resolved = await resolveApplyLayerSource("harnesstap-cloud/default/team@1.0", {
         onFetched: (label) => fetchedLabels.push(label),
       });
 
       expect(resolved).toEqual({ kind: "local", layerId: expect.any(String) });
-      expect(fetchedLabels).toEqual(["harnessdeck-cloud/team@1.0"]);
+      expect(fetchedLabels).toEqual(["harnesstap-cloud/team@1.0"]);
 
-      const second = await resolveApplyLayerSource("harnessdeck-cloud/default/team@1.0");
+      const second = await resolveApplyLayerSource("harnesstap-cloud/default/team@1.0");
       expect(second).toEqual(resolved);
 
       restoreFetch();
@@ -47,7 +47,7 @@ describe("resolveApplyLayerSource", () => {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [{
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "engineering-foundation",
           name: "Engineering foundation",
           summary: "Shared baseline",
@@ -65,7 +65,7 @@ describe("resolveApplyLayerSource", () => {
       });
 
       expect(resolved.kind).toBe("local");
-      expect(fetchedLabels).toEqual(["harnessdeck-cloud/engineering-foundation@1.0.0"]);
+      expect(fetchedLabels).toEqual(["harnesstap-cloud/engineering-foundation@1.0.0"]);
 
       restoreFetch();
     } finally {
@@ -76,15 +76,15 @@ describe("resolveApplyLayerSource", () => {
   it("rejects ambiguous bare names with candidate selectors", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-ambiguous");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnesstap");
-      mkdirSync(harnessdeckDir, { recursive: true });
-      connectCatalogOrg("acme", harnessdeckDir);
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
+      connectCatalogOrg("acme", harnesstapDir);
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "team",
             name: "Team",
             summary: "A",
@@ -123,15 +123,15 @@ describe("resolveApplyLayerSource", () => {
   it("resolves ambiguous bare names interactively", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-ambiguous-prompt");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnesstap");
-      mkdirSync(harnessdeckDir, { recursive: true });
-      connectCatalogOrg("acme", harnessdeckDir);
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
+      connectCatalogOrg("acme", harnesstapDir);
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "team",
             name: "Team",
             summary: "A",
@@ -176,9 +176,9 @@ describe("resolveApplyLayerSource", () => {
   it("rejects bare names when public catalog is disabled", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-no-public");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnesstap");
-      mkdirSync(harnessdeckDir, { recursive: true });
-      saveCatalogSettings({ publicCatalog: false }, harnessdeckDir);
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
+      saveCatalogSettings({ publicCatalog: false }, harnesstapDir);
 
       await expect(resolveApplyLayerSource("engineering-foundation")).rejects.toBeInstanceOf(
         LayerResolveError,
@@ -191,6 +191,10 @@ describe("resolveApplyLayerSource", () => {
   it("rejects unpublished selectors that are missing locally", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-missing");
     try {
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
+      saveCatalogSettings({ publicCatalog: false }, harnesstapDir);
+
       await expect(resolveApplyLayerSource("missing-local-layer")).rejects.toThrow(
         "Layer not found: missing-local-layer",
       );
@@ -213,7 +217,7 @@ describe("resolveApplyLayerSource", () => {
         baseUrl: "https://mock",
         layers: [
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "team",
             name: "Team",
             summary: "Remote",

@@ -13,7 +13,7 @@ describe("CursorPluginProvider", () => {
     const installs = await provider.list({
       projectRoot: ".",
       homeRoot: fixtureHome,
-      harnessdeckDir: "/tmp/hd",
+      harnesstapDir: "/tmp/hd",
     });
     expect(installs).toHaveLength(1);
     expect(installs[0]?.ref).toBe("demo@cursor-public");
@@ -27,7 +27,7 @@ describe("CursorPluginProvider", () => {
       {
         projectRoot: ".",
         homeRoot: fixtureHome,
-        harnessdeckDir: "/tmp/hd",
+        harnesstapDir: "/tmp/hd",
       },
       {
         forceRefresh: false,

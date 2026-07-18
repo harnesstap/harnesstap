@@ -41,7 +41,7 @@ describe("environment cascade", () => {
     });
   });
 
-  it("loads home fragments from harnessdeck files", async () => {
+  it("loads home fragments from harnesstap files", async () => {
     const context = await createInitializedTestContext("env-cascade-files");
 
     try {

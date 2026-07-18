@@ -8,10 +8,10 @@ describe("published CLI bins", () => {
     );
   });
 
-  it("publishes both harnessdeck and hd", () => {
+  it("publishes both harnesstap and ht", () => {
     expect(pkg.bin).toMatchObject({
-      harnessdeck: "./dist/index.js",
-      hd: "./dist/index.js",
+      harnesstap: "./dist/index.js",
+      ht: "./dist/index.js",
     });
   });
 });

@@ -28,7 +28,7 @@ describe("CLI export and import", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const bundlePath = `${exportContext.projectDir}/bundle.harnessdeck.toml`;
+      const bundlePath = `${exportContext.projectDir}/bundle.harnesstap.toml`;
       const exportResult = await runCli([
         "migrate",
         "export",
@@ -100,7 +100,7 @@ describe("CLI export and import", () => {
       const layer = layerModel.createLayer({ name: "embed-flag" });
       pluginPins.attachPluginPinToLayer(layer.id, "fmt-cli@acme-marketplace", "2.x");
 
-      const bundlePath = join(context.projectDir, "embedded-cli.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "embedded-cli.harnesstap.toml");
       const exportResult = await runCli([
         "migrate",
         "export",
@@ -129,7 +129,7 @@ describe("CLI export and import", () => {
     }
   });
 
-  it("exports a layer bundle to a .harnessdeck.toml path", async () => {
+  it("exports a layer bundle to a .harnesstap.toml path", async () => {
     const context = await createTestContext("cli-export-toml");
 
     try {
@@ -138,7 +138,7 @@ describe("CLI export and import", () => {
       const layerModel = await import("../../src/models/layer-model.ts");
       layerModel.createLayer({ name: "toml-export" });
 
-      const bundlePath = join(context.projectDir, "bundle.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "bundle.harnesstap.toml");
       const exportResult = await runCli([
         "migrate",
         "export",
@@ -150,7 +150,7 @@ describe("CLI export and import", () => {
       expect(exportResult.stdout).toContain("Exported layer");
       expect(existsSync(bundlePath)).toBe(true);
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw.startsWith("# HarnessDeck layer export\n")).toBe(true);
+      expect(raw.startsWith("# HarnessTap layer export\n")).toBe(true);
       expect(raw).toContain('schema = "urn:harnesstap:layer:v1"');
     } finally {
       await context.cleanup();
@@ -163,7 +163,7 @@ describe("CLI export and import", () => {
     try {
       await runCli(["init"]);
 
-      const bundlePath = join(context.projectDir, "commented-bundle.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "commented-bundle.harnesstap.toml");
       writeTextFile(
         bundlePath,
         `# commented import
@@ -199,7 +199,7 @@ plugins = []
       layerModel.createLayer({ name: "alpha" });
       layerModel.createLayer({ name: "beta" });
 
-      const bundlePath = join(context.projectDir, "multi-export.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "multi-export.harnesstap.toml");
       const exportResult = await runCli([
         "migrate",
         "export",
@@ -229,7 +229,7 @@ plugins = []
         makeResourceInput({ name: "portable", content: "# R" }),
       );
 
-      const outPath = `${exportContext.projectDir}/portable.harnessdeck.toml`;
+      const outPath = `${exportContext.projectDir}/portable.harnesstap.toml`;
       await runCli(["migrate", "export", outPath, "--resource", "skill:portable"]);
 
       const importContext = await createTestContext("cli-resource-import");
@@ -255,7 +255,7 @@ plugins = []
       await runCli(["init"]);
       initGitRepo(context.projectDir, "git@github.com:acme/multi-bundle-apply.git");
 
-      const bundlePath = join(context.projectDir, "apply-bundle.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "apply-bundle.harnesstap.toml");
       writeLayerExportToml(
         bundlePath,
         makeMultiLayerExport([

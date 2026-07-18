@@ -8,7 +8,7 @@ export function resolveLayerDefinitionPath(layer: Pick<Layer, "name" | "version"
   return join(
     getHarnesstapDir(),
     "layers",
-    `${layer.name}@${layer.version}.harnessdeck.toml`,
+    `${layer.name}@${layer.version}.harnesstap.toml`,
   );
 }
 

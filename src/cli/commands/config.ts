@@ -11,7 +11,7 @@ export function registerConfigCommands(root: Command): void {
   const configCmd = configureCommandGroup(
     root
       .command("config")
-      .description("Manage project profile config (.harnessdeck/config.toml)"),
+      .description("Manage project profile config (.harnesstap/config.toml)"),
   );
 
   configCmd
@@ -35,7 +35,7 @@ export function registerConfigCommands(root: Command): void {
   configCmd
     .command("init")
     .option("--project <path>", "Project directory", ".")
-    .option("--force", "Overwrite an existing .harnessdeck/config.toml")
+    .option("--force", "Overwrite an existing .harnesstap/config.toml")
     .option(
       "--profile <name>",
       "Profile layer to include (repeatable; defaults to all local profile layers)",
@@ -46,7 +46,7 @@ export function registerConfigCommands(root: Command): void {
     .option("--no-interactive", "Disable interactive prompts")
     .option("--interactive", "Enable interactive prompts")
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Create a starter .harnessdeck/config.toml from local profile layers")
+    .description("Create a starter .harnesstap/config.toml from local profile layers")
     .action(async (opts: {
       project?: string;
       force?: boolean;

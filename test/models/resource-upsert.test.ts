@@ -13,7 +13,7 @@ describe("upsertResource", () => {
           ...makeResourceInput({ type: "skill", name: "demo", content: "x" }),
           origin_kind: "manual",
         },
-        { policy: "skip", harnessdeckDir: context.homeDir },
+        { policy: "skip", harnesstapDir: context.homeDir },
       );
 
       expect(result.action).toBe("created");
@@ -36,8 +36,8 @@ describe("upsertResource", () => {
         origin_kind: "manual" as const,
       };
 
-      upsertResource(input, { policy: "skip", harnessdeckDir: context.homeDir });
-      const again = upsertResource(input, { policy: "skip", harnessdeckDir: context.homeDir });
+      upsertResource(input, { policy: "skip", harnesstapDir: context.homeDir });
+      const again = upsertResource(input, { policy: "skip", harnesstapDir: context.homeDir });
 
       expect(again.action).toBe("unchanged");
     } finally {
@@ -63,11 +63,11 @@ describe("upsertResource", () => {
 
       upsertResource(
         { ...base, content: "v1" },
-        { policy: "overwrite", harnessdeckDir: context.homeDir },
+        { policy: "overwrite", harnesstapDir: context.homeDir },
       );
       const updated = upsertResource(
         { ...base, content: "v2" },
-        { policy: "overwrite", harnessdeckDir: context.homeDir },
+        { policy: "overwrite", harnesstapDir: context.homeDir },
       );
 
       expect(updated.action).toBe("updated");
@@ -97,7 +97,7 @@ describe("upsertResource", () => {
 
       upsertResource(
         { ...base, content: "v1" },
-        { policy: "overwrite", harnessdeckDir: context.homeDir },
+        { policy: "overwrite", harnesstapDir: context.homeDir },
       );
 
       expect(() =>
@@ -126,11 +126,11 @@ describe("resolveResource", () => {
 
       upsertResource(
         { ...base, name: "brainstorming", namespace: "team-kit", content: "namespaced" },
-        { harnessdeckDir: context.homeDir },
+        { harnesstapDir: context.homeDir },
       );
       upsertResource(
         { ...base, name: "brainstorming", namespace: "", content: "default" },
-        { harnessdeckDir: context.homeDir },
+        { harnesstapDir: context.homeDir },
       );
 
       const result = resolveResource("brainstorming", { mode: "display" });
@@ -161,11 +161,11 @@ describe("resolveResource", () => {
 
       upsertResource(
         { ...base, namespace: "team-a", content: "a" },
-        { harnessdeckDir: context.homeDir },
+        { harnesstapDir: context.homeDir },
       );
       upsertResource(
         { ...base, namespace: "team-b", content: "b" },
-        { harnessdeckDir: context.homeDir },
+        { harnesstapDir: context.homeDir },
       );
 
       const result = resolveResource("skill:brainstorming", { mode: "compose" });

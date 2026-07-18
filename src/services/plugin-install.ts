@@ -39,7 +39,7 @@ export async function installPluginPinAsync(
     {
       projectRoot: options.projectRoot,
       homeRoot: options.homeRoot,
-      harnessdeckDir: getHarnesstapDir(),
+      harnesstapDir: getHarnesstapDir(),
     },
     {
       ref: options.ref,

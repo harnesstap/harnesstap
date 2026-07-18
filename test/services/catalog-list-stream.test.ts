@@ -10,10 +10,10 @@ import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 
 function makeScope(overrides: Partial<CatalogScope> = {}): CatalogScope {
   return {
-    defaultOrgSlug: "harnessdeck-cloud",
-    orgs: ["harnessdeck-cloud"],
-    selectors: ["harnessdeck-cloud/default"],
-    cloudBaseUrl: "https://harnessdeck.kayrnt.fr",
+    defaultOrgSlug: "harnesstap-cloud",
+    orgs: ["harnesstap-cloud"],
+    selectors: ["harnesstap-cloud/default"],
+    cloudBaseUrl: "https://cloud.harnesstap.com",
     ...overrides,
   };
 }
@@ -32,19 +32,19 @@ async function collectStreamEvents(
 describe("buildCatalogListSources", () => {
   it("includes a scope-wide source from catalog scope", () => {
     const scope = makeScope({
-      defaultOrgSlug: "harnessdeck-cloud",
-      orgs: ["harnessdeck-cloud", "acme"],
-      selectors: ["harnessdeck-cloud/default", "acme/internal"],
+      defaultOrgSlug: "harnesstap-cloud",
+      orgs: ["harnesstap-cloud", "acme"],
+      selectors: ["harnesstap-cloud/default", "acme/internal"],
     });
 
     const sources = buildCatalogListSources({ scope, registered: [] });
 
     expect(sources).toEqual([
       {
-        label: "harnessdeck-cloud",
+        label: "harnesstap-cloud",
         kind: "scope",
-        orgs: ["harnessdeck-cloud", "acme"],
-        selectors: ["harnessdeck-cloud/default", "acme/internal"],
+        orgs: ["harnesstap-cloud", "acme"],
+        selectors: ["harnesstap-cloud/default", "acme/internal"],
       },
     ]);
   });
@@ -75,8 +75,8 @@ describe("buildCatalogListSources", () => {
 
   it("skips registered catalogs whose org is already in scope", () => {
     const scope = makeScope({
-      orgs: ["harnessdeck-cloud", "acme"],
-      selectors: ["harnessdeck-cloud/default", "acme/internal"],
+      orgs: ["harnesstap-cloud", "acme"],
+      selectors: ["harnesstap-cloud/default", "acme/internal"],
     });
     const registered: RegisteredCatalog[] = [
       { org: "acme", catalog: "internal" },
@@ -124,14 +124,14 @@ describe("listCatalogLayersPage", () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
       layers: [
-        { orgSlug: "harnessdeck-cloud", slug: "alpha", name: "Alpha" },
-        { orgSlug: "harnessdeck-cloud", slug: "beta", name: "Beta" },
-        { orgSlug: "harnessdeck-cloud", slug: "gamma", name: "Gamma" },
+        { orgSlug: "harnesstap-cloud", slug: "alpha", name: "Alpha" },
+        { orgSlug: "harnesstap-cloud", slug: "beta", name: "Beta" },
+        { orgSlug: "harnesstap-cloud", slug: "gamma", name: "Gamma" },
       ],
     });
 
     const first = await listCatalogLayersPage(
-      { orgs: ["harnessdeck-cloud"], limit: 1 },
+      { orgs: ["harnesstap-cloud"], limit: 1 },
       { baseUrl: "https://mock" },
     );
     expect(first.layers).toHaveLength(1);
@@ -140,7 +140,7 @@ describe("listCatalogLayersPage", () => {
 
     const second = await listCatalogLayersPage(
       {
-        orgs: ["harnessdeck-cloud"],
+        orgs: ["harnesstap-cloud"],
         limit: 1,
         cursor: first.nextCursor,
       },
@@ -152,7 +152,7 @@ describe("listCatalogLayersPage", () => {
 
     const third = await listCatalogLayersPage(
       {
-        orgs: ["harnessdeck-cloud"],
+        orgs: ["harnesstap-cloud"],
         limit: 1,
         cursor: second.nextCursor,
       },
@@ -176,17 +176,17 @@ describe("streamCatalogLayers", () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
       layers: Array.from({ length: 55 }, (_, index) => ({
-        orgSlug: "harnessdeck-cloud",
+        orgSlug: "harnesstap-cloud",
         slug: `layer-${index}`,
         name: `Layer ${index}`,
       })),
     });
 
     const sources: CatalogListSource[] = [{
-      label: "harnessdeck-cloud",
+      label: "harnesstap-cloud",
       kind: "scope",
-      orgs: ["harnessdeck-cloud"],
-      selectors: ["harnessdeck-cloud/default"],
+      orgs: ["harnesstap-cloud"],
+      selectors: ["harnesstap-cloud/default"],
     }];
 
     const events = await collectStreamEvents(sources, { baseUrl: "https://mock" });
@@ -206,16 +206,16 @@ describe("streamCatalogLayers", () => {
       baseUrl: "https://mock",
       failOrgFilters: ["acme"],
       layers: [
-        { orgSlug: "harnessdeck-cloud", slug: "team", name: "Team Layer" },
+        { orgSlug: "harnesstap-cloud", slug: "team", name: "Team Layer" },
         { orgSlug: "acme", catalogSlug: "internal", slug: "secret", name: "Secret" },
       ],
     });
 
     const sources: CatalogListSource[] = [
       {
-        label: "harnessdeck-cloud",
+        label: "harnesstap-cloud",
         kind: "scope",
-        orgs: ["harnessdeck-cloud"],
+        orgs: ["harnesstap-cloud"],
       },
       {
         label: "acme/internal",
@@ -232,7 +232,7 @@ describe("streamCatalogLayers", () => {
     )).toBe(true);
     expect(events.some((event) =>
       event.type === "chunk"
-      && event.chunk.sourceLabel === "harnessdeck-cloud"
+      && event.chunk.sourceLabel === "harnesstap-cloud"
       && event.chunk.layers.some((layer) => layer.slug === "team"),
     )).toBe(true);
     expect(events.at(-1)).toEqual({ type: "done", timedOut: false });
@@ -243,16 +243,16 @@ describe("streamCatalogLayers", () => {
       baseUrl: "https://mock",
       pageDelayMs: 5,
       layers: Array.from({ length: 100 }, (_, index) => ({
-        orgSlug: "harnessdeck-cloud",
+        orgSlug: "harnesstap-cloud",
         slug: `layer-${index}`,
         name: `Layer ${index}`,
       })),
     });
 
     const sources: CatalogListSource[] = [{
-      label: "harnessdeck-cloud",
+      label: "harnesstap-cloud",
       kind: "scope",
-      orgs: ["harnessdeck-cloud"],
+      orgs: ["harnesstap-cloud"],
     }];
 
     const events = await collectStreamEvents(sources, {

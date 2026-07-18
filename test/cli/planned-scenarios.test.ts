@@ -122,7 +122,7 @@ describe("CLI planned scenarios", () => {
       writeFileSync(join(context.projectDir, "CLAUDE.md"), "# Keep me\n", "utf-8");
       writeFileSync(join(context.projectDir, "AGENTS.md"), "# Ignore me\n", "utf-8");
       writeFileSync(
-        join(context.projectDir, ".harnessdeckignore"),
+        join(context.projectDir, ".harnesstapignore"),
         "AGENTS.md\n",
         "utf-8",
       );
@@ -342,7 +342,7 @@ describe("CLI planned scenarios", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("missing required argument 'resource'");
       expect(result.stderr).not.toContain("Error:");
-      expect(result.stderr).not.toContain(" at runHarnessdeckCli");
+      expect(result.stderr).not.toContain(" at runHarnesstapCli");
       expect(result.stderr).not.toContain("node_modules/");
     } finally {
       await context.cleanup();
@@ -353,7 +353,7 @@ describe("CLI planned scenarios", () => {
     const context = await createTestContext("cli-drift-hd-guidance");
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/drift-hd-guidance.git");
-      await runCli(["init"], { commandName: "hd" });
+      await runCli(["init"], { commandName: "ht" });
 
       const result = await runCli(
         [
@@ -363,10 +363,10 @@ describe("CLI planned scenarios", () => {
           "--format",
           "json",
         ],
-        { commandName: "hd" },
+        { commandName: "ht" },
       );
 
-      expect(result.stdout).toContain('"message": "No project record. Run hd layer apply first."');
+      expect(result.stdout).toContain('"message": "No project record. Run ht layer apply first."');
     } finally {
       await context.cleanup();
     }

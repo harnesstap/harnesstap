@@ -75,7 +75,7 @@ export async function handleLayerCatalogRegisteredCommand(opts: {
   }
   if (registered.length === 0) {
     ui.dim("No publish catalogs registered.");
-    ui.hint("Register one: hd layer catalog register org/catalog");
+    ui.hint("Register one: ht layer catalog register org/catalog");
     return;
   }
   for (const catalog of registered) {
@@ -243,7 +243,7 @@ export async function handleLayerCatalogBindingsCommand(
 
   const layers = sortLayersForPicker(listLayers());
   if (layers.length === 0) {
-    throw new Error("No local layers found. Create one with `hd layer from-project` or `hd init`.");
+    throw new Error("No local layers found. Create one with `ht layer from-project` or `ht init`.");
   }
 
   const selectedName = await promptForChoice({

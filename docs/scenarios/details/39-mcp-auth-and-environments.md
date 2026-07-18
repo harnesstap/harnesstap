@@ -10,7 +10,7 @@ an environment switch.
 
 ## Quick decision
 
-| You have… | HarnessDeck can… |
+| You have… | HarnessTap can… |
 | --- | --- |
 | Bot token / PAT in MCP `env` or `headers` | Switch via `environment use` + re-apply |
 | OAuth MCP (browser login in Cursor/Claude) | **Not** switch sessions — re-auth in the host app |
@@ -49,7 +49,7 @@ hd profile use default --dry-run
 ## OAuth MCP (host-managed)
 
 After apply, open the target harness and complete OAuth there (Cursor MCP panel,
-`claude mcp`, Copilot `/mcp auth`, etc.). HarnessDeck only writes server URL /
+`claude mcp`, Copilot `/mcp auth`, etc.). HarnessTap only writes server URL /
 transport — not OAuth tokens.
 
 ## Known gaps

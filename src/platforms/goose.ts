@@ -16,7 +16,7 @@ import type {
 } from "../types.js";
 
 const GOOSE_CONFIG_FILES = ["config.yaml", "profiles.yaml"] as const;
-const GOOSE_LAYER_PLUGIN_NAME = "harnessdeck-layer";
+const GOOSE_LAYER_PLUGIN_NAME = "harnesstap-layer";
 const SKIP_WALK_DIRS = new Set([
   ".git",
   "node_modules",
@@ -451,7 +451,7 @@ export class GooseSerializer extends BaseSerializer {
           {
             name: GOOSE_LAYER_PLUGIN_NAME,
             version: "0.0.0",
-            description: "Hooks materialized by HarnessDeck layer apply",
+            description: "Hooks materialized by HarnessTap layer apply",
           },
           null,
           2,

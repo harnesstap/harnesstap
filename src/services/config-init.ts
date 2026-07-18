@@ -29,7 +29,7 @@ function resolveProfileLayerNames(
     for (const name of overrideNames) {
       if (!known.has(name)) {
         throw new Error(
-          `Unknown profile layer: ${name}. Create it with \`hd profile create ${name}\` first.`,
+          `Unknown profile layer: ${name}. Create it with \`ht profile create ${name}\` first.`,
         );
       }
     }
@@ -113,7 +113,7 @@ export async function executeConfigInit(
   const availableNames = listProfileLayers().map((layer) => layer.name);
   if (availableNames.length === 0) {
     throw new Error(
-      "No profile layers found. Create at least one with `hd profile create <name>` before running `hd config init`.",
+      "No profile layers found. Create at least one with `ht profile create <name>` before running `ht config init`.",
     );
   }
 

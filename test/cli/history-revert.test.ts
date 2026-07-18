@@ -10,7 +10,7 @@ describe("CLI history and revert", () => {
     const context = await createTestContext("cli-history");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-history.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-history.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -48,7 +48,7 @@ describe("CLI history and revert", () => {
       expect(history.stdout).toContain("LABEL");
 
       const project = projectModel.getProjectByOrigin(
-        git.normalizeGitUrl("git@github.com:acme/harnessdeck-history.git"),
+        git.normalizeGitUrl("git@github.com:acme/harnesstap-history.git"),
       );
       expect(project).toBeDefined();
       if (!project) {
@@ -79,7 +79,7 @@ describe("CLI history and revert", () => {
   it("shows snapshot IDs in history output when --show-id is set", async () => {
     const context = await createTestContext("cli-history-full-id");
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-history.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-history.git");
       await runCli(["init"]);
       const layerModel = await import("../../src/models/layer-model.ts");
       const projectModel = await import("../../src/models/project.ts");
@@ -109,7 +109,7 @@ describe("CLI history and revert", () => {
         "--show-id",
       ]);
       const project = projectModel.getProjectByOrigin(
-        git.normalizeGitUrl("git@github.com:acme/harnessdeck-history.git"),
+        git.normalizeGitUrl("git@github.com:acme/harnesstap-history.git"),
       );
       const snapshot = project ? snapshotModel.listSnapshots(project.id)[0] : undefined;
 

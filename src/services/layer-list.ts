@@ -104,7 +104,7 @@ export function configureLayerListInteractiveDeps(deps: LayerListInteractiveDeps
 }
 
 function formatCommand(path: string): string {
-  const invocation = basename(process.argv[1] ?? "") === "hd" ? "hd" : "harnessdeck";
+  const invocation = basename(process.argv[1] ?? "") === "ht" ? "ht" : "harnesstap";
   return `${invocation} ${path}`.trim();
 }
 

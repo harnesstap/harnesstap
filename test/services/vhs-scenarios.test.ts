@@ -104,7 +104,7 @@ describe("VHS scenario manifest", () => {
     }
   });
 
-  it("uses visible harnessdeck commands and starts tapes at the first visible command", () => {
+  it("uses visible harnesstap commands and starts tapes at the first visible command", () => {
     const definitions = JSON.parse(
       readFileSync(manifestPath, "utf-8"),
     ) as VhsScenarioDefinition[];
@@ -119,13 +119,13 @@ describe("VHS scenario manifest", () => {
         .split("\n")
         .find((line) => line.startsWith('Type "'));
 
-      expect(tape).toContain("Require harnessdeck");
+      expect(tape).toContain("Require harnesstap");
       expect(tape).not.toContain("Require node");
-      expect(tape).toContain('Type "harnessdeck ');
+      expect(tape).toContain('Type "harnesstap ');
       expect(tape).not.toContain("node $HD_REPO_ROOT/dist/index.js");
-      expect(tape).not.toContain('Type "export HOME=$HOME HARNESSDECK_HOME=$HARNESSDECK_HOME"');
+      expect(tape).not.toContain('Type "export HOME=$HOME HARNESSTAP_HOME=$HARNESSTAP_HOME"');
       expect(tape).not.toContain('Type "cd $HD_PROJECT_ROOT"');
-      expect(firstTypedCommand).toMatch(/^Type "harnessdeck /);
+      expect(firstTypedCommand).toMatch(/^Type "harnesstap /);
     }
   });
 
@@ -141,15 +141,15 @@ describe("VHS scenario manifest", () => {
       .split("\n")
       .find((line) => line.startsWith('Type "'));
 
-    // First typed command should be harnessdeck init
-    expect(firstTypedCommand).toMatch(/^Type "harnessdeck init"/);
+    // First typed command should be harnesstap init
+    expect(firstTypedCommand).toMatch(/^Type "harnesstap init"/);
 
     // Tape contains the visible commands from the approved story
-    expect(tape).toContain('Type "harnessdeck scan ."');
-    expect(tape).toContain('Type "harnessdeck resource list"');
-    expect(tape).toContain('Type "harnessdeck layer list --search foundation --remote-only"');
-    expect(tape).toContain('Type "harnessdeck layer apply engineering-foundation"');
-    expect(tape).toContain('Type "harnessdeck status ."');
+    expect(tape).toContain('Type "harnesstap scan ."');
+    expect(tape).toContain('Type "harnesstap resource list"');
+    expect(tape).toContain('Type "harnesstap layer list --search foundation --remote-only"');
+    expect(tape).toContain('Type "harnesstap layer apply engineering-foundation"');
+    expect(tape).toContain('Type "harnesstap status ."');
 
     // Tape does not use --format json
     expect(tape).not.toContain("--format json");
@@ -192,15 +192,15 @@ describe("VHS scenario manifest", () => {
     const readme = readFileSync(readmePath, "utf-8");
 
     expect(readme).toContain("Agent harness configuration toolkit");
-    expect(readme).toContain("hd harness list");
-    expect(readme).toContain("hd layer doctor");
-    expect(readme).toContain("hd layer edit my-setup --add research-helper --type skill");
+    expect(readme).toContain("ht harness list");
+    expect(readme).toContain("ht layer doctor");
+    expect(readme).toContain("ht layer edit my-setup --add research-helper --type skill");
     expect(readme).toContain(
-      "hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --version",
+      "ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version",
     );
-    expect(readme).not.toContain("hd platform list");
-    expect(readme).not.toContain("hd layer validate");
-    expect(readme).not.toContain("hd layer pull-plugin");
+    expect(readme).not.toContain("ht platform list");
+    expect(readme).not.toContain("ht layer validate");
+    expect(readme).not.toContain("ht layer pull-plugin");
     expect(readme).toContain("```mermaid");
   });
 
@@ -215,19 +215,19 @@ describe("VHS scenario manifest", () => {
     expect(spec).not.toContain("layer uncombine");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
-    expect(spec).not.toContain("harnessdeck platform list");
-    expect(spec).not.toContain("harnessdeck layer validate");
+    expect(spec).not.toContain("harnesstap platform list");
+    expect(spec).not.toContain("harnesstap layer validate");
   });
 
-  it("generate script bakes isolated HOME and HARNESSDECK_HOME into the harnessdeck wrapper", () => {
+  it("generate script bakes isolated HOME and HARNESSTAP_HOME into the harnesstap wrapper", () => {
     const script = readFileSync(
       resolve(repoRoot, "scripts/generate-vhs-scenarios.sh"),
       "utf-8",
     );
 
     expect(script).toContain('export HOME="$home_dir"');
-    expect(script).toContain('export HARNESSDECK_HOME="$hd_dir"');
-    expect(script).toContain('export HARNESSDECK_NO_INTERACTIVE=1');
+    expect(script).toContain('export HARNESSTAP_HOME="$hd_dir"');
+    expect(script).toContain('export HARNESSTAP_NO_INTERACTIVE=1');
   });
 
   it("curated GIF artifacts exist on disk", () => {

@@ -33,7 +33,7 @@ function validatePluginConstraintPins(
         ref: row.ref,
         constraint: row.version_constraint,
         installed: "never_synced",
-        message: `Plugin pin ${row.ref} has no resolved version. Run: harnessdeck resource sync plugin_pin:${row.ref}`,
+        message: `Plugin pin ${row.ref} has no resolved version. Run: harnesstap resource sync plugin_pin:${row.ref}`,
       });
       continue;
     }
@@ -46,7 +46,7 @@ function validatePluginConstraintPins(
       ref: row.ref,
       constraint: row.version_constraint,
       installed: resolved,
-      message: `Plugin pin version mismatch: ${row.ref} requires ${row.version_constraint}, library has ${resolved}. Run: harnessdeck resource sync plugin_pin:${row.ref}`,
+      message: `Plugin pin version mismatch: ${row.ref} requires ${row.version_constraint}, library has ${resolved}. Run: harnesstap resource sync plugin_pin:${row.ref}`,
     });
   }
 

@@ -2,7 +2,7 @@ import { createLocalMultiSelectPrompt } from "./prompts/create-local-multi-selec
 import type { LocalMultiSelectChoice } from "./prompts/create-local-multi-select-prompt.js";
 import { PromptBackError } from "./shared.js";
 
-const PROMPT_BACK_SENTINEL = "__harnessdeck_prompt_back__";
+const PROMPT_BACK_SENTINEL = "__harnesstap_prompt_back__";
 
 type SearchableChoice<T extends string> = LocalMultiSelectChoice<T>;
 

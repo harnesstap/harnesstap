@@ -18,7 +18,7 @@ harnessdeck resource show formatter@team-marketplace --all-fields
 harnessdeck layer show my-setup
 ```
 
-Start by re-scanning the project so HarnessDeck captures the current committed
+Start by re-scanning the project so HarnessTap captures the current committed
 plugin declarations in the library. Then compare:
 
 - **Committed** plugins — what the repo declares in `.claude/settings.json`

@@ -28,7 +28,7 @@ harnessdeck layer create dbt-expert \
 harnessdeck layer show dbt-expert
 ```
 
-`layer create --from` imports the package into the HarnessDeck library and
+`layer create --from` imports the package into the HarnessTap library and
 attaches namespaced skill refs to the layer. Use `layer apply` when you are ready
 to materialize the layer to a project. Use `--install` only when you also want
 skills copied or symlinked into hub paths immediately.

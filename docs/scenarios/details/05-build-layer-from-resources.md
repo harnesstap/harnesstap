@@ -19,7 +19,7 @@ harnessdeck layer show my-setup
 `layer edit` is for local resources and plugin pins. `layer pull` installs a
 layer from the remote catalog instead — do not confuse the two.
 
-This is where HarnessDeck becomes useful as a setup optimizer rather than just
+This is where HarnessTap becomes useful as a setup optimizer rather than just
 a scanner: you can separate reusable instructions, skills, hooks, MCP config,
 and other resources from one project and re-apply them elsewhere in a
 controlled way.

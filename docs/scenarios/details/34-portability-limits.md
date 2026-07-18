@@ -15,7 +15,7 @@ Start with the full reference:
 Quick checklist:
 
 ```bash
-# See what HarnessDeck can import from a dual-mode repo
+# See what HarnessTap can import from a dual-mode repo
 harnessdeck scan . --dry-run
 
 # Preview what each harness would receive

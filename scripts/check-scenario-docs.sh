@@ -26,7 +26,7 @@ for pattern in "${FORBIDDEN[@]}"; do
   fi
 done
 
-# Legacy project config filename (not *.harnessdeck.toml export bundles).
+# Legacy project config filename (not *.harnesstap.toml export bundles).
 if rg -n -P '(?<![\w.-])deck\.toml' "$DETAILS" >/tmp/scenario-docs-drift.txt 2>/dev/null; then
   echo "Forbidden pattern in scenario docs: deck.toml (legacy project config)"
   cat /tmp/scenario-docs-drift.txt

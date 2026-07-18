@@ -14,9 +14,9 @@ import {
 } from "../../src/config/catalog.js";
 
 describe("catalog config", () => {
-  it("always includes the default harnessdeck-cloud org in scope", () => {
+  it("always includes the default harnesstap-cloud org in scope", () => {
     const dir = mkdtempSync(join(tmpdir(), "hd-catalog-"));
-    const scope = resolveCatalogScope({ harnessdeckDir: dir });
+    const scope = resolveCatalogScope({ harnesstapDir: dir });
     expect(scope.orgs).toEqual([DEFAULT_CATALOG_ORG_SLUG]);
   });
 
@@ -51,11 +51,11 @@ describe("catalog config", () => {
     expect(isPublicCatalogEnabled(dir)).toBe(false);
   });
 
-  it("honors HARNESSDECK_PUBLIC_CATALOG=0", () => {
+  it("honors HARNESSTAP_PUBLIC_CATALOG=0", () => {
     const dir = mkdtempSync(join(tmpdir(), "hd-catalog-env-"));
-    const previous = process.env.HARNESSDECK_PUBLIC_CATALOG;
-    process.env.HARNESSDECK_PUBLIC_CATALOG = "0";
+    const previous = process.env.HARNESSTAP_PUBLIC_CATALOG;
+    process.env.HARNESSTAP_PUBLIC_CATALOG = "0";
     expect(isPublicCatalogEnabled(dir)).toBe(false);
-    process.env.HARNESSDECK_PUBLIC_CATALOG = previous;
+    process.env.HARNESSTAP_PUBLIC_CATALOG = previous;
   });
 });

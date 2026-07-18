@@ -9,8 +9,8 @@ export const GIT_ORIGIN_HINTS = [
   "Snapshots, drift, history, and revert require a git repository with origin configured.",
 ];
 
-export function resolveInvocationName(): "harnessdeck" | "hd" {
-  return basename(process.argv[1] ?? "") === "hd" ? "hd" : "harnessdeck";
+export function resolveInvocationName(): "harnesstap" | "ht" {
+  return basename(process.argv[1] ?? "") === "ht" ? "ht" : "harnesstap";
 }
 
 export function formatCommand(path: string): string {

@@ -174,7 +174,7 @@ describe("planned scenarios services", () => {
       );
       writeFileSync(join(context.projectDir, "AGENTS.md"), "# Ignore me\n", "utf-8");
       writeFileSync(
-        join(context.projectDir, ".harnessdeckignore"),
+        join(context.projectDir, ".harnesstapignore"),
         "AGENTS.md\n",
         "utf-8",
       );

@@ -12,7 +12,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 function writeProjectConfig(projectDir: string, content: string): void {
-  writeTextFile(join(projectDir, ".harnessdeck", "config.toml"), content);
+  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), content);
 }
 
 function createProfileLayer(name: string) {

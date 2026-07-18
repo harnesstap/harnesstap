@@ -75,7 +75,7 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply-default-harness");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-default-harness.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-default-harness.git");
       await runCli(["init", "--main", "claude-code", "--aliases", "codex"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -111,7 +111,7 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-apply.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-apply.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -151,7 +151,7 @@ describe("CLI apply", () => {
       ]);
 
       const project = projectModel.getProjectByOrigin(
-        "git@github.com:acme/harnessdeck-apply.git",
+        "git@github.com:acme/harnesstap-apply.git",
       );
 
       expect(applyResult.stdout).toContain("claude-code");
@@ -172,7 +172,7 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply-plugin-only");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugin-only.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugin-only.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -211,7 +211,7 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply-plugins-exact-pin");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-exact-pin.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-exact-pin.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -251,7 +251,7 @@ describe("CLI apply", () => {
     const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugin-materialize.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugin-materialize.git");
       await runCli(["init", "--main", "claude-code", "--aliases", "cursor"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -330,7 +330,7 @@ describe("CLI apply", () => {
         }),
         "utf-8",
       );
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-auto-sync.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-auto-sync.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -370,7 +370,7 @@ describe("CLI apply", () => {
 
     try {
       seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-plugins.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugins.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -412,7 +412,7 @@ describe("CLI apply", () => {
 
     try {
       seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-strict.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-strict.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -455,7 +455,7 @@ describe("CLI apply", () => {
 
     try {
       seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-ignore.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-ignore.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -495,7 +495,7 @@ describe("CLI apply", () => {
 
     try {
       seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-conflict.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-conflict.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");
@@ -578,10 +578,10 @@ describe("CLI apply", () => {
     const context = await createTestContext("cli-apply-bundle-reuse");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-bundle-reuse.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-bundle-reuse.git");
       await runCli(["init"]);
 
-      const bundlePath = join(context.projectDir, "bundle.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "bundle.harnesstap.toml");
       writeLayerExportToml(
         bundlePath,
         makeSingleLayerExport({
@@ -638,7 +638,7 @@ describe("CLI apply", () => {
 
     try {
       seedClaudePluginMismatchFixture(context.homeDir, context.projectDir);
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-merged-strict.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-merged-strict.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");

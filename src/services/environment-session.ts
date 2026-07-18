@@ -23,7 +23,7 @@ function writeActiveEnvironmentName(filePath: string, name: string): void {
 }
 
 export function environmentSessionKey(): string {
-  const fromEnv = process.env.HARNESSDECK_SESSION;
+  const fromEnv = process.env.HARNESSTAP_SESSION;
   if (fromEnv && fromEnv.length > 0) {
     return fromEnv;
   }
@@ -48,7 +48,7 @@ export function getGlobalActiveEnvironmentName(): string | undefined {
 }
 
 export function getLocalActiveEnvironmentName(): string | undefined {
-  const fromEnv = process.env.HARNESSDECK_LOCAL_ENVIRONMENT;
+  const fromEnv = process.env.HARNESSTAP_LOCAL_ENVIRONMENT;
   if (fromEnv && fromEnv.length > 0) {
     return fromEnv;
   }

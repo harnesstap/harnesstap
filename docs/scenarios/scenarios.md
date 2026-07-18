@@ -1,4 +1,4 @@
-# HarnessDeck user scenarios
+# HarnessTap user scenarios
 
 This document reflects the **current shipped CLI**. Each scenario links to a
 detail page with typical commands.
@@ -13,7 +13,7 @@ detail page with typical commands.
   ([Scenarios 5](./details/05-build-layer-from-resources.md), [23](./details/23-validate-layer.md), [35](./details/35-add-skill-package.md))
 - Plugin pins: `resource sync`, `layer show`, `layer apply --strict-plugin-versions`
   ([Scenarios 8](./details/08-audit-plugins.md), [16](./details/16-ci-enforcement.md))
-- Repo profiles: `config show`, `hd use`
+- Repo profiles: `config show`, `ht use`
   ([Scenario 40](./details/40-use-project-profile.md))
 - Sharing: `migrate export` / `import`, `layer pull` / `layer publish`
   ([Scenarios 10](./details/10-export-import-layer.md), [28](./details/28-machine-migration.md))
@@ -23,7 +23,7 @@ See the [VHS demo pack](./vhs/README.md) for rendered walkthroughs of the covere
 ## Usage frequency
 
 Frequency describes how often a **typical active user** reaches for a scenario
-after HarnessDeck is set up — not how important it is the first time.
+after HarnessTap is set up — not how important it is the first time.
 
 | Frequency      | Meaning |
 | -------------- | ------- |
@@ -45,13 +45,13 @@ after HarnessDeck is set up — not how important it is the first time.
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer        | Common     | Shipped |
 | [27](./details/27-project-sync.md) | True cross-harness `mirror`                 | Common     | Shipped |
 | [36](./details/36-switch-profile.md) | Switch global profile presets                    | Common     | Shipped |
-| [40](./details/40-use-project-profile.md) | Switch repo profiles from `.harnessdeck/config.toml` | Common | Shipped |
-| [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessDeck on a machine                  | Occasional | Shipped |
+| [40](./details/40-use-project-profile.md) | Switch repo profiles from `.harnesstap/config.toml` | Common | Shipped |
+| [1](./details/01-bootstrap-machine.md)  | Bootstrap HarnessTap on a machine                  | Occasional | Shipped |
 | [2](./details/02-default-harness-aliases.md)  | Choose a default main harness and aliases           | Occasional | Shipped |
 | [5](./details/05-build-layer-from-resources.md)  | Build a reusable layer from imported resources     | Occasional | Shipped |
 | [8](./details/08-audit-plugins.md)  | Audit plugin resources and layer pins               | Occasional | Shipped |
 | [10](./details/10-export-import-layer.md) | Export or import a layer bundle                    | Occasional | Shipped |
-| [12](./details/12-scripts-agents.md) | Drive HarnessDeck from scripts or agents            | Occasional | Shipped |
+| [12](./details/12-scripts-agents.md) | Drive HarnessTap from scripts or agents            | Occasional | Shipped |
 | [13](./details/13-materialization-strategy.md) | Choose a materialization strategy (symlink vs copy) | Occasional | Shipped |
 | [16](./details/16-ci-enforcement.md) | Enforce layer and plugin state in CI               | Occasional | Shipped |
 | [19](./details/19-refresh-plugin-metadata.md) | Sync plugin resources from install trees            | Occasional | Shipped |
@@ -68,7 +68,7 @@ after HarnessDeck is set up — not how important it is the first time.
 | [6](./details/06-plugin-constraints.md)  | Add plugin constraints to a layer                  | Rare       | Shipped |
 | [9](./details/09-history-revert.md)  | Review history and recover from a bad apply         | Rare       | Shipped |
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB           | Rare       | Shipped |
-| [17](./details/17-migrate-state.md) | Migrate HarnessDeck state to a new machine          | Rare       | Shipped (manual) |
+| [17](./details/17-migrate-state.md) | Migrate HarnessTap state to a new machine          | Rare       | Shipped (manual) |
 | [18](./details/18-plugin-merge-conflict.md) | Debug committed vs effective Claude plugin settings | Rare       | Shipped |
 | [28](./details/28-machine-migration.md) | Share workspace offline with migrate export/import  | Occasional | Shipped |
 
@@ -100,23 +100,23 @@ one repo needs different harness defaults than your machine-wide setup.
 | [26](./details/26-layer-from-project.md) | Turn a project's current state into a layer |
 | [27](./details/27-project-sync.md) | True cross-harness `mirror` |
 | [36](./details/36-switch-profile.md) | Switch global profile presets on the machine |
-| [40](./details/40-use-project-profile.md) | Switch repo profiles from `.harnessdeck/config.toml` |
+| [40](./details/40-use-project-profile.md) | Switch repo profiles from `.harnesstap/config.toml` |
 
 ---
 
 ## Occasional
 
 Reach for these during initial setup, when curating layers, when sharing
-baselines, or when integrating HarnessDeck into tooling.
+baselines, or when integrating HarnessTap into tooling.
 
 | Scenario | Summary |
 | -------- | ------- |
-| [1](./details/01-bootstrap-machine.md) | Bootstrap HarnessDeck on a machine and discover existing defaults |
+| [1](./details/01-bootstrap-machine.md) | Bootstrap HarnessTap on a machine and discover existing defaults |
 | [2](./details/02-default-harness-aliases.md) | Choose a default main harness and alias harnesses |
 | [5](./details/05-build-layer-from-resources.md) | Build a reusable layer from imported resources |
 | [8](./details/08-audit-plugins.md) | Audit plugin resources and layer pins |
 | [10](./details/10-export-import-layer.md) | Export or import a layer as a portable bundle |
-| [12](./details/12-scripts-agents.md) | Drive HarnessDeck from scripts or other agents |
+| [12](./details/12-scripts-agents.md) | Drive HarnessTap from scripts or other agents |
 | [13](./details/13-materialization-strategy.md) | Choose a materialization strategy (symlink vs copy) |
 | [16](./details/16-ci-enforcement.md) | Enforce layer and plugin state in CI |
 | [19](./details/19-refresh-plugin-metadata.md) | Sync plugin resources from install trees |
@@ -144,5 +144,5 @@ when maintaining the local DB after a lot of activity.
 | [6](./details/06-plugin-constraints.md) | Add plugin constraints to a layer |
 | [9](./details/09-history-revert.md) | Review project state, history, and recover from a bad apply |
 | [14](./details/14-curate-resource-db.md) | Curate and clean up the local resource DB |
-| [17](./details/17-migrate-state.md) | Migrate HarnessDeck state to a new machine (manual workflow) |
+| [17](./details/17-migrate-state.md) | Migrate HarnessTap state to a new machine (manual workflow) |
 | [18](./details/18-plugin-merge-conflict.md) | Debug committed vs effective Claude plugin settings |

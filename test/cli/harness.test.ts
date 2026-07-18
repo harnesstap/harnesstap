@@ -20,7 +20,7 @@ describe("CLI harness", () => {
         "--supported",
         "--format",
         "json",
-      ], { commandName: "hd" });
+      ], { commandName: "ht" });
       const supportedHarnesses = JSON.parse(supportedHarnessList.stdout) as {
         id: string;
       }[];
@@ -36,12 +36,12 @@ describe("CLI harness", () => {
       ]);
 
       const layerList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
-        commandName: "hd",
+        commandName: "ht",
       });
       expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
 
       const resourceList = await runCli(["r", "ls", "--format", "json"], {
-        commandName: "hd",
+        commandName: "ht",
       });
       expect(Array.isArray(JSON.parse(resourceList.stdout))).toBe(true);
 
@@ -50,23 +50,23 @@ describe("CLI harness", () => {
         context.projectDir,
         "--format",
         "json",
-      ], { commandName: "hd" });
+      ], { commandName: "ht" });
       expect(JSON.parse(projectStatus.stdout)).toEqual(
         expect.objectContaining({ project_root: expect.any(String) }),
       );
 
       const authStatus = await runCli(["a", "status", "--format", "json"], {
-        commandName: "hd",
+        commandName: "ht",
       });
       expect(JSON.parse(authStatus.stdout)).toEqual({});
 
       const envList = await runCli(["e", "ls", "--format", "json"], {
-        commandName: "hd",
+        commandName: "ht",
       });
       expect(Array.isArray(JSON.parse(envList.stdout))).toBe(true);
 
       const migrateHelp = await runCli(["m", "--help"], {
-        commandName: "hd",
+        commandName: "ht",
       });
       expect(migrateHelp.stdout).toContain("export");
       expect(migrateHelp.stdout).toContain("import");
@@ -219,7 +219,7 @@ describe("CLI harness", () => {
   it("sets and shows project harness preferences non-interactively", async () => {
     const context = await createTestContext("cli-harness-project");
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-harness.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-harness.git");
       await runCli(["init"]);
 
       const setResult = await runCli([
@@ -275,7 +275,7 @@ describe("CLI harness", () => {
   it("auto-prompts project harness set on a TTY when required args are missing", async () => {
     const context = await createTestContext("cli-harness-project-wizard");
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-harness-wizard.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-harness-wizard.git");
       await runCli(["init"]);
 
       const result = await runCli([

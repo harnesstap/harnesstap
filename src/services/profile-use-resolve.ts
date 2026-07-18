@@ -120,7 +120,7 @@ async function promptForProfileUseSelection(
 ): Promise<ProfileUseSelection> {
   const choices = buildCombinedProfileUseChoices(config);
   if (choices.length === 0) {
-    throw new Error("No profiles available. Create one with `hd profile create <name>`.");
+    throw new Error("No profiles available. Create one with `ht profile create <name>`.");
   }
 
   const message = config

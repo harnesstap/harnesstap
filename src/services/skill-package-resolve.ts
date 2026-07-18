@@ -37,7 +37,7 @@ export function defaultInteractiveSkillNames(
 
 export function resolveSkillPackageCheckout(
   source: string,
-  harnessdeckDir: string,
+  harnesstapDir: string,
 ): ResolvedSkillPackage {
   const resolved = resolveRemoteSource(source);
   let checkoutRoot: string;
@@ -46,7 +46,7 @@ export function resolveSkillPackageCheckout(
 
   if (resolved.kind === "git") {
     const cacheDir = sourceCacheDir(
-      harnessdeckDir,
+      harnesstapDir,
       resolved.owner,
       resolved.repo,
     );

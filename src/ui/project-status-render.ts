@@ -54,10 +54,10 @@ function formatScanStatusLabel(status: ProjectScanComparisonStatus, payload: Pro
 function formatScanHint(payload: ProjectStatusPayload): string | undefined {
   const { comparison } = payload.project_resources;
   if (comparison.status === "no_harness_files") {
-    return "Scans project files on disk, not harness setup — see `hd harness status`";
+    return "Scans project files on disk, not harness setup — see `ht harness status`";
   }
   if (comparison.status === "not_scanned" || comparison.status === "stale") {
-    return "run `hd scan` to import";
+    return "run `ht scan` to import";
   }
   return undefined;
 }
@@ -90,7 +90,7 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
   subheader("APPLIED LAYERS");
   if (payload.applied_layers.length === 0) {
     console.log("  (none applied)");
-    status.dim("  Run `hd layer apply <layer>`");
+    status.dim("  Run `ht layer apply <layer>`");
   } else {
     for (const row of payload.applied_layers) {
       const summary = formatResourceCountLine(row.resource_count, row.resource_summary);

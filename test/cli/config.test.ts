@@ -33,8 +33,8 @@ description = "inline layer for custom profile"
 `;
 
 function writeProjectConfig(projectDir: string, toml = VALID_PROJECT_CONFIG) {
-  mkdirSync(join(projectDir, ".harnessdeck"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnessdeck", "config.toml"), toml);
+  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
+  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
 }
 
 describe("CLI config", () => {

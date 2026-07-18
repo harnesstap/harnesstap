@@ -166,7 +166,7 @@ describe("scanner services", () => {
     }
   });
 
-  it("respects .harnessdeckignore patterns and ! re-inclusion", async () => {
+  it("respects .harnesstapignore patterns and ! re-inclusion", async () => {
     const context = await createInitializedTestContext("scanner-ignore");
 
     try {
@@ -180,7 +180,7 @@ describe("scanner services", () => {
         "---\nname: shared-helper\ndescription: Shared helper\n---\n# Shared helper\n",
       );
       writeTextFile(
-        `${context.projectDir}/.harnessdeckignore`,
+        `${context.projectDir}/.harnesstapignore`,
         "AGENTS.md\n.agents/skills/*\n!.agents/skills/shared-helper/SKILL.md\n",
       );
 

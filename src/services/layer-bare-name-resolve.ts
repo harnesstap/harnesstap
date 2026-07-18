@@ -173,7 +173,7 @@ export async function resolveBareNameFromCatalog(
     throw new LayerResolveError(
       `Layer not found: ${selector}`,
       [
-        "Enable catalog.publicCatalog in ~/.harnessdeck/config.jsonc",
+        "Enable catalog.publicCatalog in ~/.harnesstap/config.jsonc",
         "Or use a published selector: org/catalog/slug",
       ],
     );
@@ -188,13 +188,13 @@ export async function resolveBareNameFromCatalog(
     { q: parsed.name, limit: 100, sort: "name" },
     { account: options.account, baseUrl: options.baseUrl },
   );
-  let matches = exactCatalogMatches(catalogResults, parsed.name);
+  const matches = exactCatalogMatches(catalogResults, parsed.name);
 
   if (matches.length === 0) {
     throw new LayerResolveError(`Layer not found: ${selector}`, [
-      "hd layer list --search <query> --remote-only",
-      "hd layer pull org/catalog/slug",
-      "hd layer list",
+      "ht layer list --search <query> --remote-only",
+      "ht layer pull org/catalog/slug",
+      "ht layer list",
     ]);
   }
 

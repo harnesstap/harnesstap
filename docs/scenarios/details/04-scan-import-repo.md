@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when a repository already contains agent instructions, skills, MCP
-config, rules, hooks, or agent files that you want HarnessDeck to manage.
+config, rules, hooks, or agent files that you want HarnessTap to manage.
 
 Typical commands:
 

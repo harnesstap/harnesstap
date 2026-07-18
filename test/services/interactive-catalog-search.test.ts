@@ -9,7 +9,7 @@ const CTRL_S = { name: "s", ctrl: true } as const;
 
 const sampleLayers: CatalogLayer[] = [
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "fullstack",
     name: "Fullstack",
@@ -20,7 +20,7 @@ const sampleLayers: CatalogLayer[] = [
     visibility: "public",
   },
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "foundation",
     name: "Foundation",
@@ -38,7 +38,7 @@ describe("interactive catalog search prompt", () => {
       promptForInteractiveCatalogSearch,
       {
         message: "Search catalog layers to apply",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
         listLayers: async () => sampleLayers,
       },
@@ -52,7 +52,7 @@ describe("interactive catalog search prompt", () => {
     await expect(answer).resolves.toEqual({
       selections: [
         expect.objectContaining({
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           catalogSlug: "default",
           slug: "fullstack",
         }),
@@ -65,7 +65,7 @@ describe("interactive catalog search prompt", () => {
       promptForInteractiveCatalogSearch,
       {
         message: "Search catalog layers to apply",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
         listLayers: async () => sampleLayers,
       },
@@ -95,7 +95,7 @@ describe("interactive catalog search prompt", () => {
       promptForInteractiveCatalogSearch,
       {
         message: "Search catalog layers to apply",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
         listLayers: () => {
           callCount += 1;
@@ -125,7 +125,7 @@ describe("interactive catalog search prompt", () => {
       promptForInteractiveCatalogSearch,
       {
         message: "Search catalog layers to apply",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
         listLayers: async () => sampleLayers,
       },

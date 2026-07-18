@@ -25,7 +25,7 @@ export function classifyRepo(rootPath: string): RepoClassification {
   if (hasPluginSourceLayout(rootPath)) {
     profiles.push("plugin-source");
   }
-  if (existsSync(join(rootPath, ".harnessdeck", "config.toml"))) {
+  if (existsSync(join(rootPath, ".harnesstap", "config.toml"))) {
     profiles.push("project-config");
   }
   if (detectPlatforms(rootPath).length > 0) {

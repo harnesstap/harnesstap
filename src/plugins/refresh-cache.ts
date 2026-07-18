@@ -11,8 +11,8 @@ export interface RefreshCacheFile {
 
 const EMPTY_CACHE: RefreshCacheFile = { sources: {} };
 
-export function loadRefreshCache(harnessdeckDir: string): RefreshCacheFile {
-  const path = join(harnessdeckDir, "plugin-refresh-cache.json");
+export function loadRefreshCache(harnesstapDir: string): RefreshCacheFile {
+  const path = join(harnesstapDir, "plugin-refresh-cache.json");
   if (!existsSync(path)) return { ...EMPTY_CACHE };
   try {
     const raw = JSON.parse(readFileSync(path, "utf-8")) as Partial<RefreshCacheFile>;
@@ -23,11 +23,11 @@ export function loadRefreshCache(harnessdeckDir: string): RefreshCacheFile {
 }
 
 export function saveRefreshCache(
-  harnessdeckDir: string,
+  harnesstapDir: string,
   cache: RefreshCacheFile,
 ): void {
-  mkdirSync(harnessdeckDir, { recursive: true });
-  const path = join(harnessdeckDir, "plugin-refresh-cache.json");
+  mkdirSync(harnesstapDir, { recursive: true });
+  const path = join(harnesstapDir, "plugin-refresh-cache.json");
   writeFileSync(path, `${JSON.stringify(cache, null, 2)}\n`, "utf-8");
 }
 

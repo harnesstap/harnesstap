@@ -42,7 +42,7 @@ export interface CreateLayerFromSourceOptions {
   harnesses?: string[];
   dryRun?: boolean;
   homeRoot: string;
-  harnessdeckDir: string;
+  harnesstapDir: string;
 }
 
 export interface CreateLayerFromSourceResult {
@@ -172,7 +172,7 @@ export async function createLayerFromSource(
 
   const resolved = resolveSkillPackageCheckout(
     options.source,
-    options.harnessdeckDir,
+    options.harnesstapDir,
   );
   const skillsToAttach = resolveSelectedSkills(resolved.discovered, {
     skillNames: options.skillNames,

@@ -49,5 +49,5 @@ export async function maybePromptInitCatalogInstall(input: {
   ui.success(
     `Installed layer ${ui.theme.accent(installed.layerName)} from catalog (${installed.sourceLabel})`,
   );
-  ui.hint(`Apply it with: hd layer apply ${installed.layerName}`);
+  ui.hint(`Apply it with: ht layer apply ${installed.layerName}`);
 }

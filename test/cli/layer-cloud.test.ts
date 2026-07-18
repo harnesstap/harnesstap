@@ -29,7 +29,7 @@ describe("CLI cloud layer workflows", () => {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [{
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "team",
           name: "Team Layer",
           summary: "Team layer",
@@ -57,7 +57,7 @@ describe("CLI cloud layer workflows", () => {
       const searchJson = JSON.parse(search.stdout);
       expect(Array.isArray(searchJson)).toBe(true);
       expect(searchJson[0]).toEqual(expect.objectContaining({
-        orgSlug: "harnessdeck-cloud",
+        orgSlug: "harnesstap-cloud",
         catalogSlug: "default",
         slug: "team",
       }));
@@ -66,7 +66,7 @@ describe("CLI cloud layer workflows", () => {
       const add = await runCli([
         "layer",
         "pull",
-        "harnessdeck-cloud/default/team@1.0",
+        "harnesstap-cloud/default/team@1.0",
         "--as",
         "team-cloud",
         "--account",
@@ -80,7 +80,7 @@ describe("CLI cloud layer workflows", () => {
       expect(addPayload).toEqual(
         expect.objectContaining({
           layer_name: "team-cloud",
-          org_slug: "harnessdeck-cloud",
+          org_slug: "harnesstap-cloud",
           catalog_slug: "default",
           layer_slug: "team",
           version: "1.0",
@@ -113,7 +113,7 @@ describe("CLI cloud layer workflows", () => {
       restorePublishFetch();
 
       // applying a cloud-installed layer through project apply
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-cloud.git");
       const dryRun = await runCli([
         "layer", "apply",
         "team-cloud",
@@ -149,7 +149,7 @@ describe("CLI cloud layer workflows", () => {
         baseUrl: "https://mock",
         layers: [
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "devops-engineer",
             name: "DevOps engineer",
             summary: "fullstack DevOps coverage",
@@ -159,7 +159,7 @@ describe("CLI cloud layer workflows", () => {
             visibility: "public",
           },
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "engineering-foundation",
             name: "Engineering foundation",
             summary: "Shared baseline",
@@ -213,9 +213,9 @@ describe("CLI cloud layer workflows", () => {
       });
 
       const restoreFetch = createCatalogFetchMock({
-        baseUrl: "https://mock",
+        baseUrl: "https://cloud.harnesstap.com",
         layers: [{
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "engineering-foundation",
           name: "Engineering foundation",
           summary: "Shared baseline",
@@ -236,7 +236,7 @@ describe("CLI cloud layer workflows", () => {
         "claude-code",
         "--dry-run",
       ]);
-      expect(dryRun.stdout).toContain("Fetched harnessdeck-cloud/engineering-foundation@1.0.0 from catalog");
+      expect(dryRun.stdout).toContain("Fetched harnesstap-cloud/engineering-foundation@1.0.0 from catalog");
 
       restoreFetch();
     } finally {
@@ -262,7 +262,7 @@ describe("CLI cloud layer workflows", () => {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [{
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "team",
           name: "Team Layer",
           summary: "Team layer",
@@ -273,22 +273,22 @@ describe("CLI cloud layer workflows", () => {
         }],
       });
 
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-cloud.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-cloud.git");
 
       const humanRun = await runCli([
         "layer", "apply",
-        "harnessdeck-cloud/default/team@1.0",
+        "harnesstap-cloud/default/team@1.0",
         "--project",
         context.projectDir,
         "--harness",
         "claude-code",
         "--dry-run",
       ]);
-      expect(humanRun.stdout).toContain("Fetched harnessdeck-cloud/team@1.0 from catalog");
+      expect(humanRun.stdout).toContain("Fetched harnesstap-cloud/team@1.0 from catalog");
 
       const dryRun = await runCli([
         "layer", "apply",
-        "harnessdeck-cloud/default/team@1.0",
+        "harnesstap-cloud/default/team@1.0",
         "--project",
         context.projectDir,
         "--harness",
@@ -302,7 +302,7 @@ describe("CLI cloud layer workflows", () => {
       expect(dryRunPayload).toEqual(
         expect.objectContaining({
           layer: "remote-team",
-          layers: ["harnessdeck-cloud/default/team@1.0"],
+          layers: ["harnesstap-cloud/default/team@1.0"],
         }),
       );
 
@@ -335,7 +335,7 @@ describe("CLI cloud layer workflows", () => {
         "pull",
         "my-library",
         "--org",
-        "harnessdeck-cloud",
+        "harnesstap-cloud",
         "--as",
         "installed-with-org",
         "--account",
@@ -348,7 +348,7 @@ describe("CLI cloud layer workflows", () => {
       const withOrgPayload = JSON.parse(withOrg.stdout);
       expect(withOrgPayload).toEqual(
         expect.objectContaining({
-          org_slug: "harnessdeck-cloud",
+          org_slug: "harnesstap-cloud",
           layer_slug: "my-library",
           version: "latest",
         }),
@@ -404,7 +404,7 @@ describe("CLI cloud layer workflows", () => {
         "pull",
         "combined-lib",
         "--org",
-        "harnessdeck-cloud",
+        "harnesstap-cloud",
         "--version",
         "~2.0.0",
         "--as",
@@ -428,7 +428,7 @@ describe("CLI cloud layer workflows", () => {
       const withBothPayload = JSON.parse(withBoth.stdout);
       expect(withBothPayload).toEqual(
         expect.objectContaining({
-          org_slug: "harnessdeck-cloud",
+          org_slug: "harnesstap-cloud",
           layer_slug: "combined-lib",
           version: "~2.0.0", // version passed as-is to cloud
         }),
@@ -544,7 +544,7 @@ describe("CLI cloud layer workflows", () => {
         {
           isTTY: true,
           promptResponses: [
-            { choice: "harnessdeck-cloud/default/team" },
+            { choice: "harnesstap-cloud/default/team" },
             { value: "project" },
           ],
         },
@@ -572,7 +572,7 @@ describe("CLI cloud layer workflows", () => {
         { isTTY: false },
       );
 
-      expect(result.stdout).toContain("harnessdeck-cloud/default/team");
+      expect(result.stdout).toContain("harnesstap-cloud/default/team");
       expect(result.stdout).not.toContain("Installed layer");
 
       restoreFetch();
@@ -902,16 +902,16 @@ describe("CLI cloud layer workflows", () => {
     const context = await createTestContext("cli-layer-pull-bare-ambiguous");
     try {
       await runCli(["init"]);
-      const harnessdeckDir = join(context.homeDir, ".harnesstap");
-      mkdirSync(harnessdeckDir, { recursive: true });
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
       const catalog = await import("../../src/config/catalog.ts");
-      catalog.connectCatalogOrg("acme", harnessdeckDir);
+      catalog.connectCatalogOrg("acme", harnesstapDir);
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "team",
             name: "Team",
             summary: "A",
@@ -944,7 +944,7 @@ describe("CLI cloud layer workflows", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Ambiguous layer name: team");
-      expect(result.stderr).toContain("harnessdeck-cloud/default/team");
+      expect(result.stderr).toContain("harnesstap-cloud/default/team");
       expect(result.stderr).toContain("acme/default/team");
 
       restoreFetch();
@@ -957,12 +957,12 @@ describe("CLI cloud layer workflows", () => {
     const context = await createTestContext("cli-layer-add-anonymous");
     try {
       await runCli(["init"]);
-      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://harnessdeck.kayrnt.fr" });
+      const restoreFetch = createCatalogFetchMock({ baseUrl: "https://cloud.harnesstap.com" });
 
       const result = await runCli([
         "layer",
         "pull",
-        "harnessdeck-cloud/default/team@1.0",
+        "harnesstap-cloud/default/team@1.0",
         "--as",
         "oss-team",
         "--format",
@@ -973,7 +973,7 @@ describe("CLI cloud layer workflows", () => {
       expect(JSON.parse(result.stdout)).toEqual(
         expect.objectContaining({
           layer_name: "oss-team",
-          org_slug: "harnessdeck-cloud",
+          org_slug: "harnesstap-cloud",
           layer_slug: "team",
         }),
       );

@@ -33,7 +33,7 @@ export async function promptForInteractiveLayerCatalogBindings(input: {
   const registered = groupRegisteredCatalogs(loadRegisteredCatalogs());
   if (registered.length === 0) {
     throw new Error(
-      "No publish catalogs registered. Run `hd layer catalog register org/catalog` first.",
+      "No publish catalogs registered. Run `ht layer catalog register org/catalog` first.",
     );
   }
 

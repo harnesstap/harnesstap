@@ -22,7 +22,7 @@ describe("addSkillPackage integration", () => {
         scope: "global",
         method: "symlink",
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
       });
 
       expect(result.importedSkills.sort()).toEqual(["caveman", "tdd", "triage"]);
@@ -48,7 +48,7 @@ describe("addSkillPackage integration", () => {
         scope: "global",
         method: "symlink",
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
         createLayer: "mattpocock-skills",
       });
       const { getLayer, getLayerResources } = await import("../../src/models/layer-model.ts");

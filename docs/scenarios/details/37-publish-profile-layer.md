@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when you want teammates to discover and install a switchable global
-preset from HarnessDeck Cloud. Published profiles are ordinary published
+preset from HarnessTap Cloud. Published profiles are ordinary published
 layers with the `profile` tag — there is no separate catalog entity.
 
 Typical commands:
@@ -25,7 +25,7 @@ What this gives you:
 - `profile publish` runs the same pipeline as `layer publish` with extra
   validation warnings (empty stack, unpublished local composition refs)
 - Cloud browse can filter published layers with `tag=profile` (Profiles tab
-  in HarnessDeck Cloud)
+  in HarnessTap Cloud)
 - `profile pull` installs the bundle locally and warns when the result is
   not profile-tagged
 - `profile use` auto-pulls missing published `layer` dependencies before

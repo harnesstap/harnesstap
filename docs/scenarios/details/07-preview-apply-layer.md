@@ -27,4 +27,4 @@ harnessdeck layer apply my-setup --ignore-plugin-versions   # skip validation
 Important distinction: applying a layer writes a known baseline onto disk. If
 you later want to sync alias harness outputs from the current on-disk main
 harness without re-specifying the layer, use
-[`harnessdeck mirror`](./27-project-sync.md) instead.
+[`harnesstap mirror`](./27-project-sync.md) instead.

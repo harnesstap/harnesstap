@@ -128,7 +128,7 @@ async function promptScanConflicts(
     );
   }
   return promptForChoice({
-    message: "How should HarnessDeck handle these conflicts?",
+    message: "How should HarnessTap handle these conflicts?",
     choices: [
       { name: "Overwrite library copies", value: "overwrite" as const },
       { name: "Keep existing library copies", value: "skip" as const },
@@ -614,7 +614,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
   root
     .command("use")
     .description("Switch to a project-configured profile and environment")
-    .option("--profile <name>", "Profile key from .harnessdeck/config.toml")
+    .option("--profile <name>", "Profile key from .harnesstap/config.toml")
     .option("--project <path>", "Project directory", ".")
     .option("--list", "List profiles from project config without applying")
     .option("--dry-run", "Show what would be written without applying")

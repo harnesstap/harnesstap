@@ -98,7 +98,7 @@ export function getDb(): SqliteDatabase {
 
   if (completionMode) {
     if (!existsSync(dbPath)) {
-      throw new Error(`HarnessDeck database not found: ${dbPath}`);
+      throw new Error(`HarnessTap database not found: ${dbPath}`);
     }
   } else {
     mkdirSync(resolveHarnesstapDir(), { recursive: true });

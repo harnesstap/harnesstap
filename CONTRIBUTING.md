@@ -1,6 +1,6 @@
-# Contributing to harnessdeck
+# Contributing to harnesstap
 
-Thank you for your interest in contributing to `harnessdeck`! This document provides instructions for setting up your local development environment and the workflow for making changes.
+Thank you for your interest in contributing to `harnesstap`! This document provides instructions for setting up your local development environment and the workflow for making changes.
 
 ## Development Requirements
 
@@ -62,11 +62,11 @@ build the repository and install the current checkout globally with Bun.
 bun install
 bun run build
 bun link
-harnessdeck status .
+harnesstap status .
 ```
 
 Re-run `bun run build && bun link` after changes when you want the global
-`harnessdeck` command to pick up a fresh build from your checkout. Bun installs
+`harnesstap` command to pick up a fresh build from your checkout. Bun installs
 global executables in `~/.bun/bin`, so make sure that directory is on your
 `PATH` if the command is still not found.
 
@@ -94,7 +94,7 @@ git add .changes/unreleased/
 
 Commit the generated fragment with your PR.
 
-**Package version vs preset version:** `package.json` semver is the npm CLI release only. Preset, plugin, and bundle versions inside HarnessDeck are unrelated.
+**Package version vs preset version:** `package.json` semver is the npm CLI release only. Preset, plugin, and bundle versions inside HarnessTap are unrelated.
 
 **Pre-1.0 semver:** While the package is `0.x.y`, breaking changes bump the minor version and compatible changes bump the patch version, per [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for initial development (`0.y.z`).
 

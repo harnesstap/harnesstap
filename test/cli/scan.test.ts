@@ -36,7 +36,7 @@ describe("CLI scan", () => {
       expect(result.stdout).toContain("snapshots");
       expect(resourceModel.listResources().length).toBeGreaterThan(0);
       expect(
-        projectModel.getProjectByOrigin("git@github.com:acme/harnessdeck-fixture.git"),
+        projectModel.getProjectByOrigin("git@github.com:acme/harnesstap-fixture.git"),
       ).toBeDefined();
     } finally {
       await context.cleanup();

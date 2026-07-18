@@ -9,7 +9,7 @@ function makeLayer(
   overrides: Partial<CatalogLayer> & Pick<CatalogLayer, "slug">,
 ): CatalogLayer {
   return {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     name: overrides.slug,
     summary: "",

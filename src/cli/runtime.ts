@@ -95,10 +95,10 @@ function rewriteProfileShorthandArgv(argv: string[]): string[] {
     return argv;
   }
 
-  return [argv[0] ?? "node", argv[1] ?? "harnessdeck", "profile", "use", candidate, ...argv.slice(3)];
+  return [argv[0] ?? "node", argv[1] ?? "harnesstap", "profile", "use", candidate, ...argv.slice(3)];
 }
 
-export async function runHarnessdeckCli(
+export async function runHarnesstapCli(
   argv: string[] = process.argv,
 ): Promise<void> {
   program.name(resolveInvocationName());

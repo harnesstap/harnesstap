@@ -16,7 +16,7 @@ describe("createLayerFromSource integration", () => {
         source: fixture,
         skillNames: ["caveman", "tdd"],
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
       });
 
       expect(result.attachedSkills.sort()).toEqual(["caveman", "tdd"]);
@@ -45,7 +45,7 @@ describe("createLayerFromSource integration", () => {
           source: fixture,
           skillNames: ["caveman"],
           homeRoot: context.homeDir,
-          harnessdeckDir: join(context.homeDir, ".harnesstap"),
+          harnesstapDir: join(context.homeDir, ".harnesstap"),
         }),
       ).rejects.toThrow(/Layer already exists/);
     } finally {
@@ -61,7 +61,7 @@ describe("createLayerFromSource integration", () => {
         source: fixture,
         skillNames: ["caveman"],
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
       });
 
       const merged = await createLayerFromSource({
@@ -70,7 +70,7 @@ describe("createLayerFromSource integration", () => {
         skillNames: ["tdd"],
         onConflict: "merge",
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
       });
 
       expect(merged.conflictPolicy).toBe("merge");
@@ -96,7 +96,7 @@ describe("createLayerFromSource integration", () => {
         source: fixture,
         skillNames: ["caveman", "tdd"],
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
       });
 
       const replaced = await createLayerFromSource({
@@ -105,7 +105,7 @@ describe("createLayerFromSource integration", () => {
         skillNames: ["triage"],
         onConflict: "overwrite",
         homeRoot: context.homeDir,
-        harnessdeckDir: join(context.homeDir, ".harnesstap"),
+        harnesstapDir: join(context.homeDir, ".harnesstap"),
       });
 
       expect(replaced.conflictPolicy).toBe("overwrite");

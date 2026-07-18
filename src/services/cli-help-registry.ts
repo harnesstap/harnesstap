@@ -18,11 +18,11 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     examples: [
       "completion bash >> ~/.bashrc",
       "completion zsh >> ~/.zshrc",
-      "completion fish > ~/.config/fish/completions/hd.fish",
+      "completion fish > ~/.config/fish/completions/ht.fish",
     ],
   },
   init: {
-    description: "Initialize local HarnessDeck state",
+    description: "Initialize local HarnessTap state",
     examples: [
       "init",
       "init --main claude-code --aliases cursor,codex",
@@ -58,7 +58,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   use: {
     description:
-      "Switch to a project-configured profile and environment from .harnessdeck/config.toml",
+      "Switch to a project-configured profile and environment from .harnesstap/config.toml",
     examples: [
       "use",
       "use --profile dev",
@@ -81,7 +81,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "config.init": {
-    description: "Create a starter .harnessdeck/config.toml from local profile layers",
+    description: "Create a starter .harnesstap/config.toml from local profile layers",
     examples: [
       "config init",
       "config init --profile work --profile personal --default work",
@@ -228,7 +228,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Diff two layers or a layer and a layer export file",
     examples: [
       "layer diff left right",
-      "layer diff my-layer ./export.harnessdeck.toml",
+      "layer diff my-layer ./export.harnesstap.toml",
     ],
   },
   "layer.doctor": {
@@ -374,7 +374,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Export workspace, layer, environment, or resource for offline sharing",
     examples: [
       "migrate export backup.tar.gz --workspace",
-      "migrate export --layer my-layer -o my-layer.harnessdeck.toml",
+      "migrate export --layer my-layer -o my-layer.harnesstap.toml",
       "migrate export --resource skill:caveman",
     ],
   },
@@ -382,7 +382,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Import workspace, layer, or resource from file",
     examples: [
       "migrate import backup.tar.gz",
-      "migrate import my-layer.harnessdeck.toml --layer",
+      "migrate import my-layer.harnesstap.toml --layer",
     ],
   },
   "resource.list": {
@@ -452,10 +452,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "auth.login": {
-    description: "Log into HarnessDeck Cloud via device authentication",
+    description: "Log into HarnessTap Cloud via device authentication",
     examples: [
       "auth login",
-      "auth login work --base-url https://cloud.harnessdeck.dev",
+      "auth login work --base-url https://cloud.harnesstap.dev",
     ],
   },
   "auth.status": {

@@ -445,8 +445,8 @@ export async function runCli(
   const effectiveIsTTY = options.isTTY ?? false;
   const envOverrides = {
     CI: undefined,
-    HARNESSDECK_NO_INTERACTIVE: undefined,
-    HARNESSDECK_FORCE_WIZARD: effectiveIsTTY ? "1" : undefined,
+    HARNESSTAP_NO_INTERACTIVE: undefined,
+    HARNESSTAP_FORCE_WIZARD: effectiveIsTTY ? "1" : undefined,
     ...(options.env ?? {}),
   };
   const envEntries = Object.entries(envOverrides);
@@ -483,7 +483,7 @@ export async function runCli(
   );
 
   try {
-    process.argv = ["node", options.commandName ?? "harnessdeck", ...args];
+    process.argv = ["node", options.commandName ?? "harnesstap", ...args];
     process.exitCode = 0;
     process.env.FORCE_COLOR = "0";
     process.env.NO_COLOR = "1";
@@ -511,8 +511,8 @@ export async function runCli(
     searchPromptMock.mockClear();
     searchableMultiSelectMock.mockClear();
 
-    const { runHarnessdeckCli } = await import("../../src/index.ts");
-    await runHarnessdeckCli(process.argv);
+    const { runHarnesstapCli } = await import("../../src/index.ts");
+    await runHarnesstapCli(process.argv);
 
     if (activePromptResponses.length > 0) {
       throw new Error(

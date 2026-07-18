@@ -71,7 +71,7 @@ describe("CLI help and command organization", () => {
     for (const args of [
       ["layer", "validate", "empty-layer"],
       ["layer", "export", "empty-layer"],
-      ["layer", "import", "./missing.harnessdeck.toml"],
+      ["layer", "import", "./missing.harnesstap.toml"],
     ]) {
       await expect(runCli(args)).rejects.toMatchObject({
         code: "commander.unknownCommand",
@@ -103,11 +103,11 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).not.toContain("help [command]");
   });
 
-  it("renders top-level help with hd when invoked as hd", async () => {
-    const result = await runCli(["--help"], { commandName: "hd" });
-    expect(result.stdout).toContain("hd");
+  it("renders top-level help with ht when invoked as ht", async () => {
+    const result = await runCli(["--help"], { commandName: "ht" });
+    expect(result.stdout).toContain("ht");
     expect(result.stdout).toContain(`v${packageJson.version}`);
-    expect(result.stdout).toContain("hd [options] [command]");
+    expect(result.stdout).toContain("ht [options] [command]");
   });
 
   it("shows the CLI version in top-level help", async () => {
@@ -236,7 +236,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("mirror .");
     expect(result.stdout).toContain("layer list --search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
-    expect(result.stdout).toContain("hd help scenario");
+    expect(result.stdout).toContain("ht help scenario");
     expect(result.stdout).toMatch(/11\s+Start from a catalog baseline/);
   });
 
@@ -276,9 +276,9 @@ describe("CLI help and command organization", () => {
 
   it("generates bash completion", async () => {
     const result = await runCli(["completion", "bash"]);
-    expect(result.stdout).toContain("complete -F _harnessdeck_completions");
-    expect(result.stdout).toContain("hd __complete bash");
-    expect(result.stdout).toContain("hd harnessdeck");
+    expect(result.stdout).toContain("complete -F _harnesstap_completions");
+    expect(result.stdout).toContain("ht __complete bash");
+    expect(result.stdout).toContain("ht harnesstap");
   });
 
   it("hides __complete from top-level help", async () => {
