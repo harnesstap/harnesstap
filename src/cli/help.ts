@@ -163,11 +163,11 @@ export function configureCommandGroup(cmd: Command): Command {
 
 export function configureProgramHelp(program: Command): void {
   program
-    .name("harnessdeck")
+    .name("harnesstap")
     .description(
       "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
     )
-    .version(PACKAGE_VERSION, "-V, --harnessdeck-version")
+    .version(PACKAGE_VERSION, "-V, --harnesstap-version")
     .option("-v, --verbose", "Show verbose error output")
     .option("--no-color", "Disable color output")
     .option("--no-interactive", "Disable interactive prompts")
@@ -259,7 +259,7 @@ export function configureProgramHelp(program: Command): void {
           `  ${resolveInvocationName()} [options] [command]`,
           "",
           ui.theme.heading("OPTIONS"),
-          `  ${ui.theme.flag("-V, --harnessdeck-version")}  output the version number`,
+          `  ${ui.theme.flag("-V, --harnesstap-version")}  output the version number`,
           `  ${ui.theme.flag("-v, --verbose")}              show verbose error output`,
           `  ${ui.theme.flag("--no-color")}               disable color output`,
           `  ${ui.theme.flag("--no-interactive")}         disable interactive prompts`,
