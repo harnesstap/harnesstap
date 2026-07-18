@@ -1,4 +1,4 @@
-import { getDb, getHarnessdeckDir } from "../db/connection.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import { ulid } from "ulid";
 import type {
   Resource,
@@ -254,7 +254,7 @@ export function upsertResource(
   options: UpsertOptions = {},
 ): UpsertResult {
   const db = getDb();
-  const harnessdeckDir = options.harnessdeckDir ?? getHarnessdeckDir();
+  const harnessdeckDir = options.harnessdeckDir ?? getHarnesstapDir();
   const namespace = input.namespace ?? "";
   const originRef = input.origin_ref ?? "";
   const contentHash = hashResourceBody({

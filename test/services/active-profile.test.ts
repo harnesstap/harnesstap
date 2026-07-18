@@ -17,7 +17,7 @@ describe("active-profile service", () => {
       setActiveProfileName("default");
       expect(getActiveProfileName()).toBe("default");
       expect(
-        existsSync(join(context.homeDir, ".harnessdeck", "active-profile.json")),
+        existsSync(join(context.homeDir, ".harnesstap", "active-profile.json")),
       ).toBe(true);
 
       clearActiveProfileName();

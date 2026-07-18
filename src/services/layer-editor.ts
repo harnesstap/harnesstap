@@ -1,12 +1,12 @@
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import type { Layer } from "../types.js";
 import { exportToFile } from "./layer-export.js";
 
 export function resolveLayerDefinitionPath(layer: Pick<Layer, "name" | "version">): string {
   return join(
-    getHarnessdeckDir(),
+    getHarnesstapDir(),
     "layers",
     `${layer.name}@${layer.version}.harnessdeck.toml`,
   );

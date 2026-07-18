@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import type { Command, Option } from "commander";
-import { getHarnessdeckDir } from "../../db/connection.js";
+import { getHarnesstapDir } from "../../db/connection.js";
 import { lookupProviders } from "./registry.js";
 import type {
   CompletionCandidate,
@@ -291,7 +291,7 @@ export function parseCompletionContext(
     consumedPositionals: walked.consumedPositionals,
     prefix,
     account: extractAccount(consumed),
-    localDataAvailable: existsSync(getHarnessdeckDir()),
+    localDataAvailable: existsSync(getHarnesstapDir()),
     ...slotInfo,
   };
 }

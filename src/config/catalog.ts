@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import { DEFAULT_CATALOG_SLUG } from "../services/layer-selector.js";
 import { parseJsonc } from "./settings.js";
 
@@ -105,7 +105,7 @@ function sortRegisteredCatalogs(catalogs: RegisteredCatalog[]): RegisteredCatalo
   });
 }
 
-function getConfigPath(harnessdeckDir = getHarnessdeckDir()): string {
+function getConfigPath(harnessdeckDir = getHarnesstapDir()): string {
   const jsoncPath = join(harnessdeckDir, "config.jsonc");
   if (existsSync(jsoncPath) || !existsSync(join(harnessdeckDir, "config.json"))) {
     return jsoncPath;
@@ -138,7 +138,7 @@ export function resolveCloudBaseUrl(override?: string): string {
   return loadCatalogSettings().cloudBaseUrl.replace(/\/+$/, "");
 }
 
-export function loadCatalogSettings(harnessdeckDir = getHarnessdeckDir()): CatalogSettings {
+export function loadCatalogSettings(harnessdeckDir = getHarnesstapDir()): CatalogSettings {
   const path = getConfigPath(harnessdeckDir);
   if (!existsSync(path)) {
     return { ...DEFAULT_CATALOG_SETTINGS };
@@ -206,7 +206,7 @@ export function loadCatalogSettings(harnessdeckDir = getHarnessdeckDir()): Catal
 
 export function saveCatalogSettings(
   input: Partial<CatalogSettings>,
-  harnessdeckDir = getHarnessdeckDir(),
+  harnessdeckDir = getHarnesstapDir(),
 ): CatalogSettings {
   const path = getConfigPath(harnessdeckDir);
   let existing: Record<string, unknown> = {};
@@ -252,7 +252,7 @@ export function resolveCatalogScope(input?: {
   };
 }
 
-export function isPublicCatalogEnabled(harnessdeckDir = getHarnessdeckDir()): boolean {
+export function isPublicCatalogEnabled(harnessdeckDir = getHarnesstapDir()): boolean {
   const env = process.env.HARNESSDECK_PUBLIC_CATALOG?.trim().toLowerCase();
   if (env === "0" || env === "false" || env === "no") {
     return false;
@@ -315,7 +315,7 @@ export function formatOutOfScopeMessage(selector: string): string {
   ].join("\n");
 }
 
-export function connectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnessdeckDir()): CatalogSettings {
+export function connectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnesstapDir()): CatalogSettings {
   const normalized = normalizeOrgSlug(orgSlug);
   if (normalized === DEFAULT_CATALOG_ORG_SLUG) {
     throw new Error(`${DEFAULT_CATALOG_ORG_SLUG} is always included in the default catalog.`);
@@ -329,7 +329,7 @@ export function connectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnessde
   }, harnessdeckDir);
 }
 
-export function disconnectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnessdeckDir()): CatalogSettings {
+export function disconnectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnesstapDir()): CatalogSettings {
   const normalized = normalizeOrgSlug(orgSlug);
   if (normalized === DEFAULT_CATALOG_ORG_SLUG) {
     throw new Error(`Cannot disconnect the default catalog org (${DEFAULT_CATALOG_ORG_SLUG}).`);
@@ -342,7 +342,7 @@ export function disconnectCatalogOrg(orgSlug: string, harnessdeckDir = getHarnes
 
 export function connectCatalogLayer(
   selector: string,
-  harnessdeckDir = getHarnessdeckDir(),
+  harnessdeckDir = getHarnesstapDir(),
 ): CatalogSettings {
   const normalized = normalizeSelector(selector);
   const current = loadCatalogSettings(harnessdeckDir);
@@ -356,7 +356,7 @@ export function connectCatalogLayer(
 
 export function disconnectCatalogLayer(
   selector: string,
-  harnessdeckDir = getHarnessdeckDir(),
+  harnessdeckDir = getHarnesstapDir(),
 ): CatalogSettings {
   const normalized = normalizeSelector(selector);
   const current = loadCatalogSettings(harnessdeckDir);
@@ -365,13 +365,13 @@ export function disconnectCatalogLayer(
   }, harnessdeckDir);
 }
 
-export function loadRegisteredCatalogs(harnessdeckDir = getHarnessdeckDir()): RegisteredCatalog[] {
+export function loadRegisteredCatalogs(harnessdeckDir = getHarnesstapDir()): RegisteredCatalog[] {
   return loadCatalogSettings(harnessdeckDir).registered;
 }
 
 export function registerPublishCatalog(
   selector: string,
-  harnessdeckDir = getHarnessdeckDir(),
+  harnessdeckDir = getHarnesstapDir(),
 ): { settings: CatalogSettings; catalog: RegisteredCatalog; created: boolean } {
   const parsed = parsePublishCatalogSelector(selector);
   const current = loadCatalogSettings(harnessdeckDir);
@@ -398,7 +398,7 @@ export function registerPublishCatalog(
 
 export function unregisterPublishCatalog(
   selector: string,
-  harnessdeckDir = getHarnessdeckDir(),
+  harnessdeckDir = getHarnesstapDir(),
 ): CatalogSettings {
   const parsed = parsePublishCatalogSelector(selector);
   const key = publishCatalogKey(parsed);
@@ -411,7 +411,7 @@ export function unregisterPublishCatalog(
 export function ensureRegisteredPublishCatalog(
   selector: string,
   opts?: { account?: string },
-  harnessdeckDir = getHarnessdeckDir(),
+  harnessdeckDir = getHarnesstapDir(),
 ): { catalog: RegisteredCatalog; created: boolean } {
   const parsed = parsePublishCatalogSelector(selector);
   const withAccount = opts?.account?.trim()

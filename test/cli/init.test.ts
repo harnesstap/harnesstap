@@ -20,7 +20,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("profile use default");
       expect(result.stdout).toContain("layer apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
-      expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
+      expect(context.connection.getDbPath()).toContain(".harnesstap/harnesstap.db");
       expect(layerModel.listLayers()).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -31,7 +31,7 @@ describe("CLI init", () => {
       );
       const activeProfile = JSON.parse(
         readFileSync(
-          `${context.homeDir}/.harnessdeck/active-profile.json`,
+          `${context.homeDir}/.harnesstap/active-profile.json`,
           "utf-8",
         ),
       ) as { name: string };
@@ -200,7 +200,7 @@ describe("CLI init", () => {
 
     try {
       writeTextFile(
-        `${context.homeDir}/.harnessdeck/cloud-accounts.json`,
+        `${context.homeDir}/.harnesstap/cloud-accounts.json`,
         "{not-valid-json",
       );
 

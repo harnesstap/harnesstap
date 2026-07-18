@@ -21,7 +21,7 @@ import {
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { collectRepeatedOption, formatCommand } from "../shared.js";
-import { getDb, getHarnessdeckDir } from "../../db/connection.js";
+import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { ui } from "../../ui/index.js";
 import {
@@ -1404,7 +1404,7 @@ async function handleLayerCreateCommand(
           throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
         })();
 
-  const harnessdeckDir = getHarnessdeckDir();
+  const harnessdeckDir = getHarnesstapDir();
   const homeRoot = resolveHomeRoot();
   const skillNames = parseCommaSeparatedList(opts.skill);
   const excludeCategories = [

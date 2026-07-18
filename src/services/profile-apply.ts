@@ -25,7 +25,7 @@ import {
 } from "../models/global-apply-snapshot.js";
 import { getHarnessPreference } from "../models/harness.js";
 import { getEnvironment } from "../models/environment.js";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import { isProfileLayer } from "../constants/profile.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
 import {
@@ -324,7 +324,7 @@ function resolveGlobalApplyHarnessTargets(harnessOption?: string): string[] {
 }
 
 function writeHomeActiveEnvironment(name: string): string {
-  const home = getHarnessdeckDir();
+  const home = getHarnesstapDir();
   mkdirSync(home, { recursive: true });
   const filePath = join(home, "active-environment.json");
   writeFileSync(filePath, `${JSON.stringify({ name }, null, 2)}\n`, "utf-8");

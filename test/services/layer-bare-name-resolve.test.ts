@@ -46,7 +46,7 @@ describe("resolveBareNameFromCatalog", () => {
   it("rejects ambiguous bare slugs in non-interactive mode", async () => {
     const context = await createInitializedTestContext("bare-name-ambiguous");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      const harnessdeckDir = join(context.homeDir, ".harnesstap");
       mkdirSync(harnessdeckDir, { recursive: true });
       connectCatalogOrg("acme", harnessdeckDir);
 
@@ -72,7 +72,7 @@ describe("resolveBareNameFromCatalog", () => {
   it("resolves ambiguous bare slugs when a candidate is chosen interactively", async () => {
     const context = await createInitializedTestContext("bare-name-prompt");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      const harnessdeckDir = join(context.homeDir, ".harnesstap");
       mkdirSync(harnessdeckDir, { recursive: true });
       connectCatalogOrg("acme", harnessdeckDir);
 
@@ -197,7 +197,7 @@ describe("resolveInstallSelector", () => {
       const catalog = await import("../../src/config/catalog.ts");
       catalog.saveCatalogSettings(
         { publicCatalog: false },
-        join(context.homeDir, ".harnessdeck"),
+        join(context.homeDir, ".harnesstap"),
       );
 
       await expect(

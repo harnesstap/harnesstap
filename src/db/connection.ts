@@ -42,32 +42,32 @@ function wrapDatabase(db: SqliteDatabase): SqliteDatabase {
   };
 }
 
-function resolveHarnessdeckDir(): string {
-  if (process.env.HARNESSDECK_HOME) {
-    return process.env.HARNESSDECK_HOME;
+function resolveHarnesstapDir(): string {
+  if (process.env.HARNESSTAP_HOME) {
+    return process.env.HARNESSTAP_HOME;
   }
   const homePath = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
-  return join(homePath, ".harnessdeck");
+  return join(homePath, ".harnesstap");
 }
 
 function resolveDbPath(): string {
-  return join(resolveHarnessdeckDir(), "harnessdeck.db");
+  return join(resolveHarnesstapDir(), "harnesstap.db");
 }
 
 function resolveConfigJsoncPath(): string {
-  return join(resolveHarnessdeckDir(), "config.jsonc");
+  return join(resolveHarnesstapDir(), "config.jsonc");
 }
 
 function resolveLegacyConfigPath(): string {
-  return join(resolveHarnessdeckDir(), "config.json");
+  return join(resolveHarnesstapDir(), "config.json");
 }
 
 export function getDbPath(): string {
   return resolveDbPath();
 }
 
-export function getHarnessdeckDir(): string {
-  return resolveHarnessdeckDir();
+export function getHarnesstapDir(): string {
+  return resolveHarnesstapDir();
 }
 
 export function getConfigJsoncPath(): string {
@@ -79,7 +79,7 @@ export function getLegacyConfigPath(): string {
 }
 
 function isCompletionMode(): boolean {
-  return process.env.HARNESSDECK_COMPLETE === "1";
+  return process.env.HARNESSTAP_COMPLETE === "1";
 }
 
 export function getDb(): SqliteDatabase {
@@ -101,7 +101,7 @@ export function getDb(): SqliteDatabase {
       throw new Error(`HarnessDeck database not found: ${dbPath}`);
     }
   } else {
-    mkdirSync(resolveHarnessdeckDir(), { recursive: true });
+    mkdirSync(resolveHarnesstapDir(), { recursive: true });
   }
 
   const Database = resolveDatabaseConstructor();

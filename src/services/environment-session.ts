@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 
 function readActiveEnvironmentName(filePath: string): string | undefined {
   if (!existsSync(filePath)) {
@@ -31,12 +31,12 @@ export function environmentSessionKey(): string {
 }
 
 export function globalActiveEnvironmentPath(): string {
-  return join(getHarnessdeckDir(), "active-environment.json");
+  return join(getHarnesstapDir(), "active-environment.json");
 }
 
 export function localActiveEnvironmentPath(): string {
   return join(
-    getHarnessdeckDir(),
+    getHarnesstapDir(),
     "sessions",
     environmentSessionKey(),
     "active-environment.json",

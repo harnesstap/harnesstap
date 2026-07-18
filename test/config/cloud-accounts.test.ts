@@ -9,15 +9,15 @@ const tmpRoot = path.join(process.cwd(), "tmp-test-harnessdeck");
 beforeEach(() => {
   if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true });
   fs.mkdirSync(tmpRoot, { recursive: true });
-  process.env.HARNESSDECK_HOME = tmpRoot;
+  process.env.HARNESSTAP_HOME = tmpRoot;
 });
 
 afterEach(() => {
   if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true });
-  delete process.env.HARNESSDECK_HOME;
+  delete process.env.HARNESSTAP_HOME;
 });
 
-test("round-trips a saved account under HARNESSDECK_HOME", async () => {
+test("round-trips a saved account under HARNESSTAP_HOME", async () => {
   const account = {
     cloudBaseUrl: "https://harnessdeck.kayrnt.fr",
     scopes: ["core"],

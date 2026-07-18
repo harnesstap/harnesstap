@@ -76,7 +76,7 @@ describe("resolveApplyLayerSource", () => {
   it("rejects ambiguous bare names with candidate selectors", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-ambiguous");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      const harnessdeckDir = join(context.homeDir, ".harnesstap");
       mkdirSync(harnessdeckDir, { recursive: true });
       connectCatalogOrg("acme", harnessdeckDir);
 
@@ -123,7 +123,7 @@ describe("resolveApplyLayerSource", () => {
   it("resolves ambiguous bare names interactively", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-ambiguous-prompt");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      const harnessdeckDir = join(context.homeDir, ".harnesstap");
       mkdirSync(harnessdeckDir, { recursive: true });
       connectCatalogOrg("acme", harnessdeckDir);
 
@@ -176,7 +176,7 @@ describe("resolveApplyLayerSource", () => {
   it("rejects bare names when public catalog is disabled", async () => {
     const context = await createInitializedTestContext("resolve-apply-layer-source-no-public");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      const harnessdeckDir = join(context.homeDir, ".harnesstap");
       mkdirSync(harnessdeckDir, { recursive: true });
       saveCatalogSettings({ publicCatalog: false }, harnessdeckDir);
 

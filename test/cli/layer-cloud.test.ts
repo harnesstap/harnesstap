@@ -488,7 +488,7 @@ describe("CLI cloud layer workflows", () => {
       const catalog = await import("../../src/config/catalog.ts");
       catalog.saveCatalogSettings(
         { publicCatalog: false },
-        join(context.homeDir, ".harnessdeck"),
+        join(context.homeDir, ".harnesstap"),
       );
 
       const result = await runCli([
@@ -902,7 +902,7 @@ describe("CLI cloud layer workflows", () => {
     const context = await createTestContext("cli-layer-pull-bare-ambiguous");
     try {
       await runCli(["init"]);
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
+      const harnessdeckDir = join(context.homeDir, ".harnesstap");
       mkdirSync(harnessdeckDir, { recursive: true });
       const catalog = await import("../../src/config/catalog.ts");
       catalog.connectCatalogOrg("acme", harnessdeckDir);

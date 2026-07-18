@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadSettings } from "../config/settings.js";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import {
   getPluginProviders,
   getRegisteredPluginPlatformIds,
@@ -48,7 +48,7 @@ function buildContext(opts: PluginLifecycleOptions): PluginContext {
   return {
     projectRoot: resolve(opts.projectRoot ?? "."),
     homeRoot: opts.homeRoot ?? resolveHomeRoot(),
-    harnessdeckDir: getHarnessdeckDir(),
+    harnessdeckDir: getHarnesstapDir(),
   };
 }
 

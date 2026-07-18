@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
 import { listLayers } from "../models/layer-model.js";
 import { exportToFile } from "./layer-export.js";
@@ -149,9 +149,9 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
     writeJson(join(workDir, "harness.json"), harness);
   }
 
-  const config = loadSettings(getHarnessdeckDir());
+  const config = loadSettings(getHarnesstapDir());
   writeJson(join(workDir, "config.json"), config);
-  const harnessdeckDir = getHarnessdeckDir();
+  const harnessdeckDir = getHarnesstapDir();
   const activeProfilePath = join(harnessdeckDir, "active-profile.json");
   const includesActiveProfile = existsSync(activeProfilePath);
   if (includesActiveProfile) {
@@ -294,7 +294,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       const config = JSON.parse(
         readFileSync(configPath, "utf-8"),
       ) as HarnessdeckSettings;
-      const targetDir = getHarnessdeckDir();
+      const targetDir = getHarnesstapDir();
       mkdirSync(targetDir, { recursive: true });
       writeJson(join(targetDir, "config.json"), config);
     }
@@ -302,7 +302,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       const activeProfile = JSON.parse(
         readFileSync(activeProfilePath, "utf-8"),
       ) as { name?: string };
-      const targetDir = getHarnessdeckDir();
+      const targetDir = getHarnesstapDir();
       mkdirSync(targetDir, { recursive: true });
       writeJson(join(targetDir, "active-profile.json"), activeProfile);
     }

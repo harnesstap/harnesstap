@@ -18,7 +18,7 @@ describe("GoosePluginProvider", () => {
       const installs = await provider.list({
         homeRoot: homeDir,
         projectRoot: ".",
-        harnessdeckDir: join(homeDir, ".harnessdeck"),
+        harnessdeckDir: join(homeDir, ".harnesstap"),
       });
 
       expect(installs).toHaveLength(1);
@@ -44,7 +44,7 @@ describe("GoosePluginProvider", () => {
         {
           homeRoot: homeDir,
           projectRoot: ".",
-          harnessdeckDir: join(homeDir, ".harnessdeck"),
+          harnessdeckDir: join(homeDir, ".harnesstap"),
         },
         { ref: "https://github.com/example/plugin.git" },
       );

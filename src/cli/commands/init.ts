@@ -6,7 +6,7 @@ import {
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "../../constants/onboarding.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
-import { getDb, getDbPath, getHarnessdeckDir } from "../../db/connection.js";
+import { getDb, getDbPath, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
   getHarnessPreference,
@@ -114,7 +114,7 @@ async function handleAddCommand(
   },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const harnessdeckDir = getHarnessdeckDir();
+  const harnessdeckDir = getHarnesstapDir();
   const homeRoot = resolveHomeRoot();
 
   if (opts.layer && opts.createLayer) {

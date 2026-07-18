@@ -84,7 +84,7 @@ describe("auth CLI flow", () => {
   it("uses the configured catalog cloud base URL when --base-url is omitted", async () => {
     const harnessdeckDir = mkdtempSync(join(tmpdir(), "hd-auth-login-"));
     saveCatalogSettings({ cloudBaseUrl: "https://cloud.example.test" }, harnessdeckDir);
-    process.env.HARNESSDECK_HOME = harnessdeckDir;
+    process.env.HARNESSTAP_HOME = harnessdeckDir;
 
     const fetchMock = mock()
       .mockResolvedValueOnce(jsonResponse(200, {
@@ -113,7 +113,7 @@ describe("auth CLI flow", () => {
     const got = await cloudAccounts.getCloudAccount("catalogprofile");
     expect(got.account?.cloudBaseUrl).toBe("https://cloud.example.test");
 
-    delete process.env.HARNESSDECK_HOME;
+    delete process.env.HARNESSTAP_HOME;
   });
 
   it("returns empty JSON payloads when no cloud account is configured", async () => {

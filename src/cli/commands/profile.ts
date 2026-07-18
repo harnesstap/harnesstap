@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { getDb, getHarnessdeckDir } from "../../db/connection.js";
+import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
 import { getLayer, resolveLayerSelector } from "../../models/layer-model.js";
@@ -175,7 +175,7 @@ async function handleProfileCreateCommand(
   const version = opts.version ?? "1.0.0";
 
   if (opts.from) {
-    const harnessdeckDir = getHarnessdeckDir();
+    const harnessdeckDir = getHarnesstapDir();
     const homeRoot = resolveHomeRoot();
     const skillNames = parseCommaSeparatedList(opts.skill);
     const excludeCategories = [
