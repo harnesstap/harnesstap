@@ -19,7 +19,7 @@ describe("repo-profile", () => {
     mkdirSync(join(root, ".harnessdeck"), { recursive: true });
     writeTextFile(
       join(root, ".harnessdeck", "config.toml"),
-      `schema = "urn:harnessdeck:project:v1"
+      `schema = "urn:harnesstap:project:v1"
 version = 1
 `,
     );

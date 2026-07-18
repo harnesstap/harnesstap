@@ -2,7 +2,7 @@
 # Layers: demo-api
 # Generated at: 2026-06-15T07:14:17.556Z
 # Source machine: unknown
-schema = "urn:harnessdeck:layer:v1"
+schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers]]

@@ -38,7 +38,7 @@ describe("profile use selection", () => {
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 
@@ -77,7 +77,7 @@ selector = "repo-dev"
       createProfileLayer("work");
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]

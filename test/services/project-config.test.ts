@@ -10,7 +10,7 @@ import {
 } from "../../src/services/project-config.ts";
 import { cleanupDir, createTempDir, writeTextFile } from "../helpers/fs.ts";
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnessdeck:project:v1"
+const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 default_environment = "shared"
@@ -68,7 +68,7 @@ describe("project-config", () => {
       writeTextFile(join(root, ".harnessdeck", "config.toml"), VALID_PROJECT_CONFIG);
       writeTextFile(
         join(root, "packages", "app", ".harnessdeck", "config.toml"),
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "app"
 
@@ -162,7 +162,7 @@ selector = "app-layer"
       const configPath = join(root, ".harnessdeck", "config.toml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnessdeck:layer:v1"
+        `schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers]]
@@ -184,7 +184,7 @@ description = "layer bundle misplaced in project config"
       const configPath = join(root, ".harnessdeck", "config.toml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -206,7 +206,7 @@ selector = "team-stack"
       const configPath = join(root, ".harnessdeck", "config.toml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -233,7 +233,7 @@ selector = "acme/platform/two"
       const configDir = join(root, ".harnessdeck");
       writeTextFile(
         join(configDir, "config.toml"),
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 default_environment = "shared"
@@ -301,7 +301,7 @@ selector = "team-stack"
       const configPath = join(root, ".harnessdeck", "config.toml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -329,7 +329,7 @@ layer = "missing-layer"
       const configPath = join(root, ".harnessdeck", "config.toml");
       writeTextFile(
         configPath,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "missing"
 

@@ -6,7 +6,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnessdeck:project:v1"
+const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 default_environment = "shared"
@@ -106,7 +106,7 @@ describe("CLI config", () => {
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]

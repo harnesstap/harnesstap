@@ -43,7 +43,7 @@ describe("CLI export and import", () => {
 
       const raw = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
       expect(raw.version).toBe(1);
-      expect(raw.$schema).toBe("urn:harnessdeck:layer:v1");
+      expect(raw.$schema).toBe("urn:harnesstap:layer:v1");
       expect(raw.layers[0]?.plugin_pins ?? []).toEqual([]);
       expect(raw.embedded_plugins ?? []).toEqual([]);
 
@@ -113,7 +113,7 @@ describe("CLI export and import", () => {
       expect(exportResult.stderr).not.toContain("ENOENT");
       const parsed = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
       expect(parsed.version).toBe(1);
-      expect(parsed.$schema).toBe("urn:harnessdeck:layer:v1");
+      expect(parsed.$schema).toBe("urn:harnesstap:layer:v1");
       expect(parsed.embedded_plugins).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
@@ -151,7 +151,7 @@ describe("CLI export and import", () => {
       expect(existsSync(bundlePath)).toBe(true);
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw.startsWith("# HarnessDeck layer export\n")).toBe(true);
-      expect(raw).toContain('schema = "urn:harnessdeck:layer:v1"');
+      expect(raw).toContain('schema = "urn:harnesstap:layer:v1"');
     } finally {
       await context.cleanup();
     }
@@ -167,7 +167,7 @@ describe("CLI export and import", () => {
       writeTextFile(
         bundlePath,
         `# commented import
-schema = "urn:harnessdeck:layer:v1"
+schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers]]

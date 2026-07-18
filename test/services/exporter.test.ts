@@ -35,7 +35,7 @@ describe("exporter services", () => {
 
       const bundle = exporter.exportLayer(layer.id);
 
-      expect(bundle.$schema).toBe("urn:harnessdeck:layer:v1");
+      expect(bundle.$schema).toBe("urn:harnesstap:layer:v1");
       expect(bundle.version).toBe(1);
       expect(bundle.layers[0]?.plugin_pins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
@@ -100,7 +100,7 @@ describe("exporter services", () => {
 
       const raw = readFileSync(bundlePath, "utf-8");
       expect(raw.startsWith("# HarnessDeck layer export\n")).toBe(true);
-      expect(raw).toContain('schema = "urn:harnessdeck:layer:v1"');
+      expect(raw).toContain('schema = "urn:harnesstap:layer:v1"');
       expect(raw).toContain("# Source machine: ");
 
       const importContext = await createInitializedTestContext("import-toml-comment-block");
@@ -138,7 +138,7 @@ describe("exporter services", () => {
 
       try {
         const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
-        writeTextFile(bundlePath, `schema = "urn:harnessdeck:layer:v1"
+        writeTextFile(bundlePath, `schema = "urn:harnesstap:layer:v1"
 version = 99
 
 [[layers]]
@@ -191,7 +191,7 @@ plugins = []
         const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
         writeTextFile(
           bundlePath,
-          `schema = "urn:harnessdeck:layer:v1"
+          `schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers
@@ -220,7 +220,7 @@ name = "truncated-bundle"
         writeTextFile(
           bundlePath,
           `# comment before schema
-schema = "urn:harnessdeck:layer:v1"
+schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers]]

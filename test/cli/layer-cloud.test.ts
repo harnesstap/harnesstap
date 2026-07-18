@@ -197,7 +197,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       const foundationBundle = formatLayerExportToml({
-        $schema: "urn:harnessdeck:layer:v1",
+        $schema: "urn:harnesstap:layer:v1",
         version: 1,
         layers: [
           {

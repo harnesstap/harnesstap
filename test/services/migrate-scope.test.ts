@@ -43,7 +43,7 @@ describe("migrate-scope", () => {
     writeFileSync(
       path,
       formatResourceExportToml({
-        $schema: "urn:harnessdeck:resource:v1",
+        $schema: "urn:harnesstap:resource:v1",
         version: 1,
         type: "skill",
         name: "x",

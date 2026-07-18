@@ -1,7 +1,7 @@
 import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 
 const DEFAULT_BUNDLE = formatLayerExportToml({
-  $schema: "urn:harnessdeck:layer:v1",
+  $schema: "urn:harnesstap:layer:v1",
   version: 1,
   layers: [
     {

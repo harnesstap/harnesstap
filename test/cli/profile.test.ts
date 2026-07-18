@@ -484,7 +484,7 @@ describe("CLI profile", () => {
       addResourceToLayer(profile.id, ref.id);
 
       const dependencyBundle = formatLayerExportToml({
-        $schema: "urn:harnessdeck:layer:v1",
+        $schema: "urn:harnesstap:layer:v1",
         version: 1,
         layers: [{
           name: "remote-base",
