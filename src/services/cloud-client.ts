@@ -309,7 +309,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     version: string;
     summary: string;
     layerExport: { layers: Array<Record<string, unknown>> };
-    harnessdeckLayerExportBody: string;
+    harnesstapLayerExportBody: string;
   }): Promise<{ version: { version: string } }> {
     const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
       method: "PATCH",
@@ -320,7 +320,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         version: input.version,
         summary: input.summary,
         layerExport: input.layerExport,
-        harnessdeckLayerExportBody: input.harnessdeckLayerExportBody,
+        harnesstapLayerExportBody: input.harnesstapLayerExportBody,
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -423,7 +423,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         version,
         summary,
         layerExport: layerExportPayload,
-        harnessdeckLayerExportBody: layerExportToml,
+        harnesstapLayerExportBody: layerExportToml,
       });
 
       return {
