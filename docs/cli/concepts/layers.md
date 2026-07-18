@@ -87,7 +87,7 @@ To opt out of anonymous public catalog lookups:
 { "catalog": { "publicCatalog": false } }
 ```
 
-Or export `HARNESSDECK_PUBLIC_CATALOG=0`.
+Or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 
 Connect additional org catalogs explicitly:
 

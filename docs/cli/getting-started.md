@@ -63,7 +63,7 @@ Apply a public catalog baseline in a few minutes.
 
 When a repository has a git `origin`, `ht layer apply` stores a snapshot before writing files. Restore it later with `ht revert`.
 
-Starter layers such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
+Starter layers such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 
 ## Follow-up: scan, compose, and publish
 

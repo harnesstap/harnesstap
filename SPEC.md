@@ -443,7 +443,7 @@ Wizard mode triggers when all of these are true:
 
 1. stdin and stdout are TTYs.
 2. `CI` is not `"true"`.
-3. `HARNESSDECK_NO_INTERACTIVE` is not `"1"`.
+3. `HARNESSTAP_NO_INTERACTIVE` is not `"1"`.
 4. `--no-interactive` is not present.
 5. `--format json` is not requested.
 6. The command was invoked with `--interactive`, or required positional input is missing.
