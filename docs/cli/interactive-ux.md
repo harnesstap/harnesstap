@@ -1,6 +1,6 @@
 # Interactive list keyboard guide
 
-HarnessDeck's TTY entity lists share one **table browser**: grouped tables, a search line, a dense folded footer, and a help line. Selection is shown only in the table (`>` marker and accent color)—there is no separate `Active:` / `Show:` line above the table.
+HarnessTap's TTY entity lists share one **table browser**: grouped tables, a search line, a dense folded footer, and a help line. Selection is shown only in the table (`>` marker and accent color)—there is no separate `Active:` / `Show:` line above the table.
 
 ## Universal keys
 

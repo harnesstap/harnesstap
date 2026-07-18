@@ -11,12 +11,12 @@ client contexts and want one command to apply the right stack to your
 Typical commands:
 
 ```bash
-harnessdeck init
-harnessdeck profile list
-harnessdeck profile use default --dry-run
-harnessdeck profile use work --harness claude-code,cursor
-harnessdeck profile status
-hd work
+harnesstap init
+harnesstap profile list
+harnesstap profile use default --dry-run
+harnesstap profile use work --harness claude-code,cursor
+harnesstap profile status
+ht work
 ```
 
 What this gives you:

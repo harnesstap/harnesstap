@@ -10,10 +10,10 @@ or its pinned plugin versions.
 Typical commands (each exits non-zero on a problem):
 
 ```bash
-harnessdeck status . --check --format json
-harnessdeck layer doctor my-setup --format json
-harnessdeck layer apply my-setup --project . --dry-run --strict-plugin-versions --format json
-harnessdeck resource sync --format json --dry-run
+harnesstap status . --check --format json
+harnesstap layer doctor my-setup --format json
+harnesstap layer apply my-setup --project . --dry-run --strict-plugin-versions --format json
+harnesstap resource sync --format json --dry-run
 ```
 
 This pairs naturally with Scenario 12. The `--dry-run` keeps CI from writing

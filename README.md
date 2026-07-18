@@ -8,13 +8,13 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 <br />
 
-[![CI](https://github.com/harnessdeck/harnessdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/harnessdeck/harnessdeck/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/harnessdeck/harnessdeck)](LICENSE)
+[![CI](https://github.com/harnesstap/harnesstap/actions/workflows/ci.yml/badge.svg)](https://github.com/harnesstap/harnesstap/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/harnesstap/harnesstap)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Bun](https://img.shields.io/badge/bun-1.3+-000000?logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/harnessdeck/harnessdeck)
-[![Hits](https://hits.sh/github.com/harnessdeck/harnessdeck.svg)](https://hits.sh/github.com/harnessdeck/harnessdeck/)
+[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/harnesstap/harnesstap)
+[![Hits](https://hits.sh/github.com/harnesstap/harnesstap.svg)](https://hits.sh/github.com/harnesstap/harnesstap/)
 
 <br />
 
@@ -22,7 +22,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 <br />
 
-![HarnessTap feature map](docs/assets/harnessdeck-features.svg)
+![HarnessTap feature map](docs/assets/harnesstap-features.svg)
 
 </div>
 
@@ -105,7 +105,7 @@ harnesstap status .                  # confirm the final state
 ### Recommended: npx (no global install)
 
 ```bash
-npx harnessdeck@latest init
+npx harnesstap@latest init
 ```
 
 ### npm global
@@ -126,7 +126,7 @@ ht init
 Or run without a global install:
 
 ```bash
-bunx harnessdeck@latest init
+bunx harnesstap@latest init
 ```
 
 </details>
@@ -135,7 +135,7 @@ bunx harnessdeck@latest init
 <summary><strong>Install from source</strong></summary>
 
 ```bash
-git clone https://github.com/harnessdeck/harnessdeck.git
+git clone https://github.com/harnesstap/harnesstap.git
 cd harnesstap
 bun install
 bun run build
@@ -355,7 +355,7 @@ ht layer apply my-setup --project . --strict-plugin-versions
 
 On `layer apply`, harnesstap compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
 
-Use `ht -V`, `harnesstap -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer edit --add` is the **plugin semver pin or range**, not the global version flag.
+Use `ht -V`, `harnesstap -V`, or `--harnesstap-version` for the CLI version. `--version` on `layer edit --add` is the **plugin semver pin or range**, not the global version flag.
 
 Layer export bundles use schema `urn:harnesstap:layer:v1` with one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
@@ -394,8 +394,8 @@ HarnessTap keeps snapshots of generated project files for tracked repositories, 
 ```bash
 ht status . --check
 ht mirror . --force-shift-reference claude-code
-ht migrate export ./harnessdeck-migrate.tar.gz
-ht migrate import ./harnessdeck-migrate.tar.gz
+ht migrate export ./harnesstap-migrate.tar.gz
+ht migrate import ./harnesstap-migrate.tar.gz
 ```
 
 `status --check` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnesstap/config.jsonc`; cloud accounts remain in `cloud-accounts.json`.
@@ -426,7 +426,7 @@ ht harness list --supported    # native serializers only
 
 ## Where data lives
 
-Operational state lives in `~/.harnesstap/harnessdeck.db` (resources, plugins, environments, layers, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnesstap/config.jsonc`. Home environment fragments may live under `~/.harnesstap/environments/`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, layers, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnesstap/config.jsonc`. Home environment fragments may live under `~/.harnesstap/environments/`.
 
 When you run `ht init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
@@ -458,7 +458,7 @@ HarnessTap Cloud supports publishing, searching, and installing shared layers. L
    ```bash
    harnesstap auth login [account] [--base-url <url>]
    ```
-   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://harnessdeck.kayrnt.fr`.
+   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://cloud.harnesstap.com`.
 
 2. **Inspect** the authenticated user.
    ```bash

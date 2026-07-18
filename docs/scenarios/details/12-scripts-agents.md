@@ -11,14 +11,14 @@ human text.
 Typical commands:
 
 ```bash
-harnessdeck init --format json
-harnessdeck harness list --format json
-harnessdeck resource list --format json
-harnessdeck layer show my-setup --format json
-harnessdeck layer doctor my-setup --format json
-harnessdeck history . --format json
-harnessdeck layer apply my-setup --project . --dry-run --format json
-harnessdeck resource sync --format json --dry-run
+harnesstap init --format json
+harnesstap harness list --format json
+harnesstap resource list --format json
+harnesstap layer show my-setup --format json
+harnesstap layer doctor my-setup --format json
+harnesstap history . --format json
+harnesstap layer apply my-setup --project . --dry-run --format json
+harnesstap resource sync --format json --dry-run
 ```
 
 **Exit codes worth scripting against**:

@@ -12,58 +12,58 @@ This guide walks through install, a first catalog apply, and the follow-up scan/
 ### Recommended: npx (no global install)
 
 ```bash
-npx harnessdeck@latest init
+npx harnesstap@latest init
 ```
 
 ### npm global
 
 ```bash
-npm install -g harnessdeck
-hd init
+npm install -g harnesstap
+ht init
 ```
 
 ### Bun (alternative)
 
 ```bash
-bun install -g harnessdeck
-hd init
+bun install -g harnesstap
+ht init
 ```
 
 Or run without a global install:
 
 ```bash
-bunx harnessdeck@latest init
+bunx harnesstap@latest init
 ```
 
-`hd` is shorthand for `harnessdeck` throughout these docs.
+`ht` is shorthand for `harnesstap` throughout these docs.
 
 ## Quick start
 
 Apply a public catalog baseline in a few minutes.
 
-1. **Initialize** local state (creates `~/.harnessdeck` and scans supported home harness folders).
+1. **Initialize** local state (creates `~/.harnesstap` and scans supported home harness folders).
 
    ```bash
-   hd init --main codex --aliases claude-code,cursor
+   ht init --main codex --aliases claude-code,cursor
    ```
 
-2. **Apply** a catalog layer by bare name (fetches from the public HarnessDeck Cloud catalog when needed).
+2. **Apply** a catalog layer by bare name (fetches from the public HarnessTap Cloud catalog when needed).
 
    ```bash
-   hd layer list --search foundation --remote-only
-   hd layer apply engineering-foundation
+   ht layer list --search foundation --remote-only
+   ht layer apply engineering-foundation
    ```
 
 3. **Inspect** project state and next steps.
 
    ```bash
-   hd status .
-   hd help
+   ht status .
+   ht help
    ```
 
-When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd revert`.
+When a repository has a git `origin`, `ht layer apply` stores a snapshot before writing files. Restore it later with `ht revert`.
 
-Starter layers such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
+Starter layers such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
 
 ## Follow-up: scan, compose, and publish
 
@@ -72,43 +72,43 @@ After the baseline fits, build and share your own layers.
 1. **Scan** the current repository and review imports.
 
    ```bash
-   hd scan .
-   hd resource list
+   ht scan .
+   ht resource list
    ```
 
 2. **Create** a reusable layer and add resources.
 
    ```bash
-   hd layer create my-setup --description "Shared project assistant setup"
-   hd layer edit my-setup --add research-helper --type skill
+   ht layer create my-setup --description "Shared project assistant setup"
+   ht layer edit my-setup --add research-helper --type skill
    ```
 
 3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
 
    ```bash
-   hd layer apply my-setup --project . --harness claude-code,cursor
-   hd mirror .
-   hd auth login
-   hd layer catalog register acme/default
-   hd layer publish my-setup
+   ht layer apply my-setup --project . --harness claude-code,cursor
+   ht mirror .
+   ht auth login
+   ht layer catalog register acme/default
+   ht layer publish my-setup
    ```
 
 4. **Manage** harness preferences after init.
 
    ```bash
-   hd harness status --format json
-   hd harness set --main claude-code --aliases cursor,codex
+   ht harness status --format json
+   ht harness set --main claude-code --aliases cursor,codex
    ```
 
 ## Where data lives
 
-Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, layers, environments, tracked projects, snapshots). Optional settings live in `~/.harnessdeck/config.jsonc`. Override the base directory with `HARNESSDECK_HOME`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, layers, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Override the base directory with `HARNESSTAP_HOME`.
 
-`init` seeds a `default` profile layer and writes `active-profile.json`, but does **not** run global apply automatically. Run `hd profile use default` to materialize home harness files. See [Profiles](./concepts/profiles.md).
+`init` seeds a `default` profile layer and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use default` to materialize home harness files. See [Profiles](./concepts/profiles.md).
 
 ## Next steps
 
 - [Command reference](./command-reference.md) — grouped CLI surface and flags
 - [Concepts overview](./concepts/overview.md) — architecture and data model
-- [HarnessDeck Cloud](./cloud.md) — authenticate and work with shared layers
+- [HarnessTap Cloud](./cloud.md) — authenticate and work with shared layers
 - [Scenario guides](../scenarios/scenarios.md) — numbered playbooks (preview/apply, drift, mirror, migration, …)

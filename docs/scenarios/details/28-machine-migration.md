@@ -9,8 +9,8 @@ workspace with a teammate offline. The archive includes layers, environments
 (secret refs only), harness preferences, and config in one step.
 
 ```bash
-harnessdeck migrate export ./harnessdeck-state.tar.gz --include-plugins
-harnessdeck migrate import ./harnessdeck-state.tar.gz
+harnesstap migrate export ./harnesstap-state.tar.gz --include-plugins
+harnesstap migrate import ./harnesstap-state.tar.gz
 ```
 
 For a manual layer-by-layer export workflow, see [Scenario 17](./17-migrate-state.md).

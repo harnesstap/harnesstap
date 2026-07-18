@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnessdeck mirror .
-harnessdeck mirror . --force-shift-reference codex
-harnessdeck mirror . --dry-run
+harnesstap mirror .
+harnesstap mirror . --force-shift-reference codex
+harnesstap mirror . --dry-run
 ```

@@ -10,9 +10,9 @@ library copies are stale or missing resolved versions.
 Typical commands:
 
 ```bash
-harnessdeck resource sync --dry-run
-harnessdeck resource sync --overwrite
-harnessdeck resource sync formatter@team-marketplace --overwrite --force
+harnesstap resource sync --dry-run
+harnesstap resource sync --overwrite
+harnesstap resource sync formatter@team-marketplace --overwrite --force
 ```
 
 `resource sync` walks marketplace-linked `plugin` resources and linked child

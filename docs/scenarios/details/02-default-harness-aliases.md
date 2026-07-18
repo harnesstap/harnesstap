@@ -10,8 +10,8 @@ others to be kept aligned with it.
 Typical commands:
 
 ```bash
-harnessdeck harness set --main claude-code --aliases cursor,codex
-harnessdeck harness status
+harnesstap harness set --main claude-code --aliases cursor,codex
+harnesstap harness status
 ```
 
 Notes:

@@ -15,14 +15,14 @@ Typical commands:
 
 ```bash
 # Preview harness + plugin-source imports (merged when a manifest is present)
-harnessdeck scan . --dry-run
+harnesstap scan . --dry-run
 
 # Scope to one harness
-harnessdeck scan . --harness claude-code
+harnesstap scan . --harness claude-code
 
 # Build a layer from the merged scan (layer from-project always merges both)
-harnessdeck layer from-project my-layer --project .
-harnessdeck layer show my-layer
+harnesstap layer from-project my-layer --project .
+harnesstap layer show my-layer
 ```
 
 Dry-run output shows two sections when both sides contribute: harness platforms

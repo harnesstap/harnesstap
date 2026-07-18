@@ -12,16 +12,16 @@ Manual workflow with current commands:
 ```bash
 # On the old machine
 mkdir -p ./bundles
-for p in $(harnessdeck layer list --format json | jq -r '.[].name'); do
-  harnessdeck migrate export "./bundles/$p.harnesstap.toml" --layer "$p" --embed-plugins
+for p in $(harnesstap layer list --format json | jq -r '.[].name'); do
+  harnesstap migrate export "./bundles/$p.harnesstap.toml" --layer "$p" --embed-plugins
 done
 
 # Copy ./bundles/ to the new machine, then:
-harnessdeck init
+harnesstap init
 for f in ./bundles/*.harnesstap.toml; do
-  harnessdeck migrate import "$f"
+  harnesstap migrate import "$f"
 done
-harnessdeck harness set --main claude-code --aliases cursor,codex   # restore selection
+harnesstap harness set --main claude-code --aliases cursor,codex   # restore selection
 ```
 
 `--embed-plugins` is recommended for portability so the new machine does not

@@ -16,16 +16,16 @@ Quick checklist:
 
 ```bash
 # See what HarnessTap can import from a dual-mode repo
-harnessdeck scan . --dry-run
+harnesstap scan . --dry-run
 
 # Preview what each harness would receive
-harnessdeck layer apply my-setup --project . --harness claude-code,codex,windsurf,opencode --dry-run
+harnesstap layer apply my-setup --project . --harness claude-code,codex,windsurf,opencode --dry-run
 
 # Check mirror warnings for harness-specific surfaces
-harnessdeck mirror . --dry-run --format json
+harnesstap mirror . --dry-run --format json
 
 # List harness capabilities (use --supported for natively serialized hosts only)
-harnessdeck harness list --format json
+harnesstap harness list --format json
 ```
 
 **Fully bridgeable:** skills, instructions, rules, MCP (stdio/http), static

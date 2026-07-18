@@ -12,16 +12,16 @@ Typical commands:
 
 ```bash
 # Discover skills without installing
-harnessdeck add mattpocock/skills --list
+harnesstap add mattpocock/skills --list
 
 # Install selected skills globally (non-interactive)
-harnessdeck add mattpocock/skills --skill caveman,tdd --global --yes
+harnesstap add mattpocock/skills --skill caveman,tdd --global --yes
 
 # Install all skills and create a reusable layer
-harnessdeck add mattpocock/skills --all --global --create-layer mattpocock-skills -y
+harnesstap add mattpocock/skills --all --global --create-layer mattpocock-skills -y
 
 # Install into the current project
-harnessdeck add ./vendor/skills --project . --skill triage --yes
+harnesstap add ./vendor/skills --project . --skill triage --yes
 ```
 
 The command:
@@ -40,8 +40,8 @@ The command:
 After install, edit or apply the layer:
 
 ```bash
-harnessdeck layer show mattpocock-skills
-harnessdeck layer apply mattpocock-skills --project .
+harnesstap layer show mattpocock-skills
+harnesstap layer apply mattpocock-skills --project .
 ```
 
 See [Scenario 4](./04-scan-import-repo.md) for adopting an existing project tree

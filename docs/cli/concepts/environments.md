@@ -23,17 +23,17 @@ On `layer apply` and `profile use`, environment values merge with this precedenc
 home environment  ◂  layer default environment  ◂  deck active environment
 ```
 
-- **Home** — fragments under `~/.harnessdeck/environments/` (optional)
+- **Home** — fragments under `~/.harnesstap/environments/` (optional)
 - **Layer default** — `default_environment_id` on a configured layer
 - **Deck active** — pointer from `environment use` (global) or `environment use --local` (terminal session)
 
 Switch the active environment to change secrets and env vars without rebuilding the layer stack:
 
 ```bash
-hd environment create work --from-layer my-setup --bind
-hd environment edit work --secret SLACK_TOKEN:keychain:harnessdeck/slack-work
-hd environment use work
-hd profile use default --reapply
+ht environment create work --from-layer my-setup --bind
+ht environment edit work --secret SLACK_TOKEN:keychain:harnesstap/slack-work
+ht environment use work
+ht profile use default --reapply
 ```
 
 Use `environment status` to see the active pointer and terminal drift. Use `environment show <name> --layer <selector>` to find missing keys required by a layer's MCP env vars or plugin `needs[]`.
@@ -56,9 +56,9 @@ Use `environment status` to see the active pointer and terminal drift. Use `envi
 | `keychain` | `service` or `service/account` | macOS Keychain (`security find-generic-password`) |
 
 ```bash
-hd environment edit staging --secret GITHUB_TOKEN:env:GITHUB_TOKEN
-hd environment edit staging --secret SLACK_TOKEN:keychain:harnessdeck/slack-staging
-hd environment edit staging --secret API_KEY:file:/run/secrets/api-key
+ht environment edit staging --secret GITHUB_TOKEN:env:GITHUB_TOKEN
+ht environment edit staging --secret SLACK_TOKEN:keychain:harnesstap/slack-staging
+ht environment edit staging --secret API_KEY:file:/run/secrets/api-key
 ```
 
 Secret values are resolved when the cascade is built, merged into the substitution `vars` map, and never written into layer exports or migrate archives.
@@ -79,7 +79,7 @@ MCP server resources are **context-side** (server URL, command, args). Sensitive
 }
 ```
 
-At apply time, HarnessDeck substitutes `${VAR}` in MCP `command`, `args`, `env`, `url`, `headers`, and `auth` fields from the resolved cascade (`substituteMcpServerMetadata` in `mcp-config-bridge`).
+At apply time, HarnessTap substitutes `${VAR}` in MCP `command`, `args`, `env`, `url`, `headers`, and `auth` fields from the resolved cascade (`substituteMcpServerMetadata` in `mcp-config-bridge`).
 
 Recommended workflow for switching accounts (static tokens):
 
@@ -89,13 +89,13 @@ Recommended workflow for switching accounts (static tokens):
 
 ## MCP authentication limitations
 
-MCP auth falls into two models. HarnessDeck only controls the first.
+MCP auth falls into two models. HarnessTap only controls the first.
 
 ### Static auth (supported)
 
 Credentials live in config or environment variables: API keys, bot tokens, Bearer headers, `${ENV_VAR}` / `${env:VAR}` expansion.
 
-HarnessDeck can switch these across environments via `secret_ref` + apply. Keep tokens out of committed layers — use placeholders and resolve at apply time.
+HarnessTap can switch these across environments via `secret_ref` + apply. Keep tokens out of committed layers — use placeholders and resolve at apply time.
 
 ### OAuth 2.1 (host-managed, not switchable via environments)
 
@@ -108,16 +108,16 @@ Remote MCP servers (Linear, Slack hosted MCP, GitHub Copilot MCP, etc.) often us
 | **Copilot CLI** | `~/.copilot/mcp-config.json` | Keytar (`copilot-mcp-oauth`) or `~/.copilot/mcp-oauth-config/*.tokens.json` |
 | **VS Code family** | `.vscode/mcp.json` | VS Code Secret Storage API → OS keychain |
 
-OAuth config entries contain **server URL and transport only** — no access token. HarnessDeck cannot swap OAuth sessions by changing environments because:
+OAuth config entries contain **server URL and transport only** — no access token. HarnessTap cannot swap OAuth sessions by changing environments because:
 
-1. Tokens are not in files HarnessDeck materializes.
+1. Tokens are not in files HarnessTap materializes.
 2. Each host uses a private, undocumented credential schema.
 3. OAuth sessions are **per host app**, not shared across Cursor, Claude Code, and Copilot.
 4. Re-auth often requires interactive browser login inside the host.
 
 ```mermaid
 flowchart LR
-  subgraph HD[HarnessDeck controls]
+  subgraph HD[HarnessTap controls]
     Env[Environment secret_refs]
     McpDef[MCP resource definitions]
     Apply[profile use / layer apply]
@@ -127,7 +127,7 @@ flowchart LR
     McpJson[mcp.json — URL, env placeholders]
   end
 
-  subgraph Host[Host runtime — outside HarnessDeck]
+  subgraph Host[Host runtime — outside HarnessTap]
     OAuth[OAuth browser flow]
     Store[OS Keychain / host token files]
   end
@@ -144,27 +144,27 @@ flowchart LR
 | Approach | Trade-off |
 | --- | --- |
 | **Static token MCP** (bot token, PAT in `env` / `headers`) | Fully environment-switchable; you manage token rotation |
-| **Static OAuth client credentials** in Cursor `auth` block | `CLIENT_ID` / `CLIENT_SECRET` in `mcp.json` (or `${env:…}`); HarnessDeck can swap via environments; access tokens still from browser OAuth |
+| **Static OAuth client credentials** in Cursor `auth` block | `CLIENT_ID` / `CLIENT_SECRET` in `mcp.json` (or `${env:…}`); HarnessTap can swap via environments; access tokens still from browser OAuth |
 | **Stdio OAuth bridge** (`mcp-stdio`, `mcp-remote`) | Bridge owns OAuth; tokens on disk keyed by server URL — partial environment control |
-| **Remote MCP gateway** | Gateway holds OAuth; HarnessDeck swaps gateway API keys per environment |
-| **Per-host login** | Log in separately in each IDE/CLI after apply — no HarnessDeck automation |
+| **Remote MCP gateway** | Gateway holds OAuth; HarnessTap swaps gateway API keys per environment |
+| **Per-host login** | Log in separately in each IDE/CLI after apply — no HarnessTap automation |
 
 ### Cursor behavior ([official docs](https://cursor.com/docs/mcp))
 
 Confirmed against Cursor's published MCP reference:
 
-| Topic | Official behavior | HarnessDeck alignment |
+| Topic | Official behavior | HarnessTap alignment |
 | --- | --- | --- |
 | **Config paths** | `.cursor/mcp.json` (project), `~/.cursor/mcp.json` (global) | Registry paths match |
 | **Transports** | `stdio` (local, manual auth), `SSE` and Streamable HTTP (OAuth) | Metadata models `stdio` / `http`; no separate SSE flag yet |
-| **Static secrets** | `env`, `headers`, and `auth` values; Cursor resolves `${env:NAME}` at runtime | HarnessDeck resolves `${VAR}` at **apply** time to literals in `command`, `args`, `env`, `url`, `headers`, and `auth` |
+| **Static secrets** | `env`, `headers`, and `auth` values; Cursor resolves `${env:NAME}` at runtime | HarnessTap resolves `${VAR}` at **apply** time to literals in `command`, `args`, `env`, `url`, `headers`, and `auth` |
 | **Remote HTTP** | `url` + optional `headers` (e.g. `Authorization: Bearer ${env:MY_SERVICE_TOKEN}`) | `headers` scanned, substituted, and emitted via `mcp-config-bridge` |
 | **Static OAuth** | `auth` block: `CLIENT_ID`, optional `CLIENT_SECRET`, optional `scopes`; redirect URI `cursor://anysphere.cursor-mcp/oauth/callback` | `auth` round-trips in metadata; client credentials are config-side and environment-switchable |
 | **Stdio** | `type: "stdio"`, `command`, `args`, `env`, optional `envFile` | `type: "stdio"`, `envFile`, and stdio fields round-trip on Cursor emit |
-| **OAuth access tokens** | Docs describe browser OAuth for SSE/HTTP; **do not document** where access/refresh tokens are persisted after login | Host-managed; not switchable via HarnessDeck environments |
-| **Programmatic MCP** | Extension API `vscode.cursor.mcp.registerServer()` | Outside `mcp.json`; HarnessDeck does not manage |
+| **OAuth access tokens** | Docs describe browser OAuth for SSE/HTTP; **do not document** where access/refresh tokens are persisted after login | Host-managed; not switchable via HarnessTap environments |
+| **Programmatic MCP** | Extension API `vscode.cursor.mcp.registerServer()` | Outside `mcp.json`; HarnessTap does not manage |
 
-Cursor's docs state that MCP servers "use environment variables for authentication" and that you should pass API keys through config — consistent with HarnessDeck's static-auth / environment model. For SSE and Streamable HTTP, Cursor lists **OAuth** as the auth column; that session is separate from values in `mcp.json`.
+Cursor's docs state that MCP servers "use environment variables for authentication" and that you should pass API keys through config — consistent with HarnessTap's static-auth / environment model. For SSE and Streamable HTTP, Cursor lists **OAuth** as the auth column; that session is separate from values in `mcp.json`.
 
 ## Harness coverage for environments
 
@@ -210,8 +210,8 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 | Gap | Why hard |
 | --- | --- |
 | **OAuth session per environment** | Requires read/write adapters for each host's private credential store; brittle across host upgrades. |
-| **`hd mcp auth` wrapper** | Would duplicate host OAuth UX; better documented as manual host login or stdio bridge. |
-| **Cross-harness shared OAuth** | Each app maintains separate sessions; HarnessDeck cannot unify without a gateway. |
+| **`ht mcp auth` wrapper** | Would duplicate host OAuth UX; better documented as manual host login or stdio bridge. |
+| **Cross-harness shared OAuth** | Each app maintains separate sessions; HarnessTap cannot unify without a gateway. |
 
 ### Suggested implementation order
 

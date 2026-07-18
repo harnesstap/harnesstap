@@ -10,10 +10,10 @@ reusable harness baseline.
 Typical commands:
 
 ```bash
-harnessdeck layer create my-setup --description "Shared project assistant setup"
-harnessdeck resource list --search auth        # find what to add
-harnessdeck layer edit my-setup --add auth-helper --type skill
-harnessdeck layer show my-setup
+harnesstap layer create my-setup --description "Shared project assistant setup"
+harnesstap resource list --search auth        # find what to add
+harnesstap layer edit my-setup --add auth-helper --type skill
+harnesstap layer show my-setup
 ```
 
 `layer edit` is for local resources and plugin pins. `layer pull` installs a

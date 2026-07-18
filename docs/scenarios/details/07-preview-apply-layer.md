@@ -10,16 +10,16 @@ The dry-run preview is itself a frequent check before a real write.
 Typical commands:
 
 ```bash
-harnessdeck layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
-harnessdeck layer apply my-setup --project . --harness claude-code,codex,cursor
-harnessdeck status .
+harnesstap layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
+harnesstap layer apply my-setup --project . --harness claude-code,codex,cursor
+harnesstap status .
 ```
 
 Plugin-version policy when the layer carries plugin pins:
 
 ```bash
-harnessdeck layer apply my-setup --strict-plugin-versions   # exit 2 on pin violation
-harnessdeck layer apply my-setup --ignore-plugin-versions   # skip validation
+harnesstap layer apply my-setup --strict-plugin-versions   # exit 2 on pin violation
+harnesstap layer apply my-setup --ignore-plugin-versions   # skip validation
 ```
 
 `layer apply` is the canonical write path for one or more layers. Stack multiple layers in one command (see [Scenario 25](./25-stack-layers.md)).

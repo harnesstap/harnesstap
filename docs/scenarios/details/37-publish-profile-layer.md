@@ -11,13 +11,13 @@ layers with the `profile` tag — there is no separate catalog entity.
 Typical commands:
 
 ```bash
-harnessdeck auth login work
-harnessdeck profile create work --description "Work machine preset"
-harnessdeck layer edit work --add layer:engineering-foundation
-harnessdeck profile publish work --account work
-harnessdeck profile list --search foundation --remote-only --account work
-harnessdeck profile pull harnessdeck-cloud/default/work@1.0.0
-harnessdeck profile use work
+harnesstap auth login work
+harnesstap profile create work --description "Work machine preset"
+harnesstap layer edit work --add layer:engineering-foundation
+harnesstap profile publish work --account work
+harnesstap profile list --search foundation --remote-only --account work
+harnesstap profile pull harnesstap-cloud/default/work@1.0.0
+harnesstap profile use work
 ```
 
 What this gives you:
@@ -31,7 +31,7 @@ What this gives you:
 - `profile use` auto-pulls missing published `layer` dependencies before
   global apply (pass `--no-pull` to require local copies)
 
-Profile layers export as `urn:harnessdeck:layer:v1` with `tags` including
+Profile layers export as `urn:harnesstap:layer:v1` with `tags` including
 `profile`. Share across machines with `migrate export` / `migrate import`
 (active profile pointer included) or pull from the catalog after publish.
 

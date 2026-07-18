@@ -1,12 +1,12 @@
-# HarnessDeck command reference
+# HarnessTap command reference
 
-This page mirrors the grouped CLI surface exposed by `harnessdeck --help`. Use it as the canonical reference for command names, aliases, and the most important flags. For workflow examples, see the [README](../../README.md).
+This page mirrors the grouped CLI surface exposed by `harnesstap --help`. Use it as the canonical reference for command names, aliases, and the most important flags. For workflow examples, see the [README](../../README.md).
 
 ## Global options
 
-Available on `harnessdeck` / `hd`:
+Available on `harnesstap` / `ht`:
 
-- `-V, --harnessdeck-version` — print the HarnessDeck CLI version
+- `-V, --harnesstap-version` — print the HarnessTap CLI version
 - `-v, --verbose` — show verbose error output
 - `--no-color` — disable ANSI colors
 - `--no-interactive` — disable interactive prompts
@@ -26,43 +26,43 @@ Available on `harnessdeck` / `hd`:
 
 ## help
 
-Core HarnessDeck concepts and a numbered scenario index. Scenario playbooks live in `docs/scenarios/details/`.
+Core HarnessTap concepts and a numbered scenario index. Scenario playbooks live in `docs/scenarios/details/`.
 
 ```bash
-hd help
-hd help --format json
-hd help scenario 11
-hd help scenario 7 --format json
+ht help
+ht help --format json
+ht help scenario 11
+ht help scenario 7 --format json
 ```
 
 ## completion
 
 Generate shell completion scripts for bash, zsh, or fish. After installation, Tab completes:
 
-- subcommands and flags for every `hd` command
+- subcommands and flags for every `ht` command
 - dynamic values such as local layer, profile layer, and resource names
 - harness slugs, cloud accounts, and catalog layers (when authenticated) for supported commands
 
 Install by appending or saving the script for your shell:
 
 ```bash
-hd completion bash >> ~/.bashrc
-hd completion zsh >> ~/.zshrc
-hd completion fish > ~/.config/fish/completions/hd.fish
+ht completion bash >> ~/.bashrc
+ht completion zsh >> ~/.zshrc
+ht completion fish > ~/.config/fish/completions/ht.fish
 ```
 
-Restart your shell or source the file, then try `hd layer show <Tab>` to list local layers.
+Restart your shell or source the file, then try `ht layer show <Tab>` to list local layers.
 
-Both `hd` and `harnessdeck` invocations are supported.
+Both `ht` and `harnesstap` invocations are supported.
 
 ## init
 
-Initialize local HarnessDeck state.
+Initialize local HarnessTap state.
 
 ```bash
-hd init
-hd init --main claude-code --aliases cursor,codex
-hd init --format json
+ht init
+ht init --main claude-code --aliases cursor,codex
+ht init --format json
 ```
 
 Key options:
@@ -73,18 +73,18 @@ Key options:
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
 
-`init` seeds a local `default` profile layer (tagged `profile`) and writes `active-profile.json` unless `--no-default-profile` is passed. Global apply does **not** run automatically — run `hd profile use default` to materialize home harness files.
+`init` seeds a local `default` profile layer (tagged `profile`) and writes `active-profile.json` unless `--no-default-profile` is passed. Global apply does **not** run automatically — run `ht profile use default` to materialize home harness files.
 
 ## add
 
-Install skills from a remote GitHub repo, Git URL, or local skill-package directory. Discovers skills recursively under `skills/` or `.agents/skills/`, imports the full package into the HarnessDeck library, and installs a selected subset to disk.
+Install skills from a remote GitHub repo, Git URL, or local skill-package directory. Discovers skills recursively under `skills/` or `.agents/skills/`, imports the full package into the HarnessTap library, and installs a selected subset to disk.
 
 ```bash
-hd add mattpocock/skills
-hd add mattpocock/skills --list
-hd add mattpocock/skills --skill caveman,grill-me --global --yes
-hd add mattpocock/skills --create-layer mattpocock-skills --global -y
-hd add ./local/skills-repo --project .
+ht add mattpocock/skills
+ht add mattpocock/skills --list
+ht add mattpocock/skills --skill caveman,grill-me --global --yes
+ht add mattpocock/skills --create-layer mattpocock-skills --global -y
+ht add ./local/skills-repo --project .
 ```
 
 | Flag | Purpose |
@@ -145,7 +145,7 @@ Apply layers with `layer apply` (not under this group).
 
 ## layer (`l`)
 
-Manage design plugins (resource bundles), composition attachments, portable bundle export/import, and HarnessDeck Cloud catalog workflows.
+Manage design plugins (resource bundles), composition attachments, portable bundle export/import, and HarnessTap Cloud catalog workflows.
 
 Remote library discovery, install, and publish live on **`layer`**, not `auth`. Use `auth` only for authentication and org context.
 
@@ -240,7 +240,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 
 ## auth (`a`)
 
-Manage HarnessDeck Cloud authentication and cloud account state.
+Manage HarnessTap Cloud authentication and cloud account state.
 
 ### Commands
 
@@ -264,7 +264,7 @@ Token refresh runs before remote calls. The CLI does not silently switch account
 
 Manage profile layers (layers tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `layer apply` for projects.
 
-Root shorthand: when the first argument is not a known command and matches a local profile layer name, `hd <name>` runs `profile use <name>` (e.g. `hd work`).
+Root shorthand: when the first argument is not a known command and matches a local profile layer name, `ht <name>` runs `profile use <name>` (e.g. `ht work`).
 
 ### Commands
 
@@ -398,7 +398,7 @@ Manage global harness preferences and git-backed project overrides.
 
 ### Important options
 
-- `harness list --supported` — only harnesses HarnessDeck can serialize natively
+- `harness list --supported` — only harnesses HarnessTap can serialize natively
 - `harness list --format json`
 - `harness set --main <slug> --aliases <slugs>`
 - `harness project set --project <path>`
@@ -411,11 +411,11 @@ Offline sharing for workspace archives, individual layers, or single resources �
 
 Use `migrate` when:
 
-- setting up a new laptop from an existing HarnessDeck install (full workspace)
+- setting up a new laptop from an existing HarnessTap install (full workspace)
 - sharing a curated layer or resource with a teammate offline
 - backing up your local workspace before a reinstall
 
-For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck Cloud.
+For multiplayer distribution, use `layer publish` / `layer pull` via HarnessTap Cloud.
 
 ### Commands
 
@@ -425,8 +425,8 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessDeck
 ### Important options
 
 - `migrate export --workspace` — full workspace archive (`.tar.gz` or `.json`)
-- `migrate export --layer <name>` — layer bundle TOML (`urn:harnessdeck:layer:v1`); comma-separated for multi-layer
-- `migrate export --resource <selector>` — single resource TOML (`urn:harnessdeck:resource:v1`)
+- `migrate export --layer <name>` — layer bundle TOML (`urn:harnesstap:layer:v1`); comma-separated for multi-layer
+- `migrate export --resource <selector>` — single resource TOML (`urn:harnesstap:resource:v1`)
 - `migrate export --environment <name>` — single environment TOML
 - `migrate export -o, --file <path>` — output path (overrides positional)
 - `migrate export --include-plugins` / `--embed-plugins` — embed plugin trees (workspace and layer scope)

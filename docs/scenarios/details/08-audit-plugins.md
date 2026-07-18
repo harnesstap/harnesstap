@@ -13,10 +13,10 @@ There are two related surfaces:
 **Library plugin resources** — what HarnessTap knows about installed plugins:
 
 ```bash
-harnessdeck resource list --type plugin_pin_pin
-harnessdeck resource show formatter@team-marketplace
-harnessdeck resource sync --dry-run
-harnessdeck resource sync formatter@team-marketplace --overwrite
+harnesstap resource list --type plugin_pin_pin
+harnesstap resource show formatter@team-marketplace
+harnesstap resource sync --dry-run
+harnesstap resource sync formatter@team-marketplace --overwrite
 ```
 
 `resource sync` refreshes marketplace-linked plugin resources from install
@@ -26,9 +26,9 @@ Stale rows are reported when the install path cannot be resolved.
 **Layer pins** — what a layer expects at apply time:
 
 ```bash
-harnessdeck layer show my-setup
-harnessdeck layer doctor my-setup --check plugin-metadata
-harnessdeck layer apply my-setup --project . --dry-run --strict-plugin-versions
+harnesstap layer show my-setup
+harnesstap layer doctor my-setup --check plugin-metadata
+harnesstap layer apply my-setup --project . --dry-run --strict-plugin-versions
 ```
 
 Use **library sync** when chasing *"is this plugin resource up to date?"* and

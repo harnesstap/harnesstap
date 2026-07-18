@@ -24,7 +24,7 @@ function countOccurrences(source: string, text: string): number {
 
 describe("HarnessTap features SVG", () => {
   test("documents the approved HarnessTap feature map", async () => {
-    const svg = await readFile("docs/assets/harnessdeck-features.svg", "utf8");
+    const svg = await readFile("docs/assets/harnesstap-features.svg", "utf8");
     const rootTag = svg.match(/^<svg([^>]*)>/);
     const title = matchTag(svg, "title");
     const description = matchTag(svg, "desc");

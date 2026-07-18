@@ -10,9 +10,9 @@ new repo quickly, or share a team baseline.
 Typical commands:
 
 ```bash
-harnessdeck migrate export ./my-setup.harnesstap.toml --layer my-setup
-harnessdeck migrate export ./team.harnesstap.toml --layer my-setup --embed-plugins
-harnessdeck migrate import ./my-setup.harnesstap.toml
+harnesstap migrate export ./my-setup.harnesstap.toml --layer my-setup
+harnesstap migrate export ./team.harnesstap.toml --layer my-setup --embed-plugins
+harnesstap migrate import ./my-setup.harnesstap.toml
 ```
 
 This is the main offline layer sharing story. Bundles carry the layer definition

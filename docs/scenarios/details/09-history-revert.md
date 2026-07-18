@@ -9,9 +9,9 @@ Use this when a layer write produced files you want to inspect or undo.
 Typical commands:
 
 ```bash
-harnessdeck status .
-harnessdeck history .
-harnessdeck revert <snapshot-id>
+harnesstap status .
+harnesstap history .
+harnesstap revert <snapshot-id>
 ```
 
 This is the safety-net workflow. Snapshots are created during `layer apply`

@@ -11,8 +11,8 @@ Codex as the canonical harness.
 Typical commands:
 
 ```bash
-harnessdeck harness project set --project . --main codex --aliases claude-code,cursor
-harnessdeck harness project status --project .
+harnesstap harness project set --project . --main codex --aliases claude-code,cursor
+harnesstap harness project status --project .
 ```
 
 You can also set `--materialization-strategy symlink-preferred` or `copy` when

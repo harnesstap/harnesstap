@@ -1,11 +1,11 @@
-# HarnessDeck CLI documentation
+# HarnessTap CLI documentation
 
-HarnessDeck is an agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. Scan existing setup, store canonical resources, compose layers, and materialize into any supported harness.
+HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. Scan existing setup, store canonical resources, compose layers, and materialize into any supported harness.
 
 ## Start here
 
 - [Getting started](./getting-started.md) — install, first apply, scan and publish workflow
-- [Concepts](./concepts/overview.md) — architecture and the HarnessDeck data model
+- [Concepts](./concepts/overview.md) — architecture and the HarnessTap data model
 - [Command reference](./command-reference.md) — full CLI surface, flags, and aliases
 
 ## Guides
@@ -14,15 +14,15 @@ HarnessDeck is an agent harness configuration toolkit for Claude Code, Codex, Cu
 - [Supported harnesses](../supported-harnesses.md) — harness matrix and resource types
 - [Portability limits](../portability-limits.md) — what transfers across harnesses
 - [Interactive UX](./interactive-ux.md) — keyboard reference for TTY browse prompts
-- [HarnessDeck Cloud](./cloud.md) — authenticate, search, pull, and publish shared layers
+- [HarnessTap Cloud](./cloud.md) — authenticate, search, pull, and publish shared layers
 
 ## Quick links
 
 ```bash
-hd init --main codex --aliases claude-code,cursor
-hd layer list --search foundation --remote-only
-hd layer apply engineering-foundation
-hd status .
+ht init --main codex --aliases claude-code,cursor
+ht layer list --search foundation --remote-only
+ht layer apply engineering-foundation
+ht status .
 ```
 
-Use `hd` as shorthand for `harnessdeck`. For automation, prefer `--format json` on reporting commands.
+Use `ht` as shorthand for `harnesstap`. For automation, prefer `--format json` on reporting commands.

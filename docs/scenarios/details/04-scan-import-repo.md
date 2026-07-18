@@ -10,11 +10,11 @@ config, rules, hooks, or agent files that you want HarnessTap to manage.
 Typical commands:
 
 ```bash
-harnessdeck scan . --dry-run                  # preview what would be imported
-harnessdeck scan .
-harnessdeck scan . --harness claude-code     # scope to a single harness
-harnessdeck resource list
-harnessdeck resource show <resource-name-or-id>
+harnesstap scan . --dry-run                  # preview what would be imported
+harnesstap scan .
+harnesstap scan . --harness claude-code     # scope to a single harness
+harnesstap resource list
+harnesstap resource show <resource-name-or-id>
 ```
 
 This is the normal "adopt an existing repo" workflow. It works well for repos

@@ -10,12 +10,12 @@ resources from deleted repos, or noisy imports you no longer need.
 Typical commands:
 
 ```bash
-harnessdeck resource list --type skill
-harnessdeck resource list --type instruction --search legacy
-harnessdeck resource list --type plugin_pin_pin
-harnessdeck resource show skill:legacy-helper
-harnessdeck resource delete legacy-helper
-harnessdeck layer delete <stale-layer-name>
+harnesstap resource list --type skill
+harnesstap resource list --type instruction --search legacy
+harnesstap resource list --type plugin_pin_pin
+harnesstap resource show skill:legacy-helper
+harnesstap resource delete legacy-helper
+harnesstap layer delete <stale-layer-name>
 ```
 
 Valid `--type` values for material resources: `instruction`, `skill`, `rule`,

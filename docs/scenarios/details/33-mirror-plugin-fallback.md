@@ -13,20 +13,20 @@ Typical commands:
 
 ```bash
 # Default: main harness only (unchanged behavior)
-harnessdeck mirror . --dry-run
+harnesstap mirror . --dry-run
 
 # Auto fallback: main → plugin source → AGENTS.md instructions
-harnessdeck mirror . --reference auto --dry-run
-harnessdeck mirror . --reference auto
+harnesstap mirror . --reference auto --dry-run
+harnesstap mirror . --reference auto
 
 # Force plugin-source as the reference
-harnessdeck mirror . --reference plugin --dry-run
+harnesstap mirror . --reference plugin --dry-run
 
 # Force shared AGENTS.md instruction scan across alias harnesses
-harnessdeck mirror . --reference agents --dry-run
+harnesstap mirror . --reference agents --dry-run
 
 # Shift main harness before mirroring (when codex is the real canonical tree)
-harnessdeck mirror . --force-shift-reference codex --reference auto
+harnesstap mirror . --force-shift-reference codex --reference auto
 ```
 
 **Reference strategies:**
@@ -41,9 +41,9 @@ harnessdeck mirror . --force-shift-reference codex --reference auto
 When mirror fails with an empty main harness, the error suggests:
 
 ```text
-Try: harnessdeck mirror --reference plugin
-or harnessdeck scan .
-or harnessdeck harness project set --main codex
+Try: harnesstap mirror --reference plugin
+or harnesstap scan .
+or harnesstap harness project set --main codex
 ```
 
 **Auto-merge (non-empty main):** repos like [obra/superpowers](https://github.com/obra/superpowers)

@@ -10,8 +10,8 @@ backend repo that supports Claude Code and Codex but never used Cursor.
 Typical commands:
 
 ```bash
-harnessdeck layer apply my-setup --project . --harness claude-code,codex --dry-run
-harnessdeck layer apply my-setup --project . --harness claude-code,codex
+harnesstap layer apply my-setup --project . --harness claude-code,codex --dry-run
+harnesstap layer apply my-setup --project . --harness claude-code,codex
 ```
 
 The `--harness` flag also lets you migrate one harness at a time: apply only

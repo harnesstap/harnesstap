@@ -10,15 +10,15 @@ or CI-like agent environment.
 Typical commands:
 
 ```bash
-harnessdeck init
-harnessdeck init --main claude-code --aliases cursor,codex
-harnessdeck harness list
-harnessdeck layer list --search fullstack --remote-only
+harnesstap init
+harnesstap init --main claude-code --aliases cursor,codex
+harnesstap harness list
+harnesstap layer list --search fullstack --remote-only
 ```
 
 What this gives you:
 
-- a local SQLite database under `~/.harnesstap/harnessdeck.db`
+- a local SQLite database under `~/.harnesstap/harnesstap.db`
 - an optional settings file at `~/.harnesstap/config.jsonc`
 - a `default` profile layer (tagged `profile`) and
   `~/.harnesstap/active-profile.json` unless you pass `--no-default-profile`

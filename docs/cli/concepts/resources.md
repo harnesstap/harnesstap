@@ -1,14 +1,14 @@
 ---
-description: The atomic unit HarnessDeck scans, stores, composes, and re-emits.
+description: The atomic unit HarnessTap scans, stores, composes, and re-emits.
 ---
 
 # Resources
 
-A **resource** is the atomic unit HarnessDeck scans, stores, composes, and re-emits. Skills, instructions, rules, MCP servers, hooks, agents, commands, and plugin pins are all resources in the canonical library.
+A **resource** is the atomic unit HarnessTap scans, stores, composes, and re-emits. Skills, instructions, rules, MCP servers, hooks, agents, commands, and plugin pins are all resources in the canonical library.
 
 ## Context vs environment resources
 
-HarnessDeck separates what the model sees from how it runs.
+HarnessTap separates what the model sees from how it runs.
 
 ### Context-side material resources
 
@@ -52,11 +52,11 @@ See the full harness matrix — which types each harness supports — in [Suppor
 `scan` detects supported harness files in a repository and imports them into the canonical library. `init` also scans registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`).
 
 ```bash
-hd init --main codex --aliases claude-code,cursor
-hd scan .
-hd resource list
-hd resource list --search helper          # non-interactive filter
-hd resource show skill:research-helper
+ht init --main codex --aliases claude-code,cursor
+ht scan .
+ht resource list
+ht resource list --search helper          # non-interactive filter
+ht resource show skill:research-helper
 ```
 
 `scan` automatically merges repo-root plugin trees (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `.github/plugin/`) with harness project files when a recognized manifest is present.
@@ -64,20 +64,20 @@ hd resource show skill:research-helper
 Install skills from a remote package without a prior scan:
 
 ```bash
-hd add owner/repo --skill my-skill
+ht add owner/repo --skill my-skill
 ```
 
 ## Canonical SQLite library
 
-Imported resources live in `~/.harnessdeck/harnessdeck.db` alongside plugins, environments, layers, tracked projects, and snapshots. The database is the single source of truth for composition — on-disk harness files are **materialized views** produced by apply, mirror, or profile use.
+Imported resources live in `~/.harnesstap/harnesstap.db` alongside plugins, environments, layers, tracked projects, and snapshots. The database is the single source of truth for composition — on-disk harness files are **materialized views** produced by apply, mirror, or profile use.
 
 Key resource commands:
 
 ```bash
-hd resource list [--format json]
-hd resource show <selector>
-hd resource sync <plugin-pin-selector> [--force]
-hd resource delete <selector>
+ht resource list [--format json]
+ht resource show <selector>
+ht resource sync <plugin-pin-selector> [--force]
+ht resource delete <selector>
 ```
 
 Use `--format json` for scripting. Interactive `resource list` opens a filter overlay; see [Interactive UX](../interactive-ux.md). Human list tables show bare names in the NAME column and plugin or package paths in NAMESPACE; compose with `name@namespace` selectors as documented in the command reference.
@@ -87,10 +87,10 @@ Use `--format json` for scripting. Interactive `resource list` opens a filter ov
 Resources alone are not applied to projects. You group them into plugins and layers, then apply the layer:
 
 ```bash
-hd layer create my-setup
-hd layer edit my-setup --add research-helper --type skill
-hd layer edit my-setup --add shared-rules --type rule
-hd layer apply my-setup --project . --harness claude-code,cursor
+ht layer create my-setup
+ht layer edit my-setup --add research-helper --type skill
+ht layer edit my-setup --add shared-rules --type rule
+ht layer apply my-setup --project . --harness claude-code,cursor
 ```
 
 `layer from-project` is a shortcut that scans a repository and promotes imported resources into a new layer in one step.
@@ -100,16 +100,16 @@ hd layer apply my-setup --project . --harness claude-code,cursor
 Marketplace plugins import as `plugin_pin` resources. Sync resolves the plugin tree into child resources:
 
 ```bash
-hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
-hd resource sync plugin_pin:formatter@my-marketplace
-hd resource show plugin_pin:formatter@my-marketplace
+ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
+ht resource sync plugin_pin:formatter@my-marketplace
+ht resource show plugin_pin:formatter@my-marketplace
 ```
 
 Claude Code and Cursor have native plugin install/sync providers. Other harnesses may import plugin manifest metadata without full install-tree fidelity — see [Portability limits](../../portability-limits.md).
 
 ## Portability notes
 
-Most static, file-based resources round-trip faithfully across harnesses. Some surfaces are runtime-only or host-specific (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission). HarnessDeck imports metadata where possible but does not claim full fidelity for every case.
+Most static, file-based resources round-trip faithfully across harnesses. Some surfaces are runtime-only or host-specific (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission). HarnessTap imports metadata where possible but does not claim full fidelity for every case.
 
 Before relying on cross-harness apply, review [Portability limits](../../portability-limits.md) and the per-harness matrix in [Supported harnesses](../../supported-harnesses.md).
 
