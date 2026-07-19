@@ -59,7 +59,7 @@ describe("transport TOML round-trip", () => {
   });
 
   it("writes layer exports to .harnesstap.toml paths", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-transport-layer-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-transport-layer-"));
     tempDirs.push(dir);
 
     const bundlePath = join(dir, "bundle.harnesstap.toml");

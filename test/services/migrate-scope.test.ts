@@ -30,7 +30,7 @@ describe("migrate-scope", () => {
   });
 
   it("detects layer import from TOML schema", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-scope-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-scope-"));
     const path = join(dir, "layer.harnesstap.toml");
     writeLayerExportToml(path, makeSingleLayerExport({ name: "x" }));
     expect(detectImportScopeFromFile(path)).toBe("layer");
@@ -38,7 +38,7 @@ describe("migrate-scope", () => {
   });
 
   it("detects resource import from TOML schema", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-scope-r-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-scope-r-"));
     const path = join(dir, "skill.harnesstap.toml");
     writeFileSync(
       path,
@@ -62,7 +62,7 @@ describe("migrate-scope", () => {
   });
 
   it("rejects forced import scope that mismatches file format", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-scope-mismatch-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-scope-mismatch-"));
     const path = join(dir, "layer.harnesstap.toml");
     writeLayerExportToml(path, makeSingleLayerExport({ name: "x" }));
     expect(() =>

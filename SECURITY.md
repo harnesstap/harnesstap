@@ -16,8 +16,8 @@ HarnessTap is in active development (`0.x`). Security fixes are applied to the l
 
 Report security issues privately using one of these channels:
 
-1. [GitHub private vulnerability reporting](https://github.com/harnessdeck/harnessdeck/security/advisories/new) (preferred)
-2. Email the maintainers via the contact address listed on the [GitHub organization profile](https://github.com/harnessdeck)
+1. [GitHub private vulnerability reporting](https://github.com/harnesstap/harnesstap/security/advisories/new) (preferred)
+2. Email the maintainers via the contact address listed on the [GitHub organization profile](https://github.com/harnesstap)
 
 Include as much detail as you can:
 

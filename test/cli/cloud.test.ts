@@ -82,7 +82,7 @@ describe("auth CLI flow", () => {
   });
 
   it("uses the configured catalog cloud base URL when --base-url is omitted", async () => {
-    const harnesstapDir = mkdtempSync(join(tmpdir(), "hd-auth-login-"));
+    const harnesstapDir = mkdtempSync(join(tmpdir(), "ht-auth-login-"));
     saveCatalogSettings({ cloudBaseUrl: "https://cloud.example.test" }, harnesstapDir);
     process.env.HARNESSTAP_HOME = harnesstapDir;
 

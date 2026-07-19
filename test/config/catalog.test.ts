@@ -15,13 +15,13 @@ import {
 
 describe("catalog config", () => {
   it("always includes the default harnesstap-cloud org in scope", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-catalog-"));
     const scope = resolveCatalogScope({ harnesstapDir: dir });
     expect(scope.orgs).toEqual([DEFAULT_CATALOG_ORG_SLUG]);
   });
 
   it("persists connected orgs without storing the default org slug", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-catalog-"));
     connectCatalogOrg("acme", dir);
     connectCatalogLayer("partner/default/design", dir);
 
@@ -36,14 +36,14 @@ describe("catalog config", () => {
   });
 
   it("rejects disconnecting the default catalog org", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-catalog-"));
     expect(() => disconnectCatalogOrg(DEFAULT_CATALOG_ORG_SLUG, dir)).toThrow(
       /Cannot disconnect the default catalog org/,
     );
   });
 
   it("defaults publicCatalog to true and persists overrides", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-public-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-catalog-public-"));
     expect(isPublicCatalogEnabled(dir)).toBe(true);
 
     saveCatalogSettings({ publicCatalog: false }, dir);
@@ -52,7 +52,7 @@ describe("catalog config", () => {
   });
 
   it("honors HARNESSTAP_PUBLIC_CATALOG=0", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-catalog-env-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-catalog-env-"));
     const previous = process.env.HARNESSTAP_PUBLIC_CATALOG;
     process.env.HARNESSTAP_PUBLIC_CATALOG = "0";
     expect(isPublicCatalogEnabled(dir)).toBe(false);

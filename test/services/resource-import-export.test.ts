@@ -52,7 +52,7 @@ describe("resource import/export service", () => {
         makeResourceInput({ name: "shared-skill", content: "# Skill body" }),
       );
 
-      const dir = mkdtempSync(join(tmpdir(), "hd-resource-export-"));
+      const dir = mkdtempSync(join(tmpdir(), "ht-resource-export-"));
       const outPath = join(dir, "shared-skill.harnesstap.toml");
       exportResourceToFile(`skill:${created.name}`, outPath);
 
@@ -71,7 +71,7 @@ describe("resource import/export service", () => {
       const { getDb } = await import("../../src/db/connection.ts");
       initializeSchema(getDb());
 
-      const dir = mkdtempSync(join(tmpdir(), "hd-resource-import-"));
+      const dir = mkdtempSync(join(tmpdir(), "ht-resource-import-"));
       const outPath = join(dir, "shared-skill.harnesstap.toml");
       writeFileSync(
         outPath,

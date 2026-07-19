@@ -350,9 +350,9 @@ describe("CLI planned scenarios", () => {
   });
 
   it("uses the invoked alias in drift json guidance when no project record exists", async () => {
-    const context = await createTestContext("cli-drift-hd-guidance");
+    const context = await createTestContext("cli-drift-ht-guidance");
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/drift-hd-guidance.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/drift-ht-guidance.git");
       await runCli(["init"], { commandName: "ht" });
 
       const result = await runCli(

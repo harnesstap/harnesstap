@@ -6,13 +6,13 @@ import { loadSettings } from "../../src/config/settings.js";
 
 describe("loadSettings", () => {
   it("defaults refreshMaxAgeHours to 24 when config missing", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     const settings = loadSettings(dir);
     expect(settings.plugins.refreshMaxAgeHours).toBe(24);
   });
 
   it("reads refreshMaxAgeHours from config.json", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.json"),
       JSON.stringify({ plugins: { refreshMaxAgeHours: 48 } }),
@@ -21,7 +21,7 @@ describe("loadSettings", () => {
   });
 
   it("prefers config.jsonc over config.json", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.json"),
       JSON.stringify({ plugins: { refreshMaxAgeHours: 48 } }),
@@ -35,7 +35,7 @@ describe("loadSettings", () => {
   });
 
   it("reads JSONC comments and trailing commas", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.jsonc"),
       `{
@@ -50,7 +50,7 @@ describe("loadSettings", () => {
   });
 
   it("falls back to defaults for malformed config content", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.jsonc"),
       `{
@@ -64,7 +64,7 @@ describe("loadSettings", () => {
   });
 
   it("parses quoted // content without treating it as a comment", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.jsonc"),
       `{
@@ -79,7 +79,7 @@ describe("loadSettings", () => {
   });
 
   it("falls back to default for invalid refreshMaxAgeHours", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-config-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.json"),
       JSON.stringify({ plugins: { refreshMaxAgeHours: -1 } }),

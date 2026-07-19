@@ -13,7 +13,7 @@ describe("ClaudeCodePluginProvider", () => {
     const installs = await provider.list({
       projectRoot: ".",
       homeRoot: fixtureHome,
-      harnesstapDir: "/tmp/hd",
+      harnesstapDir: "/tmp/ht",
     });
     const demo = installs.find((i) => i.ref === "demo@demo-market");
     expect(demo).toBeDefined();
@@ -28,7 +28,7 @@ describe("ClaudeCodePluginProvider", () => {
       {
         projectRoot: ".",
         homeRoot: fixtureHome,
-        harnesstapDir: "/tmp/hd",
+        harnesstapDir: "/tmp/ht",
       },
       {
         forceRefresh: false,
@@ -54,7 +54,7 @@ describe("ClaudeCodePluginProvider", () => {
       {
         projectRoot: "/tmp/project",
         homeRoot: fixtureHome,
-        harnesstapDir: "/tmp/hd",
+        harnesstapDir: "/tmp/ht",
       },
       { ref: "new-plugin@demo-market", scope: "project" },
     );
@@ -85,7 +85,7 @@ describe("ClaudeCodePluginProvider", () => {
       {
         projectRoot: "/tmp/project",
         homeRoot: fixtureHome,
-        harnesstapDir: "/tmp/hd",
+        harnesstapDir: "/tmp/ht",
       },
       { ref: "context7@anthropics", scope: "project" },
     );
@@ -107,7 +107,7 @@ describe("ClaudeCodePluginProvider", () => {
       {
         projectRoot: "/tmp/project",
         homeRoot: fixtureHome,
-        harnesstapDir: "/tmp/hd",
+        harnesstapDir: "/tmp/ht",
       },
       { ref: "formatter@acme-marketplace", scope: "project" },
     );
