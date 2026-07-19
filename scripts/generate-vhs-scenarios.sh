@@ -111,8 +111,8 @@ for row in "${SCENARIOS[@]}"; do
   HOME="$home_dir" \
   HARNESSTAP_HOME="$hd_dir" \
   HARNESSTAP_NO_INTERACTIVE=1 \
-  HD_PROJECT_ROOT="$project_dir" \
-  HD_SCENARIO_KEY="$key" \
+  HT_PROJECT_ROOT="$project_dir" \
+  HT_SCENARIO_KEY="$key" \
   vhs "$ROOT/$tape"
 
   rm -rf "$work_root"

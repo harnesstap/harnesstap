@@ -9,7 +9,7 @@ import {
 } from "../../src/services/secret-resolver.js";
 
 describe("resolveSecretRef", () => {
-  const envKey = "HD_TEST_SECRET_RESOLVER_TOKEN";
+  const envKey = "HT_TEST_SECRET_RESOLVER_TOKEN";
   const previousValue = process.env[envKey];
 
   afterEach(() => {
@@ -72,7 +72,7 @@ describe("resolveSecretRef", () => {
 });
 
 describe("resolveSecretRefs", () => {
-  const envKey = "HD_TEST_SECRET_RESOLVER_BATCH";
+  const envKey = "HT_TEST_SECRET_RESOLVER_BATCH";
   const previousValue = process.env[envKey];
 
   afterEach(() => {
@@ -94,7 +94,7 @@ describe("resolveSecretRefs", () => {
 });
 
 describe("resolveSecretRefsBestEffort", () => {
-  const envKey = "HD_TEST_SECRET_RESOLVER_BEST_EFFORT";
+  const envKey = "HT_TEST_SECRET_RESOLVER_BEST_EFFORT";
   const previousValue = process.env[envKey];
 
   afterEach(() => {

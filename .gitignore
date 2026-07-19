@@ -25,7 +25,7 @@ coverage/
 # Runtime artifacts when fixture dirs are used as HOME during local runs
 test/fixtures/**/.claude.json
 test/fixtures/**/.claude/backups/
-test/fixtures/**/.harnessdeck/
+test/fixtures/**/.harnesstap/
 test/fixtures/**/Library/
 
 # Logs

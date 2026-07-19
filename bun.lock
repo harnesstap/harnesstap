@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "harnessdeck",
+      "name": "harnesstap",
       "dependencies": {
         "@inquirer/core": "^10.3.2",
         "@inquirer/search": "^3.2.2",

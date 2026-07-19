@@ -10,7 +10,7 @@ describe("package identity", () => {
     expect(pkg.name).toBe("harnesstap");
     expect(pkg.bin.harnesstap).toBe("./dist/index.js");
     expect(pkg.bin.ht).toBe("./dist/index.js");
-    expect(pkg.bin.harnessdeck).toBeUndefined();
+    expect(pkg.bin.harnesstap).toBeUndefined();
     expect(pkg.bin.hd).toBeUndefined();
   });
 });

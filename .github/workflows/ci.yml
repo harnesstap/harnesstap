@@ -36,7 +36,7 @@ jobs:
       - name: Remind to sync Cloud docs
         if: steps.docs.outputs.changed == 'true'
         run: |
-          echo "Docs changed — run \`bun run sync:cli-docs\` in harnessdeck-cloud with sibling harnessdeck checkout."
+          echo "Docs changed — run \`bun run sync:cli-docs\` in harnesstap-cloud with sibling harnesstap checkout."
 
   detect-changes:
     runs-on: ubuntu-latest

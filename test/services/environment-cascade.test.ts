@@ -128,7 +128,7 @@ describe("environment cascade", () => {
   it("dereferences env secret refs into vars for apply", async () => {
     const context = await createInitializedTestContext("env-cascade-secrets");
 
-    const envKey = "HD_TEST_CASCADE_SECRET";
+    const envKey = "HT_TEST_CASCADE_SECRET";
     const previousValue = process.env[envKey];
     process.env[envKey] = "resolved-token";
 

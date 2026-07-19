@@ -122,9 +122,9 @@ describe("VHS scenario manifest", () => {
       expect(tape).toContain("Require harnesstap");
       expect(tape).not.toContain("Require node");
       expect(tape).toContain('Type "harnesstap ');
-      expect(tape).not.toContain("node $HD_REPO_ROOT/dist/index.js");
+      expect(tape).not.toContain("node $HT_REPO_ROOT/dist/index.js");
       expect(tape).not.toContain('Type "export HOME=$HOME HARNESSTAP_HOME=$HARNESSTAP_HOME"');
-      expect(tape).not.toContain('Type "cd $HD_PROJECT_ROOT"');
+      expect(tape).not.toContain('Type "cd $HT_PROJECT_ROOT"');
       expect(firstTypedCommand).toMatch(/^Type "harnesstap /);
     }
   });
