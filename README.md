@@ -1,6 +1,6 @@
 <div align="center">
 
-# HarnessTap
+<img src="docs/assets/harnesstap-lockup.svg" alt="HarnessTap" width="320" />
 
 **Agent harness configuration toolkit** for Claude Code, Codex, Cursor, and other coding CLIs.
 
