@@ -12,6 +12,10 @@ describe("HarnessTap shared brand assets", () => {
     expect(readme).toContain('src="docs/assets/harnesstap-lockup.svg"');
     expect(mark).toContain('d="M12.5 16H29"');
     expect(lockup).toContain('id="harnesstap-wordmark"');
+    expect(lockup).toContain("#harnesstap-wordmark { fill: #0F172A; }");
+    expect(lockup).toContain("@media (prefers-color-scheme: dark)");
+    expect(lockup).toContain("#harnesstap-wordmark { fill: #F8FAFC; }");
+    expect(lockup).not.toContain('fill="currentColor"');
     expect(lockup).not.toContain("<text");
   });
 });
