@@ -8,9 +8,9 @@ describe("package identity", () => {
       readFileSync(join(import.meta.dir, "../../package.json"), "utf-8"),
     ) as { name: string; bin: Record<string, string> };
     expect(pkg.name).toBe("harnesstap");
-    expect(pkg.bin.harnesstap).toBe("./dist/index.js");
-    expect(pkg.bin.ht).toBe("./dist/index.js");
-    expect(pkg.bin.harnesstap).toBeUndefined();
-    expect(pkg.bin.hd).toBeUndefined();
+    expect(pkg.bin).toEqual({
+      harnesstap: "./dist/index.js",
+      ht: "./dist/index.js",
+    });
   });
 });
