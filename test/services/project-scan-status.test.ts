@@ -120,10 +120,10 @@ describe("project status payload", () => {
     const context = await createInitializedTestContext("project-status-payload");
 
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
-      mkdirSync(harnessdeckDir, { recursive: true });
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
       writeFileSync(
-        join(harnessdeckDir, "active-profile.json"),
+        join(harnesstapDir, "active-profile.json"),
         `${JSON.stringify({ name: "default" }, null, 2)}\n`,
       );
 

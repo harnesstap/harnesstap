@@ -220,7 +220,7 @@ export async function handleConfigInitCommand(opts: {
       { key: "Default profile", value: result.default_profile },
       { key: "Profiles", value: result.profiles.join(", ") },
     ]);
-    ui.hint("Run `hd config show` to inspect or `hd use` to switch profiles.");
+    ui.hint("Run `ht config show` to inspect or `ht use` to switch profiles.");
   } catch (err) {
     process.exitCode = 1;
     const message = err instanceof Error ? err.message : String(err);

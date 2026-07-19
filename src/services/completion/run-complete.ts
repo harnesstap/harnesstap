@@ -36,9 +36,9 @@ export async function runCompleteCommand(
   lineParts: string[],
   program: Command,
 ): Promise<void> {
-  const previousComplete = process.env.HARNESSDECK_COMPLETE;
+  const previousComplete = process.env.HARNESSTAP_COMPLETE;
   closeDb();
-  process.env.HARNESSDECK_COMPLETE = "1";
+  process.env.HARNESSTAP_COMPLETE = "1";
   process.exitCode = 0;
 
   try {
@@ -64,9 +64,9 @@ export async function runCompleteCommand(
   } finally {
     closeDb();
     if (previousComplete === undefined) {
-      delete process.env.HARNESSDECK_COMPLETE;
+      delete process.env.HARNESSTAP_COMPLETE;
     } else {
-      process.env.HARNESSDECK_COMPLETE = previousComplete;
+      process.env.HARNESSTAP_COMPLETE = previousComplete;
     }
   }
 }

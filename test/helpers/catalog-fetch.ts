@@ -1,7 +1,8 @@
+import { DEFAULT_CLOUD_BASE_URL } from "../../src/config/catalog.ts";
 import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 
 const DEFAULT_BUNDLE = formatLayerExportToml({
-  $schema: "urn:harnessdeck:layer:v1",
+  $schema: "urn:harnesstap:layer:v1",
   version: 1,
   layers: [
     {
@@ -57,9 +58,9 @@ export function createCatalogFetchMock(input?: {
   failOrgFilters?: string[];
   pageDelayMs?: number;
 }) {
-  const baseUrl = (input?.baseUrl ?? "https://mock").replace(/\/+$/, "");
+  const baseUrl = (input?.baseUrl ?? DEFAULT_CLOUD_BASE_URL).replace(/\/+$/, "");
   const layers = (input?.layers ?? [{
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     slug: "team",
     name: "Team Layer",
     summary: "Team layer",

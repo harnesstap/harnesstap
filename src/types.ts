@@ -20,7 +20,7 @@ export const RESOURCE_TYPES = [
   ...COMPOSITION_RESOURCE_TYPES,
 ] as const;
 
-/** Resource types shown in default `hd resource list` (excludes layer composition refs). */
+/** Resource types shown in default `ht resource list` (excludes layer composition refs). */
 export const LISTABLE_RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
   "plugin_pin",
@@ -259,13 +259,13 @@ export interface ProjectLayer {
   applied_at: string;
 }
 
-export const DECK_SCHEMA = "urn:harnessdeck:deck:v1" as const;
+export const DECK_SCHEMA = "urn:harnesstap:deck:v1" as const;
 export const DECK_JSON_VERSION = 1 as const;
 
-export const PROJECT_SCHEMA = "urn:harnessdeck:project:v1" as const;
+export const PROJECT_SCHEMA = "urn:harnesstap:project:v1" as const;
 export const PROJECT_SCHEMA_VERSION = 1 as const;
 
-export const BUNDLE_SCHEMA = "urn:harnessdeck:bundle:v1" as const;
+export const BUNDLE_SCHEMA = "urn:harnesstap:bundle:v1" as const;
 export const BUNDLE_SCHEMA_VERSION = 1 as const;
 
 export interface DeckJsonLayer {
@@ -452,7 +452,7 @@ export interface PlatformDefinition {
 
 // ── Layer export format ─────────────────────────────────────────────────
 
-export const LAYER_SCHEMA = "urn:harnessdeck:layer:v1" as const;
+export const LAYER_SCHEMA = "urn:harnesstap:layer:v1" as const;
 export const LAYER_SCHEMA_VERSION = 1 as const;
 
 export type LayerExportLayer = Omit<
@@ -495,7 +495,7 @@ export type LayerExport = MultiLayerExport;
 
 // ── Resource export format ──────────────────────────────────────────────
 
-export const RESOURCE_SCHEMA = "urn:harnessdeck:resource:v1" as const;
+export const RESOURCE_SCHEMA = "urn:harnesstap:resource:v1" as const;
 export const RESOURCE_SCHEMA_VERSION = 1 as const;
 
 export type ResourceExportPayload = Omit<

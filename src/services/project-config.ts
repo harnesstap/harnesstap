@@ -58,14 +58,14 @@ function locateProjectConfigFile(
   let current = resolveWalkRoot(startPath);
 
   while (true) {
-    const harnessdeckDir = join(current, ".harnessdeck");
+    const harnesstapDir = join(current, ".harnesstap");
     for (const fileName of CONFIG_FILE_NAMES) {
-      const configPath = join(harnessdeckDir, fileName);
+      const configPath = join(harnesstapDir, fileName);
       if (existsSync(configPath)) {
         return {
           rootPath: current,
           configPath,
-          configDir: harnessdeckDir,
+          configDir: harnesstapDir,
         };
       }
     }
@@ -81,7 +81,7 @@ function locateProjectConfigFile(
 function assertProjectSchema(schema: string, version: number, filePath: string): void {
   if (schema === LAYER_SCHEMA) {
     throw new Error(
-      `${filePath} uses layer bundle schema (${LAYER_SCHEMA}); place layer exports in *.harnessdeck.toml, not project config`,
+      `${filePath} uses layer bundle schema (${LAYER_SCHEMA}); place layer exports in *.harnesstap.toml, not project config`,
     );
   }
   if (schema !== PROJECT_SCHEMA) {

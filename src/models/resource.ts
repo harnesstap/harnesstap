@@ -1,4 +1,4 @@
-import { getDb, getHarnessdeckDir } from "../db/connection.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import { ulid } from "ulid";
 import type {
   Resource,
@@ -91,7 +91,7 @@ export type UpsertResult =
 
 export interface UpsertOptions {
   policy?: ImportConflictPolicy;
-  harnessdeckDir?: string;
+  harnesstapDir?: string;
 }
 
 export function mapResourceRow(row: ResourceRow): Resource {
@@ -218,11 +218,11 @@ function contentBlobRef(contentHash: string): string {
 }
 
 function persistContent(
-  harnessdeckDir: string,
+  harnesstapDir: string,
   contentHash: string,
   content: string,
 ): { inlineContent: string; contentBlobRef: string } {
-  writeBlob(harnessdeckDir, contentHash, content);
+  writeBlob(harnesstapDir, contentHash, content);
   const blobRef = contentBlobRef(contentHash);
   if (content.length <= INLINE_CONTENT_THRESHOLD) {
     return { inlineContent: content, contentBlobRef: blobRef };
@@ -254,7 +254,7 @@ export function upsertResource(
   options: UpsertOptions = {},
 ): UpsertResult {
   const db = getDb();
-  const harnessdeckDir = options.harnessdeckDir ?? getHarnessdeckDir();
+  const harnesstapDir = options.harnesstapDir ?? getHarnesstapDir();
   const namespace = input.namespace ?? "";
   const originRef = input.origin_ref ?? "";
   const contentHash = hashResourceBody({
@@ -268,7 +268,7 @@ export function upsertResource(
     const now = new Date().toISOString();
     const id = ulid();
     const { inlineContent, contentBlobRef: blobRef } = persistContent(
-      harnessdeckDir,
+      harnesstapDir,
       contentHash,
       input.content,
     );
@@ -346,7 +346,7 @@ export function upsertResource(
 
   const now = new Date().toISOString();
   const { inlineContent, contentBlobRef: blobRef } = persistContent(
-    harnessdeckDir,
+    harnesstapDir,
     contentHash,
     input.content,
   );

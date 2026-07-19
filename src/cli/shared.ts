@@ -2,15 +2,15 @@ import { basename } from "node:path";
 import { ui } from "../ui/index.js";
 
 export const GUIDE_SCENARIOS_URL =
-  "https://github.com/harnessdeck/harnessdeck/blob/main/docs/scenarios/scenarios.md";
+  "https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/scenarios.md";
 
 export const GIT_ORIGIN_HINTS = [
   "Add a remote: git remote add origin <url>",
   "Snapshots, drift, history, and revert require a git repository with origin configured.",
 ];
 
-export function resolveInvocationName(): "harnessdeck" | "hd" {
-  return basename(process.argv[1] ?? "") === "hd" ? "hd" : "harnessdeck";
+export function resolveInvocationName(): "harnesstap" | "ht" {
+  return basename(process.argv[1] ?? "") === "ht" ? "ht" : "harnesstap";
 }
 
 export function formatCommand(path: string): string {

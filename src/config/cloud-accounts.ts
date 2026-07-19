@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { join } from "node:path";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 
 export interface CloudAccount {
   cloudBaseUrl: string;
@@ -22,7 +22,7 @@ export interface CloudAccountStoreFile {
 }
 
 export function getCloudAccountsPath(): string {
-  return join(getHarnessdeckDir(), "cloud-accounts.json");
+  return join(getHarnesstapDir(), "cloud-accounts.json");
 }
 
 export async function loadCloudAccounts(): Promise<CloudAccountStoreFile> {
@@ -41,7 +41,7 @@ export async function loadCloudAccounts(): Promise<CloudAccountStoreFile> {
 }
 
 async function writeStore(file: CloudAccountStoreFile): Promise<void> {
-  const dir = getHarnessdeckDir();
+  const dir = getHarnesstapDir();
   fs.mkdirSync(dir, { recursive: true });
   const path = getCloudAccountsPath();
   fs.writeFileSync(path, JSON.stringify(file, null, 2), { encoding: "utf8" });

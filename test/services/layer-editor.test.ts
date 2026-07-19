@@ -13,7 +13,7 @@ import {
 import { parseTestLayerToml } from "../helpers/transport-fixtures.ts";
 
 describe("layer editor service", () => {
-  it("resolves a stable definition path under the harnessdeck home", async () => {
+  it("resolves a stable definition path under the harnesstap home", async () => {
     const context = await createTestContext("layer-editor-path");
     try {
       initializeSchema(getDb());
@@ -21,7 +21,7 @@ describe("layer editor service", () => {
       const layer = layerModel.createLayer({ name: "team-stack", version: "1.2.0" });
 
       expect(resolveLayerDefinitionPath(layer)).toBe(
-        join(context.homeDir, ".harnessdeck", "layers", "team-stack@1.2.0.harnessdeck.toml"),
+        join(context.homeDir, ".harnesstap", "layers", "team-stack@1.2.0.harnesstap.toml"),
       );
     } finally {
       await context.cleanup();
@@ -77,7 +77,7 @@ describe("CLI layer editor", () => {
       const payload = JSON.parse(result.stdout) as { layer: string; path: string };
       expect(payload.layer).toBe("team-stack@1.2.0");
       expect(payload.path).toBe(
-        join(context.homeDir, ".harnessdeck", "layers", "team-stack@1.2.0.harnessdeck.toml"),
+        join(context.homeDir, ".harnesstap", "layers", "team-stack@1.2.0.harnesstap.toml"),
       );
       expect(existsSync(payload.path)).toBe(true);
     } finally {

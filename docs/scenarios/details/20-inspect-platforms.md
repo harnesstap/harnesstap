@@ -10,11 +10,11 @@ an unfamiliar harness ID appears in someone else's layer.
 Typical commands:
 
 ```bash
-harnessdeck harness list
-harnessdeck harness list --supported
-harnessdeck harness list --format json | jq '.[] | {id, supports}'
+harnesstap harness list
+harnesstap harness list --supported
+harnesstap harness list --format json | jq '.[] | {id, supports}'
 ```
 
-The registry is the source of truth for the harness IDs that HarnessDeck
+The registry is the source of truth for the harness IDs that HarnessTap
 understands today, and tells you which feature surfaces (instructions,
 skills, rules, MCP, hooks, agents, commands, …) each harness supports.

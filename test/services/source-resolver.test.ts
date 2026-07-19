@@ -33,9 +33,9 @@ describe("source-resolver", () => {
     });
   });
 
-  it("builds stable cache dir under harnessdeck home", () => {
-    expect(sourceCacheDir("/hd/home", "mattpocock", "skills")).toBe(
-      "/hd/home/cache/sources/mattpocock/skills",
+  it("builds stable cache dir under harnesstap home", () => {
+    expect(sourceCacheDir("/ht/home", "mattpocock", "skills")).toBe(
+      "/ht/home/cache/sources/mattpocock/skills",
     );
   });
 });

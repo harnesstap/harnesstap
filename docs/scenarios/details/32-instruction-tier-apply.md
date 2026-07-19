@@ -13,13 +13,13 @@ Typical commands:
 
 ```bash
 # Preview per-harness output paths
-harnessdeck layer apply my-setup --project . --harness windsurf,cline,github-copilot --dry-run
+harnesstap layer apply my-setup --project . --harness windsurf,cline,github-copilot --dry-run
 
 # Apply to instruction-tier harnesses alongside native-skill hosts
-harnessdeck layer apply my-setup --project . --harness claude-code,codex,windsurf,cursor
+harnesstap layer apply my-setup --project . --harness claude-code,codex,windsurf,cursor
 
 # List all harnesses; instruction-tier hosts have skillEmission: instruction-only
-harnessdeck harness list --format json
+harnesstap harness list --format json
 ```
 
 **Expected emission paths** (instruction-tier hosts):
@@ -49,7 +49,7 @@ as `skillCursorMode`:
 | `agents-skills` | `.agents/skills/{name}/SKILL.md` |
 
 ```bash
-harnessdeck harness project status --project . --format json
+harnesstap harness project status --project . --format json
 ```
 
 Compare dry-run output across harnesses before writing. See

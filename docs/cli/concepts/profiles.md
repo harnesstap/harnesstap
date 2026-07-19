@@ -8,32 +8,32 @@ A **profile** is a layer tagged `profile` that defines your machine-wide agent h
 
 ## Machine-wide home harness state
 
-When you run `hd init`, HarnessDeck:
+When you run `ht init`, HarnessTap:
 
-1. Creates the local workspace at `~/.harnessdeck`
+1. Creates the local workspace at `~/.harnesstap`
 2. Seeds a `default` profile layer (tagged `profile`)
-3. Writes `~/.harnessdeck/active-profile.json` pointing at that layer
+3. Writes `~/.harnesstap/active-profile.json` pointing at that layer
 
 `init` sets the active profile pointer only — it does **not** run global apply. Materialize home harness files after bootstrap:
 
 ```bash
-hd init --main codex --aliases claude-code,cursor
-hd profile use default
+ht init --main codex --aliases claude-code,cursor
+ht profile use default
 # or shorthand when <name> is not a reserved command:
-hd default
+ht default
 ```
 
-Operational state (resources, layers, profiles, environments) lives in `~/.harnessdeck/harnessdeck.db`. Home environment fragments may live under `~/.harnessdeck/environments/`.
+Operational state (resources, layers, profiles, environments) lives in `~/.harnesstap/harnesstap.db`. Home environment fragments may live under `~/.harnesstap/environments/`.
 
 ## Profile commands
 
 ```bash
-hd profile list
-hd profile status
-hd profile create work --description "Work machine stack"
-hd profile use work --harness claude-code,cursor
-hd profile use work --dry-run
-hd profile delete old-profile
+ht profile list
+ht profile status
+ht profile create work --description "Work machine stack"
+ht profile use work --harness claude-code,cursor
+ht profile use work --dry-run
+ht profile delete old-profile
 ```
 
 `profile use` merges the profile layer and transitive `layer` refs, resolves the environment cascade, then writes global harness files.
@@ -43,18 +43,18 @@ hd profile delete old-profile
 | `profile use` | Machine home harness paths |
 | `layer apply --project .` | Repository working tree |
 
-Root shorthand `hd <name>` works when `<name>` is a profile layer and not a reserved command (e.g. `hd work` ≡ `hd profile use work`).
+Root shorthand `ht <name>` works when `<name>` is a profile layer and not a reserved command (e.g. `ht work` ≡ `ht profile use work`).
 
 ## Building a profile stack
 
 Profiles are layers. Compose them like any other layer before switching:
 
 ```bash
-hd layer create work --description "Work context"
-hd layer edit work --add engineering-foundation --type layer
-hd layer edit work --add internal-style-guide --type skill
-hd profile create work    # promotes existing layer when name already exists
-hd profile use work
+ht layer create work --description "Work context"
+ht layer edit work --add engineering-foundation --type layer
+ht layer edit work --add internal-style-guide --type skill
+ht profile create work    # promotes existing layer when name already exists
+ht profile use work
 ```
 
 Combine multiple context layers with `layer edit --add layer:…` refs. `profile use` expands nested layer dependencies depth-first.
@@ -64,29 +64,29 @@ Combine multiple context layers with `layer edit --add layer:…` refs. `profile
 Control bootstrap behavior with init flags:
 
 ```bash
-hd init --main claude-code --aliases cursor,codex
-hd init --no-default-profile    # skip default profile layer and active-profile.json
-hd init --interactive           # prompt for harness selection
+ht init --main claude-code --aliases cursor,codex
+ht init --no-default-profile    # skip default profile layer and active-profile.json
+ht init --interactive           # prompt for harness selection
 ```
 
 After init, manage harness preferences independently:
 
 ```bash
-hd harness status --format json
-hd harness set --main claude-code --aliases cursor,codex
+ht harness status --format json
+ht harness set --main claude-code --aliases cursor,codex
 ```
 
 The **main** harness is the primary write target during profile apply. **Aliases** receive mirrored output when you run `mirror` in a repo, or when profile apply includes multiple harnesses via `--harness`.
 
 ## Cloud-backed profiles
 
-Search, pull, and publish profile-tagged layers through HarnessDeck Cloud:
+Search, pull, and publish profile-tagged layers through HarnessTap Cloud:
 
 ```bash
-hd auth login
-hd profile list --search react --remote-only
-hd profile pull org/work-stack
-hd profile publish work --org acme --catalog default
+ht auth login
+ht profile list --search react --remote-only
+ht profile pull org/work-stack
+ht profile publish work --org acme --catalog default
 ```
 
 `profile pull` is an alias for `layer pull` with a warning when the remote layer is not profile-tagged. `profile publish` targets org catalogs for teammate discovery.
@@ -95,7 +95,7 @@ hd profile publish work --org acme --catalog default
 
 | Situation | Use |
 | --- | --- |
-| Separate work / personal / client setups on one machine | Profiles (`profile use`, `hd <name>`) |
+| Separate work / personal / client setups on one machine | Profiles (`profile use`, `ht <name>`) |
 | Repo-specific team baseline | `layer apply --project .` |
 | Sync alias harness files from on-disk main without re-applying a layer | `mirror` |
 | Detect manual edits after apply | `status --check` |

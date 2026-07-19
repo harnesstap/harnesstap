@@ -10,14 +10,14 @@ your repo afterward.
 Typical commands:
 
 ```bash
-harnessdeck init --main codex --aliases claude-code,cursor
-harnessdeck layer list --search foundation --remote-only
-harnessdeck layer apply engineering-foundation
+harnesstap init --main codex --aliases claude-code,cursor
+harnesstap layer list --search foundation --remote-only
+harnesstap layer apply engineering-foundation
 ```
 
 This is often the fastest path for a new repo: apply a public catalog baseline,
 then scan or extend it with project-specific resources later.
 
-Bare names such as `engineering-foundation` resolve against the `harnessdeck-cloud`
+Bare names such as `engineering-foundation` resolve against the `harnesstap-cloud`
 public catalog (and any connected orgs or libraries). Use `layer pull` when you
 want the bundle cached locally before going offline.

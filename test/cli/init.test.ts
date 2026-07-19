@@ -12,7 +12,7 @@ describe("CLI init", () => {
       const result = await runCli(["init"]);
       const layerModel = await import("../../src/models/layer-model.ts");
 
-      expect(result.stdout).toContain("Harnessdeck initialized");
+      expect(result.stdout).toContain("HarnessTap initialized");
       expect(result.stdout).toContain("Database");
       expect(result.stdout).toContain("NEXT STEPS");
       expect(result.stdout).not.toContain("already exists");
@@ -20,7 +20,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("profile use default");
       expect(result.stdout).toContain("layer apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
-      expect(context.connection.getDbPath()).toContain(".harnessdeck/harnessdeck.db");
+      expect(context.connection.getDbPath()).toContain(".harnesstap/harnesstap.db");
       expect(layerModel.listLayers()).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -31,7 +31,7 @@ describe("CLI init", () => {
       );
       const activeProfile = JSON.parse(
         readFileSync(
-          `${context.homeDir}/.harnessdeck/active-profile.json`,
+          `${context.homeDir}/.harnesstap/active-profile.json`,
           "utf-8",
         ),
       ) as { name: string };
@@ -61,7 +61,7 @@ describe("CLI init", () => {
           .listResources()
           .filter((resource) => resource.source.startsWith("~/.claude"));
 
-      expect(result.stdout).toContain("Harnessdeck initialized");
+      expect(result.stdout).toContain("HarnessTap initialized");
       expect(result.stdout).toContain("HOME DEFAULTS");
       expect(result.stdout).toContain("Claude Code");
       expect(result.stdout).toContain("~/.claude");
@@ -129,7 +129,7 @@ describe("CLI init", () => {
       ]);
       const show = await runCli(["harness", "status", "--format", "json"]);
 
-      expect(result.stdout).toContain("Harnessdeck initialized");
+      expect(result.stdout).toContain("HarnessTap initialized");
       expect(JSON.parse(show.stdout)).toEqual(
         expect.objectContaining({
           main_harness: "claude-code",
@@ -161,7 +161,7 @@ describe("CLI init", () => {
         "codex",
       ]);
 
-      expect(rerun.stdout).toContain("Harnessdeck initialized");
+      expect(rerun.stdout).toContain("HarnessTap initialized");
       expect(rerun.stdout).toContain("main: claude-code");
       expect(rerun.stdout).toContain("aliases: cursor");
       expect(rerun.stdout).toContain("will be overwritten");
@@ -186,7 +186,7 @@ describe("CLI init", () => {
 
       const rerun = await runCli(["init"]);
 
-      expect(rerun.stdout).toContain("Harnessdeck initialized");
+      expect(rerun.stdout).toContain("HarnessTap initialized");
       expect(rerun.stdout).toContain("already exists");
       expect(rerun.stdout).not.toContain("will be overwritten");
       expect(rerun.stdout).not.toContain("Existing harness defaults");
@@ -200,12 +200,12 @@ describe("CLI init", () => {
 
     try {
       writeTextFile(
-        `${context.homeDir}/.harnessdeck/cloud-accounts.json`,
+        `${context.homeDir}/.harnesstap/cloud-accounts.json`,
         "{not-valid-json",
       );
 
       const result = await runCli(["init"]);
-      expect(result.stdout).toContain("Harnessdeck initialized");
+      expect(result.stdout).toContain("HarnessTap initialized");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
     } finally {
       await context.cleanup();

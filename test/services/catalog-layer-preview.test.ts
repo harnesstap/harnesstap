@@ -6,7 +6,7 @@ import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 const catalogLayer: CatalogLayer = {
-  orgSlug: "harnessdeck-cloud",
+  orgSlug: "harnesstap-cloud",
   catalogSlug: "default",
   slug: "remote-team",
   name: "Remote team",
@@ -28,18 +28,18 @@ describe("renderCatalogLayerPreviewShow", () => {
   it("renders full layer show output without keeping a preview install", async () => {
     const context = await createInitializedTestContext("catalog-layer-preview");
     restoreFetch = createCatalogFetchMock({
-      baseUrl: "https://harnessdeck.kayrnt.fr",
+      baseUrl: "https://cloud.harnesstap.com",
       layers: [catalogLayer],
     });
 
     try {
       const beforeCount = listLayers().length;
       const output = await renderCatalogLayerPreviewShow(catalogLayer, {
-        baseUrl: "https://harnessdeck.kayrnt.fr",
+        baseUrl: "https://cloud.harnesstap.com",
       });
 
       expect(output).toContain("LAYER");
-      expect(output).toContain("harnessdeck-cloud/default/remote-team@1.0.0");
+      expect(output).toContain("harnesstap-cloud/default/remote-team@1.0.0");
       expect(output).toContain("from cloud");
       expect(output).toContain("RESOURCES");
       expect(output).toContain("instruction");

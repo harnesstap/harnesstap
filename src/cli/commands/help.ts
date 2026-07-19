@@ -56,7 +56,7 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
   } catch (err) {
     process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err), {
-      hints: [`hd help scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
+      hints: [`ht help scenario 11`, `See ${GUIDE_SCENARIOS_URL}`],
     });
   }
 }

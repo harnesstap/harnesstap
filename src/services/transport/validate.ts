@@ -6,7 +6,7 @@ export function assertTransportExtension(filePath: string): void {
   const extension = extname(filePath).toLowerCase();
   if (LEGACY_EXTENSIONS.has(extension)) {
     throw new Error(
-      "JSON transport was removed. Re-export with `hd migrate export --layer <name>` or `hd migrate export <archive> --workspace` to produce TOML.",
+      "JSON transport was removed. Re-export with `ht migrate export --layer <name>` or `ht migrate export <archive> --workspace` to produce TOML.",
     );
   }
   if (extension !== ".toml") {

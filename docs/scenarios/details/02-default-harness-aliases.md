@@ -10,12 +10,12 @@ others to be kept aligned with it.
 Typical commands:
 
 ```bash
-harnessdeck harness set --main claude-code --aliases cursor,codex
-harnessdeck harness status
+harnesstap harness set --main claude-code --aliases cursor,codex
+harnesstap harness status
 ```
 
 Notes:
 
-- `harnessdeck harness list` is the source of truth for valid harness IDs.
+- `harnesstap harness list` is the source of truth for valid harness IDs.
 - `--interactive` is available, but the non-interactive flag path is the main
   automation-friendly workflow.

@@ -137,8 +137,8 @@ function writeInlineLayerImportFile(layerTable: ProjectLayerTable): string {
     layers: [layerEntry],
     embedded_plugins: [],
   });
-  const dir = mkdtempSync(join(tmpdir(), "harnessdeck-project-inline-"));
-  const filePath = join(dir, "inline.harnessdeck.toml");
+  const dir = mkdtempSync(join(tmpdir(), "harnesstap-project-inline-"));
+  const filePath = join(dir, "inline.harnesstap.toml");
   writeFileSync(filePath, formatTransportToml(document), "utf-8");
   return filePath;
 }

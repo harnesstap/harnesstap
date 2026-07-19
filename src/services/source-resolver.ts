@@ -62,6 +62,6 @@ export function resolveRemoteSource(input: string): ResolvedRemoteSource {
   );
 }
 
-export function sourceCacheDir(harnessdeckDir: string, owner: string, repo: string): string {
-  return `${harnessdeckDir}/cache/sources/${owner}/${repo}`;
+export function sourceCacheDir(harnesstapDir: string, owner: string, repo: string): string {
+  return `${harnesstapDir}/cache/sources/${owner}/${repo}`;
 }

@@ -41,7 +41,7 @@ async function createAuthenticatedCloudClient(opts?: {
   const accountInfo = await getCloudAccount(opts?.account);
   const account = accountInfo.account;
   if (!account?.cloudBaseUrl || !account.accessToken) {
-    throw new Error("Not authenticated. Run `hd auth login` first.");
+    throw new Error("Not authenticated. Run `ht auth login` first.");
   }
   return createCloudClient({
     baseUrl: opts?.baseUrl ?? account.cloudBaseUrl,

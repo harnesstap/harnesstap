@@ -362,7 +362,7 @@ export function attachmentTypeRequiredHints(
 ): string[] {
   const exampleLayer = layerName ?? "<layer>";
   return [
-    `hd layer edit ${exampleLayer} --add ${selector} --type skill`,
+    `ht layer edit ${exampleLayer} --add ${selector} --type skill`,
     `Valid types: ${LAYER_ATTACHMENT_TYPES.join(", ")}`,
     "Or use a typed selector: skill:name, plugin_pin:ref@marketplace, layer:dep",
   ];

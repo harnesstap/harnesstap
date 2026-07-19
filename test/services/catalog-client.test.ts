@@ -12,17 +12,17 @@ describe("fetchCatalogLayer", () => {
 
   it("finds the requested layer when the API page returns broader org matches", async () => {
     restoreFetch = createCatalogFetchMock({
-      baseUrl: "https://harnessdeck.kayrnt.fr",
+      baseUrl: "https://cloud.harnesstap.com",
       layers: [
         {
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "agentic-ai-engineer",
           name: "Agentic AI engineer",
           summary: "Agents",
           latestVersion: "1.0.0",
         },
         {
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "data-engineer",
           name: "Data engineer",
           summary: "Data engineering bundle",
@@ -33,11 +33,11 @@ describe("fetchCatalogLayer", () => {
 
     const layer = await fetchCatalogLayer(
       {
-        orgSlug: "harnessdeck-cloud",
+        orgSlug: "harnesstap-cloud",
         catalogSlug: "default",
         slug: "data-engineer",
       },
-      { baseUrl: "https://harnessdeck.kayrnt.fr" },
+      { baseUrl: "https://cloud.harnesstap.com" },
     );
 
     expect(layer.slug).toBe("data-engineer");
@@ -46,10 +46,10 @@ describe("fetchCatalogLayer", () => {
 
   it("throws when the layer is not present in catalog pages", async () => {
     restoreFetch = createCatalogFetchMock({
-      baseUrl: "https://harnessdeck.kayrnt.fr",
+      baseUrl: "https://cloud.harnesstap.com",
       layers: [
         {
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "agentic-ai-engineer",
           name: "Agentic AI engineer",
           summary: "Agents",
@@ -61,12 +61,12 @@ describe("fetchCatalogLayer", () => {
     await expect(
       fetchCatalogLayer(
         {
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           catalogSlug: "default",
           slug: "data-engineer",
         },
-        { baseUrl: "https://harnessdeck.kayrnt.fr" },
+        { baseUrl: "https://cloud.harnesstap.com" },
       ),
-    ).rejects.toThrow("Catalog layer not found: harnessdeck-cloud/default/data-engineer");
+    ).rejects.toThrow("Catalog layer not found: harnesstap-cloud/default/data-engineer");
   });
 });

@@ -10,16 +10,16 @@ reusable harness baseline.
 Typical commands:
 
 ```bash
-harnessdeck layer create my-setup --description "Shared project assistant setup"
-harnessdeck resource list --search auth        # find what to add
-harnessdeck layer edit my-setup --add auth-helper --type skill
-harnessdeck layer show my-setup
+harnesstap layer create my-setup --description "Shared project assistant setup"
+harnesstap resource list --search auth        # find what to add
+harnesstap layer edit my-setup --add auth-helper --type skill
+harnesstap layer show my-setup
 ```
 
 `layer edit` is for local resources and plugin pins. `layer pull` installs a
 layer from the remote catalog instead — do not confuse the two.
 
-This is where HarnessDeck becomes useful as a setup optimizer rather than just
+This is where HarnessTap becomes useful as a setup optimizer rather than just
 a scanner: you can separate reusable instructions, skills, hooks, MCP config,
 and other resources from one project and re-apply them elsewhere in a
 controlled way.

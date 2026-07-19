@@ -5,6 +5,6 @@
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnessdeck layer diff team-baseline my-fork
-harnessdeck layer diff team-baseline ./incoming-bundle.harnessdeck.json
+harnesstap layer diff team-baseline my-fork
+harnesstap layer diff team-baseline ./incoming-bundle.harnesstap.json
 ```

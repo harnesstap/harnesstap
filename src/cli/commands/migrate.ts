@@ -204,7 +204,7 @@ export function registerMigrateCommands(root: Command): void {
 
   migrateCmd
     .command("export")
-    .argument("[file]", "Output path (.tar.gz, .json, or .harnessdeck.toml)")
+    .argument("[file]", "Output path (.tar.gz, .json, or .harnesstap.toml)")
     .option("--workspace", "Export full workspace archive")
     .option("--layer <name>", "Export layer(s); comma-separated names or IDs")
     .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")

@@ -12,7 +12,7 @@ describe("ui status", () => {
     expect(renderSuccess('Layer "team" is valid.')).toContain("✓");
     expect(
       renderDanger("Layer not found: team", {
-        hint: "Run `harnessdeck layer list` to see available layers.",
+        hint: "Run `harnesstap layer list` to see available layers.",
       }),
     ).toContain("→");
   });

@@ -41,20 +41,20 @@ describe("environment cascade", () => {
     });
   });
 
-  it("loads home fragments from harnessdeck files", async () => {
+  it("loads home fragments from harnesstap files", async () => {
     const context = await createInitializedTestContext("env-cascade-files");
 
     try {
-      mkdirSync(join(context.homeDir, ".harnessdeck", "environments"), {
+      mkdirSync(join(context.homeDir, ".harnesstap", "environments"), {
         recursive: true,
       });
       writeFileSync(
-        join(context.homeDir, ".harnessdeck", "active-environment.json"),
+        join(context.homeDir, ".harnesstap", "active-environment.json"),
         JSON.stringify({ name: "personal" }),
         "utf-8",
       );
       writeFileSync(
-        join(context.homeDir, ".harnessdeck", "environments", "personal.json"),
+        join(context.homeDir, ".harnesstap", "environments", "personal.json"),
         JSON.stringify({ values: { PD_REGION: "us" } }),
         "utf-8",
       );
@@ -108,9 +108,9 @@ describe("environment cascade", () => {
         environmentId: prod.id,
       });
 
-      mkdirSync(join(context.homeDir, ".harnessdeck"), { recursive: true });
+      mkdirSync(join(context.homeDir, ".harnesstap"), { recursive: true });
       writeFileSync(
-        join(context.homeDir, ".harnessdeck", "active-environment.json"),
+        join(context.homeDir, ".harnesstap", "active-environment.json"),
         JSON.stringify({ name: "home-env" }),
         "utf-8",
       );
@@ -147,9 +147,9 @@ describe("environment cascade", () => {
         }),
       );
 
-      mkdirSync(join(context.homeDir, ".harnessdeck"), { recursive: true });
+      mkdirSync(join(context.homeDir, ".harnesstap"), { recursive: true });
       writeFileSync(
-        join(context.homeDir, ".harnessdeck", "active-environment.json"),
+        join(context.homeDir, ".harnesstap", "active-environment.json"),
         JSON.stringify({ name: "staging" }),
         "utf-8",
       );

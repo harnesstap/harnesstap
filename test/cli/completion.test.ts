@@ -14,7 +14,7 @@ describe("CLI __complete", () => {
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "layer",
         "show",
         "eng",
@@ -30,13 +30,13 @@ describe("CLI __complete", () => {
   });
 
   it("returns harness slugs for init --main without local database", async () => {
-    const context = await createTestContextWithoutHarnessdeck();
+    const context = await createTestContextWithoutHarnesstap();
     try {
       const result = await runCli([
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "init",
         "--main",
         "cur",
@@ -56,7 +56,7 @@ describe("CLI __complete", () => {
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "layer", "apply",
         "--harness",
         "cur",
@@ -76,7 +76,7 @@ describe("CLI __complete", () => {
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "layer",
         "pull",
         "eng",
@@ -96,7 +96,7 @@ describe("CLI __complete", () => {
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "layer",
         "show",
         "--for",
@@ -120,7 +120,7 @@ describe("CLI __complete", () => {
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "profile",
         "use",
         "wo",
@@ -132,7 +132,7 @@ describe("CLI __complete", () => {
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "wo",
       ]);
       expect(root.stdout).toContain("work");
@@ -143,13 +143,13 @@ describe("CLI __complete", () => {
   });
 
   it("returns scenario ids for help scenario completion without local database", async () => {
-    const context = await createTestContextWithoutHarnessdeck();
+    const context = await createTestContextWithoutHarnesstap();
     try {
       const result = await runCli([
         "__complete",
         "zsh",
         "--",
-        "hd",
+        "ht",
         "help",
         "scenario",
         "1",
@@ -164,7 +164,7 @@ describe("CLI __complete", () => {
   });
 });
 
-async function createTestContextWithoutHarnessdeck(): Promise<{
+async function createTestContextWithoutHarnesstap(): Promise<{
   cleanup: () => Promise<void>;
 }> {
   const { createTestContext } = await import("../helpers/db.ts");

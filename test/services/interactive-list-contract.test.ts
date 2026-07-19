@@ -86,7 +86,7 @@ function makeEnvironmentRow(name: string): EnvironmentListRow {
 
 const sampleLayers: CatalogLayer[] = [
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "fullstack",
     name: "Fullstack",
@@ -193,7 +193,7 @@ describe("interactive list keyboard contract", () => {
         promptForInteractiveLayerListBrowse,
         {
           message: "Select a layer to install",
-          scopeLabel: "harnessdeck-cloud",
+          scopeLabel: "harnesstap-cloud",
           localLayers,
           listRemoteLayers: async () => sampleLayers,
         },
@@ -215,7 +215,7 @@ describe("interactive list keyboard contract", () => {
         promptForInteractiveCatalogBrowser,
         {
           message: "Browse catalog layers to install",
-          scopeLabel: "harnessdeck-cloud",
+          scopeLabel: "harnesstap-cloud",
           listLayers: async () => sampleLayers,
         },
         { clearPromptOnDone: true },
@@ -255,7 +255,7 @@ describe("interactive list keyboard contract", () => {
         promptForInteractiveCatalogSearch,
         {
           message: "Search catalog layers to apply",
-          scopeLabel: "harnessdeck-cloud",
+          scopeLabel: "harnesstap-cloud",
           initialQuery: "fullstack",
           listLayers: async () => sampleLayers,
         },

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-HarnessDeck is in active development (`0.x`). Security fixes are applied to the latest release on the `main` branch.
+HarnessTap is in active development (`0.x`). Security fixes are applied to the latest release on the `main` branch.
 
 | Version | Supported |
 | --- | --- |
@@ -16,8 +16,8 @@ HarnessDeck is in active development (`0.x`). Security fixes are applied to the 
 
 Report security issues privately using one of these channels:
 
-1. [GitHub private vulnerability reporting](https://github.com/harnessdeck/harnessdeck/security/advisories/new) (preferred)
-2. Email the maintainers via the contact address listed on the [GitHub organization profile](https://github.com/harnessdeck)
+1. [GitHub private vulnerability reporting](https://github.com/harnesstap/harnesstap/security/advisories/new) (preferred)
+2. Email the maintainers via the contact address listed on the [GitHub organization profile](https://github.com/harnesstap)
 
 Include as much detail as you can:
 
@@ -32,14 +32,14 @@ We aim to acknowledge reports within **3 business days** and will work with you 
 
 In scope:
 
-- The `harnessdeck` CLI and published npm package
+- The `harnesstap` CLI and published npm package
 - Official GitHub Actions workflows in this repository
 - Documented cloud authentication flows (device code, token refresh)
 
 Out of scope:
 
 - Third-party harness tools (Claude Code, Cursor, Codex, etc.)
-- User-managed secrets stored in the OS keychain, environment variables, or local config under `~/.harnessdeck/`
+- User-managed secrets stored in the OS keychain, environment variables, or local config under `~/.harnesstap/`
 - Misconfigurations in user projects or decks
 
 ## Safe disclosure

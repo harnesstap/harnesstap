@@ -26,7 +26,7 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
       { term: "resource", definition: "Single canonical item (skill, rule, MCP, hook, agent, …)" },
       { term: "layer", definition: "Named bundle of resources you apply to projects" },
       { term: "profile", definition: "Layer tagged profile; apply globally with profile use" },
-      { term: "account", definition: "HarnessDeck Cloud login identity stored locally" },
+      { term: "account", definition: "HarnessTap Cloud login identity stored locally" },
       { term: "environment", definition: "Named how-values (vars, secrets, model config)" },
       { term: "harness", definition: "Target CLI (claude-code, codex, cursor, …)" },
     ],
@@ -121,7 +121,7 @@ function printScenarioIndex(scenarios: ScenarioSummary[]): void {
   }
 
   console.log("");
-  ui.dim("Run hd help scenario <id> for a scenario playbook.");
+  ui.dim("Run ht help scenario <id> for a scenario playbook.");
 }
 
 export function printHelpCommand(): void {

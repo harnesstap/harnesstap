@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { getDb, getHarnessdeckDir } from "../../db/connection.js";
+import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
 import { getLayer, resolveLayerSelector } from "../../models/layer-model.js";
@@ -175,7 +175,7 @@ async function handleProfileCreateCommand(
   const version = opts.version ?? "1.0.0";
 
   if (opts.from) {
-    const harnessdeckDir = getHarnessdeckDir();
+    const harnesstapDir = getHarnesstapDir();
     const homeRoot = resolveHomeRoot();
     const skillNames = parseCommaSeparatedList(opts.skill);
     const excludeCategories = [
@@ -187,7 +187,7 @@ async function handleProfileCreateCommand(
       assertSupportedHarnessTargets(harnesses);
     }
 
-    const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnessdeckDir);
+    const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnesstapDir);
     const shouldPrompt = shouldUseWizard({
       noInteractive: opts.yes,
       interactive: opts.interactive,
@@ -223,7 +223,7 @@ async function handleProfileCreateCommand(
       onConflict: onConflictFlag ?? wizard.onConflict,
       dryRun: opts.dryRun,
       homeRoot,
-      harnessdeckDir,
+      harnesstapDir,
     });
 
     if (!isProfileLayer(result.layer)) {
@@ -365,7 +365,7 @@ profileCmd
   .option("--local-only", "List only local profile layers")
   .option("--remote-only", "List only remote catalog profile layers")
   .option("--account <name>", "Cloud account to use for remote listing")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
   .option("--format <mode>", "Output format: human or json", "human")
@@ -497,7 +497,7 @@ profileCmd
 profileCmd
   .command("use")
   .argument("[name]", "Profile layer name or selector")
-  .option("--profile <name>", "Profile key from .harnessdeck/config.toml")
+  .option("--profile <name>", "Profile key from .harnesstap/config.toml")
   .option("--project <path>", "Project directory for config.toml discovery", ".")
   .option("--dry-run", "Show what would be written")
   .option(

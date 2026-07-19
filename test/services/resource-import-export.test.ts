@@ -17,7 +17,7 @@ import { makeResourceInput } from "../helpers/resources.ts";
 describe("resource transport TOML", () => {
   it("round-trips a skill resource", () => {
     const doc: ResourceExport = {
-      $schema: "urn:harnessdeck:resource:v1",
+      $schema: "urn:harnesstap:resource:v1",
       version: 1,
       type: "skill",
       name: "oncall",
@@ -52,12 +52,12 @@ describe("resource import/export service", () => {
         makeResourceInput({ name: "shared-skill", content: "# Skill body" }),
       );
 
-      const dir = mkdtempSync(join(tmpdir(), "hd-resource-export-"));
-      const outPath = join(dir, "shared-skill.harnessdeck.toml");
+      const dir = mkdtempSync(join(tmpdir(), "ht-resource-export-"));
+      const outPath = join(dir, "shared-skill.harnesstap.toml");
       exportResourceToFile(`skill:${created.name}`, outPath);
 
       const raw = readFileSync(outPath, "utf-8");
-      expect(raw).toContain("urn:harnessdeck:resource:v1");
+      expect(raw).toContain("urn:harnesstap:resource:v1");
 
       resourceModel.deleteResource(created.id);
       rmSync(dir, { recursive: true, force: true });
@@ -71,12 +71,12 @@ describe("resource import/export service", () => {
       const { getDb } = await import("../../src/db/connection.ts");
       initializeSchema(getDb());
 
-      const dir = mkdtempSync(join(tmpdir(), "hd-resource-import-"));
-      const outPath = join(dir, "shared-skill.harnessdeck.toml");
+      const dir = mkdtempSync(join(tmpdir(), "ht-resource-import-"));
+      const outPath = join(dir, "shared-skill.harnesstap.toml");
       writeFileSync(
         outPath,
         formatResourceExportToml({
-          $schema: "urn:harnessdeck:resource:v1",
+          $schema: "urn:harnesstap:resource:v1",
           version: 1,
           type: "skill",
           name: "shared-skill",

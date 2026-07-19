@@ -4,22 +4,22 @@ import path from "node:path";
 
 import * as cp from "../../src/config/cloud-accounts";
 
-const tmpRoot = path.join(process.cwd(), "tmp-test-harnessdeck");
+const tmpRoot = path.join(process.cwd(), "tmp-test-harnesstap");
 
 beforeEach(() => {
   if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true });
   fs.mkdirSync(tmpRoot, { recursive: true });
-  process.env.HARNESSDECK_HOME = tmpRoot;
+  process.env.HARNESSTAP_HOME = tmpRoot;
 });
 
 afterEach(() => {
   if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true });
-  delete process.env.HARNESSDECK_HOME;
+  delete process.env.HARNESSTAP_HOME;
 });
 
-test("round-trips a saved account under HARNESSDECK_HOME", async () => {
+test("round-trips a saved account under HARNESSTAP_HOME", async () => {
   const account = {
-    cloudBaseUrl: "https://harnessdeck.kayrnt.fr",
+    cloudBaseUrl: "https://cloud.harnesstap.com",
     scopes: ["core"],
   };
 
@@ -27,7 +27,7 @@ test("round-trips a saved account under HARNESSDECK_HOME", async () => {
   const got = await cp.getCloudAccount("my-account");
   expect(got.accountName).toBe("my-account");
   expect(got.account).toBeTruthy();
-  expect(got.account?.cloudBaseUrl).toBe("https://harnessdeck.kayrnt.fr");
+  expect(got.account?.cloudBaseUrl).toBe("https://cloud.harnesstap.com");
 
   const p = cp.getCloudAccountsPath();
   expect(fs.existsSync(p)).toBe(true);

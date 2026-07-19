@@ -1,33 +1,33 @@
 ---
-description: Repositories where HarnessDeck scans, applies, mirrors, and tracks harness configuration.
+description: Repositories where HarnessTap scans, applies, mirrors, and tracks harness configuration.
 ---
 
 # Projects
 
-A **project** is a repository (or directory tree) where HarnessDeck materializes harness configuration. Project workflows center on scan, apply, mirror, drift detection, and snapshot revert — all scoped to the working tree rather than machine-wide home paths.
+A **project** is a repository (or directory tree) where HarnessTap materializes harness configuration. Project workflows center on scan, apply, mirror, drift detection, and snapshot revert — all scoped to the working tree rather than machine-wide home paths.
 
 ## Repo-scoped apply
 
 `layer apply` is the canonical write path for project baselines:
 
 ```bash
-hd layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
-hd layer apply my-setup --project . --harness claude-code,codex,cursor
-hd status .
+ht layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
+ht layer apply my-setup --project . --harness claude-code,codex,cursor
+ht status .
 ```
 
 Stack multiple layers in one command (see [Scenario 25](../../scenarios/details/25-stack-layers.md)). `layer apply` resolves bare catalog names at apply time, so public baselines work without a prior `layer pull`:
 
 ```bash
-hd layer apply engineering-foundation --project .
+ht layer apply engineering-foundation --project .
 ```
 
 Plugin-version policy when the layer carries plugin pins:
 
 ```bash
-hd layer apply my-setup --strict-plugin-versions   # exit 2 on pin violation
-hd layer apply my-setup --ignore-plugin-versions   # skip validation
-hd layer apply my-setup --sync-plugins             # refresh plugin resources first
+ht layer apply my-setup --strict-plugin-versions   # exit 2 on pin violation
+ht layer apply my-setup --ignore-plugin-versions   # skip validation
+ht layer apply my-setup --sync-plugins             # refresh plugin resources first
 ```
 
 Applying a layer writes a known baseline onto disk. It is distinct from **mirror**, which syncs alias harness outputs from the current on-disk main harness without re-specifying the layer.
@@ -37,9 +37,9 @@ Applying a layer writes a known baseline onto disk. It is distinct from **mirror
 Discover existing configuration before composing layers:
 
 ```bash
-hd scan .
-hd resource list
-hd layer from-project inferred-stack --project .
+ht scan .
+ht resource list
+ht layer from-project inferred-stack --project .
 ```
 
 When the target repository has a git `origin`, `layer apply` stores a **snapshot** of tracked generated files before writing. Snapshots power history, drift detection, and revert.
@@ -59,9 +59,9 @@ When the target repository has a git `origin`, `layer apply` stores a **snapshot
 `mirror` propagates configuration from the **main** harness to **alias** harnesses in the same repository — useful after manual edits to the primary harness files:
 
 ```bash
-hd mirror .
-hd mirror . --force-shift-reference codex
-hd mirror . --dry-run
+ht mirror .
+ht mirror . --force-shift-reference codex
+ht mirror . --dry-run
 ```
 
 Mirror compares and shifts references between harness-specific file layouts. It does not re-resolve layer composition; use `layer apply` when you need a fresh baseline from the library.
@@ -70,13 +70,13 @@ See [Scenario 27](../../scenarios/details/27-project-sync.md) for the cross-harn
 
 ## Drift and revert
 
-After apply, teammates may edit generated files directly. HarnessDeck tracks drift against the last apply or mirror snapshot:
+After apply, teammates may edit generated files directly. HarnessTap tracks drift against the last apply or mirror snapshot:
 
 ```bash
-hd status . --check
-hd status . --check --format json   # exit 1 when drift exists
-hd history .
-hd revert <snapshot-id>
+ht status . --check
+ht status . --check --format json   # exit 1 when drift exists
+ht history .
+ht revert <snapshot-id>
 ```
 
 `status --check` compares the current working tree against the latest apply/mirror snapshot. Exit code `1` means actionable drift was found — useful in CI guardrails.
@@ -88,8 +88,8 @@ See [Scenario 21](../../scenarios/details/21-detect-drift.md).
 Per-project harness settings (main and aliases for this repo) are separate from global `harness set`:
 
 ```bash
-hd harness project status .
-hd harness project set --main claude-code --aliases cursor
+ht harness project status .
+ht harness project set --main claude-code --aliases cursor
 ```
 
 These require a git-backed project and influence which harnesses `layer apply` and `mirror` target by default.
@@ -98,15 +98,15 @@ These require a git-backed project and influence which harnesses `layer apply` a
 
 Typical lifecycle:
 
-1. `hd layer apply team-baseline --project .` — writes files, stores snapshot (when git `origin` exists)
+1. `ht layer apply team-baseline --project .` — writes files, stores snapshot (when git `origin` exists)
 2. Developer edits `.cursor/rules/foo.mdc` by hand
-3. `hd status . --check` — reports divergence from snapshot
-4. Either re-apply the layer, mirror from main, or `hd revert <id>` to restore
+3. `ht status . --check` — reports divergence from snapshot
+4. Either re-apply the layer, mirror from main, or `ht revert <id>` to restore
 
 Preview before writing:
 
 ```bash
-hd layer apply team-baseline --project . --dry-run
+ht layer apply team-baseline --project . --dry-run
 ```
 
 See [Scenario 7](../../scenarios/details/07-preview-apply-layer.md).
@@ -124,12 +124,12 @@ Use [Profiles](./profiles.md) for machine-wide defaults and projects for reposit
 
 ## Project profile config
 
-Repositories can declare named **profiles** in `.harnessdeck/config.toml`. This file maps profile keys to local layers, catalog selectors, or inline layer tables — plus optional project-scoped environments.
+Repositories can declare named **profiles** in `.harnesstap/config.toml`. This file maps profile keys to local layers, catalog selectors, or inline layer tables — plus optional project-scoped environments.
 
 Example:
 
 ```toml
-schema = "urn:harnessdeck:project:v1"
+schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 default_environment = "shared"
@@ -163,31 +163,31 @@ description = "Small inline layer bundled with the repo"
 Inspect and validate the resolved config:
 
 ```bash
-hd config show
-hd config show --format json
-hd config validate --project .
-hd config validate --format json   # exit 1 when invalid
+ht config show
+ht config show --format json
+ht config validate --project .
+ht config validate --format json   # exit 1 when invalid
 ```
 
 Create a starter config from local profile layers:
 
 ```bash
-hd config init
-hd config init --profile work --profile personal --default work
-hd config init --force   # overwrite an existing file
+ht config init
+ht config init --profile work --profile personal --default work
+ht config init --force   # overwrite an existing file
 ```
 
 `config init` maps each selected profile layer to a `source = "local"` entry and sets `default_profile`.
 
-Switch to a configured profile with `hd use`:
+Switch to a configured profile with `ht use`:
 
 ```bash
-hd use                        # interactive picker when multiple profiles exist
-hd use --profile dev          # apply the dev profile directly
-hd use --list                 # list profiles without applying
+ht use                        # interactive picker when multiple profiles exist
+ht use --profile dev          # apply the dev profile directly
+ht use --list                 # list profiles without applying
 ```
 
-Project profiles reuse the same layer sources as machine-wide [Profiles](./profiles.md), but apply through `hd use` in the repository instead of `profile use` at home paths.
+Project profiles reuse the same layer sources as machine-wide [Profiles](./profiles.md), but apply through `ht use` in the repository instead of `profile use` at home paths.
 
 ## Related
 

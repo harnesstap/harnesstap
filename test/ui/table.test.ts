@@ -15,7 +15,7 @@ describe("ui table", () => {
         { key: "description", header: "DESCRIPTION", width: 24 },
       ],
       rows: [{ name: "demo-stack", description: "Demo web stack layer" }],
-      summary: "1 layer · run `harnessdeck layer show <name>` for details",
+      summary: "1 layer · run `harnesstap layer show <name>` for details",
     });
 
     expect(output).toContain("NAME");

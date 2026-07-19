@@ -27,7 +27,7 @@ export function makeSingleLayerExport(input: {
   catalog?: string;
 }): LayerExport {
   return {
-    $schema: "urn:harnessdeck:layer:v1",
+    $schema: "urn:harnesstap:layer:v1",
     version: 1,
     layers: [
       {
@@ -58,7 +58,7 @@ export function makeMultiLayerExport(
   }>,
 ): LayerExport {
   return {
-    $schema: "urn:harnessdeck:layer:v1",
+    $schema: "urn:harnesstap:layer:v1",
     version: 1,
     layers: layers.map((layer) => ({
       name: layer.name,

@@ -1,5 +1,5 @@
 {
-  "$schema": "urn:harnessdeck:layer:v1",
+  "$schema": "urn:harnesstap:layer:v1",
   "version": 1,
   "layer": {
     "name": "demo-api",

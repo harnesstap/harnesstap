@@ -1,12 +1,12 @@
 # Supported harnesses
 
-HarnessDeck registers **33 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in layers, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `hd harness list` prints the same set at runtime.
+HarnessTap registers **33 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in layers, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
 
 For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission, and mirror warnings), see [Portability limits](portability-limits.md).
 
 ## Resource types
 
-HarnessDeck separates **context-side** resources (what the model sees) from **environment-side** resources (how it runs).
+HarnessTap separates **context-side** resources (what the model sees) from **environment-side** resources (how it runs).
 
 ### Context-side material resources
 
@@ -71,7 +71,7 @@ Scanning a repo with both harness files and a plugin manifest merges both source
 
 ### Plugin install and sync providers
 
-During `layer apply`, HarnessDeck can **install** and **sync** plugins from host install trees for:
+During `layer apply`, HarnessTap can **install** and **sync** plugins from host install trees for:
 
 | Harness | Provider | Typical install location |
 | ------- | -------- | ------------------------ |
@@ -93,8 +93,8 @@ Claude **layer pins** and marketplace metadata (`layer show` → `claude` block)
 Filter native harnesses at the CLI:
 
 ```bash
-hd harness list --supported
-hd harness list --format json
+ht harness list --supported
+ht harness list --format json
 ```
 
 ## Skill emission modes
@@ -109,7 +109,7 @@ Most harnesses emit skills to native skill directories. These harnesses declare 
 | **cline** | `.clinerules/{name}.md` (or merged rules file) |
 | **kiro** | `.kiro/steering/{name}.md` |
 
-**Cursor** additionally honors project `cursor_skill_mode` (`agent-requested`, `always-on`, `agents-skills`). Inspect with `hd harness project status --project . --format json`.
+**Cursor** additionally honors project `cursor_skill_mode` (`agent-requested`, `always-on`, `agents-skills`). Inspect with `ht harness project status --project . --format json`.
 
 ## Agent / subagent bridging
 
@@ -167,7 +167,7 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 
 ## On-disk paths (selected harnesses)
 
-These are the primary **project** paths HarnessDeck scans and writes. Global paths follow the same keys under each harness home directory (see `hd harness list --format json`).
+These are the primary **project** paths HarnessTap scans and writes. Global paths follow the same keys under each harness home directory (see `ht harness list --format json`).
 
 | Harness | Instructions | Skills | Rules | MCP | Agents | Commands | Settings |
 | ------- | ------------ | ------ | ----- | --- | ------ | -------- | -------- |
@@ -186,14 +186,14 @@ Generic harnesses in the skills-only tier use harness-specific skill roots such 
 
 ### Goose context engineering
 
-HarnessDeck maps [Goose context engineering](https://goose-docs.ai/docs/guides/context-engineering/) surfaces as follows:
+HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/context-engineering/) surfaces as follows:
 
-| Goose feature | HarnessDeck support |
+| Goose feature | HarnessTap support |
 | ------------- | ------------------- |
 | **goosehints** (`.goosehints`, nested, global `~/.config/goose/.goosehints`) | Scanned and emitted as `instruction` resources |
 | **Agent skills** (`.agents/skills/`, legacy `.goose/skills/`) | Native `skill` resources |
 | **Open Plugins** (`plugin.json`, `.goose-plugin/`, `.agents/plugins/`) | Plugin-source import + `goose plugin install` sync |
-| **Hooks** (plugin `hooks/hooks.json`) | `hook` resources; layer apply emits `.agents/plugins/harnessdeck-layer/` |
+| **Hooks** (plugin `hooks/hooks.json`) | `hook` resources; layer apply emits `.agents/plugins/harnesstap-layer/` |
 | **MCP extensions** (`config.yaml` `extensions:`) | `mcp_server` resources via native serializer |
 | **Recipes** (`recipes/*.yaml`) | `command` resources |
 | **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only — not layer resources (see [portability limits](portability-limits.md)) |
@@ -201,12 +201,12 @@ HarnessDeck maps [Goose context engineering](https://goose-docs.ai/docs/guides/c
 ## Related commands
 
 ```bash
-hd harness list                          # all registered harnesses
-hd harness list --supported              # native serializers only
-hd harness status                        # global main + alias selection
-hd harness project status --project .    # per-project harness prefs + cursor_skill_mode
-hd scan . --dry-run              # detect harnesses and resources in a repo
-hd environment list                      # named environments (env vars, models, permissions)
+ht harness list                          # all registered harnesses
+ht harness list --supported              # native serializers only
+ht harness status                        # global main + alias selection
+ht harness project status --project .    # per-project harness prefs + cursor_skill_mode
+ht scan . --dry-run              # detect harnesses and resources in a repo
+ht environment list                      # named environments (env vars, models, permissions)
 ```
 
 ## See also

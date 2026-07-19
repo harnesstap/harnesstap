@@ -44,7 +44,7 @@ describe("completion engine", () => {
   const program = buildProgram();
 
   it("resolves subcommand slot for partial top-level command", async () => {
-    const ctx = parseCompletionContext(program, "hd lay");
+    const ctx = parseCompletionContext(program, "ht lay");
     expect(ctx.slot).toBe("subcommand");
     expect(ctx.commandPath).toEqual([]);
     expect(ctx.prefix).toBe("lay");
@@ -54,7 +54,7 @@ describe("completion engine", () => {
   });
 
   it("resolves positional slot for layer show", async () => {
-    const ctx = parseCompletionContext(program, "hd layer show eng");
+    const ctx = parseCompletionContext(program, "ht layer show eng");
     expect(ctx.slot).toBe("positional");
     expect(ctx.commandPath).toEqual(["layer", "show"]);
     expect(ctx.positionalIndex).toBe(0);
@@ -62,7 +62,7 @@ describe("completion engine", () => {
   });
 
   it("resolves flag slot for partial global flag", async () => {
-    const ctx = parseCompletionContext(program, "hd --ver");
+    const ctx = parseCompletionContext(program, "ht --ver");
     expect(ctx.slot).toBe("flag");
     expect(ctx.prefix).toBe("--ver");
 
@@ -71,7 +71,7 @@ describe("completion engine", () => {
   });
 
   it("resolves flag-value slot for init --main", async () => {
-    const ctx = parseCompletionContext(program, "hd init --main cur");
+    const ctx = parseCompletionContext(program, "ht init --main cur");
     expect(ctx.slot).toBe("flag-value");
     expect(ctx.commandPath).toEqual(["init"]);
     expect(ctx.flag).toBe("main");
@@ -79,21 +79,21 @@ describe("completion engine", () => {
   });
 
   it("resolves environment show positional slot", async () => {
-    const ctx = parseCompletionContext(program, "hd environment show my");
+    const ctx = parseCompletionContext(program, "ht environment show my");
     expect(ctx.slot).toBe("positional");
     expect(ctx.commandPath).toEqual(["environment", "show"]);
     expect(ctx.positionalIndex).toBe(0);
   });
 
   it("resolves layer apply positional slot", async () => {
-    const ctx = parseCompletionContext(program, "hd layer apply eng");
+    const ctx = parseCompletionContext(program, "ht layer apply eng");
     expect(ctx.slot).toBe("positional");
     expect(ctx.commandPath).toEqual(["layer", "apply"]);
     expect(ctx.positionalIndex).toBe(0);
   });
 
   it("resolves positional slot after inline --account=value", async () => {
-    const ctx = parseCompletionContext(program, "hd layer pull --account=work eng");
+    const ctx = parseCompletionContext(program, "ht layer pull --account=work eng");
     expect(ctx.slot).toBe("positional");
     expect(ctx.commandPath).toEqual(["layer", "pull"]);
     expect(ctx.positionalIndex).toBe(0);
@@ -102,14 +102,14 @@ describe("completion engine", () => {
   });
 
   it("resolves flag-value slot for inline --account=partial", async () => {
-    const ctx = parseCompletionContext(program, "hd layer pull --account=wo");
+    const ctx = parseCompletionContext(program, "ht layer pull --account=wo");
     expect(ctx.slot).toBe("flag-value");
     expect(ctx.flag).toBe("account");
     expect(ctx.prefix).toBe("wo");
   });
 
   it("extracts --account from separate tokens", async () => {
-    const ctx = parseCompletionContext(program, "hd layer pull --account work eng");
+    const ctx = parseCompletionContext(program, "ht layer pull --account work eng");
     expect(ctx.account).toBe("work");
     expect(ctx.slot).toBe("positional");
     expect(ctx.prefix).toBe("eng");

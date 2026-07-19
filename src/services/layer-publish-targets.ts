@@ -128,14 +128,14 @@ export function assertResolvablePublishTargets(layerId: string): RegisteredCatal
   const registered = loadRegisteredCatalogs();
   if (registered.length === 0) {
     throw new Error(
-      "No publish catalogs registered. Run `hd layer catalog register org/catalog` first.",
+      "No publish catalogs registered. Run `ht layer catalog register org/catalog` first.",
     );
   }
 
   const effective = resolvePublishTargets(layerId);
   if (effective.length === 0) {
     throw new Error(
-      "No effective publish catalogs for this layer. Update bindings with `hd layer catalog bindings <layer>`.",
+      "No effective publish catalogs for this layer. Update bindings with `ht layer catalog bindings <layer>`.",
     );
   }
 

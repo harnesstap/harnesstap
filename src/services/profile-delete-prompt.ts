@@ -24,7 +24,7 @@ export async function maybePromptProfileLayerDelete(input: {
 
   if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
     ui.hint(
-      `Layer ${ui.theme.accent(input.layerName)} was kept. Delete with harnessdeck layer delete ${input.layerName}`,
+      `Layer ${ui.theme.accent(input.layerName)} was kept. Delete with harnesstap layer delete ${input.layerName}`,
     );
     return false;
   }
@@ -36,7 +36,7 @@ export async function maybePromptProfileLayerDelete(input: {
 
   if (!confirmed) {
     ui.hint(
-      `Layer ${ui.theme.accent(input.layerName)} was kept. Delete with harnessdeck layer delete ${input.layerName}`,
+      `Layer ${ui.theme.accent(input.layerName)} was kept. Delete with harnesstap layer delete ${input.layerName}`,
     );
     return false;
   }

@@ -3,7 +3,7 @@ import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { renderCatalogLayerShow } from "../../src/ui/catalog-list-render.ts";
 
 const layer: CatalogLayer = {
-  orgSlug: "harnessdeck-cloud",
+  orgSlug: "harnesstap-cloud",
   catalogSlug: "default",
   slug: "data-engineer",
   name: "Data engineer",
@@ -19,7 +19,7 @@ describe("renderCatalogLayerShow", () => {
     const output = renderCatalogLayerShow(layer);
 
     expect(output).toContain("LAYER");
-    expect(output).toContain("harnessdeck-cloud/default/data-engineer@1.0.0");
+    expect(output).toContain("harnesstap-cloud/default/data-engineer@1.0.0");
     expect(output).toContain("Description");
     expect(output).toContain("Antigravity data-engineering bundle");
     expect(output).toContain("Tags");

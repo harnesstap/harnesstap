@@ -18,16 +18,16 @@ describe("CLI profile", () => {
     const context = await createTestContext("cli-profile-list-create");
     try {
       await runCli(["init"]);
-      const listInitial = await runCli(["profile", "list"]);
+      const listInitial = await runCli(["profile", "list", "--local-only"]);
       expect(listInitial.stdout).toContain("default");
 
-      const listAlias = await runCli(["p", "ls"]);
+      const listAlias = await runCli(["p", "ls", "--local-only"]);
       expect(listAlias.stdout).toContain("default");
 
       const createResult = await runCli(["profile", "create", "work"]);
       expect(createResult.stdout).toContain("Created profile");
 
-      const listAfter = await runCli(["profile", "list"]);
+      const listAfter = await runCli(["profile", "list", "--local-only"]);
       expect(listAfter.stdout).toContain("work");
     } finally {
       await context.cleanup();
@@ -296,7 +296,7 @@ describe("CLI profile", () => {
         baseUrl: "https://mock",
         layers: [
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "work-profile",
             name: "Work profile",
             summary: "Profile layer",
@@ -306,7 +306,7 @@ describe("CLI profile", () => {
             visibility: "public",
           },
           {
-            orgSlug: "harnessdeck-cloud",
+            orgSlug: "harnesstap-cloud",
             slug: "foundation",
             name: "Foundation",
             summary: "Regular layer",
@@ -361,7 +361,7 @@ describe("CLI profile", () => {
       const pull = await runCli([
         "profile",
         "pull",
-        "harnessdeck-cloud/default/team@1.0.0",
+        "harnesstap-cloud/default/team@1.0.0",
         "--account",
         "test",
         "--base-url",
@@ -478,13 +478,13 @@ describe("CLI profile", () => {
       const profile = createLayer({ name: "work" });
       setLayerTags(profile.id, ["profile"]);
       const composition = await import("../../src/services/layer-composition.ts");
-      const ref = composition.ensureLayerResource("harnessdeck-cloud/default/remote-base", {
+      const ref = composition.ensureLayerResource("harnesstap-cloud/default/remote-base", {
         versionConstraint: "1.0.0",
       });
       addResourceToLayer(profile.id, ref.id);
 
       const dependencyBundle = formatLayerExportToml({
-        $schema: "urn:harnessdeck:layer:v1",
+        $schema: "urn:harnesstap:layer:v1",
         version: 1,
         layers: [{
           name: "remote-base",
@@ -510,7 +510,7 @@ describe("CLI profile", () => {
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
         layers: [{
-          orgSlug: "harnessdeck-cloud",
+          orgSlug: "harnesstap-cloud",
           slug: "remote-base",
           name: "Remote Base",
           summary: "Dependency",

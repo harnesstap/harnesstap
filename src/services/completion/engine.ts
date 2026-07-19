@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import type { Command, Option } from "commander";
-import { getHarnessdeckDir } from "../../db/connection.js";
+import { getHarnesstapDir } from "../../db/connection.js";
 import { lookupProviders } from "./registry.js";
 import type {
   CompletionCandidate,
@@ -8,7 +8,7 @@ import type {
 } from "./types.js";
 import { normalizeFlagName } from "./utils.js";
 
-const INVOCATION_NAMES = new Set(["hd", "harnessdeck"]);
+const INVOCATION_NAMES = new Set(["ht", "harnesstap"]);
 
 const GLOBAL_FLAG_NAMES = [
   "-v",
@@ -291,7 +291,7 @@ export function parseCompletionContext(
     consumedPositionals: walked.consumedPositionals,
     prefix,
     account: extractAccount(consumed),
-    localDataAvailable: existsSync(getHarnessdeckDir()),
+    localDataAvailable: existsSync(getHarnesstapDir()),
     ...slotInfo,
   };
 }
@@ -417,7 +417,7 @@ export function collectCommandPaths(
   prefix: string[] = [],
 ): string[] {
   const name = command.name();
-  const path = name === "harnessdeck" || name === "hd" ? prefix : [...prefix, name];
+  const path = name === "harnesstap" || name === "ht" ? prefix : [...prefix, name];
   const paths: string[] = [];
 
   if (path.length > 0) {

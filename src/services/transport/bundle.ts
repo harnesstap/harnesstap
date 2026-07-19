@@ -158,7 +158,7 @@ export function bundleExportFromTomlDocument(
   });
 
   const layerExport = layerExportFromTomlDocument({
-    schema: "urn:harnessdeck:layer:v1",
+    schema: "urn:harnesstap:layer:v1",
     version: 1,
     layers: document.layers,
     embedded_plugins: document.embedded_plugins,

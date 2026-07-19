@@ -5,5 +5,5 @@
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnessdeck layer apply https://team.example.com/baselines/web.json --project .
+harnesstap layer apply https://team.example.com/baselines/web.json --project .
 ```

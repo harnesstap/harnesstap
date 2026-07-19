@@ -1,27 +1,27 @@
 Output docs/scenarios/vhs/output/01-existing-repo-adoption.gif
 Source docs/scenarios/vhs/tapes/_shared.tape
-Require harnessdeck
+Require harnesstap
 
-Type "harnessdeck init"
+Type "harnesstap init"
 Enter
 Sleep 1500ms
 
-Type "harnessdeck scan ."
+Type "harnesstap scan ."
 Enter
 Sleep 3000ms
 
-Type "harnessdeck resource list"
+Type "harnesstap resource list"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck layer list --search foundation --remote-only"
+Type "harnesstap layer list --search foundation --remote-only"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck layer apply engineering-foundation"
+Type "harnesstap layer apply engineering-foundation"
 Enter
 Sleep 3000ms
 
-Type "harnessdeck status ."
+Type "harnesstap status ."
 Enter
 Sleep 20000ms

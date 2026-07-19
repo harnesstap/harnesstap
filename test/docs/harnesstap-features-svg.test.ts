@@ -22,16 +22,16 @@ function countOccurrences(source: string, text: string): number {
   return source.split(text).length - 1;
 }
 
-describe("HarnessDeck features SVG", () => {
-  test("documents the approved HarnessDeck feature map", async () => {
-    const svg = await readFile("docs/assets/harnessdeck-features.svg", "utf8");
+describe("HarnessTap features SVG", () => {
+  test("documents the approved HarnessTap feature map", async () => {
+    const svg = await readFile("docs/assets/harnesstap-features.svg", "utf8");
     const rootTag = svg.match(/^<svg([^>]*)>/);
     const title = matchTag(svg, "title");
     const description = matchTag(svg, "desc");
 
     expect(rootTag).not.toBeNull();
-    expect(title?.[2]).toBe("HarnessDeck feature map");
-    expect(description?.[2]).toContain("HarnessDeck connects");
+    expect(title?.[2]).toBe("HarnessTap feature map");
+    expect(description?.[2]).toContain("HarnessTap connects");
     expect(matchAttribute(rootTag?.[1] ?? "", "aria-labelledby")).toBe("title");
     expect(matchAttribute(rootTag?.[1] ?? "", "aria-describedby")).toBe("desc");
     expect(matchAttribute(title?.[1] ?? "", "id")).toBe("title");
@@ -45,7 +45,7 @@ describe("HarnessDeck features SVG", () => {
     expect(svg).toContain("layer deps");
 
     const requiredLabels = [
-      "HarnessDeck",
+      "HarnessTap",
       "Agent harness configuration toolkit",
       "Agent harnesses",
       "Claude Code",

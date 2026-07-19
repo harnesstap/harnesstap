@@ -94,7 +94,7 @@ export function resolveMainHarnessTarget(
   const [detected] = detectHomePlatforms(homeRoot);
   if (!detected) {
     throw new Error(
-      "No main harness detected. Run harnessdeck harness set or pass --harness <slug>.",
+      "No main harness detected. Run harnesstap harness set or pass --harness <slug>.",
     );
   }
   return detected.platformId;

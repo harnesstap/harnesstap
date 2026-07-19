@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { loadSettings } from "../config/settings.js";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import {
   getPluginProviders,
   getRegisteredPluginPlatformIds,
@@ -48,7 +48,7 @@ function buildContext(opts: PluginLifecycleOptions): PluginContext {
   return {
     projectRoot: resolve(opts.projectRoot ?? "."),
     homeRoot: opts.homeRoot ?? resolveHomeRoot(),
-    harnessdeckDir: getHarnessdeckDir(),
+    harnesstapDir: getHarnesstapDir(),
   };
 }
 
@@ -83,8 +83,8 @@ export async function checkPlugins(
   opts: PluginLifecycleOptions = {},
 ): Promise<PluginCheckReport> {
   const ctx = buildContext(opts);
-  const settings = loadSettings(ctx.harnessdeckDir);
-  const cache = loadRefreshCache(ctx.harnessdeckDir);
+  const settings = loadSettings(ctx.harnesstapDir);
+  const cache = loadRefreshCache(ctx.harnesstapDir);
   const { active, unsupported } = resolvePlatformIds(opts.platformIds);
 
   const checkOpts = {
@@ -107,7 +107,7 @@ export async function checkPlugins(
     }
   }
 
-  saveRefreshCache(ctx.harnessdeckDir, checkOpts.refreshCache);
+  saveRefreshCache(ctx.harnesstapDir, checkOpts.refreshCache);
 
   const summary = {
     outdated: results.filter((r) => r.status === "outdated").length,

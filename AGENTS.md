@@ -1,4 +1,4 @@
-# HarnessDeck
+# HarnessTap
 
 Agent harness configuration toolkit. Follow these conventions when working in this repo.
 

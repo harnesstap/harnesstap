@@ -6,7 +6,7 @@ import {
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "../../constants/onboarding.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
-import { getDb, getDbPath, getHarnessdeckDir } from "../../db/connection.js";
+import { getDb, getDbPath, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
   getHarnessPreference,
@@ -114,7 +114,7 @@ async function handleAddCommand(
   },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const harnessdeckDir = getHarnessdeckDir();
+  const harnesstapDir = getHarnesstapDir();
   const homeRoot = resolveHomeRoot();
 
   if (opts.layer && opts.createLayer) {
@@ -127,7 +127,7 @@ async function handleAddCommand(
       throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
     })();
 
-  const resolvedPackage = resolveSkillPackageCheckout(source, harnessdeckDir);
+  const resolvedPackage = resolveSkillPackageCheckout(source, harnesstapDir);
   const { namespace } = resolvedPackage;
   const discovered = resolvedPackage.discovered;
 
@@ -206,7 +206,7 @@ async function handleAddCommand(
     method: wizard.method,
     harnesses: wizard.harnesses,
     homeRoot,
-    harnessdeckDir,
+    harnesstapDir,
     createLayer: wizard.createLayer,
     layer: wizard.layer,
     dryRun: opts.dryRun,
@@ -264,7 +264,7 @@ async function handleInitCommand(opts: {
   if (format === "human" && hadExistingStore) {
     const preference = getHarnessPreference();
     ui.warn(
-      "~/.harnessdeck already exists. Harness preferences stay unchanged unless you pass --main or --aliases.",
+      "~/.harnesstap already exists. Harness preferences stay unchanged unless you pass --main or --aliases.",
     );
     if (preference) {
       ui.dim(
@@ -356,7 +356,7 @@ async function handleInitCommand(opts: {
     console.log("");
   }
 
-  ui.success("Harnessdeck initialized");
+  ui.success("HarnessTap initialized");
   console.log("");
   ui.kvBlock([
     { key: "Database", value: getDbPath() },
@@ -439,7 +439,7 @@ async function handleInitCommand(opts: {
 export function registerInitCommands(root: Command): void {
   root
     .command("init")
-    .description("Initialize the harnessdeck database and config directory")
+    .description("Initialize the harnesstap database and config directory")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--main <slug>", "Default main harness slug")
     .option("--aliases <slugs>", "Comma-separated alias harness slugs")

@@ -8,7 +8,7 @@ import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 
 const FOUNDATION_CATALOG_BUNDLE = formatLayerExportToml({
-  $schema: "urn:harnessdeck:layer:v1",
+  $schema: "urn:harnesstap:layer:v1",
   version: 1,
   layers: [
     {
@@ -27,10 +27,10 @@ describe("CLI platforms, status, and catalog baselines", () => {
   it("lists harnesses and applies catalog baseline layers", async () => {
     const context = await createTestContext("cli-builtins");
     const restoreFetch = createCatalogFetchMock({
-      baseUrl: "https://harnessdeck.kayrnt.fr",
+      baseUrl: "https://cloud.harnesstap.com",
       bundle: FOUNDATION_CATALOG_BUNDLE,
       layers: [{
-        orgSlug: "harnessdeck-cloud",
+        orgSlug: "harnesstap-cloud",
         slug: "engineering-foundation",
         name: "Engineering foundation",
         summary: "Shared baseline",
@@ -59,7 +59,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
       expect(platforms.stdout).toContain("claude-code");
       expect(platforms.stdout).toContain("cursor");
       expect(templates.stdout).toContain("engineering-foundation");
-      expect(applied.stdout).toContain("Fetched harnessdeck-cloud/engineering-foundation@1.0.0 from catalog");
+      expect(applied.stdout).toContain("Fetched harnesstap-cloud/engineering-foundation@1.0.0 from catalog");
       expect(applied.stdout).toContain("[dry run]");
     } finally {
       restoreFetch();
@@ -68,7 +68,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
   });
 
   it("rejects unknown platform subcommands", async () => {
-    await expect(runCli(["platform", "list"], { commandName: "hd" })).rejects.toMatchObject({
+    await expect(runCli(["platform", "list"], { commandName: "ht" })).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
       message: expect.stringMatching(/unknown command/i),
@@ -79,7 +79,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
     const context = await createTestContext("cli-status");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-status.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-status.git");
       await runCli(["init"]);
 
       const layerModel = await import("../../src/models/layer-model.ts");

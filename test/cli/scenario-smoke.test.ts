@@ -23,7 +23,7 @@ const smokeCases = JSON.parse(
   readFileSync(join(repoRoot, "docs/scenarios/scenario-smoke.json"), "utf-8"),
 ) as ScenarioSmokeCase[];
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnessdeck:project:v1"
+const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 
@@ -34,8 +34,8 @@ selector = "default"
 `;
 
 function writeProjectConfig(projectDir: string) {
-  mkdirSync(join(projectDir, ".harnessdeck"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnessdeck", "config.toml"), VALID_PROJECT_CONFIG);
+  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
+  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), VALID_PROJECT_CONFIG);
 }
 
 function resolveSmokeArgv(

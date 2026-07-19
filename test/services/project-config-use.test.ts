@@ -12,7 +12,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 function writeProjectConfig(projectDir: string, content: string): void {
-  writeTextFile(join(projectDir, ".harnessdeck", "config.toml"), content);
+  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), content);
 }
 
 function createProfileLayer(name: string) {
@@ -38,7 +38,7 @@ describe("project-config-use", () => {
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -77,7 +77,7 @@ selector = "team-stack"
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -133,7 +133,7 @@ content_blob_ref = ""
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -171,7 +171,7 @@ selector = "team-stack"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -206,7 +206,7 @@ selector = "beta"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -235,7 +235,7 @@ selector = "solo"
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -268,7 +268,7 @@ selector = "acme/platform/frontend@1.0.0"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]
@@ -308,7 +308,7 @@ REGION = "eu"
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 default_environment = "shared"
 

@@ -6,7 +6,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
-const VALID_PROJECT_CONFIG = `schema = "urn:harnessdeck:project:v1"
+const VALID_PROJECT_CONFIG = `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 default_environment = "shared"
@@ -33,8 +33,8 @@ description = "inline layer for custom profile"
 `;
 
 function writeProjectConfig(projectDir: string, toml = VALID_PROJECT_CONFIG) {
-  mkdirSync(join(projectDir, ".harnessdeck"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnessdeck", "config.toml"), toml);
+  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
+  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
 }
 
 describe("CLI config", () => {
@@ -106,7 +106,7 @@ describe("CLI config", () => {
     try {
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]

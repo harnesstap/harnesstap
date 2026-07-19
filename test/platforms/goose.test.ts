@@ -87,7 +87,7 @@ describe("GooseSerializer", () => {
         ".agents/skills/review/SKILL.md",
         "recipes/security-audit.yaml",
         ".config/goose/config.yaml",
-        ".agents/plugins/harnessdeck-layer/hooks/hooks.json",
+        ".agents/plugins/harnesstap-layer/hooks/hooks.json",
       ]),
     );
 

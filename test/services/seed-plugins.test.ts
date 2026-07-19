@@ -12,8 +12,8 @@ const BUILTIN_FIXTURE_DIR = join(import.meta.dirname, "../fixtures/builtin-plugi
 describe("seed plugins service", () => {
   it("seeds built-in plugins from the builtin-plugins directory", async () => {
     const context = await createInitializedTestContext("seed-plugins");
-    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
-    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
+    const previousDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -28,15 +28,15 @@ describe("seed plugins service", () => {
       expect(names).toContain("demo-stack");
       expect(names).toContain("demo-api");
     } finally {
-      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
+      process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
 
   it("skips already-existing layers", async () => {
     const context = await createInitializedTestContext("seed-duplicate");
-    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
-    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
+    const previousDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -52,15 +52,15 @@ describe("seed plugins service", () => {
 
       expect(count1).toBe(count2);
     } finally {
-      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
+      process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
 
   it("creates layers with resources from bundled JSON", async () => {
     const context = await createInitializedTestContext("seed-with-resources");
-    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
-    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
+    const previousDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -81,15 +81,15 @@ describe("seed plugins service", () => {
       expect(demoStack?.description).toContain("Demo web stack");
       expect(resourceModel.listResources({ source: "builtin:" })).toHaveLength(5);
     } finally {
-      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
+      process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
 
   it("sets source to builtin:filename for seeded resources", async () => {
     const context = await createInitializedTestContext("seed-source");
-    const previousDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
-    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
+    const previousDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
+    process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
@@ -107,7 +107,7 @@ describe("seed plugins service", () => {
       expect(builtinResources.length).toBeGreaterThan(0);
       expect(builtinResources[0]?.source).toMatch(/^builtin:/);
     } finally {
-      process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = previousDir;
+      process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = previousDir;
       await context.cleanup();
     }
   });
@@ -118,11 +118,11 @@ describe("seed plugins service", () => {
     try {
       const builtinDir = join(context.projectDir, "builtin-plugins");
       mkdirSync(builtinDir, { recursive: true });
-      const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+      const originalBuiltinDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
       try {
-        process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = builtinDir;
+        process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = builtinDir;
         writeLayerExportToml(
-          join(builtinDir, "multi.harnessdeck.toml"),
+          join(builtinDir, "multi.harnesstap.toml"),
           makeMultiLayerExport([
             { name: "multi-one", version: "1.0.0" },
             { name: "multi-two", version: "1.0.0" },
@@ -146,9 +146,9 @@ describe("seed plugins service", () => {
         expect(seedPlugins.seedBuiltInPlugins()).toBe(0);
       } finally {
         if (originalBuiltinDir === undefined) {
-          delete process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+          delete process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
         } else {
-          process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = originalBuiltinDir;
+          process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = originalBuiltinDir;
         }
       }
     } finally {
@@ -162,11 +162,11 @@ describe("seed plugins service", () => {
     try {
       const builtinDir = join(context.projectDir, "builtin-plugins");
       mkdirSync(builtinDir, { recursive: true });
-      const originalBuiltinDir = process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+      const originalBuiltinDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
       try {
-        process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = builtinDir;
+        process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = builtinDir;
         writeLayerExportToml(
-          join(builtinDir, "partial.harnessdeck.toml"),
+          join(builtinDir, "partial.harnesstap.toml"),
           makeMultiLayerExport([
             { name: "partial-one", version: "1.0.0" },
             { name: "partial-two", version: "1.0.0" },
@@ -185,9 +185,9 @@ describe("seed plugins service", () => {
         expect(layerModel.getLayer("partial-two@1.0.0")).toBeDefined();
       } finally {
         if (originalBuiltinDir === undefined) {
-          delete process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR;
+          delete process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
         } else {
-          process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR = originalBuiltinDir;
+          process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = originalBuiltinDir;
         }
       }
     } finally {

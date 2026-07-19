@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import { getLayerById } from "../models/layer-model.js";
 import {
   getEnvironmentByName,
@@ -169,13 +169,13 @@ function loadActiveEnvironmentFragment(baseDir: string): EnvironmentFragment | u
 }
 
 export function loadHomeEnvironmentFragment(): EnvironmentFragment | undefined {
-  return loadActiveEnvironmentFragment(getHarnessdeckDir());
+  return loadActiveEnvironmentFragment(getHarnesstapDir());
 }
 
 export function loadProjectActiveEnvironmentFragment(
   projectRoot: string,
 ): EnvironmentFragment | undefined {
-  return loadActiveEnvironmentFragment(join(projectRoot, ".harnessdeck"));
+  return loadActiveEnvironmentFragment(join(projectRoot, ".harnesstap"));
 }
 
 export function loadLayerDefaultFragments(

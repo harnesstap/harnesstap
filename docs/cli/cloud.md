@@ -1,20 +1,20 @@
-# Connect HarnessDeck CLI to HarnessDeck Cloud
+# Connect HarnessTap CLI to HarnessTap Cloud
 
 Authenticate with your cloud account, switch organizations, search and install shared layer bundles, and publish your own layers to your team's organization. Remote catalog commands live on **`layer`**; use **`auth`** for authentication and org context.
 
 ## Prerequisites
 
-### Current HarnessDeck CLI installation
+### Current HarnessTap CLI installation
 
-Install the latest HarnessDeck CLI before connecting it to Cloud.
+Install the latest HarnessTap CLI before connecting it to Cloud.
 
 ```bash
-npx harnessdeck@latest init
+npx harnesstap@latest init
 ```
 
-### HarnessDeck Cloud account
+### HarnessTap Cloud account
 
-Sign in with an existing HarnessDeck Cloud account or [create one](/signup) before using private org catalogs.
+Sign in with an existing HarnessTap Cloud account or [create one](/signup) before using private org catalogs.
 
 ### Organization access
 
@@ -27,17 +27,17 @@ Join or create at least one organization so you can search, install, and publish
 Start the device flow, sign in with your cloud account, and save a named local account.
 
 ```bash
-harnessdeck auth login [account] [--base-url <url>]
+harnesstap auth login [account] [--base-url <url>]
 ```
 
-Default account name: `default`. Default base URL: `https://harnessdeck.kayrnt.fr`.
+Default account name: `default`. Default base URL: `https://cloud.harnesstap.com`.
 
 ### Confirm the active identity
 
 Check which user and organization the CLI will use before you install or publish layers.
 
 ```bash
-harnessdeck auth status [--account <name>] [--format human|json]
+harnesstap auth status [--account <name>] [--format human|json]
 ```
 
 ### List and switch organizations
@@ -45,7 +45,7 @@ harnessdeck auth status [--account <name>] [--format human|json]
 Review the orgs your account can access and switch the active organization for the current account.
 
 ```bash
-harnessdeck auth orgs [--account <name>] [--switch <slug>]
+harnesstap auth orgs [--account <name>] [--switch <slug>]
 ```
 
 ### Clear a local session
@@ -53,10 +53,10 @@ harnessdeck auth orgs [--account <name>] [--switch <slug>]
 Remove a saved local account when you need to re-authenticate or switch accounts.
 
 ```bash
-harnessdeck auth logout [--account <name>]
+harnesstap auth logout [--account <name>]
 ```
 
-Cloud accounts are stored in `~/.harnessdeck/cloud-accounts.json` (or under `HARNESSDECK_HOME` when set).
+Cloud accounts are stored in `~/.harnesstap/cloud-accounts.json` (or under `HARNESSTAP_HOME` when set).
 
 ## Search, install, and publish layers
 
@@ -65,15 +65,15 @@ Cloud accounts are stored in `~/.harnessdeck/cloud-accounts.json` (or under `HAR
 Search the shared layer catalog in your active cloud organization to find reusable layers before you install them locally.
 
 ```bash
-harnessdeck layer list --search <query> --remote-only [--account <name>] [--format human|json]
+harnesstap layer list --search <query> --remote-only [--account <name>] [--format human|json]
 ```
 
 ### Pull a shared layer locally
 
-Download a published `urn:harnessdeck:layer:v1` export from your organization and import it into the local HarnessDeck database under the original or aliased name.
+Download a published `urn:harnesstap:layer:v1` export from your organization and import it into the local HarnessTap database under the original or aliased name.
 
 ```bash
-harnessdeck layer pull <org>/<layer>[@version] [--as <name>] [--account <name>]
+harnesstap layer pull <org>/<layer>[@version] [--as <name>] [--account <name>]
 ```
 
 `layer pull` is distinct from `layer import` (local file). `layer pull` fails on local name conflict instead of overwriting.
@@ -83,7 +83,7 @@ harnessdeck layer pull <org>/<layer>[@version] [--as <name>] [--account <name>]
 For public catalog baselines, you can apply by bare name and let the CLI fetch on demand:
 
 ```bash
-harnessdeck layer apply engineering-foundation --project . --harness codex
+harnesstap layer apply engineering-foundation --project . --harness codex
 ```
 
 Use `layer pull` when you want the bundle cached locally before working offline.
@@ -93,9 +93,9 @@ Use `layer pull` when you want the bundle cached locally before working offline.
 Export a local layer as layer v1 and upload it to your organization's catalog.
 
 ```bash
-harnessdeck layer catalog register <org>/<catalog>
-harnessdeck layer publish <layer> [<org>/<catalog>] [--account <name>]
-harnessdeck layer publish plan <layer>
+harnesstap layer catalog register <org>/<catalog>
+harnesstap layer publish <layer> [<org>/<catalog>] [--account <name>]
+harnesstap layer publish plan <layer>
 ```
 
 Publishes to all registered catalogs by default. Pass `org/catalog` or use `layer catalog bindings` to restrict targets.
@@ -109,7 +109,7 @@ Stay inside the implemented command set: authenticate, inspect or switch organiz
 Start the device flow and save an account for the cloud organization you want to use.
 
 ```bash
-harnessdeck auth login
+harnesstap auth login
 ```
 
 ### 2. Inspect your active identity
@@ -117,7 +117,7 @@ harnessdeck auth login
 Check the authenticated user and current organization before you work with shared layers.
 
 ```bash
-harnessdeck auth status
+harnesstap auth status
 ```
 
 ### 3. Switch organizations when needed
@@ -125,7 +125,7 @@ harnessdeck auth status
 List the organizations your account can reach and switch to the correct one before installing or publishing.
 
 ```bash
-harnessdeck auth orgs --switch org-slug
+harnesstap auth orgs --switch org-slug
 ```
 
 ### 4. Search shared layers
@@ -133,7 +133,7 @@ harnessdeck auth orgs --switch org-slug
 Browse the layer catalog for stacks and workflows your team already maintains.
 
 ```bash
-harnessdeck layer list --search react --remote-only
+harnesstap layer list --search react --remote-only
 ```
 
 ### 5. Apply or pull a shared layer
@@ -141,8 +141,8 @@ harnessdeck layer list --search react --remote-only
 Apply directly by bare name or org/catalog selector, or pull into the local library first.
 
 ```bash
-harnessdeck layer apply org/catalog/layer-name --project .
-harnessdeck layer pull org/layer-name
+harnesstap layer apply org/catalog/layer-name --project .
+harnesstap layer pull org/layer-name
 ```
 
 ### 6. Publish a local layer
@@ -150,22 +150,22 @@ harnessdeck layer pull org/layer-name
 Share a layer you maintain back to the active organization so teammates can discover it.
 
 ```bash
-harnessdeck layer publish local-layer
+harnesstap layer publish local-layer
 ```
 
 ## Troubleshooting
 
 ### CLI command not found after install
 
-Use `npx harnessdeck@latest <command>` or ensure your global npm bin directory is on `PATH`.
+Use `npx harnesstap@latest <command>` or ensure your global npm bin directory is on `PATH`.
 
 ### Authentication fails in headless environment
 
-Use the device-code flow by running `harnessdeck auth login` and following the browser prompt.
+Use the device-code flow by running `harnesstap auth login` and following the browser prompt.
 
 ### Organization not found
 
-Check your active organization with `harnessdeck auth status` and switch using `harnessdeck auth orgs --switch org-slug`.
+Check your active organization with `harnesstap auth status` and switch using `harnesstap auth orgs --switch org-slug`.
 
 ### Layer install fails with version conflict
 

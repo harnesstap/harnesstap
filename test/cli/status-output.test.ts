@@ -9,7 +9,7 @@ describe("CLI status output", () => {
     const context = await createTestContext("cli-status-human");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnessdeck-status.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-status.git");
       await runCli(["init"]);
 
       const status = await runCli(["status", context.projectDir]);

@@ -10,7 +10,7 @@ an environment switch.
 
 ## Quick decision
 
-| You have… | HarnessDeck can… |
+| You have… | HarnessTap can… |
 | --- | --- |
 | Bot token / PAT in MCP `env` or `headers` | Switch via `environment use` + re-apply |
 | OAuth MCP (browser login in Cursor/Claude) | **Not** switch sessions — re-auth in the host app |
@@ -21,16 +21,16 @@ Full reference: **[Environments — MCP authentication limitations](../../cli/co
 
 ```bash
 # Seed from layer MCP env keys
-hd environment create work --from-layer my-setup
-hd environment edit work --secret SLACK_BOT_TOKEN:keychain:harnessdeck/slack-work
+ht environment create work --from-layer my-setup
+ht environment edit work --secret SLACK_BOT_TOKEN:keychain:harnesstap/slack-work
 
-hd environment create personal --from-layer my-setup
-hd environment edit personal --secret SLACK_BOT_TOKEN:keychain:harnessdeck/slack-personal
+ht environment create personal --from-layer my-setup
+ht environment edit personal --secret SLACK_BOT_TOKEN:keychain:harnesstap/slack-personal
 
 # Switch and materialize
-hd environment use work
-hd profile use default --reapply
-# or: hd layer apply my-setup --project . --harness claude-code,cursor
+ht environment use work
+ht profile use default --reapply
+# or: ht layer apply my-setup --project . --harness claude-code,cursor
 ```
 
 Layer MCP definitions should use placeholders, not literals:
@@ -42,14 +42,14 @@ Layer MCP definitions should use placeholders, not literals:
 Verify resolved keys before apply:
 
 ```bash
-hd environment show work --layer my-setup
-hd profile use default --dry-run
+ht environment show work --layer my-setup
+ht profile use default --dry-run
 ```
 
 ## OAuth MCP (host-managed)
 
 After apply, open the target harness and complete OAuth there (Cursor MCP panel,
-`claude mcp`, Copilot `/mcp auth`, etc.). HarnessDeck only writes server URL /
+`claude mcp`, Copilot `/mcp auth`, etc.). HarnessTap only writes server URL /
 transport — not OAuth tokens.
 
 ## Known gaps

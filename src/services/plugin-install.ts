@@ -1,4 +1,4 @@
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 import { getPluginProvider } from "../plugins/registry.js";
 import type { PluginScope } from "../plugins/types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -39,7 +39,7 @@ export async function installPluginPinAsync(
     {
       projectRoot: options.projectRoot,
       homeRoot: options.homeRoot,
-      harnessdeckDir: getHarnessdeckDir(),
+      harnesstapDir: getHarnesstapDir(),
     },
     {
       ref: options.ref,

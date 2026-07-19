@@ -1,6 +1,6 @@
 <div align="center">
 
-# HarnessDeck
+# HarnessTap
 
 **Agent harness configuration toolkit** for Claude Code, Codex, Cursor, and other coding CLIs.
 
@@ -8,13 +8,13 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 <br />
 
-[![CI](https://github.com/harnessdeck/harnessdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/harnessdeck/harnessdeck/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/harnessdeck/harnessdeck)](LICENSE)
+[![CI](https://github.com/harnesstap/harnesstap/actions/workflows/ci.yml/badge.svg)](https://github.com/harnesstap/harnesstap/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/harnesstap/harnesstap)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Bun](https://img.shields.io/badge/bun-1.3+-000000?logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/harnessdeck/harnessdeck)
-[![Hits](https://hits.sh/github.com/harnessdeck/harnessdeck.svg)](https://hits.sh/github.com/harnessdeck/harnessdeck/)
+[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/harnesstap/harnesstap)
+[![Hits](https://hits.sh/github.com/harnesstap/harnesstap.svg)](https://hits.sh/github.com/harnesstap/harnesstap/)
 
 <br />
 
@@ -22,7 +22,7 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 <br />
 
-![HarnessDeck feature map](docs/assets/harnessdeck-features.svg)
+![HarnessTap feature map](docs/assets/harnesstap-features.svg)
 
 </div>
 
@@ -46,14 +46,14 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 - [Supported harnesses](#supported-harnesses)
 - [Where data lives](#where-data-lives)
 - [Upgrading from schema v18](#upgrading-from-schema-v18)
-- [HarnessDeck Cloud](#harnessdeck-cloud)
+- [HarnessTap Cloud](#harnesstap-cloud)
 - [Contributing](#contributing)
 
 ---
 
 ## Features
 
-`harnessdeck` keeps assistant configuration in one place while materializing platform-specific files.
+`harnesstap` keeps assistant configuration in one place while materializing platform-specific files.
 
 | Capability | What it does |
 | --- | --- |
@@ -64,9 +64,9 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 | **Offline sharing** | Move the full local workspace with `migrate export` / `import`, or share individual layers as TOML bundles |
 | **Layer tooling** | Create layers from scanned projects, diff layers, run `layer doctor` before apply |
 | **Dependencies & pins** | Record layer dependencies and Claude plugin version pins in portable bundles |
-| **Layer exports** | Export or import layers as TOML (`urn:harnessdeck:layer:v1`) |
+| **Layer exports** | Export or import layers as TOML (`urn:harnesstap:layer:v1`) |
 | **Snapshots & drift** | Snapshot tracked projects before apply, detect drift later, revert when needed |
-| **Cloud catalog** | Search, add, and publish shared layers through HarnessDeck Cloud |
+| **Cloud catalog** | Search, add, and publish shared layers through HarnessTap Cloud |
 | **Machine transfer** | Export local layer library, harness preferences, and config for another machine |
 
 **Supported targets:** Claude Code · Codex · Cursor · GitHub Copilot · Copilot CLI · Windsurf · Warp · OpenCode · Roo · Continue · Gemini CLI
@@ -75,20 +75,20 @@ Scan existing setup → store canonical resources → compose **plugins** and **
 
 ## Demo
 
-Initialise HarnessDeck, scan an existing repository, browse catalog layers, apply one, and confirm the final state — all in about a minute.
+Initialise HarnessTap, scan an existing repository, browse catalog layers, apply one, and confirm the final state — all in about a minute.
 
 [![Existing repo adoption walkthrough](docs/scenarios/vhs/output/01-existing-repo-adoption.gif)](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```bash
-harnessdeck init --main codex --aliases claude-code,cursor
-harnessdeck scan .                    # detect existing resources
-harnessdeck resource list                     # review discovered resources
-harnessdeck layer list --search foundation --remote-only  # browse catalog layers
-harnessdeck layer apply engineering-foundation \
+harnesstap init --main codex --aliases claude-code,cursor
+harnesstap scan .                    # detect existing resources
+harnesstap resource list                     # review discovered resources
+harnesstap layer list --search foundation --remote-only  # browse catalog layers
+harnesstap layer apply engineering-foundation \
   --project .                                 # apply a catalog baseline
-harnessdeck status .                  # confirm the final state
+harnesstap status .                  # confirm the final state
 ```
 
 ---
@@ -105,28 +105,28 @@ harnessdeck status .                  # confirm the final state
 ### Recommended: npx (no global install)
 
 ```bash
-npx harnessdeck@latest init
+npx harnesstap@latest init
 ```
 
 ### npm global
 
 ```bash
-npm install -g harnessdeck
-hd init
+npm install -g harnesstap
+ht init
 ```
 
 <details>
 <summary><strong>Bun install</strong> (alternative)</summary>
 
 ```bash
-bun install -g harnessdeck
-hd init
+bun install -g harnesstap
+ht init
 ```
 
 Or run without a global install:
 
 ```bash
-bunx harnessdeck@latest init
+bunx harnesstap@latest init
 ```
 
 </details>
@@ -135,15 +135,15 @@ bunx harnessdeck@latest init
 <summary><strong>Install from source</strong></summary>
 
 ```bash
-git clone https://github.com/harnessdeck/harnessdeck.git
-cd harnessdeck
+git clone https://github.com/harnesstap/harnesstap.git
+cd harnesstap
 bun install
 bun run build
 bun link
-hd init
+ht init
 ```
 
-`bun link` registers the checkout as the global `harnessdeck` and `hd` commands. If your shell cannot find them, add Bun's global bin directory to `PATH`:
+`bun link` registers the checkout as the global `harnesstap` and `ht` commands. If your shell cannot find them, add Bun's global bin directory to `PATH`:
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
@@ -155,26 +155,26 @@ export PATH="$HOME/.bun/bin:$PATH"
 
 ## Quick start
 
-Apply a public catalog baseline in minutes. `hd` is shorthand for `harnessdeck`. For the full command surface and global flags, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
+Apply a public catalog baseline in minutes. `ht` is shorthand for `harnesstap`. For the full command surface and global flags, see [docs/cli/command-reference.md](docs/cli/command-reference.md).
 
-1. **Initialize** local state (creates `~/.harnessdeck` and scans supported home harness folders).
+1. **Initialize** local state (creates `~/.harnesstap` and scans supported home harness folders).
    ```bash
-   hd init --main codex --aliases claude-code,cursor
+   ht init --main codex --aliases claude-code,cursor
    ```
 
-2. **Apply** a catalog layer by bare name (fetches from the public `harnessdeck-cloud` catalog when needed).
+2. **Apply** a catalog layer by bare name (fetches from the public `harnesstap-cloud` catalog when needed).
    ```bash
-   hd layer list --search foundation --remote-only
-   hd layer apply engineering-foundation
+   ht layer list --search foundation --remote-only
+   ht layer apply engineering-foundation
    ```
 
 3. **Inspect** project state and next steps.
    ```bash
-   hd status .
-   hd help
+   ht status .
+   ht help
    ```
 
-When a repository has a git `origin`, `hd layer apply` stores a snapshot before writing files. Restore it later with `hd revert`.
+When a repository has a git `origin`, `ht layer apply` stores a snapshot before writing files. Restore it later with `ht revert`.
 
 ### Follow-up: scan, compose, and publish
 
@@ -182,29 +182,29 @@ After the baseline fits, build and share your own layers:
 
 1. **Scan** the current repository and review imports.
    ```bash
-   hd scan .
-   hd resource list
+   ht scan .
+   ht resource list
    ```
 
 2. **Create** a reusable layer and add resources.
    ```bash
-   hd layer create my-setup --description "Shared project assistant setup"
-   hd layer edit my-setup --add research-helper --type skill
+   ht layer create my-setup --description "Shared project assistant setup"
+   ht layer edit my-setup --add research-helper --type skill
    ```
 
 3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
    ```bash
-   hd layer apply my-setup --project . --harness claude-code,cursor
-   hd mirror .
-   hd auth login
-   hd layer catalog register acme/default
-   hd layer publish my-setup
+   ht layer apply my-setup --project . --harness claude-code,cursor
+   ht mirror .
+   ht auth login
+   ht layer catalog register acme/default
+   ht layer publish my-setup
    ```
 
 4. **Manage** harness preferences after init.
    ```bash
-   hd harness status --format json
-   hd harness set --main claude-code --aliases cursor,codex
+   ht harness status --format json
+   ht harness set --main claude-code --aliases cursor,codex
    ```
 
 ---
@@ -216,11 +216,11 @@ flowchart TB
   subgraph Sources[Configuration sources]
     Home[Home defaults]
     Repo[Existing project files]
-    Cloud[HarnessDeck Cloud layers]
+    Cloud[HarnessTap Cloud layers]
     BuiltIn[Public catalog baselines]
   end
 
-  subgraph Library[Local HarnessDeck library]
+  subgraph Library[Local HarnessTap library]
     Resources[Canonical resources in SQLite]
     Plugins[Plugins — the what]
     Envs[Environments — the how]
@@ -252,19 +252,19 @@ flowchart TB
 ```mermaid
 sequenceDiagram
   participant User
-  participant CLI as hd CLI
+  participant CLI as ht CLI
   participant DB as Local SQLite library
   participant Project as Target project
 
-  User->>CLI: hd scan .
+  User->>CLI: ht scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
-  User->>CLI: hd layer create / edit
+  User->>CLI: ht layer create / edit
   CLI->>DB: Save reusable layer
-  User->>CLI: hd layer apply layer --harness ...
+  User->>CLI: ht layer apply layer --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
-  User->>CLI: hd status / drift / revert
+  User->>CLI: ht status / drift / revert
   CLI->>Project: Compare or restore snapshots
 ```
 
@@ -272,7 +272,7 @@ sequenceDiagram
 
 ## Concept model
 
-HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs). A **layer** is the versioned context package; **plugin pins** and **layer** refs are dependencies. Your **workspace** is the single local SQLite library at `~/.harnessdeck` — all layers and environments live there.
+HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs). A **layer** is the versioned context package; **plugin pins** and **layer** refs are dependencies. Your **workspace** is the single local SQLite library at `~/.harnesstap` — all layers and environments live there.
 
 | Concept | Role |
 | --- | --- |
@@ -284,7 +284,7 @@ HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules 
 
 **Cascade (last wins):** `home env ◂ layer default env`. Switch the home active environment to change how-values without reloading the same layer stack.
 
-**Offline sharing:** export the whole workspace, individual layers, or resources with `hd migrate export` / `import`. For multiplayer distribution, publish to HarnessDeck Cloud with `layer publish` / `pull`.
+**Offline sharing:** export the whole workspace, individual layers, or resources with `ht migrate export` / `import`. For multiplayer distribution, publish to HarnessTap Cloud with `layer publish` / `pull`.
 
 Full specification: [SPEC.md](SPEC.md).
 
@@ -301,14 +301,14 @@ flowchart LR
 
 ## Catalog baselines
 
-Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessDeck Cloud** public catalog — not inside the npm package. `hd layer apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
+Starter layers such as `engineering-foundation` and `frontend-engineer` live in the **HarnessTap Cloud** public catalog — not inside the npm package. `ht layer apply <name>` resolves bare names against the public catalog (and any orgs or libraries you have connected).
 
 ```bash
-hd layer list --search foundation --remote-only
-hd layer apply engineering-foundation
+ht layer list --search foundation --remote-only
+ht layer apply engineering-foundation
 ```
 
-To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnessdeck/config.jsonc` or export `HARNESSDECK_PUBLIC_CATALOG=0`.
+To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 
 ---
 
@@ -317,10 +317,10 @@ To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: fals
 Compare, diagnose, or derive plugin bundles beyond the basic create/edit/apply loop:
 
 ```bash
-hd layer edit team-stack --add layer:shared-baseline --version "^1.2.0"
-hd layer doctor team-stack
-hd layer diff team-stack ./team-stack.harnessdeck.toml
-hd layer from-project inferred-stack --project .
+ht layer edit team-stack --add layer:shared-baseline --version "^1.2.0"
+ht layer doctor team-stack
+ht layer diff team-stack ./team-stack.harnesstap.toml
+ht layer from-project inferred-stack --project .
 ```
 
 Layer dependencies are stored with semver constraints and round-trip through bundle export/import. `layer doctor` checks for duplicate resources, empty content, or invalid plugin metadata; `layer diff` compares layer metadata and contents; `layer from-project` scans a repository and turns imported resources into a new layer.
@@ -329,12 +329,12 @@ Layer dependencies are stored with semver constraints and round-trip through bun
 
 ## Import and export
 
-**Layer v1** — layers move between machines as TOML files via `hd migrate export --layer` / `hd migrate import`. Default path: `<name>.harnessdeck.toml`. For a full workspace handoff, use `hd migrate export` with a `.tar.gz` archive (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
+**Layer v1** — layers move between machines as TOML files via `ht migrate export --layer` / `ht migrate import`. Default path: `<name>.harnesstap.toml`. For a full workspace handoff, use `ht migrate export` with a `.tar.gz` archive (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
 
 ```bash
-hd migrate export ./my-setup.harnessdeck.toml --layer my-setup
-hd migrate import ./my-setup.harnessdeck.toml
-hd migrate export ./team.harnessdeck.toml --layer my-setup --embed-plugins
+ht migrate export ./my-setup.harnesstap.toml --layer my-setup
+ht migrate import ./my-setup.harnesstap.toml
+ht migrate export ./team.harnesstap.toml --layer my-setup --embed-plugins
 ```
 
 ---
@@ -344,22 +344,22 @@ hd migrate export ./team.harnessdeck.toml --layer my-setup --embed-plugins
 Plugin references are `plugin` resources attached to a layer like any other composition item.
 
 ```bash
-hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
-hd layer edit my-setup --add plugin_pin:formatter@my-marketplace --sync   # eager sync after add
-hd resource sync plugin_pin:formatter@my-marketplace
-hd resource show plugin_pin:formatter@my-marketplace
-hd layer edit my-setup --remove plugin_pin:formatter@my-marketplace --type plugin_pin
-hd migrate export ./team.harnessdeck.toml --layer my-setup --embed-plugins
-hd layer apply my-setup --project . --strict-plugin-versions
+ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
+ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --sync   # eager sync after add
+ht resource sync plugin_pin:formatter@my-marketplace
+ht resource show plugin_pin:formatter@my-marketplace
+ht layer edit my-setup --remove plugin_pin:formatter@my-marketplace --type plugin_pin
+ht migrate export ./team.harnesstap.toml --layer my-setup --embed-plugins
+ht layer apply my-setup --project . --strict-plugin-versions
 ```
 
-On `layer apply`, harnessdeck compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
+On `layer apply`, harnesstap compares layer plugin pins to library `resolved_version` values: it **warns** on mismatch by default; pass `--strict-plugin-versions` to fail (exit code 2), or `--ignore-plugin-versions` to skip validation. Pass `--sync-plugins` to refresh plugin resources before materialize. These strictness flags are mutually exclusive where documented in [SPEC.md](SPEC.md).
 
-Use `hd -V`, `harnessdeck -V`, or `--harnessdeck-version` for the CLI version. `--version` on `layer edit --add` is the **plugin semver pin or range**, not the global version flag.
+Use `ht -V`, `harnesstap -V`, or `--harnesstap-version` for the CLI version. `--version` on `layer edit --add` is the **plugin semver pin or range**, not the global version flag.
 
-Layer export bundles use schema `urn:harnessdeck:layer:v1` with one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
+Layer export bundles use schema `urn:harnesstap:layer:v1` with one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
-Refresh policy for marketplace metadata is configured in `~/.harnessdeck/config.jsonc`:
+Refresh policy for marketplace metadata is configured in `~/.harnesstap/config.jsonc`:
 
 ```jsonc
 {
@@ -377,7 +377,7 @@ Refresh policy for marketplace metadata is configured in `~/.harnessdeck/config.
 
 Most reporting commands accept `--format human|json`. Prefer `--format json` for automation and scripting.
 
-HarnessDeck intentionally uses non-zero exit codes for actionable findings:
+HarnessTap intentionally uses non-zero exit codes for actionable findings:
 
 | Exit code | Meaning | Examples |
 | --- | --- | --- |
@@ -389,16 +389,16 @@ HarnessDeck intentionally uses non-zero exit codes for actionable findings:
 
 ## Project maintenance and machine transfer
 
-HarnessDeck keeps snapshots of generated project files for tracked repositories, which lets you inspect drift, sync alias harnesses, and move your local setup to another machine.
+HarnessTap keeps snapshots of generated project files for tracked repositories, which lets you inspect drift, sync alias harnesses, and move your local setup to another machine.
 
 ```bash
-hd status . --check
-hd mirror . --force-shift-reference claude-code
-hd migrate export ./harnessdeck-migrate.tar.gz
-hd migrate import ./harnessdeck-migrate.tar.gz
+ht status . --check
+ht mirror . --force-shift-reference claude-code
+ht migrate export ./harnesstap-migrate.tar.gz
+ht migrate import ./harnesstap-migrate.tar.gz
 ```
 
-`status --check` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnessdeck/config.jsonc`; cloud accounts remain in `cloud-accounts.json`.
+`status --check` compares the current working tree against the latest apply/mirror snapshot. Machine transfer archives export local layer bundles plus global harness preferences and `~/.harnesstap/config.jsonc`; cloud accounts remain in `cloud-accounts.json`.
 
 **Project command preconditions**
 
@@ -411,26 +411,26 @@ hd migrate import ./harnessdeck-migrate.tar.gz
 
 ## Supported harnesses
 
-HarnessDeck registers **33 harnesses** — from Claude Code, Codex, and Cursor through GitHub Copilot, OpenCode, Windsurf, Warp, Gemini CLI, and many `.agents/skills/`-style CLIs. Each harness declares which layer resources (skills, rules, MCP, hooks, …) and environment resources (env vars, model config, permissions) it can scan and materialize, plus default on-disk paths.
+HarnessTap registers **33 harnesses** — from Claude Code, Codex, and Cursor through GitHub Copilot, OpenCode, Windsurf, Warp, Gemini CLI, and many `.agents/skills/`-style CLIs. Each harness declares which layer resources (skills, rules, MCP, hooks, …) and environment resources (env vars, model config, permissions) it can scan and materialize, plus default on-disk paths.
 
 Seven harnesses have **native serializers** (`claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`); the rest use a generic path-driven serializer. Plugin install/sync providers exist for **Claude Code** and **Cursor**; plugin-source scan covers `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and `.github/plugin/` layouts.
 
 See the full matrix — resource types, skill emission modes, plugin support, and project paths — in **[Supported harnesses](docs/supported-harnesses.md)**.
 
 ```bash
-hd harness list
-hd harness list --supported    # native serializers only
+ht harness list
+ht harness list --supported    # native serializers only
 ```
 
 ---
 
 ## Where data lives
 
-Operational state lives in `~/.harnessdeck/harnessdeck.db` (resources, plugins, environments, layers, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnessdeck/config.jsonc`. Home environment fragments may live under `~/.harnessdeck/environments/`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, layers, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnesstap/config.jsonc`. Home environment fragments may live under `~/.harnesstap/environments/`.
 
-When you run `hd init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
+When you run `ht init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
-Override the base directory with `HARNESSDECK_HOME`; cloud accounts live under `<HARNESSDECK_HOME>/cloud-accounts.json` when set.
+Override the base directory with `HARNESSTAP_HOME`; cloud accounts live under `<HARNESSTAP_HOME>/cloud-accounts.json` when set.
 
 ---
 
@@ -439,9 +439,9 @@ Override the base directory with `HARNESSDECK_HOME`; cloud accounts live under `
 After upgrading the CLI, export your existing database before removing it:
 
 ```bash
-hd migrate export backup.tar
-# remove the old database (see `hd config path`)
-hd migrate import backup.tar
+ht migrate export backup.tar
+# remove the old database (see `ht config path`)
+ht migrate import backup.tar
 ```
 
 `migrate export` opens legacy v18 databases read-only so you can export after upgrading the CLI. Other commands require a v19 database.
@@ -450,56 +450,56 @@ hd migrate import backup.tar
 
 ---
 
-## HarnessDeck Cloud
+## HarnessTap Cloud
 
-HarnessDeck Cloud supports publishing, searching, and installing shared layers. Local cloud accounts default to `~/.harnessdeck/cloud-accounts.json`.
+HarnessTap Cloud supports publishing, searching, and installing shared layers. Local cloud accounts default to `~/.harnesstap/cloud-accounts.json`.
 
 1. **Authenticate** and create an account.
    ```bash
-   harnessdeck auth login [account] [--base-url <url>]
+   harnesstap auth login [account] [--base-url <url>]
    ```
-   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://harnessdeck.kayrnt.fr`.
+   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://cloud.harnesstap.com`.
 
 2. **Inspect** the authenticated user.
    ```bash
-   harnessdeck auth status [--account <name>] [--format human|json]
+   harnesstap auth status [--account <name>] [--format human|json]
    ```
 
 3. **List organizations** or switch the active organization.
    ```bash
-   harnessdeck auth orgs [--account <name>] [--switch <slug>]
+   harnesstap auth orgs [--account <name>] [--switch <slug>]
    ```
 
 4. **Log out** and remove a local account.
    ```bash
-   harnessdeck auth logout [--account <name>]
+   harnesstap auth logout [--account <name>]
    ```
 
 5. **Search** the remote layer catalog.
    ```bash
-   harnessdeck layer list --search <query> --remote-only [--account <name>] [--format human|json]
+   harnesstap layer list --search <query> --remote-only [--account <name>] [--format human|json]
    ```
 
 6. **Add** a layer from the cloud.
    ```bash
-   harnessdeck layer pull <org>/<library>[@version] [--as <name>] [--account <name>]
+   harnesstap layer pull <org>/<library>[@version] [--as <name>] [--account <name>]
    ```
    Downloads a layer bundle and imports it locally. Use `--as` to avoid name conflicts.
 
 7. **Publish** a local layer.
    ```bash
-   harnessdeck layer catalog register <org>/<catalog>
-   harnessdeck layer publish <layer> [<org>/<catalog>] [--account <name>]
-   harnessdeck layer publish plan <layer>
+   harnesstap layer catalog register <org>/<catalog>
+   harnesstap layer publish <layer> [<org>/<catalog>] [--account <name>]
+   harnesstap layer publish plan <layer>
    ```
    Publishes to all registered catalogs by default. Pass `org/catalog` or use `layer catalog bindings` to restrict targets.
 
 8. **Apply** an installed layer to a project.
    ```bash
-   harnessdeck layer apply <layer> --project <path> [--harness <harnesses>]
+   harnesstap layer apply <layer> --project <path> [--harness <harnesses>]
    ```
 
-Run `harnessdeck <command> --help` for full flag and output-format details.
+Run `harnesstap <command> --help` for full flag and output-format details.
 
 ---
 

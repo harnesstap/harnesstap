@@ -24,7 +24,7 @@ describe("CLI error output", () => {
     expect(result.stderr).toContain("error: unknown command 'layer validate'");
     expect(result.stderr).not.toContain("CommanderError");
     expect(result.stderr).not.toContain("node_modules/commander/lib/command.js");
-    expect(result.stderr).not.toContain("at runHarnessdeckCli");
+    expect(result.stderr).not.toContain("at runHarnesstapCli");
   });
 
   it("prints the stacktrace when --verbose is enabled", () => {

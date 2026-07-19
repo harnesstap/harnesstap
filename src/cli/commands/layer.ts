@@ -21,7 +21,7 @@ import {
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { collectRepeatedOption, formatCommand } from "../shared.js";
-import { getDb, getHarnessdeckDir } from "../../db/connection.js";
+import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { ui } from "../../ui/index.js";
 import {
@@ -391,7 +391,7 @@ async function handleApplyCommand(
   if (platforms.length === 0) {
     process.exitCode = 1;
     ui.warn(
-      "No harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
+      "No harness targets configured. Run harnesstap harness set or pass --harness <slugs>.",
     );
     return;
   }
@@ -482,7 +482,7 @@ async function handleApplyCommand(
       for (const ref of pluginPrepare.unresolvedPins) {
         console.warn(
           ui.theme.warn(
-            `Plugin pin ${ref} is not installed locally. Run: harnessdeck resource sync plugin_pin:${ref}`,
+            `Plugin pin ${ref} is not installed locally. Run: harnesstap resource sync plugin_pin:${ref}`,
           ),
         );
       }
@@ -1404,7 +1404,7 @@ async function handleLayerCreateCommand(
           throw new Error(`Invalid --method value: ${opts.method}. Use symlink or copy.`);
         })();
 
-  const harnessdeckDir = getHarnessdeckDir();
+  const harnesstapDir = getHarnesstapDir();
   const homeRoot = resolveHomeRoot();
   const skillNames = parseCommaSeparatedList(opts.skill);
   const excludeCategories = [
@@ -1416,7 +1416,7 @@ async function handleLayerCreateCommand(
     assertSupportedHarnessTargets(harnesses);
   }
 
-  const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnessdeckDir);
+  const resolvedPackage = resolveSkillPackageCheckout(opts.from, harnesstapDir);
   const shouldPrompt = shouldUseWizard({
     noInteractive: opts.yes,
     interactive: opts.interactive,
@@ -1466,7 +1466,7 @@ async function handleLayerCreateCommand(
     harnesses,
     dryRun: opts.dryRun,
     homeRoot,
-    harnessdeckDir,
+    harnesstapDir,
   });
 
   const payload = {
@@ -1666,7 +1666,7 @@ layerCmd
   .option("--remote-only", "List only remote catalog layers")
   .option("--tag <tag>", "Filter remote catalog layers by tag")
   .option("--account <name>", "Cloud account to use for remote listing")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
   .description("List local layers and optionally search the remote catalog")
@@ -1864,7 +1864,7 @@ const layerCatalogCmd = layerCmd
 layerCatalogCmd
   .command("list")
   .alias("ls")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Show default and connected catalog sources")
   .action(async (opts: { baseUrl?: string; format?: string }) => {
@@ -1883,7 +1883,7 @@ layerCatalogCmd
   .command("connect")
   .argument("<target>", "org <slug> or layer <org/catalog/layer>")
   .argument("[value]", "Organization slug or org/catalog/layer selector")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--base-url <url>", "HarnessTap Cloud base URL")
   .description("Connect an org or individual public layer to the local catalog scope")
   .action(async (target: string, value: string | undefined, opts: { baseUrl?: string }) => {
     try {
@@ -2054,7 +2054,7 @@ layerCmd
   .option("--catalog <slug>", "Catalog slug (default: default)")
   .option("--version <constraint>", "Version constraint (when selector omits version)")
   .option("--account <name>", "Cloud account to use")
-  .option("--base-url <url>", "HarnessDeck Cloud base URL")
+  .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .description("Pull a layer from the remote catalog into the local DB")

@@ -66,7 +66,7 @@ function resolveSyncHarnesses(
 
   if (!main) {
     throw new Error(
-      "No main harness configured. Run harnessdeck harness project set or harnessdeck harness set.",
+      "No main harness configured. Run harnesstap harness project set or harnesstap harness set.",
     );
   }
 
@@ -200,9 +200,9 @@ function emptyReferenceError(
 ): Error {
   return new Error(
     `Main harness "${mainHarness}" has no on-disk resources in ${projectRoot}. ` +
-      "Try: harnessdeck mirror --reference plugin " +
-      "or harnessdeck scan . " +
-      "or harnessdeck harness project set --main codex",
+      "Try: harnesstap mirror --reference plugin " +
+      "or harnesstap scan . " +
+      "or harnesstap harness project set --main codex",
   );
 }
 
@@ -216,7 +216,7 @@ async function resolveReferenceResources(
     if (pluginResources.length === 0) {
       throw new Error(
         `No plugin-source resources found in ${projectRoot}. ` +
-          "Try: harnessdeck scan .",
+          "Try: harnesstap scan .",
       );
     }
     return toSyncResources(pluginResources);

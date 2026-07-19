@@ -44,7 +44,7 @@ describe("layer marketplace configuration", () => {
       });
       expect(bundle.layers[0]?.claude?.plugins?.[0]?.id).toBe("fmt@team-plugins");
 
-      const bundlePath = join(context.projectDir, "with-plugins.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "with-plugins.harnesstap.toml");
       exporter.exportToFile(layer.id, bundlePath);
 
       layerModel.deleteLayer(layer.id);
@@ -112,7 +112,7 @@ describe("layer marketplace configuration", () => {
       const exporter = await loadLayerTransportServices();
       const layerModel = await import("../../src/models/layer-model.ts");
 
-      const bundlePath = join(context.projectDir, "team-stack.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "team-stack.harnesstap.toml");
       writeLayerExportToml(
         bundlePath,
         makeSingleLayerExport({

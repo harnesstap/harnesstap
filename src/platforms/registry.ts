@@ -221,7 +221,7 @@ const PLATFORMS: PlatformDefinition[] = [
   }, "instruction-only"),
 
   // Pi extensions install via `pi install git:...`, not layer apply.
-  // HarnessDeck can scan `.agents/skills/` but cannot materialize pi-extension/index.js.
+  // HarnessTap can scan `.agents/skills/` but cannot materialize pi-extension/index.js.
   def("pi", "Pi", ["instructions", "skills"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",

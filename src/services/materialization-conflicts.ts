@@ -16,7 +16,7 @@ export function resolveApplyConflictPolicy(opts: {
   if (
     opts.noInteractive ||
     process.env.CI === "true" ||
-    process.env.HARNESSDECK_NO_INTERACTIVE === "1" ||
+    process.env.HARNESSTAP_NO_INTERACTIVE === "1" ||
     !process.stdin.isTTY ||
     !process.stdout.isTTY
   ) {
@@ -39,7 +39,7 @@ export async function promptMaterializationConflict(
   ui.dim(`  Previously written by: ${ownerSummary}`);
 
   return promptForChoice({
-    message: `How should HarnessDeck handle ${conflict.path}?`,
+    message: `How should HarnessTap handle ${conflict.path}?`,
     choices: [
       { name: "Replace existing file", value: "replace" as const },
       { name: "Keep existing file", value: "skip" as const },

@@ -22,8 +22,8 @@ function hasPluginInstalled(name: string, version: string | undefined): boolean 
 
 function getBuiltInPluginsDir(): string {
   const overrideDir =
-    process.env.HARNESSDECK_BUILTIN_PLUGINS_DIR ??
-    process.env.HARNESSDECK_BUILTIN_LAYERS_DIR;
+    process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR ??
+    process.env.HARNESSTAP_BUILTIN_LAYERS_DIR;
   if (overrideDir && existsSync(overrideDir)) {
     return overrideDir;
   }

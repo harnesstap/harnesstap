@@ -29,7 +29,7 @@ export interface AddSkillPackageOptions {
   method: "symlink" | "copy";
   harnesses?: string[];
   homeRoot: string;
-  harnessdeckDir: string;
+  harnesstapDir: string;
   createLayer?: string;
   layer?: string;
   dryRun?: boolean;
@@ -73,7 +73,7 @@ export async function addSkillPackage(
 ): Promise<AddSkillPackageResult> {
   const resolved = resolveSkillPackageCheckout(
     options.source,
-    options.harnessdeckDir,
+    options.harnesstapDir,
   );
 
   const importedSkills = resolved.discovered.map((skill) => skill.name);

@@ -26,7 +26,7 @@ function candidatePaths(source: string): string[] {
 }
 
 export function loadScanIgnore(projectRoot: string): ScanIgnoreMatcher {
-  const ignorePath = join(projectRoot, ".harnessdeckignore");
+  const ignorePath = join(projectRoot, ".harnesstapignore");
   if (!existsSync(ignorePath)) {
     return { ignores: () => false };
   }

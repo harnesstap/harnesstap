@@ -41,7 +41,7 @@ export interface PluginUpdateResult {
 export interface PluginContext {
   projectRoot: string;
   homeRoot: string;
-  harnessdeckDir: string;
+  harnesstapDir: string;
 }
 
 export interface PluginCheckOptions {

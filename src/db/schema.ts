@@ -213,8 +213,8 @@ export function initializeSchema(
     }
     throw new Error(
       `Database schema v${currentVersion} cannot be upgraded in place. ` +
-        "Export with `hd migrate export backup.tar`, remove the old database, " +
-        "then `hd migrate import backup.tar`.",
+        "Export with `ht migrate export backup.tar`, remove the old database, " +
+        "then `ht migrate import backup.tar`.",
     );
   }
 

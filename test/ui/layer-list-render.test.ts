@@ -30,7 +30,7 @@ function makeLayer(overrides: Partial<Layer> = {}): Layer {
 
 function makeCatalogLayer(overrides: Partial<CatalogLayer> = {}): CatalogLayer {
   return {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "fullstack",
     name: "Fullstack",
@@ -74,7 +74,7 @@ describe("layer list browse render", () => {
       navigable,
       terminalRows: 24,
       maxWidth: 80,
-      scopeLabel: "harnessdeck-cloud",
+      scopeLabel: "harnesstap-cloud",
     });
     expect(output).toContain("local-only");
     expect(output).not.toContain("remote-only");
@@ -147,19 +147,19 @@ describe("layer list browse render", () => {
       navigable,
       terminalRows: 24,
       maxWidth: 100,
-      scopeLabel: "harnessdeck-cloud",
+      scopeLabel: "harnesstap-cloud",
     });
     expect(output).toContain(icons.profile);
     expect(output).toContain("work-profile");
     expect(output).toContain("CATALOG");
-    expect(output).toContain("harnessdeck-cloud/default");
+    expect(output).toContain("harnesstap-cloud/default");
   });
 
   it("renders remote catalog table with catalog path, slug, and version drift", () => {
     const local = makeLayer({
       name: "fullstack",
       version: "1.0.1",
-      org_slug: "harnessdeck-cloud",
+      org_slug: "harnesstap-cloud",
       catalog_slug: "default",
     });
     const navigable = listNavigableLayerListBrowseRows(
@@ -173,10 +173,10 @@ describe("layer list browse render", () => {
       navigable,
       terminalRows: 24,
       maxWidth: 120,
-      scopeLabel: "harnessdeck-cloud",
+      scopeLabel: "harnesstap-cloud",
       localLayers: [local],
     });
-    expect(output).toContain("harnessdeck-cloud/default");
+    expect(output).toContain("harnesstap-cloud/default");
     expect(output).toContain("fullstack");
     expect(output).toContain("1.0.1");
     expect(output).not.toContain("ORG/CATALOG/LAYER");
@@ -196,7 +196,7 @@ describe("layer list browse render", () => {
       navigable,
       terminalRows: 36,
       maxWidth: 100,
-      scopeLabel: "harnessdeck-cloud",
+      scopeLabel: "harnesstap-cloud",
     });
     const visibleRemoteRows = output.match(/remote-\d+/g) ?? [];
     expect(visibleRemoteRows.length).toBeLessThan(13);

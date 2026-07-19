@@ -50,14 +50,14 @@ export function shouldUseWizard(input: WizardTriggerInput): boolean {
   const ciEnabled = Boolean(
     ciValue && ciValue !== "0" && ciValue !== "false" && ciValue !== "no",
   );
-  const forceWizard = process.env.HARNESSDECK_FORCE_WIZARD === "1";
+  const forceWizard = process.env.HARNESSTAP_FORCE_WIZARD === "1";
   const interactiveTerminal =
     forceWizard || (Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY));
 
   return Boolean(
     interactiveTerminal
       && !ciEnabled
-      && process.env.HARNESSDECK_NO_INTERACTIVE !== "1"
+      && process.env.HARNESSTAP_NO_INTERACTIVE !== "1"
       && !noInteractive
       && input.format !== "json"
       && (input.interactive || input.missingRequiredArgs),

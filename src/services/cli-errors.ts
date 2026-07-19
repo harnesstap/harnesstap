@@ -8,7 +8,7 @@ export class CliUsageError extends Error {
 export function missingRequiredArg(name: string, commandPath: string): CliUsageError {
   return new CliUsageError(
     `error: missing required argument '${name}'`,
-    [`Run \`hd ${commandPath} --help\` for usage.`],
+    [`Run \`ht ${commandPath} --help\` for usage.`],
   );
 }
 

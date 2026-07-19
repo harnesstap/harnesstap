@@ -11,7 +11,7 @@ import {
 } from "./cli/commands/project.js";
 import { program } from "./cli/program.js";
 import { registerCommands } from "./cli/register-commands.js";
-import { renderCliError, runHarnessdeckCli } from "./cli/runtime.js";
+import { renderCliError, runHarnesstapCli } from "./cli/runtime.js";
 import { isPromptCancellationError } from "./services/wizards/shared.js";
 
 registerEnvironmentCommands(program);
@@ -26,11 +26,11 @@ registerLayerCommands(program);
 registerCommands(program);
 
 export { program } from "./cli/program.js";
-export { runHarnessdeckCli } from "./cli/runtime.js";
+export { runHarnesstapCli } from "./cli/runtime.js";
 
 if (import.meta.main) {
   try {
-    await runHarnessdeckCli();
+    await runHarnesstapCli();
   } catch (error) {
     if (isPromptCancellationError(error)) {
       process.exitCode = 0;

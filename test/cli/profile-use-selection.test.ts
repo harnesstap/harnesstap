@@ -8,8 +8,8 @@ import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 function writeProjectConfig(projectDir: string, toml: string) {
-  mkdirSync(join(projectDir, ".harnessdeck"), { recursive: true });
-  writeTextFile(join(projectDir, ".harnessdeck", "config.toml"), toml);
+  mkdirSync(join(projectDir, ".harnesstap"), { recursive: true });
+  writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
 }
 
 function createProfileLayer(name: string) {
@@ -38,7 +38,7 @@ describe("profile use selection", () => {
 
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 default_profile = "dev"
 
@@ -77,7 +77,7 @@ selector = "repo-dev"
       createProfileLayer("work");
       writeProjectConfig(
         context.projectDir,
-        `schema = "urn:harnessdeck:project:v1"
+        `schema = "urn:harnesstap:project:v1"
 version = 1
 
 [[profiles]]

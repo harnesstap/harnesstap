@@ -213,7 +213,7 @@ export function formatLayerExportToml(bundle: LayerExport): string {
   );
   const sourceMachine = process.env.HOSTNAME ?? process.env.COMPUTERNAME ?? "unknown";
   const header = [
-    "# HarnessDeck layer export",
+    "# HarnessTap layer export",
     `# Layers: ${layerNames.join(", ")}`,
     `# Generated at: ${new Date().toISOString()}`,
     `# Source machine: ${sourceMachine}`,

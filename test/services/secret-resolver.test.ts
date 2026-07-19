@@ -33,7 +33,7 @@ describe("resolveSecretRef", () => {
   });
 
   it("reads file provider from path and trims trailing newline", () => {
-    const dir = mkdtempSync(join(tmpdir(), "hd-secret-file-"));
+    const dir = mkdtempSync(join(tmpdir(), "ht-secret-file-"));
     try {
       const filePath = join(dir, "token.txt");
       writeFileSync(filePath, "file-secret\n", "utf-8");
@@ -45,7 +45,7 @@ describe("resolveSecretRef", () => {
 
   it("throws when file provider path is missing", () => {
     expect(() =>
-      resolveSecretRef({ provider: "file", ref: "/nonexistent/hd-secret-path" }),
+      resolveSecretRef({ provider: "file", ref: "/nonexistent/ht-secret-path" }),
     ).toThrow(/file/i);
   });
 
@@ -65,7 +65,7 @@ describe("resolveSecretRef", () => {
     expect(() =>
       resolveSecretRef({
         provider: "keychain",
-        ref: "harnessdeck/__missing_hd_secret_item__",
+        ref: "harnesstap/__missing_ht_secret_item__",
       }),
     ).toThrow(/keychain item/i);
   });
@@ -109,7 +109,7 @@ describe("resolveSecretRefsBestEffort", () => {
     delete process.env[envKey];
     const result = resolveSecretRefsBestEffort({
       API_TOKEN: { provider: "env", ref: envKey },
-      FILE_TOKEN: { provider: "file", ref: "/nonexistent/hd-secret-path" },
+      FILE_TOKEN: { provider: "file", ref: "/nonexistent/ht-secret-path" },
     });
 
     expect(result.resolved).toEqual({});
@@ -123,7 +123,7 @@ describe("resolveSecretRefsBestEffort", () => {
     process.env[envKey] = "resolved-secret";
     const result = resolveSecretRefsBestEffort({
       API_TOKEN: { provider: "env", ref: envKey },
-      FILE_TOKEN: { provider: "file", ref: "/nonexistent/hd-secret-path" },
+      FILE_TOKEN: { provider: "file", ref: "/nonexistent/ht-secret-path" },
     });
 
     expect(result.resolved).toEqual({ API_TOKEN: "resolved-secret" });

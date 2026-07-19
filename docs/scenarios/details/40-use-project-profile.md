@@ -4,17 +4,17 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when a repository ships `.harnessdeck/config.toml` with named profiles
+Use this when a repository ships `.harnesstap/config.toml` with named profiles
 so teammates can switch stacks without remembering layer selectors.
 
-Create the file with `hd config init` (from local profile layers) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `urn:harnessdeck:project:v1` schema.
+Create the file with `ht config init` (from local profile layers) or copy a team template. See [Project config](../../cli/concepts/projects.md) for the `urn:harnesstap:project:v1` schema.
 
 ## Inspect the config
 
 ```bash
-hd config show
-hd config validate
-hd use --list
+ht config show
+ht config validate
+ht use --list
 ```
 
 `config validate` checks that inline profiles reference layers defined in the
@@ -23,12 +23,12 @@ same file and that default profile/environment keys resolve.
 ## Switch profiles
 
 ```bash
-hd use --profile dev
-hd use --profile prod --dry-run
-hd use                        # interactive picker when multiple profiles exist
+ht use --profile dev
+ht use --profile prod --dry-run
+ht use                        # interactive picker when multiple profiles exist
 ```
 
-`hd use` resolves the profile source (local layer, catalog selector, or inline
+`ht use` resolves the profile source (local layer, catalog selector, or inline
 layer table), applies the profile to home harness paths, and optionally switches
 the active environment.
 

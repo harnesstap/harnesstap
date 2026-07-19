@@ -14,12 +14,12 @@ describe("repo-profile", () => {
     });
   });
 
-  it("detects project-config when .harnessdeck/config.toml exists", () => {
+  it("detects project-config when .harnesstap/config.toml exists", () => {
     const root = createTempDir("repo-profile-project-config");
-    mkdirSync(join(root, ".harnessdeck"), { recursive: true });
+    mkdirSync(join(root, ".harnesstap"), { recursive: true });
     writeTextFile(
-      join(root, ".harnessdeck", "config.toml"),
-      `schema = "urn:harnessdeck:project:v1"
+      join(root, ".harnesstap", "config.toml"),
+      `schema = "urn:harnesstap:project:v1"
 version = 1
 `,
     );

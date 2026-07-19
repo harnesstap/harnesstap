@@ -11,9 +11,9 @@ or **copies** (independent files that can be committed and reviewed).
 Typical commands:
 
 ```bash
-harnessdeck harness project set --project . --materialization-strategy symlink-preferred
-harnessdeck harness project set --project . --materialization-strategy copy
-harnessdeck harness project status --project .
+harnesstap harness project set --project . --materialization-strategy symlink-preferred
+harnesstap harness project set --project . --materialization-strategy copy
+harnesstap harness project status --project .
 ```
 
 When to choose which:

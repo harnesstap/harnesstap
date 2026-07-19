@@ -9,7 +9,7 @@ function makeConfig(
 ): ResolvedProjectConfig {
   return {
     rootPath: "/tmp/project",
-    configPath: "/tmp/project/.harnessdeck/config.toml",
+    configPath: "/tmp/project/.harnesstap/config.toml",
     profiles,
     environments: [],
     layers: [],

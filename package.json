@@ -1,5 +1,5 @@
 {
-  "name": "harnessdeck",
+  "name": "harnesstap",
   "version": "0.1.0",
   "description": "Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs",
   "type": "module",
@@ -10,8 +10,8 @@
     "README.md"
   ],
   "bin": {
-    "harnessdeck": "./dist/index.js",
-    "hd": "./dist/index.js"
+    "harnesstap": "./dist/index.js",
+    "ht": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup",
@@ -51,12 +51,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/harnessdeck/harnessdeck.git"
+    "url": "git+https://github.com/harnesstap/harnesstap.git"
   },
   "bugs": {
-    "url": "https://github.com/harnessdeck/harnessdeck/issues"
+    "url": "https://github.com/harnesstap/harnesstap/issues"
   },
-  "homepage": "https://github.com/harnessdeck/harnessdeck#readme",
+  "homepage": "https://github.com/harnesstap/harnesstap#readme",
   "engines": {
     "node": ">=20.0.0"
   },

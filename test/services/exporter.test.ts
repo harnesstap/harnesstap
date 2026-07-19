@@ -35,7 +35,7 @@ describe("exporter services", () => {
 
       const bundle = exporter.exportLayer(layer.id);
 
-      expect(bundle.$schema).toBe("urn:harnessdeck:layer:v1");
+      expect(bundle.$schema).toBe("urn:harnesstap:layer:v1");
       expect(bundle.version).toBe(1);
       expect(bundle.layers[0]?.plugin_pins).toEqual([]);
       expect(bundle.embedded_plugins).toEqual([]);
@@ -62,7 +62,7 @@ describe("exporter services", () => {
       );
       layerModel.addResourceToLayer(layer.id, resource.id);
 
-      const bundlePath = `${exportContext.projectDir}/bundle.harnessdeck.toml`;
+      const bundlePath = `${exportContext.projectDir}/bundle.harnesstap.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       expect(existsSync(bundlePath)).toBe(true);
@@ -95,12 +95,12 @@ describe("exporter services", () => {
       const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "commented-export" });
-      const bundlePath = join(exportContext.projectDir, "commented-export.harnessdeck.toml");
+      const bundlePath = join(exportContext.projectDir, "commented-export.harnesstap.toml");
       exporter.exportToFile(layer.id, bundlePath);
 
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw.startsWith("# HarnessDeck layer export\n")).toBe(true);
-      expect(raw).toContain('schema = "urn:harnessdeck:layer:v1"');
+      expect(raw.startsWith("# HarnessTap layer export\n")).toBe(true);
+      expect(raw).toContain('schema = "urn:harnesstap:layer:v1"');
       expect(raw).toContain("# Source machine: ");
 
       const importContext = await createInitializedTestContext("import-toml-comment-block");
@@ -137,8 +137,8 @@ describe("exporter services", () => {
       const tempDir = createTempDir("export-bad-version");
 
       try {
-        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
-        writeTextFile(bundlePath, `schema = "urn:harnessdeck:layer:v1"
+        const bundlePath = join(tempDir, "bundle.harnesstap.toml");
+        writeTextFile(bundlePath, `schema = "urn:harnesstap:layer:v1"
 version = 99
 
 [[layers]]
@@ -168,7 +168,7 @@ plugins = []
       const tempDir = createTempDir("export-malformed");
 
       try {
-        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
+        const bundlePath = join(tempDir, "bundle.harnesstap.toml");
         writeTextFile(bundlePath, "this is not toml [[[");
 
         expect(() => exporter.importFromFile(bundlePath)).toThrow();
@@ -188,10 +188,10 @@ plugins = []
       const tempDir = createTempDir("export-truncated-toml");
 
       try {
-        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
+        const bundlePath = join(tempDir, "bundle.harnesstap.toml");
         writeTextFile(
           bundlePath,
-          `schema = "urn:harnessdeck:layer:v1"
+          `schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers
@@ -216,11 +216,11 @@ name = "truncated-bundle"
       const tempDir = createTempDir("export-toml-import");
 
       try {
-        const bundlePath = join(tempDir, "bundle.harnessdeck.toml");
+        const bundlePath = join(tempDir, "bundle.harnesstap.toml");
         writeTextFile(
           bundlePath,
           `# comment before schema
-schema = "urn:harnessdeck:layer:v1"
+schema = "urn:harnesstap:layer:v1"
 version = 1
 
 [[layers]]
@@ -357,7 +357,7 @@ content = "# Shared"
       expect(bundle.embedded_plugins).toHaveLength(1);
       expect(bundle.embedded_plugins[0]?.ref).toBe("fmt@acme-marketplace");
 
-      const bundlePath = join(context.projectDir, "embedded.harnessdeck.toml");
+      const bundlePath = join(context.projectDir, "embedded.harnesstap.toml");
       exporter.exportToFile(layer.id, bundlePath, {
         embedPlugins: true,
         homeRoot: context.homeDir,
@@ -418,7 +418,7 @@ content = "# Shared"
       const bundle = exporter.exportLayer(layer.id);
       expect(bundle.layers[0]?.version).toBe("2.3.1");
 
-      const bundlePath = `${exportContext.projectDir}/versioned.harnessdeck.toml`;
+      const bundlePath = `${exportContext.projectDir}/versioned.harnesstap.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-version-rt");
@@ -451,7 +451,7 @@ content = "# Shared"
         { dependency_name: "extra-layer", version_constraint: ">=2.0.0", order: 1 },
       ]);
 
-      const bundlePath = `${exportContext.projectDir}/with-deps.harnessdeck.toml`;
+      const bundlePath = `${exportContext.projectDir}/with-deps.harnesstap.toml`;
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-deps-rt");
@@ -487,7 +487,7 @@ content = "# Shared"
       layerModel.addResourceToLayer(layer.id, r2.id);
       layerModel.addResourceToLayer(layer.id, r3.id);
 
-      const bundlePath = join(exportContext.projectDir, "multi.harnessdeck.toml");
+      const bundlePath = join(exportContext.projectDir, "multi.harnesstap.toml");
       exporter.exportToFile(layer.id, bundlePath);
 
       const importContext = await createInitializedTestContext("import-multi");
@@ -512,7 +512,7 @@ content = "# Shared"
 
     try {
       const exporter = await loadLayerTransportServices();
-      const bundlePath = require("node:path").join(exportContext.projectDir, "override.harnessdeck.toml");
+      const bundlePath = require("node:path").join(exportContext.projectDir, "override.harnesstap.toml");
       writeLayerExportToml(
         bundlePath,
         makeSingleLayerExport({ name: "orig-name" }),
@@ -568,7 +568,7 @@ content = "# Shared"
       expect(bundle.layers?.[0]).not.toHaveProperty("layer");
       expect(bundle.embedded_plugins).toHaveLength(1);
 
-      const bundlePath = join(exportContext.projectDir, "multi-bundle.harnessdeck.toml");
+      const bundlePath = join(exportContext.projectDir, "multi-bundle.harnesstap.toml");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });
@@ -658,7 +658,7 @@ content = "# Shared"
       );
       expect(bundle.layers?.[0]).not.toHaveProperty("layer");
 
-      const bundlePath = join(exportContext.projectDir, "selective-multi.harnessdeck.toml");
+      const bundlePath = join(exportContext.projectDir, "selective-multi.harnesstap.toml");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });
@@ -726,7 +726,7 @@ content = "# Shared"
         version_constraint: "^2.0.0",
       });
 
-      const bundlePath = join(exportContext.projectDir, "shared-ref-constraints.harnessdeck.toml");
+      const bundlePath = join(exportContext.projectDir, "shared-ref-constraints.harnesstap.toml");
       exporter.exportToFile([alpha.id, beta.id], bundlePath, {
         projectRoot: exportContext.projectDir,
       });

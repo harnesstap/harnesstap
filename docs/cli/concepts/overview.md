@@ -1,10 +1,10 @@
 ---
-description: Architecture and the HarnessDeck data model.
+description: Architecture and the HarnessTap data model.
 ---
 
 # Concepts overview
 
-HarnessDeck keeps assistant configuration in one place while materializing platform-specific files for Claude Code, Codex, Cursor, and dozens of other agent harnesses.
+HarnessTap keeps assistant configuration in one place while materializing platform-specific files for Claude Code, Codex, Cursor, and dozens of other agent harnesses.
 
 ## Architecture
 
@@ -15,11 +15,11 @@ flowchart TB
   subgraph Sources[Configuration sources]
     Home[Home defaults]
     Repo[Existing project files]
-    Cloud[HarnessDeck Cloud layers]
+    Cloud[HarnessTap Cloud layers]
     BuiltIn[Public catalog baselines]
   end
 
-  subgraph Library[Local HarnessDeck library]
+  subgraph Library[Local HarnessTap library]
     Resources[Canonical resources in SQLite]
     Plugins[Plugins — the what]
     Envs[Environments — the how]
@@ -53,25 +53,25 @@ A typical session looks like this:
 ```mermaid
 sequenceDiagram
   participant User
-  participant CLI as hd CLI
+  participant CLI as ht CLI
   participant DB as Local SQLite library
   participant Project as Target project
 
-  User->>CLI: hd scan .
+  User->>CLI: ht scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
-  User->>CLI: hd layer create / edit
+  User->>CLI: ht layer create / edit
   CLI->>DB: Save reusable layer
-  User->>CLI: hd layer apply layer --harness ...
+  User->>CLI: ht layer apply layer --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
-  User->>CLI: hd status / drift / revert
+  User->>CLI: ht status / drift / revert
   CLI->>Project: Compare or restore snapshots
 ```
 
 ## Concept model
 
-HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs).
+HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules — what the model sees) from **environment-side** configuration (secrets, env vars, models — how it runs).
 
 | Concept | Role |
 | --- | --- |
@@ -79,7 +79,7 @@ HarnessDeck separates **context-side** configuration (skills, MCP, hooks, rules 
 | **Plugin** | Bundle of *what* resources plus Claude config and a `needs` contract |
 | **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
 | **Layer** | One or more plugins plus an optional default environment |
-| **Workspace** | Local library of layers, resources, and environments at `~/.harnessdeck` |
+| **Workspace** | Local library of layers, resources, and environments at `~/.harnesstap` |
 
 A **layer** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **layer** refs are dependencies attached during composition.
 
@@ -96,11 +96,11 @@ flowchart LR
 
 ## Two apply surfaces
 
-HarnessDeck materializes configuration in two places:
+HarnessTap materializes configuration in two places:
 
 | Surface | Scope | Primary commands |
 | --- | --- | --- |
-| **Profiles** | Machine-wide home harness paths (`~/.claude/`, `~/.codex/`, …) | `profile use`, `hd <profile-name>` |
+| **Profiles** | Machine-wide home harness paths (`~/.claude/`, `~/.codex/`, …) | `profile use`, `ht <profile-name>` |
 | **Projects** | Repository working tree | `layer apply`, `mirror`, `status --check` |
 
 Profiles answer "what stack runs on this machine by default?" Projects answer "what baseline does this repo get?" See [Profiles](./profiles.md) and [Projects](./projects.md).
@@ -118,4 +118,4 @@ Profiles answer "what stack runs on this machine by default?" Projects answer "w
 | Cross-harness fidelity caveats | [Portability limits](../../portability-limits.md) |
 | Full CLI surface | [Command reference](../command-reference.md) |
 
-Full specification: [SPEC.md](https://github.com/harnessdeck/harnessdeck/blob/main/SPEC.md) in the HarnessDeck repository.
+Full specification: [SPEC.md](https://github.com/harnesstap/harnesstap/blob/main/SPEC.md) in the HarnessTap repository.

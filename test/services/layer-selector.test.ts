@@ -97,12 +97,12 @@ describe("formatCanonicalPublishedSelectorWithVersion", () => {
   it("always includes catalog even for the default catalog", () => {
     expect(
       formatCanonicalPublishedSelectorWithVersion({
-        org: "harnessdeck-cloud",
+        org: "harnesstap-cloud",
         catalog: DEFAULT_CATALOG_SLUG,
         name: "devops-engineer",
         version: "1.0.0",
       }),
-    ).toBe("harnessdeck-cloud/default/devops-engineer@1.0.0");
+    ).toBe("harnesstap-cloud/default/devops-engineer@1.0.0");
   });
 });
 
@@ -110,13 +110,13 @@ describe("resolvedRemoteLayerFromCatalog", () => {
   it("maps catalog layer fields to install options", () => {
     expect(
       resolvedRemoteLayerFromCatalog({
-        org: "harnessdeck-cloud",
+        org: "harnesstap-cloud",
         catalog: DEFAULT_CATALOG_SLUG,
         name: "devops-engineer",
         version: "1.0.0",
       }),
     ).toEqual({
-      org_slug: "harnessdeck-cloud",
+      org_slug: "harnesstap-cloud",
       catalog_slug: DEFAULT_CATALOG_SLUG,
       layer_slug: "devops-engineer",
       version: "1.0.0",
@@ -146,13 +146,13 @@ describe("resolveRemoteLayerSelector", () => {
 
   it("accepts browse selections that embed version only in the selector", () => {
     const selector = formatCanonicalPublishedSelectorWithVersion({
-      org: "harnessdeck-cloud",
+      org: "harnesstap-cloud",
       catalog: DEFAULT_CATALOG_SLUG,
       name: "fullstack",
       version: "1.0.0",
     });
     expect(resolveRemoteLayerSelector(selector, {})).toEqual({
-      org_slug: "harnessdeck-cloud",
+      org_slug: "harnesstap-cloud",
       catalog_slug: DEFAULT_CATALOG_SLUG,
       layer_slug: "fullstack",
       version: "1.0.0",

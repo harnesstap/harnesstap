@@ -14,7 +14,7 @@ export function shouldPromptProfileEnable(input: {
   }
   if (
     process.argv.includes("--no-interactive")
-    || process.env.HARNESSDECK_NO_INTERACTIVE === "1"
+    || process.env.HARNESSTAP_NO_INTERACTIVE === "1"
   ) {
     return false;
   }
@@ -28,7 +28,7 @@ export function shouldPromptProfileEnable(input: {
   }
 
   return Boolean(
-    process.env.HARNESSDECK_FORCE_WIZARD === "1"
+    process.env.HARNESSTAP_FORCE_WIZARD === "1"
       || (process.stdin.isTTY && process.stdout.isTTY),
   );
 }
@@ -58,11 +58,11 @@ export async function maybePromptProfileEnable(input: {
 
   if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
     if (status.active_profile === input.profileName) {
-      ui.hint(`Run harnessdeck profile use ${input.profileName} to apply globally.`);
+      ui.hint(`Run harnesstap profile use ${input.profileName} to apply globally.`);
       return;
     }
     ui.hint(
-      `Switch to it with harnessdeck profile use ${input.profileName} or hd ${input.profileName}`,
+      `Switch to it with harnesstap profile use ${input.profileName} or ht ${input.profileName}`,
     );
     return;
   }
@@ -78,7 +78,7 @@ export async function maybePromptProfileEnable(input: {
 
   if (!confirmed) {
     ui.hint(
-      `Switch later with harnessdeck profile use ${input.profileName} or hd ${input.profileName}`,
+      `Switch later with harnesstap profile use ${input.profileName} or ht ${input.profileName}`,
     );
     return;
   }

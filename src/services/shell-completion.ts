@@ -1,22 +1,22 @@
 import type { Command } from "commander";
 
 function bashCompletion(): string {
-  return `# harnessdeck bash completion
-_harnessdeck_completions() {
+  return `# harnesstap bash completion
+_harnesstap_completions() {
   local line="\${COMP_LINE:0:$COMP_POINT}"
-  mapfile -t COMPREPLY < <(hd __complete bash -- "$line" 2>/dev/null)
+  mapfile -t COMPREPLY < <(ht __complete bash -- "$line" 2>/dev/null)
 }
-complete -F _harnessdeck_completions hd harnessdeck
+complete -F _harnesstap_completions ht harnesstap
 `;
 }
 
 function zshCompletion(): string {
-  return `#compdef hd harnessdeck
+  return `#compdef ht harnesstap
 
-_harnessdeck() {
+_harnesstap() {
   local -a suggestions args descr
   local line has_descr=0
-  suggestions=("\${(@f)$(hd __complete zsh -- "\${BUFFER[1,$CURSOR]}" 2>/dev/null)}")
+  suggestions=("\${(@f)$(ht __complete zsh -- "\${BUFFER[1,$CURSOR]}" 2>/dev/null)}")
   if (( \${#suggestions} )); then
     for line in $suggestions; do
       if [[ $line == *$'\\t'* ]]; then
@@ -41,17 +41,17 @@ _harnessdeck() {
   fi
 }
 
-compdef _harnessdeck hd harnessdeck
+compdef _harnesstap ht harnesstap
 `;
 }
 
 function fishCompletion(): string {
-  return `# harnessdeck fish completion
-function __harnessdeck_complete
-  hd __complete fish -- (commandline -cp) 2>/dev/null
+  return `# harnesstap fish completion
+function __harnesstap_complete
+  ht __complete fish -- (commandline -cp) 2>/dev/null
 end
-complete -c hd -f -a "(__harnessdeck_complete)"
-complete -c harnessdeck -f -a "(__harnessdeck_complete)"
+complete -c ht -f -a "(__harnesstap_complete)"
+complete -c harnesstap -f -a "(__harnesstap_complete)"
 `;
 }
 

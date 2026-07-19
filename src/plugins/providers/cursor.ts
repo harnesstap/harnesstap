@@ -130,7 +130,7 @@ export class CursorPluginProvider implements PluginProvider {
 
       let latestVersion: string | undefined;
       if (shouldRefresh) {
-        const tmpParent = join(ctx.harnessdeckDir, "tmp-refresh");
+        const tmpParent = join(ctx.harnesstapDir, "tmp-refresh");
         const refresh = refreshGitSource({
           url: repo,
           targetDir: join(tmpParent, install.name),
@@ -256,7 +256,7 @@ export class CursorPluginProvider implements PluginProvider {
       scope: opts.scope ?? "user",
       status: "unsupported",
       message:
-        "Cursor plugins are installed from the IDE marketplace; HarnessDeck materializes skills from Claude install trees on apply",
+        "Cursor plugins are installed from the IDE marketplace; HarnessTap materializes skills from Claude install trees on apply",
     };
   }
 }

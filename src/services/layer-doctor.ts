@@ -11,7 +11,7 @@ import type {
 } from "./layer-doctor/layer-doctor.types.js";
 
 // Plugin/component-bundle checks only. Hybrid deck repos (canonical
-// `.harnessdeck/deck.json` plus generated Claude manifests) should use
+// `.harnesstap/deck.json` plus generated Claude manifests) should use
 // `runDeckDoctor()` in `./deck-doctor.ts`.
 
 const layerDoctorChecks: LayerDoctorCheck[] = [

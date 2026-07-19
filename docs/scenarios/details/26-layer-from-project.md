@@ -5,5 +5,5 @@
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnessdeck layer from-project my-setup --project . --description "Inferred from web repo"
+harnesstap layer from-project my-setup --project . --description "Inferred from web repo"
 ```

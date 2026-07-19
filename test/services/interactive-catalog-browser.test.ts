@@ -7,7 +7,7 @@ import { promptForInteractiveCatalogBrowser } from "../../src/services/wizards/i
 
 const sampleLayers: CatalogLayer[] = [
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "fullstack",
     name: "Fullstack",
@@ -18,7 +18,7 @@ const sampleLayers: CatalogLayer[] = [
     visibility: "public",
   },
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "foundation",
     name: "Foundation",
@@ -36,7 +36,7 @@ describe("interactive catalog browser prompt", () => {
       promptForInteractiveCatalogBrowser,
       {
         message: "Browse catalog layers to install",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         listLayers: async () => sampleLayers,
       },
       { clearPromptOnDone: true },
@@ -46,7 +46,7 @@ describe("interactive catalog browser prompt", () => {
     events.keypress("enter");
 
     await expect(answer).resolves.toEqual({
-      orgSlug: "harnessdeck-cloud",
+      orgSlug: "harnesstap-cloud",
       catalogSlug: "default",
       slug: "fullstack",
       version: "1.0.0",
@@ -60,7 +60,7 @@ describe("interactive catalog browser prompt", () => {
       promptForInteractiveCatalogBrowser,
       {
         message: "Browse catalog layers to install",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         listLayers: () => {
           callCount += 1;
           return sampleLayers as unknown as Promise<typeof sampleLayers>;
@@ -86,7 +86,7 @@ describe("interactive catalog browser prompt", () => {
       promptForInteractiveCatalogBrowser,
       {
         message: "Browse catalog layers to install",
-        scopeLabel: "harnessdeck-cloud",
+        scopeLabel: "harnesstap-cloud",
         listLayers: async () => sampleLayers,
       },
       { clearPromptOnDone: true },

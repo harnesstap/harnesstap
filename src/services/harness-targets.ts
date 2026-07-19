@@ -47,6 +47,6 @@ export function resolveScanGlobalHarnessTargets(
   }
 
   throw new Error(
-    "No global harness targets configured. Run harnessdeck harness set or pass --harness <slugs>.",
+    "No global harness targets configured. Run harnesstap harness set or pass --harness <slugs>.",
   );
 }

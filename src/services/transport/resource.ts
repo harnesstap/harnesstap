@@ -78,7 +78,7 @@ export function parseResourceExportToml(raw: string): ResourceExport {
 
 export function formatResourceExportToml(exportDoc: ResourceExport): string {
   const header = [
-    "# HarnessDeck resource export",
+    "# HarnessTap resource export",
     `# Resource: ${exportDoc.type}:${exportDoc.name}${exportDoc.namespace ? `@${exportDoc.namespace}` : ""}`,
     `# Generated at: ${new Date().toISOString()}`,
     "",

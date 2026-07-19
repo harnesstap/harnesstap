@@ -164,7 +164,7 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     const firstLayer = opts.layer.split(",")[0]?.trim() ?? "layer";
     const path = outputPath && outputPath.length > 0
       ? resolve(outputPath)
-      : resolve(`${firstLayer}.harnessdeck.toml`);
+      : resolve(`${firstLayer}.harnesstap.toml`);
     return {
       scope: "layer",
       outputPath: path,
@@ -179,7 +179,7 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     const name = rest.split("@")[0] ?? "export";
     const path = outputPath && outputPath.length > 0
       ? resolve(outputPath)
-      : resolve(`${type}-${name}.harnessdeck.toml`);
+      : resolve(`${type}-${name}.harnesstap.toml`);
     return {
       scope: "resource",
       outputPath: path,

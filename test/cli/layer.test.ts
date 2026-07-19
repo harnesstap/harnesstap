@@ -426,10 +426,10 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
       await importBuiltinFixtures();
-      const result = await runCli(["layer", "list"], { commandName: "hd" });
+      const result = await runCli(["layer", "list"], { commandName: "ht" });
       expect(result.stdout).toContain("NAME");
       expect(result.stdout).toContain("DESCRIPTION");
-      expect(result.stdout).toContain("run `hd layer show <name>` for details");
+      expect(result.stdout).toContain("run `ht layer show <name>` for details");
     } finally {
       await context.cleanup();
     }
@@ -676,7 +676,7 @@ describe("CLI layer", () => {
   });
 
   it("rejects unknown layer import subcommand", async () => {
-    await expect(runCli(["layer", "import", "./team.harnessdeck.toml"])).rejects.toMatchObject({
+    await expect(runCli(["layer", "import", "./team.harnesstap.toml"])).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
       message: expect.stringMatching(/unknown command/i),

@@ -176,13 +176,13 @@ export function registerAuthCommands(root: Command): void {
     root
       .command("auth")
       .alias("a")
-      .description("Authenticate with HarnessDeck Cloud and manage cloud accounts"),
+      .description("Authenticate with HarnessTap Cloud and manage cloud accounts"),
   );
 
   authCmd
     .command("login [account]")
     .option("--base-url <url>", "Cloud base URL")
-    .description("Log into HarnessDeck Cloud via device authentication")
+    .description("Log into HarnessTap Cloud via device authentication")
     .action(async (account: string | undefined, opts: { baseUrl?: string }) => {
       await handleCloudLoginCommand(account, opts);
     });

@@ -11,24 +11,24 @@ Typical commands:
 
 ```bash
 # Configure only (no hub install, no layer apply)
-harnessdeck layer create dbt-expert \
+harnesstap layer create dbt-expert \
   --from dbt-labs/dbt-agent-skills \
   --all --exclude-category dbt-migration \
   -d "dbt analytics engineering baseline" -y
 
 # Interactive skill picker (migration skills unchecked by default)
-harnessdeck layer create dbt-expert --from dbt-labs/dbt-agent-skills
+harnesstap layer create dbt-expert --from dbt-labs/dbt-agent-skills
 
 # Merge new skills into an existing layer
-harnessdeck layer create dbt-expert \
+harnesstap layer create dbt-expert \
   --from dbt-labs/dbt-agent-skills \
   --skill running-dbt-commands \
   --on-conflict merge -y
 
-harnessdeck layer show dbt-expert
+harnesstap layer show dbt-expert
 ```
 
-`layer create --from` imports the package into the HarnessDeck library and
+`layer create --from` imports the package into the HarnessTap library and
 attaches namespaced skill refs to the layer. Use `layer apply` when you are ready
 to materialize the layer to a project. Use `--install` only when you also want
 skills copied or symlinked into hub paths immediately.

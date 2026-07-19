@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export interface HarnessdeckSettings {
+export interface HarnesstapSettings {
   plugins: { refreshMaxAgeHours: number };
 }
 
-const DEFAULTS: HarnessdeckSettings = {
+const DEFAULTS: HarnesstapSettings = {
   plugins: { refreshMaxAgeHours: 24 },
 };
 
@@ -123,13 +123,13 @@ export function parseJsonc(content: string): unknown {
   return JSON.parse(normalized);
 }
 
-export function loadSettings(harnessdeckDir: string): HarnessdeckSettings {
-  const path = existsSync(join(harnessdeckDir, "config.jsonc"))
-    ? join(harnessdeckDir, "config.jsonc")
-    : join(harnessdeckDir, "config.json");
+export function loadSettings(harnesstapDir: string): HarnesstapSettings {
+  const path = existsSync(join(harnesstapDir, "config.jsonc"))
+    ? join(harnesstapDir, "config.jsonc")
+    : join(harnesstapDir, "config.json");
   if (!existsSync(path)) return DEFAULTS;
   try {
-    const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnessdeckSettings>;
+    const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings>;
     const hours = raw.plugins?.refreshMaxAgeHours;
     return {
       plugins: {

@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getHarnessdeckDir } from "../db/connection.js";
+import { getHarnesstapDir } from "../db/connection.js";
 
 interface ActiveProfileFile {
   name: string;
 }
 
 function getActiveProfilePath(): string {
-  return join(getHarnessdeckDir(), "active-profile.json");
+  return join(getHarnesstapDir(), "active-profile.json");
 }
 
 export function getActiveProfileName(): string | undefined {
@@ -27,7 +27,7 @@ export function getActiveProfileName(): string | undefined {
 }
 
 export function setActiveProfileName(name: string): void {
-  const home = getHarnessdeckDir();
+  const home = getHarnesstapDir();
   mkdirSync(home, { recursive: true });
   writeFileSync(
     getActiveProfilePath(),

@@ -14,7 +14,7 @@ import {
 
 const teamLayers = [
   {
-    orgSlug: "harnessdeck-cloud",
+    orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
     slug: "team",
     name: "Team",
@@ -46,9 +46,9 @@ describe("resolveBareNameFromCatalog", () => {
   it("rejects ambiguous bare slugs in non-interactive mode", async () => {
     const context = await createInitializedTestContext("bare-name-ambiguous");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
-      mkdirSync(harnessdeckDir, { recursive: true });
-      connectCatalogOrg("acme", harnessdeckDir);
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
+      connectCatalogOrg("acme", harnesstapDir);
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
@@ -72,9 +72,9 @@ describe("resolveBareNameFromCatalog", () => {
   it("resolves ambiguous bare slugs when a candidate is chosen interactively", async () => {
     const context = await createInitializedTestContext("bare-name-prompt");
     try {
-      const harnessdeckDir = join(context.homeDir, ".harnessdeck");
-      mkdirSync(harnessdeckDir, { recursive: true });
-      connectCatalogOrg("acme", harnessdeckDir);
+      const harnesstapDir = join(context.homeDir, ".harnesstap");
+      mkdirSync(harnesstapDir, { recursive: true });
+      connectCatalogOrg("acme", harnesstapDir);
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
@@ -121,7 +121,7 @@ describe("resolveBareNameFromCatalog", () => {
         baseUrl: "https://mock",
       });
 
-      expect(resolved.org_slug).toBe("harnessdeck-cloud");
+      expect(resolved.org_slug).toBe("harnesstap-cloud");
       expect(resolved.layer_slug).toBe("team");
 
       restoreFetch();
@@ -159,7 +159,7 @@ describe("resolveInstallSelector", () => {
       });
 
       const resolved = await resolveInstallSelector("team", { baseUrl: "https://mock" });
-      expect(resolved.org_slug).toBe("harnessdeck-cloud");
+      expect(resolved.org_slug).toBe("harnesstap-cloud");
       expect(resolved.layer_slug).toBe("team");
 
       restoreFetch();
@@ -180,11 +180,11 @@ describe("resolveInstallSelector", () => {
 
   it("routes bare selectors with --org through remote layer selector", async () => {
     const resolved = await resolveInstallSelector("my-library", {
-      org: "harnessdeck-cloud",
+      org: "harnesstap-cloud",
       version: "latest",
     });
     expect(resolved).toEqual({
-      org_slug: "harnessdeck-cloud",
+      org_slug: "harnesstap-cloud",
       catalog_slug: "default",
       layer_slug: "my-library",
       version: "latest",
@@ -197,7 +197,7 @@ describe("resolveInstallSelector", () => {
       const catalog = await import("../../src/config/catalog.ts");
       catalog.saveCatalogSettings(
         { publicCatalog: false },
-        join(context.homeDir, ".harnessdeck"),
+        join(context.homeDir, ".harnesstap"),
       );
 
       await expect(

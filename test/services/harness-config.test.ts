@@ -317,7 +317,7 @@ describe("harness config service", () => {
     const originalStdinIsTTY = process.stdin.isTTY;
     const originalStdoutIsTTY = process.stdout.isTTY;
     const originalCi = process.env.CI;
-    const originalNoInteractive = process.env.HARNESSDECK_NO_INTERACTIVE;
+    const originalNoInteractive = process.env.HARNESSTAP_NO_INTERACTIVE;
 
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
@@ -328,7 +328,7 @@ describe("harness config service", () => {
       configurable: true,
     });
     delete process.env.CI;
-    delete process.env.HARNESSDECK_NO_INTERACTIVE;
+    delete process.env.HARNESSTAP_NO_INTERACTIVE;
 
     try {
       const shared = await import("../../src/services/wizards/shared.ts");
@@ -348,9 +348,9 @@ describe("harness config service", () => {
         process.env.CI = originalCi;
       }
       if (originalNoInteractive === undefined) {
-        delete process.env.HARNESSDECK_NO_INTERACTIVE;
+        delete process.env.HARNESSTAP_NO_INTERACTIVE;
       } else {
-        process.env.HARNESSDECK_NO_INTERACTIVE = originalNoInteractive;
+        process.env.HARNESSTAP_NO_INTERACTIVE = originalNoInteractive;
       }
     }
   });
@@ -359,7 +359,7 @@ describe("harness config service", () => {
     const originalStdinIsTTY = process.stdin.isTTY;
     const originalStdoutIsTTY = process.stdout.isTTY;
     const originalCi = process.env.CI;
-    const originalNoInteractive = process.env.HARNESSDECK_NO_INTERACTIVE;
+    const originalNoInteractive = process.env.HARNESSTAP_NO_INTERACTIVE;
 
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
@@ -383,7 +383,7 @@ describe("harness config service", () => {
       expect(shared.shouldUseWizard({ missingRequiredArgs: true })).toBe(false);
 
       delete process.env.CI;
-      process.env.HARNESSDECK_NO_INTERACTIVE = "1";
+      process.env.HARNESSTAP_NO_INTERACTIVE = "1";
       expect(shared.shouldUseWizard({ missingRequiredArgs: true })).toBe(false);
     } finally {
       Object.defineProperty(process.stdin, "isTTY", {
@@ -400,9 +400,9 @@ describe("harness config service", () => {
         process.env.CI = originalCi;
       }
       if (originalNoInteractive === undefined) {
-        delete process.env.HARNESSDECK_NO_INTERACTIVE;
+        delete process.env.HARNESSTAP_NO_INTERACTIVE;
       } else {
-        process.env.HARNESSDECK_NO_INTERACTIVE = originalNoInteractive;
+        process.env.HARNESSTAP_NO_INTERACTIVE = originalNoInteractive;
       }
     }
   });

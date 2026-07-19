@@ -174,7 +174,7 @@ describe("planned scenarios services", () => {
       );
       writeFileSync(join(context.projectDir, "AGENTS.md"), "# Ignore me\n", "utf-8");
       writeFileSync(
-        join(context.projectDir, ".harnessdeckignore"),
+        join(context.projectDir, ".harnesstapignore"),
         "AGENTS.md\n",
         "utf-8",
       );
@@ -222,9 +222,9 @@ describe("planned scenarios services", () => {
         main_harness: "claude-code",
         alias_harnesses: ["cursor"],
       });
-      mkdirSync(join(context.homeDir, ".harnessdeck"), { recursive: true });
+      mkdirSync(join(context.homeDir, ".harnesstap"), { recursive: true });
       writeFileSync(
-        join(context.homeDir, ".harnessdeck", "active-profile.json"),
+        join(context.homeDir, ".harnesstap", "active-profile.json"),
         JSON.stringify({ name: "default" }),
         "utf-8",
       );
@@ -252,7 +252,7 @@ describe("planned scenarios services", () => {
         expect(
           JSON.parse(
             readFileSync(
-              join(context2.homeDir, ".harnessdeck", "active-profile.json"),
+              join(context2.homeDir, ".harnesstap", "active-profile.json"),
               "utf-8",
             ),
           ),
