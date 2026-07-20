@@ -227,6 +227,120 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: ".agents/skills/",
   }, {}),
 
+  // Google Antigravity (IDE / CLI / AGY) share the same workspace layout.
+  def("antigravity", "Antigravity", [
+    "instructions", "skills", "rules", "mcp", "commands",
+  ], {
+    instructions: "AGENTS.md",
+    rules: ".agents/rules/",
+    skills: ".agents/skills/",
+    commands: ".agents/workflows/",
+    mcp: ".agents/mcp_config.json",
+    pathAlternates: {
+      instructions: ["GEMINI.md"],
+    },
+  }, {
+    instructions: "~/.gemini/GEMINI.md",
+    skills: "~/.gemini/skills/",
+    commands: "~/.gemini/config/global_workflows/",
+    settings: "~/.gemini/config/mcp_config.json",
+  }),
+
+  def("amazon-q", "Amazon Q Developer", ["instructions", "rules", "mcp"], {
+    instructions: "AmazonQ.md",
+    rules: ".amazonq/rules/",
+    mcp: ".amazonq/mcp.json",
+    pathAlternates: {
+      instructions: ["AGENTS.md"],
+    },
+  }, {
+    settings: "~/.aws/amazonq/mcp.json",
+  }),
+
+  def("aider", "Aider", ["instructions"], {
+    instructions: "CONVENTIONS.md",
+    settings: ".aider.conf.yml",
+    pathAlternates: {
+      instructions: ["AGENTS.md"],
+    },
+  }, {
+    settings: "~/.aider.conf.yml",
+  }),
+
+  def("zed", "Zed", ["instructions", "skills"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+    pathAlternates: {
+      instructions: [".rules"],
+    },
+  }, {
+    instructions: "~/.config/zed/AGENTS.md",
+    skills: "~/.agents/skills/",
+  }),
+
+  def("devin", "Devin", ["instructions", "skills"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+    settings: ".devin/config.json",
+    pathAlternates: {
+      instructions: ["AGENTS.local.md", "AGENT.md"],
+    },
+  }, {
+    instructions: "~/.config/devin/AGENTS.md",
+    skills: "~/.agents/skills/",
+    settings: "~/.config/devin/config.json",
+  }),
+
+  def("jules", "Jules", ["instructions", "skills"], {
+    instructions: "AGENTS.md",
+    skills: ".agents/skills/",
+    pathAlternates: {
+      instructions: ["JULES.md"],
+    },
+  }, {
+    skills: "~/.agents/skills/",
+  }),
+
+  def("cody", "Sourcegraph Cody", ["instructions", "mcp"], {
+    instructions: "AGENTS.md",
+    settings: "cody.json",
+  }, {
+    settings: "~/.config/sourcegraph/cody.json",
+  }),
+
+  def("grok-build", "Grok Build", [
+    "instructions",
+    "skills",
+    "mcp",
+    "permissions",
+    "hooks",
+    "agents",
+    "commands",
+    "model_config",
+  ], {
+    instructions: "AGENTS.md",
+    skills: ".grok/skills/",
+    agents: ".grok/agents/",
+    hooks: ".grok/hooks/",
+    commands: ".agents/commands/",
+    mcp: ".grok/config.toml",
+    permissions: ".grok/config.toml",
+    settings: ".grok/config.toml",
+    pathAlternates: {
+      instructions: ["AGENT.md", "Agents.md"],
+      skills: [".agents/skills/"],
+    },
+  }, {
+    skills: "~/.grok/skills/",
+    agents: "~/.grok/agents/",
+    hooks: "~/.grok/hooks/",
+    commands: "~/.agents/commands/",
+    settings: "~/.grok/config.toml",
+    pathAlternates: {
+      skills: ["~/.agents/skills/"],
+    },
+  }),
+
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],

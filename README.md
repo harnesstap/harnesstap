@@ -413,7 +413,7 @@ ht migrate import ./harnesstap-migrate.tar.gz
 
 ## Supported harnesses
 
-HarnessTap registers **33 harnesses** — from Claude Code, Codex, and Cursor through GitHub Copilot, OpenCode, Windsurf, Warp, Gemini CLI, and many `.agents/skills/`-style CLIs. Each harness declares which layer resources (skills, rules, MCP, hooks, …) and environment resources (env vars, model config, permissions) it can scan and materialize, plus default on-disk paths.
+HarnessTap registers **41 harnesses** — from Claude Code, Codex, and Cursor through Antigravity, Amazon Q, GitHub Copilot, OpenCode, Windsurf, Warp, Gemini CLI, Grok Build, and many `.agents/skills/`-style CLIs. Each harness declares which layer resources (skills, rules, MCP, hooks, …) and environment resources (env vars, model config, permissions) it can scan and materialize, plus default on-disk paths.
 
 Seven harnesses have **native serializers** (`claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`); the rest use a generic path-driven serializer. Plugin install/sync providers exist for **Claude Code** and **Cursor**; plugin-source scan covers `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and `.github/plugin/` layouts.
 

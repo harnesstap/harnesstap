@@ -94,4 +94,62 @@ describe("GenericAgentsSerializer", () => {
       cleanupDir(projectDir);
     }
   });
+
+  it("scans and serializes antigravity workflows as commands", async () => {
+    const projectDir = createTempDir("antigravity-workflows");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Antigravity");
+      writeTextFile(
+        join(projectDir, ".agents/workflows/ship.md"),
+        "# Ship\n\nRun preflight then open a PR.\n",
+      );
+      writeTextFile(
+        join(projectDir, ".agents/mcp_config.json"),
+        JSON.stringify({
+          mcpServers: {
+            docs: { command: "docs-mcp", args: [] },
+          },
+        }),
+      );
+
+      const serializer = new GenericAgentsSerializer("antigravity");
+      const resources = await serializer.scan(projectDir);
+
+      expect(resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "command",
+            name: "ship",
+            source: ".agents/workflows/ship.md",
+          }),
+          expect.objectContaining({
+            type: "mcp_server",
+            name: "docs",
+            source: ".agents/mcp_config.json",
+          }),
+        ]),
+      );
+
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "command",
+            name: "ship",
+            content: "# Ship\n\nRun preflight then open a PR.\n",
+          }),
+        ],
+        ".",
+      );
+
+      expect(files).toEqual([
+        {
+          path: ".agents/workflows/ship.md",
+          content: "# Ship\n\nRun preflight then open a PR.\n",
+        },
+      ]);
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
 });

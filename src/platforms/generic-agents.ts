@@ -119,6 +119,29 @@ export class GenericAgentsSerializer extends BaseSerializer {
     return resources;
   }
 
+  private scanCommandsAt(
+    projectRoot: string,
+    relativeDir: string,
+  ): ResourceCreateInput[] {
+    const resources: ResourceCreateInput[] = [];
+    const commandsDir = join(projectRoot, relativeDir);
+    const sourcePrefix = relativeDir.endsWith("/")
+      ? relativeDir
+      : `${relativeDir}/`;
+
+    for (const file of this.listDir(commandsDir)) {
+      if (!file.endsWith(".md")) continue;
+      const content = this.readFile(join(commandsDir, file));
+      if (!content) continue;
+      const name = file.replace(/\.md$/, "");
+      resources.push(
+        this.makeResource("command", name, content, `${sourcePrefix}${file}`),
+      );
+    }
+
+    return resources;
+  }
+
   async scan(projectRoot: string): Promise<ResourceCreateInput[]> {
     const resources: ResourceCreateInput[] = [];
 
@@ -167,6 +190,12 @@ export class GenericAgentsSerializer extends BaseSerializer {
       resources.push(
         ...this.scanAgentsAt(join(projectRoot, agentsPath), agentsPath),
       );
+    }
+
+    // Commands (markdown workflows / slash prompts)
+    const commandsPath = this.platform.projectPaths.commands;
+    if (commandsPath) {
+      resources.push(...this.scanCommandsAt(projectRoot, commandsPath));
     }
 
     // Hooks
@@ -236,6 +265,27 @@ export class GenericAgentsSerializer extends BaseSerializer {
       );
     }
 
+    const commandsPath = this.platform.globalPaths.commands;
+    if (commandsPath) {
+      const resolved = resolveGlobalPath(homeRoot, commandsPath);
+      const displayPath = commandsPath.endsWith("/")
+        ? commandsPath
+        : `${commandsPath}/`;
+      for (const file of this.listDir(resolved)) {
+        if (!file.endsWith(".md")) continue;
+        const content = this.readFile(join(resolved, file));
+        if (!content) continue;
+        resources.push(
+          this.makeResource(
+            "command",
+            file.replace(/\.md$/, ""),
+            content,
+            `${displayPath}${file}`,
+          ),
+        );
+      }
+    }
+
     const hooksPath = this.platform.globalPaths.hooks;
     if (hooksPath) {
       resources.push(
@@ -274,6 +324,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
     );
     const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
     const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
+    const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
     const instructionPath =
       this.toTargetRelativePath(targetPaths.instructions, target) ??
       (target === "project" ? "AGENTS.md" : undefined);
@@ -333,6 +384,20 @@ export class GenericAgentsSerializer extends BaseSerializer {
             }),
             "generic",
           ),
+        });
+      }
+    }
+
+    // Commands / workflows
+    const commands = resources.filter((r) => r.type === "command");
+    if (commandsPath && commands.length > 0) {
+      const commandPrefix = commandsPath.endsWith("/")
+        ? commandsPath
+        : `${commandsPath}/`;
+      for (const r of commands) {
+        files.push({
+          path: `${commandPrefix}${r.name}.md`,
+          content: r.content,
         });
       }
     }

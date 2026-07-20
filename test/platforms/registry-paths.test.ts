@@ -28,6 +28,52 @@ describe("registry path detection", () => {
     expect(detectPlatforms(ponytailFixture)).toContain("kiro");
   });
 
+  it("detects antigravity from .agents/rules", () => {
+    const projectDir = createTempDir("antigravity-rules");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Antigravity");
+      writeTextFile(
+        join(projectDir, ".agents/rules/style.md"),
+        "---\ndescription: Style\n---\nUse clear names.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("antigravity");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects amazon-q from .amazonq/rules", () => {
+    const projectDir = createTempDir("amazon-q-rules");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".amazonq/rules/python.md"),
+        "---\ndescription: Python\n---\nUse type hints.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("amazon-q");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects grok-build from .grok/skills", () => {
+    const projectDir = createTempDir("grok-build-skills");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".grok/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review code\n---\nReview carefully.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("grok-build");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects cline from legacy .clinerules file", () => {
     const projectDir = createTempDir("cline-legacy-rules");
 

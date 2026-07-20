@@ -1,6 +1,6 @@
 # Supported harnesses
 
-HarnessTap registers **33 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in layers, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
+HarnessTap registers **41 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in layers, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
 
 For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission, and mirror warnings), see [Portability limits](portability-limits.md).
 
@@ -51,7 +51,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 | **codex** | Yes (`config.toml`) | Yes | Yes |
 | **cursor** | Yes (`.cursor/mcp.json`) | No | Yes |
 | **copilot-cli**, **github-copilot** | Yes | No | Yes |
-| **opencode**, **goose**, generic | Yes | No | Yes |
+| **opencode**, **goose**, **grok-build**, **antigravity**, **amazon-q**, generic | Yes | No | Yes |
 
 ## Plugin manifest layouts
 
@@ -87,7 +87,7 @@ Claude **layer pins** and marketplace metadata (`layer show` → `claude` block)
 
 | Tier | Harnesses | Notes |
 | ---- | --------- | ----- |
-| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli` | Dedicated scan/serialize logic |
+| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build` | Dedicated scan/serialize logic |
 | **Generic** | All other registered harnesses | Path-driven serializer driven by registry `projectPaths` / `globalPaths` |
 
 Filter native harnesses at the CLI:
@@ -120,7 +120,7 @@ Harnesses with a delegated **subagent** model normalize into a shared canonical 
 | **codex** | `.codex/agents/*.toml` | `developer_instructions`, `model_reasoning_effort`, `sandbox_mode` |
 | **claude-code** | `.claude/agents/*.md` + YAML | Richest metadata; extra Claude-only keys preserved in `metadata.extra` |
 | **cursor** | `.cursor/agents/*.md` + YAML | `readonly` / `is_background`; `sandbox_mode: read-only` maps to `readonly: true` |
-| **opencode**, **github-copilot**, **copilot-cli** | `*/agents/*.md` | Markdown with optional frontmatter |
+| **opencode**, **github-copilot**, **copilot-cli**, **grok-build** | `*/agents/*.md` | Markdown with optional frontmatter |
 | **generic** harnesses with `agents:` paths | `*.md` | Same as OpenCode/Copilot emission |
 
 Plugin import scans `agents/*.md` and `agents/*.toml` (Codex packs). Cross-harness layer apply re-emits valid native files per target harness.
@@ -138,6 +138,8 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | `github-copilot` | GitHub Copilot | Native | instr, skill, mcp, agent | Instruction-only | — |
 | `copilot-cli` | Copilot CLI | Native | instr, skill, mcp, agent | Native skills | — |
 | `gemini-cli` | Gemini CLI | Native | instr, skill, cmd | Instruction-only | — |
+| `antigravity` | Antigravity | Generic | instr, skill, rule, mcp, cmd | Native skills | — |
+| `amazon-q` | Amazon Q Developer | Generic | instr, rule, mcp | — | — |
 | `windsurf` | Windsurf | Generic | instr, skill, rule, mcp | Instruction-only | — |
 | `cline` | Cline | Generic | instr, skill, rule, mcp | Instruction-only | — |
 | `roo` | Roo Code | Generic | instr, skill, rule, mcp | Native skills | — |
@@ -148,6 +150,12 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | `kiro` | Kiro | Generic | instr, skill, rule | Instruction-only | — |
 | `warp` | Warp | Generic | instr, skill | Native skills | — |
 | `pi` | Pi | Generic | instr, skill | Native skills | — |
+| `aider` | Aider | Generic | instr | — | — |
+| `zed` | Zed | Generic | instr, skill | Native skills | — |
+| `devin` | Devin | Generic | instr, skill | Native skills | — |
+| `jules` | Jules | Generic | instr, skill | Native skills | — |
+| `cody` | Sourcegraph Cody | Generic | instr, mcp | — | — |
+| `grok-build` | Grok Build | Native | instr, skill, mcp, perm, hook, agent, cmd, model | Native skills | — |
 | `amp` | Amp | Generic | instr, skill | Native skills | — |
 | `kilo` | Kilo Code | Generic | instr, skill | Native skills | — |
 | `augment` | Augment | Generic | instr, skill | Native skills | — |
@@ -178,9 +186,16 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` | — | (global `~/.copilot/mcp-config.json`) | `.github/agents/` | — | — |
 | **copilot-cli** | `AGENTS.md` | `.agents/skills/` | — | `.copilot/mcp-config.json` | `.github/agents/` | — | — |
 | **gemini-cli** | `AGENTS.md` | `.agents/skills/` | — | — | — | `commands/` | `gemini-extension.json` |
+| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` | `.agents/mcp_config.json` | — | `.agents/workflows/` | — |
+| **amazon-q** | `AmazonQ.md` (+ `AGENTS.md`) | — | `.amazonq/rules/` | `.amazonq/mcp.json` | — | — | — |
 | **windsurf** | `.windsurfrules` | `.agents/skills/` | `.windsurf/rules/` | (global MCP config) | — | — | — |
 | **roo** | `AGENTS.md` | `.roo/skills/` | `.roomodes` | `.roo/mcp.json` | — | — | — |
 | **goose** | `AGENTS.md`, `.goosehints` | `.agents/skills/` (+ `.goose/skills/`) | — | `.config/goose/config.yaml` (project), `~/.config/goose/config.yaml` (global) | — | `recipes/*.yaml` | `~/.config/goose/config.yaml` |
+| **aider** | `CONVENTIONS.md` (+ `AGENTS.md`) | — | — | — | — | — | `.aider.conf.yml` |
+| **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` | — | — | — | — | — |
+| **devin** | `AGENTS.md` (+ `AGENTS.local.md`) | `.agents/skills/` | — | — | — | — | `.devin/config.json` |
+| **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
+| **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
 Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions — see the registry for the full list.
 
@@ -197,6 +212,26 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 | **MCP extensions** (`config.yaml` `extensions:`) | `mcp_server` resources via native serializer |
 | **Recipes** (`recipes/*.yaml`) | `command` resources |
 | **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only — not layer resources (see [portability limits](portability-limits.md)) |
+
+### Antigravity notes
+
+Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Workflows (`.agents/workflows/*.md`) map to HarnessTap **commands**. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`, `config/global_workflows/`). This is distinct from the thinner `gemini-cli` entry.
+
+### Grok Build notes
+
+Grok Build’s native layout under `.grok/` maps as follows:
+
+| Grok surface | HarnessTap support |
+| ------------ | ------------------- |
+| **AGENTS.md** (`AGENT.md`, `Agents.md`) | `instruction` resources |
+| **Skills** (`.grok/skills/`, `~/.grok/skills/`, also `~/.agents/skills/`) | Native `skill` resources |
+| **Agents** (`.grok/agents/*.md`) | `agent` resources |
+| **Hooks** (`.grok/hooks/*.json`) | `hook` resources; apply emits `.grok/hooks/harnesstap.json` |
+| **MCP** (`[mcp_servers]` in `.grok/config.toml`) | `mcp_server` resources |
+| **Permissions** (`[permission]` allow/deny/ask or `rules`) | `permission` resources |
+| **Commands** (`.agents/commands/`, `~/.agents/commands/`) | `command` resources (skills also appear as slash commands at runtime) |
+| **Default model** (`[models] default` in `~/.grok/config.toml`) | `model_config` on **global** apply only — project `.grok/config.toml` cannot carry `[models]` |
+| **Personas / roles / plugins / sandbox.toml** | Runtime/config-only — not layer resources today |
 
 ## Related commands
 

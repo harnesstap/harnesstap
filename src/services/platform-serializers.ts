@@ -5,6 +5,7 @@ import { GooseSerializer } from "../platforms/goose.js";
 import { OpenCodeSerializer } from "../platforms/opencode.js";
 import { CopilotSerializer } from "../platforms/copilot.js";
 import { GeminiCliSerializer } from "../platforms/gemini-cli.js";
+import { GrokBuildSerializer } from "../platforms/grok-build.js";
 import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import type { PlatformSerializer } from "../types.js";
 
@@ -17,6 +18,7 @@ export const DEDICATED_SERIALIZER_PLATFORM_IDS = [
   "github-copilot",
   "copilot-cli",
   "gemini-cli",
+  "grok-build",
 ] as const;
 
 const dedicatedSerializerPlatformIds = new Set<string>(
@@ -45,6 +47,8 @@ export function getPlatformSerializer(platformId: string): PlatformSerializer {
       return new CopilotSerializer("copilot-cli");
     case "gemini-cli":
       return new GeminiCliSerializer();
+    case "grok-build":
+      return new GrokBuildSerializer();
     default:
       return new GenericAgentsSerializer(platformId);
   }

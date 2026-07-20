@@ -74,6 +74,56 @@ describe("platform registry", () => {
     expect(pi?.supports.has("rules")).toBe(false);
   });
 
+  it("includes newly added top harnesses", async () => {
+    const registry = await import("../../src/platforms/registry.ts");
+
+    const antigravity = registry.getPlatform("antigravity");
+    expect(antigravity).toBeDefined();
+    expect(antigravity?.projectPaths.rules).toBe(".agents/rules/");
+    expect(antigravity?.projectPaths.commands).toBe(".agents/workflows/");
+    expect(antigravity?.projectPaths.mcp).toBe(".agents/mcp_config.json");
+    expect(antigravity?.globalPaths.instructions).toBe("~/.gemini/GEMINI.md");
+    expect(antigravity?.supports.has("commands")).toBe(true);
+
+    const amazonQ = registry.getPlatform("amazon-q");
+    expect(amazonQ?.projectPaths.rules).toBe(".amazonq/rules/");
+    expect(amazonQ?.projectPaths.mcp).toBe(".amazonq/mcp.json");
+    expect(amazonQ?.projectPaths.instructions).toBe("AmazonQ.md");
+
+    const aider = registry.getPlatform("aider");
+    expect(aider?.projectPaths.instructions).toBe("CONVENTIONS.md");
+    expect(aider?.projectPaths.settings).toBe(".aider.conf.yml");
+
+    const zed = registry.getPlatform("zed");
+    expect(zed?.globalPaths.instructions).toBe("~/.config/zed/AGENTS.md");
+    expect(zed?.projectPaths.pathAlternates?.instructions).toContain(".rules");
+
+    const devin = registry.getPlatform("devin");
+    expect(devin?.projectPaths.settings).toBe(".devin/config.json");
+    expect(devin?.globalPaths.instructions).toBe("~/.config/devin/AGENTS.md");
+
+    const jules = registry.getPlatform("jules");
+    expect(jules?.projectPaths.pathAlternates?.instructions).toContain("JULES.md");
+
+    const cody = registry.getPlatform("cody");
+    expect(cody?.projectPaths.settings).toBe("cody.json");
+    expect(cody?.globalPaths.settings).toBe("~/.config/sourcegraph/cody.json");
+
+    const grok = registry.getPlatform("grok-build");
+    expect(grok?.projectPaths.skills).toBe(".grok/skills/");
+    expect(grok?.projectPaths.settings).toBe(".grok/config.toml");
+    expect(grok?.projectPaths.agents).toBe(".grok/agents/");
+    expect(grok?.projectPaths.hooks).toBe(".grok/hooks/");
+    expect(grok?.supports.has("mcp")).toBe(true);
+    expect(grok?.supports.has("permissions")).toBe(true);
+    expect(grok?.supports.has("hooks")).toBe(true);
+    expect(grok?.supports.has("agents")).toBe(true);
+    expect(grok?.supports.has("commands")).toBe(true);
+    expect(grok?.supports.has("model_config")).toBe(true);
+
+    expect(registry.getAllPlatforms().length).toBe(41);
+  });
+
   it("detectPlatforms returns empty array (stub)", async () => {
     const registry = await import("../../src/platforms/registry.ts");
     expect(registry.detectPlatforms("/some/path")).toEqual([]);
