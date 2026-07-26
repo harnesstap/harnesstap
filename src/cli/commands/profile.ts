@@ -24,6 +24,11 @@ import { detectGlobalProfileStatus } from "../../services/global-profile-drift.j
 import { maybePromptProfileEnable } from "../../services/profile-enable-prompt.js";
 import { maybePromptProfileLayerDelete } from "../../services/profile-delete-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "../../services/profile-switch-prompt.js";
+import {
+  SwitchRestoreFailedError,
+  ProfileSwitchNoBaselineError,
+  switchProfile,
+} from "../../services/profile-switch.js";
 import { resolveProfileUseSelection } from "../../services/profile-use-resolve.js";
 import {
   executeProjectUse,
@@ -634,6 +639,106 @@ profileCmd
       ]);
     } catch (err) {
       process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+profileCmd
+  .command("switch")
+  .argument("<name>", "Profile layer name or selector")
+  .option("--dry-run", "Show what would be written")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to global harness preference)",
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt",
+  )
+  .option("--account <name>", "Cloud account name for dependency pulls")
+  .option("--base-url <url>", "Cloud base URL for dependency pulls")
+  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--no-interactive", "Disable interactive prompts")
+  .option("--interactive", "Enable interactive prompts")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Switch the active profile with baseline snapshot gate and restore on failure")
+  .action(async (name: string, opts: {
+    dryRun?: boolean;
+    harness?: string;
+    onConflict?: string;
+    account?: string;
+    baseUrl?: string;
+    pull?: boolean;
+    interactive?: boolean;
+    noInteractive?: boolean;
+    format?: string;
+  }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: opts.onConflict,
+      noInteractive: opts.noInteractive ?? format === "json",
+    });
+    try {
+      if (!opts.dryRun) {
+        await maybeSyncActiveProfileBeforeSwitch({
+          targetProfileName: name,
+          harness: opts.harness,
+          format,
+        });
+      }
+      const result = await switchProfile(name, {
+        apply: {
+          dryRun: opts.dryRun,
+          harness: opts.harness,
+          pull: opts.pull,
+          account: opts.account,
+          baseUrl: opts.baseUrl,
+          conflictPolicy,
+          ...(conflictPolicy === "prompt"
+            ? { conflictResolver: promptMaterializationConflict }
+            : {}),
+        },
+      });
+      if (format === "json") {
+        printJson(result);
+        return;
+      }
+      if (result.cancelled) {
+        process.exitCode = 1;
+        ui.warn("Profile switch cancelled.");
+        return;
+      }
+      if (!result.ok) {
+        process.exitCode = 1;
+        ui.danger(`Failed to switch to profile ${ui.theme.accent(name)}: ${result.apply_error}`);
+        ui.info(
+          `Restored previous profile ${ui.theme.accent(result.restored.profile_name)}.`,
+        );
+        return;
+      }
+      const dryPrefix = result.apply.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      ui.success(
+        `${dryPrefix}Switched to profile ${ui.theme.accent(result.apply.profile_name)} on ${result.apply.harnesses.join(", ") || "(none)"}`,
+      );
+      if (result.apply.default_environment_name) {
+        ui.info(`Default environment: ${result.apply.default_environment_name}`);
+      }
+      ui.kvBlock([
+        { key: "Files", value: `${result.apply.files.length}` },
+        { key: "Written", value: `${result.apply.written_files.length}` },
+        { key: "Skipped", value: `${result.apply.skipped_files.length}` },
+        ...(result.apply.snapshot_id
+          ? [{ key: "Snapshot", value: result.apply.snapshot_id }]
+          : []),
+      ]);
+    } catch (err) {
+      process.exitCode = 1;
+      if (err instanceof ProfileSwitchNoBaselineError || err instanceof SwitchRestoreFailedError) {
+        ui.danger(err.message);
+        return;
+      }
       ui.danger(err instanceof Error ? err.message : String(err));
     }
   });
