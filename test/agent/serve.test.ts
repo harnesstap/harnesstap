@@ -109,8 +109,12 @@ describe("agent serve", () => {
 
     const authorized = await fetch(`${server.url}/v1/switch`, {
       method: "POST",
-      headers: { authorization: `Bearer ${server.token}` },
+      headers: {
+        authorization: `Bearer ${server.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ scope: "home" }),
     });
-    expect(authorized.status).toBe(404);
+    expect(authorized.status).toBe(400);
   });
 });
