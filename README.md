@@ -430,6 +430,10 @@ ht harness list --supported    # native serializers only
 
 Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, layers, tracked projects, snapshots, harness preferences). Optional settings such as plugin refresh cache age live in `~/.harnesstap/config.jsonc`. Home environment fragments may live under `~/.harnesstap/environments/`.
 
+The compiled desktop sidecar (`ht-agent`) writes a per-session loopback bearer token to `~/.harnesstap/agent-token` when it starts. Mutating agent routes require `Authorization: Bearer <token>`.
+
+Build the sidecar binary with `bun run build:sidecar` (output: `dist/sidecar/ht-agent`, intended Tauri `externalBin` name). Engineering debug entrypoints: `ht agent serve` and `ht ui --serve`.
+
 When you run `ht init`, the CLI also checks registered platform default folders in your home directory (e.g. `~/.claude/`, `~/.codex/`) and imports any supported resources it finds.
 
 Override the base directory with `HARNESSTAP_HOME`; cloud accounts live under `<HARNESSTAP_HOME>/cloud-accounts.json` when set.

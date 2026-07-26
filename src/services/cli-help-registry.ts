@@ -38,6 +38,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "add mattpocock/skills --skill caveman,grill-me --global --yes",
     ],
   },
+  "agent.serve": {
+    description: "Start the loopback agent HTTP server (engineering debug)",
+    examples: ["agent serve", "agent serve --port 7474"],
+  },
   scan: {
     description:
       "Import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)",
@@ -55,6 +59,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "mirror . --dry-run",
       "mirror --reference auto --format json",
     ],
+  },
+  ui: {
+    description: "HarnessTap desktop UI entry (engineering debug)",
+    examples: ["ui --serve", "ui --serve --port 7474"],
   },
   use: {
     description:
