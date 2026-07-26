@@ -1,0 +1,1 @@
+{"dev.harnesstap.desktop":{"identifier":"dev.harnesstap.desktop","description":"","local":true,"windows":["main"],"permissions":["core:default","shell:allow-spawn","shell:allow-kill",{"identifier":"shell:allow-execute","allow":[{"name":"binaries/ht-agent","sidecar":true}]}]}}

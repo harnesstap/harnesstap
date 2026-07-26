@@ -21,6 +21,8 @@ import {
   type AgentSwitchFinalEvent,
 } from "./switch-registry.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
+import { listProfileLayersCommand } from "../services/profile-commands.js";
+import { executeConfigInit } from "../services/config-init.js";
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return Response.json(body, init);
@@ -128,7 +130,9 @@ function formatSseEvent(payload: ProfileSwitchStepEvent | AgentSwitchFinalEvent)
 
 export interface AgentRouteHandlers {
   handleHealth(): Response;
+  handlePersonas(): Response;
   handleStatus(request: Request): Promise<Response>;
+  handleBootstrap(request: Request): Promise<Response>;
   handleSwitch(request: Request): Promise<Response>;
   handleSwitchEvents(switchId: string, request: Request): Response;
   handleSwitchCancel(switchId: string, request: Request): Response;
@@ -148,6 +152,16 @@ export function createAgentRouteHandlers(
       });
     },
 
+    handlePersonas() {
+      const personas = listProfileLayersCommand().map((profile) => ({
+        name: profile.name,
+        version: profile.version,
+        tags: profile.tags,
+        description: profile.description ?? null,
+      }));
+      return jsonResponse({ personas });
+    },
+
     async handleStatus(request) {
       const url = new URL(request.url);
       const depthResult = parseStatusDepth(url.searchParams.get("depth"));
@@ -164,6 +178,46 @@ export function createAgentRouteHandlers(
       });
 
       return jsonResponse(withSwitchingStatus(status, deps));
+    },
+
+    async handleBootstrap(request) {
+      const authError = requireAgentBearerAuth(request, token);
+      if (authError) {
+        return authError;
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ error: "invalid_json" }, { status: 400 });
+      }
+
+      if (
+        typeof body !== "object"
+        || body === null
+        || typeof (body as { projectPath?: unknown }).projectPath !== "string"
+        || !(body as { projectPath: string }).projectPath
+      ) {
+        return jsonResponse({ error: "projectPath_required" }, { status: 400 });
+      }
+
+      try {
+        const result = await executeConfigInit({
+          project: (body as { projectPath: string }).projectPath,
+          noInteractive: true,
+          format: "json",
+        });
+        return jsonResponse(result);
+      } catch (error) {
+        return jsonResponse(
+          {
+            error: "bootstrap_failed",
+            message: error instanceof Error ? error.message : String(error),
+          },
+          { status: 500 },
+        );
+      }
     },
 
     async handleSwitch(request) {
@@ -310,8 +364,16 @@ export function createAgentFetchHandler(
       return handlers.handleHealth();
     }
 
+    if (method === "GET" && url.pathname === "/v1/personas") {
+      return handlers.handlePersonas();
+    }
+
     if (method === "GET" && url.pathname === "/v1/status") {
       return handlers.handleStatus(request);
+    }
+
+    if (method === "POST" && url.pathname === "/v1/bootstrap") {
+      return handlers.handleBootstrap(request);
     }
 
     if (method === "POST" && url.pathname === "/v1/switch") {

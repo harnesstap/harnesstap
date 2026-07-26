@@ -16,6 +16,9 @@
   "scripts": {
     "build": "tsup",
     "build:sidecar": "bun build --compile src/agent/entry.ts --outfile dist/sidecar/ht-agent",
+    "desktop:prepare-sidecar": "bash apps/desktop/scripts/prepare-sidecar.sh",
+    "desktop:dev": "cd apps/desktop && bun run tauri dev",
+    "desktop:build": "bun run desktop:prepare-sidecar && cd apps/desktop && bun install && bun run tauri build",
     "dev": "tsup --watch",
     "start": "bun src/index.ts",
     "start:dist": "node dist/index.js",

@@ -1,0 +1,395 @@
+:root {
+  --bg: #0f1419;
+  --surface: #161b22;
+  --surface-2: #1c2330;
+  --border: #2a3340;
+  --fg: #e8eef5;
+  --muted: #8b9aab;
+  --accent: #4d8dff;
+  --green: #3ecf8e;
+  --yellow: #e6b84d;
+  --red: #e85d5d;
+  --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  background: var(--surface);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.app-header .meta {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.personas-rail {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.personas-brand {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.personas-list {
+  flex: 1;
+  overflow: auto;
+}
+
+.persona-item {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  padding: 0.65rem 0.75rem;
+  min-height: 44px;
+}
+
+.persona-item.active {
+  background: color-mix(in srgb, var(--green) 8%, var(--surface));
+}
+
+.persona-item.selected {
+  background: var(--surface-2);
+  border-left: 2px solid var(--accent);
+  padding-left: calc(0.75rem - 2px);
+}
+
+.persona-item .badge {
+  font-size: 10px;
+  color: var(--green);
+  margin-left: 0.35rem;
+}
+
+.rail-controls {
+  padding: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.segment {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px;
+  margin-bottom: 0.5rem;
+}
+
+.segment button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.45rem 0.35rem;
+  min-height: 40px;
+  border-radius: 3px;
+}
+
+.segment button.on {
+  background: var(--surface-2);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.segment button:disabled {
+  opacity: 0.35;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+  padding: 0.45rem 0.75rem;
+  min-height: 44px;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.live-pane {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.live-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.green {
+  background: var(--green);
+}
+.status-dot.yellow {
+  background: var(--yellow);
+}
+.status-dot.red {
+  background: var(--red);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.pill.ok {
+  border-color: color-mix(in srgb, var(--green) 40%, var(--border));
+  color: var(--green);
+}
+
+.pill.warn {
+  border-color: color-mix(in srgb, var(--yellow) 40%, var(--border));
+  color: var(--yellow);
+}
+
+.pill.bad {
+  border-color: color-mix(in srgb, var(--red) 40%, var(--border));
+  color: var(--red);
+}
+
+.banner {
+  border: 1px solid color-mix(in srgb, var(--yellow) 45%, var(--border));
+  background: color-mix(in srgb, var(--yellow) 10%, var(--bg));
+  border-radius: 4px;
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.banner.error {
+  border-color: color-mix(in srgb, var(--red) 45%, var(--border));
+  background: color-mix(in srgb, var(--red) 10%, var(--bg));
+}
+
+.harness-block {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.harness-header {
+  padding: 0.45rem 0.6rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+
+.harness-body {
+  padding: 0.45rem 0.6rem;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  gap: 0.5rem;
+}
+
+.drawer {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.drawer summary {
+  padding: 0.45rem 0.6rem;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.drawer-body {
+  padding: 0 0.6rem 0.55rem;
+  border-top: 1px solid var(--border);
+}
+
+.steps {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.steps li.cur {
+  color: var(--yellow);
+  font-weight: 600;
+}
+
+.steps li.done {
+  color: var(--muted);
+}
+
+.empty-state {
+  padding: 1rem 0.75rem;
+}
+
+.empty-state h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 20;
+}
+
+.dialog {
+  width: min(480px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.dialog h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.success-flash {
+  color: var(--green);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .personas-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
