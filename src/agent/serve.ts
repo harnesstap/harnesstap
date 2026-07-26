@@ -1,8 +1,7 @@
 import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
-import { PACKAGE_VERSION } from "../version.js";
-import { requireAgentBearerAuth } from "./auth.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
+import { createAgentFetchHandler } from "./routes.js";
 import {
   generateAgentToken,
   getAgentTokenPath,
@@ -27,10 +26,6 @@ export interface AgentServer {
   stop(closeActiveConnections?: boolean): void;
 }
 
-function jsonResponse(body: unknown, init?: ResponseInit): Response {
-  return Response.json(body, init);
-}
-
 function isAddressInUseError(error: unknown): boolean {
   return (
     error instanceof Error
@@ -38,33 +33,6 @@ function isAddressInUseError(error: unknown): boolean {
       ? error.code === "EADDRINUSE"
       : /EADDRINUSE|address already in use/i.test(error.message))
   );
-}
-
-function createAgentFetchHandler(
-  token: string,
-  port: number,
-): (request: Request) => Response | Promise<Response> {
-  return (request) => {
-    const url = new URL(request.url);
-    const method = request.method.toUpperCase();
-
-    if (method === "GET" && url.pathname === "/v1/health") {
-      return jsonResponse({
-        status: "healthy",
-        version: PACKAGE_VERSION,
-        port,
-      });
-    }
-
-    if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
-      const authError = requireAgentBearerAuth(request, token);
-      if (authError) {
-        return authError;
-      }
-    }
-
-    return jsonResponse({ error: "not_found" }, { status: 404 });
-  };
 }
 
 function bootAgentDatabase(): void {
@@ -122,3 +90,5 @@ export function startAgentServer(options: AgentServeOptions = {}): AgentServer {
 export function getAgentTokenFilePath(): string {
   return getAgentTokenPath();
 }
+
+export { createAgentFetchHandler, createAgentRouteHandlers } from "./routes.js";

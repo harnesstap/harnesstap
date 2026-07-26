@@ -262,7 +262,7 @@ export function writeFiles(
   }
 }
 
-async function planConflicts(
+export async function planMaterializationConflicts(
   files: SerializedFile[],
   rootPath: string,
 ): Promise<MaterializationConflict[]> {
@@ -299,7 +299,7 @@ export async function materializeFiles(
   options: MaterializeFilesOptions = {},
 ): Promise<MaterializationResult> {
   const conflictPolicy = options.conflictPolicy ?? "replace";
-  const conflicts = await planConflicts(files, rootPath);
+  const conflicts = await planMaterializationConflicts(files, rootPath);
   const decisions = new Map<string, ConflictResolution>();
 
   for (const conflict of conflicts) {

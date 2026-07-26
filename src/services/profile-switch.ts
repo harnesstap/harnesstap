@@ -7,6 +7,7 @@ import { useProfileCommandUnlocked } from "./profile-commands.js";
 export type ProfileSwitchStep =
   | "validate_baseline"
   | "apply_home"
+  | "apply_project"
   | "restore_previous"
   | "complete";
 
@@ -156,6 +157,16 @@ export async function switchProfile(
       step: "validate_baseline",
       status: "completed",
     });
+
+    const cancelledBeforeApply = checkCancellation(
+      options,
+      events,
+      previousProfile,
+      "apply_home",
+    );
+    if (cancelledBeforeApply) {
+      return cancelledBeforeApply;
+    }
 
     emitStep(events, options.onStep, {
       step: "apply_home",
