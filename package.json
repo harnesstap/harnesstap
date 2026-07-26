@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "build:sidecar": "bun build --compile src/agent/entry.ts --outfile dist/sidecar/ht-agent",
     "dev": "tsup --watch",
     "start": "bun src/index.ts",
     "start:dist": "node dist/index.js",
@@ -35,6 +36,7 @@
     "docs:vhs": "bash scripts/generate-vhs-scenarios.sh",
     "check:scenario-docs": "bash scripts/check-scenario-docs.sh",
     "check:scenario-smoke": "bun test test/cli/scenario-smoke.test.ts",
+    "check:sqlite-wal-smoke": "bun scripts/sqlite-wal-write-smoke.ts",
     "sync:cloud-docs": "bash scripts/sync-cloud-cli-docs.sh"
   },
   "keywords": [
