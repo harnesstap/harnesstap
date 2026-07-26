@@ -1,0 +1,59 @@
+# HarnessTap Desktop
+
+Tauri 2 desktop app for the persona control plane (Variant A split pane).
+
+## Prerequisites
+
+- Bun 1.3+
+- Rust toolchain (for Tauri)
+- macOS: Xcode command line tools (for `.app` / `.dmg` builds)
+
+## Local development
+
+From the repo root:
+
+```bash
+bun run desktop:prepare-sidecar
+cd apps/desktop && bun install
+bun run tauri dev
+```
+
+The app spawns the bundled `ht-agent` sidecar, waits for `GET /v1/health`, then reads `~/.harnesstap/agent-token` for mutating API calls.
+
+### Web-only dev (no Tauri shell)
+
+```bash
+cd apps/desktop && bun install && bun run dev
+```
+
+In another terminal, start the agent manually:
+
+```bash
+bun run start -- agent serve
+```
+
+Set `VITE_AGENT_URL=http://127.0.0.1:7474` and `VITE_AGENT_TOKEN=$(cat ~/.harnesstap/agent-token)` when testing mutating routes in the browser.
+
+## Build macOS app
+
+```bash
+bun run desktop:build
+```
+
+Output: `apps/desktop/src-tauri/target/release/bundle/`
+
+## Sidecar embedding
+
+- Root `bun run build:sidecar` compiles `src/agent/entry.ts` → `dist/sidecar/ht-agent`
+- `apps/desktop/scripts/prepare-sidecar.sh` copies the binary to `src-tauri/binaries/ht-agent-<target-triple>`
+- `tauri.conf.json` lists `externalBin: ["binaries/ht-agent"]`
+
+## Dogfood checklist
+
+- [ ] Fresh machine: install app, no global `ht` required
+- [ ] Second launch focuses existing window (single-instance)
+- [ ] Sidecar health must succeed before UI shows connected
+- [ ] Persona rail lists profile-tagged layers
+- [ ] Switch shows SSE steps; Cancel disabled during apply step
+- [ ] Live panel G/Y/R from `GET /v1/status`
+- [ ] Project bootstrap banner when project drift is `na`

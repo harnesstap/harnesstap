@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 
@@ -17,4 +17,13 @@ export function writeAgentTokenFile(token: string): string {
   const tokenPath = getAgentTokenPath();
   writeFileSync(tokenPath, `${token}\n`, { encoding: "utf8", mode: 0o600 });
   return tokenPath;
+}
+
+export function readAgentTokenFile(): string | null {
+  const tokenPath = getAgentTokenPath();
+  if (!existsSync(tokenPath)) {
+    return null;
+  }
+  const token = readFileSync(tokenPath, "utf8").trim();
+  return token.length > 0 ? token : null;
 }
