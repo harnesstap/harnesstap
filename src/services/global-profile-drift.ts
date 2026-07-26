@@ -5,8 +5,26 @@ import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-s
 import { resolveLayerSelector } from "../models/layer-model.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
-import { applyProfileLayer, type ApplyProfileLayerResult } from "./profile-apply.js";
+import {
+  applyProfileLayer,
+  collectProfileLayerIds,
+  type ApplyProfileLayerResult,
+} from "./profile-apply.js";
+import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import type { DriftFileChange } from "./project-drift.js";
+import {
+  buildHarnessLiveStatusMap,
+  classifyGlobalDriftChanges,
+  collectOwnedGlobalProfileFiles,
+  computeGlobalProfilePanelStatus,
+  countMissingHarnessRows,
+  resolveProjectDriftSummary,
+  type GlobalProfileDriftSummary,
+  type GlobalProfilePanelStatus,
+  type GlobalProfileStatusDepth,
+  type HarnessLiveStatus,
+} from "./global-profile-status-panel.js";
 
 export interface GlobalProfileStatus {
   active_profile: string | null;
@@ -18,6 +36,11 @@ export interface GlobalProfileStatus {
   has_drift: boolean;
   changes: DriftFileChange[];
   warning?: string;
+  depth: GlobalProfileStatusDepth;
+  as_of: string;
+  panel: GlobalProfilePanelStatus;
+  harnesses: Record<string, HarnessLiveStatus>;
+  drift_summary: GlobalProfileDriftSummary;
 }
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
@@ -39,54 +62,195 @@ function layerIdsMatch(left: string[], right: string[]): boolean {
   return left.every((layerId, index) => layerId === right[index]);
 }
 
+function declaredMcpNamesFromExpectedApply(
+  expectedApply: ApplyProfileLayerResult,
+): Record<string, string[]> {
+  const byHarness: Record<string, string[]> = {};
+
+  for (const harnessId of expectedApply.harnesses) {
+    const mcpPaths = new Set<string>();
+    if (harnessId === "cursor") {
+      mcpPaths.add(".cursor/mcp.json");
+    } else if (harnessId === "claude-code") {
+      mcpPaths.add(".mcp.json");
+    }
+
+    const names = new Set<string>();
+    for (const file of expectedApply.expected_files ?? []) {
+      if (!mcpPaths.has(file.path)) {
+        continue;
+      }
+      try {
+        const document = JSON.parse(file.content) as unknown;
+        for (const name of Object.keys(parseMcpServersDocument(document))) {
+          names.add(name);
+        }
+      } catch {
+        // skip invalid MCP config payloads
+      }
+    }
+    byHarness[harnessId] = [...names];
+  }
+
+  return byHarness;
+}
+
+function declaredMcpNamesFromMergedLayers(layerIds: string[]): Record<string, string[]> {
+  const merged = mergeLayersForApply(layerIds);
+  const names = merged.resources
+    .filter((resource) => resource.type === "mcp_server")
+    .map((resource) => resource.name);
+  return {
+    "claude-code": names,
+    cursor: names,
+  };
+}
+
+function buildBaseStatusFields(input: {
+  depth: GlobalProfileStatusDepth;
+  activeProfile: string | null;
+  profileExists: boolean;
+  applied: boolean;
+  snapshotId: string | null;
+  snapshotAt: string | null;
+  stackInSync: boolean;
+  hasDrift: boolean;
+  changes: DriftFileChange[];
+  warning?: string;
+  projectPath?: string;
+  expectedApply?: ApplyProfileLayerResult;
+  layerIds?: string[];
+}): GlobalProfileStatus {
+  const asOf = new Date().toISOString();
+  const homeRoot = resolveHomeRoot();
+  const ownedFiles = collectOwnedGlobalProfileFiles(input.snapshotId);
+  const { owned, nonOwned } = classifyGlobalDriftChanges(input.changes, ownedFiles);
+
+  const declaredPins =
+    input.layerIds && input.layerIds.length > 0
+      ? mergeLayersForApply(input.layerIds).pluginPins
+      : [];
+  const declaredMcpByHarness =
+    input.expectedApply
+      ? declaredMcpNamesFromExpectedApply(input.expectedApply)
+      : input.layerIds
+        ? declaredMcpNamesFromMergedLayers(input.layerIds)
+        : { "claude-code": [], cursor: [] };
+
+  const harnesses = buildHarnessLiveStatusMap({
+    depth: input.depth,
+    homeRoot,
+    declaredPins,
+    declaredMcpByHarness,
+  });
+  const { missingPlugins, missingMcp } =
+    input.depth === "full"
+      ? countMissingHarnessRows(harnesses)
+      : { missingPlugins: 0, missingMcp: 0 };
+
+  const projectDrift = resolveProjectDriftSummary(input.projectPath);
+  const panel = computeGlobalProfilePanelStatus({
+    depth: input.depth,
+    applied: input.applied,
+    activeProfile: input.activeProfile,
+    stackInSync: input.stackInSync,
+    ownedDriftCount: owned.length,
+    nonOwnedDriftCount: nonOwned.length,
+    missingPluginCount: missingPlugins,
+    missingMcpCount: missingMcp,
+    projectDrift,
+    warning: input.warning,
+  });
+
+  const driftSummary: GlobalProfileDriftSummary = {
+    global: {
+      status: !input.applied
+        ? "pending"
+        : input.hasDrift
+          ? "drifted"
+          : "clean",
+      owned_changes: owned.length,
+      non_owned_changes: nonOwned.length,
+    },
+    ...(projectDrift ? { project: projectDrift } : {}),
+  };
+
+  return {
+    active_profile: input.activeProfile,
+    profile_exists: input.profileExists,
+    applied: input.applied,
+    snapshot_id: input.snapshotId,
+    snapshot_at: input.snapshotAt,
+    stack_in_sync: input.stackInSync,
+    has_drift: input.hasDrift,
+    changes: input.changes,
+    ...(input.warning ? { warning: input.warning } : {}),
+    depth: input.depth,
+    as_of: asOf,
+    panel,
+    harnesses,
+    drift_summary: driftSummary,
+  };
+}
+
 export async function detectGlobalProfileStatus(input: {
   harness?: string;
+  depth?: GlobalProfileStatusDepth;
+  projectPath?: string;
 } = {}): Promise<GlobalProfileStatus> {
+  const depth = input.depth ?? "full";
   const activeProfile = getActiveProfileName() ?? null;
   if (!activeProfile) {
-    return {
-      active_profile: null,
-      profile_exists: false,
+    return buildBaseStatusFields({
+      depth,
+      activeProfile: null,
+      profileExists: false,
       applied: false,
-      snapshot_id: null,
-      snapshot_at: null,
-      stack_in_sync: false,
-      has_drift: false,
+      snapshotId: null,
+      snapshotAt: null,
+      stackInSync: false,
+      hasDrift: false,
       changes: [],
-    };
+      projectPath: input.projectPath,
+    });
   }
 
   const layer = resolveLayerSelector(activeProfile);
   if (!layer) {
-    return {
-      active_profile: activeProfile,
-      profile_exists: false,
+    return buildBaseStatusFields({
+      depth,
+      activeProfile,
+      profileExists: false,
       applied: false,
-      snapshot_id: null,
-      snapshot_at: null,
-      stack_in_sync: false,
-      has_drift: true,
+      snapshotId: null,
+      snapshotAt: null,
+      stackInSync: false,
+      hasDrift: true,
       changes: [],
       warning: `missing layer "${activeProfile}"`,
-    };
+      projectPath: input.projectPath,
+    });
   }
 
   if (!isProfileLayer(layer)) {
-    return {
-      active_profile: activeProfile,
-      profile_exists: true,
+    return buildBaseStatusFields({
+      depth,
+      activeProfile,
+      profileExists: true,
       applied: false,
-      snapshot_id: null,
-      snapshot_at: null,
-      stack_in_sync: false,
-      has_drift: true,
+      snapshotId: null,
+      snapshotAt: null,
+      stackInSync: false,
+      hasDrift: true,
       changes: [],
       warning: `layer "${layer.name}" is not tagged as a profile`,
-    };
+      projectPath: input.projectPath,
+    });
   }
 
   const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
   const homeRoot = resolveHomeRoot();
+  const layerIds = collectProfileLayerIds(layer);
   let expectedApply: ApplyProfileLayerResult;
   try {
     expectedApply = await applyProfileLayer(activeProfile, {
@@ -96,17 +260,20 @@ export async function detectGlobalProfileStatus(input: {
       pull: false,
     });
   } catch (error) {
-    return {
-      active_profile: activeProfile,
-      profile_exists: true,
+    return buildBaseStatusFields({
+      depth,
+      activeProfile,
+      profileExists: true,
       applied: Boolean(latestSnapshot),
-      snapshot_id: latestSnapshot?.id ?? null,
-      snapshot_at: latestSnapshot?.created_at ?? null,
-      stack_in_sync: false,
-      has_drift: true,
+      snapshotId: latestSnapshot?.id ?? null,
+      snapshotAt: latestSnapshot?.created_at ?? null,
+      stackInSync: false,
+      hasDrift: true,
       changes: [],
       warning: error instanceof Error ? error.message : String(error),
-    };
+      projectPath: input.projectPath,
+      layerIds,
+    });
   }
 
   const stackInSync = latestSnapshot
@@ -128,14 +295,18 @@ export async function detectGlobalProfileStatus(input: {
   const applied = Boolean(latestSnapshot);
   const hasDrift = !applied || !stackInSync || changes.length > 0;
 
-  return {
-    active_profile: activeProfile,
-    profile_exists: true,
+  return buildBaseStatusFields({
+    depth,
+    activeProfile,
+    profileExists: true,
     applied,
-    snapshot_id: latestSnapshot?.id ?? null,
-    snapshot_at: latestSnapshot?.created_at ?? null,
-    stack_in_sync: stackInSync,
-    has_drift: hasDrift,
+    snapshotId: latestSnapshot?.id ?? null,
+    snapshotAt: latestSnapshot?.created_at ?? null,
+    stackInSync,
+    hasDrift,
     changes,
-  };
+    projectPath: input.projectPath,
+    expectedApply,
+    layerIds,
+  });
 }

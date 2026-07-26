@@ -446,19 +446,28 @@ profileCmd
 profileCmd
   .command("status")
   .option("--harness <slugs>", "Comma-separated harness slugs (defaults to global harness preference)")
+  .option("--depth <mode>", "Status scan depth: fast or full", "full")
+  .option("--project <path>", "Project directory for project drift checks")
   .option("--check", "Exit with code 1 when global state is out of sync with the active profile")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Show the active profile and whether global harness files are in sync")
   .action(async (opts: {
     harness?: string;
+    depth?: string;
+    project?: string;
     check?: boolean;
     format?: string;
   }) => {
     const db = getDb();
     initializeSchema(db);
     const format = parseOutputFormat(opts.format);
+    const depth = opts.depth === "fast" ? "fast" : "full";
     try {
-      const status = await detectGlobalProfileStatus({ harness: opts.harness });
+      const status = await detectGlobalProfileStatus({
+        harness: opts.harness,
+        depth,
+        projectPath: opts.project,
+      });
       if (format === "json") {
         printJson(status);
       } else if (!status.active_profile) {
