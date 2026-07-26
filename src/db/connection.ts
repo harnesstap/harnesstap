@@ -112,6 +112,7 @@ export function getDb(): SqliteDatabase {
   instancePath = dbPath;
   if (!completionMode) {
     instance.exec("PRAGMA journal_mode = WAL");
+    instance.exec("PRAGMA busy_timeout = 5000");
   }
   instance.exec("PRAGMA foreign_keys = ON");
 

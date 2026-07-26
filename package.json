@@ -35,6 +35,7 @@
     "docs:vhs": "bash scripts/generate-vhs-scenarios.sh",
     "check:scenario-docs": "bash scripts/check-scenario-docs.sh",
     "check:scenario-smoke": "bun test test/cli/scenario-smoke.test.ts",
+    "check:sqlite-wal-smoke": "bun scripts/sqlite-wal-write-smoke.ts",
     "sync:cloud-docs": "bash scripts/sync-cloud-cli-docs.sh"
   },
   "keywords": [
