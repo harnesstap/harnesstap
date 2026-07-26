@@ -1,10 +1,12 @@
 import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
+import { ensureDefaultProfileLayer } from "../services/ensure-default-profile.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
 import { createAgentFetchHandler } from "./routes.js";
 import {
   generateAgentToken,
   getAgentTokenPath,
+  writeAgentPortFile,
   writeAgentTokenFile,
 } from "./token.js";
 
@@ -15,6 +17,20 @@ const MAX_PORT_ATTEMPTS = 100;
 export interface AgentServeOptions {
   host?: string;
   port?: number;
+}
+
+function resolvePreferredPort(options: AgentServeOptions): number {
+  if (typeof options.port === "number") {
+    return options.port;
+  }
+  const fromEnv = process.env.HARNESSTAP_AGENT_PORT;
+  if (fromEnv) {
+    const parsed = Number.parseInt(fromEnv, 10);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 65_535) {
+      return parsed;
+    }
+  }
+  return DEFAULT_AGENT_PORT;
 }
 
 export interface AgentServer {
@@ -38,6 +54,9 @@ function isAddressInUseError(error: unknown): boolean {
 function bootAgentDatabase(): void {
   const db = getDb();
   initializeSchema(db);
+  // Fresh desktop installs never run `ht init`; seed a default profile so the
+  // rail and project bootstrap are never blocked on a CLI detour.
+  ensureDefaultProfileLayer();
 }
 
 function listenForAgent(
@@ -64,7 +83,7 @@ function listenForAgent(
 
 export function startAgentServer(options: AgentServeOptions = {}): AgentServer {
   const host = options.host ?? DEFAULT_AGENT_HOST;
-  const preferredPort = options.port ?? DEFAULT_AGENT_PORT;
+  const preferredPort = resolvePreferredPort(options);
   const token = generateAgentToken();
 
   bootAgentDatabase();
@@ -75,6 +94,7 @@ export function startAgentServer(options: AgentServeOptions = {}): AgentServer {
   const { server, port } = listenForAgent(host, preferredPort, fetch);
   boundPort = port;
   const tokenPath = writeAgentTokenFile(token);
+  writeAgentPortFile(port);
   const url = `http://${host}:${port}`;
 
   return {

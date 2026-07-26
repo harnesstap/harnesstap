@@ -164,6 +164,28 @@ layer = "missing-layer"
     }
   });
 
+  it("seeds a default profile when config init runs with none", async () => {
+    const context = await createTestContext("cli-config-init-empty");
+
+    try {
+      await runCli(["init", "--no-default-profile"]);
+      const result = await runCli(["config", "init", "--no-interactive"]);
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.stdout).toContain("Created project config");
+      expect(result.stdout).toContain("default");
+
+      const show = await runCli(["config", "show", "--format", "json"]);
+      const payload = JSON.parse(show.stdout);
+      expect(payload.default_profile).toBe("default");
+      expect(payload.profiles).toEqual([
+        expect.objectContaining({ name: "default" }),
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("refuses to overwrite existing project config without --force", async () => {
     const context = await createTestContext("cli-config-init-existing");
 

@@ -23,7 +23,7 @@ import {
 export type AgentSwitchScope = "home" | "project" | "both";
 
 export interface AgentSwitchRequest {
-  persona: string;
+  profile: string;
   scope: AgentSwitchScope;
   projectPath?: string;
   confirmOwnedOverwrite?: boolean;
@@ -77,7 +77,7 @@ export async function preflightAgentSwitchOwnedOverwrite(
     return { conflict: false };
   }
 
-  const summary = await agentSwitchDeps.detectProfileOwnedOverwriteConflicts(request.persona, {
+  const summary = await agentSwitchDeps.detectProfileOwnedOverwriteConflicts(request.profile, {
     harness: request.harness,
   });
   if (summary.paths.length === 0) {
@@ -94,7 +94,7 @@ async function runHomeSwitch(
     emitAgentSwitchStep(session, event);
   };
 
-  return agentSwitchDeps.switchProfile(request.persona, {
+  return agentSwitchDeps.switchProfile(request.profile, {
     apply: {
       harness: request.harness,
       conflictPolicy: "replace",
@@ -113,20 +113,20 @@ async function runProjectSwitch(
   emitAgentSwitchStep(session, {
     step: "apply_project",
     status: "started",
-    profile_name: request.persona,
+    profile_name: request.profile,
   });
 
   if (isAgentSwitchCancelled(session)) {
     emitAgentSwitchStep(session, {
       step: "apply_project",
       status: "cancelled",
-      profile_name: request.persona,
+      profile_name: request.profile,
     });
     return { cancelled: true };
   }
 
   const result = await agentSwitchDeps.executeProjectUse({
-    profile: request.persona,
+    profile: request.profile,
     project: projectPath,
     noInteractive: true,
     format: "json",
@@ -139,7 +139,7 @@ async function runProjectSwitch(
     emitAgentSwitchStep(session, {
       step: "apply_project",
       status: "completed",
-      profile_name: request.persona,
+      profile_name: request.profile,
     });
     return result;
   }
@@ -147,7 +147,7 @@ async function runProjectSwitch(
   emitAgentSwitchStep(session, {
     step: "apply_project",
     status: "completed",
-    profile_name: request.persona,
+    profile_name: request.profile,
   });
   return result;
 }
@@ -207,7 +207,7 @@ export async function startAgentSwitch(
       emitAgentSwitchStep(session, {
         step: "complete",
         status: "completed",
-        profile_name: request.persona,
+        profile_name: request.profile,
       });
 
       emitAgentSwitchFinal(session, {
@@ -215,7 +215,7 @@ export async function startAgentSwitch(
         ok: true,
         result: {
           scope: request.scope,
-          persona: request.persona,
+          profile: request.profile,
           ...(projectPath ? { project_path: projectPath } : {}),
           ...(homeResult ? { home: homeResult } : {}),
           ...(projectResult !== undefined ? { project: projectResult } : {}),

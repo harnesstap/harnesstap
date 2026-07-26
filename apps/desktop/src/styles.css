@@ -33,7 +33,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -63,6 +64,11 @@ button:focus-visible,
   background: var(--surface);
 }
 
+.app-header-brand {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 0.95rem;
@@ -73,6 +79,108 @@ button:focus-visible,
   color: var(--muted);
   font-family: var(--mono);
   font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.project-picker {
+  position: relative;
+  flex: 1 1 240px;
+  max-width: 420px;
+  min-width: 0;
+}
+
+.project-picker-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--fg);
+  text-align: left;
+}
+
+.project-picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-picker-caret {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.project-picker-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.project-picker-filter {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.55rem 0.65rem;
+}
+
+.project-picker-list {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.project-picker-empty {
+  padding: 0.75rem 0.65rem;
+  font-size: 13px;
+}
+
+.project-picker-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  padding: 0.55rem 0.65rem;
+}
+
+.project-picker-item:hover,
+.project-picker-item.selected {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.project-picker-item-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.project-picker-item-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-picker-footer {
+  padding: 0.45rem 0.55rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .layout {
@@ -82,7 +190,7 @@ button:focus-visible,
   min-height: 0;
 }
 
-.personas-rail {
+.profiles-rail {
   border-right: 1px solid var(--border);
   background: var(--surface);
   display: flex;
@@ -90,19 +198,44 @@ button:focus-visible,
   min-height: 0;
 }
 
-.personas-brand {
+.profiles-brand {
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--border);
   font-weight: 600;
   font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.personas-list {
+.profiles-brand-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.rail-create-button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  padding: 0.2rem;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rail-create-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.profiles-list {
   flex: 1;
   overflow: auto;
 }
 
-.persona-item {
+.profile-item {
   width: 100%;
   text-align: left;
   border: 0;
@@ -113,17 +246,17 @@ button:focus-visible,
   min-height: 44px;
 }
 
-.persona-item.active {
+.profile-item.active {
   background: color-mix(in srgb, var(--green) 8%, var(--surface));
 }
 
-.persona-item.selected {
+.profile-item.selected {
   background: var(--surface-2);
   border-left: 2px solid var(--accent);
   padding-left: calc(0.75rem - 2px);
 }
 
-.persona-item .badge {
+.profile-item .badge {
   font-size: 10px;
   color: var(--green);
   margin-left: 0.35rem;
@@ -209,11 +342,25 @@ button:focus-visible,
   font-weight: 600;
 }
 
+.status-subline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+  font-size: 12px;
+}
+
+.status-sep {
+  opacity: 0.55;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   display: inline-block;
+  flex: 0 0 auto;
 }
 
 .status-dot.green {
@@ -378,6 +525,359 @@ button:focus-visible,
   margin-top: 1rem;
 }
 
+.create-profile-backdrop {
+  z-index: 40;
+  padding: 0;
+  place-items: stretch end;
+}
+
+.create-profile-dialog {
+  width: min(560px, 100%);
+  height: 100%;
+  max-height: 100vh;
+  border-radius: 8px 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.35);
+}
+
+.create-profile-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.create-profile-header h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.create-profile-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.55rem 0.65rem;
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: var(--accent);
+}
+
+.source-picker,
+.selection-list,
+.conflict-policy {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.source-picker > legend,
+.selection-list > legend,
+.conflict-policy > legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.source-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.source-picker > legend {
+  grid-column: 1 / -1;
+}
+
+.source-option {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.55rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.source-option.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
+}
+
+.source-option:has(input:disabled) {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.source-option span,
+.selection-row span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.source-option strong,
+.selection-row strong {
+  font-size: 12px;
+}
+
+.source-option small,
+.selection-row small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.field-note {
+  margin: -0.5rem 0 0;
+  font-size: 11px;
+}
+
+.compose-library {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.selection-list-rows {
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.selection-list-rows > p {
+  margin: 0;
+  padding: 0.7rem;
+  font-size: 11px;
+}
+
+.selection-row {
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.selection-row:last-child {
+  border-bottom: 0;
+}
+
+.selection-row:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+
+.create-preview {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  font-size: 12px;
+}
+
+.preview-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preview-count strong {
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 16px;
+}
+
+.conflict-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--yellow);
+}
+
+.conflict-policy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.conflict-policy label,
+.switch-after-create {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.switch-after-create {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.create-profile-actions {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.create-profile-actions .btn {
+  width: auto;
+  min-width: 110px;
+}
+
+.cloud-browse-dialog {
+  width: min(680px, 100%);
+}
+
+.cloud-browse-body {
+  min-height: 0;
+}
+
+.cloud-browser {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.85fr) minmax(0, 1.15fr);
+  min-height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.cloud-results {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.cloud-list-message {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: 12px;
+}
+
+.cloud-result {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  padding: 0.65rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cloud-result:hover,
+.cloud-result.selected {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+
+.cloud-result.selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.cloud-result small {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.cloud-preview {
+  padding: 1rem;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.cloud-preview h3,
+.cloud-auth-state h3 {
+  margin: 0.2rem 0 0;
+  font-size: 1rem;
+}
+
+.cloud-preview p {
+  overflow-wrap: anywhere;
+}
+
+.cloud-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cloud-auth-state {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.cloud-auth-state p {
+  margin-bottom: 0;
+}
+
+.cloud-browse-body .banner .btn {
+  width: auto;
+}
+
 .success-flash {
   color: var(--green);
   font-size: 13px;
@@ -388,8 +888,24 @@ button:focus-visible,
     grid-template-columns: 1fr;
   }
 
-  .personas-rail {
+  .profiles-rail {
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+
+  .source-picker,
+  .compose-library,
+  .cloud-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .cloud-results {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    max-height: 220px;
+  }
+
+  .create-profile-dialog {
+    border-radius: 0;
   }
 }

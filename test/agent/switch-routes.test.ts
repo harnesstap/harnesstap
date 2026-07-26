@@ -158,7 +158,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     expect(started.status).toBe(202);
@@ -181,7 +181,7 @@ describe("agent switch routes", () => {
     const unauthorized = await fetch(
       new Request("http://127.0.0.1/v1/switch", {
         method: "POST",
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     expect(unauthorized.status).toBe(401);
@@ -193,7 +193,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     const { id } = await started.json();
@@ -212,7 +212,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     expect(started.status).toBe(202);
@@ -252,7 +252,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     const { id } = await started.json();
@@ -300,7 +300,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     const { id } = await started.json();
@@ -352,7 +352,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "target", scope: "home" }),
+        body: JSON.stringify({ profile: "target", scope: "home" }),
       }),
     );
     expect(response.status).toBe(409);
@@ -372,7 +372,7 @@ describe("agent switch routes", () => {
           authorization: "Bearer test-token",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ persona: "work", scope: "project" }),
+        body: JSON.stringify({ profile: "work", scope: "project" }),
       }),
     );
     expect(response.status).toBe(400);

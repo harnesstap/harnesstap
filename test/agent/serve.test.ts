@@ -9,7 +9,6 @@ import {
   requireAgentBearerAuth,
 } from "../../src/agent/auth.ts";
 import {
-  DEFAULT_AGENT_PORT,
   startAgentServer,
 } from "../../src/agent/serve.ts";
 import {
@@ -92,9 +91,35 @@ describe("agent serve", () => {
 
   it("uses the default port when available", () => {
     withIsolatedHome();
-    const server = startAgentServer();
+    const server = startAgentServer({ port: 18_734 });
     servers.push(server);
-    expect(server.port).toBe(DEFAULT_AGENT_PORT);
+    expect(server.port).toBe(18_734);
+  });
+
+  it("adds CORS headers for loopback browser origins", async () => {
+    withIsolatedHome();
+    const server = startAgentServer({ port: 0 });
+    servers.push(server);
+
+    const response = await fetch(`${server.url}/v1/health`, {
+      headers: { Origin: "http://localhost:1420" },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:1420",
+    );
+
+    const preflight = await fetch(`${server.url}/v1/switch`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://localhost:1420",
+        "Access-Control-Request-Method": "POST",
+      },
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:1420",
+    );
   });
 
   it("requires bearer auth for mutating routes", async () => {

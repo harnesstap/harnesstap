@@ -1,6 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command as StdCommand;
 use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
 
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_shell::process::CommandEvent;
@@ -8,7 +11,9 @@ use tauri_plugin_shell::ShellExt;
 
 struct SidecarState {
     child: Mutex<Option<tauri_plugin_shell::process::CommandChild>>,
+    process: Mutex<Option<std::process::Child>>,
     port: Mutex<Option<u16>>,
+    starting: Mutex<bool>,
 }
 
 struct AppState {
@@ -29,6 +34,54 @@ fn agent_token_path() -> PathBuf {
     harnesstap_home().join("agent-token")
 }
 
+fn agent_port_path() -> PathBuf {
+    harnesstap_home().join("agent-port")
+}
+
+fn sidecar_binary_path() -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "missing executable directory".to_string())?;
+    let candidate = dir.join("ht-agent");
+    if candidate.exists() {
+        return Ok(candidate);
+    }
+    Err(format!("sidecar binary not found at {}", candidate.display()))
+}
+
+fn read_port_file() -> Option<u16> {
+    let raw = fs::read_to_string(agent_port_path()).ok()?;
+    let port = raw.trim().parse::<u16>().ok()?;
+    if port == 0 {
+        None
+    } else {
+        Some(port)
+    }
+}
+
+fn process_is_running(child: &mut std::process::Child) -> bool {
+    match child.try_wait() {
+        Ok(None) => true,
+        Ok(Some(_)) => false,
+        Err(_) => false,
+    }
+}
+
+fn stop_managed_process(state: &AppState) {
+    if let Ok(mut process_guard) = state.sidecar.process.lock() {
+        if let Some(mut child) = process_guard.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+    if let Ok(mut child_guard) = state.sidecar.child.lock() {
+        if let Some(child) = child_guard.take() {
+            let _ = child.kill();
+        }
+    }
+}
+
 #[tauri::command]
 fn read_agent_token() -> Result<Option<String>, String> {
     let path = agent_token_path();
@@ -46,46 +99,24 @@ fn read_agent_token() -> Result<Option<String>, String> {
 
 #[tauri::command]
 fn get_sidecar_port(state: State<'_, AppState>) -> Result<Option<u16>, String> {
+    if let Some(port) = read_port_file() {
+        if let Ok(mut guard) = state.sidecar.port.lock() {
+            *guard = Some(port);
+        }
+        return Ok(Some(port));
+    }
     Ok(*state.sidecar.port.lock().map_err(|_| "lock poisoned")?)
 }
 
-#[tauri::command]
-fn get_project_path() -> Result<String, String> {
-    Ok(std::env::current_dir()
-        .map_err(|error| error.to_string())?
-        .to_string_lossy()
-        .to_string())
-}
-
-#[tauri::command]
-async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    {
-        let child_guard = state
-            .sidecar
-            .child
-            .lock()
-            .map_err(|_| "lock poisoned".to_string())?;
-        if child_guard.is_some() {
-            return Ok(());
-        }
-    }
-
+fn spawn_sidecar_via_shell(
+    app: &AppHandle,
+) -> Result<tauri_plugin_shell::process::CommandChild, String> {
     let sidecar = app
         .shell()
         .sidecar("ht-agent")
-        .map_err(|error| error.to_string())?;
-
+        .map_err(|error| error.to_string())?
+        .env("HARNESSTAP_AGENT_PORT", "7474");
     let (mut rx, child) = sidecar.spawn().map_err(|error| error.to_string())?;
-
-    {
-        let mut child_guard = state
-            .sidecar
-            .child
-            .lock()
-            .map_err(|_| "lock poisoned".to_string())?;
-        *child_guard = Some(child);
-    }
-
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             if let CommandEvent::Terminated(payload) = event {
@@ -94,14 +125,144 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<(),
             }
         }
     });
+    Ok(child)
+}
 
-    Ok(())
+fn spawn_sidecar_via_process() -> Result<std::process::Child, String> {
+    let path = sidecar_binary_path()?;
+    let mut command = StdCommand::new(path);
+    command.env("HARNESSTAP_AGENT_PORT", "7474");
+    // Ensure the sidecar uses the same home resolution as the desktop shell.
+    if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
+        command.env("HARNESSTAP_HOME", home);
+    }
+    command
+        .spawn()
+        .map_err(|error| format!("failed to spawn sidecar process: {error}"))
+}
+
+fn wait_for_port_file(timeout_ms: u64) -> Option<u16> {
+    let attempts = timeout_ms / 50;
+    for _ in 0..attempts {
+        if let Some(port) = read_port_file() {
+            return Some(port);
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+    None
+}
+
+#[tauri::command]
+async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16, String> {
+    {
+        let mut process_guard = state
+            .sidecar
+            .process
+            .lock()
+            .map_err(|_| "lock poisoned".to_string())?;
+        if let Some(child) = process_guard.as_mut() {
+            if process_is_running(child) {
+                if let Some(port) = read_port_file() {
+                    *state
+                        .sidecar
+                        .port
+                        .lock()
+                        .map_err(|_| "lock poisoned".to_string())? = Some(port);
+                    return Ok(port);
+                }
+                return Ok(7474);
+            }
+            let _ = child.kill();
+            let _ = child.wait();
+            *process_guard = None;
+        }
+    }
+
+    {
+        let child_guard = state
+            .sidecar
+            .child
+            .lock()
+            .map_err(|_| "lock poisoned".to_string())?;
+        if child_guard.is_some() {
+            if let Some(port) = read_port_file() {
+                return Ok(port);
+            }
+        }
+    }
+
+    {
+        let mut starting = state
+            .sidecar
+            .starting
+            .lock()
+            .map_err(|_| "lock poisoned".to_string())?;
+        if *starting {
+            drop(starting);
+            let port = wait_for_port_file(5_000).unwrap_or(7474);
+            return Ok(port);
+        }
+        *starting = true;
+    }
+
+    let spawn_result = (|| {
+        match spawn_sidecar_via_process() {
+            Ok(child) => {
+                let mut process_guard = state
+                    .sidecar
+                    .process
+                    .lock()
+                    .map_err(|_| "lock poisoned".to_string())?;
+                *process_guard = Some(child);
+                Ok(())
+            }
+            Err(process_error) => {
+                eprintln!("process sidecar spawn failed, trying shell: {process_error}");
+                match spawn_sidecar_via_shell(&app) {
+                    Ok(child) => {
+                        let mut child_guard = state
+                            .sidecar
+                            .child
+                            .lock()
+                            .map_err(|_| "lock poisoned".to_string())?;
+                        *child_guard = Some(child);
+                        Ok(())
+                    }
+                    Err(shell_error) => Err(format!(
+                        "sidecar spawn failed (process: {process_error}; shell: {shell_error})"
+                    )),
+                }
+            }
+        }
+    })();
+
+    if let Ok(mut starting) = state.sidecar.starting.lock() {
+        *starting = false;
+    }
+
+    spawn_result?;
+
+    let port = wait_for_port_file(5_000).unwrap_or(7474);
+    *state
+        .sidecar
+        .port
+        .lock()
+        .map_err(|_| "lock poisoned".to_string())? = Some(port);
+    Ok(port)
+}
+
+#[tauri::command]
+async fn restart_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16, String> {
+    stop_managed_process(&state);
+    thread::sleep(Duration::from_millis(150));
+    start_sidecar(app, state).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -111,14 +272,16 @@ pub fn run() {
         .manage(AppState {
             sidecar: SidecarState {
                 child: Mutex::new(None),
+                process: Mutex::new(None),
                 port: Mutex::new(Some(7474)),
+                starting: Mutex::new(false),
             },
         })
         .invoke_handler(tauri::generate_handler![
             start_sidecar,
+            restart_sidecar,
             read_agent_token,
-            get_sidecar_port,
-            get_project_path
+            get_sidecar_port
         ])
         .run(tauri::generate_context!())
         .expect("error while running HarnessTap desktop");

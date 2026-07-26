@@ -1,5 +1,6 @@
 import { listProfileLayers } from "../constants/profile.js";
 import { getActiveProfileName } from "./active-profile.js";
+import { ensureDefaultProfileLayer } from "./ensure-default-profile.js";
 import { writeStarterProjectConfig } from "./project-config-write.js";
 import { promptForChoice, shouldUseWizard } from "./wizards/shared.js";
 import { promptForSearchableMultiSelect } from "./wizards/searchable-multi-select.js";
@@ -110,11 +111,10 @@ export async function executeConfigInit(
   options: ConfigInitOptions = {},
 ): Promise<ConfigInitResult> {
   const projectPath = options.project ?? process.cwd();
+  ensureDefaultProfileLayer();
   const availableNames = listProfileLayers().map((layer) => layer.name);
   if (availableNames.length === 0) {
-    throw new Error(
-      "No profile layers found. Create at least one with `ht profile create <name>` before running `ht config init`.",
-    );
+    throw new Error("Failed to ensure a default profile layer.");
   }
 
   const needsProfilePrompt = !options.profiles?.length;

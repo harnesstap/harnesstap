@@ -1,4 +1,18 @@
 import { requireAgentBearerAuth } from "./auth.js";
+import {
+  handleLibraryLayers,
+  handleLibraryResources,
+} from "./profile-library-handlers.js";
+import {
+  handleProfileCreate,
+  handleProfileCreatePreview,
+  handleProfileTag,
+} from "./profile-create-handlers.js";
+import {
+  createProfileCloudHandlers,
+  type ProfileCloudHandlers,
+} from "./profile-cloud-handlers.js";
+import { jsonResponse } from "./http.js";
 import { PACKAGE_VERSION } from "../version.js";
 import {
   detectGlobalProfileStatus,
@@ -23,9 +37,54 @@ import {
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { listProfileLayersCommand } from "../services/profile-commands.js";
 import { executeConfigInit } from "../services/config-init.js";
+import { findProjectConfig } from "../services/project-config.js";
 
-function jsonResponse(body: unknown, init?: ResponseInit): Response {
-  return Response.json(body, init);
+export type ProfileViewScope = "home" | "project";
+
+export interface ProfileSummaryPayload {
+  name: string;
+  version: string;
+  tags: string[];
+  description: string | null;
+  scopes: ProfileViewScope[];
+}
+
+function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
+  const byName = new Map<string, ProfileSummaryPayload>();
+
+  for (const profile of listProfileLayersCommand()) {
+    byName.set(profile.name, {
+      name: profile.name,
+      version: profile.version,
+      tags: profile.tags,
+      description: profile.description ?? null,
+      scopes: ["home"],
+    });
+  }
+
+  if (projectPath) {
+    const config = findProjectConfig(projectPath);
+    if (config) {
+      for (const entry of config.profiles) {
+        const existing = byName.get(entry.name);
+        if (existing) {
+          if (!existing.scopes.includes("project")) {
+            existing.scopes = [...existing.scopes, "project"];
+          }
+          continue;
+        }
+        byName.set(entry.name, {
+          name: entry.name,
+          version: "",
+          tags: ["profile"],
+          description: null,
+          scopes: ["project"],
+        });
+      }
+    }
+  }
+
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function parseStatusDepth(value: string | null): GlobalProfileStatusDepth | Response {
@@ -49,6 +108,7 @@ export interface AgentRouteDeps {
   requestAgentSwitchCancel: typeof requestAgentSwitchCancel;
   subscribeAgentSwitchEvents: typeof subscribeAgentSwitchEvents;
   isAgentSwitchInProgress: typeof isAgentSwitchInProgress;
+  profileCloudHandlers: ProfileCloudHandlers;
 }
 
 export function createDefaultAgentRouteDeps(): AgentRouteDeps {
@@ -60,6 +120,7 @@ export function createDefaultAgentRouteDeps(): AgentRouteDeps {
     requestAgentSwitchCancel,
     subscribeAgentSwitchEvents,
     isAgentSwitchInProgress,
+    profileCloudHandlers: createProfileCloudHandlers(),
   };
 }
 
@@ -100,9 +161,9 @@ function parseSwitchRequest(body: unknown): AgentSwitchRequest | Response {
     return jsonResponse({ error: "invalid_body" }, { status: 400 });
   }
 
-  const persona = body.persona;
-  if (typeof persona !== "string" || persona.trim().length === 0) {
-    return jsonResponse({ error: "invalid_persona" }, { status: 400 });
+  const profile = body.profile;
+  if (typeof profile !== "string" || profile.trim().length === 0) {
+    return jsonResponse({ error: "invalid_profile" }, { status: 400 });
   }
 
   const scope = parseSwitchScope(body.scope);
@@ -116,7 +177,7 @@ function parseSwitchRequest(body: unknown): AgentSwitchRequest | Response {
   const harness = typeof body.harness === "string" ? body.harness : undefined;
 
   return {
-    persona: persona.trim(),
+    profile: profile.trim(),
     scope,
     ...(projectPath ? { projectPath } : {}),
     ...(confirmOwnedOverwrite ? { confirmOwnedOverwrite } : {}),
@@ -130,7 +191,7 @@ function formatSseEvent(payload: ProfileSwitchStepEvent | AgentSwitchFinalEvent)
 
 export interface AgentRouteHandlers {
   handleHealth(): Response;
-  handlePersonas(): Response;
+  handleProfiles(request: Request): Response;
   handleStatus(request: Request): Promise<Response>;
   handleBootstrap(request: Request): Promise<Response>;
   handleSwitch(request: Request): Promise<Response>;
@@ -152,14 +213,11 @@ export function createAgentRouteHandlers(
       });
     },
 
-    handlePersonas() {
-      const personas = listProfileLayersCommand().map((profile) => ({
-        name: profile.name,
-        version: profile.version,
-        tags: profile.tags,
-        description: profile.description ?? null,
-      }));
-      return jsonResponse({ personas });
+    handleProfiles(request) {
+      const projectPath = new URL(request.url).searchParams.get("projectPath") ?? undefined;
+      return jsonResponse({
+        profiles: listProfilesWithScopes(projectPath || undefined),
+      });
     },
 
     async handleStatus(request) {
@@ -202,18 +260,32 @@ export function createAgentRouteHandlers(
         return jsonResponse({ error: "projectPath_required" }, { status: 400 });
       }
 
+      const projectPath = (body as { projectPath: string }).projectPath;
+      const profilesRaw = (body as { profiles?: unknown }).profiles;
+      const defaultProfileRaw = (body as { defaultProfile?: unknown }).defaultProfile;
+      const profiles = Array.isArray(profilesRaw)
+        ? profilesRaw.filter((name): name is string => typeof name === "string" && name.length > 0)
+        : undefined;
+      const defaultProfile =
+        typeof defaultProfileRaw === "string" && defaultProfileRaw.length > 0
+          ? defaultProfileRaw
+          : undefined;
+
       try {
         const result = await executeConfigInit({
-          project: (body as { projectPath: string }).projectPath,
+          project: projectPath,
+          ...(profiles && profiles.length > 0 ? { profiles } : {}),
+          ...(defaultProfile ? { defaultProfile } : {}),
           noInteractive: true,
           format: "json",
         });
         return jsonResponse(result);
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         return jsonResponse(
           {
             error: "bootstrap_failed",
-            message: error instanceof Error ? error.message : String(error),
+            message,
           },
           { status: 500 },
         );
@@ -349,54 +421,114 @@ export function createAgentRouteHandlers(
   };
 }
 
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      (url.hostname === "localhost"
+        || url.hostname === "127.0.0.1"
+        || url.hostname === "[::1]"
+        || url.hostname === "::1")
+      && (url.protocol === "http:" || url.protocol === "https:")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function withCors(request: Request, response: Response): Response {
+  const origin = request.headers.get("Origin");
+  if (!origin || !isLoopbackOrigin(origin)) {
+    return response;
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Credentials", "true");
+  headers.set(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, Accept",
+  );
+  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
+  headers.set("Vary", "Origin");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export function createAgentFetchHandler(
   token: string,
   port: number,
   deps?: AgentRouteDeps,
 ): (request: Request) => Response | Promise<Response> {
-  const handlers = createAgentRouteHandlers(token, port, deps);
+  const routeDeps = deps ?? createDefaultAgentRouteDeps();
+  const handlers = createAgentRouteHandlers(token, port, routeDeps);
 
-  return (request) => {
+  return async (request) => {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
 
+    if (method === "OPTIONS") {
+      return withCors(request, new Response(null, { status: 204 }));
+    }
+
+    let response: Response;
     if (method === "GET" && url.pathname === "/v1/health") {
-      return handlers.handleHealth();
-    }
-
-    if (method === "GET" && url.pathname === "/v1/personas") {
-      return handlers.handlePersonas();
-    }
-
-    if (method === "GET" && url.pathname === "/v1/status") {
-      return handlers.handleStatus(request);
-    }
-
-    if (method === "POST" && url.pathname === "/v1/bootstrap") {
-      return handlers.handleBootstrap(request);
-    }
-
-    if (method === "POST" && url.pathname === "/v1/switch") {
-      return handlers.handleSwitch(request);
-    }
-
-    const eventsMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/events$/);
-    if (method === "GET" && eventsMatch) {
-      return handlers.handleSwitchEvents(eventsMatch[1] ?? "", request);
-    }
-
-    const cancelMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/cancel$/);
-    if (method === "POST" && cancelMatch) {
-      return handlers.handleSwitchCancel(cancelMatch[1] ?? "", request);
-    }
-
-    if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+      response = handlers.handleHealth();
+    } else if (method === "GET" && url.pathname === "/v1/profiles") {
+      response = handlers.handleProfiles(request);
+    } else if (method === "POST" && url.pathname === "/v1/profiles/preview") {
+      response = await handleProfileCreatePreview(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/profiles") {
+      response = await handleProfileCreate(
+        request,
+        token,
+        routeDeps.isAgentSwitchInProgress,
+      );
+    } else if (method === "GET" && url.pathname === "/v1/profiles/cloud") {
+      response = await routeDeps.profileCloudHandlers.handleBrowse(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/profiles/cloud/pull") {
+      response = await routeDeps.profileCloudHandlers.handlePull(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/status") {
+      response = await handlers.handleStatus(request);
+    } else if (method === "POST" && url.pathname === "/v1/bootstrap") {
+      response = await handlers.handleBootstrap(request);
+    } else if (method === "POST" && url.pathname === "/v1/switch") {
+      response = await handlers.handleSwitch(request);
+    } else if (method === "GET" && url.pathname === "/v1/library/layers") {
       const authError = requireAgentBearerAuth(request, token);
-      if (authError) {
-        return authError;
+      response = authError ?? handleLibraryLayers();
+    } else if (method === "GET" && url.pathname === "/v1/library/resources") {
+      const authError = requireAgentBearerAuth(request, token);
+      response = authError ?? handleLibraryResources();
+    } else {
+      const tagMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/tag$/);
+      if (method === "POST" && tagMatch) {
+        response = handleProfileTag(
+          request,
+          token,
+          decodeURIComponent(tagMatch[1] ?? ""),
+        );
+      } else {
+        const eventsMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/events$/);
+        if (method === "GET" && eventsMatch) {
+          response = handlers.handleSwitchEvents(eventsMatch[1] ?? "", request);
+        } else if (method !== "GET" && method !== "HEAD") {
+          const cancelMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/cancel$/);
+          if (method === "POST" && cancelMatch) {
+            response = handlers.handleSwitchCancel(cancelMatch[1] ?? "", request);
+          } else {
+            const authError = requireAgentBearerAuth(request, token);
+            response = authError ?? jsonResponse({ error: "not_found" }, { status: 404 });
+          }
+        } else {
+          response = jsonResponse({ error: "not_found" }, { status: 404 });
+        }
       }
     }
 
-    return jsonResponse({ error: "not_found" }, { status: 404 });
+    return withCors(request, response);
   };
 }

@@ -1,6 +1,6 @@
 # HarnessTap Desktop
 
-Tauri 2 desktop app for the persona control plane (Variant A split pane).
+Tauri 2 desktop app for the profile control plane (Variant A split pane).
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ Output: `apps/desktop/src-tauri/target/release/bundle/`
 - [ ] Fresh machine: install app, no global `ht` required
 - [ ] Second launch focuses existing window (single-instance)
 - [ ] Sidecar health must succeed before UI shows connected
-- [ ] Persona rail lists profile-tagged layers
+- [ ] Profiles rail lists profile-tagged layers (default seeded on first boot)
 - [ ] Switch shows SSE steps; Cancel disabled during apply step
 - [ ] Live panel G/Y/R from `GET /v1/status`
-- [ ] Project bootstrap banner when project drift is `na`
+- [ ] Project view auto-bootstraps `.harnesstap/config.toml` on first use

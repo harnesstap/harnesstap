@@ -1,6 +1,6 @@
 # HarnessTap Desktop UI Design
 
-Visual language for the Tauri-embedded persona control plane (Variant A).
+Visual language for the Tauri-embedded profile control plane (Variant A).
 
 ## Classifier
 
@@ -8,7 +8,7 @@ App UI (not marketing). Anti-slop: no purple/violet gradients, no 3-column featu
 
 ## Theme
 
-Dark dense ops chrome. Reference wireframe: split pane with personas rail (~220px) and live state workspace.
+Dark dense ops chrome. Reference wireframe: split pane with profiles rail (~220px) and live state workspace.
 
 ## Typography
 
@@ -29,13 +29,14 @@ Dark dense ops chrome. Reference wireframe: split pane with personas rail (~220p
 
 ## Layout
 
-- Variant A: personas left rail, live state right
+- Variant A: profiles left rail, live state right
 - Below ~720px: stack rail above live pane
-- Landmarks: `nav` (personas), `main` (live)
+- Landmarks: `nav` (profiles), `main` (live)
 
 ## Interaction locks
 
-- Select persona → Switch commits (clicking a persona does not switch)
-- Scope: Home | Project | Both
+- Select profile → Switch commits (clicking a profile does not switch)
+- View: Home | Project (not a third “Both” mode). Switch applies to the current view only.
+- Profiles enabled in home appear in Home; profiles in project config appear in Project; enabled in both appear in both views.
 - Right pane is always machine live state; target preview is a separate drawer
 - Switching mode: yellow panel, ordered steps, cancel disabled during apply step

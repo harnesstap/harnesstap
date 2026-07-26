@@ -1,12 +1,111 @@
 export type PanelTrafficStatus = "green" | "yellow" | "red";
-export type SwitchScope = "home" | "project" | "both";
+export type ViewScope = "home" | "project";
+/** Agent switch still accepts "both"; the UI only offers Home|Project views. */
+export type SwitchScope = ViewScope | "both";
 export type GlobalProfileStatusDepth = "fast" | "full";
 
-export interface PersonaSummary {
+export interface ProfileSummary {
   name: string;
   version: string;
   tags: string[];
   description: string | null;
+  /** Where this profile is enabled; appears in each matching Home/Project view. */
+  scopes: ViewScope[];
+}
+
+export interface LibraryLayer {
+  id: string;
+  name: string;
+  version: string;
+  tags: string[];
+  description: string | null;
+}
+
+export interface LibraryResource {
+  id: string;
+  name: string;
+  type: string;
+  namespace: string | null;
+  description: string | null;
+}
+
+export type ProfileCreateSource = "compose" | "home" | "project";
+export type ProfileConflictPolicy = "skip" | "overwrite";
+
+interface ProfileCreateCommon {
+  name: string;
+  description?: string;
+  use?: boolean;
+}
+
+export interface ProfileCreateComposeRequest extends ProfileCreateCommon {
+  source: "compose";
+  layerIds: string[];
+  resourceIds: string[];
+}
+
+export interface ProfileCreateHomeRequest extends ProfileCreateCommon {
+  source: "home";
+  conflictPolicy: ProfileConflictPolicy;
+}
+
+export interface ProfileCreateProjectRequest extends ProfileCreateCommon {
+  source: "project";
+  projectPath: string;
+  conflictPolicy: ProfileConflictPolicy;
+}
+
+export type ProfileCreateRequest =
+  | ProfileCreateComposeRequest
+  | ProfileCreateHomeRequest
+  | ProfileCreateProjectRequest;
+
+export interface ProfileCreatePreview {
+  source: ProfileCreateSource;
+  name: string;
+  totalImports: number;
+  conflicts: unknown[];
+  warnings: string[];
+}
+
+export interface ProfileCreateResult {
+  profile: {
+    name: string;
+    id: string;
+    version: string;
+  };
+  imported_count: number;
+  used: boolean;
+}
+
+export interface CloudProfile {
+  selector: string;
+  name: string;
+  orgSlug: string;
+  catalogSlug: string;
+  version: string;
+  tags: string[];
+  description: string | null;
+}
+
+export interface CloudProfilePullRequest {
+  selector: string;
+  as?: string;
+  use?: boolean;
+}
+
+export interface CloudProfilePullResult {
+  profile: {
+    name: string;
+    id: string;
+  };
+  tagged: boolean;
+  warning?: string;
+}
+
+export interface ProfileTagResult {
+  layer_id: string;
+  tags: string[];
 }
 
 export interface HarnessPluginStatusRow {
@@ -94,8 +193,8 @@ export interface AgentHealth {
 
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {
   validate_baseline: "Validate baseline",
-  apply_home: "Apply persona (home)",
-  apply_project: "Apply persona (project)",
+  apply_home: "Apply profile (home)",
+  apply_project: "Apply profile (project)",
   restore_previous: "Restore previous",
   complete: "Verify live state",
 };

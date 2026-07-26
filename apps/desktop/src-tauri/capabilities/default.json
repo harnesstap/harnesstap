@@ -4,8 +4,17 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "shell:allow-spawn",
+    "dialog:default",
     "shell:allow-kill",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "binaries/ht-agent",
+          "sidecar": true
+        }
+      ]
+    },
     {
       "identifier": "shell:allow-execute",
       "allow": [

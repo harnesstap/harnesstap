@@ -3,10 +3,19 @@ import type {
   AgentHealth,
   AgentSwitchFinalEvent,
   AgentSwitchStreamEvent,
+  CloudProfile,
+  CloudProfilePullRequest,
+  CloudProfilePullResult,
   GlobalProfileStatus,
   GlobalProfileStatusDepth,
-  PersonaSummary,
+  LibraryLayer,
+  LibraryResource,
+  ProfileCreatePreview,
+  ProfileCreateRequest,
+  ProfileCreateResult,
+  ProfileSummary,
   ProfileSwitchStepEvent,
+  ProfileTagResult,
   SwitchScope,
 } from "./types";
 
@@ -39,19 +48,33 @@ function resolveBaseUrl(port?: number): string {
 }
 
 export async function waitForHealth(
+  preferredPort?: number,
   maxAttempts = 40,
   delayMs = 250,
 ): Promise<AgentHealth> {
   let lastError = "Sidecar not reachable";
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const port = await invoke<number | null>("get_sidecar_port");
-      const baseUrl = resolveBaseUrl(port ?? undefined);
-      const response = await fetch(`${baseUrl}/v1/health`);
-      if (response.ok) {
-        return (await response.json()) as AgentHealth;
+      const portFromNative = await invoke<number | null>("get_sidecar_port");
+      const candidates = [
+        preferredPort,
+        portFromNative ?? undefined,
+        Number(import.meta.env.VITE_AGENT_PORT ?? 7474),
+        7474,
+        7475,
+        7476,
+      ].filter((port, index, all): port is number => {
+        return typeof port === "number" && Number.isFinite(port) && all.indexOf(port) === index;
+      });
+
+      for (const port of candidates) {
+        const baseUrl = resolveBaseUrl(port);
+        const response = await fetch(`${baseUrl}/v1/health`);
+        if (response.ok) {
+          return (await response.json()) as AgentHealth;
+        }
+        lastError = `Health check failed (${response.status}) on ${baseUrl}`;
       }
-      lastError = `Health check failed (${response.status})`;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }
@@ -60,20 +83,25 @@ export async function waitForHealth(
   throw new Error(lastError);
 }
 
-export async function connectAgent(): Promise<{
+export async function connectAgent(options?: {
+  restart?: boolean;
+}): Promise<{
   baseUrl: string;
   token: string | null;
   health: AgentHealth;
 }> {
+  let preferredPort: number | undefined;
   try {
-    await invoke("start_sidecar");
+    preferredPort = options?.restart
+      ? await invoke<number>("restart_sidecar")
+      : await invoke<number>("start_sidecar");
   } catch (error) {
     if (!import.meta.env.VITE_AGENT_URL) {
       throw error;
     }
   }
 
-  const health = await waitForHealth();
+  const health = await waitForHealth(preferredPort);
   const token = await readToken();
   return {
     baseUrl: resolveBaseUrl(health.port),
@@ -89,21 +117,158 @@ async function agentFetch(
   init: RequestInit = {},
 ): Promise<Response> {
   const headers = new Headers(init.headers);
-  if (token && init.method && init.method !== "GET") {
+  if (token) {
     headers.set("authorization", `Bearer ${token}`);
   }
   return fetch(`${baseUrl}${path}`, { ...init, headers });
 }
 
-export async function fetchPersonas(
+async function throwAgentError(
+  response: Response,
+  fallback: string,
+): Promise<never> {
+  const body = (await response.json().catch(() => ({}))) as {
+    message?: string;
+    error?: string;
+  };
+  throw new AgentApiError(
+    body.message ?? fallback,
+    response.status,
+    body.error,
+  );
+}
+
+export async function fetchProfiles(
   baseUrl: string,
-): Promise<PersonaSummary[]> {
-  const response = await fetch(`${baseUrl}/v1/personas`);
-  if (!response.ok) {
-    throw new AgentApiError("Could not list personas", response.status);
+  projectPath?: string,
+): Promise<ProfileSummary[]> {
+  const params = new URLSearchParams();
+  if (projectPath) {
+    params.set("projectPath", projectPath);
   }
-  const body = (await response.json()) as { personas: PersonaSummary[] };
-  return body.personas;
+  const query = params.toString();
+  const response = await fetch(
+    `${baseUrl}/v1/profiles${query ? `?${query}` : ""}`,
+  );
+  if (!response.ok) {
+    throw new AgentApiError("Could not list profiles", response.status);
+  }
+  const body = (await response.json()) as { profiles: ProfileSummary[] };
+  return body.profiles.map((profile) => ({
+    ...profile,
+    scopes: profile.scopes?.length ? profile.scopes : (["home"] as const),
+  }));
+}
+
+export async function fetchLibraryLayers(
+  baseUrl: string,
+  token: string | null,
+): Promise<LibraryLayer[]> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/layers");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load library layers");
+  }
+  const body = (await response.json()) as { layers: LibraryLayer[] };
+  return body.layers;
+}
+
+export async function fetchLibraryResources(
+  baseUrl: string,
+  token: string | null,
+): Promise<LibraryResource[]> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/resources");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load library resources");
+  }
+  const body = (await response.json()) as { resources: LibraryResource[] };
+  return body.resources;
+}
+
+export async function previewProfileCreate(
+  baseUrl: string,
+  token: string | null,
+  body: ProfileCreateRequest,
+): Promise<ProfileCreatePreview> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/preview", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not preview profile");
+  }
+  return (await response.json()) as ProfileCreatePreview;
+}
+
+export async function createProfile(
+  baseUrl: string,
+  token: string | null,
+  body: ProfileCreateRequest,
+): Promise<ProfileCreateResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not create profile");
+  }
+  return (await response.json()) as ProfileCreateResult;
+}
+
+export async function searchCloudProfiles(
+  baseUrl: string,
+  token: string | null,
+  query: string,
+): Promise<CloudProfile[]> {
+  const params = new URLSearchParams();
+  if (query.trim()) {
+    params.set("q", query.trim());
+  }
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/cloud${suffix}`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not browse cloud profiles");
+  }
+  const body = (await response.json()) as { profiles: CloudProfile[] };
+  return body.profiles;
+}
+
+export async function pullCloudProfile(
+  baseUrl: string,
+  token: string | null,
+  body: CloudProfilePullRequest,
+): Promise<CloudProfilePullResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/cloud/pull", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not pull cloud profile");
+  }
+  return (await response.json()) as CloudProfilePullResult;
+}
+
+export async function tagProfile(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+): Promise<ProfileTagResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}/tag`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not tag profile");
+  }
+  return (await response.json()) as ProfileTagResult;
 }
 
 export async function fetchStatus(
@@ -125,20 +290,26 @@ export async function fetchStatus(
 export async function bootstrapProject(
   baseUrl: string,
   token: string | null,
-  projectPath: string,
+  input: {
+    projectPath: string;
+    profiles?: string[];
+    defaultProfile?: string;
+  },
 ): Promise<void> {
   const response = await agentFetch(baseUrl, token, "/v1/bootstrap", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ projectPath }),
+    body: JSON.stringify(input),
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
       message?: string;
+      error?: string;
     };
     throw new AgentApiError(
       body.message ?? "Project setup failed",
       response.status,
+      body.error,
     );
   }
 }
@@ -147,7 +318,7 @@ export async function startSwitch(
   baseUrl: string,
   token: string | null,
   input: {
-    persona: string;
+    profile: string;
     scope: SwitchScope;
     projectPath?: string;
     confirmOwnedOverwrite?: boolean;
