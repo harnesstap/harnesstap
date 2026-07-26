@@ -13,6 +13,7 @@ import {
   setActiveProfileName,
 } from "./active-profile.js";
 import { applyProfileLayer, type ApplyProfileLayerOptions } from "./profile-apply.js";
+import { withProfileApplyLock } from "./profile-apply-lock.js";
 
 export interface CreateProfileResult {
   layer: Layer;
@@ -64,7 +65,7 @@ export function getActiveProfilePayload(): {
   };
 }
 
-export async function useProfileCommand(
+export async function useProfileCommandUnlocked(
   selector: string,
   options: ApplyProfileLayerOptions,
 ) {
@@ -73,6 +74,13 @@ export async function useProfileCommand(
     setActiveProfileName(result.profile_name);
   }
   return result;
+}
+
+export async function useProfileCommand(
+  selector: string,
+  options: ApplyProfileLayerOptions,
+) {
+  return withProfileApplyLock(() => useProfileCommandUnlocked(selector, options));
 }
 
 export function createProfileCommand(input: {

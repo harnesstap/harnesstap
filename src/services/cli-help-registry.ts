@@ -279,6 +279,15 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "profile status --format json",
     ],
   },
+  "profile.switch": {
+    description:
+      "Switch the active profile with baseline snapshot gate and restore on failure",
+    examples: [
+      "profile switch work",
+      "profile switch work --harness claude-code",
+      "profile switch work --format json",
+    ],
+  },
   "profile.use": {
     description:
       "Merge profile stack, apply globally, and set active pointer; delegates to project config when present",
