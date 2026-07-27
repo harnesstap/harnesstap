@@ -1,10 +1,13 @@
-import { getCloudAccount } from "../config/cloud-accounts.js";
 import {
   formatOutOfScopeMessage,
   isSelectorInCatalogScope,
   resolveCatalogScope,
   type CatalogScope,
 } from "../config/catalog.js";
+import {
+  ensureCloudAccountAccess,
+  forceRefreshCloudAccountAccess,
+} from "./cloud-account-auth.js";
 import {
   normalizeCatalogLayer,
   type CatalogLayer,
@@ -96,11 +99,22 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
       for (const org of options.orgs ?? []) params.append("org", org);
       for (const selector of options.selectors ?? []) params.append("selector", selector);
 
-      const response = await fetchWithTimeout(`${root}/api/catalog/layers?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const listOnce = async (token: string) => {
+        const response = await fetchWithTimeout(`${root}/api/catalog/layers?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        return response;
+      };
+
+      let response = await listOnce(accessToken);
+      if (response.status === 401) {
+        const refreshed = await forceRefreshCloudAccountAccess();
+        if (refreshed) {
+          response = await listOnce(refreshed.accessToken);
+        }
+      }
       if (!response.ok) {
         throw new Error(`Failed to list catalog layers: ${response.status}`);
       }
@@ -115,8 +129,8 @@ export async function resolveCatalogAccess(input?: {
   baseUrl?: string;
 }) {
   const scope = resolveCatalogScope({ baseUrl: input?.baseUrl });
-  const accountInfo = await getCloudAccount(input?.account);
-  const accessToken = accountInfo.account?.accessToken;
+  const ensured = await ensureCloudAccountAccess(input?.account);
+  const accessToken = ensured?.accessToken;
   const publicClient = createPublicCatalogClient(scope.cloudBaseUrl);
   const authenticatedClient = accessToken
     ? await createAuthenticatedCatalogClient(scope.cloudBaseUrl, accessToken)
@@ -139,10 +153,12 @@ export async function listCatalogLayersPage(
     const scopedOptions = buildScopeParams(access.scope, options);
 
     if (input?.account) {
-      const accountInfo = await getCloudAccount(input.account);
-      const accessToken = accountInfo.account?.accessToken;
-      if (accessToken) {
-        const client = await createAuthenticatedCatalogClient(access.scope.cloudBaseUrl, accessToken);
+      const ensured = await ensureCloudAccountAccess(input.account);
+      if (ensured) {
+        const client = await createAuthenticatedCatalogClient(
+          access.scope.cloudBaseUrl,
+          ensured.accessToken,
+        );
         return await client.listLayers(scopedOptions);
       }
       return await access.publicClient.listLayers(scopedOptions);
@@ -271,18 +287,28 @@ export async function downloadCatalogBundle(input: {
     throw new Error(formatOutOfScopeMessage(selector));
   }
 
-  const accountInfo = await getCloudAccount(input.account);
-  const accessToken = accountInfo.account?.accessToken;
+  const ensured = await ensureCloudAccountAccess(input.account);
+  const accessToken = ensured?.accessToken;
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
     const url = catalogSlug === "default"
       ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`
       : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`;
-    const response = await fetchWithTimeout(url, {
+    let response = await fetchWithTimeout(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
+    if (response.status === 401) {
+      const refreshed = await forceRefreshCloudAccountAccess(input.account);
+      if (refreshed) {
+        response = await fetchWithTimeout(url, {
+          headers: {
+            Authorization: `Bearer ${refreshed.accessToken}`,
+          },
+        });
+      }
+    }
     if (response.ok) {
       return { version, body: await response.text() };
     }

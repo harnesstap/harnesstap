@@ -1,3 +1,6 @@
+import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
+import { parseLayerExportToml } from "./transport/index.js";
+
 export interface DeviceCodeResponse {
   device_code: string;
   user_code: string;
@@ -24,6 +27,21 @@ export interface CloudClientOptions {
     refresh_token?: string;
     expires_at?: number; // unix seconds
   };
+  /** Called after a successful access-token refresh so callers can persist rotated tokens. */
+  onTokenRefreshed?: (token: {
+    access_token: string;
+    refresh_token?: string;
+    expires_at: number;
+  }) => void | Promise<void>;
+}
+
+export interface CloudTokenRefreshResult {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  orgId?: string;
+  orgSlug?: string;
+  scopes?: string[];
 }
 
 type PublishedLayerRecord = {
@@ -80,6 +98,21 @@ export function resolveDeviceVerificationUris(
 function apiUrl(baseUrl: string, path: string): string {
   const normalized = baseUrl.replace(/\/+$/, "");
   return `${normalized}/api${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export async function refreshCloudAccessToken(
+  baseUrl: string,
+  refreshToken: string,
+): Promise<CloudTokenRefreshResult> {
+  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/token/refresh"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to refresh token: ${response.status}`);
+  }
+  return await response.json() as CloudTokenRefreshResult;
 }
 
 function extractApiErrorCode(body: unknown): string | undefined {
@@ -142,9 +175,6 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
 }
 
 export { nextPublishVersion };
-
-import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
-import { parseLayerExportToml } from "./transport/index.js";
 
 function exportLayerExportToCloudPayload(layerExportToml: string): { layers: Array<Record<string, unknown>> } {
   const parsed = parseLayerExportToml(layerExportToml);
@@ -307,26 +337,21 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     if (state.token.expires_at == null || state.token.expires_at > now + 5) return;
     if (!state.token.refresh_token) throw new Error("No refresh token available");
 
-    const response = await fetchWithTimeout(apiUrl(state.baseUrl, "/cli/token/refresh"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ refresh_token: state.token.refresh_token }),
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to refresh token: ${response.status}`);
-    }
-
-    const data = await response.json() as {
-      access_token: string;
-      refresh_token?: string;
-      expires_in?: number;
-    };
+    const data = await refreshCloudAccessToken(state.baseUrl, state.token.refresh_token);
     const expiresIn = data.expires_in ?? 3600;
+    const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
     state.token = {
       access_token: data.access_token,
       refresh_token: data.refresh_token || state.token.refresh_token,
-      expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+      expires_at: expiresAt,
     };
+    if (opts.onTokenRefreshed) {
+      await opts.onTokenRefreshed({
+        access_token: state.token.access_token,
+        refresh_token: state.token.refresh_token,
+        expires_at: expiresAt,
+      });
+    }
   }
 
   async function authFetch(input: string, init?: RequestInit): Promise<Response> {

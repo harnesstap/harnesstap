@@ -7,6 +7,7 @@ import {
   updateCloudAccount,
 } from "../../config/cloud-accounts.js";
 import { resolveCloudBaseUrl } from "../../config/catalog.js";
+import { createPersistingCloudClient } from "../../services/cloud-account-auth.js";
 import {
   createCloudClient,
   deviceVerificationUri,
@@ -56,8 +57,8 @@ async function handleCloudWhoamiCommand(
   opts: { account?: string; format?: string } = {},
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const { account } = await getCloudAccount(opts.account);
-  if (!account || !account.accessToken) {
+  const created = await createPersistingCloudClient(opts.account);
+  if (!created) {
     if (format === "json") {
       printJson({});
       return;
@@ -66,17 +67,7 @@ async function handleCloudWhoamiCommand(
     return;
   }
   try {
-    const client = createCloudClient({
-      baseUrl: account.cloudBaseUrl,
-      token: {
-        access_token: account.accessToken as string,
-        refresh_token: account.refreshToken as string | undefined,
-        expires_at: typeof account.accessTokenExpiresAt === "number"
-          ? (account.accessTokenExpiresAt as number)
-          : undefined,
-      },
-    });
-    const info = await client.whoami();
+    const info = await created.client.whoami();
     if (format === "json") {
       printJson(info);
       return;
@@ -91,8 +82,8 @@ async function handleCloudOrgsCommand(
   opts: { account?: string; switch?: string; format?: string } = {},
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
-  const { accountName, account } = await getCloudAccount(opts.account);
-  if (!account || !account.accessToken) {
+  const created = await createPersistingCloudClient(opts.account);
+  if (!created) {
     if (format === "json") {
       printJson([]);
       return;
@@ -101,17 +92,7 @@ async function handleCloudOrgsCommand(
     return;
   }
   try {
-    const client = createCloudClient({
-      baseUrl: account.cloudBaseUrl,
-      token: {
-        access_token: account.accessToken as string,
-        refresh_token: account.refreshToken as string | undefined,
-        expires_at: typeof account.accessTokenExpiresAt === "number"
-          ? (account.accessTokenExpiresAt as number)
-          : undefined,
-      },
-    });
-    const orgs = await client.listOrgs();
+    const orgs = await created.client.listOrgs();
     if (opts.switch) {
       const target = (orgs as Record<string, unknown>[]).find((o) => String((o as Record<string, unknown>)["slug"]) === opts.switch || String((o as Record<string, unknown>)["id"]) === opts.switch);
       if (!target) {
@@ -119,9 +100,7 @@ async function handleCloudOrgsCommand(
         ui.danger(`Organization not found: ${opts.switch}`);
         return;
       }
-      if (accountName) {
-        await updateCloudAccount(accountName, { orgId: String((target as Record<string, unknown>)["id"]), orgSlug: String((target as Record<string, unknown>)["slug"]) });
-      }
+      await updateCloudAccount(created.accountName, { orgId: String((target as Record<string, unknown>)["id"]), orgSlug: String((target as Record<string, unknown>)["slug"]) });
       ui.success(`Switched to org: ${String((target as Record<string, unknown>)["slug"])}`);
       if (format === "json") {
         printJson(target);
