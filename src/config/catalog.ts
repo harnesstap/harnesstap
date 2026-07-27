@@ -5,6 +5,11 @@ import { DEFAULT_CATALOG_SLUG } from "../services/layer-selector.js";
 import { parseJsonc } from "./settings.js";
 
 export const DEFAULT_CATALOG_ORG_SLUG = "harnesstap-cloud";
+/** Temporary aliases for the pre-rebrand open catalog org slug. */
+export const OPEN_CATALOG_ORG_ALIASES = [
+  DEFAULT_CATALOG_ORG_SLUG,
+  "harnessdeck-cloud",
+] as const;
 export const DEFAULT_CLOUD_BASE_URL = "https://harnesstap.com";
 
 export interface RegisteredCatalog {
@@ -244,8 +249,10 @@ export function resolveCatalogScope(input?: {
   return {
     defaultOrgSlug: DEFAULT_CATALOG_ORG_SLUG,
     orgs: [
-      DEFAULT_CATALOG_ORG_SLUG,
-      ...settings.connectedOrgs,
+      ...new Set([
+        ...OPEN_CATALOG_ORG_ALIASES,
+        ...settings.connectedOrgs,
+      ]),
     ],
     selectors: settings.connectedLayers,
     cloudBaseUrl: resolveCloudBaseUrl(input?.baseUrl),
@@ -317,7 +324,7 @@ export function formatOutOfScopeMessage(selector: string): string {
 
 export function connectCatalogOrg(orgSlug: string, harnesstapDir = getHarnesstapDir()): CatalogSettings {
   const normalized = normalizeOrgSlug(orgSlug);
-  if (normalized === DEFAULT_CATALOG_ORG_SLUG) {
+  if ((OPEN_CATALOG_ORG_ALIASES as readonly string[]).includes(normalized)) {
     throw new Error(`${DEFAULT_CATALOG_ORG_SLUG} is always included in the default catalog.`);
   }
   const current = loadCatalogSettings(harnesstapDir);
@@ -331,7 +338,7 @@ export function connectCatalogOrg(orgSlug: string, harnesstapDir = getHarnesstap
 
 export function disconnectCatalogOrg(orgSlug: string, harnesstapDir = getHarnesstapDir()): CatalogSettings {
   const normalized = normalizeOrgSlug(orgSlug);
-  if (normalized === DEFAULT_CATALOG_ORG_SLUG) {
+  if ((OPEN_CATALOG_ORG_ALIASES as readonly string[]).includes(normalized)) {
     throw new Error(`Cannot disconnect the default catalog org (${DEFAULT_CATALOG_ORG_SLUG}).`);
   }
   const current = loadCatalogSettings(harnesstapDir);

@@ -5,7 +5,8 @@ import { exportLayer } from "./layer-export.js";
 import { formatLayerExportToml } from "./transport/layer.js";
 import { updateLayerPublishedIdentity } from "../models/layer-model.js";
 import type { Layer } from "../types.js";
-import { createCloudClient, type CloudClient } from "./cloud-client.js";
+import type { CloudClient } from "./cloud-client.js";
+import { createPersistingCloudClient } from "./cloud-account-auth.js";
 import { formatPublishedSelector } from "./layer-selector.js";
 import { ui } from "../ui/index.js";
 
@@ -21,22 +22,8 @@ async function createCloudClientForTarget(
   accountOverride?: string,
 ): Promise<CloudClient | undefined> {
   const accountName = accountOverride ?? target.account;
-  const accountInfo = await getCloudAccount(accountName);
-  const { account } = accountInfo;
-  if (!account?.cloudBaseUrl) {
-    return undefined;
-  }
-  const token = account.accessToken
-    ? {
-        access_token: account.accessToken,
-        refresh_token: account.refreshToken,
-        expires_at:
-          typeof account.accessTokenExpiresAt === "string"
-            ? Number(account.accessTokenExpiresAt)
-            : (account.accessTokenExpiresAt as number | undefined),
-      }
-    : undefined;
-  return createCloudClient({ baseUrl: account.cloudBaseUrl, token });
+  const created = await createPersistingCloudClient(accountName);
+  return created?.client;
 }
 
 export async function publishLayerToCatalogs(

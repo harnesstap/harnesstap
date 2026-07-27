@@ -5,7 +5,9 @@ import {
   removeCloudAccount,
   saveCloudAccount,
   setDefaultCloudAccount,
+  updateCloudAccount,
 } from "../config/cloud-accounts.js";
+import { ensureCloudAccountAccess } from "../services/cloud-account-auth.js";
 import {
   createCloudClient,
   type DeviceCodeResponse,
@@ -62,6 +64,11 @@ export interface CloudAuthDeps {
     accountName?: string | null;
     account?: CloudAccount | undefined;
   }>;
+  ensureAccess(accountName?: string): Promise<{
+    accountName: string;
+    account: CloudAccount;
+    accessToken: string;
+  } | null>;
   saveAccount(accountName: string, account: CloudAccount): Promise<void>;
   setDefaultAccount(accountName: string | null): Promise<void>;
   removeAccount(accountName: string): Promise<void>;
@@ -71,7 +78,7 @@ export interface CloudAuthDeps {
     deviceCode: string,
     opts?: { intervalMs?: number },
   ): Promise<DeviceTokenPollOnceResult>;
-  whoami(account: CloudAccount): Promise<Record<string, unknown>>;
+  whoami(account: CloudAccount, accountName: string): Promise<Record<string, unknown>>;
   revokeRefreshToken(account: CloudAccount): Promise<void>;
   deviceVerificationUri(baseUrl: string): string;
   now(): number;
@@ -136,7 +143,6 @@ function extractIdentity(
 
 async function buildStatus(deps: CloudAuthDeps): Promise<CloudAuthStatus> {
   const pending = deps.getPending();
-  const { accountName, account } = await deps.getAccount();
   const pendingLoginPayload =
     pending && pending.expiresAt > deps.now()
       ? pendingPayload(pending)
@@ -146,7 +152,8 @@ async function buildStatus(deps: CloudAuthDeps): Promise<CloudAuthStatus> {
     deps.setPending(null);
   }
 
-  if (!account?.accessToken) {
+  const ensured = await deps.ensureAccess();
+  if (!ensured) {
     return {
       authenticated: false,
       ...(pendingLoginPayload ? { pendingLogin: pendingLoginPayload } : {}),
@@ -155,19 +162,24 @@ async function buildStatus(deps: CloudAuthDeps): Promise<CloudAuthStatus> {
 
   let whoami: Record<string, unknown> | undefined;
   try {
-    whoami = await deps.whoami(account);
+    whoami = await deps.whoami(ensured.account, ensured.accountName);
   } catch {
-    whoami = undefined;
+    return {
+      authenticated: false,
+      accountName: ensured.accountName,
+      cloudBaseUrl: ensured.account.cloudBaseUrl,
+      ...(pendingLoginPayload ? { pendingLogin: pendingLoginPayload } : {}),
+    };
   }
 
-  const identity = extractIdentity(account, whoami);
+  const identity = extractIdentity(ensured.account, whoami);
   return {
     authenticated: true,
-    ...(accountName ? { accountName } : {}),
+    accountName: ensured.accountName,
     ...(identity.email ? { email: identity.email } : {}),
     ...(identity.name ? { name: identity.name } : {}),
     ...(identity.orgSlug ? { orgSlug: identity.orgSlug } : {}),
-    cloudBaseUrl: account.cloudBaseUrl,
+    cloudBaseUrl: ensured.account.cloudBaseUrl,
     ...(pendingLoginPayload ? { pendingLogin: pendingLoginPayload } : {}),
   };
 }
@@ -176,6 +188,7 @@ function createDefaultCloudAuthDeps(): CloudAuthDeps {
   return {
     resolveBaseUrl: resolveCloudBaseUrl,
     getAccount: getCloudAccount,
+    ensureAccess: ensureCloudAccountAccess,
     saveAccount: saveCloudAccount,
     setDefaultAccount: setDefaultCloudAccount,
     removeAccount: removeCloudAccount,
@@ -187,7 +200,7 @@ function createDefaultCloudAuthDeps(): CloudAuthDeps {
     setPending: (next) => {
       pendingLogin = next;
     },
-    async whoami(account) {
+    async whoami(account, accountName) {
       const client = createCloudClient({
         baseUrl: account.cloudBaseUrl,
         token: {
@@ -196,6 +209,13 @@ function createDefaultCloudAuthDeps(): CloudAuthDeps {
           expires_at: typeof account.accessTokenExpiresAt === "number"
             ? account.accessTokenExpiresAt
             : undefined,
+        },
+        onTokenRefreshed: async (token) => {
+          await updateCloudAccount(accountName, {
+            accessToken: token.access_token,
+            refreshToken: token.refresh_token ?? account.refreshToken,
+            accessTokenExpiresAt: token.expires_at,
+          });
         },
       });
       return await client.whoami();

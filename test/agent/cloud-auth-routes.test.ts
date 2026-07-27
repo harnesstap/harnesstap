@@ -21,6 +21,16 @@ function createDeps(overrides: Partial<CloudAuthDeps> = {}): CloudAuthDeps {
       accountName,
       account,
     }),
+    ensureAccess: async () => {
+      if (!accountName || !account?.accessToken) {
+        return null;
+      }
+      return {
+        accountName,
+        account,
+        accessToken: account.accessToken,
+      };
+    },
     saveAccount: async (name, next) => {
       accountName = name;
       account = next;
@@ -228,6 +238,7 @@ describe("agent cloud auth routes", () => {
           scopes: ["read"],
         },
       }),
+      ensureAccess: async () => null,
       removeAccount: mock(async () => undefined),
     });
     const fetch = createFetch(deps);
@@ -237,5 +248,32 @@ describe("agent cloud auth routes", () => {
     expect(response.status).toBe(200);
     expect(revokeRefreshToken).toHaveBeenCalled();
     expect(deps.removeAccount).toHaveBeenCalledWith("default");
+  });
+
+  it("reports unauthenticated when whoami fails after refresh", async () => {
+    const deps = createDeps({
+      ensureAccess: async () => ({
+        accountName: "default",
+        account: {
+          cloudBaseUrl: "https://cloud.example.test",
+          accessToken: "stale",
+          refreshToken: "refresh-1",
+          scopes: ["read"],
+        },
+        accessToken: "stale",
+      }),
+      whoami: async () => {
+        throw new Error("whoami failed: 401");
+      },
+    });
+    const fetch = createFetch(deps);
+
+    const response = await fetch(request("/v1/cloud/auth"));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      authenticated: false,
+      accountName: "default",
+      cloudBaseUrl: "https://cloud.example.test",
+    });
   });
 });

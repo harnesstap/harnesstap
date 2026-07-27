@@ -213,7 +213,7 @@ describe("CLI cloud layer workflows", () => {
       });
 
       const restoreFetch = createCatalogFetchMock({
-        baseUrl: "https://cloud.harnesstap.com",
+        baseUrl: "https://harnesstap.com",
         layers: [{
           orgSlug: "harnesstap-cloud",
           slug: "engineering-foundation",

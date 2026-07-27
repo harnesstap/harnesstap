@@ -1,10 +1,9 @@
-import { getCloudAccount } from "../config/cloud-accounts.js";
 import { getLayer, listLayers } from "../models/layer-model.js";
 import type { Layer } from "../types.js";
 import { ui } from "../ui/index.js";
 import { formatCatalogSelectionLabel } from "../ui/catalog-list-render.js";
 import type { CatalogLayer } from "./catalog-types.js";
-import { createCloudClient } from "./cloud-client.js";
+import { createPersistingCloudClient } from "./cloud-account-auth.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
 import {
   formatCanonicalPublishedSelector,
@@ -38,22 +37,11 @@ async function createAuthenticatedCloudClient(opts?: {
   account?: string;
   baseUrl?: string;
 }) {
-  const accountInfo = await getCloudAccount(opts?.account);
-  const account = accountInfo.account;
-  if (!account?.cloudBaseUrl || !account.accessToken) {
+  const created = await createPersistingCloudClient(opts?.account);
+  if (!created) {
     throw new Error("Not authenticated. Run `ht auth login` first.");
   }
-  return createCloudClient({
-    baseUrl: opts?.baseUrl ?? account.cloudBaseUrl,
-    token: {
-      access_token: account.accessToken,
-      refresh_token: account.refreshToken,
-      expires_at:
-        typeof account.accessTokenExpiresAt === "string"
-          ? Number(account.accessTokenExpiresAt)
-          : (account.accessTokenExpiresAt as number | undefined),
-    },
-  });
+  return created.client;
 }
 
 export function formatCatalogLayerManageLabel(layer: CatalogLayer): string {

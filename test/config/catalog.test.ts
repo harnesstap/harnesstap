@@ -9,6 +9,7 @@ import {
   disconnectCatalogOrg,
   isPublicCatalogEnabled,
   loadCatalogSettings,
+  OPEN_CATALOG_ORG_ALIASES,
   resolveCatalogScope,
   saveCatalogSettings,
 } from "../../src/config/catalog.js";
@@ -17,7 +18,7 @@ describe("catalog config", () => {
   it("always includes the default harnesstap-cloud org in scope", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-catalog-"));
     const scope = resolveCatalogScope({ harnesstapDir: dir });
-    expect(scope.orgs).toEqual([DEFAULT_CATALOG_ORG_SLUG]);
+    expect(scope.orgs).toEqual([...OPEN_CATALOG_ORG_ALIASES]);
   });
 
   it("persists connected orgs without storing the default org slug", () => {
