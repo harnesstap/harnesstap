@@ -472,7 +472,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Log into HarnessTap Cloud via device authentication",
     examples: [
       "auth login",
-      "auth login work --base-url https://cloud.harnesstap.com",
+      "auth login work --base-url https://harnesstap.com",
     ],
   },
   "auth.status": {

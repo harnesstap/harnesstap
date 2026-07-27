@@ -38,7 +38,55 @@ fn agent_port_path() -> PathBuf {
     harnesstap_home().join("agent-port")
 }
 
+fn host_target_triple() -> &'static str {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        return "aarch64-apple-darwin";
+    }
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        return "x86_64-apple-darwin";
+    }
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        return "x86_64-unknown-linux-gnu";
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        return "aarch64-unknown-linux-gnu";
+    }
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        return "x86_64-pc-windows-msvc";
+    }
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    {
+        return "aarch64-pc-windows-msvc";
+    }
+    #[cfg(not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+        all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "aarch64"),
+    )))]
+    {
+        "unknown"
+    }
+}
+
 fn sidecar_binary_path() -> Result<PathBuf, String> {
+    // During `tauri dev`, prefer the prepared binary under src-tauri/binaries so
+    // `desktop:prepare-sidecar` takes effect without requiring a full app relaunch
+    // (the copy next to the debug executable is often stale).
+    let prepared = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("binaries")
+        .join(format!("ht-agent-{}", host_target_triple()));
+    if prepared.exists() {
+        return Ok(prepared);
+    }
+
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let dir = exe
         .parent()
@@ -47,7 +95,11 @@ fn sidecar_binary_path() -> Result<PathBuf, String> {
     if candidate.exists() {
         return Ok(candidate);
     }
-    Err(format!("sidecar binary not found at {}", candidate.display()))
+    Err(format!(
+        "sidecar binary not found at {} or {}",
+        prepared.display(),
+        candidate.display()
+    ))
 }
 
 fn read_port_file() -> Option<u16> {

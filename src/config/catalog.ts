@@ -5,7 +5,7 @@ import { DEFAULT_CATALOG_SLUG } from "../services/layer-selector.js";
 import { parseJsonc } from "./settings.js";
 
 export const DEFAULT_CATALOG_ORG_SLUG = "harnesstap-cloud";
-export const DEFAULT_CLOUD_BASE_URL = "https://cloud.harnesstap.com";
+export const DEFAULT_CLOUD_BASE_URL = "https://harnesstap.com";
 
 export interface RegisteredCatalog {
   org: string;

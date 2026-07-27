@@ -19,6 +19,7 @@ import {
   type InstallLayerFromCatalogResult,
 } from "../services/layer-catalog-install.js";
 import type { ResolvedRemoteLayerSelector } from "../services/layer-selector.js";
+import { tagProfileCommand } from "../services/profile-commands.js";
 import type { Layer } from "../types.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
@@ -37,6 +38,7 @@ export interface ProfileCloudDeps {
   ): Promise<InstallLayerFromCatalogResult>;
   getLayerByName(name: string): Layer | undefined;
   isProfileLayer(layer: Pick<Layer, "tags">): boolean;
+  tagProfile(name: string): { layer_id: string; tags: string[] };
   isSwitchInProgress(): boolean;
 }
 
@@ -59,6 +61,7 @@ function createDefaultProfileCloudDeps(): ProfileCloudDeps {
     installLayer: installLayerFromCatalog,
     getLayerByName,
     isProfileLayer,
+    tagProfile: tagProfileCommand,
     isSwitchInProgress: isAgentSwitchInProgress,
   };
 }
@@ -160,7 +163,6 @@ export function createProfileCloudHandlers(
         const query = new URL(request.url).searchParams.get("q")?.trim();
         const result = await deps.listLayers({
           ...(query ? { q: query } : {}),
-          tag: "profile",
           limit: 50,
           sort: "name",
         });
@@ -217,7 +219,11 @@ export function createProfileCloudHandlers(
           ...(input.as ? { as: input.as } : {}),
         });
         const layer = deps.getLayerByName(installed.layerName);
-        const tagged = Boolean(layer && deps.isProfileLayer(layer));
+        let tagged = Boolean(layer && deps.isProfileLayer(layer));
+        if (!tagged) {
+          deps.tagProfile(installed.layerName);
+          tagged = true;
+        }
 
         return jsonResponse({
           profile: {
@@ -225,11 +231,6 @@ export function createProfileCloudHandlers(
             id: installed.layerId,
           },
           tagged,
-          ...(!tagged
-            ? {
-              warning: `Installed layer "${installed.layerName}" is not tagged as a profile`,
-            }
-            : {}),
         });
       } catch (error) {
         return jsonResponse(

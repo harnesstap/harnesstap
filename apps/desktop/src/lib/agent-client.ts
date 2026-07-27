@@ -3,6 +3,8 @@ import type {
   AgentHealth,
   AgentSwitchFinalEvent,
   AgentSwitchStreamEvent,
+  CloudAuthLoginPollResult,
+  CloudAuthStatus,
   CloudProfile,
   CloudProfilePullRequest,
   CloudProfilePullResult,
@@ -10,6 +12,8 @@ import type {
   GlobalProfileStatusDepth,
   LibraryLayer,
   LibraryResource,
+  ProfileApplyPreview,
+  ProfileApplyPreviewRequest,
   ProfileCreatePreview,
   ProfileCreateRequest,
   ProfileCreateResult,
@@ -254,6 +258,88 @@ export async function pullCloudProfile(
   return (await response.json()) as CloudProfilePullResult;
 }
 
+export async function fetchCloudAuthStatus(
+  baseUrl: string,
+  token: string | null,
+): Promise<CloudAuthStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/cloud/auth");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load cloud account");
+  }
+  return (await response.json()) as CloudAuthStatus;
+}
+
+export async function startCloudLogin(
+  baseUrl: string,
+  token: string | null,
+): Promise<CloudAuthStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/cloud/auth/login", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not start cloud login");
+  }
+  return (await response.json()) as CloudAuthStatus;
+}
+
+export async function pollCloudLogin(
+  baseUrl: string,
+  token: string | null,
+): Promise<CloudAuthLoginPollResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    "/v1/cloud/auth/login/poll",
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      message?: string;
+      error?: string;
+      status?: string;
+      intervalMs?: number;
+    };
+    if (body.status === "error" || body.status === "pending") {
+      return body as CloudAuthLoginPollResult;
+    }
+    throw new AgentApiError(
+      body.message ?? "Could not poll cloud login",
+      response.status,
+      body.error,
+    );
+  }
+  return (await response.json()) as CloudAuthLoginPollResult;
+}
+
+export async function cancelCloudLogin(
+  baseUrl: string,
+  token: string | null,
+): Promise<CloudAuthStatus> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    "/v1/cloud/auth/login/cancel",
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not cancel cloud login");
+  }
+  return (await response.json()) as CloudAuthStatus;
+}
+
+export async function logoutCloudAuth(
+  baseUrl: string,
+  token: string | null,
+): Promise<CloudAuthStatus> {
+  const response = await agentFetch(baseUrl, token, "/v1/cloud/auth/logout", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not sign out of cloud");
+  }
+  return (await response.json()) as CloudAuthStatus;
+}
+
 export async function tagProfile(
   baseUrl: string,
   token: string | null,
@@ -285,6 +371,22 @@ export async function fetchStatus(
     throw new AgentApiError("Could not read live status", response.status);
   }
   return (await response.json()) as GlobalProfileStatus;
+}
+
+export async function fetchApplyPreview(
+  baseUrl: string,
+  token: string | null,
+  body: ProfileApplyPreviewRequest,
+): Promise<ProfileApplyPreview> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/apply-preview", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not preview profile apply");
+  }
+  return (await response.json()) as ProfileApplyPreview;
 }
 
 export async function bootstrapProject(

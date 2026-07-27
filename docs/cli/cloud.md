@@ -30,7 +30,7 @@ Start the device flow, sign in with your cloud account, and save a named local a
 harnesstap auth login [account] [--base-url <url>]
 ```
 
-Default account name: `default`. Default base URL: `https://cloud.harnesstap.com`.
+Default account name: `default`. Default base URL: `https://harnesstap.com`.
 
 ### Confirm the active identity
 

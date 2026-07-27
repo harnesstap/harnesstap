@@ -14,6 +14,10 @@ import { mergeLayersForApply } from "./layer-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import type { DriftFileChange } from "./project-drift.js";
 import {
+  buildProfileContents,
+  type ProfileContents,
+} from "./profile-contents.js";
+import {
   buildHarnessLiveStatusMap,
   classifyGlobalDriftChanges,
   collectOwnedGlobalProfileFiles,
@@ -41,6 +45,7 @@ export interface GlobalProfileStatus {
   panel: GlobalProfilePanelStatus;
   harnesses: Record<string, HarnessLiveStatus>;
   drift_summary: GlobalProfileDriftSummary;
+  contents?: ProfileContents | null;
 }
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
@@ -190,6 +195,9 @@ function buildBaseStatusFields(input: {
     panel,
     harnesses,
     drift_summary: driftSummary,
+    contents: input.activeProfile
+      ? buildProfileContents(input.activeProfile)
+      : null,
   };
 }
 

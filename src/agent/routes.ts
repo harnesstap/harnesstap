@@ -1,43 +1,46 @@
+import { executeConfigInit } from "../services/config-init.js";
+import {
+  detectGlobalProfileStatus,
+  type GlobalProfileStatus,
+} from "../services/global-profile-drift.js";
+import type { GlobalProfileStatusDepth } from "../services/global-profile-status-panel.js";
+import { listProfileLayersCommand } from "../services/profile-commands.js";
+import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
+import { findProjectConfig } from "../services/project-config.js";
+import { PACKAGE_VERSION } from "../version.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import {
-  handleLibraryLayers,
-  handleLibraryResources,
-} from "./profile-library-handlers.js";
+  type CloudAuthHandlers,
+  createCloudAuthHandlers,
+} from "./cloud-auth-handlers.js";
+import { jsonResponse } from "./http.js";
+import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
+import {
+  createProfileCloudHandlers,
+  type ProfileCloudHandlers,
+} from "./profile-cloud-handlers.js";
 import {
   handleProfileCreate,
   handleProfileCreatePreview,
   handleProfileTag,
 } from "./profile-create-handlers.js";
 import {
-  createProfileCloudHandlers,
-  type ProfileCloudHandlers,
-} from "./profile-cloud-handlers.js";
-import { jsonResponse } from "./http.js";
-import { PACKAGE_VERSION } from "../version.js";
+  handleLibraryLayers,
+  handleLibraryResources,
+} from "./profile-library-handlers.js";
 import {
-  detectGlobalProfileStatus,
-  type GlobalProfileStatus,
-} from "../services/global-profile-drift.js";
-import type { GlobalProfileStatusDepth } from "../services/global-profile-status-panel.js";
-import {
-  isAgentSwitchInProgress,
-} from "./switch-registry.js";
-import {
+  type AgentSwitchRequest,
+  type AgentSwitchScope,
   getAgentSwitchSessionById,
   preflightAgentSwitchOwnedOverwrite,
   startAgentSwitch,
-  type AgentSwitchRequest,
-  type AgentSwitchScope,
 } from "./switch-orchestrator.js";
 import {
+  type AgentSwitchFinalEvent,
+  isAgentSwitchInProgress,
   requestAgentSwitchCancel,
   subscribeAgentSwitchEvents,
-  type AgentSwitchFinalEvent,
 } from "./switch-registry.js";
-import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
-import { listProfileLayersCommand } from "../services/profile-commands.js";
-import { executeConfigInit } from "../services/config-init.js";
-import { findProjectConfig } from "../services/project-config.js";
 
 export type ProfileViewScope = "home" | "project";
 
@@ -109,6 +112,7 @@ export interface AgentRouteDeps {
   subscribeAgentSwitchEvents: typeof subscribeAgentSwitchEvents;
   isAgentSwitchInProgress: typeof isAgentSwitchInProgress;
   profileCloudHandlers: ProfileCloudHandlers;
+  cloudAuthHandlers: CloudAuthHandlers;
 }
 
 export function createDefaultAgentRouteDeps(): AgentRouteDeps {
@@ -121,6 +125,7 @@ export function createDefaultAgentRouteDeps(): AgentRouteDeps {
     subscribeAgentSwitchEvents,
     isAgentSwitchInProgress,
     profileCloudHandlers: createProfileCloudHandlers(),
+    cloudAuthHandlers: createCloudAuthHandlers(),
   };
 }
 
@@ -270,6 +275,19 @@ export function createAgentRouteHandlers(
         typeof defaultProfileRaw === "string" && defaultProfileRaw.length > 0
           ? defaultProfileRaw
           : undefined;
+
+      // Idempotent: project view re-enters bootstrap whenever the repo is not
+      // DB-tracked yet; existing `.harnesstap/config.toml` must not re-init.
+      const existing = findProjectConfig(projectPath);
+      if (existing) {
+        const profileNames = existing.profiles.map((profile) => profile.name);
+        return jsonResponse({
+          config_path: existing.configPath,
+          default_profile: existing.default_profile ?? profileNames[0] ?? "",
+          profiles: profileNames,
+          already_existed: true,
+        });
+      }
 
       try {
         const result = await executeConfigInit({
@@ -481,6 +499,8 @@ export function createAgentFetchHandler(
       response = handlers.handleProfiles(request);
     } else if (method === "POST" && url.pathname === "/v1/profiles/preview") {
       response = await handleProfileCreatePreview(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/profiles/apply-preview") {
+      response = await handleProfileApplyPreview(request, token);
     } else if (method === "POST" && url.pathname === "/v1/profiles") {
       response = await handleProfileCreate(
         request,
@@ -491,6 +511,16 @@ export function createAgentFetchHandler(
       response = await routeDeps.profileCloudHandlers.handleBrowse(request, token);
     } else if (method === "POST" && url.pathname === "/v1/profiles/cloud/pull") {
       response = await routeDeps.profileCloudHandlers.handlePull(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/cloud/auth") {
+      response = await routeDeps.cloudAuthHandlers.handleStatus(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/cloud/auth/login") {
+      response = await routeDeps.cloudAuthHandlers.handleLogin(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/cloud/auth/login/poll") {
+      response = await routeDeps.cloudAuthHandlers.handleLoginPoll(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/cloud/auth/login/cancel") {
+      response = await routeDeps.cloudAuthHandlers.handleLoginCancel(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/cloud/auth/logout") {
+      response = await routeDeps.cloudAuthHandlers.handleLogout(request, token);
     } else if (method === "GET" && url.pathname === "/v1/status") {
       response = await handlers.handleStatus(request);
     } else if (method === "POST" && url.pathname === "/v1/bootstrap") {

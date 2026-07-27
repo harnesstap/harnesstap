@@ -464,7 +464,7 @@ HarnessTap Cloud supports publishing, searching, and installing shared layers. L
    ```bash
    harnesstap auth login [account] [--base-url <url>]
    ```
-   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://cloud.harnesstap.com`.
+   Device-code authentication in the browser/terminal. Default account name: `default`. Default base URL: `https://harnesstap.com`.
 
 2. **Inspect** the authenticated user.
    ```bash

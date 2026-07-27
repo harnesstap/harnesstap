@@ -17,6 +17,7 @@ interface CloudBrowseDrawerProps {
   disabled?: boolean;
   onClose: () => void;
   onPull: (profileName: string, used: boolean) => void | Promise<void>;
+  onRequestSignIn?: () => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -29,6 +30,10 @@ function suggestedName(profile: CloudProfile): string {
   return `${slug}-copy`;
 }
 
+function catalogKind(profile: CloudProfile): "profile" | "layer" {
+  return (profile.tags ?? []).includes("profile") ? "profile" : "layer";
+}
+
 export function CloudBrowseDrawer({
   open,
   baseUrl,
@@ -36,6 +41,7 @@ export function CloudBrowseDrawer({
   disabled = false,
   onClose,
   onPull,
+  onRequestSignIn,
 }: CloudBrowseDrawerProps) {
   const [query, setQuery] = useState("");
   const [profiles, setProfiles] = useState<CloudProfile[]>([]);
@@ -106,7 +112,7 @@ export function CloudBrowseDrawer({
             setAuthRequired(true);
             return;
           }
-          setError(errorMessage(loadError, "Could not browse cloud profiles."));
+          setError(errorMessage(loadError, "Could not browse catalog layers."));
         })
         .finally(() => {
           if (!cancelled) {
@@ -181,7 +187,7 @@ export function CloudBrowseDrawer({
         setProfiles([]);
         setSelected(null);
       } else {
-        setError(errorMessage(pullError, "Could not pull cloud profile."));
+        setError(errorMessage(pullError, "Could not pull catalog layer."));
       }
     } finally {
       setBusy(false);
@@ -241,7 +247,7 @@ export function CloudBrowseDrawer({
       >
         <div className="create-profile-header">
           <div>
-            <div className="eyebrow">Profile library</div>
+            <div className="eyebrow">Cloud catalog</div>
             <h2 id="cloud-browse-title">Browse Cloud</h2>
           </div>
           <button
@@ -257,7 +263,7 @@ export function CloudBrowseDrawer({
 
         <div className="create-profile-body cloud-browse-body">
           <label className="form-field">
-            <span>Search profiles</span>
+            <span>Search catalog</span>
             <input
               type="search"
               autoFocus
@@ -272,65 +278,92 @@ export function CloudBrowseDrawer({
             <div className="cloud-auth-state">
               <h3>Cloud sign-in required</h3>
               <p className="muted">
-                Sign in with <span className="mono">ht auth login</span>, then
-                reopen this drawer.
+                Sign in to HarnessTap Cloud to browse and pull shared layers.
               </p>
+              {onRequestSignIn ? (
+                <div className="cloud-account-actions">
+                  <button
+                    className="btn primary"
+                    type="button"
+                    onClick={onRequestSignIn}
+                    disabled={controlsDisabled}
+                  >
+                    Sign in
+                  </button>
+                </div>
+              ) : (
+                <p className="muted">
+                  Sign in with <span className="mono">ht auth login</span>, then
+                  reopen this drawer.
+                </p>
+              )}
             </div>
           ) : (
             <div className="cloud-browser">
               <div
                 className="cloud-results"
                 role="listbox"
-                aria-label="Cloud profiles"
+                aria-label="Catalog layers"
               >
                 {loading ? (
                   <p className="muted cloud-list-message">Searching…</p>
                 ) : profiles.length === 0 ? (
                   <p className="muted cloud-list-message">
-                    No cloud profiles found.
+                    No catalog layers found.
                   </p>
                 ) : (
-                  profiles.map((profile) => (
-                    <button
-                      key={profile.selector}
-                      className={`cloud-result${
-                        selected?.selector === profile.selector ? " selected" : ""
-                      }`}
-                      type="button"
-                      role="option"
-                      aria-selected={selected?.selector === profile.selector}
-                      onClick={() => selectProfile(profile)}
-                      disabled={controlsDisabled}
-                    >
-                      <strong>{profile.name}</strong>
-                      <small>
-                        {profile.orgSlug}/{profile.catalogSlug} ·{" "}
-                        {profile.version || "latest"}
-                      </small>
-                    </button>
-                  ))
+                  profiles.map((profile) => {
+                    const kind = catalogKind(profile);
+                    return (
+                      <button
+                        key={profile.selector}
+                        className={`cloud-result${
+                          selected?.selector === profile.selector ? " selected" : ""
+                        }`}
+                        type="button"
+                        role="option"
+                        aria-selected={selected?.selector === profile.selector}
+                        onClick={() => selectProfile(profile)}
+                        disabled={controlsDisabled}
+                      >
+                        <strong>
+                          {profile.name}
+                          <span className="pill cloud-kind-pill">{kind}</span>
+                        </strong>
+                        <small>
+                          {profile.orgSlug}/{profile.catalogSlug} ·{" "}
+                          {profile.version || "latest"}
+                        </small>
+                      </button>
+                    );
+                  })
                 )}
               </div>
 
-              <section className="cloud-preview" aria-label="Profile preview">
+              <section className="cloud-preview" aria-label="Layer preview">
                 {selected ? (
                   <>
                     <div>
                       <div className="eyebrow">Preview</div>
-                      <h3>{selected.name}</h3>
+                      <h3>
+                        {selected.name}
+                        <span className="pill cloud-kind-pill">
+                          {catalogKind(selected)}
+                        </span>
+                      </h3>
                       <p className="mono">{selected.selector}</p>
                     </div>
                     <p className="muted">
                       {selected.description || "No description provided."}
                     </p>
                     <div className="cloud-tags">
-                      {selected.tags.map((tag) => (
+                      {(selected.tags ?? []).map((tag) => (
                         <span className="pill" key={tag}>{tag}</span>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <p className="muted">Select a profile to preview it.</p>
+                  <p className="muted">Select a layer to preview it.</p>
                 )}
               </section>
             </div>

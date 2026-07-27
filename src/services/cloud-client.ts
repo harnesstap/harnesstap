@@ -42,6 +42,41 @@ export function deviceVerificationUri(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}${DEVICE_AUTH_PATH}`;
 }
 
+function isLoopbackHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "http:"
+      && (url.hostname === "localhost"
+        || url.hostname === "127.0.0.1"
+        || url.hostname === "[::1]")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Prefer the configured cloud base URL when the API returns a loopback verification URI. */
+export function resolveDeviceVerificationUris(
+  baseUrl: string,
+  device: Pick<DeviceCodeResponse, "user_code" | "verification_uri" | "verification_uri_complete">,
+): { verification_uri: string; verification_uri_complete: string } {
+  const fallback = deviceVerificationUri(baseUrl);
+  const verificationUri =
+    device.verification_uri?.trim() && !isLoopbackHttpUrl(device.verification_uri)
+      ? device.verification_uri.trim()
+      : fallback;
+  const completeFromApi = device.verification_uri_complete?.trim();
+  const verificationUriComplete =
+    completeFromApi && !isLoopbackHttpUrl(completeFromApi)
+      ? completeFromApi
+      : `${verificationUri}?user_code=${encodeURIComponent(device.user_code)}`;
+  return {
+    verification_uri: verificationUri,
+    verification_uri_complete: verificationUriComplete,
+  };
+}
+
 function apiUrl(baseUrl: string, path: string): string {
   const normalized = baseUrl.replace(/\/+$/, "");
   return `${normalized}/api${path.startsWith("/") ? path : `/${path}`}`;
@@ -149,9 +184,20 @@ export async function requestDeviceCode(
   });
   if (!response.ok) {
     const { body, text } = await readResponseBody(response);
+    if (response.status === 503 || /no available server/i.test(text)) {
+      throw new Error(
+        "HarnessTap Cloud is temporarily unavailable. Try again in a few minutes.",
+      );
+    }
     throw new Error(`Failed to request device code: ${describeApiFailure(response, body, text)}`);
   }
-  return await response.json() as DeviceCodeResponse;
+  const device = await response.json() as DeviceCodeResponse;
+  const uris = resolveDeviceVerificationUris(baseUrl, device);
+  return {
+    ...device,
+    verification_uri: uris.verification_uri,
+    verification_uri_complete: uris.verification_uri_complete,
+  };
 }
 
 function parseRetryAfterMs(response: Response, fallbackMs: number): number {
@@ -168,6 +214,52 @@ function parseRetryAfterMs(response: Response, fallbackMs: number): number {
   return fallbackMs;
 }
 
+export type DeviceTokenPollOnceResult =
+  | { status: "authorized"; token: DeviceTokenResponse }
+  | { status: "pending"; intervalMs: number }
+  | { status: "error"; message: string };
+
+export async function pollDeviceTokenOnce(
+  baseUrl: string,
+  deviceCode: string,
+  opts?: { intervalMs?: number },
+): Promise<DeviceTokenPollOnceResult> {
+  const pollIntervalMs = opts?.intervalMs ?? 5000;
+  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/token"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ device_code: deviceCode }),
+  });
+
+  if (response.ok) {
+    const { body } = await readResponseBody(response);
+    return { status: "authorized", token: body as DeviceTokenResponse };
+  }
+
+  const { body, text } = await readResponseBody(response);
+  const code = extractApiErrorCode(body);
+  if (code === "authorization_pending") {
+    return { status: "pending", intervalMs: pollIntervalMs };
+  }
+  if (code === "slow_down") {
+    return { status: "pending", intervalMs: pollIntervalMs + 5000 };
+  }
+  if (code === "rate_limit_exceeded") {
+    return {
+      status: "pending",
+      intervalMs: parseRetryAfterMs(response, pollIntervalMs),
+    };
+  }
+  if (isTransientPollFailure(response, body, text)) {
+    return { status: "pending", intervalMs: pollIntervalMs };
+  }
+
+  return {
+    status: "error",
+    message: `Failed to poll device token: ${describeApiFailure(response, body, text)}`,
+  };
+}
+
 export async function pollDeviceToken(
   baseUrl: string,
   deviceCode: string,
@@ -177,39 +269,17 @@ export async function pollDeviceToken(
   const maxPolls = opts?.maxPolls ?? 120;
 
   for (let attempt = 0; attempt < maxPolls; attempt += 1) {
-    const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/token"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ device_code: deviceCode }),
+    const result = await pollDeviceTokenOnce(baseUrl, deviceCode, {
+      intervalMs: pollIntervalMs,
     });
-
-    if (response.ok) {
-      const { body } = await readResponseBody(response);
-      return body as DeviceTokenResponse;
+    if (result.status === "authorized") {
+      return result.token;
     }
-
-    const { body, text } = await readResponseBody(response);
-    const code = extractApiErrorCode(body);
-    if (code === "authorization_pending") {
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-      continue;
+    if (result.status === "error") {
+      throw new Error(result.message);
     }
-    if (code === "slow_down") {
-      pollIntervalMs += 5000;
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-      continue;
-    }
-    if (code === "rate_limit_exceeded") {
-      const waitMs = parseRetryAfterMs(response, pollIntervalMs);
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
-      continue;
-    }
-    if (isTransientPollFailure(response, body, text)) {
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-      continue;
-    }
-
-    throw new Error(`Failed to poll device token: ${describeApiFailure(response, body, text)}`);
+    pollIntervalMs = result.intervalMs;
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
   throw new Error("Timed out polling device token");

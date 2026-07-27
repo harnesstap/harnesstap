@@ -125,4 +125,37 @@ describe("agent routes", () => {
     expect(body.profiles).toEqual(["default"]);
     expect(body.config_path).toContain(".harnesstap/config.toml");
   });
+
+  it("returns existing project config without re-init on bootstrap", async () => {
+    const server = withServer();
+    const projectDir = mkdtempSync(join(tmpdir(), "ht-agent-bootstrap-exists-"));
+    tempDirs.push(projectDir);
+
+    createProfileCommand({ name: "work" });
+    writeStarterProjectConfig({
+      projectPath: projectDir,
+      defaultProfile: "work",
+      profileNames: ["work"],
+    });
+
+    const response = await fetch(`${server.url}/v1/bootstrap`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${server.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ projectPath: projectDir }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      default_profile: string;
+      profiles: string[];
+      config_path: string;
+      already_existed?: boolean;
+    };
+    expect(body.already_existed).toBe(true);
+    expect(body.default_profile).toBe("work");
+    expect(body.profiles).toEqual(["work"]);
+    expect(body.config_path).toContain(".harnesstap/config.toml");
+  });
 });

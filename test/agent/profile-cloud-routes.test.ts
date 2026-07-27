@@ -59,6 +59,7 @@ function createDeps(overrides: Partial<ProfileCloudDeps> = {}): ProfileCloudDeps
     },
     getLayerByName: () => installed ? localLayer() : undefined,
     isProfileLayer: (layer) => layer.tags.includes("profile"),
+    tagProfile: () => ({ layer_id: "layer-1", tags: ["profile"] }),
     isSwitchInProgress: () => false,
     ...overrides,
   };
@@ -115,7 +116,7 @@ describe("agent cloud profile routes", () => {
     });
   });
 
-  it("searches remote profiles with the profile tag hint", async () => {
+  it("searches remote catalog layers without a profile tag filter", async () => {
     const listLayers = mock(async () => ({
       layers: [catalogLayer, { ...catalogLayer, slug: "plain", tags: [] }],
       nextCursor: null,
@@ -125,10 +126,11 @@ describe("agent cloud profile routes", () => {
     const response = await fetch(request("/v1/profiles/cloud?q=focus"));
 
     expect(response.status).toBe(200);
-    expect(listLayers).toHaveBeenCalledWith(expect.objectContaining({
+    expect(listLayers).toHaveBeenCalledWith({
       q: "focus",
-      tag: "profile",
-    }));
+      limit: 50,
+      sort: "name",
+    });
     await expect(response.json()).resolves.toEqual({
       profiles: [
         {
@@ -153,8 +155,9 @@ describe("agent cloud profile routes", () => {
     });
   });
 
-  it("pulls and warns when the installed layer is not profile-tagged", async () => {
+  it("pulls and auto-tags when the installed layer is not profile-tagged", async () => {
     let installed = false;
+    const tagProfile = mock(() => ({ layer_id: "layer-1", tags: ["profile"] }));
     const fetch = createFetch(createDeps({
       installLayer: async () => {
         installed = true;
@@ -166,6 +169,7 @@ describe("agent cloud profile routes", () => {
         };
       },
       getLayerByName: () => installed ? localLayer({ tags: [] }) : undefined,
+      tagProfile,
     }));
 
     const response = await fetch(postRequest("/v1/profiles/cloud/pull", {
@@ -173,10 +177,10 @@ describe("agent cloud profile routes", () => {
     }));
 
     expect(response.status).toBe(200);
+    expect(tagProfile).toHaveBeenCalledWith("focus");
     await expect(response.json()).resolves.toEqual({
       profile: { name: "focus", id: "layer-1" },
-      tagged: false,
-      warning: expect.any(String),
+      tagged: true,
     });
   });
 

@@ -26,6 +26,37 @@ describe("cloud client primitives", () => {
     globalThis.fetch = originalFetch;
   });
 
+  it("rewrites loopback verification URIs to the configured cloud base URL", async () => {
+    const { resolveDeviceVerificationUris } = await import("../../src/services/cloud-client");
+    expect(
+      resolveDeviceVerificationUris("https://harnesstap.com", {
+        user_code: "ABCD-EFGH",
+        verification_uri: "http://localhost:3000/cli/auth/device",
+        verification_uri_complete:
+          "http://localhost:3000/cli/auth/device?user_code=ABCD-EFGH",
+      }),
+    ).toEqual({
+      verification_uri: "https://harnesstap.com/cli/auth/device",
+      verification_uri_complete:
+        "https://harnesstap.com/cli/auth/device?user_code=ABCD-EFGH",
+    });
+  });
+
+  it("maps cloud 503 responses to a temporary unavailability error", async () => {
+    globalThis.fetch = mock().mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      headers: new Headers(),
+      json: async () => ({}),
+      text: async () => "no available server",
+    }) as unknown as typeof fetch;
+
+    const { requestDeviceCode } = await import("../../src/services/cloud-client");
+    await expect(requestDeviceCode("https://cloud.harnesstap.com")).rejects.toThrow(
+      /temporarily unavailable/i,
+    );
+  });
+
   it("polls device auth until a token is issued", async () => {
     const fetchMock = mock()
       .mockResolvedValueOnce(jsonResponse(200, {

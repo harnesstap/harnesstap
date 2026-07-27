@@ -103,6 +103,30 @@ export interface CloudProfilePullResult {
   warning?: string;
 }
 
+export interface CloudPendingLogin {
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete: string;
+  expires_at: number;
+}
+
+export interface CloudAuthStatus {
+  authenticated: boolean;
+  accountName?: string;
+  email?: string;
+  name?: string;
+  orgSlug?: string;
+  cloudBaseUrl?: string;
+  pendingLogin?: CloudPendingLogin;
+}
+
+export interface CloudAuthLoginPollResult {
+  status: "pending" | "complete" | "error";
+  intervalMs?: number;
+  message?: string;
+  auth?: CloudAuthStatus;
+}
+
 export interface ProfileTagResult {
   layer_id: string;
   tags: string[];
@@ -123,6 +147,40 @@ export interface HarnessLiveStatus {
   mcp: HarnessMcpStatusRow[];
 }
 
+export interface ProfileContentsLayer {
+  id: string;
+  name: string;
+  version: string;
+  resources: ProfileContentsResource[];
+}
+
+export interface ProfileContentsPin {
+  ref: string;
+  version_constraint: string;
+}
+
+export interface ProfileContentsResource {
+  type: string;
+  name: string;
+}
+
+export interface ProfileContents {
+  layers: ProfileContentsLayer[];
+  stack_resource_count: number;
+  stack_summary: string | null;
+  /** Counts by resource type, plus `layer` and `plugin_pin`. */
+  type_counts: Record<string, number>;
+  resources: ProfileContentsResource[];
+  plugin_pins: ProfileContentsPin[];
+  mcp_servers: string[];
+}
+
+export interface DriftFileChange {
+  path: string;
+  type: "added" | "modified" | "deleted";
+  platform?: string;
+}
+
 export interface GlobalProfilePanelStatus {
   status: PanelTrafficStatus;
   reasons: string[];
@@ -136,10 +194,12 @@ export interface GlobalProfileStatus {
   snapshot_at: string | null;
   stack_in_sync: boolean;
   has_drift: boolean;
+  changes?: DriftFileChange[];
   depth: GlobalProfileStatusDepth;
   as_of: string;
   panel: GlobalProfilePanelStatus;
   harnesses: Record<string, HarnessLiveStatus>;
+  contents?: ProfileContents | null;
   drift_summary: {
     global: {
       status: "clean" | "drifted" | "pending";
@@ -152,6 +212,25 @@ export interface GlobalProfileStatus {
     };
   };
   switching?: boolean;
+  warning?: string;
+}
+
+export interface ProfileApplyPreviewRequest {
+  profile: string;
+  scope: ViewScope;
+  projectPath?: string;
+}
+
+export interface ProfileApplyPreview {
+  profile: string;
+  scope: ViewScope;
+  contents: ProfileContents | null;
+  harnesses?: Record<string, HarnessLiveStatus>;
+  files: {
+    expected_count: number;
+    changes: DriftFileChange[];
+  };
+  relative_to_active: boolean;
   warning?: string;
 }
 

@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { Check, FolderGit2, Home, Library, RefreshCw, Unplug, User } from "lucide-react";
+import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
+import { LiveStatePanel } from "./components/LiveStatePanel";
 import { ProjectPicker } from "./components/ProjectPicker";
+import { ResourcesPanel } from "./components/ResourcesPanel";
 import {
   AgentApiError,
   bootstrapProject,
   cancelSwitch,
   connectAgent,
+  fetchApplyPreview,
+  fetchCloudAuthStatus,
   fetchProfiles,
   fetchStatus,
   startSwitch,
@@ -17,9 +23,13 @@ import {
   loadRecentProjects,
   rememberProject,
 } from "./lib/recent-projects";
+import { mergeStatusUpdate } from "./lib/status-merge";
 import type {
+  CloudAuthStatus,
   GlobalProfileStatus,
   PanelTrafficStatus,
+  ProfileApplyPreview,
+  ProfileContentsResource,
   ProfileSummary,
   ProfileSwitchStep,
   ProfileSwitchStepEvent,
@@ -27,7 +37,53 @@ import type {
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 
+type WorkspaceFocus = "resources" | "scope";
+
+const HEADER_ICON_SIZE = 18;
+
+/** Match CLI `ht profile list --search`: name, description, or tags. */
+function filterProfilesByQuery(
+  profiles: ProfileSummary[],
+  query: string,
+): ProfileSummary[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) {
+    return profiles;
+  }
+  return profiles.filter((profile) => {
+    const haystack = [
+      profile.name,
+      profile.description ?? "",
+      ...profile.tags,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(needle);
+  });
+}
+
+function projectDriftLabel(
+  status: GlobalProfileStatus["drift_summary"]["project"] | undefined,
+): string | null {
+  if (!status) {
+    return null;
+  }
+  switch (status.status) {
+    case "na":
+      return "Project not tracked yet";
+    case "clean":
+      return "Project files in sync with last snapshot";
+    case "drifted":
+      return "Project files have drifted from last snapshot";
+    default: {
+      const neverStatus: never = status.status;
+      return neverStatus;
+    }
+  }
+}
+
 const POLL_MS = 2000;
+const ACTIVITY_TTL_MS = 60_000;
 
 function panelStatusLabel(status: PanelTrafficStatus | undefined): string {
   switch (status) {
@@ -39,6 +95,51 @@ function panelStatusLabel(status: PanelTrafficStatus | undefined): string {
       return "Out of sync";
     case undefined:
       return "Checking…";
+    default: {
+      const neverStatus: never = status;
+      return neverStatus;
+    }
+  }
+}
+
+const PANEL_REASON_LABELS: Record<string, string> = {
+  switch_failed: "Last switch failed",
+  restore_failed: "Restore after switch failed",
+  status_warning: "Status warning",
+  profile_not_applied: "Active profile is not applied",
+  stack_out_of_sync: "Applied stack is out of sync",
+  owned_path_drift: "Owned home files have drifted",
+  missing_plugins: "Required plugins are missing",
+  missing_mcp: "Required MCP servers are missing",
+  non_owned_drift: "Other home files have changed",
+  project_drift: "Project files have drifted",
+  fast_depth: "Quick check — refresh for full status",
+};
+
+function panelReasonTooltip(
+  status: PanelTrafficStatus | undefined,
+  reasons: string[] | undefined,
+): string {
+  const headline = panelStatusLabel(status);
+  const details = (reasons ?? [])
+    .map((reason) => PANEL_REASON_LABELS[reason] ?? reason)
+    .filter((label, index, all) => all.indexOf(label) === index);
+  if (details.length === 0) {
+    return headline;
+  }
+  return `${headline}: ${details.join("; ")}`;
+}
+
+function globalDriftIssueLabel(
+  status: GlobalProfileStatus["drift_summary"]["global"]["status"],
+): string | null {
+  switch (status) {
+    case "clean":
+      return null;
+    case "pending":
+      return "Home profile not applied";
+    case "drifted":
+      return "Home files have drifted";
     default: {
       const neverStatus: never = status;
       return neverStatus;
@@ -92,9 +193,17 @@ export function App() {
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [profilesError, setProfilesError] = useState<string | null>(null);
   const [status, setStatus] = useState<GlobalProfileStatus | null>(null);
+  const [hasFullHarnessSnapshot, setHasFullHarnessSnapshot] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [applyPreview, setApplyPreview] = useState<ProfileApplyPreview | null>(null);
+  const [applyPreviewError, setApplyPreviewError] = useState<string | null>(null);
+  const [applyPreviewLoading, setApplyPreviewLoading] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  /** When true, keep an empty selection until the user picks a profile again. */
+  const [preferEmptySelection, setPreferEmptySelection] = useState(false);
+  const [profileFilter, setProfileFilter] = useState("");
+  const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
   const [switchEvents, setSwitchEvents] = useState<ProfileSwitchStepEvent[]>([]);
@@ -104,14 +213,24 @@ export function App() {
   const [overwriteDialog, setOverwriteDialog] = useState(false);
   const [createProfileOpen, setCreateProfileOpen] = useState(false);
   const [cloudBrowseOpen, setCloudBrowseOpen] = useState(false);
+  const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
+  const [cloudAuth, setCloudAuth] = useState<CloudAuthStatus | null>(null);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  /** Project path whose `.harnesstap/config.toml` is known ready (init or already existed). */
+  const [projectConfigReadyPath, setProjectConfigReadyPath] = useState<string | null>(
+    null,
+  );
+  const [refreshPhase, setRefreshPhase] = useState<"idle" | "loading" | "success">(
+    "idle",
+  );
   const [projectPath, setProjectPath] = useState<string>(() => {
     const recent = loadRecentProjects();
     return recent[0]?.path ?? "";
   });
-  const focusedRef = useRef(true);
+  const lastActivityRef = useRef(Date.now());
+  const refreshFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectProject = useCallback((path: string) => {
     const next = path.trim();
@@ -121,6 +240,7 @@ export function App() {
     rememberProject(next);
     setProjectPath(next);
     setBootstrapError(null);
+    setProjectConfigReadyPath(null);
   }, []);
 
   const browseProject = useCallback(async () => {
@@ -144,36 +264,78 @@ export function App() {
   const activeProfile = status?.active_profile ?? null;
   const projectTracked =
     status?.drift_summary.project?.status !== "na" && status?.drift_summary.project !== undefined;
+  // Config init ≠ DB tracking. Project view only needs config.toml; drift "na"
+  // still means "never applied", not "needs init again".
+  const projectReady =
+    Boolean(projectPath)
+    && (projectTracked || projectConfigReadyPath === projectPath);
 
   const refreshStatus = useCallback(
-    async (depth: "fast" | "full" = "fast") => {
+    async (
+      depth: "fast" | "full" = "fast",
+      path: string = projectPath,
+    ): Promise<boolean> => {
       if (!baseUrl || switching) {
-        return;
+        return false;
       }
       try {
         const next = await fetchStatus(
           baseUrl,
           depth,
-          projectPath || undefined,
+          path || undefined,
         );
-        setStatus(next);
+        setStatus((previous) => mergeStatusUpdate(previous, next, depth));
+        if (depth === "full") {
+          setHasFullHarnessSnapshot(true);
+        }
         setStatusError(null);
         setLastUpdated(new Date().toLocaleTimeString());
+        return true;
       } catch (error) {
         setStatusError(
           error instanceof Error ? error.message : "Could not read live status",
         );
+        return false;
       }
     },
     [baseUrl, projectPath, switching],
   );
 
-  const refreshProfiles = useCallback(async () => {
+  const onRefreshClick = useCallback(async () => {
+    if (refreshPhase === "loading") {
+      return;
+    }
+    if (refreshFeedbackTimerRef.current) {
+      clearTimeout(refreshFeedbackTimerRef.current);
+      refreshFeedbackTimerRef.current = null;
+    }
+    setRefreshPhase("loading");
+    const ok = await refreshStatus("full");
+    if (!ok) {
+      setRefreshPhase("idle");
+      return;
+    }
+    setRefreshPhase("success");
+    refreshFeedbackTimerRef.current = setTimeout(() => {
+      setRefreshPhase("idle");
+      refreshFeedbackTimerRef.current = null;
+    }, 1200);
+  }, [refreshPhase, refreshStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshFeedbackTimerRef.current) {
+        clearTimeout(refreshFeedbackTimerRef.current);
+      }
+    };
+  }, []);
+
+  const refreshProfiles = useCallback(async (path: string = projectPath) => {
     if (!baseUrl) {
       return;
     }
     try {
-      const next = await fetchProfiles(baseUrl, projectPath || undefined);
+      const next = await fetchProfiles(baseUrl, path || undefined);
       setProfiles(next);
       setProfilesError(null);
     } catch (error) {
@@ -183,10 +345,37 @@ export function App() {
     }
   }, [baseUrl, projectPath]);
 
+  const refreshCloudAuth = useCallback(async () => {
+    if (!baseUrl || !token) {
+      setCloudAuth(null);
+      return;
+    }
+    try {
+      setCloudAuth(await fetchCloudAuthStatus(baseUrl, token));
+    } catch {
+      // Keep last known auth state; panel can retry on open.
+    }
+  }, [baseUrl, token]);
+
   const visibleProfiles = useMemo(
     () => profiles.filter((profile) => profile.scopes.includes(view)),
     [profiles, view],
   );
+
+  const filteredProfiles = useMemo(
+    () => filterProfilesByQuery(visibleProfiles, profileFilter),
+    [profileFilter, visibleProfiles],
+  );
+
+  const clearProfileSelection = useCallback(() => {
+    setPreferEmptySelection(true);
+    setSelectedProfile(null);
+  }, []);
+
+  const selectProfile = useCallback((name: string) => {
+    setPreferEmptySelection(false);
+    setSelectedProfile(name);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,9 +422,68 @@ export function App() {
     if (!connected || !baseUrl) {
       return;
     }
+    setHasFullHarnessSnapshot(false);
     void refreshProfiles();
     void refreshStatus("full");
-  }, [connected, baseUrl, projectPath, refreshProfiles, refreshStatus]);
+    void refreshCloudAuth();
+  }, [connected, baseUrl, projectPath, refreshProfiles, refreshStatus, refreshCloudAuth]);
+
+  useEffect(() => {
+    if (!baseUrl || !selectedProfile || switching) {
+      setApplyPreview(null);
+      setApplyPreviewError(null);
+      setApplyPreviewLoading(false);
+      return;
+    }
+    if (view === "project" && !projectPath) {
+      setApplyPreview(null);
+      setApplyPreviewError("Choose a project directory to preview project apply.");
+      setApplyPreviewLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setApplyPreview(null);
+    setApplyPreviewLoading(true);
+    setApplyPreviewError(null);
+    void (async () => {
+      try {
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: selectedProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        if (!cancelled) {
+          setApplyPreview(preview);
+          setApplyPreviewLoading(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setApplyPreview(null);
+          setApplyPreviewError(
+            error instanceof Error
+              ? error.message
+              : "Could not preview profile apply",
+          );
+          setApplyPreviewLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    baseUrl,
+    projectPath,
+    selectedProfile,
+    // Intentionally omit status.as_of — fast polls refresh it every few seconds
+    // and were re-triggering this effect (panel loading flash / twitch).
+    // Post-switch refresh is covered by `switching` flipping back to false.
+    switching,
+    token,
+    view,
+  ]);
 
   useEffect(() => {
     if (visibleProfiles.length === 0) {
@@ -244,26 +492,60 @@ export function App() {
       }
       return;
     }
-    if (
-      !selectedProfile
-      || !visibleProfiles.some((profile) => profile.name === selectedProfile)
-    ) {
+    if (selectedProfile === null) {
+      if (preferEmptySelection) {
+        return;
+      }
+      setSelectedProfile(visibleProfiles[0]?.name ?? null);
+      return;
+    }
+    if (!visibleProfiles.some((profile) => profile.name === selectedProfile)) {
+      setPreferEmptySelection(false);
       setSelectedProfile(visibleProfiles[0]?.name ?? null);
     }
-  }, [visibleProfiles, selectedProfile]);
+  }, [visibleProfiles, selectedProfile, preferEmptySelection]);
+
+  const profilePanelResources = useMemo((): ProfileContentsResource[] | null => {
+    if (!selectedProfile) {
+      return null;
+    }
+    if (applyPreview?.contents) {
+      return applyPreview.contents.resources ?? [];
+    }
+    if (selectedProfile === activeProfile && status?.contents) {
+      return status.contents.resources ?? [];
+    }
+    return null;
+  }, [
+    activeProfile,
+    applyPreview?.contents,
+    selectedProfile,
+    status?.contents,
+  ]);
 
   useEffect(() => {
-    const onFocus = () => {
-      focusedRef.current = true;
+    const markActivity = () => {
+      lastActivityRef.current = Date.now();
     };
-    const onBlur = () => {
-      focusedRef.current = false;
-    };
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("blur", onBlur);
+    const events = [
+      "pointerdown",
+      "keydown",
+      "scroll",
+      "wheel",
+      "touchstart",
+    ] as const;
+    for (const event of events) {
+      document.addEventListener(event, markActivity, {
+        passive: true,
+        capture: true,
+      });
+    }
+    window.addEventListener("focus", markActivity);
     return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("blur", onBlur);
+      for (const event of events) {
+        document.removeEventListener(event, markActivity, { capture: true });
+      }
+      window.removeEventListener("focus", markActivity);
     };
   }, []);
 
@@ -272,7 +554,7 @@ export function App() {
       return;
     }
     const timer = window.setInterval(() => {
-      if (focusedRef.current) {
+      if (Date.now() - lastActivityRef.current < ACTIVITY_TTL_MS) {
         void refreshStatus("fast");
       }
     }, POLL_MS);
@@ -283,8 +565,44 @@ export function App() {
     if (!selectedProfile || selectedProfile === activeProfile) {
       return null;
     }
-    return `Switch will apply: ${selectedProfile} · ${formatView(view)}`;
+    return `Will apply: ${selectedProfile} · ${formatView(view)}`;
   }, [activeProfile, view, selectedProfile]);
+
+  const statusIssueParts = useMemo(() => {
+    const parts: string[] = [];
+    if (activeProfile && view === "home" && status) {
+      const globalIssue = globalDriftIssueLabel(
+        status.drift_summary.global.status,
+      );
+      if (globalIssue) {
+        parts.push(globalIssue);
+      }
+    }
+    if (view === "home" && status?.drift_summary.project?.status === "drifted") {
+      parts.push("Project files have drifted");
+    }
+    return parts;
+  }, [activeProfile, status, view]);
+
+  const liveScopeLabel =
+    view === "home"
+      ? "Home live state"
+      : projectPath
+        ? `Project live state · ${projectPath}`
+        : "Project live state";
+
+  const projectStatusLine = useMemo(() => {
+    if (view !== "project") {
+      return null;
+    }
+    return projectDriftLabel(status?.drift_summary.project);
+  }, [status?.drift_summary.project, view]);
+
+  const panelTooltip = useMemo(
+    () =>
+      panelReasonTooltip(status?.panel.status, status?.panel.reasons),
+    [status?.panel.reasons, status?.panel.status],
+  );
 
   const runSwitch = useCallback(
     async (
@@ -365,68 +683,97 @@ export function App() {
   const onProfileCreated = useCallback(
     async (profileName: string, shouldSwitch: boolean) => {
       await refreshProfiles();
-      setSelectedProfile(profileName);
+      selectProfile(profileName);
       if (shouldSwitch) {
         await runSwitch(false, profileName);
       }
     },
-    [refreshProfiles, runSwitch],
+    [refreshProfiles, runSwitch, selectProfile],
   );
 
   const onCloudPull = useCallback(
     async (profileName: string, shouldSwitch: boolean) => {
       await refreshProfiles();
-      setSelectedProfile(profileName);
+      selectProfile(profileName);
       if (shouldSwitch) {
         await runSwitch(false, profileName);
       }
     },
-    [refreshProfiles, runSwitch],
+    [refreshProfiles, runSwitch, selectProfile],
   );
 
-  const ensureProjectReady = useCallback(async (): Promise<boolean> => {
-    if (!baseUrl || !token || !projectPath) {
-      return false;
-    }
-    if (projectTracked) {
-      return true;
-    }
-    setBootstrapBusy(true);
-    setBootstrapError(null);
-    try {
-      // Let the agent ensure a default profile and write project config.
-      await bootstrapProject(baseUrl, token, { projectPath });
-      await refreshProfiles();
-      await refreshStatus("full");
-      return true;
-    } catch (error) {
-      setBootstrapError(
-        error instanceof Error ? error.message : "Project setup failed",
-      );
-      return false;
-    } finally {
-      setBootstrapBusy(false);
-    }
-  }, [
-    baseUrl,
-    projectPath,
-    projectTracked,
-    refreshProfiles,
-    refreshStatus,
-    token,
-  ]);
+  const ensureProjectReady = useCallback(
+    async (pathOverride?: string): Promise<boolean> => {
+      const path = (pathOverride ?? projectPath).trim();
+      if (!baseUrl || !token || !path) {
+        return false;
+      }
+      const alreadyReady =
+        path === projectPath
+          ? projectReady
+          : projectConfigReadyPath === path;
+      if (alreadyReady) {
+        return true;
+      }
+      setBootstrapBusy(true);
+      setBootstrapError(null);
+      try {
+        // Init only when config is missing; agent bootstrap is idempotent if present.
+        await bootstrapProject(baseUrl, token, { projectPath: path });
+        setProjectConfigReadyPath(path);
+        await refreshProfiles(path);
+        await refreshStatus("full", path);
+        return true;
+      } catch (error) {
+        setBootstrapError(
+          error instanceof Error ? error.message : "Project setup failed",
+        );
+        return false;
+      } finally {
+        setBootstrapBusy(false);
+      }
+    },
+    [
+      baseUrl,
+      projectConfigReadyPath,
+      projectPath,
+      projectReady,
+      refreshProfiles,
+      refreshStatus,
+      token,
+    ],
+  );
 
   const onSelectView = (next: ViewScope) => {
+    setWorkspaceFocus("scope");
     if (next === "home") {
       setView("home");
       return;
     }
-    if (!projectPath) {
-      setBootstrapError("Choose a project directory before using Project view.");
-      return;
-    }
     void (async () => {
-      const ready = await ensureProjectReady();
+      let path = projectPath;
+      if (!path) {
+        try {
+          const selected = await open({
+            directory: true,
+            multiple: false,
+            title: "Select project directory",
+          });
+          if (typeof selected !== "string" || selected.length === 0) {
+            return;
+          }
+          selectProject(selected);
+          path = selected;
+        } catch (error) {
+          setStatusError(
+            error instanceof Error
+              ? error.message
+              : "Could not open folder picker",
+          );
+          return;
+        }
+      }
+      const ready = await ensureProjectReady(path);
       if (ready) {
         setView("project");
       }
@@ -461,26 +808,148 @@ export function App() {
     || bootstrapBusy
     || !selectedProfile
     || selectedProfile === activeProfile
-    || (view === "project" && (!projectPath || !projectTracked));
+    || (view === "project" && (!projectPath || !projectReady));
 
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-brand">
           <h1>HarnessTap</h1>
-          <div className="meta">
-            desktop · sidecar {baseUrl ? new URL(baseUrl).port : "—"}
-          </div>
         </div>
-        <ProjectPicker
-          projectPath={projectPath}
-          disabled={switching}
-          onSelect={selectProject}
-          onBrowse={() => void browseProject()}
-        />
-        <div className="meta" aria-live="polite">
-          {connected ? "connected" : "disconnected"}
-          {lastUpdated ? ` · updated ${lastUpdated}` : ""}
+        <div className="header-focus" role="group" aria-label="Workspace">
+          <div className="header-focus-controls">
+            <button
+              type="button"
+              className={`header-focus-btn${workspaceFocus === "resources" ? " on" : ""}`}
+              onClick={() => setWorkspaceFocus("resources")}
+              disabled={switching}
+              aria-label="Resources"
+              title="Resources"
+            >
+              <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            </button>
+            <div
+              className="header-focus-segment"
+              role="group"
+              aria-label="Scope"
+            >
+              <button
+                type="button"
+                className={
+                  workspaceFocus === "scope" && view === "home" ? "on" : ""
+                }
+                onClick={() => onSelectView("home")}
+                disabled={switching || bootstrapBusy}
+                aria-label="Home"
+                title="Home"
+              >
+                <Home size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className={
+                  workspaceFocus === "scope" && view === "project" ? "on" : ""
+                }
+                onClick={() => onSelectView("project")}
+                disabled={switching || bootstrapBusy}
+                aria-label="Project"
+                title={
+                  !projectPath
+                    ? "Choose a project directory"
+                    : !projectReady
+                      ? "Sets up this repo as a HarnessTap project on first use"
+                      : "Project"
+                }
+              >
+                <FolderGit2 size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          {workspaceFocus === "scope" && view === "project" ? (
+            <ProjectPicker
+              projectPath={projectPath}
+              disabled={switching}
+              onSelect={selectProject}
+              onBrowse={() => void browseProject()}
+            />
+          ) : (
+            <div className="header-focus-spacer" aria-hidden />
+          )}
+        </div>
+        <div className="header-status" aria-live="polite">
+          {!connected ? (
+            <span
+              className="connection-indicator"
+              title="Disconnected"
+              aria-label="Disconnected"
+              role="img"
+            >
+              <Unplug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            </span>
+          ) : null}
+          <button
+            className={[
+              "icon-action",
+              "refresh-action",
+              refreshPhase === "loading" ? "is-loading" : "",
+              refreshPhase === "success" ? "is-success" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            onClick={() => void onRefreshClick()}
+            disabled={!connected || switching || refreshPhase === "loading"}
+            aria-busy={refreshPhase === "loading"}
+            aria-label={
+              refreshPhase === "success"
+                ? "Refreshed"
+                : refreshPhase === "loading"
+                  ? "Refreshing"
+                  : "Refresh"
+            }
+            title={
+              lastUpdated
+                ? `Updated ${lastUpdated}`
+                : refreshPhase === "loading"
+                  ? "Refreshing…"
+                  : "Refresh"
+            }
+          >
+            {refreshPhase === "success" ? (
+              <Check size={HEADER_ICON_SIZE} strokeWidth={2.25} aria-hidden="true" />
+            ) : (
+              <RefreshCw
+                className="refresh-spinner"
+                size={HEADER_ICON_SIZE}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            )}
+          </button>
+          <button
+            className={[
+              "icon-action",
+              "account-action",
+              cloudAuth?.authenticated ? "is-signed-in" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            onClick={() => setCloudAccountOpen(true)}
+            disabled={!connected}
+            aria-label={
+              cloudAuth?.authenticated
+                ? `Cloud account${cloudAuth.email ? `: ${cloudAuth.email}` : ""}`
+                : "Sign in to Cloud"
+            }
+            title={
+              cloudAuth?.authenticated
+                ? cloudAuth.email ?? cloudAuth.orgSlug ?? "Cloud account"
+                : "Sign in to Cloud"
+            }
+          >
+            <User size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+          </button>
         </div>
       </header>
 
@@ -518,6 +987,28 @@ export function App() {
                 + Create
               </button>
             </div>
+          </div>
+          <div className="profiles-filter-row">
+            <input
+              className="profiles-filter"
+              type="search"
+              placeholder="Filter profiles…"
+              value={profileFilter}
+              onChange={(event) => setProfileFilter(event.target.value)}
+              disabled={!connected || switching || visibleProfiles.length === 0}
+              aria-label="Filter profiles by name, description, or tags"
+            />
+            {selectedProfile ? (
+              <button
+                className="rail-clear-button"
+                type="button"
+                onClick={clearProfileSelection}
+                disabled={switching}
+                title="Clear profile selection"
+              >
+                Clear
+              </button>
+            ) : null}
           </div>
           <div className="profiles-list">
             {profilesError && (
@@ -565,7 +1056,25 @@ export function App() {
                 </button>
               </div>
             )}
-            {visibleProfiles.map((profile) => {
+            {!profilesError
+              && visibleProfiles.length > 0
+              && filteredProfiles.length === 0 && (
+              <div className="empty-state">
+                <h2>No matching profiles</h2>
+                <p className="muted">
+                  No profiles match “{profileFilter.trim()}”. Try a different
+                  name, description, or tag.
+                </p>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => setProfileFilter("")}
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
+            {filteredProfiles.map((profile) => {
               const isActive = profile.name === activeProfile;
               const isSelected = profile.name === selectedProfile;
               return (
@@ -579,7 +1088,13 @@ export function App() {
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  onClick={() => setSelectedProfile(profile.name)}
+                  onClick={() => {
+                    if (isSelected) {
+                      clearProfileSelection();
+                      return;
+                    }
+                    selectProfile(profile.name);
+                  }}
                   disabled={switching}
                 >
                   {profile.name}
@@ -589,30 +1104,6 @@ export function App() {
             })}
           </div>
           <div className="rail-controls">
-            <div className="segment" role="group" aria-label="View">
-              {(["home", "project"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={view === value ? "on" : ""}
-                  onClick={() => onSelectView(value)}
-                  disabled={
-                    switching
-                    || bootstrapBusy
-                    || (value === "project" && !projectPath)
-                  }
-                  title={
-                    value === "project" && !projectPath
-                      ? "Choose a project directory first"
-                      : value === "project" && !projectTracked
-                        ? "Sets up this repo as a HarnessTap project on first use"
-                        : undefined
-                  }
-                >
-                  {formatView(value)}
-                </button>
-              ))}
-            </div>
             {pendingSummary ? <p className="muted">{pendingSummary}</p> : null}
             <button
               className="btn primary"
@@ -620,185 +1111,157 @@ export function App() {
               onClick={onSwitchClick}
               disabled={switchDisabled}
             >
-              Switch
+              Apply
             </button>
           </div>
         </nav>
 
-        <main className="live-pane" aria-label="Live state">
-          {bootstrapError ? (
-            <div className="banner error">
-              <div>{bootstrapError}</div>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => setBootstrapError(null)}
-              >
-                Dismiss
-              </button>
-            </div>
-          ) : null}
-
-          <div className="live-toolbar">
-            <div>
-              <div className="status-line" aria-live="polite">
-                {activeProfile ?? "No active profile"}
-              </div>
-              <div className="muted status-subline">
-                <span
-                  className={`status-dot ${status?.panel.status ?? "yellow"}`}
-                  aria-hidden
-                />
-                {panelStatusLabel(status?.panel.status)}
-                <span className="status-sep">·</span>
-                <span>
-                  global {status?.drift_summary.global.status ?? "pending"}
-                </span>
-                <span className="status-sep">·</span>
-                <span>
-                  project {status?.drift_summary.project?.status ?? "na"}
-                </span>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => void refreshStatus("full")}
-                disabled={!connected || switching}
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          {!projectPath && connected && (
-            <div className="banner">
-              <div>
-                Choose a project to inspect project-scoped status, or keep working
-                on home-only profile switches.
-              </div>
-              <button className="btn primary" type="button" onClick={() => void browseProject()}>
-                Browse…
-              </button>
-            </div>
-          )}
-
-          {successMessage ? (
-            <div className="success-flash">{successMessage}</div>
-          ) : null}
-
-          {statusError && (
-            <div className="banner error">
-              <div>{statusError}</div>
-              <button className="btn" type="button" onClick={() => void refreshStatus("full")}>
-                Retry
-              </button>
-            </div>
-          )}
-
-          {switching ? (
-            <section aria-label="Switching progress">
-              <h2 style={{ margin: 0, fontSize: "0.95rem" }}>Switching…</h2>
-              <ol className="steps">
-                {orderedSwitchSteps(view).map((step) => {
-                  const state = stepState(step, switchEvents);
-                  return (
-                    <li
-                      key={step}
-                      className={
-                        state === "current"
-                          ? "cur"
-                          : state === "done"
-                            ? "done"
-                            : state === "failed"
-                              ? "cur"
-                              : ""
-                      }
-                    >
-                      {SWITCH_STEP_LABELS[step]}
-                      {state === "failed" ? " — failed" : ""}
-                    </li>
-                  );
-                })}
-              </ol>
-              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+        {workspaceFocus === "resources" ? (
+          <ResourcesPanel
+            baseUrl={baseUrl}
+            token={token}
+            selectedProfile={selectedProfile}
+            profileResources={profilePanelResources}
+            profileContentsLoading={
+              Boolean(selectedProfile) && applyPreviewLoading
+            }
+            disabled={switching}
+          />
+        ) : (
+          <main className="live-pane" aria-label="Live state">
+            {bootstrapError ? (
+              <div className="banner error">
+                <div>{bootstrapError}</div>
                 <button
                   className="btn"
                   type="button"
-                  onClick={() => void onCancelSwitch()}
-                  disabled={isApplyStepActive(switchEvents)}
+                  onClick={() => setBootstrapError(null)}
                 >
-                  Cancel
+                  Dismiss
                 </button>
               </div>
-            </section>
-          ) : (
-            <>
-              {(["claude-code", "cursor"] as const).map((harnessId) => {
-                const harness = status?.harnesses[harnessId];
-                const missingPlugins =
-                  harness?.plugins.filter((row) => row.state === "missing").length ?? 0;
-                const missingMcp =
-                  harness?.mcp.filter((row) => row.state === "missing").length ?? 0;
-                const harnessOk = missingPlugins === 0 && missingMcp === 0;
-                return (
-                  <section key={harnessId} className="harness-block">
-                    <div className="harness-header">
-                      <span>{harnessId}</span>
-                      <span className={`pill ${harnessOk ? "ok" : "bad"}`}>
-                        {harnessOk ? "ok" : "issues"}
-                      </span>
-                    </div>
-                    <div className="harness-body">
-                      {(harness?.plugins ?? []).map((row) => (
-                        <div className="kv" key={`${harnessId}-plugin-${row.id}`}>
-                          <span>plugin {row.id}</span>
-                          <span className="mono">{row.state}</span>
-                        </div>
-                      ))}
-                      {(harness?.mcp ?? []).map((row) => (
-                        <div className="kv" key={`${harnessId}-mcp-${row.name}`}>
-                          <span>mcp {row.name}</span>
-                          <span className="mono">{row.state}</span>
-                        </div>
-                      ))}
-                      {!harness && (
-                        <div className="muted">No harness data yet.</div>
-                      )}
-                    </div>
-                  </section>
-                );
-              })}
+            ) : null}
 
-              <details
-                className="drawer"
-                open={selectedProfile !== null && selectedProfile !== activeProfile}
-              >
-                <summary>Target preview</summary>
-                <div className="drawer-body">
-                  {selectedProfile ? (
-                    <p className="muted">
-                      Declared pins for <span className="mono">{selectedProfile}</span>{" "}
-                      load with the next full status refresh after switch.
-                    </p>
+            <div className="live-toolbar">
+              <div>
+                <div className="live-scope-label">{liveScopeLabel}</div>
+                <div className="status-line" aria-live="polite">
+                  {activeProfile ? (
+                    <>
+                      <span
+                        className={`status-dot ${status?.panel.status ?? "yellow"}`}
+                        title={panelTooltip}
+                        aria-label={panelTooltip}
+                        role="img"
+                      />
+                      {activeProfile}
+                    </>
                   ) : (
-                    <p className="muted">Select a profile to preview its target stack.</p>
+                    "No active profile"
                   )}
                 </div>
-              </details>
-            </>
-          )}
-
-          {switchError && !switching && (
-            <div className="banner error">
-              <div>{switchError}</div>
-              <button className="btn" type="button" onClick={onSwitchClick}>
-                Retry
-              </button>
+                {projectStatusLine ? (
+                  <div className="muted status-subline">{projectStatusLine}</div>
+                ) : null}
+                {statusIssueParts.length > 0 ? (
+                  <div className="muted status-subline">
+                    {statusIssueParts.map((part, index) => (
+                      <span key={part}>
+                        {index > 0 ? <span className="status-sep"> · </span> : null}
+                        {part}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          )}
-        </main>
+
+            {!projectPath && connected && (
+              <div className="banner">
+                <div>
+                  Choose a project to inspect project-scoped status, or keep working
+                  on home-only profile switches.
+                </div>
+                <button className="btn primary" type="button" onClick={() => void browseProject()}>
+                  Browse…
+                </button>
+              </div>
+            )}
+
+            {successMessage ? (
+              <div className="success-flash">{successMessage}</div>
+            ) : null}
+
+            {statusError && (
+              <div className="banner error">
+                <div>{statusError}</div>
+                <button className="btn" type="button" onClick={() => void refreshStatus("full")}>
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {switching ? (
+              <section aria-label="Switching progress">
+                <h2 style={{ margin: 0, fontSize: "0.95rem" }}>Switching…</h2>
+                <ol className="steps">
+                  {orderedSwitchSteps(view).map((step) => {
+                    const state = stepState(step, switchEvents);
+                    return (
+                      <li
+                        key={step}
+                        className={
+                          state === "current"
+                            ? "cur"
+                            : state === "done"
+                              ? "done"
+                              : state === "failed"
+                                ? "cur"
+                                : ""
+                        }
+                      >
+                        {SWITCH_STEP_LABELS[step]}
+                        {state === "failed" ? " — failed" : ""}
+                      </li>
+                    );
+                  })}
+                </ol>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => void onCancelSwitch()}
+                    disabled={isApplyStepActive(switchEvents)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </section>
+            ) : (
+              <LiveStatePanel
+                view={view}
+                formatView={formatView}
+                selectedProfile={selectedProfile}
+                activeProfile={activeProfile}
+                liveContents={status?.contents}
+                applyPreview={applyPreview}
+                applyPreviewLoading={applyPreviewLoading}
+                applyPreviewError={applyPreviewError}
+                liveHarnesses={status?.harnesses}
+                hasFullHarnessSnapshot={hasFullHarnessSnapshot}
+              />
+            )}
+
+            {switchError && !switching && (
+              <div className="banner error">
+                <div>{switchError}</div>
+                <button className="btn" type="button" onClick={onSwitchClick}>
+                  Retry
+                </button>
+              </div>
+            )}
+          </main>
+        )}
       </div>
 
       <CreateProfileDrawer
@@ -818,6 +1281,21 @@ export function App() {
         disabled={switching}
         onClose={() => setCloudBrowseOpen(false)}
         onPull={onCloudPull}
+        onRequestSignIn={() => {
+          setCloudBrowseOpen(false);
+          setCloudAccountOpen(true);
+        }}
+      />
+
+      <CloudAccountDrawer
+        open={cloudAccountOpen}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={switching}
+        onClose={() => setCloudAccountOpen(false)}
+        onAuthChange={(next) => {
+          setCloudAuth(next);
+        }}
       />
 
       {overwriteDialog && (
