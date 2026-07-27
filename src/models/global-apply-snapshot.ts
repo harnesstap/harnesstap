@@ -108,6 +108,19 @@ export function getLatestGlobalApplySnapshotForProfile(
   );
 }
 
+export function renameGlobalApplySnapshotsProfile(
+  oldName: string,
+  newName: string,
+): number {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `UPDATE global_apply_snapshots SET profile_name = ? WHERE profile_name = ?`,
+    )
+    .run(newName, oldName);
+  return result.changes;
+}
+
 export function listGlobalApplySnapshotInstalls(
   snapshotId: string,
 ): GlobalApplySnapshotInstall[] {

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import { listInstalledPluginPinCreateInputs } from "../plugins/claude-installed.js";
 import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
@@ -304,6 +305,8 @@ export class ClaudeCodeSerializer extends BaseSerializer {
         ),
       );
     }
+
+    resources.push(...listInstalledPluginPinCreateInputs(homeRoot));
 
     return resources;
   }

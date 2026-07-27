@@ -540,9 +540,10 @@ export function persistScanResults(
     for (const r of result.resources) {
       const incoming = normalizeResourceInput({
         ...r,
-        namespace,
-        origin_kind: "local_snapshot",
-        origin_ref: originRef || r.source,
+        // Preserve explicit identity from scanners (e.g. marketplace plugin pins).
+        namespace: r.namespace ?? namespace,
+        origin_kind: r.origin_kind ?? "local_snapshot",
+        origin_ref: r.origin_ref ?? (originRef || r.source),
       });
       const key = resourceDedupKey({ ...incoming, namespace });
       if (seen.has(key)) continue;

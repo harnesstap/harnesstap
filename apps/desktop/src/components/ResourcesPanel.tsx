@@ -13,6 +13,10 @@ import {
   Wrench,
 } from "lucide-react";
 import { RelatedHarnessIcons } from "./HarnessIcons";
+import {
+  ResourceDetailPane,
+  type ResourceDetailTarget,
+} from "./ResourceDetailPane";
 import { fetchLibraryResources } from "../lib/agent-client";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
@@ -73,6 +77,9 @@ export function ResourcesPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
+    null,
+  );
   const filterRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -192,30 +199,53 @@ export function ResourcesPanel({
                 <span className="muted">{group.resources.length}</span>
               </h3>
               <ul className="resources-list">
-                {group.resources.map((resource) => (
-                  <li className="resources-list-item" key={resource.id}>
-                    <div className="resources-list-main">
-                      <span className="resources-list-name">
-                        {resourceDisplayName(resource)}
-                      </span>
-                      <RelatedHarnessIcons
-                        harnessIds={relatedHarnessesForResourceType(
-                          resource.type,
-                        )}
-                      />
-                    </div>
-                    {resource.description ? (
-                      <span className="resources-list-desc muted">
-                        {resource.description}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
+                {group.resources.map((resource) => {
+                  const label = resourceDisplayName(resource);
+                  return (
+                    <li className="resources-list-item" key={resource.id}>
+                      <div className="resources-list-main">
+                        <button
+                          type="button"
+                          className="resource-name-btn resources-list-name"
+                          title={resource.source || undefined}
+                          disabled={disabled}
+                          onClick={() =>
+                            setDetailTarget({
+                              selector: resource.id,
+                              label,
+                              pathHint: resource.source,
+                            })
+                          }
+                        >
+                          {label}
+                        </button>
+                        <RelatedHarnessIcons
+                          harnessIds={relatedHarnessesForResourceType(
+                            resource.type,
+                          )}
+                        />
+                      </div>
+                      {resource.description ? (
+                        <span className="resources-list-desc muted">
+                          {resource.description}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ))
         )}
       </div>
+
+      <ResourceDetailPane
+        open={detailTarget !== null}
+        target={detailTarget}
+        baseUrl={baseUrl}
+        token={token}
+        onClose={() => setDetailTarget(null)}
+      />
     </main>
   );
 }

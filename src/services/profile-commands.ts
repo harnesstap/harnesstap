@@ -4,7 +4,10 @@ import {
   getLayerByName,
   resolveLayerSelector,
   setLayerTags,
+  updateLayerName,
 } from "../models/layer-model.js";
+import { renameGlobalApplySnapshotsProfile } from "../models/global-apply-snapshot.js";
+import { renameLayerTypedResources } from "../models/resource.js";
 import { PROFILE_LAYER_TAG, isProfileLayer, listProfileLayers } from "../constants/profile.js";
 import type { Layer } from "../types.js";
 import {
@@ -19,6 +22,19 @@ export interface CreateProfileResult {
   layer: Layer;
   created: boolean;
   promoted: boolean;
+}
+
+export class ProfileRenameError extends Error {
+  readonly code: "invalid_name" | "not_found" | "layer_exists" | "not_a_profile";
+
+  constructor(
+    code: ProfileRenameError["code"],
+    message: string,
+  ) {
+    super(message);
+    this.name = "ProfileRenameError";
+    this.code = code;
+  }
 }
 
 export function listProfileLayersCommand() {
@@ -173,6 +189,70 @@ export function deleteProfileCommand(selector: string): {
     layer_id: untagged.layer_id,
     layer_name: layer.name,
     tags: untagged.tags,
+    was_active: wasActive,
+  };
+}
+
+export function renameProfileCommand(
+  selector: string,
+  nextNameInput: string,
+): {
+  old_name: string;
+  name: string;
+  layer_id: string;
+  was_active: boolean;
+} {
+  const nextName = nextNameInput.trim();
+  if (!nextName) {
+    throw new ProfileRenameError("invalid_name", "Profile name is required");
+  }
+
+  const layer = resolveLayerSelector(selector);
+  if (!layer) {
+    throw new ProfileRenameError("not_found", `Profile not found: ${selector}`);
+  }
+  if (!isProfileLayer(layer)) {
+    throw new ProfileRenameError(
+      "not_a_profile",
+      `Layer "${layer.name}" is not tagged as a profile`,
+    );
+  }
+
+  const oldName = layer.name;
+  if (nextName === oldName) {
+    const wasActive = getActiveProfileName() === oldName;
+    return {
+      old_name: oldName,
+      name: oldName,
+      layer_id: layer.id,
+      was_active: wasActive,
+    };
+  }
+
+  const conflicting = getLayerByName(nextName);
+  if (conflicting && conflicting.id !== layer.id) {
+    throw new ProfileRenameError(
+      "layer_exists",
+      `Layer already exists: ${nextName}`,
+    );
+  }
+
+  if (!updateLayerName(layer.id, nextName)) {
+    throw new ProfileRenameError("not_found", `Profile not found: ${selector}`);
+  }
+
+  renameLayerTypedResources(oldName, nextName);
+  renameGlobalApplySnapshotsProfile(oldName, nextName);
+
+  const wasActive = getActiveProfileName() === oldName;
+  if (wasActive) {
+    setActiveProfileName(nextName);
+  }
+
+  return {
+    old_name: oldName,
+    name: nextName,
+    layer_id: layer.id,
     was_active: wasActive,
   };
 }

@@ -27,6 +27,22 @@ export interface LibraryResource {
   type: string;
   namespace: string | null;
   description: string | null;
+  /** On-disk path or import origin label. */
+  source?: string | null;
+}
+
+export interface LibraryResourceDetail {
+  id: string;
+  type: string;
+  name: string;
+  namespace: string | null;
+  description: string | null;
+  source: string;
+  origin_kind: string;
+  origin_ref: string | null;
+  updated_at: string;
+  content: string;
+  content_truncated: boolean;
 }
 
 export type ProfileCreateSource = "compose" | "home" | "project";
@@ -132,6 +148,13 @@ export interface ProfileTagResult {
   tags: string[];
 }
 
+export interface ProfileRenameResult {
+  old_name: string;
+  name: string;
+  layer_id: string;
+  was_active: boolean;
+}
+
 export interface HarnessPluginStatusRow {
   id: string;
   state: "installed" | "missing" | "extra";
@@ -162,6 +185,9 @@ export interface ProfileContentsPin {
 export interface ProfileContentsResource {
   type: string;
   name: string;
+  id?: string;
+  /** On-disk path or import origin label (hover target). */
+  source?: string;
 }
 
 export interface ProfileContents {
@@ -272,7 +298,7 @@ export interface AgentHealth {
 
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {
   validate_baseline: "Validate baseline",
-  apply_home: "Apply profile (home)",
+  apply_home: "Apply profile (global)",
   apply_project: "Apply profile (project)",
   restore_previous: "Restore previous",
   complete: "Verify live state",

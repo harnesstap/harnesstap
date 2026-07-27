@@ -12,6 +12,7 @@ import type {
   GlobalProfileStatusDepth,
   LibraryLayer,
   LibraryResource,
+  LibraryResourceDetail,
   ProfileApplyPreview,
   ProfileApplyPreviewRequest,
   ProfileCreatePreview,
@@ -20,6 +21,7 @@ import type {
   ProfileSummary,
   ProfileSwitchStepEvent,
   ProfileTagResult,
+  ProfileRenameResult,
   SwitchScope,
 } from "./types";
 
@@ -186,6 +188,23 @@ export async function fetchLibraryResources(
   }
   const body = (await response.json()) as { resources: LibraryResource[] };
   return body.resources;
+}
+
+export async function fetchLibraryResourceDetail(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+): Promise<LibraryResourceDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load resource details");
+  }
+  const body = (await response.json()) as { resource: LibraryResourceDetail };
+  return body.resource;
 }
 
 export async function previewProfileCreate(
@@ -355,6 +374,28 @@ export async function tagProfile(
     return throwAgentError(response, "Could not tag profile");
   }
   return (await response.json()) as ProfileTagResult;
+}
+
+export async function renameProfile(
+  baseUrl: string,
+  token: string | null,
+  currentName: string,
+  nextName: string,
+): Promise<ProfileRenameResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(currentName)}/rename`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: nextName }),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not rename profile");
+  }
+  return (await response.json()) as ProfileRenameResult;
 }
 
 export async function fetchStatus(

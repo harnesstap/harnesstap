@@ -22,10 +22,12 @@ import {
 import {
   handleProfileCreate,
   handleProfileCreatePreview,
+  handleProfileRename,
   handleProfileTag,
 } from "./profile-create-handlers.js";
 import {
   handleLibraryLayers,
+  handleLibraryResourceDetail,
   handleLibraryResources,
 } from "./profile-library-handlers.js";
 import {
@@ -533,28 +535,47 @@ export function createAgentFetchHandler(
     } else if (method === "GET" && url.pathname === "/v1/library/resources") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryResources();
+    } else if (method === "GET" && url.pathname.startsWith("/v1/library/resources/")) {
+      const authError = requireAgentBearerAuth(request, token);
+      if (authError) {
+        response = authError;
+      } else {
+        const selector = decodeURIComponent(
+          url.pathname.slice("/v1/library/resources/".length),
+        );
+        response = handleLibraryResourceDetail(selector);
+      }
     } else {
-      const tagMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/tag$/);
-      if (method === "POST" && tagMatch) {
-        response = handleProfileTag(
+      const renameMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/rename$/);
+      if (method === "POST" && renameMatch) {
+        response = await handleProfileRename(
           request,
           token,
-          decodeURIComponent(tagMatch[1] ?? ""),
+          decodeURIComponent(renameMatch[1] ?? ""),
         );
       } else {
-        const eventsMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/events$/);
-        if (method === "GET" && eventsMatch) {
-          response = handlers.handleSwitchEvents(eventsMatch[1] ?? "", request);
-        } else if (method !== "GET" && method !== "HEAD") {
-          const cancelMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/cancel$/);
-          if (method === "POST" && cancelMatch) {
-            response = handlers.handleSwitchCancel(cancelMatch[1] ?? "", request);
-          } else {
-            const authError = requireAgentBearerAuth(request, token);
-            response = authError ?? jsonResponse({ error: "not_found" }, { status: 404 });
-          }
+        const tagMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/tag$/);
+        if (method === "POST" && tagMatch) {
+          response = handleProfileTag(
+            request,
+            token,
+            decodeURIComponent(tagMatch[1] ?? ""),
+          );
         } else {
-          response = jsonResponse({ error: "not_found" }, { status: 404 });
+          const eventsMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/events$/);
+          if (method === "GET" && eventsMatch) {
+            response = handlers.handleSwitchEvents(eventsMatch[1] ?? "", request);
+          } else if (method !== "GET" && method !== "HEAD") {
+            const cancelMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/cancel$/);
+            if (method === "POST" && cancelMatch) {
+              response = handlers.handleSwitchCancel(cancelMatch[1] ?? "", request);
+            } else {
+              const authError = requireAgentBearerAuth(request, token);
+              response = authError ?? jsonResponse({ error: "not_found" }, { status: 404 });
+            }
+          } else {
+            response = jsonResponse({ error: "not_found" }, { status: 404 });
+          }
         }
       }
     }

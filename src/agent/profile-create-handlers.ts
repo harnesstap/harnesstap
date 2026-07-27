@@ -1,4 +1,8 @@
-import { tagProfileCommand } from "../services/profile-commands.js";
+import {
+  ProfileRenameError,
+  renameProfileCommand,
+  tagProfileCommand,
+} from "../services/profile-commands.js";
 import {
   commitProfileCreate,
   type ProfileConflictPolicy,
@@ -267,6 +271,65 @@ export function handleProfileTag(
     return jsonResponse(
       { error: "not_found", message: errorMessage(error) },
       { status: 404 },
+    );
+  }
+}
+
+export async function handleProfileRename(
+  request: Request,
+  token: string,
+  name: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "invalid_body" }, { status: 400 });
+  }
+  if (!isRecord(body) || typeof body.name !== "string") {
+    return jsonResponse(
+      { error: "invalid_body", message: "name must be a string" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    return jsonResponse(renameProfileCommand(name, body.name));
+  } catch (error) {
+    if (error instanceof ProfileRenameError) {
+      switch (error.code) {
+        case "invalid_name":
+          return jsonResponse({ error: "invalid_name" }, { status: 400 });
+        case "not_found":
+          return jsonResponse(
+            { error: "not_found", message: error.message },
+            { status: 404 },
+          );
+        case "layer_exists":
+          return jsonResponse({ error: "layer_exists" }, { status: 409 });
+        case "not_a_profile":
+          return jsonResponse(
+            { error: "not_a_profile", message: error.message },
+            { status: 400 },
+          );
+        default: {
+          const _exhaustive: never = error.code;
+          void _exhaustive;
+          return jsonResponse(
+            { error: "rename_failed", message: error.message },
+            { status: 400 },
+          );
+        }
+      }
+    }
+    return jsonResponse(
+      { error: "rename_failed", message: errorMessage(error) },
+      { status: 400 },
     );
   }
 }

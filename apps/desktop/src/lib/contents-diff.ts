@@ -14,6 +14,10 @@ export interface ContentsDiffItem {
   iconType: string;
   label: string;
   detail?: string;
+  /** Hover path for material resources. */
+  path?: string;
+  /** Selector for resource detail fetch (`id` or `type:name`). */
+  selector?: string;
 }
 
 export interface ContentsDiff {
@@ -106,6 +110,8 @@ function itemsFromContents(contents: ProfileContents | null | undefined): Map<st
       iconType: resource.type,
       label: resource.name,
       detail: resource.type.replaceAll("_", " "),
+      path: resource.source,
+      selector: resource.id ?? `${resource.type}:${resource.name}`,
     });
   }
 

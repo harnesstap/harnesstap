@@ -47,15 +47,35 @@ describe("profile contents and apply preview", () => {
       expect(contents?.type_counts.plugin_pin).toBe(1);
       expect(contents?.resources).toEqual(
         expect.arrayContaining([
-          { type: "instruction", name: "profile-guide" },
-          { type: "mcp_server", name: "docs" },
+          expect.objectContaining({
+            id: instruction.id,
+            type: "instruction",
+            name: "profile-guide",
+            source: "manual",
+          }),
+          expect.objectContaining({
+            id: mcp.id,
+            type: "mcp_server",
+            name: "docs",
+            source: "manual",
+          }),
         ]),
       );
       const workLayer = contents?.layers.find((entry) => entry.name === "work");
       expect(workLayer?.resources).toEqual(
         expect.arrayContaining([
-          { type: "instruction", name: "profile-guide" },
-          { type: "mcp_server", name: "docs" },
+          expect.objectContaining({
+            id: instruction.id,
+            type: "instruction",
+            name: "profile-guide",
+            source: "manual",
+          }),
+          expect.objectContaining({
+            id: mcp.id,
+            type: "mcp_server",
+            name: "docs",
+            source: "manual",
+          }),
         ]),
       );
       expect(contents?.plugin_pins).toEqual([

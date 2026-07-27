@@ -105,6 +105,8 @@ ht resource sync plugin_pin:formatter@my-marketplace
 ht resource show plugin_pin:formatter@my-marketplace
 ```
 
+Claude Code **home scan** (`init`, profile from home, `scan` of global defaults) also registers installed plugins from `~/.claude/plugins/installed_plugins.json` as `plugin_pin` resources. That creates the pin in the library; run `resource sync` to materialize child skills/hooks from the install tree.
+
 Claude Code and Cursor have native plugin install/sync providers. Other harnesses may import plugin manifest metadata without full install-tree fidelity — see [Portability limits](../../portability-limits.md).
 
 ## Portability notes

@@ -5,7 +5,6 @@ import {
   type OwnedOverwriteConflictSummary,
 } from "../services/profile-owned-overwrite.js";
 import {
-  ProfileSwitchNoBaselineError,
   SwitchRestoreFailedError,
   switchProfile,
   type SwitchProfileResult,
@@ -222,10 +221,7 @@ export async function startAgentSwitch(
         },
       });
     } catch (error) {
-      if (
-        error instanceof ProfileSwitchNoBaselineError ||
-        error instanceof SwitchRestoreFailedError
-      ) {
+      if (error instanceof SwitchRestoreFailedError) {
         emitAgentSwitchFinal(session, {
           type: "result",
           ok: false,

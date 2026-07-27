@@ -13,10 +13,10 @@ Tauri 2 desktop app for the profile control plane (Variant A split pane).
 From the repo root:
 
 ```bash
-bun run desktop:prepare-sidecar
-cd apps/desktop && bun install
-bun run tauri dev
+bun run desktop:dev
 ```
+
+This prepares the `ht-agent` sidecar, installs desktop deps, then runs `tauri dev`.
 
 The app spawns the bundled `ht-agent` sidecar, waits for `GET /v1/health`, then reads `~/.harnesstap/agent-token` for mutating API calls.
 

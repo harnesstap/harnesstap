@@ -26,7 +26,6 @@ import { maybePromptProfileLayerDelete } from "../../services/profile-delete-pro
 import { maybeSyncActiveProfileBeforeSwitch } from "../../services/profile-switch-prompt.js";
 import {
   SwitchRestoreFailedError,
-  ProfileSwitchNoBaselineError,
   switchProfile,
 } from "../../services/profile-switch.js";
 import { resolveProfileUseSelection } from "../../services/profile-use-resolve.js";
@@ -661,7 +660,7 @@ profileCmd
   .option("--no-interactive", "Disable interactive prompts")
   .option("--interactive", "Enable interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Switch the active profile with baseline snapshot gate and restore on failure")
+  .description("Switch the active profile and restore the previous one on failure")
   .action(async (name: string, opts: {
     dryRun?: boolean;
     harness?: string;
@@ -735,7 +734,7 @@ profileCmd
       ]);
     } catch (err) {
       process.exitCode = 1;
-      if (err instanceof ProfileSwitchNoBaselineError || err instanceof SwitchRestoreFailedError) {
+      if (err instanceof SwitchRestoreFailedError) {
         ui.danger(err.message);
         return;
       }

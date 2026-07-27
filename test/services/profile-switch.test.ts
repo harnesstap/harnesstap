@@ -16,7 +16,6 @@ import {
   useProfileCommandUnlocked,
 } from "../../src/services/profile-commands.ts";
 import {
-  ProfileSwitchNoBaselineError,
   SwitchRestoreFailedError,
   switchProfile,
 } from "../../src/services/profile-switch.ts";
@@ -77,19 +76,25 @@ describe("profile-switch service", () => {
     }
   });
 
-  it("refuses to switch when no global apply snapshot exists", async () => {
+  it("applies on first switch when no global apply snapshot exists yet", async () => {
     const context = await createInitializedTestContext("profile-switch-no-baseline");
     try {
       createProfile("profile-a", "skill-a");
 
-      await expect(
-        switchProfile("profile-a", {
-          apply: {
-            harness: "claude-code",
-            conflictPolicy: "replace",
-          },
-        }),
-      ).rejects.toBeInstanceOf(ProfileSwitchNoBaselineError);
+      const result = await switchProfile("profile-a", {
+        apply: {
+          harness: "claude-code",
+          conflictPolicy: "replace",
+        },
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      expect(result.apply.profile_name).toBe("profile-a");
+      expect(result.apply.snapshot_id).toBeTruthy();
+      expect(existsSync(join(context.homeDir, ".claude/skills/skill-a/SKILL.md"))).toBe(true);
     } finally {
       await context.cleanup();
     }

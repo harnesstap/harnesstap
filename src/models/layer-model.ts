@@ -674,6 +674,15 @@ export function setLayerTags(
   return result.changes > 0;
 }
 
+export function updateLayerName(layerId: string, name: string): boolean {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(`UPDATE layers SET name = ?, updated_at = ? WHERE id = ?`)
+    .run(name, now, layerId);
+  return result.changes > 0;
+}
+
 export function createLayerFromSources(input: {
   name: string;
   version?: string;

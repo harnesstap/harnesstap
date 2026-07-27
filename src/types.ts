@@ -429,6 +429,8 @@ export interface PlatformPaths {
   agents?: string;
   commands?: string;
   settings?: string;
+  /** Host plugin inventory / install root (e.g. Claude `~/.claude/plugins/`). */
+  plugins?: string;
   /** Alternate on-disk paths checked during platform detection. */
   pathAlternates?: Partial<{
     commands: string[];

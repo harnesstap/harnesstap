@@ -213,6 +213,25 @@ describe("scanner services", () => {
         `${context.homeDir}/.claude/skills/research/SKILL.md`,
         "---\nname: research\ndescription: Home research helper\n---\n# Research",
       );
+      writeTextFile(
+        `${context.homeDir}/.claude/plugins/CACHE/demo/.claude-plugin/plugin.json`,
+        JSON.stringify({ name: "demo", version: "1.0.0" }),
+      );
+      writeTextFile(
+        `${context.homeDir}/.claude/plugins/installed_plugins.json`,
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "demo@demo-market": [
+              {
+                scope: "user",
+                installPath: "CACHE/demo",
+                version: "1.0.0",
+              },
+            ],
+          },
+        }),
+      );
 
       const scanner = await import("../../src/services/scanner.ts");
       const detected = scanner.detectHomePlatforms();
@@ -221,7 +240,11 @@ describe("scanner services", () => {
       );
 
       expect(claude?.discoveredPaths).toEqual(
-        expect.arrayContaining(["~/.claude/CLAUDE.md", "~/.claude/skills/"]),
+        expect.arrayContaining([
+          "~/.claude/CLAUDE.md",
+          "~/.claude/skills/",
+          "~/.claude/plugins/",
+        ]),
       );
 
       const results = await scanner.scanHomeDefaults();
@@ -230,12 +253,36 @@ describe("scanner services", () => {
       );
 
       expect(homeClaude?.resources.map((resource) => resource.type)).toEqual(
-        expect.arrayContaining(["instruction", "skill"]),
+        expect.arrayContaining(["instruction", "skill", "plugin_pin"]),
       );
       expect(
         homeClaude?.resources.find((resource) => resource.type === "skill")
           ?.source,
       ).toBe("~/.claude/skills/research/SKILL.md");
+
+      const pin = homeClaude?.resources.find(
+        (resource) => resource.type === "plugin_pin",
+      );
+      expect(pin).toMatchObject({
+        name: "demo",
+        namespace: "demo-market",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@demo-market",
+      });
+
+      const persisted = scanner.persistScanResults(results, {
+        conflictPolicy: "skip",
+        originRef: context.homeDir,
+      });
+      const savedPin = persisted.resolved.find(
+        (resource) => resource.type === "plugin_pin",
+      );
+      expect(savedPin).toMatchObject({
+        name: "demo",
+        namespace: "demo-market",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@demo-market",
+      });
     } finally {
       await context.cleanup();
     }

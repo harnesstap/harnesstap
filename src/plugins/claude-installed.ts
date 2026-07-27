@@ -1,5 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type {
+  PluginPinMetadata,
+  ResourceCreateInput,
+} from "../types.js";
 import type { PluginInstall, PluginScope, PluginVersionSource } from "./types.js";
 
 export interface InstalledPluginRecord {
@@ -124,4 +128,68 @@ export function loadInstalled(homeRoot: string): PluginInstall[] {
     }
   }
   return installs;
+}
+
+function preferInstalledRecord(
+  current: PluginInstall | undefined,
+  candidate: PluginInstall,
+): boolean {
+  if (!current) {
+    return true;
+  }
+  if (candidate.scope === "user" && current.scope !== "user") {
+    return true;
+  }
+  if (candidate.scope === current.scope) {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Build `plugin_pin` create inputs from Claude's installed_plugins.json.
+ * Dedupes by ref; prefers user-scope installs when both exist.
+ * Does not sync child resources — run `resource sync` for that.
+ */
+export function listInstalledPluginPinCreateInputs(
+  homeRoot: string,
+): ResourceCreateInput[] {
+  const byRef = new Map<string, PluginInstall>();
+  for (const install of loadInstalled(homeRoot)) {
+    if (!install.installPath || !existsSync(install.installPath)) {
+      continue;
+    }
+    const current = byRef.get(install.ref);
+    if (preferInstalledRecord(current, install)) {
+      byRef.set(install.ref, install);
+    }
+  }
+
+  return [...byRef.values()]
+    .sort((left, right) => left.ref.localeCompare(right.ref))
+    .map((install) => {
+      const { name, marketplace } = parsePluginRef(install.ref);
+      const metadata: PluginPinMetadata = {
+        source_kind: marketplace ? "marketplace" : "local",
+        ...(marketplace ? { marketplace_name: marketplace } : {}),
+        ...(install.version && install.version !== "unknown"
+          ? { resolved_version: install.version }
+          : {}),
+        sync_status: "never_synced",
+        portable: "reference",
+      };
+      return {
+        type: "plugin_pin" as const,
+        name,
+        namespace: marketplace,
+        description:
+          install.metadata?.description?.trim()
+          || `Plugin pin: ${install.ref}`,
+        content: "{}",
+        metadata,
+        source: "~/.claude/plugins/installed_plugins.json",
+        origin_kind: marketplace ? ("marketplace_link" as const) : ("manual" as const),
+        origin_ref: install.ref,
+      };
+    });
 }

@@ -167,6 +167,40 @@ describe("agent profile create routes", () => {
     expect(isProfileLayer({ ...layer, tags: body.tags })).toBe(true);
   });
 
+  it("renames a profile", async () => {
+    const server = withServer();
+    createLayer({ name: "work", tags: ["profile"] });
+
+    const response = await postJson(
+      `${server.url}/v1/profiles/work/rename`,
+      server.token,
+      { name: "focus" },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      old_name: "work",
+      name: "focus",
+      layer_id: expect.any(String),
+      was_active: false,
+    });
+  });
+
+  it("returns layer_exists when rename target is taken", async () => {
+    const server = withServer();
+    createLayer({ name: "alpha", tags: ["profile"] });
+    createLayer({ name: "beta", tags: ["profile"] });
+
+    const response = await postJson(
+      `${server.url}/v1/profiles/alpha/rename`,
+      server.token,
+      { name: "beta" },
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ error: "layer_exists" });
+  });
+
   it("blocks profile creation while a switch is in progress", async () => {
     const handler = createAgentFetchHandler("secret", 7474, {
       ...createDefaultAgentRouteDeps(),

@@ -1,4 +1,3 @@
-import { listGlobalApplySnapshots } from "../models/global-apply-snapshot.js";
 import { getActiveProfileName } from "./active-profile.js";
 import type { ApplyProfileLayerOptions, ApplyProfileLayerResult } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
@@ -58,15 +57,6 @@ export type SwitchProfileResult =
   | SwitchProfileCancelled
   | SwitchProfileFailed;
 
-export class ProfileSwitchNoBaselineError extends Error {
-  constructor() {
-    super(
-      "No global apply snapshot found. Run `ht profile use <profile>` once to establish a baseline before switching.",
-    );
-    this.name = "ProfileSwitchNoBaselineError";
-  }
-}
-
 export class SwitchRestoreFailedError extends Error {
   readonly targetProfile: string;
   readonly previousProfile: string;
@@ -92,12 +82,6 @@ export class SwitchRestoreFailedError extends Error {
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function assertGlobalApplyBaseline(): void {
-  if (listGlobalApplySnapshots().length === 0) {
-    throw new ProfileSwitchNoBaselineError();
-  }
 }
 
 function emitStep(
@@ -152,7 +136,8 @@ export async function switchProfile(
     if (cancelledBeforeBaseline) {
       return cancelledBeforeBaseline;
     }
-    assertGlobalApplyBaseline();
+    // First apply after init has no snapshot yet — proceed and establish one.
+    // Restore-on-failure only matters when a previous apply baseline exists.
     emitStep(events, options.onStep, {
       step: "validate_baseline",
       status: "completed",

@@ -61,6 +61,20 @@ describe("agent library routes", () => {
     });
     expect(resources.status).toBe(200);
     const resourceBody = await resources.json();
-    expect(resourceBody.resources.some((r: { name: string }) => r.name === "ship")).toBe(true);
+    const ship = resourceBody.resources.find(
+      (r: { name: string; source?: string }) => r.name === "ship",
+    );
+    expect(ship).toBeTruthy();
+    expect(ship.source).toBe("manual");
+
+    const detail = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("skill:ship")}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(detail.status).toBe(200);
+    const detailBody = await detail.json();
+    expect(detailBody.resource.name).toBe("ship");
+    expect(detailBody.resource.source).toBe("manual");
+    expect(detailBody.resource.content).toContain("# ship");
   });
 });

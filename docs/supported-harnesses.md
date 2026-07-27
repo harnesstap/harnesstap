@@ -79,6 +79,8 @@ During `layer apply`, HarnessTap can **install** and **sync** plugins from host 
 | **cursor** | Cursor plugin cache (git-backed marketplaces) | `~/.cursor/plugins/` |
 | **goose** | `goose plugin install` (git-backed Open Plugins) | `~/.agents/plugins/` |
 
+Claude Code **home scan** also imports installed marketplace plugins from `~/.claude/plugins/installed_plugins.json` as `plugin_pin` library resources (pins only; use `resource sync` to materialize children).
+
 Other harnesses still benefit from plugin-source **scan** and **resource sync** when you point at an install tree or plugin repo, but do not have an automated install provider yet.
 
 Claude **layer pins** and marketplace metadata (`layer show` → `claude` block) apply only when materializing to **claude-code**.

@@ -53,6 +53,7 @@ const PLATFORMS: PlatformDefinition[] = [
     agents: "~/.claude/agents/",
     commands: "~/.claude/commands/",
     settings: "~/.claude/settings.json",
+    plugins: "~/.claude/plugins/",
   }),
 
   def("codex", "Codex", [

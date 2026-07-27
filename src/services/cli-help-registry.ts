@@ -281,7 +281,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "profile.switch": {
     description:
-      "Switch the active profile with baseline snapshot gate and restore on failure",
+      "Switch the active profile and restore the previous one on failure",
     examples: [
       "profile switch work",
       "profile switch work --harness claude-code",

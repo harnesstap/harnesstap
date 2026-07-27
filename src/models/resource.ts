@@ -506,6 +506,33 @@ export function updateResource(
   return getResource(resource.id);
 }
 
+/** Rewrite type=layer resources that point at a renamed layer. */
+export function renameLayerTypedResources(
+  oldName: string,
+  newName: string,
+): number {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const rows = db
+    .prepare(
+      `SELECT id, namespace, origin_ref FROM resources WHERE type = 'layer' AND name = ?`,
+    )
+    .all(oldName) as Array<{ id: string; namespace: string; origin_ref: string }>;
+
+  let updated = 0;
+  for (const row of rows) {
+    if (findResourceByKey("layer", newName, row.namespace)) {
+      continue;
+    }
+    const originRef = row.origin_ref === oldName ? newName : row.origin_ref;
+    db.prepare(
+      `UPDATE resources SET name = ?, origin_ref = ?, updated_at = ? WHERE id = ?`,
+    ).run(newName, originRef, now, row.id);
+    updated += 1;
+  }
+  return updated;
+}
+
 export function listResourcesByOriginRef(
   originRef: string,
   originKind: OriginKind = "local_snapshot",

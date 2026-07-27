@@ -11,8 +11,11 @@ import { formatResourceTypeSummary } from "./project-status-payload.js";
 import { collectProfileLayerIds } from "./profile-apply.js";
 
 export interface ProfileContentsResource {
+  id: string;
   type: string;
   name: string;
+  /** On-disk path or import origin label (hover target in desktop). */
+  source: string;
 }
 
 export interface ProfileContentsLayer {
@@ -44,6 +47,15 @@ function materialResources(resources: Resource[]): Resource[] {
   );
 }
 
+function toContentsResource(resource: Resource): ProfileContentsResource {
+  return {
+    id: resource.id,
+    type: resource.type,
+    name: resource.name,
+    source: resource.source,
+  };
+}
+
 function toContentsResources(resources: Resource[]): ProfileContentsResource[] {
   const order: string[] = [];
   const byKey = new Map<string, ProfileContentsResource>();
@@ -51,7 +63,7 @@ function toContentsResources(resources: Resource[]): ProfileContentsResource[] {
     const key = `${resource.type}:${resource.name}`;
     if (!byKey.has(key)) {
       order.push(key);
-      byKey.set(key, { type: resource.type, name: resource.name });
+      byKey.set(key, toContentsResource(resource));
     }
   }
   return order
@@ -106,10 +118,7 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
     ref: pin.ref,
     version_constraint: pin.version_constraint,
   }));
-  const contentsResources = resources.map((resource) => ({
-    type: resource.type,
-    name: resource.name,
-  }));
+  const contentsResources = resources.map(toContentsResource);
 
   return {
     layers,

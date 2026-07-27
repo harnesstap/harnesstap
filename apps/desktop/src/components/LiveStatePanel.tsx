@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Bot,
   FileCode2,
@@ -28,9 +28,14 @@ import type {
   HarnessLiveStatus,
   ProfileApplyPreview,
   ProfileContents,
+  ProfileContentsResource,
   ViewScope,
 } from "../lib/types";
 import { RelatedHarnessIcons } from "./HarnessIcons";
+import {
+  ResourceDetailPane,
+  type ResourceDetailTarget,
+} from "./ResourceDetailPane";
 
 const ICON_SIZE = 14;
 const FILE_PREVIEW_LIMIT = 8;
@@ -66,6 +71,37 @@ function TypeIcon({ type }: { type: string }): ReactNode {
   }
 }
 
+function resourceDetailTarget(
+  resource: Pick<ProfileContentsResource, "id" | "type" | "name" | "source">,
+): ResourceDetailTarget {
+  return {
+    selector: resource.id ?? `${resource.type}:${resource.name}`,
+    label: resource.name,
+    pathHint: resource.source,
+  };
+}
+
+function ResourceNameButton({
+  label,
+  path,
+  onOpen,
+}: {
+  label: string;
+  path?: string | null;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="resource-name-btn enabled-label"
+      title={path || undefined}
+      onClick={onOpen}
+    >
+      {label}
+    </button>
+  );
+}
+
 function ResourceSummaryStrip({
   counts,
   label,
@@ -94,7 +130,18 @@ function ResourceSummaryStrip({
   );
 }
 
-function DiffRow({ item, tone }: { item: ContentsDiffItem; tone: "add" | "remove" }) {
+function DiffRow({
+  item,
+  tone,
+  onOpenResource,
+}: {
+  item: ContentsDiffItem;
+  tone: "add" | "remove";
+  onOpenResource?: (target: ResourceDetailTarget) => void;
+}) {
+  const selector = item.selector;
+  const canOpen =
+    item.category === "resource" && Boolean(selector) && Boolean(onOpenResource);
   return (
     <div className={`diff-row ${tone}`}>
       <span className="diff-mark" aria-hidden>
@@ -102,7 +149,23 @@ function DiffRow({ item, tone }: { item: ContentsDiffItem; tone: "add" | "remove
       </span>
       <span className="diff-body">
         <TypeIcon type={item.iconType} />
-        <span className="diff-label">{item.label}</span>
+        {canOpen && selector && onOpenResource ? (
+          <ResourceNameButton
+            label={item.label}
+            path={item.path}
+            onOpen={() =>
+              onOpenResource({
+                selector,
+                label: item.label,
+                pathHint: item.path,
+              })
+            }
+          />
+        ) : (
+          <span className="diff-label" title={item.path || undefined}>
+            {item.label}
+          </span>
+        )}
         {item.detail ? <span className="diff-detail muted">{item.detail}</span> : null}
         <RelatedHarnessIcons
           harnessIds={relatedHarnessesForResourceType(item.iconType)}
@@ -112,13 +175,38 @@ function DiffRow({ item, tone }: { item: ContentsDiffItem; tone: "add" | "remove
   );
 }
 
-function EnabledResourceRow({ item }: { item: ContentsDiffItem }) {
+function EnabledResourceRow({
+  item,
+  onOpenResource,
+}: {
+  item: ContentsDiffItem;
+  onOpenResource?: (target: ResourceDetailTarget) => void;
+}) {
+  const selector = item.selector;
+  const canOpen =
+    item.category === "resource" && Boolean(selector) && Boolean(onOpenResource);
   return (
     <div className="enabled-row">
       <span className="enabled-type">
         <TypeIcon type={item.iconType} />
       </span>
-      <span className="enabled-label">{item.label}</span>
+      {canOpen && selector && onOpenResource ? (
+        <ResourceNameButton
+          label={item.label}
+          path={item.path}
+          onOpen={() =>
+            onOpenResource({
+              selector,
+              label: item.label,
+              pathHint: item.path,
+            })
+          }
+        />
+      ) : (
+        <span className="enabled-label" title={item.path || undefined}>
+          {item.label}
+        </span>
+      )}
       <span className="enabled-trailing">
         <RelatedHarnessIcons
           harnessIds={relatedHarnessesForResourceType(item.iconType)}
@@ -131,8 +219,10 @@ function EnabledResourceRow({ item }: { item: ContentsDiffItem }) {
 
 function EnabledLayerGroup({
   layer,
+  onOpenResource,
 }: {
   layer: ProfileContents["layers"][number];
+  onOpenResource: (target: ResourceDetailTarget) => void;
 }) {
   const resourceCount = layer.resources?.length ?? 0;
   return (
@@ -166,7 +256,11 @@ function EnabledLayerGroup({
               <span className="enabled-type">
                 <TypeIcon type={resource.type} />
               </span>
-              <span className="enabled-label">{resource.name}</span>
+              <ResourceNameButton
+                label={resource.name}
+                path={resource.source}
+                onOpen={() => onOpenResource(resourceDetailTarget(resource))}
+              />
               <span className="enabled-trailing">
                 <RelatedHarnessIcons
                   harnessIds={relatedHarnessesForResourceType(resource.type)}
@@ -252,6 +346,8 @@ export interface LiveStatePanelProps {
   applyPreviewError: string | null;
   liveHarnesses: Record<string, HarnessLiveStatus> | null | undefined;
   hasFullHarnessSnapshot: boolean;
+  baseUrl: string | null;
+  token: string | null;
 }
 
 export function LiveStatePanel({
@@ -265,7 +361,19 @@ export function LiveStatePanel({
   applyPreviewError,
   liveHarnesses,
   hasFullHarnessSnapshot,
+  baseUrl,
+  token,
 }: LiveStatePanelProps) {
+  const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
+    null,
+  );
+  const openResource = (target: ResourceDetailTarget) => {
+    setDetailTarget(target);
+  };
+  const closeResource = () => {
+    setDetailTarget(null);
+  };
+
   const targetContents = applyPreview?.contents ?? null;
   const relativeToActive = applyPreview?.relative_to_active ?? false;
   const diff = diffProfileContents(targetContents, liveContents);
@@ -294,167 +402,205 @@ export function LiveStatePanel({
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
 
+  const previewWarning = applyPreview?.warning ?? null;
+  const showPreviewError = Boolean(selectedProfile && applyPreviewError && !applyPreview);
+
   return (
     <>
-      {selectedProfile ? (
+      {showPreviewError ? (
+        <div className="banner error" role="alert">
+          <div>{applyPreviewError}</div>
+        </div>
+      ) : null}
+      {previewWarning ? (
+        <div className="banner" role="status">
+          <div>{previewWarning}</div>
+        </div>
+      ) : null}
+
+      <div className="live-state-columns">
+        {selectedProfile ? (
+          <details
+            className="contents-block"
+            open
+            aria-label="Target preview"
+          >
+            <summary className="contents-header">
+              <span>Target preview</span>
+              <span className="contents-header-meta muted">
+                {selectedProfile}
+                {relativeToActive ? " · already active" : ""}
+              </span>
+            </summary>
+            <div className="contents-body">
+              {applyPreviewLoading && !applyPreview ? (
+                <p className="muted">
+                  Comparing {selectedProfile} to live {formatView(view).toLowerCase()} state…
+                </p>
+              ) : applyPreview ? (
+                <div className="compare-grid">
+                  {targetContents ? (
+                    <ResourceSummaryStrip
+                      counts={fallbackTypeCounts(targetContents)}
+                      label="Target stack summary"
+                    />
+                  ) : (
+                    <p className="muted">Could not resolve target profile contents.</p>
+                  )}
+
+                  {applyPreview.files.expected_count === 0
+                    && applyPreview.files.changes.length === 0
+                    && diff.added.length === 0 ? (
+                    <p className="muted">
+                      This profile has no resources yet — apply will record it as
+                      applied with no file writes.
+                    </p>
+                  ) : showTargetDiff ? (
+                    <details className="diff-section" open>
+                      <summary className="compare-title">Stack changes</summary>
+                      {diff.added.map((item) => (
+                        <DiffRow
+                          key={`add-${item.key}`}
+                          item={item}
+                          tone="add"
+                          onOpenResource={openResource}
+                        />
+                      ))}
+                      {diff.removed.map((item) => (
+                        <DiffRow
+                          key={`rm-${item.key}`}
+                          item={item}
+                          tone="remove"
+                          onOpenResource={openResource}
+                        />
+                      ))}
+                    </details>
+                  ) : (
+                    <p className="muted">
+                      {relativeToActive
+                        ? "Same stack as the active profile — only live file/install gaps below would change."
+                        : "No stack add/remove vs the active profile."}
+                    </p>
+                  )}
+
+                  {view === "home" && installGaps.length > 0 ? (
+                    <details className="diff-section" open>
+                      <summary className="compare-title">Install gaps</summary>
+                      {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
+                        <div className="muted">Checking live installs…</div>
+                      ) : (
+                        installGaps.map((row) => (
+                          <div
+                            className={`diff-row ${row.kind === "missing" ? "update" : "remove"}`}
+                            key={row.key}
+                          >
+                            <span className="diff-mark" aria-hidden>
+                              {row.kind === "missing" ? "!" : "·"}
+                            </span>
+                            <span className="diff-body">
+                              <span className="diff-label">{row.label}</span>
+                              <span className="diff-detail muted">
+                                {row.kind === "missing"
+                                  ? "not installed"
+                                  : "outside profile"}
+                              </span>
+                              <RelatedHarnessIcons harnessIds={row.harnesses} />
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </details>
+                  ) : null}
+
+                  <details className="diff-section" open>
+                    <summary className="compare-title">
+                      File changes
+                      {applyPreview.files.expected_count > 0
+                        ? ` · ${applyPreview.files.changes.length} of ${applyPreview.files.expected_count}`
+                        : applyPreview.files.changes.length > 0
+                          ? ` · ${applyPreview.files.changes.length}`
+                          : ""}
+                    </summary>
+                    <FileChangeRows changes={applyPreview.files.changes} />
+                  </details>
+                </div>
+              ) : (
+                <p className="muted">No preview available.</p>
+              )}
+            </div>
+          </details>
+        ) : null}
+
         <details
           className="contents-block"
           open
-          aria-label="Target preview"
+          aria-label="Profile resources"
         >
-          <summary className="contents-header">
-            <span>Target preview</span>
-            <span className="contents-header-meta muted">
-              {selectedProfile}
-              {relativeToActive ? " · already active" : ""}
-            </span>
-          </summary>
+          <summary className="contents-header">Profile resources</summary>
           <div className="contents-body">
-            {applyPreviewLoading && !applyPreview ? (
+            {!activeProfile && !selectedProfile ? (
+              <p className="muted">No active profile to inspect.</p>
+            ) : !liveContents && enabledItems.length === 0 ? (
               <p className="muted">
-                Comparing {selectedProfile} to live {formatView(view).toLowerCase()} state…
+                {activeProfile
+                  ? "Could not resolve active profile contents."
+                  : "No profile resources yet."}
               </p>
-            ) : applyPreviewError && !applyPreview ? (
-              <div className="banner error">
-                <div>{applyPreviewError}</div>
-              </div>
-            ) : applyPreview ? (
-              <div className="compare-grid">
-                {targetContents ? (
-                  <ResourceSummaryStrip
-                    counts={fallbackTypeCounts(targetContents)}
-                    label="Target stack summary"
-                  />
-                ) : (
-                  <p className="muted">Could not resolve target profile contents.</p>
-                )}
-
-                {showTargetDiff ? (
-                  <details className="diff-section" open>
-                    <summary className="compare-title">Stack changes</summary>
-                    {diff.added.map((item) => (
-                      <DiffRow key={`add-${item.key}`} item={item} tone="add" />
-                    ))}
-                    {diff.removed.map((item) => (
-                      <DiffRow key={`rm-${item.key}`} item={item} tone="remove" />
-                    ))}
-                  </details>
-                ) : (
-                  <p className="muted">
-                    {relativeToActive
-                      ? "Same stack as the active profile — only live file/install gaps below would change."
-                      : "No stack add/remove vs the active profile."}
-                  </p>
-                )}
-
-                {view === "home" && installGaps.length > 0 ? (
-                  <details className="diff-section" open>
-                    <summary className="compare-title">Install gaps</summary>
-                    {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
-                      <div className="muted">Checking live installs…</div>
-                    ) : (
-                      installGaps.map((row) => (
-                        <div
-                          className={`diff-row ${row.kind === "missing" ? "update" : "remove"}`}
-                          key={row.key}
-                        >
-                          <span className="diff-mark" aria-hidden>
-                            {row.kind === "missing" ? "!" : "·"}
-                          </span>
-                          <span className="diff-body">
-                            <span className="diff-label">{row.label}</span>
-                            <span className="diff-detail muted">
-                              {row.kind === "missing"
-                                ? "not installed"
-                                : "outside profile"}
-                            </span>
-                            <RelatedHarnessIcons harnessIds={row.harnesses} />
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </details>
-                ) : null}
-
-                <details className="diff-section" open>
-                  <summary className="compare-title">
-                    File changes
-                    {applyPreview.files.expected_count > 0
-                      ? ` · ${applyPreview.files.changes.length} of ${applyPreview.files.expected_count}`
-                      : applyPreview.files.changes.length > 0
-                        ? ` · ${applyPreview.files.changes.length}`
-                        : ""}
-                  </summary>
-                  {applyPreview.warning ? (
-                    <p className="muted">{applyPreview.warning}</p>
-                  ) : null}
-                  <FileChangeRows changes={applyPreview.files.changes} />
-                </details>
-              </div>
             ) : (
-              <p className="muted">No preview available.</p>
+              <>
+                <ResourceSummaryStrip
+                  counts={
+                    !selectedProfile || relativeToActive
+                      ? fallbackTypeCounts(liveContents)
+                      : typeCountsFromItems(enabledItems)
+                  }
+                  label="Profile resource summary"
+                />
+                {enabledItems.length === 0 || !hasEnabledList ? (
+                  <p className="muted">
+                    {selectedProfile && !relativeToActive
+                      ? "Nothing overlaps with the active stack — see Target preview for adds."
+                      : "No resources in the current stack."}
+                  </p>
+                ) : (
+                  <div className="enabled-list">
+                    {enabledLayers.map((layer) => (
+                      <EnabledLayerGroup
+                        key={layer.id}
+                        layer={layer}
+                        onOpenResource={openResource}
+                      />
+                    ))}
+                    {enabledPins.map((pin) => (
+                      <EnabledResourceRow
+                        key={pinIdentityKey(pin)}
+                        item={{
+                          key: pinIdentityKey(pin),
+                          kind: "unchanged",
+                          category: "plugin_pin",
+                          iconType: "plugin_pin",
+                          label: pin.ref,
+                          detail: pin.version_constraint
+                            ? `@${pin.version_constraint}`
+                            : undefined,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </details>
-      ) : null}
+      </div>
 
-      <details
-        className="contents-block"
-        open
-        aria-label="Enabled resources"
-      >
-        <summary className="contents-header">Enabled resources</summary>
-        <div className="contents-body">
-          {!activeProfile && !selectedProfile ? (
-            <p className="muted">No active profile to inspect.</p>
-          ) : !liveContents && enabledItems.length === 0 ? (
-            <p className="muted">
-              {activeProfile
-                ? "Could not resolve active profile contents."
-                : "No enabled resources yet."}
-            </p>
-          ) : (
-            <>
-              <ResourceSummaryStrip
-                counts={
-                  !selectedProfile || relativeToActive
-                    ? fallbackTypeCounts(liveContents)
-                    : typeCountsFromItems(enabledItems)
-                }
-                label="Enabled resource summary"
-              />
-              {enabledItems.length === 0 || !hasEnabledList ? (
-                <p className="muted">
-                  {selectedProfile && !relativeToActive
-                    ? "Nothing overlaps with the active stack — see Target preview for adds."
-                    : "No resources in the current stack."}
-                </p>
-              ) : (
-                <div className="enabled-list">
-                  {enabledLayers.map((layer) => (
-                    <EnabledLayerGroup key={layer.id} layer={layer} />
-                  ))}
-                  {enabledPins.map((pin) => (
-                    <EnabledResourceRow
-                      key={pinIdentityKey(pin)}
-                      item={{
-                        key: pinIdentityKey(pin),
-                        kind: "unchanged",
-                        category: "plugin_pin",
-                        iconType: "plugin_pin",
-                        label: pin.ref,
-                        detail: pin.version_constraint
-                          ? `@${pin.version_constraint}`
-                          : undefined,
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </details>
+      <ResourceDetailPane
+        open={detailTarget !== null}
+        target={detailTarget}
+        baseUrl={baseUrl}
+        token={token}
+        onClose={closeResource}
+      />
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Check, FolderGit2, Home, Library, RefreshCw, Unplug, User } from "lucide-react";
+import { Check, FolderGit2, Globe, Library, RefreshCw, Unplug, User } from "lucide-react";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
@@ -16,6 +16,7 @@ import {
   fetchCloudAuthStatus,
   fetchProfiles,
   fetchStatus,
+  renameProfile,
   startSwitch,
   subscribeSwitchEvents,
 } from "./lib/agent-client";
@@ -108,10 +109,10 @@ const PANEL_REASON_LABELS: Record<string, string> = {
   status_warning: "Status warning",
   profile_not_applied: "Active profile is not applied",
   stack_out_of_sync: "Applied stack is out of sync",
-  owned_path_drift: "Owned home files have drifted",
+  owned_path_drift: "Owned global files have drifted",
   missing_plugins: "Required plugins are missing",
   missing_mcp: "Required MCP servers are missing",
-  non_owned_drift: "Other home files have changed",
+  non_owned_drift: "Other global files have changed",
   project_drift: "Project files have drifted",
   fast_depth: "Quick check — refresh for full status",
 };
@@ -137,9 +138,9 @@ function globalDriftIssueLabel(
     case "clean":
       return null;
     case "pending":
-      return "Home profile not applied";
+      return "Global profile not applied";
     case "drifted":
-      return "Home files have drifted";
+      return "Global files have drifted";
     default: {
       const neverStatus: never = status;
       return neverStatus;
@@ -150,7 +151,7 @@ function globalDriftIssueLabel(
 function formatView(view: ViewScope): string {
   switch (view) {
     case "home":
-      return "Home";
+      return "Global";
     case "project":
       return "Project";
     default: {
@@ -225,6 +226,12 @@ export function App() {
   const [refreshPhase, setRefreshPhase] = useState<"idle" | "loading" | "success">(
     "idle",
   );
+  const [renamingProfile, setRenamingProfile] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renameBusy, setRenameBusy] = useState(false);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameIgnoreBlurRef = useRef(false);
   const [projectPath, setProjectPath] = useState<string>(() => {
     const recent = loadRecentProjects();
     return recent[0]?.path ?? "";
@@ -485,6 +492,11 @@ export function App() {
     view,
   ]);
 
+  const homeProfilePending =
+    view === "home"
+    && Boolean(activeProfile)
+    && status?.drift_summary.global.status === "pending";
+
   useEffect(() => {
     if (visibleProfiles.length === 0) {
       if (selectedProfile !== null) {
@@ -496,6 +508,16 @@ export function App() {
       if (preferEmptySelection) {
         return;
       }
+      // Prefer the pending active profile so Apply + preview light up without an
+      // extra click when status already says home needs apply.
+      if (
+        homeProfilePending
+        && activeProfile
+        && visibleProfiles.some((profile) => profile.name === activeProfile)
+      ) {
+        setSelectedProfile(activeProfile);
+        return;
+      }
       setSelectedProfile(visibleProfiles[0]?.name ?? null);
       return;
     }
@@ -503,7 +525,13 @@ export function App() {
       setPreferEmptySelection(false);
       setSelectedProfile(visibleProfiles[0]?.name ?? null);
     }
-  }, [visibleProfiles, selectedProfile, preferEmptySelection]);
+  }, [
+    activeProfile,
+    homeProfilePending,
+    preferEmptySelection,
+    selectedProfile,
+    visibleProfiles,
+  ]);
 
   const profilePanelResources = useMemo((): ProfileContentsResource[] | null => {
     if (!selectedProfile) {
@@ -561,21 +589,29 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [connected, switching, refreshStatus]);
 
-  const pendingSummary = useMemo(() => {
-    if (!selectedProfile || selectedProfile === activeProfile) {
+  const applyHelper = useMemo(() => {
+    if (switching) {
       return null;
     }
+    if (!selectedProfile) {
+      return "Select a profile to apply";
+    }
+    if (selectedProfile === activeProfile && status?.applied) {
+      return `Already applied to ${formatView(view)}`;
+    }
     return `Will apply: ${selectedProfile} · ${formatView(view)}`;
-  }, [activeProfile, view, selectedProfile]);
+  }, [activeProfile, selectedProfile, status?.applied, switching, view]);
 
   const statusIssueParts = useMemo(() => {
     const parts: string[] = [];
     if (activeProfile && view === "home" && status) {
-      const globalIssue = globalDriftIssueLabel(
-        status.drift_summary.global.status,
-      );
-      if (globalIssue) {
-        parts.push(globalIssue);
+      const globalStatus = status.drift_summary.global.status;
+      // Pending apply is rendered as a CTA, not plain text.
+      if (globalStatus !== "pending") {
+        const globalIssue = globalDriftIssueLabel(globalStatus);
+        if (globalIssue) {
+          parts.push(globalIssue);
+        }
       }
     }
     if (view === "home" && status?.drift_summary.project?.status === "drifted") {
@@ -586,7 +622,7 @@ export function App() {
 
   const liveScopeLabel =
     view === "home"
-      ? "Home live state"
+      ? "Global live state"
       : projectPath
         ? `Project live state · ${projectPath}`
         : "Project live state";
@@ -644,7 +680,7 @@ export function App() {
               return;
             }
             setSuccessMessage(
-              `Switched to ${targetProfile} · ${formatView(view)}`,
+              `Applied ${targetProfile} to ${formatView(view)}`,
             );
             window.setTimeout(() => setSuccessMessage(null), 3000);
           },
@@ -784,6 +820,100 @@ export function App() {
     void runSwitch(false);
   };
 
+  const onPendingHomeApply = () => {
+    if (!activeProfile) {
+      return;
+    }
+    selectProfile(activeProfile);
+    void runSwitch(false, activeProfile);
+  };
+
+  const beginRenameActiveProfile = () => {
+    if (!activeProfile || !connected || switching || renameBusy) {
+      return;
+    }
+    renameIgnoreBlurRef.current = false;
+    setRenameDraft(activeProfile);
+    setRenameError(null);
+    setRenamingProfile(true);
+  };
+
+  const cancelRenameActiveProfile = () => {
+    renameIgnoreBlurRef.current = true;
+    setRenamingProfile(false);
+    setRenameDraft("");
+    setRenameError(null);
+  };
+
+  const commitRenameActiveProfile = async () => {
+    if (!baseUrl || !activeProfile || renameBusy || renameIgnoreBlurRef.current) {
+      return;
+    }
+    const nextName = renameDraft.trim();
+    if (!nextName) {
+      setRenameError("Name is required");
+      window.setTimeout(() => renameInputRef.current?.focus(), 0);
+      return;
+    }
+    if (nextName === activeProfile) {
+      cancelRenameActiveProfile();
+      return;
+    }
+    setRenameBusy(true);
+    setRenameError(null);
+    try {
+      const result = await renameProfile(baseUrl, token, activeProfile, nextName);
+      if (selectedProfile === result.old_name) {
+        setSelectedProfile(result.name);
+      }
+      renameIgnoreBlurRef.current = true;
+      setRenamingProfile(false);
+      setRenameDraft("");
+      await Promise.all([refreshProfiles(), refreshStatus("full")]);
+      setSuccessMessage(`Renamed to ${result.name}`);
+      window.setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      if (error instanceof AgentApiError && error.code === "layer_exists") {
+        setRenameError("A profile with this name already exists.");
+      } else if (error instanceof AgentApiError && error.code === "not_found") {
+        setRenameError(
+          "Rename is unavailable — restart the desktop app to reload the sidecar.",
+        );
+      } else {
+        setRenameError(
+          error instanceof Error ? error.message : "Could not rename profile",
+        );
+      }
+      window.setTimeout(() => renameInputRef.current?.focus(), 0);
+    } finally {
+      setRenameBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!renamingProfile) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const input = renameInputRef.current;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      input.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [renamingProfile]);
+
+  useEffect(() => {
+    if (!renamingProfile) {
+      return;
+    }
+    if (!activeProfile || switching) {
+      cancelRenameActiveProfile();
+    }
+  }, [activeProfile, renamingProfile, switching]);
+
   const onConfirmOverwrite = () => {
     setOverwriteDialog(false);
     void runSwitch(true);
@@ -807,7 +937,7 @@ export function App() {
     || switching
     || bootstrapBusy
     || !selectedProfile
-    || selectedProfile === activeProfile
+    || (selectedProfile === activeProfile && Boolean(status?.applied))
     || (view === "project" && (!projectPath || !projectReady));
 
   return (
@@ -840,10 +970,10 @@ export function App() {
                 }
                 onClick={() => onSelectView("home")}
                 disabled={switching || bootstrapBusy}
-                aria-label="Home"
-                title="Home"
+                aria-label="Global"
+                title="Global"
               >
-                <Home size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                <Globe size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -1026,7 +1156,7 @@ export function App() {
                     ? "No profiles yet"
                     : view === "project"
                       ? "No project profiles"
-                      : "No home profiles"}
+                      : "No global profiles"}
                 </h2>
                 <p className="muted">
                   {profiles.length === 0 ? (
@@ -1037,11 +1167,11 @@ export function App() {
                     <>
                       Profiles listed in this project&apos;s{" "}
                       <span className="mono">.harnesstap/config.toml</span> appear in
-                      Project view. Home-only profiles stay in Home.
+                      Project view. Global-only profiles stay in Global.
                     </>
                   ) : (
                     <>
-                      Local profile layers appear in Home. Switch to Project for
+                      Local profile layers appear in Global. Switch to Project for
                       profiles enabled in the current project.
                     </>
                   )}
@@ -1104,14 +1234,14 @@ export function App() {
             })}
           </div>
           <div className="rail-controls">
-            {pendingSummary ? <p className="muted">{pendingSummary}</p> : null}
+            {applyHelper ? <p className="muted apply-helper">{applyHelper}</p> : null}
             <button
               className="btn primary"
               type="button"
               onClick={onSwitchClick}
               disabled={switchDisabled}
             >
-              Apply
+              {switching ? "Applying…" : "Apply"}
             </button>
           </div>
         </nav>
@@ -1154,17 +1284,70 @@ export function App() {
                         aria-label={panelTooltip}
                         role="img"
                       />
-                      {activeProfile}
+                      {renamingProfile ? (
+                        <input
+                          ref={renameInputRef}
+                          className="status-title-input"
+                          value={renameDraft}
+                          onChange={(event) => setRenameDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void commitRenameActiveProfile();
+                            } else if (event.key === "Escape") {
+                              event.preventDefault();
+                              cancelRenameActiveProfile();
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!renameBusy) {
+                              void commitRenameActiveProfile();
+                            }
+                          }}
+                          disabled={renameBusy}
+                          aria-label="Rename active profile"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className="status-title"
+                          onDoubleClick={beginRenameActiveProfile}
+                          disabled={!connected || switching}
+                          title="Double-click to rename"
+                        >
+                          {activeProfile}
+                        </button>
+                      )}
                     </>
                   ) : (
                     "No active profile"
                   )}
                 </div>
+                {renameError ? (
+                  <div className="muted status-subline status-rename-error">
+                    {renameError}
+                  </div>
+                ) : null}
                 {projectStatusLine ? (
                   <div className="muted status-subline">{projectStatusLine}</div>
                 ) : null}
-                {statusIssueParts.length > 0 ? (
+                {homeProfilePending || statusIssueParts.length > 0 ? (
                   <div className="muted status-subline">
+                    {homeProfilePending && activeProfile ? (
+                      <button
+                        type="button"
+                        className="status-cta"
+                        onClick={onPendingHomeApply}
+                        disabled={
+                          !connected || switching || bootstrapBusy
+                        }
+                      >
+                        Apply {activeProfile} to global
+                      </button>
+                    ) : null}
+                    {homeProfilePending && statusIssueParts.length > 0 ? (
+                      <span className="status-sep"> · </span>
+                    ) : null}
                     {statusIssueParts.map((part, index) => (
                       <span key={part}>
                         {index > 0 ? <span className="status-sep"> · </span> : null}
@@ -1180,7 +1363,7 @@ export function App() {
               <div className="banner">
                 <div>
                   Choose a project to inspect project-scoped status, or keep working
-                  on home-only profile switches.
+                  on global-only profile switches.
                 </div>
                 <button className="btn primary" type="button" onClick={() => void browseProject()}>
                   Browse…
@@ -1202,8 +1385,8 @@ export function App() {
             )}
 
             {switching ? (
-              <section aria-label="Switching progress">
-                <h2 style={{ margin: 0, fontSize: "0.95rem" }}>Switching…</h2>
+              <section aria-label="Apply progress">
+                <h2 style={{ margin: 0, fontSize: "0.95rem" }}>Applying…</h2>
                 <ol className="steps">
                   {orderedSwitchSteps(view).map((step) => {
                     const state = stepState(step, switchEvents);
@@ -1249,6 +1432,8 @@ export function App() {
                 applyPreviewError={applyPreviewError}
                 liveHarnesses={status?.harnesses}
                 hasFullHarnessSnapshot={hasFullHarnessSnapshot}
+                baseUrl={baseUrl}
+                token={token}
               />
             )}
 
