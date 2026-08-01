@@ -16,13 +16,16 @@ import { mergeLayersForApply } from "./layer-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import {
   applyProfileLayer,
+  clearGlobalProfileApply,
   collectProfileLayerIds,
   type ApplyProfileLayerResult,
 } from "./profile-apply.js";
 import {
   buildProfileContents,
   type ProfileContents,
+  type ProfileContentsResource,
 } from "./profile-contents.js";
+import { detectUntrackedProfileResources } from "./profile-untracked-resources.js";
 import type { DriftFileChange } from "./project-drift.js";
 
 export type ProfileApplyPreviewScope = "home" | "project";
@@ -39,8 +42,11 @@ export interface ProfileApplyPreview {
   scope: ProfileApplyPreviewScope;
   contents: ProfileContents | null;
   harnesses?: Record<string, HarnessLiveStatus>;
+  /** Material resources on disk that are not in the profile stack. */
+  untracked_resources: ProfileContentsResource[];
   files: {
     expected_count: number;
+    /** File changes for tracked (profile-managed) paths only. */
     changes: DriftFileChange[];
   };
   relative_to_active: boolean;
@@ -117,7 +123,7 @@ async function previewHomeApply(
   if (isEmptyBuiltinProfile(profile)) {
     let expectedApply: ApplyProfileLayerResult;
     try {
-      expectedApply = await applyProfileLayer(profile, {
+      expectedApply = await clearGlobalProfileApply({
         dryRun: true,
         harness,
         conflictPolicy: "replace",
@@ -264,6 +270,12 @@ export async function previewProfileApply(
   const profile = input.profile.trim();
   const contents = buildProfileContents(profile);
   const relativeToActive = getActiveProfileName() === profile;
+  const untrackedResources = await detectUntrackedProfileResources({
+    profileSelector: profile,
+    scope: input.scope,
+    ...(input.projectPath ? { projectPath: input.projectPath } : {}),
+    ...(input.harness ? { harness: input.harness } : {}),
+  });
 
   if (input.scope === "project") {
     const projectPreview = previewProjectApply(input.projectPath);
@@ -271,6 +283,7 @@ export async function previewProfileApply(
       profile,
       scope: "project",
       contents,
+      untracked_resources: untrackedResources,
       files: projectPreview.files,
       relative_to_active: relativeToActive,
       ...(projectPreview.warning ? { warning: projectPreview.warning } : {}),
@@ -282,6 +295,7 @@ export async function previewProfileApply(
     profile,
     scope: "home",
     contents,
+    untracked_resources: untrackedResources,
     ...(homePreview.harnesses ? { harnesses: homePreview.harnesses } : {}),
     files: homePreview.files,
     relative_to_active: relativeToActive,

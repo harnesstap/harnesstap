@@ -18,6 +18,9 @@ export function getActiveProfileName(): string | undefined {
   try {
     const parsed = JSON.parse(readFileSync(filePath, "utf-8")) as Partial<ActiveProfileFile>;
     if (typeof parsed.name === "string" && parsed.name.length > 0) {
+      if (parsed.name.trim() === "empty") {
+        return undefined;
+      }
       return parsed.name;
     }
   } catch {

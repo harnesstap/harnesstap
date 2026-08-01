@@ -24,6 +24,8 @@ export function mergeStatusUpdate(
       Array.isArray(next.changes) && next.changes.length > 0
         ? next.changes
         : (previous.changes ?? next.changes),
+    untracked_resource_count:
+      next.untracked_resource_count ?? previous.untracked_resource_count,
   };
 }
 

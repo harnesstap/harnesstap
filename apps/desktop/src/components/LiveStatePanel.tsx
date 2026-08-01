@@ -1,14 +1,17 @@
 import { useState, type ReactNode } from "react";
 import {
   Bot,
+  ExternalLink,
   FileCode2,
   FileText,
   Layers,
   Package,
   Plug,
+  Plus,
   Shield,
   Sparkles,
   Terminal,
+  Trash2,
   Variable,
   Webhook,
   Wrench,
@@ -28,6 +31,7 @@ import type {
   HarnessLiveStatus,
   ProfileApplyPreview,
   ProfileContents,
+  ProfileContentsLayer,
   ProfileContentsResource,
   ViewScope,
 } from "../lib/types";
@@ -99,6 +103,108 @@ function ResourceNameButton({
     >
       {label}
     </button>
+  );
+}
+
+function ProfileResourceActions({
+  resource,
+  layerId,
+  profileName,
+  removing,
+  onOpenInEditor,
+  onRemoveFromProfile,
+}: {
+  resource: ProfileContentsResource;
+  layerId?: string;
+  profileName: string | null;
+  removing: boolean;
+  onOpenInEditor?: (resource: ProfileContentsResource) => void;
+  onRemoveFromProfile?: (
+    resource: ProfileContentsResource,
+    layerId?: string,
+  ) => void;
+}) {
+  const canOpen = Boolean(onOpenInEditor);
+  const canRemove = Boolean(profileName && onRemoveFromProfile);
+  if (!canOpen && !canRemove) {
+    return null;
+  }
+
+  return (
+    <span className="enabled-row-actions">
+      {canOpen && onOpenInEditor ? (
+        <button
+          type="button"
+          className="icon-action profile-resource-open-btn"
+          aria-label={`Open ${resource.name} in editor`}
+          title="Open in default editor"
+          onClick={() => onOpenInEditor(resource)}
+        >
+          <ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+      {canRemove && onRemoveFromProfile ? (
+        <button
+          type="button"
+          className="icon-action profile-resource-remove-btn"
+          aria-label={`Remove ${resource.name} from ${profileName}`}
+          title="Remove from profile"
+          disabled={removing}
+          onClick={() => onRemoveFromProfile(resource, layerId)}
+        >
+          <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
+type ProfileStackEmptyVariant = "no-overlap" | "empty";
+
+type ProfileStackEmptyStateProps = {
+  variant: ProfileStackEmptyVariant;
+  onBrowseResources: () => void;
+};
+
+const PROFILE_STACK_EMPTY_COPY: Record<
+  ProfileStackEmptyVariant,
+  { title: string; body: string }
+> = {
+  "no-overlap": {
+    title: "Nothing shared with active",
+    body:
+      "This profile’s stack is entirely new — see Target preview for what would be added.",
+  },
+  empty: {
+    title: "No resources yet",
+    body: "Add layers or resources from your library to build this profile’s stack.",
+  },
+};
+
+function ProfileStackEmptyState({
+  variant,
+  onBrowseResources,
+}: ProfileStackEmptyStateProps) {
+  const copy = PROFILE_STACK_EMPTY_COPY[variant];
+  return (
+    <div
+      className="empty-state profile-stack-empty"
+      role="status"
+      aria-label={copy.title}
+    >
+      <div className="profile-stack-empty-heading">
+        <Layers size={ICON_SIZE} className="profile-stack-empty-icon" aria-hidden />
+        <h2>{copy.title}</h2>
+      </div>
+      <p className="muted">{copy.body}</p>
+      <button
+        className="btn primary"
+        type="button"
+        onClick={onBrowseResources}
+      >
+        Browse resources
+      </button>
+    </div>
   );
 }
 
@@ -175,6 +281,60 @@ function DiffRow({
   );
 }
 
+function UntrackedResourceRow({
+  resource,
+  adding,
+  onAdd,
+  onOpenResource,
+}: {
+  resource: ProfileContentsResource;
+  adding: boolean;
+  onAdd: () => void;
+  onOpenResource?: (target: ResourceDetailTarget) => void;
+}) {
+  const selector = resource.id ?? `${resource.type}:${resource.name}`;
+  const canOpen = Boolean(onOpenResource);
+  return (
+    <div className="enabled-row untracked-row">
+      <span className="enabled-type">
+        <TypeIcon type={resource.type} />
+      </span>
+      {canOpen && onOpenResource ? (
+        <ResourceNameButton
+          label={resource.name}
+          path={resource.source}
+          onOpen={() =>
+            onOpenResource({
+              selector,
+              label: resource.name,
+              pathHint: resource.source,
+            })
+          }
+        />
+      ) : (
+        <span className="enabled-label" title={resource.source || undefined}>
+          {resource.name}
+        </span>
+      )}
+      <span className="enabled-trailing">
+        <RelatedHarnessIcons
+          harnessIds={relatedHarnessesForResourceType(resource.type)}
+        />
+        <button
+          type="button"
+          className="icon-action untracked-add-btn"
+          aria-label={`Add ${resource.name} to profile`}
+          title={`Add ${resource.name} to profile`}
+          disabled={adding}
+          onClick={onAdd}
+        >
+          <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+        </button>
+      </span>
+    </div>
+  );
+}
+
 function EnabledResourceRow({
   item,
   onOpenResource,
@@ -219,10 +379,21 @@ function EnabledResourceRow({
 
 function EnabledLayerGroup({
   layer,
+  profileName,
+  removingResourceKey,
   onOpenResource,
+  onOpenInEditor,
+  onRemoveFromProfile,
 }: {
-  layer: ProfileContents["layers"][number];
+  layer: ProfileContentsLayer;
+  profileName: string | null;
+  removingResourceKey: string | null;
   onOpenResource: (target: ResourceDetailTarget) => void;
+  onOpenInEditor?: (resource: ProfileContentsResource) => void;
+  onRemoveFromProfile?: (
+    resource: ProfileContentsResource,
+    layerId?: string,
+  ) => void;
 }) {
   const resourceCount = layer.resources?.length ?? 0;
   return (
@@ -248,29 +419,40 @@ function EnabledLayerGroup({
         {resourceCount === 0 ? (
           <div className="muted enabled-layer-empty">No resources in this layer</div>
         ) : (
-          (layer.resources ?? []).map((resource) => (
-            <div
-              className="enabled-row enabled-nested-row"
-              key={`${resource.type}:${resource.name}`}
-            >
-              <span className="enabled-type">
-                <TypeIcon type={resource.type} />
-              </span>
-              <ResourceNameButton
-                label={resource.name}
-                path={resource.source}
-                onOpen={() => onOpenResource(resourceDetailTarget(resource))}
-              />
-              <span className="enabled-trailing">
-                <RelatedHarnessIcons
-                  harnessIds={relatedHarnessesForResourceType(resource.type)}
-                />
-                <span className="enabled-detail muted">
-                  {resource.type.replaceAll("_", " ")}
+          (layer.resources ?? []).map((resource) => {
+            const resourceKey = `${resource.type}:${resource.name}`;
+            return (
+              <div
+                className="enabled-row enabled-nested-row"
+                key={resourceKey}
+              >
+                <span className="enabled-type">
+                  <TypeIcon type={resource.type} />
                 </span>
-              </span>
-            </div>
-          ))
+                <ResourceNameButton
+                  label={resource.name}
+                  path={resource.source}
+                  onOpen={() => onOpenResource(resourceDetailTarget(resource))}
+                />
+                <span className="enabled-trailing">
+                  <RelatedHarnessIcons
+                    harnessIds={relatedHarnessesForResourceType(resource.type)}
+                  />
+                  <ProfileResourceActions
+                    resource={resource}
+                    layerId={layer.id}
+                    profileName={profileName}
+                    removing={removingResourceKey === resourceKey}
+                    onOpenInEditor={onOpenInEditor}
+                    onRemoveFromProfile={onRemoveFromProfile}
+                  />
+                  <span className="enabled-detail muted">
+                    {resource.type.replaceAll("_", " ")}
+                  </span>
+                </span>
+              </div>
+            );
+          })
         )}
       </div>
     </details>
@@ -355,6 +537,15 @@ export interface LiveStatePanelProps {
   bootstrapBusy?: boolean;
   onBootstrap?: () => void;
   onCreateProfileFromProject?: () => void;
+  onBrowseResources?: () => void;
+  onAddResource?: (resource: ProfileContentsResource) => Promise<void>;
+  addingResourceKey?: string | null;
+  onOpenResourceInEditor?: (resource: ProfileContentsResource) => Promise<void>;
+  onRemoveResourceFromProfile?: (
+    resource: ProfileContentsResource,
+    layerId?: string,
+  ) => Promise<void>;
+  removingResourceKey?: string | null;
 }
 
 export function LiveStatePanel({
@@ -373,6 +564,12 @@ export function LiveStatePanel({
   bootstrapBusy = false,
   onBootstrap,
   onCreateProfileFromProject,
+  onBrowseResources,
+  onAddResource,
+  addingResourceKey = null,
+  onOpenResourceInEditor,
+  onRemoveResourceFromProfile,
+  removingResourceKey = null,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -386,16 +583,23 @@ export function LiveStatePanel({
 
   const targetContents = applyPreview?.contents ?? null;
   const relativeToActive = applyPreview?.relative_to_active ?? false;
+  const previewMatchesSelection =
+    Boolean(selectedProfile)
+    && applyPreview?.profile === selectedProfile
+    && !applyPreviewLoading;
   const diff = diffProfileContents(targetContents, liveContents);
 
-  const enabledItems =
-    !selectedProfile || relativeToActive
-      ? allItemsFromContents(liveContents)
-      : diff.unchanged;
+  // Until apply-preview resolves for the selected profile, diffing against a null
+  // target would blank the stack — keep showing live contents while loading.
+  const useLiveEnabledStack =
+    !selectedProfile || relativeToActive || !previewMatchesSelection;
+
+  const enabledItems = useLiveEnabledStack
+    ? allItemsFromContents(liveContents)
+    : diff.unchanged;
 
   const enabledKeys = new Set(enabledItems.map((item) => item.key));
-  const enabledSourceContents =
-    !selectedProfile || relativeToActive ? liveContents : targetContents;
+  const enabledSourceContents = useLiveEnabledStack ? liveContents : targetContents;
   const enabledLayers = (enabledSourceContents?.layers ?? []).filter((layer) =>
     enabledKeys.has(layerIdentityKey(layer)),
   );
@@ -403,11 +607,18 @@ export function LiveStatePanel({
     enabledKeys.has(pinIdentityKey(pin)),
   );
   const hasEnabledList = enabledLayers.length > 0 || enabledPins.length > 0;
+  const profileStackEmpty =
+    previewMatchesSelection && (enabledItems.length === 0 || !hasEnabledList);
+  const profileStackEmptyVariant: ProfileStackEmptyVariant =
+    selectedProfile && !relativeToActive ? "no-overlap" : "empty";
+
+  const profileNameForActions = selectedProfile ?? activeProfile;
 
   const previewHarnesses = applyPreview?.harnesses ?? liveHarnesses;
   const installGaps = aggregateInstallGaps(
     view === "home" ? previewHarnesses : undefined,
-  );
+  ).filter((row) => row.kind === "missing");
+  const untrackedResources = applyPreview?.untracked_resources ?? [];
   const showTargetDiff = Boolean(selectedProfile)
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
@@ -456,6 +667,148 @@ export function LiveStatePanel({
       ) : null}
 
       <div className="live-state-columns">
+        <div className="live-state-left-stack">
+        <details
+          className="contents-block"
+          open
+          aria-label="Profile resources"
+        >
+          <summary className="contents-header">
+            <span>Profile resources</span>
+            {selectedProfile && onBrowseResources ? (
+              <button
+                type="button"
+                className="icon-action contents-header-action"
+                aria-label="Add resources"
+                title="Browse resources to add to profile"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onBrowseResources();
+                }}
+              >
+                <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+              </button>
+            ) : null}
+          </summary>
+          <div className="contents-body">
+            {!activeProfile && !selectedProfile ? (
+              <p className="muted">No active profile to inspect.</p>
+            ) : !liveContents && enabledItems.length === 0 ? (
+              <p className="muted">
+                {selectedProfile && applyPreviewLoading && !previewMatchesSelection
+                  ? "Loading profile resources…"
+                  : activeProfile
+                    ? "Could not resolve active profile contents."
+                    : "No profile resources yet."}
+              </p>
+            ) : profileStackEmpty ? (
+              onBrowseResources ? (
+                <ProfileStackEmptyState
+                  variant={profileStackEmptyVariant}
+                  onBrowseResources={onBrowseResources}
+                />
+              ) : (
+                <p className="muted">
+                  {profileStackEmptyVariant === "no-overlap"
+                    ? PROFILE_STACK_EMPTY_COPY["no-overlap"].body
+                    : PROFILE_STACK_EMPTY_COPY.empty.body}
+                </p>
+              )
+            ) : (
+              <>
+                <ResourceSummaryStrip
+                  counts={
+                    useLiveEnabledStack
+                      ? fallbackTypeCounts(liveContents)
+                      : typeCountsFromItems(enabledItems)
+                  }
+                  label="Profile resource summary"
+                />
+                <div className="enabled-list">
+                  {enabledLayers.map((layer) => (
+                    <EnabledLayerGroup
+                      key={layer.id}
+                      layer={layer}
+                      profileName={profileNameForActions}
+                      removingResourceKey={removingResourceKey}
+                      onOpenResource={openResource}
+                      onOpenInEditor={
+                        onOpenResourceInEditor
+                          ? (resource) => {
+                              void onOpenResourceInEditor(resource);
+                            }
+                          : undefined
+                      }
+                      onRemoveFromProfile={
+                        onRemoveResourceFromProfile
+                          ? (resource, layerId) => {
+                              void onRemoveResourceFromProfile(resource, layerId);
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+                  {enabledPins.map((pin) => (
+                    <EnabledResourceRow
+                      key={pinIdentityKey(pin)}
+                      item={{
+                        key: pinIdentityKey(pin),
+                        kind: "unchanged",
+                        category: "plugin_pin",
+                        iconType: "plugin_pin",
+                        label: pin.ref,
+                        detail: pin.version_constraint
+                          ? `@${pin.version_constraint}`
+                          : undefined,
+                      }}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </details>
+
+        {selectedProfile && untrackedResources.length > 0 ? (
+          <details
+            className="contents-block"
+            open
+            aria-label="Untracked resources"
+          >
+            <summary className="contents-header">
+              <span>Untracked resources</span>
+              <span className="contents-header-meta muted">
+                {untrackedResources.length} on disk
+              </span>
+            </summary>
+            <div className="contents-body">
+              <p className="muted untracked-hint">
+                Found on disk but not in this profile — add to include them on apply.
+              </p>
+              <div className="enabled-list">
+                {untrackedResources.map((resource) => {
+                  const key = `${resource.type}:${resource.name}`;
+                  return (
+                    <UntrackedResourceRow
+                      key={key}
+                      resource={resource}
+                      adding={addingResourceKey === key}
+                      onAdd={() => {
+                        if (onAddResource) {
+                          void onAddResource(resource);
+                        }
+                      }}
+                      onOpenResource={openResource}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </details>
+        ) : null}
+        </div>
+
         {selectedProfile ? (
           <details
             className="contents-block"
@@ -485,8 +838,8 @@ export function LiveStatePanel({
                     <p className="muted">Could not resolve target profile contents.</p>
                   )}
 
-                  {applyPreview.files.expected_count === 0
-                    && applyPreview.files.changes.length === 0
+                  {applyPreview.files?.expected_count === 0
+                    && (applyPreview.files?.changes?.length ?? 0) === 0
                     && diff.added.length === 0 ? (
                     <p className="muted">
                       This profile has no resources yet — apply will record it as
@@ -522,7 +875,7 @@ export function LiveStatePanel({
 
                   {view === "home" && installGaps.length > 0 ? (
                     <details className="diff-section" open>
-                      <summary className="compare-title">Install gaps</summary>
+                      <summary className="compare-title">Install gaps (in profile)</summary>
                       {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
                         <div className="muted">Checking live installs…</div>
                       ) : (
@@ -552,13 +905,13 @@ export function LiveStatePanel({
                   <details className="diff-section" open>
                     <summary className="compare-title">
                       File changes
-                      {applyPreview.files.expected_count > 0
-                        ? ` · ${applyPreview.files.changes.length} of ${applyPreview.files.expected_count}`
-                        : applyPreview.files.changes.length > 0
-                          ? ` · ${applyPreview.files.changes.length}`
+                      {(applyPreview.files?.expected_count ?? 0) > 0
+                        ? ` · ${applyPreview.files?.changes?.length ?? 0} of ${applyPreview.files?.expected_count ?? 0}`
+                        : (applyPreview.files?.changes?.length ?? 0) > 0
+                          ? ` · ${applyPreview.files?.changes?.length ?? 0}`
                           : ""}
                     </summary>
-                    <FileChangeRows changes={applyPreview.files.changes} />
+                    <FileChangeRows changes={applyPreview.files?.changes ?? []} />
                   </details>
                 </div>
               ) : (
@@ -567,68 +920,6 @@ export function LiveStatePanel({
             </div>
           </details>
         ) : null}
-
-        <details
-          className="contents-block"
-          open
-          aria-label="Profile resources"
-        >
-          <summary className="contents-header">Profile resources</summary>
-          <div className="contents-body">
-            {!activeProfile && !selectedProfile ? (
-              <p className="muted">No active profile to inspect.</p>
-            ) : !liveContents && enabledItems.length === 0 ? (
-              <p className="muted">
-                {activeProfile
-                  ? "Could not resolve active profile contents."
-                  : "No profile resources yet."}
-              </p>
-            ) : (
-              <>
-                <ResourceSummaryStrip
-                  counts={
-                    !selectedProfile || relativeToActive
-                      ? fallbackTypeCounts(liveContents)
-                      : typeCountsFromItems(enabledItems)
-                  }
-                  label="Profile resource summary"
-                />
-                {enabledItems.length === 0 || !hasEnabledList ? (
-                  <p className="muted">
-                    {selectedProfile && !relativeToActive
-                      ? "Nothing overlaps with the active stack — see Target preview for adds."
-                      : "No resources in the current stack."}
-                  </p>
-                ) : (
-                  <div className="enabled-list">
-                    {enabledLayers.map((layer) => (
-                      <EnabledLayerGroup
-                        key={layer.id}
-                        layer={layer}
-                        onOpenResource={openResource}
-                      />
-                    ))}
-                    {enabledPins.map((pin) => (
-                      <EnabledResourceRow
-                        key={pinIdentityKey(pin)}
-                        item={{
-                          key: pinIdentityKey(pin),
-                          kind: "unchanged",
-                          category: "plugin_pin",
-                          iconType: "plugin_pin",
-                          label: pin.ref,
-                          detail: pin.version_constraint
-                            ? `@${pin.version_constraint}`
-                            : undefined,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </details>
       </div>
 
       <ResourceDetailPane

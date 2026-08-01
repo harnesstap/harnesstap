@@ -15,6 +15,14 @@ import type {
   LibraryResourceDetail,
   ProfileApplyPreview,
   ProfileApplyPreviewRequest,
+  ProfileAddAllResourcesRequest,
+  ProfileAddAllResourcesResult,
+  ProfileAddResourceRequest,
+  ProfileAddResourceResult,
+  OpenPathRequest,
+  OpenPathResult,
+  ProfileRemoveResourceRequest,
+  ProfileRemoveResourceResult,
   ProfileCreatePreview,
   ProfileCreateRequest,
   ProfileCreateResult,
@@ -22,6 +30,11 @@ import type {
   ProfileSwitchStepEvent,
   ProfileTagResult,
   ProfileRenameResult,
+  ProfileStashListResult,
+  ProfileStashPopResult,
+  ProfileStashPushResult,
+  ResourceTrackedDirectoriesResult,
+  ResourceTrackedDirectoryAddResult,
   SwitchScope,
 } from "./types";
 
@@ -160,10 +173,77 @@ export async function fetchProfiles(
     throw new AgentApiError("Could not list profiles", response.status);
   }
   const body = (await response.json()) as { profiles: ProfileSummary[] };
-  return body.profiles.map((profile) => ({
-    ...profile,
-    scopes: profile.scopes?.length ? profile.scopes : (["home"] as const),
-  }));
+  return body.profiles
+    .filter((profile) => profile.name !== "empty")
+    .map((profile) => ({
+      ...profile,
+      scopes: profile.scopes?.length ? profile.scopes : (["home"] as const),
+    }));
+}
+
+export async function fetchProfileStash(
+  baseUrl: string,
+  token: string | null,
+): Promise<ProfileStashListResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/stash");
+  if (!response.ok) {
+    throw new AgentApiError("Could not list stashed profiles", response.status);
+  }
+  return (await response.json()) as ProfileStashListResult;
+}
+
+export async function stashActiveProfile(
+  baseUrl: string,
+  token: string | null,
+): Promise<ProfileStashPushResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/stash", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  if (response.status === 409) {
+    const body = (await response.json()) as { message?: string; error?: string };
+    throw new AgentApiError(
+      body.message ?? "Another profile operation is in progress",
+      response.status,
+      body.error,
+    );
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new AgentApiError(
+      body.message ?? "Could not stash active profile",
+      response.status,
+    );
+  }
+  return (await response.json()) as ProfileStashPushResult;
+}
+
+export async function popProfileStash(
+  baseUrl: string,
+  token: string | null,
+): Promise<ProfileStashPopResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/profiles/stash/pop", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  if (response.status === 409) {
+    const body = (await response.json()) as { message?: string; error?: string };
+    throw new AgentApiError(
+      body.message ?? "Another profile operation is in progress",
+      response.status,
+      body.error,
+    );
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new AgentApiError(
+      body.message ?? "Could not restore stashed profile",
+      response.status,
+    );
+  }
+  return (await response.json()) as ProfileStashPopResult;
 }
 
 export async function fetchLibraryLayers(
@@ -188,6 +268,48 @@ export async function fetchLibraryResources(
   }
   const body = (await response.json()) as { resources: LibraryResource[] };
   return body.resources;
+}
+
+export async function fetchResourceTrackedDirectories(
+  baseUrl: string,
+  token: string | null,
+): Promise<ResourceTrackedDirectoriesResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/resource-directories");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load tracked directories");
+  }
+  return (await response.json()) as ResourceTrackedDirectoriesResult;
+}
+
+export async function addResourceTrackedDirectory(
+  baseUrl: string,
+  token: string | null,
+  path: string,
+): Promise<ResourceTrackedDirectoryAddResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/resource-directories", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not add tracked directory");
+  }
+  return (await response.json()) as ResourceTrackedDirectoryAddResult;
+}
+
+export async function removeResourceTrackedDirectory(
+  baseUrl: string,
+  token: string | null,
+  path: string,
+): Promise<void> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/resource-directories", {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not remove tracked directory");
+  }
 }
 
 export async function fetchLibraryResourceDetail(
@@ -428,6 +550,88 @@ export async function fetchApplyPreview(
     return throwAgentError(response, "Could not preview profile apply");
   }
   return (await response.json()) as ProfileApplyPreview;
+}
+
+export async function addProfileResource(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileAddResourceRequest,
+): Promise<ProfileAddResourceResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/add-resource`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not add resource to profile");
+  }
+  return (await response.json()) as ProfileAddResourceResult;
+}
+
+export async function addAllProfileResources(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileAddAllResourcesRequest,
+): Promise<ProfileAddAllResourcesResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/add-all-resources`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not add all resources to profile");
+  }
+  return (await response.json()) as ProfileAddAllResourcesResult;
+}
+
+export async function openResourcePath(
+  baseUrl: string,
+  token: string | null,
+  body: OpenPathRequest,
+): Promise<OpenPathResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/open-path", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not open resource path");
+  }
+  return (await response.json()) as OpenPathResult;
+}
+
+export async function removeProfileResource(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileRemoveResourceRequest,
+): Promise<ProfileRemoveResourceResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/remove-resource`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not remove resource from profile");
+  }
+  return (await response.json()) as ProfileRemoveResourceResult;
 }
 
 export async function bootstrapProject(

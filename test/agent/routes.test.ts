@@ -74,26 +74,19 @@ describe("agent routes", () => {
       profiles: Array<{ name: string; scopes: string[] }>;
     };
     const byName = new Map(body.profiles.map((profile) => [profile.name, profile.scopes]));
-    expect(byName.get("empty")).toEqual(["home", "project"]);
     expect(byName.get("work")).toEqual(["home", "project"]);
     expect(byName.get("side")).toEqual(["home"]);
+    expect(byName.has("empty")).toBe(false);
   });
 
-  it("lists empty builtin profile with home and project scopes even without projectPath", async () => {
+  it("does not list the removed empty builtin profile", async () => {
     const server = withServer();
     const response = await fetch(`${server.url}/v1/profiles`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      profiles: Array<{ name: string; scopes: string[]; description: string | null }>;
+      profiles: Array<{ name: string }>;
     };
-    const empty = body.profiles.find((profile) => profile.name === "empty");
-    expect(empty).toEqual({
-      name: "empty",
-      version: "",
-      tags: ["profile"],
-      description: "No resources",
-      scopes: ["home", "project"],
-    });
+    expect(body.profiles.some((profile) => profile.name === "empty")).toBe(false);
   });
 
   it("rejects switch without bearer token", async () => {

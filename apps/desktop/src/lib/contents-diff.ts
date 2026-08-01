@@ -261,7 +261,7 @@ export function aggregateInstallGaps(
   const byKey = new Map<string, InstallGapRow>();
 
   for (const [harnessId, status] of Object.entries(harnesses)) {
-    for (const plugin of status.plugins) {
+    for (const plugin of status.plugins ?? []) {
       if (plugin.state === "installed") {
         continue;
       }
@@ -282,7 +282,7 @@ export function aggregateInstallGaps(
       });
     }
 
-    for (const mcp of status.mcp) {
+    for (const mcp of status.mcp ?? []) {
       if (mcp.state === "present") {
         continue;
       }

@@ -72,10 +72,10 @@ describe("profile-create service", () => {
   });
 
   it("rejects a composed profile without selections", async () => {
-    const context = await createInitializedTestContext("profile-create-empty");
+    const context = await createInitializedTestContext("profile-create-no-selections");
     try {
       await expect(
-        commitProfileCreate({ source: "compose", name: "empty" }),
+        commitProfileCreate({ source: "compose", name: "blank" }),
       ).rejects.toThrow("at least one");
     } finally {
       await context.cleanup();

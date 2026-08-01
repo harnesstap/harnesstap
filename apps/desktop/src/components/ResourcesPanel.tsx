@@ -3,6 +3,7 @@ import {
   Bot,
   FileCode2,
   FileText,
+  FolderInput,
   Package,
   Plug,
   Shield,
@@ -13,6 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { RelatedHarnessIcons } from "./HarnessIcons";
+import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
 import {
   ResourceDetailPane,
   type ResourceDetailTarget,
@@ -80,6 +82,8 @@ export function ResourcesPanel({
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
   );
+  const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
+  const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
   const filterRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,7 +117,7 @@ export function ResourcesPanel({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token]);
+  }, [baseUrl, token, resourcesReloadKey]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => filterRef.current?.focus(), 0);
@@ -149,9 +153,21 @@ export function ResourcesPanel({
   return (
     <main className="resources-panel" aria-label="Resources">
       <div className="resources-panel-header">
-        <div className="resources-panel-title">
-          <span>Resources</span>
-          <span className="muted resources-panel-scope">{scopeLabel}</span>
+        <div className="resources-panel-header-row">
+          <div className="resources-panel-title">
+            <span>Resources</span>
+            <span className="muted resources-panel-scope">{scopeLabel}</span>
+          </div>
+          <button
+            type="button"
+            className="icon-action resources-panel-tracked-dirs-btn"
+            aria-label="Tracked directories"
+            title="Show tracked directories for resources"
+            disabled={disabled || !baseUrl}
+            onClick={() => setTrackedDirsOpen(true)}
+          >
+            <FolderInput size={16} aria-hidden />
+          </button>
         </div>
         <input
           ref={filterRef}
@@ -245,6 +261,15 @@ export function ResourcesPanel({
         baseUrl={baseUrl}
         token={token}
         onClose={() => setDetailTarget(null)}
+      />
+
+      <ResourceTrackedDirectoriesModal
+        open={trackedDirsOpen}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={disabled}
+        onClose={() => setTrackedDirsOpen(false)}
+        onChanged={() => setResourcesReloadKey((value) => value + 1)}
       />
     </main>
   );

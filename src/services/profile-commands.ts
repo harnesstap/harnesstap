@@ -9,12 +9,11 @@ import {
 import { renameGlobalApplySnapshotsProfile } from "../models/global-apply-snapshot.js";
 import { renameLayerTypedResources } from "../models/resource.js";
 import {
-  EMPTY_PROFILE_LAYER_ID,
-  EMPTY_PROFILE_NAME,
+  CLEARED_GLOBAL_PROFILE_NAME,
   PROFILE_LAYER_TAG,
-  getEmptyBuiltinProfileLayer,
   isEmptyBuiltinProfile,
   isProfileLayer,
+  isReservedProfileName,
   listProfileLayers,
 } from "../constants/profile.js";
 import type { Layer } from "../types.js";
@@ -48,23 +47,20 @@ export class ProfileRenameError extends Error {
 export class ProfileReservedNameError extends Error {
   constructor(name: string) {
     super(
-      `"${name}" is a builtin profile and cannot be created, renamed to, or deleted`,
+      `"${name}" is a reserved profile name and cannot be created, renamed to, or deleted`,
     );
     this.name = "ProfileReservedNameError";
   }
 }
 
 function assertNotReservedProfileName(name: string): void {
-  if (isEmptyBuiltinProfile(name)) {
-    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+  if (isReservedProfileName(name)) {
+    throw new ProfileReservedNameError(name);
   }
 }
 
 export function listProfileLayersCommand() {
-  const layers = listProfileLayers().filter(
-    (layer) => !isEmptyBuiltinProfile(layer.name),
-  );
-  return [getEmptyBuiltinProfileLayer(), ...layers];
+  return listProfileLayers();
 }
 
 export function showProfileCommand(selector: string): {
@@ -73,12 +69,7 @@ export function showProfileCommand(selector: string): {
   active: boolean;
 } {
   if (isEmptyBuiltinProfile(selector)) {
-    const profile = getEmptyBuiltinProfileLayer();
-    return {
-      profile,
-      dependencies: [],
-      active: getActiveProfileName() === EMPTY_PROFILE_NAME,
-    };
+    throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
 
   const profile = resolveLayerSelector(selector);
@@ -106,13 +97,6 @@ export function getActiveProfilePayload(): {
     return {
       active_profile: null,
       exists: false,
-    };
-  }
-  if (isEmptyBuiltinProfile(activeProfile)) {
-    return {
-      active_profile: EMPTY_PROFILE_NAME,
-      layer_id: EMPTY_PROFILE_LAYER_ID,
-      exists: true,
     };
   }
   const layer = resolveLayerSelector(activeProfile);
@@ -188,7 +172,7 @@ export function tagProfileCommand(selector: string): {
   tags: string[];
 } {
   if (isEmptyBuiltinProfile(selector)) {
-    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+    throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
   const layer = resolveLayerSelector(selector);
   if (!layer) {
@@ -204,7 +188,7 @@ export function untagProfileCommand(selector: string): {
   tags: string[];
 } {
   if (isEmptyBuiltinProfile(selector)) {
-    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+    throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
   const layer = resolveLayerSelector(selector);
   if (!layer) {
@@ -226,7 +210,7 @@ export function deleteProfileCommand(selector: string): {
   was_active: boolean;
 } {
   if (isEmptyBuiltinProfile(selector)) {
-    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+    throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
   const layer = resolveLayerSelector(selector);
   if (!layer) {
@@ -257,7 +241,7 @@ export function renameProfileCommand(
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileRenameError(
       "reserved_name",
-      `"${EMPTY_PROFILE_NAME}" is a builtin profile and cannot be renamed`,
+      `"${CLEARED_GLOBAL_PROFILE_NAME}" is a reserved profile name and cannot be renamed`,
     );
   }
 
@@ -265,10 +249,10 @@ export function renameProfileCommand(
   if (!nextName) {
     throw new ProfileRenameError("invalid_name", "Profile name is required");
   }
-  if (isEmptyBuiltinProfile(nextName)) {
+  if (isReservedProfileName(nextName)) {
     throw new ProfileRenameError(
       "reserved_name",
-      `"${EMPTY_PROFILE_NAME}" is a reserved builtin profile name`,
+      `"${CLEARED_GLOBAL_PROFILE_NAME}" is a reserved profile name`,
     );
   }
 

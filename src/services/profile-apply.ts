@@ -27,8 +27,8 @@ import { getHarnessPreference } from "../models/harness.js";
 import { getEnvironment } from "../models/environment.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
-  EMPTY_PROFILE_LAYER_ID,
-  EMPTY_PROFILE_NAME,
+  CLEARED_GLOBAL_PROFILE_LAYER_ID,
+  CLEARED_GLOBAL_PROFILE_NAME,
   isEmptyBuiltinProfile,
   isProfileLayer,
 } from "../constants/profile.js";
@@ -336,13 +336,22 @@ function writeHomeActiveEnvironment(name: string): string {
   return filePath;
 }
 
-async function applyEmptyBuiltinProfile(
+export class ProfileEmptyProfileRemovedError extends Error {
+  constructor() {
+    super(
+      'Profile "empty" is no longer available. Use "profile stash" to save the active profile and clear global harness files.',
+    );
+    this.name = "ProfileEmptyProfileRemovedError";
+  }
+}
+
+export async function clearGlobalProfileApply(
   options: ApplyProfileLayerOptions,
 ): Promise<ApplyProfileLayerResult> {
   const harnesses = resolveGlobalApplyHarnessTargets(options.harness);
   const homeRoot = resolveHomeRoot();
   const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
-    EMPTY_PROFILE_NAME,
+    CLEARED_GLOBAL_PROFILE_NAME,
     options,
   );
   const removedFiles = planStaleGlobalProfileFiles(
@@ -354,8 +363,8 @@ async function applyEmptyBuiltinProfile(
 
   if (options.dryRun) {
     return {
-      profile_name: EMPTY_PROFILE_NAME,
-      profile_layer_id: EMPTY_PROFILE_LAYER_ID,
+      profile_name: CLEARED_GLOBAL_PROFILE_NAME,
+      profile_layer_id: CLEARED_GLOBAL_PROFILE_LAYER_ID,
       configured_layer_ids: [],
       harnesses,
       dry_run: true,
@@ -374,13 +383,13 @@ async function applyEmptyBuiltinProfile(
   }
 
   const snapshot = createGlobalApplySnapshot({
-    profile_name: EMPTY_PROFILE_NAME,
+    profile_name: CLEARED_GLOBAL_PROFILE_NAME,
     layer_ids: [],
   });
 
   return {
-    profile_name: EMPTY_PROFILE_NAME,
-    profile_layer_id: EMPTY_PROFILE_LAYER_ID,
+    profile_name: CLEARED_GLOBAL_PROFILE_NAME,
+    profile_layer_id: CLEARED_GLOBAL_PROFILE_LAYER_ID,
     configured_layer_ids: [],
     harnesses,
     dry_run: false,
@@ -399,7 +408,7 @@ export async function applyProfileLayer(
   options: ApplyProfileLayerOptions,
 ): Promise<ApplyProfileLayerResult> {
   if (isEmptyBuiltinProfile(selector)) {
-    return applyEmptyBuiltinProfile(options);
+    throw new ProfileEmptyProfileRemovedError();
   }
 
   const profileLayer = resolveLayerSelector(selector);

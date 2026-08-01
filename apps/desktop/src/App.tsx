@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Check, FolderGit2, Globe, Library, RefreshCw, Unplug, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Plus, RefreshCw, Unplug, User } from "lucide-react";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
+import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
 import {
   AgentApiError,
   bootstrapProject,
@@ -14,11 +15,18 @@ import {
   connectAgent,
   fetchApplyPreview,
   fetchCloudAuthStatus,
+  fetchProfileStash,
   fetchProfiles,
   fetchStatus,
+  popProfileStash,
   renameProfile,
+  stashActiveProfile,
   startSwitch,
   subscribeSwitchEvents,
+  addAllProfileResources,
+  addProfileResource,
+  openResourcePath,
+  removeProfileResource,
 } from "./lib/agent-client";
 import {
   loadRecentProjects,
@@ -35,6 +43,7 @@ import type {
   ProfileSummary,
   ProfileSwitchStep,
   ProfileSwitchStepEvent,
+  ProfileStashEntry,
   ViewScope,
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
@@ -42,6 +51,7 @@ import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 type WorkspaceFocus = "resources" | "scope";
 
 const HEADER_ICON_SIZE = 18;
+const RAIL_ICON_SIZE = 15;
 
 /** Match CLI `ht profile list --search`: name, description, or tags. */
 function filterProfilesByQuery(
@@ -194,6 +204,8 @@ export function App() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [stashEntries, setStashEntries] = useState<ProfileStashEntry[]>([]);
+  const [stashBusy, setStashBusy] = useState(false);
   const [status, setStatus] = useState<GlobalProfileStatus | null>(null);
   const [hasFullHarnessSnapshot, setHasFullHarnessSnapshot] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -201,6 +213,11 @@ export function App() {
   const [applyPreview, setApplyPreview] = useState<ProfileApplyPreview | null>(null);
   const [applyPreviewError, setApplyPreviewError] = useState<string | null>(null);
   const [applyPreviewLoading, setApplyPreviewLoading] = useState(false);
+  const [addingResourceKey, setAddingResourceKey] = useState<string | null>(null);
+  const [removingResourceKey, setRemovingResourceKey] = useState<string | null>(null);
+  const [addingAllResources, setAddingAllResources] = useState(false);
+  const [addResourceError, setAddResourceError] = useState<string | null>(null);
+  const [resourceActionError, setResourceActionError] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   /** When true, keep an empty selection until the user picks a profile again. */
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
@@ -221,6 +238,7 @@ export function App() {
     setCreateProfileInitialSwitchAfterCreate,
   ] = useState(false);
   const [cloudBrowseOpen, setCloudBrowseOpen] = useState(false);
+  const [stashBrowseOpen, setStashBrowseOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
   const [cloudAuth, setCloudAuth] = useState<CloudAuthStatus | null>(null);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
@@ -278,6 +296,40 @@ export function App() {
   }, [projectPath, selectProject]);
 
   const activeProfile = status?.active_profile ?? null;
+  const topStashEntry = stashEntries[0];
+  const canStashProfile =
+    view === "home"
+    && Boolean(activeProfile)
+    && (status?.untracked_resource_count ?? 0) > 0;
+  const canUnstashProfile = stashEntries.length > 0;
+  const activeProfileUntrackedCount = useMemo(() => {
+    if (!activeProfile) {
+      return 0;
+    }
+    if (
+      selectedProfile === activeProfile
+      && applyPreview?.profile === activeProfile
+    ) {
+      return applyPreview.untracked_resources.length;
+    }
+    if (view === "home") {
+      return status?.untracked_resource_count ?? 0;
+    }
+    return 0;
+  }, [
+    activeProfile,
+    applyPreview,
+    selectedProfile,
+    status?.untracked_resource_count,
+    view,
+  ]);
+  const stashDisabledReason = !activeProfile
+    ? "No active profile to stash"
+    : view !== "home"
+      ? "Switch to Global view to stash"
+      : (status?.untracked_resource_count ?? 0) > 0
+        ? undefined
+        : "No untracked resources to stash";
   const projectTracked =
     status?.drift_summary.project?.status !== "na" && status?.drift_summary.project !== undefined;
   // Config init ≠ DB tracking. Project view only needs config.toml; drift "na"
@@ -361,6 +413,18 @@ export function App() {
     }
   }, [baseUrl, projectPath]);
 
+  const refreshStash = useCallback(async () => {
+    if (!baseUrl) {
+      return;
+    }
+    try {
+      const next = await fetchProfileStash(baseUrl, token);
+      setStashEntries(next.entries);
+    } catch {
+      setStashEntries([]);
+    }
+  }, [baseUrl, token]);
+
   const refreshCloudAuth = useCallback(async () => {
     if (!baseUrl || !token) {
       setCloudAuth(null);
@@ -374,7 +438,10 @@ export function App() {
   }, [baseUrl, token]);
 
   const visibleProfiles = useMemo(
-    () => profiles.filter((profile) => profile.scopes.includes(view)),
+    () =>
+      profiles.filter(
+        (profile) => profile.scopes.includes(view) && profile.name !== "empty",
+      ),
     [profiles, view],
   );
 
@@ -442,7 +509,8 @@ export function App() {
     void refreshProfiles();
     void refreshStatus("full");
     void refreshCloudAuth();
-  }, [connected, baseUrl, projectPath, refreshProfiles, refreshStatus, refreshCloudAuth]);
+    void refreshStash();
+  }, [connected, baseUrl, projectPath, refreshProfiles, refreshStatus, refreshCloudAuth, refreshStash]);
 
   useEffect(() => {
     if (!baseUrl || !selectedProfile || switching) {
@@ -497,6 +565,172 @@ export function App() {
     // and were re-triggering this effect (panel loading flash / twitch).
     // Post-switch refresh is covered by `switching` flipping back to false.
     switching,
+    token,
+    view,
+  ]);
+
+  const handleAddResource = useCallback(
+    async (resource: ProfileContentsResource) => {
+      if (!baseUrl || !selectedProfile) {
+        return;
+      }
+      const key = `${resource.type}:${resource.name}`;
+      setAddingResourceKey(key);
+      setAddResourceError(null);
+      try {
+        await addProfileResource(baseUrl, token, selectedProfile, {
+          resourceType: resource.type,
+          resourceName: resource.name,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: selectedProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        setApplyPreview(preview);
+        if (selectedProfile === activeProfile) {
+          await refreshStatus("full");
+        }
+      } catch (error) {
+        setAddResourceError(
+          error instanceof Error ? error.message : "Could not add resource to profile",
+        );
+      } finally {
+        setAddingResourceKey(null);
+      }
+    },
+    [
+      activeProfile,
+      baseUrl,
+      projectPath,
+      refreshStatus,
+      selectedProfile,
+      token,
+      view,
+    ],
+  );
+
+  const refreshProfilePreview = useCallback(async () => {
+    const previewProfile = selectedProfile ?? activeProfile;
+    if (!baseUrl || !previewProfile) {
+      return;
+    }
+    const preview = await fetchApplyPreview(baseUrl, token, {
+      profile: previewProfile,
+      scope: view,
+      ...(view === "project" && projectPath ? { projectPath } : {}),
+    });
+    if (selectedProfile) {
+      setApplyPreview(preview);
+    }
+    if (previewProfile === activeProfile) {
+      await refreshStatus("full");
+    }
+  }, [
+    activeProfile,
+    baseUrl,
+    projectPath,
+    refreshStatus,
+    selectedProfile,
+    token,
+    view,
+  ]);
+
+  const handleOpenResourceInEditor = useCallback(
+    async (resource: ProfileContentsResource) => {
+      if (!baseUrl || !token) {
+        return;
+      }
+      setResourceActionError(null);
+      try {
+        const selector = resource.id ?? `${resource.type}:${resource.name}`;
+        await openResourcePath(baseUrl, token, {
+          selector,
+          pathHint: resource.source ?? null,
+        });
+      } catch (error) {
+        setResourceActionError(
+          error instanceof Error ? error.message : "Could not open resource in editor",
+        );
+      }
+    },
+    [baseUrl, token],
+  );
+
+  const handleRemoveResourceFromProfile = useCallback(
+    async (resource: ProfileContentsResource, layerId?: string) => {
+      const profileName = selectedProfile ?? activeProfile;
+      if (!baseUrl || !profileName) {
+        return;
+      }
+      const key = `${resource.type}:${resource.name}`;
+      setRemovingResourceKey(key);
+      setResourceActionError(null);
+      try {
+        await removeProfileResource(baseUrl, token, profileName, {
+          resourceType: resource.type,
+          resourceName: resource.name,
+          ...(layerId ? { layerId } : {}),
+        });
+        await refreshProfilePreview();
+      } catch (error) {
+        setResourceActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not remove resource from profile",
+        );
+      } finally {
+        setRemovingResourceKey(null);
+      }
+    },
+    [
+      activeProfile,
+      baseUrl,
+      refreshProfilePreview,
+      selectedProfile,
+      token,
+    ],
+  );
+
+  const handleAddAllResources = useCallback(async () => {
+    if (!baseUrl || !activeProfile) {
+      return;
+    }
+    setAddingAllResources(true);
+    setAddResourceError(null);
+    try {
+      await addAllProfileResources(baseUrl, token, activeProfile, {
+        scope: view,
+        ...(view === "project" && projectPath ? { projectPath } : {}),
+      });
+      const previewProfile =
+        selectedProfile === activeProfile ? activeProfile : selectedProfile;
+      if (previewProfile) {
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: previewProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        if (selectedProfile === previewProfile) {
+          setApplyPreview(preview);
+        }
+      }
+      await refreshStatus("full");
+    } catch (error) {
+      setAddResourceError(
+        error instanceof Error ? error.message : "Could not add all resources to profile",
+      );
+    } finally {
+      setAddingAllResources(false);
+    }
+  }, [
+    activeProfile,
+    baseUrl,
+    projectPath,
+    refreshStatus,
+    selectedProfile,
     token,
     view,
   ]);
@@ -746,6 +980,87 @@ export function App() {
     },
     [refreshProfiles, runSwitch, selectProfile],
   );
+
+  const onStashProfile = useCallback(async () => {
+    if (!baseUrl || !token || stashBusy || switching) {
+      return;
+    }
+    setStashBusy(true);
+    setSwitchError(null);
+    try {
+      const result = await stashActiveProfile(baseUrl, token);
+      await refreshStatus("full");
+      await refreshStash();
+      if (activeProfile && selectedProfile === activeProfile) {
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: activeProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        setApplyPreview(preview);
+      }
+      setSuccessMessage(
+        `Stashed ${result.entry.contents.resources.length} untracked resource${result.entry.contents.resources.length === 1 ? "" : "s"}`,
+      );
+      window.setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setSwitchError(
+        error instanceof Error ? error.message : "Could not stash profile",
+      );
+    } finally {
+      setStashBusy(false);
+    }
+  }, [
+    activeProfile,
+    baseUrl,
+    projectPath,
+    refreshStatus,
+    refreshStash,
+    selectedProfile,
+    stashBusy,
+    switching,
+    token,
+    view,
+  ]);
+
+  const onUnstashProfile = useCallback(async () => {
+    if (!baseUrl || !token || stashBusy || switching || stashEntries.length === 0) {
+      return;
+    }
+    setStashBusy(true);
+    setSwitchError(null);
+    try {
+      const result = await popProfileStash(baseUrl, token);
+      if (result.restored.cancelled) {
+        setSwitchError("Restore cancelled");
+        return;
+      }
+      selectProfile(result.entry.profile_name);
+      await refreshProfiles();
+      await refreshStatus("full");
+      await refreshStash();
+      setSuccessMessage(
+        `Restored ${result.entry.contents.resources.length} untracked resource${result.entry.contents.resources.length === 1 ? "" : "s"}`,
+      );
+      window.setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setSwitchError(
+        error instanceof Error ? error.message : "Could not restore stashed profile",
+      );
+    } finally {
+      setStashBusy(false);
+    }
+  }, [
+    baseUrl,
+    refreshProfiles,
+    refreshStatus,
+    refreshStash,
+    selectProfile,
+    stashBusy,
+    stashEntries.length,
+    switching,
+    token,
+  ]);
 
   const ensureProjectReady = useCallback(
     async (pathOverride?: string): Promise<boolean> => {
@@ -1118,22 +1433,83 @@ export function App() {
           <div className="profiles-brand">
             <span>Profiles</span>
             <div className="profiles-brand-actions">
-              <button
-                className="rail-create-button"
-                type="button"
-                onClick={() => setCloudBrowseOpen(true)}
-                disabled={!connected || switching}
-              >
-                Browse Cloud
-              </button>
-              <button
-                className="rail-create-button"
-                type="button"
-                onClick={() => openCreateProfile()}
-                disabled={!connected || switching}
-              >
-                + Create
-              </button>
+              <div className="profiles-rail-toolbar">
+                <button
+                  className="icon-action rail-icon-action"
+                  type="button"
+                  onClick={() => void onStashProfile()}
+                  disabled={
+                    !connected
+                    || !token
+                    || switching
+                    || stashBusy
+                    || !canStashProfile
+                  }
+                  aria-label={
+                    canStashProfile
+                      ? `Stash untracked resources for ${activeProfile}`
+                      : "Stash untracked resources"
+                  }
+                  title={
+                    canStashProfile
+                      ? `Stash ${status?.untracked_resource_count ?? 0} untracked resource${(status?.untracked_resource_count ?? 0) === 1 ? "" : "s"}`
+                      : stashDisabledReason ?? "Stash untracked resources"
+                  }
+                >
+                  <Archive size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                </button>
+                <button
+                  className="icon-action rail-icon-action"
+                  type="button"
+                  onClick={() => void onUnstashProfile()}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    if (!canUnstashProfile || !connected || switching || stashBusy) {
+                      return;
+                    }
+                    setStashBrowseOpen(true);
+                  }}
+                  disabled={
+                    !connected
+                    || !token
+                    || switching
+                    || stashBusy
+                    || !canUnstashProfile
+                  }
+                  aria-label={
+                    canUnstashProfile && topStashEntry
+                      ? `Restore stashed untracked resources from ${topStashEntry.profile_name}`
+                      : "Restore stashed untracked resources"
+                  }
+                  title={
+                    canUnstashProfile && topStashEntry
+                      ? `Restore ${topStashEntry.contents.resources.length} untracked resource${topStashEntry.contents.resources.length === 1 ? "" : "s"} · right-click to browse`
+                      : "No stashed untracked resources to restore"
+                  }
+                >
+                  <ArchiveRestore size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                </button>
+                <button
+                  className="icon-action rail-icon-action"
+                  type="button"
+                  onClick={() => openCreateProfile()}
+                  disabled={!connected || switching || stashBusy}
+                  aria-label="Create profile"
+                  title="Create profile"
+                >
+                  <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                </button>
+                <button
+                  className="icon-action rail-icon-action"
+                  type="button"
+                  onClick={() => setCloudBrowseOpen(true)}
+                  disabled={!connected || switching || stashBusy}
+                  aria-label="Browse Cloud"
+                  title="Browse Cloud"
+                >
+                  <Cloud size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="profiles-filter-row">
@@ -1225,10 +1601,10 @@ export function App() {
             {filteredProfiles.map((profile) => {
               const isActive = profile.name === activeProfile;
               const isSelected = profile.name === selectedProfile;
+              const showAddAll = isActive && activeProfileUntrackedCount > 0;
               return (
-                <button
+                <div
                   key={profile.name}
-                  type="button"
                   className={[
                     "profile-item",
                     isActive ? "active" : "",
@@ -1236,18 +1612,43 @@ export function App() {
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  onClick={() => {
-                    if (isSelected) {
-                      clearProfileSelection();
-                      return;
-                    }
-                    selectProfile(profile.name);
-                  }}
-                  disabled={switching}
                 >
-                  {profile.name}
-                  {isActive ? <span className="badge">active</span> : null}
-                </button>
+                  <button
+                    type="button"
+                    className="profile-item-main"
+                    onClick={() => {
+                      if (isSelected) {
+                        clearProfileSelection();
+                        return;
+                      }
+                      selectProfile(profile.name);
+                    }}
+                    disabled={switching}
+                  >
+                    {profile.name}
+                    {isActive ? <span className="badge">active</span> : null}
+                  </button>
+                  {showAddAll ? (
+                    <button
+                      type="button"
+                      className="icon-action profile-item-action"
+                      aria-label={`Add ${activeProfileUntrackedCount} untracked resources to profile`}
+                      title={`Add all ${activeProfileUntrackedCount} untracked resources to profile`}
+                      disabled={
+                        !connected
+                        || !token
+                        || switching
+                        || addingAllResources
+                        || stashBusy
+                      }
+                      onClick={() => {
+                        void handleAddAllResources();
+                      }}
+                    >
+                      <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
               );
             })}
           </div>
@@ -1473,8 +1874,33 @@ export function App() {
                 onCreateProfileFromProject={() => {
                   openCreateProfile("project", true);
                 }}
+                onBrowseResources={() => setWorkspaceFocus("resources")}
+                onAddResource={handleAddResource}
+                addingResourceKey={addingResourceKey}
+                onOpenResourceInEditor={
+                  connected && token && !switching
+                    ? handleOpenResourceInEditor
+                    : undefined
+                }
+                onRemoveResourceFromProfile={
+                  connected && token && !switching
+                    ? handleRemoveResourceFromProfile
+                    : undefined
+                }
+                removingResourceKey={removingResourceKey}
               />
             )}
+
+            {addResourceError && !switching ? (
+              <div className="banner error" role="alert">
+                <div>{addResourceError}</div>
+              </div>
+            ) : null}
+            {resourceActionError && !switching ? (
+              <div className="banner error" role="alert">
+                <div>{resourceActionError}</div>
+              </div>
+            ) : null}
 
             {switchError && !switching && (
               <div className="banner error">
@@ -1515,6 +1941,12 @@ export function App() {
           setCloudBrowseOpen(false);
           setCloudAccountOpen(true);
         }}
+      />
+
+      <StashBrowseDrawer
+        open={stashBrowseOpen}
+        entries={stashEntries}
+        onClose={() => setStashBrowseOpen(false)}
       />
 
       <CloudAccountDrawer

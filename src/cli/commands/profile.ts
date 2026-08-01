@@ -28,6 +28,12 @@ import {
   SwitchRestoreFailedError,
   switchProfile,
 } from "../../services/profile-switch.js";
+import {
+  applyProfileStashCommand,
+  listProfileStashEntries,
+  popProfileStashCommand,
+  stashProfileCommand,
+} from "../../services/profile-stash.js";
 import { resolveProfileUseSelection } from "../../services/profile-use-resolve.js";
 import {
   executeProjectUse,
@@ -636,6 +642,214 @@ profileCmd
         { key: "Skipped", value: `${payload.skipped_files.length}` },
         ...(payload.snapshot_id ? [{ key: "Snapshot", value: payload.snapshot_id }] : []),
       ]);
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+const stashCmd = profileCmd
+  .command("stash")
+  .option("--dry-run", "Show what would be cleared without writing")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to global harness preference)",
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt",
+  )
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Stash untracked on-disk resources for the active profile (like git stash -u)")
+  .action(async (opts: {
+    dryRun?: boolean;
+    harness?: string;
+    onConflict?: string;
+    format?: string;
+    noInteractive?: boolean;
+  }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: opts.onConflict,
+      noInteractive: opts.noInteractive ?? format === "json",
+    });
+    try {
+      const result = await stashProfileCommand({
+        dryRun: opts.dryRun,
+        harness: opts.harness,
+        conflictPolicy,
+        pull: false,
+        ...(conflictPolicy === "prompt"
+          ? { conflictResolver: promptMaterializationConflict }
+          : {}),
+      });
+      if (format === "json") {
+        printJson(result);
+        return;
+      }
+      const dryPrefix = result.cleared.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      ui.success(
+        `${dryPrefix}Stashed ${result.entry.contents.resources.length} untracked resource${result.entry.contents.resources.length === 1 ? "" : "s"} for profile ${ui.theme.accent(result.entry.profile_name)}.`,
+      );
+      if ((result.cleared.removed_files?.length ?? 0) > 0) {
+        ui.dim(`Removed ${result.cleared.removed_files?.length} managed file(s).`);
+      }
+      ui.hint(`Restore with ${formatCommand("profile stash pop")}.`);
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+stashCmd
+  .command("list")
+  .alias("ls")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List stashed profiles")
+  .action((opts: { format?: string }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const entries = listProfileStashEntries();
+    if (format === "json") {
+      printJson({ entries });
+      return;
+    }
+    if (entries.length === 0) {
+      ui.info("No stashed profiles.");
+      return;
+    }
+    for (const [index, entry] of entries.entries()) {
+      ui.info(
+        `stash@{${index}}: ${ui.theme.accent(entry.profile_name)} (${entry.id})`,
+      );
+    }
+  });
+
+stashCmd
+  .command("pop")
+  .option("--dry-run", "Show what would be restored without writing")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to global harness preference)",
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt",
+  )
+  .option("--account <name>", "Cloud account name for dependency pulls")
+  .option("--base-url <url>", "Cloud base URL for dependency pulls")
+  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Restore the most recent stashed profile and remove it from the stash")
+  .action(async (opts: {
+    dryRun?: boolean;
+    harness?: string;
+    onConflict?: string;
+    account?: string;
+    baseUrl?: string;
+    pull?: boolean;
+    format?: string;
+    noInteractive?: boolean;
+  }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: opts.onConflict,
+      noInteractive: opts.noInteractive ?? format === "json",
+    });
+    try {
+      const result = await popProfileStashCommand({
+        dryRun: opts.dryRun,
+        harness: opts.harness,
+        pull: opts.pull,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        conflictPolicy,
+        ...(conflictPolicy === "prompt"
+          ? { conflictResolver: promptMaterializationConflict }
+          : {}),
+      });
+      if (format === "json") {
+        printJson(result);
+        return;
+      }
+      if (result.restored.cancelled) {
+        process.exitCode = 1;
+        ui.warn("Profile restore cancelled.");
+        return;
+      }
+      const dryPrefix = result.restored.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      ui.success(
+        `${dryPrefix}Restored stashed profile ${ui.theme.accent(result.entry.profile_name)}.`,
+      );
+    } catch (err) {
+      process.exitCode = 1;
+      ui.danger(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+stashCmd
+  .command("apply")
+  .option("--dry-run", "Show what would be restored without writing")
+  .option(
+    "--harness <slugs>",
+    "Comma-separated harness slugs (defaults to global harness preference)",
+  )
+  .option(
+    "--on-conflict <policy>",
+    "When generated files already exist: replace, skip, or prompt",
+  )
+  .option("--account <name>", "Cloud account name for dependency pulls")
+  .option("--base-url <url>", "Cloud base URL for dependency pulls")
+  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Restore the most recent stashed profile without removing it from the stash")
+  .action(async (opts: {
+    dryRun?: boolean;
+    harness?: string;
+    onConflict?: string;
+    account?: string;
+    baseUrl?: string;
+    pull?: boolean;
+    format?: string;
+    noInteractive?: boolean;
+  }) => {
+    const db = getDb();
+    initializeSchema(db);
+    const format = parseOutputFormat(opts.format);
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: opts.onConflict,
+      noInteractive: opts.noInteractive ?? format === "json",
+    });
+    try {
+      const result = await applyProfileStashCommand({
+        dryRun: opts.dryRun,
+        harness: opts.harness,
+        pull: opts.pull,
+        account: opts.account,
+        baseUrl: opts.baseUrl,
+        conflictPolicy,
+        ...(conflictPolicy === "prompt"
+          ? { conflictResolver: promptMaterializationConflict }
+          : {}),
+      });
+      if (format === "json") {
+        printJson(result);
+        return;
+      }
+      if (result.restored.cancelled) {
+        process.exitCode = 1;
+        ui.warn("Profile restore cancelled.");
+        return;
+      }
+      const dryPrefix = result.restored.dry_run ? `${ui.theme.muted("[dry run] ")} ` : "";
+      ui.success(
+        `${dryPrefix}Applied stashed profile ${ui.theme.accent(result.entry.profile_name)}.`,
+      );
     } catch (err) {
       process.exitCode = 1;
       ui.danger(err instanceof Error ? err.message : String(err));

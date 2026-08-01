@@ -7,12 +7,14 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
   applyProfileLayer,
+  clearGlobalProfileApply,
   collectProfileLayerIds,
   type ApplyProfileLayerResult,
 } from "./profile-apply.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import type { DriftFileChange } from "./project-drift.js";
+import { detectUntrackedProfileResources } from "./profile-untracked-resources.js";
 import {
   buildProfileContents,
   type ProfileContents,
@@ -46,6 +48,7 @@ export interface GlobalProfileStatus {
   harnesses: Record<string, HarnessLiveStatus>;
   drift_summary: GlobalProfileDriftSummary;
   contents?: ProfileContents | null;
+  untracked_resource_count?: number;
 }
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
@@ -201,6 +204,30 @@ function buildBaseStatusFields(input: {
   };
 }
 
+async function finalizeGlobalProfileStatus(
+  fields: Parameters<typeof buildBaseStatusFields>[0],
+  harness?: string,
+): Promise<GlobalProfileStatus> {
+  const status = buildBaseStatusFields(fields);
+  if (
+    fields.depth !== "full"
+    || !status.active_profile
+    || isEmptyBuiltinProfile(status.active_profile)
+  ) {
+    return status;
+  }
+  try {
+    const untracked = await detectUntrackedProfileResources({
+      profileSelector: status.active_profile,
+      scope: "home",
+      ...(harness ? { harness } : {}),
+    });
+    return { ...status, untracked_resource_count: untracked.length };
+  } catch {
+    return status;
+  }
+}
+
 export async function detectGlobalProfileStatus(input: {
   harness?: string;
   depth?: GlobalProfileStatusDepth;
@@ -209,18 +236,21 @@ export async function detectGlobalProfileStatus(input: {
   const depth = input.depth ?? "full";
   const activeProfile = getActiveProfileName() ?? null;
   if (!activeProfile) {
-    return buildBaseStatusFields({
-      depth,
-      activeProfile: null,
-      profileExists: false,
-      applied: false,
-      snapshotId: null,
-      snapshotAt: null,
-      stackInSync: false,
-      hasDrift: false,
-      changes: [],
-      projectPath: input.projectPath,
-    });
+    return finalizeGlobalProfileStatus(
+      {
+        depth,
+        activeProfile: null,
+        profileExists: false,
+        applied: false,
+        snapshotId: null,
+        snapshotAt: null,
+        stackInSync: false,
+        hasDrift: false,
+        changes: [],
+        projectPath: input.projectPath,
+      },
+      input.harness,
+    );
   }
 
   const layer = resolveLayerSelector(activeProfile);
@@ -229,14 +259,14 @@ export async function detectGlobalProfileStatus(input: {
       const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
       let expectedApply: ApplyProfileLayerResult;
       try {
-        expectedApply = await applyProfileLayer(activeProfile, {
+        expectedApply = await clearGlobalProfileApply({
           dryRun: true,
           harness: input.harness,
           conflictPolicy: "replace",
           pull: false,
         });
       } catch (error) {
-        return buildBaseStatusFields({
+        return finalizeGlobalProfileStatus({
           depth,
           activeProfile,
           profileExists: true,
@@ -258,7 +288,7 @@ export async function detectGlobalProfileStatus(input: {
       const applied = Boolean(latestSnapshot);
       const hasDrift = !applied || !stackInSync;
 
-      return buildBaseStatusFields({
+      return finalizeGlobalProfileStatus({
         depth,
         activeProfile,
         profileExists: true,
@@ -274,7 +304,7 @@ export async function detectGlobalProfileStatus(input: {
       });
     }
 
-    return buildBaseStatusFields({
+    return finalizeGlobalProfileStatus({
       depth,
       activeProfile,
       profileExists: false,
@@ -290,7 +320,7 @@ export async function detectGlobalProfileStatus(input: {
   }
 
   if (!isProfileLayer(layer)) {
-    return buildBaseStatusFields({
+    return finalizeGlobalProfileStatus({
       depth,
       activeProfile,
       profileExists: true,
@@ -317,7 +347,7 @@ export async function detectGlobalProfileStatus(input: {
       pull: false,
     });
   } catch (error) {
-    return buildBaseStatusFields({
+    return finalizeGlobalProfileStatus({
       depth,
       activeProfile,
       profileExists: true,
@@ -352,18 +382,21 @@ export async function detectGlobalProfileStatus(input: {
   const applied = Boolean(latestSnapshot);
   const hasDrift = !applied || !stackInSync || changes.length > 0;
 
-  return buildBaseStatusFields({
-    depth,
-    activeProfile,
-    profileExists: true,
-    applied,
-    snapshotId: latestSnapshot?.id ?? null,
-    snapshotAt: latestSnapshot?.created_at ?? null,
-    stackInSync,
-    hasDrift,
-    changes,
-    projectPath: input.projectPath,
-    expectedApply,
-    layerIds,
-  });
+  return finalizeGlobalProfileStatus(
+    {
+      depth,
+      activeProfile,
+      profileExists: true,
+      applied,
+      snapshotId: latestSnapshot?.id ?? null,
+      snapshotAt: latestSnapshot?.created_at ?? null,
+      stackInSync,
+      hasDrift,
+      changes,
+      projectPath: input.projectPath,
+      expectedApply,
+      layerIds,
+    },
+    input.harness,
+  );
 }

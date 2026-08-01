@@ -47,7 +47,7 @@ function materialResources(resources: Resource[]): Resource[] {
   );
 }
 
-function toContentsResource(resource: Resource): ProfileContentsResource {
+export function toContentsResource(resource: Resource): ProfileContentsResource {
   return {
     id: resource.id,
     type: resource.type,

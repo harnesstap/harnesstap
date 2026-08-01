@@ -31,6 +31,24 @@ export interface LibraryResource {
   source?: string | null;
 }
 
+export interface ResourceTrackedDirectoryEntry {
+  path: string;
+  kind: "home_default" | "custom";
+  label: string;
+  platform_ids: string[];
+  resource_count: number;
+  removable: boolean;
+}
+
+export interface ResourceTrackedDirectoriesResult {
+  directories: ResourceTrackedDirectoryEntry[];
+}
+
+export interface ResourceTrackedDirectoryAddResult {
+  directory: ResourceTrackedDirectoryEntry;
+  imported_count: number;
+}
+
 export interface LibraryResourceDetail {
   id: string;
   type: string;
@@ -239,6 +257,7 @@ export interface GlobalProfileStatus {
   };
   switching?: boolean;
   warning?: string;
+  untracked_resource_count?: number;
 }
 
 export interface ProfileApplyPreviewRequest {
@@ -252,12 +271,86 @@ export interface ProfileApplyPreview {
   scope: ViewScope;
   contents: ProfileContents | null;
   harnesses?: Record<string, HarnessLiveStatus>;
+  /** Material resources on disk that are not in the profile stack. */
+  untracked_resources: ProfileContentsResource[];
   files: {
     expected_count: number;
     changes: DriftFileChange[];
   };
   relative_to_active: boolean;
   warning?: string;
+}
+
+export interface ProfileAddResourceRequest {
+  resourceType: string;
+  resourceName: string;
+  scope: ViewScope;
+  projectPath?: string;
+}
+
+export interface ProfileAddResourceResult {
+  resource: ProfileContentsResource;
+}
+
+export interface ProfileAddAllResourcesRequest {
+  scope: ViewScope;
+  projectPath?: string;
+}
+
+export interface ProfileAddAllResourcesResult {
+  resources: ProfileContentsResource[];
+  added_count: number;
+}
+
+export interface ProfileRemoveResourceRequest {
+  resourceType: string;
+  resourceName: string;
+  layerId?: string;
+}
+
+export interface ProfileRemoveResourceResult {
+  resource: ProfileContentsResource;
+}
+
+export interface OpenPathRequest {
+  selector?: string;
+  path?: string;
+  pathHint?: string | null;
+}
+
+export interface OpenPathResult {
+  path: string;
+}
+
+export interface ProfileStashEntry {
+  id: string;
+  profile_name: string;
+  created_at: string;
+  contents: ProfileContents;
+  file_changes: DriftFileChange[];
+}
+
+export interface ProfileStashListResult {
+  entries: ProfileStashEntry[];
+}
+
+export interface ProfileStashPushResult {
+  entry: ProfileStashEntry;
+  cleared: {
+    profile_name: string;
+    removed_files?: string[];
+    dry_run: boolean;
+  };
+}
+
+export interface ProfileStashPopResult {
+  entry: ProfileStashEntry;
+  restored: {
+    profile_name: string;
+    dry_run: boolean;
+    cancelled: boolean;
+  };
+  removed: boolean;
 }
 
 export type ProfileSwitchStep =

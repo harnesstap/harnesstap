@@ -4,12 +4,7 @@ import {
   type GlobalProfileStatus,
 } from "../services/global-profile-drift.js";
 import type { GlobalProfileStatusDepth } from "../services/global-profile-status-panel.js";
-import {
-  EMPTY_PROFILE_DESCRIPTION,
-  EMPTY_PROFILE_NAME,
-  PROFILE_LAYER_TAG,
-  isEmptyBuiltinProfile,
-} from "../constants/profile.js";
+import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listProfileLayersCommand } from "../services/profile-commands.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { findProjectConfig } from "../services/project-config.js";
@@ -21,6 +16,9 @@ import {
 } from "./cloud-auth-handlers.js";
 import { jsonResponse } from "./http.js";
 import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
+import { handleProfileAddAllResources, handleProfileAddResource } from "./profile-add-resource-handlers.js";
+import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.js";
+import { handleOpenPath } from "./open-path-handlers.js";
 import {
   createProfileCloudHandlers,
   type ProfileCloudHandlers,
@@ -32,10 +30,20 @@ import {
   handleProfileTag,
 } from "./profile-create-handlers.js";
 import {
+  handleProfileStashList,
+  handleProfileStashPop,
+  handleProfileStashPush,
+} from "./profile-stash-handlers.js";
+import {
   handleLibraryLayers,
   handleLibraryResourceDetail,
   handleLibraryResources,
 } from "./profile-library-handlers.js";
+import {
+  handleResourceTrackedDirectoriesList,
+  handleResourceTrackedDirectoryAdd,
+  handleResourceTrackedDirectoryRemove,
+} from "./resource-tracked-directories-handlers.js";
 import {
   type AgentSwitchRequest,
   type AgentSwitchScope,
@@ -63,19 +71,7 @@ export interface ProfileSummaryPayload {
 function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
   const byName = new Map<string, ProfileSummaryPayload>();
 
-  // Builtin empty profile is always available in both Global and Project views.
-  byName.set(EMPTY_PROFILE_NAME, {
-    name: EMPTY_PROFILE_NAME,
-    version: "",
-    tags: [PROFILE_LAYER_TAG],
-    description: EMPTY_PROFILE_DESCRIPTION,
-    scopes: ["home", "project"],
-  });
-
   for (const profile of listProfileLayersCommand()) {
-    if (isEmptyBuiltinProfile(profile.name)) {
-      continue;
-    }
     byName.set(profile.name, {
       name: profile.name,
       version: profile.version,
@@ -544,18 +540,40 @@ export function createAgentFetchHandler(
       response = await routeDeps.cloudAuthHandlers.handleLoginCancel(request, token);
     } else if (method === "POST" && url.pathname === "/v1/cloud/auth/logout") {
       response = await routeDeps.cloudAuthHandlers.handleLogout(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/profiles/stash") {
+      response = handleProfileStashList(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/profiles/stash") {
+      response = await handleProfileStashPush(
+        request,
+        token,
+        routeDeps.isAgentSwitchInProgress,
+      );
+    } else if (method === "POST" && url.pathname === "/v1/profiles/stash/pop") {
+      response = await handleProfileStashPop(
+        request,
+        token,
+        routeDeps.isAgentSwitchInProgress,
+      );
     } else if (method === "GET" && url.pathname === "/v1/status") {
       response = await handlers.handleStatus(request);
     } else if (method === "POST" && url.pathname === "/v1/bootstrap") {
       response = await handlers.handleBootstrap(request);
     } else if (method === "POST" && url.pathname === "/v1/switch") {
       response = await handlers.handleSwitch(request);
+    } else if (method === "POST" && url.pathname === "/v1/open-path") {
+      response = await handleOpenPath(request, token);
     } else if (method === "GET" && url.pathname === "/v1/library/layers") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryLayers();
     } else if (method === "GET" && url.pathname === "/v1/library/resources") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryResources();
+    } else if (method === "GET" && url.pathname === "/v1/library/resource-directories") {
+      response = handleResourceTrackedDirectoriesList(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/library/resource-directories") {
+      response = await handleResourceTrackedDirectoryAdd(request, token);
+    } else if (method === "DELETE" && url.pathname === "/v1/library/resource-directories") {
+      response = await handleResourceTrackedDirectoryRemove(request, token);
     } else if (method === "GET" && url.pathname.startsWith("/v1/library/resources/")) {
       const authError = requireAgentBearerAuth(request, token);
       if (authError) {
@@ -583,19 +601,46 @@ export function createAgentFetchHandler(
             decodeURIComponent(tagMatch[1] ?? ""),
           );
         } else {
-          const eventsMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/events$/);
-          if (method === "GET" && eventsMatch) {
-            response = handlers.handleSwitchEvents(eventsMatch[1] ?? "", request);
-          } else if (method !== "GET" && method !== "HEAD") {
-            const cancelMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/cancel$/);
-            if (method === "POST" && cancelMatch) {
-              response = handlers.handleSwitchCancel(cancelMatch[1] ?? "", request);
-            } else {
-              const authError = requireAgentBearerAuth(request, token);
-              response = authError ?? jsonResponse({ error: "not_found" }, { status: 404 });
-            }
+          const addAllMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/add-all-resources$/);
+          if (method === "POST" && addAllMatch) {
+            response = await handleProfileAddAllResources(
+              request,
+              token,
+              decodeURIComponent(addAllMatch[1] ?? ""),
+            );
           } else {
-            response = jsonResponse({ error: "not_found" }, { status: 404 });
+          const addMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/add-resource$/);
+          if (method === "POST" && addMatch) {
+            response = await handleProfileAddResource(
+              request,
+              token,
+              decodeURIComponent(addMatch[1] ?? ""),
+            );
+          } else {
+            const removeMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/remove-resource$/);
+            if (method === "POST" && removeMatch) {
+              response = await handleProfileRemoveResource(
+                request,
+                token,
+                decodeURIComponent(removeMatch[1] ?? ""),
+              );
+            } else {
+            const eventsMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/events$/);
+            if (method === "GET" && eventsMatch) {
+              response = handlers.handleSwitchEvents(eventsMatch[1] ?? "", request);
+            } else if (method !== "GET" && method !== "HEAD") {
+              const cancelMatch = url.pathname.match(/^\/v1\/switch\/([^/]+)\/cancel$/);
+              if (method === "POST" && cancelMatch) {
+                response = handlers.handleSwitchCancel(cancelMatch[1] ?? "", request);
+              } else {
+                const authError = requireAgentBearerAuth(request, token);
+                response = authError ?? jsonResponse({ error: "not_found" }, { status: 404 });
+              }
+            } else {
+              response = jsonResponse({ error: "not_found" }, { status: 404 });
+            }
+          }
+          }
           }
         }
       }

@@ -298,6 +298,38 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "profile use work --harness claude-code",
     ],
   },
+  "profile.stash": {
+    description:
+      "Stash untracked on-disk resources for the active profile (like git stash -u)",
+    examples: [
+      "profile stash",
+      "profile stash --dry-run",
+      "profile stash --format json",
+    ],
+  },
+  "profile.stash.list": {
+    description: "List stashed profiles",
+    examples: [
+      "profile stash list",
+      "profile stash ls --format json",
+    ],
+  },
+  "profile.stash.pop": {
+    description:
+      "Restore the most recent stashed profile and remove it from the stash",
+    examples: [
+      "profile stash pop",
+      "profile stash pop --harness claude-code",
+    ],
+  },
+  "profile.stash.apply": {
+    description:
+      "Restore the most recent stashed profile without removing it from the stash",
+    examples: [
+      "profile stash apply",
+      "profile stash apply --dry-run",
+    ],
+  },
   "profile.create": {
     description:
       "Create a profile layer, promote an existing layer, or import from a skill package",

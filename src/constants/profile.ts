@@ -3,31 +3,24 @@ import type { Layer } from "../types.js";
 
 export const PROFILE_LAYER_TAG = "profile";
 
-/** Reserved virtual profile that clears managed global harness files. */
-export const EMPTY_PROFILE_NAME = "empty";
+/** Internal snapshot key for a cleared global apply (not a user-facing profile). */
+export const CLEARED_GLOBAL_PROFILE_NAME = "empty";
 
-/** Sentinel id for the virtual empty profile (not a DB layer row). */
-export const EMPTY_PROFILE_LAYER_ID = "builtin:empty";
+/** @deprecated Use CLEARED_GLOBAL_PROFILE_NAME. Reserved legacy name — not a selectable profile. */
+export const EMPTY_PROFILE_NAME = CLEARED_GLOBAL_PROFILE_NAME;
 
-export const EMPTY_PROFILE_DESCRIPTION = "No resources";
+/** Sentinel id for cleared global apply snapshots (not a DB layer row). */
+export const CLEARED_GLOBAL_PROFILE_LAYER_ID = "builtin:empty";
+
+/** @deprecated Use CLEARED_GLOBAL_PROFILE_LAYER_ID. */
+export const EMPTY_PROFILE_LAYER_ID = CLEARED_GLOBAL_PROFILE_LAYER_ID;
 
 export function isEmptyBuiltinProfile(name: string): boolean {
-  return name.trim() === EMPTY_PROFILE_NAME;
+  return name.trim() === CLEARED_GLOBAL_PROFILE_NAME;
 }
 
-/** Synthetic layer payload for list/show UIs — not persisted. */
-export function getEmptyBuiltinProfileLayer(): Layer {
-  return {
-    id: EMPTY_PROFILE_LAYER_ID,
-    name: EMPTY_PROFILE_NAME,
-    version: "",
-    org_slug: "",
-    catalog_slug: "",
-    description: EMPTY_PROFILE_DESCRIPTION,
-    tags: [PROFILE_LAYER_TAG],
-    created_at: "",
-    updated_at: "",
-  };
+export function isReservedProfileName(name: string): boolean {
+  return isEmptyBuiltinProfile(name);
 }
 
 export function isProfileLayer(layer: Pick<Layer, "tags">): boolean {

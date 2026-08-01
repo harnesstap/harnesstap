@@ -2,7 +2,6 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  EMPTY_PROFILE_NAME,
   isEmptyBuiltinProfile,
   isProfileLayer,
 } from "../constants/profile.js";
@@ -33,9 +32,10 @@ import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
 import { promptForProjectProfile } from "./wizards/project-use.js";
 import { shouldUseWizard } from "./wizards/shared.js";
 import { useProfileCommand } from "./profile-commands.js";
+import { stashProfileCommand, ProfileStashError } from "./profile-stash.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./profile-switch-prompt.js";
-import type { ApplyProfileLayerResult } from "./profile-apply.js";
-import { getActiveProfileName } from "./active-profile.js";
+import { clearGlobalProfileApply, type ApplyProfileLayerResult } from "./profile-apply.js";
+import { clearActiveProfileName, getActiveProfileName } from "./active-profile.js";
 import { getGlobalActiveEnvironmentName } from "./environment-session.js";
 import {
   layerExportToTomlDocument,
@@ -71,6 +71,8 @@ export type ProjectUseResult =
       profile_key: string;
       layer_name: string;
       environment_name?: string;
+      stashed?: boolean;
+      stash_id?: string;
     } & ApplyProfileLayerResult);
 
 function assertProfileLayer(layer: { name: string; tags: string[] }, context: string): void {
@@ -302,43 +304,41 @@ export async function executeProjectUse(
       onConflict: options.onConflict,
       noInteractive: options.noInteractive ?? options.format === "json",
     });
-    if (
-      await shouldSkipProjectUse({
-        layerName: EMPTY_PROFILE_NAME,
-        force: options.force,
+    let stashed: Awaited<ReturnType<typeof stashProfileCommand>> | undefined;
+    try {
+      stashed = await stashProfileCommand({
         harness: options.harness,
-      })
-    ) {
-      return {
-        skipped: true,
-        profile_key: EMPTY_PROFILE_NAME,
-        layer_name: EMPTY_PROFILE_NAME,
-      };
-    }
-    if (!options.dryRun) {
-      await maybeSyncActiveProfileBeforeSwitch({
-        targetProfileName: EMPTY_PROFILE_NAME,
-        harness: options.harness,
-        yes: options.yes,
-        format: options.format,
+        dryRun: options.dryRun,
+        conflictPolicy,
+        pull: false,
+        ...(conflictPolicy === "prompt"
+          ? { conflictResolver: promptMaterializationConflict }
+          : {}),
       });
+    } catch (error) {
+      if (!(error instanceof ProfileStashError)) {
+        throw error;
+      }
     }
-    const applied = await useProfileCommand(EMPTY_PROFILE_NAME, {
+    const cleared = await clearGlobalProfileApply({
       harness: options.harness,
       dryRun: options.dryRun,
-      pull: false,
-      account: options.account,
-      baseUrl: options.baseUrl,
       conflictPolicy,
+      pull: false,
       ...(conflictPolicy === "prompt"
         ? { conflictResolver: promptMaterializationConflict }
         : {}),
     });
+    if (!options.dryRun) {
+      clearActiveProfileName();
+    }
     return {
       skipped: false,
-      profile_key: EMPTY_PROFILE_NAME,
-      layer_name: EMPTY_PROFILE_NAME,
-      ...applied,
+      profile_key: stashed?.entry.profile_name ?? getActiveProfileName() ?? "empty",
+      layer_name: cleared.profile_name,
+      stashed: Boolean(stashed),
+      ...(stashed ? { stash_id: stashed.entry.id } : {}),
+      ...cleared,
     };
   }
 
