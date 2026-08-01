@@ -1,4 +1,4 @@
-import { isProfileLayer } from "../constants/profile.js";
+import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
 import {
   getLayerById,
   getLayerResources,
@@ -99,6 +99,18 @@ function buildTypeCounts(
 }
 
 export function buildProfileContents(profileName: string): ProfileContents | null {
+  if (isEmptyBuiltinProfile(profileName)) {
+    return {
+      layers: [],
+      stack_resource_count: 0,
+      stack_summary: null,
+      type_counts: {},
+      resources: [],
+      plugin_pins: [],
+      mcp_servers: [],
+    };
+  }
+
   const layer = resolveLayerSelector(profileName);
   if (!layer || !isProfileLayer(layer)) {
     return null;

@@ -8,7 +8,15 @@ import {
 } from "../models/layer-model.js";
 import { renameGlobalApplySnapshotsProfile } from "../models/global-apply-snapshot.js";
 import { renameLayerTypedResources } from "../models/resource.js";
-import { PROFILE_LAYER_TAG, isProfileLayer, listProfileLayers } from "../constants/profile.js";
+import {
+  EMPTY_PROFILE_LAYER_ID,
+  EMPTY_PROFILE_NAME,
+  PROFILE_LAYER_TAG,
+  getEmptyBuiltinProfileLayer,
+  isEmptyBuiltinProfile,
+  isProfileLayer,
+  listProfileLayers,
+} from "../constants/profile.js";
 import type { Layer } from "../types.js";
 import {
   clearActiveProfileName,
@@ -25,7 +33,7 @@ export interface CreateProfileResult {
 }
 
 export class ProfileRenameError extends Error {
-  readonly code: "invalid_name" | "not_found" | "layer_exists" | "not_a_profile";
+  readonly code: "invalid_name" | "not_found" | "layer_exists" | "not_a_profile" | "reserved_name";
 
   constructor(
     code: ProfileRenameError["code"],
@@ -37,8 +45,26 @@ export class ProfileRenameError extends Error {
   }
 }
 
+export class ProfileReservedNameError extends Error {
+  constructor(name: string) {
+    super(
+      `"${name}" is a builtin profile and cannot be created, renamed to, or deleted`,
+    );
+    this.name = "ProfileReservedNameError";
+  }
+}
+
+function assertNotReservedProfileName(name: string): void {
+  if (isEmptyBuiltinProfile(name)) {
+    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+  }
+}
+
 export function listProfileLayersCommand() {
-  return listProfileLayers();
+  const layers = listProfileLayers().filter(
+    (layer) => !isEmptyBuiltinProfile(layer.name),
+  );
+  return [getEmptyBuiltinProfileLayer(), ...layers];
 }
 
 export function showProfileCommand(selector: string): {
@@ -46,6 +72,15 @@ export function showProfileCommand(selector: string): {
   dependencies: ReturnType<typeof listLayerDependencies>;
   active: boolean;
 } {
+  if (isEmptyBuiltinProfile(selector)) {
+    const profile = getEmptyBuiltinProfileLayer();
+    return {
+      profile,
+      dependencies: [],
+      active: getActiveProfileName() === EMPTY_PROFILE_NAME,
+    };
+  }
+
   const profile = resolveLayerSelector(selector);
   if (!profile) {
     throw new Error(`Profile not found: ${selector}`);
@@ -71,6 +106,13 @@ export function getActiveProfilePayload(): {
     return {
       active_profile: null,
       exists: false,
+    };
+  }
+  if (isEmptyBuiltinProfile(activeProfile)) {
+    return {
+      active_profile: EMPTY_PROFILE_NAME,
+      layer_id: EMPTY_PROFILE_LAYER_ID,
+      exists: true,
     };
   }
   const layer = resolveLayerSelector(activeProfile);
@@ -104,6 +146,7 @@ export function createProfileCommand(input: {
   description?: string;
   version?: string;
 }): CreateProfileResult {
+  assertNotReservedProfileName(input.name);
   const version = input.version ?? "1.0.0";
   const existing = getLayerByName(input.name, version);
   if (existing) {
@@ -144,6 +187,9 @@ export function tagProfileCommand(selector: string): {
   layer_id: string;
   tags: string[];
 } {
+  if (isEmptyBuiltinProfile(selector)) {
+    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+  }
   const layer = resolveLayerSelector(selector);
   if (!layer) {
     throw new Error(`Layer not found: ${selector}`);
@@ -157,6 +203,9 @@ export function untagProfileCommand(selector: string): {
   layer_id: string;
   tags: string[];
 } {
+  if (isEmptyBuiltinProfile(selector)) {
+    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+  }
   const layer = resolveLayerSelector(selector);
   if (!layer) {
     throw new Error(`Layer not found: ${selector}`);
@@ -176,6 +225,9 @@ export function deleteProfileCommand(selector: string): {
   tags: string[];
   was_active: boolean;
 } {
+  if (isEmptyBuiltinProfile(selector)) {
+    throw new ProfileReservedNameError(EMPTY_PROFILE_NAME);
+  }
   const layer = resolveLayerSelector(selector);
   if (!layer) {
     throw new Error(`Profile not found: ${selector}`);
@@ -202,9 +254,22 @@ export function renameProfileCommand(
   layer_id: string;
   was_active: boolean;
 } {
+  if (isEmptyBuiltinProfile(selector)) {
+    throw new ProfileRenameError(
+      "reserved_name",
+      `"${EMPTY_PROFILE_NAME}" is a builtin profile and cannot be renamed`,
+    );
+  }
+
   const nextName = nextNameInput.trim();
   if (!nextName) {
     throw new ProfileRenameError("invalid_name", "Profile name is required");
+  }
+  if (isEmptyBuiltinProfile(nextName)) {
+    throw new ProfileRenameError(
+      "reserved_name",
+      `"${EMPTY_PROFILE_NAME}" is a reserved builtin profile name`,
+    );
   }
 
   const layer = resolveLayerSelector(selector);

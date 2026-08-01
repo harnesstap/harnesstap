@@ -9,7 +9,9 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
+    // Bind IPv4 loopback explicitly. `false`/`localhost` lets Node listen on
+    // ::1 only, while WKWebView resolves localhost to 127.0.0.1 → "Load failed".
+    host: host || "127.0.0.1",
     hmr: host
       ? {
           protocol: "ws",

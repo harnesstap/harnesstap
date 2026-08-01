@@ -1,5 +1,6 @@
 import {
   ProfileRenameError,
+  ProfileReservedNameError,
   renameProfileCommand,
   tagProfileCommand,
 } from "../services/profile-commands.js";
@@ -243,6 +244,12 @@ export async function handleProfileCreate(
   try {
     return jsonResponse(await commitProfileCreate(input), { status: 201 });
   } catch (error) {
+    if (error instanceof ProfileReservedNameError) {
+      return jsonResponse(
+        { error: "reserved_name", message: error.message },
+        { status: 400 },
+      );
+    }
     if (
       error instanceof ProfileLayerExistsError
       || errorMessage(error).startsWith("Layer already exists:")
@@ -315,6 +322,11 @@ export async function handleProfileRename(
         case "not_a_profile":
           return jsonResponse(
             { error: "not_a_profile", message: error.message },
+            { status: 400 },
+          );
+        case "reserved_name":
+          return jsonResponse(
+            { error: "reserved_name", message: error.message },
             { status: 400 },
           );
         default: {

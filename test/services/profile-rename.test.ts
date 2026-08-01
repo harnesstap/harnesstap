@@ -70,6 +70,13 @@ describe("renameProfileCommand", () => {
         expect(error).toBeInstanceOf(ProfileRenameError);
         expect((error as ProfileRenameError).code).toBe("layer_exists");
       }
+      try {
+        renameProfileCommand("alpha", "empty");
+        expect.unreachable("expected reserved_name");
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProfileRenameError);
+        expect((error as ProfileRenameError).code).toBe("reserved_name");
+      }
     } finally {
       await context.cleanup();
     }

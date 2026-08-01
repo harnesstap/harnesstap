@@ -823,6 +823,13 @@ button:focus-visible,
   flex-wrap: wrap;
 }
 
+.banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .banner.error {
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
   background: color-mix(in srgb, var(--red) 10%, var(--bg));

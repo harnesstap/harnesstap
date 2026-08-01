@@ -4,7 +4,7 @@ import {
   getLayerByName,
   listLayers,
 } from "../models/layer-model.js";
-import { PROFILE_LAYER_TAG } from "../constants/profile.js";
+import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listResources } from "../models/resource.js";
 import type { Layer } from "../types.js";
 import { addLayerAttachment } from "./layer-composition.js";
@@ -14,6 +14,7 @@ import {
   previewProfileFromHome,
   ProfileLayerExistsError,
 } from "./profile-from-home.js";
+import { ProfileReservedNameError } from "./profile-commands.js";
 import { persistMergedProjectScan } from "./scanner.js";
 
 export { ProfileLayerExistsError };
@@ -68,6 +69,9 @@ interface ComposeSelections {
 }
 
 function assertProfileNameAvailable(name: string): void {
+  if (isEmptyBuiltinProfile(name)) {
+    throw new ProfileReservedNameError(name);
+  }
   if (getLayerByName(name)) {
     throw new ProfileLayerExistsError(name);
   }

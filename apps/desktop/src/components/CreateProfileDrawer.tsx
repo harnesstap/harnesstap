@@ -26,6 +26,10 @@ interface CreateProfileDrawerProps {
   token: string | null;
   projectPath: string;
   disabled?: boolean;
+  /** Prefill source when the drawer opens (e.g. untracked-project CTA). */
+  initialSource?: ProfileCreateSource;
+  /** Prefill “Switch after create” when the drawer opens. */
+  initialSwitchAfterCreate?: boolean;
   onClose: () => void;
   onCreated: (
     profileName: string,
@@ -69,6 +73,8 @@ export function CreateProfileDrawer({
   token,
   projectPath,
   disabled = false,
+  initialSource = "compose",
+  initialSwitchAfterCreate = false,
   onClose,
   onCreated,
 }: CreateProfileDrawerProps) {
@@ -93,17 +99,21 @@ export function CreateProfileDrawer({
     if (!open) {
       return;
     }
+    const resolvedSource =
+      initialSource === "project" && !projectPath.trim()
+        ? "compose"
+        : initialSource;
     setName("");
     setDescription("");
-    setSource("compose");
+    setSource(resolvedSource);
     setLayerIds([]);
     setResourceIds([]);
     setResourceFilter("");
     setPreview(null);
     setConflictPolicy("skip");
-    setSwitchAfterCreate(false);
+    setSwitchAfterCreate(initialSwitchAfterCreate);
     setError(null);
-  }, [open]);
+  }, [initialSource, initialSwitchAfterCreate, open, projectPath]);
 
   useEffect(() => {
     if (!open || !baseUrl) {

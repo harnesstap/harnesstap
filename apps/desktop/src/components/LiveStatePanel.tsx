@@ -335,6 +335,10 @@ function allItemsFromContents(
   }));
 }
 
+/** Mirrors `previewProjectApply` when project drift is `na`. */
+const PROJECT_NOT_TRACKED_WARNING =
+  "Project is not tracked yet — bootstrap or apply to create a snapshot";
+
 export interface LiveStatePanelProps {
   view: ViewScope;
   formatView: (view: ViewScope) => string;
@@ -348,6 +352,9 @@ export interface LiveStatePanelProps {
   hasFullHarnessSnapshot: boolean;
   baseUrl: string | null;
   token: string | null;
+  bootstrapBusy?: boolean;
+  onBootstrap?: () => void;
+  onCreateProfileFromProject?: () => void;
 }
 
 export function LiveStatePanel({
@@ -363,6 +370,9 @@ export function LiveStatePanel({
   hasFullHarnessSnapshot,
   baseUrl,
   token,
+  bootstrapBusy = false,
+  onBootstrap,
+  onCreateProfileFromProject,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -404,6 +414,9 @@ export function LiveStatePanel({
 
   const previewWarning = applyPreview?.warning ?? null;
   const showPreviewError = Boolean(selectedProfile && applyPreviewError && !applyPreview);
+  const showNotTrackedActions =
+    previewWarning === PROJECT_NOT_TRACKED_WARNING
+    && Boolean(onBootstrap || onCreateProfileFromProject);
 
   return (
     <>
@@ -415,6 +428,30 @@ export function LiveStatePanel({
       {previewWarning ? (
         <div className="banner" role="status">
           <div>{previewWarning}</div>
+          {showNotTrackedActions ? (
+            <div className="banner-actions">
+              {onBootstrap ? (
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={onBootstrap}
+                  disabled={bootstrapBusy}
+                >
+                  {bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
+                </button>
+              ) : null}
+              {onCreateProfileFromProject ? (
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={onCreateProfileFromProject}
+                  disabled={bootstrapBusy}
+                >
+                  Create profile from project
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

@@ -1,7 +1,11 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isProfileLayer } from "../constants/profile.js";
+import {
+  EMPTY_PROFILE_NAME,
+  isEmptyBuiltinProfile,
+  isProfileLayer,
+} from "../constants/profile.js";
 import { resolveLayerSelector } from "../models/layer-model.js";
 import { LAYER_SCHEMA, LAYER_SCHEMA_VERSION } from "../types.js";
 import { useEnvironmentCommand } from "./environment-commands.js";
@@ -293,6 +297,51 @@ export async function shouldSkipProjectUse(input: {
 export async function executeProjectUse(
   options: ProjectUseOptions = {},
 ): Promise<ProjectUseResult> {
+  if (options.profile && isEmptyBuiltinProfile(options.profile)) {
+    const conflictPolicy = resolveApplyConflictPolicy({
+      onConflict: options.onConflict,
+      noInteractive: options.noInteractive ?? options.format === "json",
+    });
+    if (
+      await shouldSkipProjectUse({
+        layerName: EMPTY_PROFILE_NAME,
+        force: options.force,
+        harness: options.harness,
+      })
+    ) {
+      return {
+        skipped: true,
+        profile_key: EMPTY_PROFILE_NAME,
+        layer_name: EMPTY_PROFILE_NAME,
+      };
+    }
+    if (!options.dryRun) {
+      await maybeSyncActiveProfileBeforeSwitch({
+        targetProfileName: EMPTY_PROFILE_NAME,
+        harness: options.harness,
+        yes: options.yes,
+        format: options.format,
+      });
+    }
+    const applied = await useProfileCommand(EMPTY_PROFILE_NAME, {
+      harness: options.harness,
+      dryRun: options.dryRun,
+      pull: false,
+      account: options.account,
+      baseUrl: options.baseUrl,
+      conflictPolicy,
+      ...(conflictPolicy === "prompt"
+        ? { conflictResolver: promptMaterializationConflict }
+        : {}),
+    });
+    return {
+      skipped: false,
+      profile_key: EMPTY_PROFILE_NAME,
+      layer_name: EMPTY_PROFILE_NAME,
+      ...applied,
+    };
+  }
+
   const config = findProjectConfig(options.project ?? process.cwd());
   if (!config) {
     throw new Error(MISSING_PROJECT_CONFIG_MESSAGE);

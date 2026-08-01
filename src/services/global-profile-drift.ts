@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isProfileLayer } from "../constants/profile.js";
+import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
 import { resolveLayerSelector } from "../models/layer-model.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -225,6 +225,55 @@ export async function detectGlobalProfileStatus(input: {
 
   const layer = resolveLayerSelector(activeProfile);
   if (!layer) {
+    if (isEmptyBuiltinProfile(activeProfile)) {
+      const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
+      let expectedApply: ApplyProfileLayerResult;
+      try {
+        expectedApply = await applyProfileLayer(activeProfile, {
+          dryRun: true,
+          harness: input.harness,
+          conflictPolicy: "replace",
+          pull: false,
+        });
+      } catch (error) {
+        return buildBaseStatusFields({
+          depth,
+          activeProfile,
+          profileExists: true,
+          applied: Boolean(latestSnapshot),
+          snapshotId: latestSnapshot?.id ?? null,
+          snapshotAt: latestSnapshot?.created_at ?? null,
+          stackInSync: false,
+          hasDrift: true,
+          changes: [],
+          warning: error instanceof Error ? error.message : String(error),
+          projectPath: input.projectPath,
+          layerIds: [],
+        });
+      }
+
+      const stackInSync = latestSnapshot
+        ? layerIdsMatch(latestSnapshot.layer_ids, expectedApply.configured_layer_ids)
+        : false;
+      const applied = Boolean(latestSnapshot);
+      const hasDrift = !applied || !stackInSync;
+
+      return buildBaseStatusFields({
+        depth,
+        activeProfile,
+        profileExists: true,
+        applied,
+        snapshotId: latestSnapshot?.id ?? null,
+        snapshotAt: latestSnapshot?.created_at ?? null,
+        stackInSync,
+        hasDrift,
+        changes: [],
+        projectPath: input.projectPath,
+        expectedApply,
+        layerIds: [],
+      });
+    }
+
     return buildBaseStatusFields({
       depth,
       activeProfile,

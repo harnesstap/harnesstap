@@ -4,6 +4,12 @@ import {
   type GlobalProfileStatus,
 } from "../services/global-profile-drift.js";
 import type { GlobalProfileStatusDepth } from "../services/global-profile-status-panel.js";
+import {
+  EMPTY_PROFILE_DESCRIPTION,
+  EMPTY_PROFILE_NAME,
+  PROFILE_LAYER_TAG,
+  isEmptyBuiltinProfile,
+} from "../constants/profile.js";
 import { listProfileLayersCommand } from "../services/profile-commands.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { findProjectConfig } from "../services/project-config.js";
@@ -57,7 +63,19 @@ export interface ProfileSummaryPayload {
 function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
   const byName = new Map<string, ProfileSummaryPayload>();
 
+  // Builtin empty profile is always available in both Global and Project views.
+  byName.set(EMPTY_PROFILE_NAME, {
+    name: EMPTY_PROFILE_NAME,
+    version: "",
+    tags: [PROFILE_LAYER_TAG],
+    description: EMPTY_PROFILE_DESCRIPTION,
+    scopes: ["home", "project"],
+  });
+
   for (const profile of listProfileLayersCommand()) {
+    if (isEmptyBuiltinProfile(profile.name)) {
+      continue;
+    }
     byName.set(profile.name, {
       name: profile.name,
       version: profile.version,
@@ -71,6 +89,9 @@ function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
     const config = findProjectConfig(projectPath);
     if (config) {
       for (const entry of config.profiles) {
+        if (isEmptyBuiltinProfile(entry.name)) {
+          continue;
+        }
         const existing = byName.get(entry.name);
         if (existing) {
           if (!existing.scopes.includes("project")) {
@@ -81,7 +102,7 @@ function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
         byName.set(entry.name, {
           name: entry.name,
           version: "",
-          tags: ["profile"],
+          tags: [PROFILE_LAYER_TAG],
           description: null,
           scopes: ["project"],
         });

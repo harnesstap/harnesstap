@@ -31,6 +31,7 @@ import type {
   PanelTrafficStatus,
   ProfileApplyPreview,
   ProfileContentsResource,
+  ProfileCreateSource,
   ProfileSummary,
   ProfileSwitchStep,
   ProfileSwitchStepEvent,
@@ -213,12 +214,20 @@ export function App() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [overwriteDialog, setOverwriteDialog] = useState(false);
   const [createProfileOpen, setCreateProfileOpen] = useState(false);
+  const [createProfileInitialSource, setCreateProfileInitialSource] =
+    useState<ProfileCreateSource>("compose");
+  const [
+    createProfileInitialSwitchAfterCreate,
+    setCreateProfileInitialSwitchAfterCreate,
+  ] = useState(false);
   const [cloudBrowseOpen, setCloudBrowseOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
   const [cloudAuth, setCloudAuth] = useState<CloudAuthStatus | null>(null);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  /** Hide the “choose a project” banner without selecting a project. */
+  const [projectPromptDismissed, setProjectPromptDismissed] = useState(false);
   /** Project path whose `.harnesstap/config.toml` is known ready (init or already existed). */
   const [projectConfigReadyPath, setProjectConfigReadyPath] = useState<string | null>(
     null,
@@ -820,6 +829,15 @@ export function App() {
     void runSwitch(false);
   };
 
+  const openCreateProfile = (
+    source: ProfileCreateSource = "compose",
+    switchAfterCreate = false,
+  ) => {
+    setCreateProfileInitialSource(source);
+    setCreateProfileInitialSwitchAfterCreate(switchAfterCreate);
+    setCreateProfileOpen(true);
+  };
+
   const onPendingHomeApply = () => {
     if (!activeProfile) {
       return;
@@ -1111,7 +1129,7 @@ export function App() {
               <button
                 className="rail-create-button"
                 type="button"
-                onClick={() => setCreateProfileOpen(true)}
+                onClick={() => openCreateProfile()}
                 disabled={!connected || switching}
               >
                 + Create
@@ -1179,7 +1197,7 @@ export function App() {
                 <button
                   className="btn primary"
                   type="button"
-                  onClick={() => setCreateProfileOpen(true)}
+                  onClick={() => openCreateProfile()}
                   disabled={!connected || switching}
                 >
                   Create profile
@@ -1359,15 +1377,29 @@ export function App() {
               </div>
             </div>
 
-            {!projectPath && connected && (
+            {!projectPath && connected && !projectPromptDismissed && (
               <div className="banner">
                 <div>
                   Choose a project to inspect project-scoped status, or keep working
                   on global-only profile switches.
                 </div>
-                <button className="btn primary" type="button" onClick={() => void browseProject()}>
-                  Browse…
-                </button>
+                <div className="banner-actions">
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => setProjectPromptDismissed(true)}
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    className="btn primary"
+                    type="button"
+                    onClick={() => onSelectView("project")}
+                    disabled={switching || bootstrapBusy}
+                  >
+                    Browse…
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1434,6 +1466,13 @@ export function App() {
                 hasFullHarnessSnapshot={hasFullHarnessSnapshot}
                 baseUrl={baseUrl}
                 token={token}
+                bootstrapBusy={bootstrapBusy}
+                onBootstrap={() => {
+                  void ensureProjectReady();
+                }}
+                onCreateProfileFromProject={() => {
+                  openCreateProfile("project", true);
+                }}
               />
             )}
 
@@ -1455,7 +1494,13 @@ export function App() {
         token={token}
         projectPath={projectPath}
         disabled={switching}
-        onClose={() => setCreateProfileOpen(false)}
+        initialSource={createProfileInitialSource}
+        initialSwitchAfterCreate={createProfileInitialSwitchAfterCreate}
+        onClose={() => {
+          setCreateProfileOpen(false);
+          setCreateProfileInitialSource("compose");
+          setCreateProfileInitialSwitchAfterCreate(false);
+        }}
         onCreated={onProfileCreated}
       />
 

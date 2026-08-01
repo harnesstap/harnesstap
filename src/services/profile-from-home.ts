@@ -3,10 +3,11 @@ import {
   createLayer,
   getLayerByName,
 } from "../models/layer-model.js";
-import { PROFILE_LAYER_TAG } from "../constants/profile.js";
+import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listResources } from "../models/resource.js";
 import type { Layer, Resource, ResourceCreateInput } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { ProfileReservedNameError } from "./profile-commands.js";
 import {
   persistScanResults,
   scanHomeDefaults,
@@ -115,6 +116,9 @@ export async function createProfileFromHome(input: {
   platform?: string;
   conflictPolicy: ProfileConflictPolicy;
 }): Promise<ProfileFromHomeResult> {
+  if (isEmptyBuiltinProfile(input.name)) {
+    throw new ProfileReservedNameError(input.name);
+  }
   if (getLayerByName(input.name)) {
     throw new ProfileLayerExistsError(input.name);
   }

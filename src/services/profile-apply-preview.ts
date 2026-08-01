@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isProfileLayer } from "../constants/profile.js";
+import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import { resolveLayerSelector } from "../models/layer-model.js";
@@ -114,6 +114,37 @@ async function previewHomeApply(
   profile: string,
   harness?: string,
 ): Promise<Pick<ProfileApplyPreview, "harnesses" | "files" | "warning">> {
+  if (isEmptyBuiltinProfile(profile)) {
+    let expectedApply: ApplyProfileLayerResult;
+    try {
+      expectedApply = await applyProfileLayer(profile, {
+        dryRun: true,
+        harness,
+        conflictPolicy: "replace",
+        pull: false,
+      });
+    } catch (error) {
+      return {
+        files: { expected_count: 0, changes: [] },
+        warning: error instanceof Error ? error.message : String(error),
+      };
+    }
+    const homeRoot = resolveHomeRoot();
+    const expectedFiles = expectedApply.expected_files ?? [];
+    return {
+      harnesses: buildHarnessLiveStatusMap({
+        depth: "full",
+        homeRoot,
+        declaredPins: [],
+        declaredMcpByHarness: {},
+      }),
+      files: {
+        expected_count: expectedFiles.length,
+        changes: compareExpectedHomeFiles(homeRoot, expectedFiles),
+      },
+    };
+  }
+
   const layer = resolveLayerSelector(profile);
   if (!layer) {
     return {
