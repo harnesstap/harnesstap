@@ -6,8 +6,8 @@ Tape: [../tapes/07-preview-apply-layer.tape](../tapes/07-preview-apply-layer.tap
 
 ## Commands
 
-1. `harnesstap init --main codex --aliases claude-code,cursor`
-2. `harnesstap layer list --search foundation --remote-only`
-3. `harnesstap layer apply engineering-foundation --dry-run`
-4. `harnesstap layer apply engineering-foundation`
-5. `harnesstap status .`
+1. `ht init --main codex --aliases claude-code,cursor`
+2. `ht layer list --search foundation --remote-only`
+3. `ht layer apply engineering-foundation --dry-run`
+4. `ht layer apply engineering-foundation`
+5. `ht status .`

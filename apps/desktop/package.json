@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.app.json && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "icons": "bash scripts/generate-icons.sh",
     "prepare-sidecar": "bash scripts/prepare-sidecar.sh"
   },
   "dependencies": {

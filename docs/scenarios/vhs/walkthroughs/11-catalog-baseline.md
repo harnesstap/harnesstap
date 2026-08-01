@@ -6,7 +6,7 @@ Tape: [../tapes/11-catalog-baseline.tape](../tapes/11-catalog-baseline.tape)
 
 ## Commands
 
-1. `harnesstap init --main codex --aliases claude-code,cursor`
-2. `harnesstap layer list --search foundation --remote-only`
-3. `harnesstap layer apply engineering-foundation`
-4. `harnesstap status .`
+1. `ht init --main codex --aliases claude-code,cursor`
+2. `ht layer list --search foundation --remote-only`
+3. `ht layer apply engineering-foundation`
+4. `ht status .`

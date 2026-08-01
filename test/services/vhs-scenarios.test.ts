@@ -104,7 +104,7 @@ describe("VHS scenario manifest", () => {
     }
   });
 
-  it("uses visible harnesstap commands and starts tapes at the first visible command", () => {
+  it("uses visible ht commands and starts tapes at the first visible command", () => {
     const definitions = JSON.parse(
       readFileSync(manifestPath, "utf-8"),
     ) as VhsScenarioDefinition[];
@@ -119,13 +119,14 @@ describe("VHS scenario manifest", () => {
         .split("\n")
         .find((line) => line.startsWith('Type "'));
 
-      expect(tape).toContain("Require harnesstap");
+      expect(tape).toContain("Require ht");
       expect(tape).not.toContain("Require node");
-      expect(tape).toContain('Type "harnesstap ');
+      expect(tape).toContain('Type "ht ');
+      expect(tape).not.toContain('Type "hd ');
       expect(tape).not.toContain("node $HT_REPO_ROOT/dist/index.js");
       expect(tape).not.toContain('Type "export HOME=$HOME HARNESSTAP_HOME=$HARNESSTAP_HOME"');
       expect(tape).not.toContain('Type "cd $HT_PROJECT_ROOT"');
-      expect(firstTypedCommand).toMatch(/^Type "harnesstap /);
+      expect(firstTypedCommand).toMatch(/^Type "ht /);
     }
   });
 
@@ -141,15 +142,15 @@ describe("VHS scenario manifest", () => {
       .split("\n")
       .find((line) => line.startsWith('Type "'));
 
-    // First typed command should be harnesstap init
-    expect(firstTypedCommand).toMatch(/^Type "harnesstap init"/);
+    // First typed command should be ht init
+    expect(firstTypedCommand).toMatch(/^Type "ht init"/);
 
     // Tape contains the visible commands from the approved story
-    expect(tape).toContain('Type "harnesstap scan ."');
-    expect(tape).toContain('Type "harnesstap resource list"');
-    expect(tape).toContain('Type "harnesstap layer list --search foundation --remote-only"');
-    expect(tape).toContain('Type "harnesstap layer apply engineering-foundation"');
-    expect(tape).toContain('Type "harnesstap status ."');
+    expect(tape).toContain('Type "ht scan ."');
+    expect(tape).toContain('Type "ht resource list"');
+    expect(tape).toContain('Type "ht layer list --search foundation --remote-only"');
+    expect(tape).toContain('Type "ht layer apply engineering-foundation"');
+    expect(tape).toContain('Type "ht status ."');
 
     // Tape does not use --format json
     expect(tape).not.toContain("--format json");
