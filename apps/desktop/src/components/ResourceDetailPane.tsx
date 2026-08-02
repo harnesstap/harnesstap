@@ -80,7 +80,9 @@ export function ResourceDetailPane({
     setLoading(true);
     setError(null);
     setDetail(null);
-    void fetchLibraryResourceDetail(baseUrl, token, target.selector)
+    void fetchLibraryResourceDetail(baseUrl, token, target.selector, {
+      pathHint: target.pathHint,
+    })
       .then((next) => {
         if (!cancelled) {
           setDetail(next);

@@ -1,6 +1,8 @@
 import { listLayers } from "../models/layer-model.js";
 import { listResources, resolveResource } from "../models/resource.js";
+import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";
+import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
 import { jsonResponse } from "./http.js";
 
 export function handleLibraryLayers(): Response {
@@ -28,13 +30,57 @@ export function handleLibraryResources(): Response {
   });
 }
 
-export function handleLibraryResourceDetail(selector: string): Response {
+export function handleLibraryResourceDetail(
+  selector: string,
+  options?: { pathHint?: string | null },
+): Response {
   const trimmed = selector.trim();
   if (!trimmed) {
     return jsonResponse(
       { error: "invalid_selector", message: "Resource selector is required" },
       { status: 400 },
     );
+  }
+
+  const untracked = parseUntrackedResourceSelector(trimmed);
+  if (untracked) {
+    const pathHint = options?.pathHint?.trim();
+    if (!pathHint) {
+      return jsonResponse(
+        { error: "not_found", message: `Resource not found: ${trimmed}` },
+        { status: 404 },
+      );
+    }
+    try {
+      const onDisk = readResourceContentFromPathHint(pathHint);
+      const content = truncateResourceContent(onDisk.content, 80);
+      return jsonResponse({
+        resource: {
+          id: trimmed,
+          type: untracked.type,
+          name: untracked.name,
+          namespace: null,
+          description: null,
+          source: pathHint,
+          origin_kind: "untracked",
+          origin_ref: onDisk.path,
+          updated_at: onDisk.updatedAt,
+          content,
+          content_truncated: onDisk.content.split("\n").length > 80,
+        },
+      });
+    } catch (error) {
+      return jsonResponse(
+        {
+          error: "not_found",
+          message:
+            error instanceof Error
+              ? error.message
+              : `Resource not found: ${trimmed}`,
+        },
+        { status: 404 },
+      );
+    }
   }
 
   const result = resolveResource(trimmed);

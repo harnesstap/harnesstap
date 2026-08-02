@@ -582,7 +582,9 @@ export function createAgentFetchHandler(
         const selector = decodeURIComponent(
           url.pathname.slice("/v1/library/resources/".length),
         );
-        response = handleLibraryResourceDetail(selector);
+        response = handleLibraryResourceDetail(selector, {
+          pathHint: url.searchParams.get("path"),
+        });
       }
     } else {
       const renameMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/rename$/);

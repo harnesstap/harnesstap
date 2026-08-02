@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -76,5 +76,24 @@ describe("agent library routes", () => {
     expect(detailBody.resource.name).toBe("ship");
     expect(detailBody.resource.source).toBe("manual");
     expect(detailBody.resource.content).toContain("# ship");
+  });
+
+  it("returns on-disk content for untracked resource selectors", async () => {
+    const server = withServer();
+    const dir = mkdtempSync(join(tmpdir(), "ht-agent-untracked-"));
+    tempDirs.push(dir);
+    const filePath = join(dir, "CLAUDE.md");
+    writeFileSync(filePath, "# claude instructions", "utf-8");
+
+    const detail = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("untracked:instruction:claude-instructions")}?path=${encodeURIComponent(filePath)}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(detail.status).toBe(200);
+    const detailBody = await detail.json();
+    expect(detailBody.resource.name).toBe("claude-instructions");
+    expect(detailBody.resource.type).toBe("instruction");
+    expect(detailBody.resource.origin_kind).toBe("untracked");
+    expect(detailBody.resource.content).toContain("# claude instructions");
   });
 });

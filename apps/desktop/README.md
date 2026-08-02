@@ -16,7 +16,13 @@ From the repo root:
 bun run desktop:dev
 ```
 
-This prepares the `ht-agent` sidecar, installs desktop deps, then runs `tauri dev`.
+This cleans up stale sidecar/Vite listeners from a previous dev session, prepares the `ht-agent` sidecar, installs desktop deps, then runs `tauri dev`.
+
+To only clear orphaned listeners and session files:
+
+```bash
+bun run desktop:cleanup
+```
 
 The app spawns the bundled `ht-agent` sidecar, waits for `GET /v1/health`, then reads `~/.harnesstap/agent-token` for mutating API calls.
 

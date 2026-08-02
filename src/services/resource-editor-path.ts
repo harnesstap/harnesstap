@@ -1,9 +1,16 @@
-import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { resolveResource } from "../models/resource.js";
 import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { isUntrackedResourceSelector } from "./untracked-resource.js";
 
 function expandUserPath(candidate: string): string {
   const trimmed = candidate.trim();
@@ -78,6 +85,23 @@ function resolveExistingEditorPath(candidate: string): string | null {
   return null;
 }
 
+export function readResourceContentFromPathHint(pathHint: string): {
+  path: string;
+  content: string;
+  updatedAt: string;
+} {
+  const resolved = resolveExistingEditorPath(pathHint);
+  if (!resolved) {
+    throw new Error(`Path is not an openable file: ${pathHint}`);
+  }
+  const stat = statSync(resolved);
+  return {
+    path: resolved,
+    content: readFileSync(resolved, "utf-8"),
+    updatedAt: new Date(stat.mtimeMs).toISOString(),
+  };
+}
+
 export function resolveResourceEditorPath(input: {
   selector: string;
   pathHint?: string | null;
@@ -85,6 +109,13 @@ export function resolveResourceEditorPath(input: {
   const trimmedSelector = input.selector.trim();
   if (!trimmedSelector) {
     throw new Error("Resource selector is required");
+  }
+
+  if (isUntrackedResourceSelector(trimmedSelector)) {
+    if (!input.pathHint?.trim()) {
+      throw new Error(`Resource not found: ${trimmedSelector}`);
+    }
+    return resolveEditorPath(input.pathHint);
   }
 
   const result = resolveResource(trimmedSelector);

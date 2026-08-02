@@ -27,6 +27,20 @@ describe("resource-editor-path service", () => {
     expect(resolveEditorPath(filePath)).toBe(filePath);
   });
 
+  it("opens untracked resources from a path hint", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-editor-untracked-"));
+    tempDirs.push(dir);
+    const filePath = join(dir, "CLAUDE.md");
+    writeFileSync(filePath, "# claude instructions", "utf-8");
+
+    expect(
+      resolveResourceEditorPath({
+        selector: "untracked:instruction:claude-instructions",
+        pathHint: filePath,
+      }),
+    ).toBe(filePath);
+  });
+
   it("falls back to scratch content when no on-disk path exists", async () => {
     const context = await createInitializedTestContext("resource-editor-scratch");
     try {

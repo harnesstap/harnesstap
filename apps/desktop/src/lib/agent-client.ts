@@ -316,11 +316,14 @@ export async function fetchLibraryResourceDetail(
   baseUrl: string,
   token: string | null,
   selector: string,
+  options?: { pathHint?: string | null },
 ): Promise<LibraryResourceDetail> {
+  const pathHint = options?.pathHint?.trim();
+  const query = pathHint ? `?path=${encodeURIComponent(pathHint)}` : "";
   const response = await agentFetch(
     baseUrl,
     token,
-    `/v1/library/resources/${encodeURIComponent(selector)}`,
+    `/v1/library/resources/${encodeURIComponent(selector)}${query}`,
   );
   if (!response.ok) {
     return throwAgentError(response, "Could not load resource details");
