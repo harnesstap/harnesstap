@@ -168,148 +168,116 @@ function isMaterialResource(resource: Resource): boolean {
   return resource.type !== "plugin_pin" && resource.type !== "layer";
 }
 
-async function previewHomeApply(
+export interface CollectExpectedManagedFilesInput {
+  profile: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}
+
+export interface CollectExpectedManagedFilesResult {
+  rootPath: string;
+  expectedFiles: Array<{ path: string; content: string }>;
+  warning?: string;
+  expectedApply?: ApplyProfileLayerResult;
+  layerIds?: string[];
+  removedFiles?: string[];
+}
+
+async function collectHomeExpectedManagedFiles(
   profile: string,
   harness?: string,
-): Promise<Pick<ProfileApplyPreview, "harnesses" | "files" | "warning">> {
+): Promise<CollectExpectedManagedFilesResult> {
+  const homeRoot = resolveHomeRoot();
+
   if (isEmptyBuiltinProfile(profile)) {
-    let expectedApply: ApplyProfileLayerResult;
     try {
-      expectedApply = await clearGlobalProfileApply({
+      const expectedApply = await clearGlobalProfileApply({
         dryRun: true,
         harness,
         conflictPolicy: "replace",
         pull: false,
       });
-    } catch (error) {
-      const homeRoot = resolveHomeRoot();
       return {
-        files: {
-          expected_count: 0,
-          changes: withMappedResources([]),
-          root_path: homeRoot,
-        },
+        rootPath: homeRoot,
+        expectedFiles: uniqueExpectedFiles(expectedApply.expected_files ?? []),
+        expectedApply,
+        removedFiles: expectedApply.removed_files,
+      };
+    } catch (error) {
+      return {
+        rootPath: homeRoot,
+        expectedFiles: [],
         warning: error instanceof Error ? error.message : String(error),
       };
     }
-    const homeRoot = resolveHomeRoot();
-    const expectedFiles = uniqueExpectedFiles(expectedApply.expected_files ?? []);
-    return {
-      harnesses: buildHarnessLiveStatusMap({
-        depth: "full",
-        homeRoot,
-        declaredPins: [],
-        declaredMcpByHarness: {},
-      }),
-      files: {
-        expected_count: expectedFiles.length,
-        changes: withMappedResources(
-          withManagedRemovals(
-            compareExpectedFiles(homeRoot, expectedFiles),
-            expectedApply.removed_files,
-          ),
-        ),
-        root_path: homeRoot,
-      },
-    };
   }
 
   const layer = resolveLayerSelector(profile);
   if (!layer) {
-    const homeRoot = resolveHomeRoot();
     return {
-      files: {
-        expected_count: 0,
-        changes: withMappedResources([]),
-        root_path: homeRoot,
-      },
+      rootPath: homeRoot,
+      expectedFiles: [],
       warning: `missing layer "${profile}"`,
     };
   }
   if (!isProfileLayer(layer)) {
-    const homeRoot = resolveHomeRoot();
     return {
-      files: {
-        expected_count: 0,
-        changes: withMappedResources([]),
-        root_path: homeRoot,
-      },
+      rootPath: homeRoot,
+      expectedFiles: [],
       warning: `layer "${layer.name}" is not tagged as a profile`,
     };
   }
 
   const layerIds = collectProfileLayerIds(layer);
-  let expectedApply: ApplyProfileLayerResult;
   try {
-    expectedApply = await applyProfileLayer(profile, {
+    const expectedApply = await applyProfileLayer(profile, {
       dryRun: true,
       harness,
       conflictPolicy: "replace",
       pull: false,
     });
-  } catch (error) {
-    const merged = mergeLayersForApply(layerIds);
-    const homeRoot = resolveHomeRoot();
-    const declaredMcpByHarness = {
-      "claude-code": merged.resources
-        .filter((resource) => resource.type === "mcp_server")
-        .map((resource) => resource.name),
-      cursor: merged.resources
-        .filter((resource) => resource.type === "mcp_server")
-        .map((resource) => resource.name),
-    };
     return {
-      harnesses: buildHarnessLiveStatusMap({
-        depth: "full",
-        homeRoot,
-        declaredPins: merged.pluginPins,
-        declaredMcpByHarness,
-      }),
-      files: {
-        expected_count: 0,
-        changes: withMappedResources([]),
-        root_path: homeRoot,
-      },
+      rootPath: homeRoot,
+      expectedFiles: uniqueExpectedFiles(expectedApply.expected_files ?? []),
+      expectedApply,
+      layerIds,
+      removedFiles: expectedApply.removed_files,
+    };
+  } catch (error) {
+    return {
+      rootPath: homeRoot,
+      expectedFiles: [],
+      layerIds,
       warning: error instanceof Error ? error.message : String(error),
     };
   }
-
-  const homeRoot = resolveHomeRoot();
-  const expectedFiles = uniqueExpectedFiles(expectedApply.expected_files ?? []);
-  const declaredPins = mergeLayersForApply(layerIds).pluginPins;
-
-  return {
-    harnesses: buildHarnessLiveStatusMap({
-      depth: "full",
-      homeRoot,
-      declaredPins,
-      declaredMcpByHarness: declaredMcpNamesFromExpectedApply(expectedApply),
-    }),
-    files: {
-      expected_count: expectedFiles.length,
-      changes: withMappedResources(
-        withManagedRemovals(
-          compareExpectedFiles(homeRoot, expectedFiles),
-          expectedApply.removed_files,
-        ),
-      ),
-      root_path: homeRoot,
-    },
-  };
 }
 
-async function previewProjectApply(
+function snapshotPreviousPaths(resolvedRoot: string): string[] {
+  const gitOriginRaw = getGitOrigin(resolvedRoot);
+  const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
+  const project =
+    getProjectByLocalPath(resolvedRoot)
+    ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
+    ?? null;
+  const snapshot = project ? getLatestSnapshot(project.id) : null;
+  return snapshot
+    ? Object.values(snapshot.state.platform_files).flatMap((files) =>
+        Object.keys(files),
+      )
+    : [];
+}
+
+async function collectProjectExpectedManagedFiles(
   profile: string,
   projectPath?: string,
   harness?: string,
-): Promise<Pick<ProfileApplyPreview, "files" | "warning">> {
+): Promise<CollectExpectedManagedFilesResult> {
   if (!projectPath) {
     return {
-      files: {
-        expected_count: 0,
-        changes: withMappedResources([]),
-        root_path: resolve(""),
-      },
+      rootPath: resolve(""),
+      expectedFiles: [],
       warning: "projectPath is required for project scope",
     };
   }
@@ -318,21 +286,15 @@ async function previewProjectApply(
   const layer = resolveLayerSelector(profile);
   if (!layer) {
     return {
-      files: {
-        expected_count: 0,
-        changes: withMappedResources([]),
-        root_path: resolvedRoot,
-      },
+      rootPath: resolvedRoot,
+      expectedFiles: [],
       warning: `missing layer "${profile}"`,
     };
   }
   if (!isProfileLayer(layer) && !isEmptyBuiltinProfile(profile)) {
     return {
-      files: {
-        expected_count: 0,
-        changes: withMappedResources([]),
-        root_path: resolvedRoot,
-      },
+      rootPath: resolvedRoot,
+      expectedFiles: [],
       warning: `layer "${layer.name}" is not tagged as a profile`,
     };
   }
@@ -343,77 +305,166 @@ async function previewProjectApply(
     : detected;
 
   if (isEmptyBuiltinProfile(profile) || platformIds.length === 0) {
-    const gitOriginRaw = getGitOrigin(resolvedRoot);
-    const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
-    const project =
-      getProjectByLocalPath(resolvedRoot)
-      ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
-      ?? null;
-    const snapshot = project ? getLatestSnapshot(project.id) : null;
-    const previousPaths = snapshot
-      ? Object.values(snapshot.state.platform_files).flatMap((files) =>
-          Object.keys(files),
-        )
-      : [];
     return {
-      files: {
-        expected_count: 0,
-        changes: withMappedResources(withManagedRemovals([], previousPaths)),
-        root_path: resolvedRoot,
-      },
+      rootPath: resolvedRoot,
+      expectedFiles: [],
+      removedFiles: snapshotPreviousPaths(resolvedRoot),
     };
   }
 
   const merged = mergeLayersForApply(collectProfileLayerIds(layer));
   const material = merged.resources.filter(isMaterialResource);
-  let expectedFiles: Array<{ path: string; content: string }> = [];
   try {
     const generated = await generateFiles(material, platformIds, resolvedRoot, {
       target: "project",
       claudeConfig: merged.claude,
     });
-    expectedFiles = uniqueExpectedFiles(
+    const expectedFiles = uniqueExpectedFiles(
       generated.flatMap((result) =>
         result.files.map((file) => ({ path: file.path, content: file.content })),
       ),
     );
+    const previousPaths = snapshotPreviousPaths(resolvedRoot);
+    const desired = new Set(expectedFiles.map((file) => file.path));
+    const removedFiles = previousPaths.filter((path) => !desired.has(path));
+    return {
+      rootPath: resolvedRoot,
+      expectedFiles,
+      removedFiles,
+    };
   } catch (error) {
+    return {
+      rootPath: resolvedRoot,
+      expectedFiles: [],
+      warning: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export async function collectExpectedManagedFiles(
+  input: CollectExpectedManagedFilesInput,
+): Promise<CollectExpectedManagedFilesResult> {
+  if (input.scope === "project") {
+    return collectProjectExpectedManagedFiles(
+      input.profile,
+      input.projectPath,
+      input.harness,
+    );
+  }
+  return collectHomeExpectedManagedFiles(input.profile, input.harness);
+}
+
+async function previewHomeApply(
+  profile: string,
+  harness?: string,
+): Promise<Pick<ProfileApplyPreview, "harnesses" | "files" | "warning">> {
+  const collected = await collectHomeExpectedManagedFiles(profile, harness);
+
+  if (collected.warning) {
+    if (collected.layerIds) {
+      const merged = mergeLayersForApply(collected.layerIds);
+      const declaredMcpByHarness = {
+        "claude-code": merged.resources
+          .filter((resource) => resource.type === "mcp_server")
+          .map((resource) => resource.name),
+        cursor: merged.resources
+          .filter((resource) => resource.type === "mcp_server")
+          .map((resource) => resource.name),
+      };
+      return {
+        harnesses: buildHarnessLiveStatusMap({
+          depth: "full",
+          homeRoot: collected.rootPath,
+          declaredPins: merged.pluginPins,
+          declaredMcpByHarness,
+        }),
+        files: {
+          expected_count: 0,
+          changes: withMappedResources([]),
+          root_path: collected.rootPath,
+        },
+        warning: collected.warning,
+      };
+    }
     return {
       files: {
         expected_count: 0,
         changes: withMappedResources([]),
-        root_path: resolvedRoot,
+        root_path: collected.rootPath,
       },
-      warning: error instanceof Error ? error.message : String(error),
+      warning: collected.warning,
     };
   }
 
-  const gitOriginRaw = getGitOrigin(resolvedRoot);
-  const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
-  const project =
-    getProjectByLocalPath(resolvedRoot)
-    ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
-    ?? null;
-  const snapshot = project ? getLatestSnapshot(project.id) : null;
-  const previousPaths = snapshot
-    ? Object.values(snapshot.state.platform_files).flatMap((files) =>
-        Object.keys(files),
-      )
+  if (isEmptyBuiltinProfile(profile)) {
+    return {
+      harnesses: buildHarnessLiveStatusMap({
+        depth: "full",
+        homeRoot: collected.rootPath,
+        declaredPins: [],
+        declaredMcpByHarness: {},
+      }),
+      files: {
+        expected_count: collected.expectedFiles.length,
+        changes: withMappedResources(
+          withManagedRemovals(
+            compareExpectedFiles(collected.rootPath, collected.expectedFiles),
+            collected.removedFiles,
+          ),
+        ),
+        root_path: collected.rootPath,
+      },
+    };
+  }
+
+  const declaredPins = collected.layerIds
+    ? mergeLayersForApply(collected.layerIds).pluginPins
     : [];
-  const desired = new Set(expectedFiles.map((file) => file.path));
-  const removedFiles = previousPaths.filter((path) => !desired.has(path));
+  return {
+    harnesses: buildHarnessLiveStatusMap({
+      depth: "full",
+      homeRoot: collected.rootPath,
+      declaredPins,
+      declaredMcpByHarness: collected.expectedApply
+        ? declaredMcpNamesFromExpectedApply(collected.expectedApply)
+        : {},
+    }),
+    files: {
+      expected_count: collected.expectedFiles.length,
+      changes: withMappedResources(
+        withManagedRemovals(
+          compareExpectedFiles(collected.rootPath, collected.expectedFiles),
+          collected.removedFiles,
+        ),
+      ),
+      root_path: collected.rootPath,
+    },
+  };
+}
+
+async function previewProjectApply(
+  profile: string,
+  projectPath?: string,
+  harness?: string,
+): Promise<Pick<ProfileApplyPreview, "files" | "warning">> {
+  const collected = await collectProjectExpectedManagedFiles(
+    profile,
+    projectPath,
+    harness,
+  );
 
   return {
     files: {
-      expected_count: expectedFiles.length,
+      expected_count: collected.expectedFiles.length,
       changes: withMappedResources(
         withManagedRemovals(
-          compareExpectedFiles(resolvedRoot, expectedFiles),
-          removedFiles,
+          compareExpectedFiles(collected.rootPath, collected.expectedFiles),
+          collected.removedFiles,
         ),
       ),
-      root_path: resolvedRoot,
+      root_path: collected.rootPath,
     },
+    ...(collected.warning ? { warning: collected.warning } : {}),
   };
 }
 
