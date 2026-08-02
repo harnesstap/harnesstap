@@ -317,6 +317,18 @@ export interface ProfileRemoveResourceResult {
   resource: ProfileContentsResource;
 }
 
+export interface ProfileRestoreFileRequest {
+  scope: ViewScope;
+  projectPath?: string;
+  harness?: string;
+  path: string;
+}
+
+export interface ProfileRestoreFileResult {
+  path: string;
+  absolute_path: string;
+}
+
 export interface OpenPathRequest {
   selector?: string;
   path?: string;

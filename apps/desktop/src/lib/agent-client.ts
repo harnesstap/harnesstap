@@ -23,6 +23,8 @@ import type {
   OpenPathResult,
   ProfileRemoveResourceRequest,
   ProfileRemoveResourceResult,
+  ProfileRestoreFileRequest,
+  ProfileRestoreFileResult,
   ProfileCreatePreview,
   ProfileCreateRequest,
   ProfileCreateResult,
@@ -657,6 +659,28 @@ export async function removeProfileResource(
     return throwAgentError(response, "Could not remove resource from profile");
   }
   return (await response.json()) as ProfileRemoveResourceResult;
+}
+
+export async function restoreProfileFile(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileRestoreFileRequest,
+): Promise<ProfileRestoreFileResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/restore-file`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not restore profile file");
+  }
+  return (await response.json()) as ProfileRestoreFileResult;
 }
 
 export async function bootstrapProject(
