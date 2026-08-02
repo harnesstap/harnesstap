@@ -709,8 +709,12 @@ function FileChangeRowActions({
         <button
           type="button"
           className="icon-action profile-resource-remove-btn"
-          aria-label={`Restore profile version of ${change.path}`}
-          title="Restore profile version"
+          aria-label={
+            row.action === "update"
+              ? `Restore profile version of ${change.path}`
+              : `Remove ${change.path} from profile`
+          }
+          title={row.action === "update" ? "Restore profile version" : "Remove from profile"}
           disabled={busy}
           onClick={() => void onDropFileChange(change)}
         >

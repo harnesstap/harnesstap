@@ -1170,6 +1170,9 @@ button:focus-visible,
 }
 
 .diff-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
   margin-left: auto;
   flex-shrink: 0;
 }
