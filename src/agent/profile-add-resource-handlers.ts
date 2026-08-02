@@ -1,4 +1,5 @@
 import type { ProfileApplyPreviewScope } from "../services/profile-apply-preview.js";
+import { commitManagedResourceFromLive } from "../services/profile-commit-resource.js";
 import {
   addAllUntrackedResourcesToProfile,
   addResourceToProfile,
@@ -158,6 +159,68 @@ export async function handleProfileAddAllResources(
     return jsonResponse(
       {
         error: "add_all_resources_failed",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      { status: 400 },
+    );
+  }
+}
+
+export async function handleProfileCommitResource(
+  request: Request,
+  token: string,
+  profileName: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const parsed = parseAddResourceBody(body);
+  if (parsed instanceof Response) {
+    return parsed;
+  }
+
+  const path = isRecord(body) && typeof body.path === "string" ? body.path.trim() : "";
+  const resourceType =
+    isRecord(body) && typeof body.resourceType === "string"
+      ? body.resourceType.trim()
+      : "";
+  const resourceName =
+    isRecord(body) && typeof body.resourceName === "string"
+      ? body.resourceName.trim()
+      : "";
+
+  if (!path && (!resourceType || !resourceName)) {
+    return jsonResponse(
+      {
+        error: "invalid_commit_target",
+        message: "path or resourceType+resourceName is required",
+      },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const resource = await commitManagedResourceFromLive({
+      profileSelector: profileName,
+      resourceType,
+      resourceName,
+      ...(path ? { path } : {}),
+      ...parsed,
+    });
+    return jsonResponse({ resource });
+  } catch (error) {
+    return jsonResponse(
+      {
+        error: "commit_resource_failed",
         message: error instanceof Error ? error.message : String(error),
       },
       { status: 400 },

@@ -10,8 +10,11 @@ import { setActiveProfileName } from "../../src/services/active-profile.js";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import {
   addResourceToProfile,
+  detectNotStagedProfileResources,
   detectUntrackedProfileResources,
 } from "../../src/services/profile-untracked-resources.ts";
+import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { listResources } from "../../src/models/resource.ts";
 
 describe("profile-untracked-resources service", () => {
   it("detects harness resources not attached to the profile", async () => {
@@ -84,6 +87,123 @@ describe("profile-untracked-resources service", () => {
         harness: "claude-code",
       });
       expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not treat profile-owned instruction files as not staged under synthetic names", async () => {
+    const context = await createInitializedTestContext("profile-not-staged-instruction");
+    try {
+      const profile = createLayer({ name: "work" });
+      setLayerTags(profile.id, ["profile"]);
+      addResourceToLayer(
+        profile.id,
+        createResource({
+          type: "instruction",
+          name: "intro",
+          description: "",
+          content: "# intro from profile",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      await applyProfileLayer("work", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+      setActiveProfileName("work");
+
+      const notStaged = await detectNotStagedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(
+        notStaged.some((resource) => resource.name === "claude-instructions"),
+      ).toBe(false);
+      expect(notStaged.some((resource) => resource.name === "intro")).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("treats resources attached to another profile as staged (not listed)", async () => {
+    const context = await createInitializedTestContext("profile-not-staged-other-profile");
+    try {
+      const profileA = createLayer({ name: "profile-a" });
+      setLayerTags(profileA.id, ["profile"]);
+      addResourceToLayer(
+        profileA.id,
+        createResource({
+          type: "skill",
+          name: "shared-skill",
+          description: "",
+          content: "# shared",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const profileB = createLayer({ name: "profile-b" });
+      setLayerTags(profileB.id, ["profile"]);
+
+      await applyProfileLayer("profile-a", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      const notStaged = await detectNotStagedProfileResources({
+        profileSelector: "profile-b",
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(notStaged.some((resource) => resource.name === "shared-skill")).toBe(
+        false,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("registers not-staged resources as live library refs without snapshotting content", async () => {
+    const context = await createInitializedTestContext("profile-not-staged-live-ref");
+    try {
+      const profile = createLayer({ name: "work" });
+      setLayerTags(profile.id, ["profile"]);
+
+      mkdirSync(join(context.homeDir, ".claude", "skills", "manual-skill"), {
+        recursive: true,
+      });
+      writeFileSync(
+        join(context.homeDir, ".claude", "skills", "manual-skill", "SKILL.md"),
+        "---\nname: manual-skill\ndescription: manual\n---\n\n# manual body",
+        "utf-8",
+      );
+
+      const notStaged = await detectNotStagedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "claude-code",
+      });
+      const entry = notStaged.find((resource) => resource.name === "manual-skill");
+      expect(entry).toBeTruthy();
+      if (!entry) {
+        return;
+      }
+
+      const library = listResources().find((resource) => resource.id === entry.id);
+      expect(library).toBeTruthy();
+      if (!library) {
+        return;
+      }
+      expect(
+        (library.metadata as Record<string, unknown>).content_status,
+      ).toBe("live");
+      expect(library.content).toBe("");
     } finally {
       await context.cleanup();
     }

@@ -4,6 +4,7 @@ import {
   diffProfileContents,
   fileChangeAction,
   orderedTypeCounts,
+  summarizeStackChanges,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
@@ -73,6 +74,65 @@ describe("contents-diff helpers", () => {
         plugin_pin: 1,
       }).map((row) => `${row.count} ${row.label}`),
     ).toEqual(["2 layers", "5 skills", "10 MCP", "1 plugin"]);
+  });
+
+  it("summarizes stack changes with add/remove/mixed tones", () => {
+    const target = contents({
+      layers: [
+        {
+          id: "l1",
+          name: "work",
+          version: "1.0.0",
+          resources: [],
+        },
+        {
+          id: "l2",
+          name: "extra",
+          version: "1.0.0",
+          resources: [],
+        },
+      ],
+      resources: [
+        { type: "skill", name: "ship" },
+        { type: "skill", name: "review" },
+        { type: "mcp_server", name: "docs" },
+        { type: "command", name: "deploy" },
+      ],
+      type_counts: { layer: 2, skill: 2, mcp_server: 1, command: 1 },
+    });
+    const live = contents({
+      layers: [
+        {
+          id: "l1",
+          name: "work",
+          version: "1.0.0",
+          resources: [],
+        },
+      ],
+      resources: [
+        { type: "skill", name: "ship" },
+        { type: "skill", name: "legacy" },
+        { type: "mcp_server", name: "old" },
+        { type: "instruction", name: "readme" },
+      ],
+      type_counts: { layer: 1, skill: 2, mcp_server: 1, instruction: 1 },
+    });
+
+    const diff = diffProfileContents(target, live);
+    expect(
+      summarizeStackChanges(diff.added, diff.removed).map((row) => ({
+        type: row.type,
+        count: row.count,
+        label: row.label,
+        tone: row.tone,
+      })),
+    ).toEqual([
+      { type: "layer", count: 1, label: "layer", tone: "add" },
+      { type: "skill", count: 2, label: "skills", tone: "mixed" },
+      { type: "mcp_server", count: 2, label: "MCP", tone: "mixed" },
+      { type: "instruction", count: 1, label: "instruction", tone: "remove" },
+      { type: "command", count: 1, label: "command", tone: "add" },
+    ]);
   });
 
   it("maps file change types to apply verbs", () => {

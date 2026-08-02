@@ -599,6 +599,28 @@ export async function addAllProfileResources(
   return (await response.json()) as ProfileAddAllResourcesResult;
 }
 
+export async function commitProfileResource(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileAddResourceRequest & { path?: string },
+): Promise<ProfileAddResourceResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/commit-resource`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not commit resource into profile");
+  }
+  return (await response.json()) as ProfileAddResourceResult;
+}
+
 export async function openResourcePath(
   baseUrl: string,
   token: string | null,

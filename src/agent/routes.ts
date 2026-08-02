@@ -16,7 +16,7 @@ import {
 } from "./cloud-auth-handlers.js";
 import { jsonResponse } from "./http.js";
 import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
-import { handleProfileAddAllResources, handleProfileAddResource } from "./profile-add-resource-handlers.js";
+import { handleProfileAddAllResources, handleProfileAddResource, handleProfileCommitResource } from "./profile-add-resource-handlers.js";
 import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.js";
 import { handleOpenPath } from "./open-path-handlers.js";
 import {
@@ -619,6 +619,14 @@ export function createAgentFetchHandler(
               decodeURIComponent(addMatch[1] ?? ""),
             );
           } else {
+            const commitMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/commit-resource$/);
+            if (method === "POST" && commitMatch) {
+              response = await handleProfileCommitResource(
+                request,
+                token,
+                decodeURIComponent(commitMatch[1] ?? ""),
+              );
+            } else {
             const removeMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/remove-resource$/);
             if (method === "POST" && removeMatch) {
               response = await handleProfileRemoveResource(
@@ -641,6 +649,7 @@ export function createAgentFetchHandler(
             } else {
               response = jsonResponse({ error: "not_found" }, { status: 404 });
             }
+          }
           }
           }
           }

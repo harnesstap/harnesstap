@@ -5,7 +5,7 @@ import {
   resolveLayerSelector,
   touchLayerUpdatedAt,
 } from "../models/layer-model.js";
-import { isProfileLayer } from "../constants/profile.js";
+import { isProfileLayer, listProfileLayers } from "../constants/profile.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type MaterialResourceType,
@@ -23,6 +23,7 @@ import type { ProfileApplyPreviewScope } from "./profile-apply-preview.js";
 import { resolveMainHarnessTarget } from "./profile-harness-sync.js";
 import { assessProjectScanStatus } from "./project-scan-status.js";
 import { generateFiles, removeGlobalMaterializedFiles } from "./applier.js";
+import { ensureLiveLibraryRef } from "./live-library-ref.js";
 import {
   persistScanResults,
   scanHomeDefaults,
@@ -46,6 +47,7 @@ function profileResourceKey(
   return `${resource.type}:${resource.name}`;
 }
 
+/** Keys attached to the given profile stack (including nested layers). */
 function trackedResourceKeys(profileSelector: string): Set<string> {
   const profileLayer = resolveLayerSelector(profileSelector);
   if (!profileLayer) {
@@ -61,19 +63,79 @@ function trackedResourceKeys(profileSelector: string): Set<string> {
   );
 }
 
-function scanInputToUntrackedResource(
-  input: ResourceCreateInput,
-  originRef: string,
-): ProfileContentsResource {
-  return {
-    id: `untracked:${input.type}:${input.name}`,
-    type: input.type,
-    name: input.name,
-    source: input.source ?? originRef,
-  };
+/** Keys attached to any profile — used for not-staged detection. */
+function resourceKeysAttachedToAnyProfile(): Set<string> {
+  const keys = new Set<string>();
+  for (const profile of listProfileLayers()) {
+    const profileResources = mergeLayersForApply(
+      collectProfileLayerIds(profile),
+    ).resources;
+    for (const resource of profileResources) {
+      if (isMaterialResource(resource)) {
+        keys.add(profileResourceKey(resource));
+      }
+    }
+  }
+  return keys;
 }
 
-async function untrackedFromHomeScan(
+/** Normalize on-disk / expected paths for ownership comparisons. */
+export function normalizeManagedPath(path: string, rootPath?: string): string {
+  let normalized = path.replace(/\\/g, "/");
+  if (normalized.startsWith("~/")) {
+    normalized = normalized.slice(2);
+  }
+  if (rootPath) {
+    const root = rootPath.replace(/\\/g, "/").replace(/\/$/, "");
+    if (normalized === root || normalized.startsWith(`${root}/`)) {
+      normalized = normalized.slice(root.length).replace(/^\//, "");
+    }
+  }
+  return normalized.replace(/^\.\//, "");
+}
+
+async function profileOwnedPaths(
+  profileSelector: string,
+  rootPath: string,
+  platformIds: string[],
+  target: "global" | "project",
+): Promise<Set<string>> {
+  const profileLayer = resolveLayerSelector(profileSelector);
+  if (!profileLayer || !isProfileLayer(profileLayer) || platformIds.length === 0) {
+    return new Set();
+  }
+  const merged = mergeLayersForApply(collectProfileLayerIds(profileLayer));
+  const material = merged.resources.filter(isMaterialResource);
+  if (material.length === 0) {
+    return new Set();
+  }
+  try {
+    const generated = await generateFiles(material, platformIds, rootPath, {
+      target,
+      claudeConfig: merged.claude,
+    });
+    const paths = new Set<string>();
+    for (const result of generated) {
+      for (const file of result.files) {
+        paths.add(normalizeManagedPath(file.path, rootPath));
+      }
+    }
+    return paths;
+  } catch {
+    return new Set();
+  }
+}
+
+function sortContentsResources(
+  resources: ProfileContentsResource[],
+): ProfileContentsResource[] {
+  return resources.sort((a, b) => {
+    const typeOrder = a.type.localeCompare(b.type);
+    return typeOrder !== 0 ? typeOrder : a.name.localeCompare(b.name);
+  });
+}
+
+async function notStagedFromHomeScan(
   profileSelector: string,
   harness?: string,
 ): Promise<ProfileContentsResource[]> {
@@ -82,11 +144,21 @@ async function untrackedFromHomeScan(
     return [];
   }
 
-  const trackedKeys = trackedResourceKeys(profileSelector);
-  const mainHarness = resolveMainHarnessTarget(harness);
+  const committedKeys = resourceKeysAttachedToAnyProfile();
   const homeRoot = resolveHomeRoot();
-  const scanned = await scanHomeDefaults(mainHarness, homeRoot);
-  const untracked: ProfileContentsResource[] = [];
+  // Scan all detected harnesses unless a specific harness filter is requested.
+  const scanned = await scanHomeDefaults(
+    harness ? resolveMainHarnessTarget(harness) : undefined,
+    homeRoot,
+  );
+  const platformIds = scanned.map((result) => result.platformId);
+  const ownedPaths = await profileOwnedPaths(
+    profileSelector,
+    homeRoot,
+    platformIds,
+    "global",
+  );
+  const notStaged: ProfileContentsResource[] = [];
   const seen = new Set<string>();
 
   for (const result of scanned) {
@@ -95,21 +167,24 @@ async function untrackedFromHomeScan(
         continue;
       }
       const key = profileResourceKey(resource);
-      if (trackedKeys.has(key) || seen.has(key)) {
+      if (committedKeys.has(key) || seen.has(key)) {
+        continue;
+      }
+      const sourcePath = normalizeManagedPath(resource.source ?? "", homeRoot);
+      if (sourcePath && ownedPaths.has(sourcePath)) {
+        // Singleton / merged file owned by the profile (e.g. CLAUDE.md).
         continue;
       }
       seen.add(key);
-      untracked.push(scanInputToUntrackedResource(resource, homeRoot));
+      const live = ensureLiveLibraryRef(resource, homeRoot);
+      notStaged.push(toContentsResource(live));
     }
   }
 
-  return untracked.sort((a, b) => {
-    const typeOrder = a.type.localeCompare(b.type);
-    return typeOrder !== 0 ? typeOrder : a.name.localeCompare(b.name);
-  });
+  return sortContentsResources(notStaged);
 }
 
-async function untrackedFromProjectScan(
+async function notStagedFromProjectScan(
   profileSelector: string,
   projectPath: string,
 ): Promise<ProfileContentsResource[]> {
@@ -118,10 +193,18 @@ async function untrackedFromProjectScan(
     return [];
   }
 
-  const trackedKeys = trackedResourceKeys(profileSelector);
+  const committedKeys = resourceKeysAttachedToAnyProfile();
   const resolvedRoot = resolve(projectPath);
   const scanStatus = await assessProjectScanStatus(resolvedRoot);
-  const untracked: ProfileContentsResource[] = [];
+  const scanned = await scanProject(resolvedRoot);
+  const platformIds = scanned.map((result) => result.platformId);
+  const ownedPaths = await profileOwnedPaths(
+    profileSelector,
+    resolvedRoot,
+    platformIds,
+    "project",
+  );
+  const notStaged: ProfileContentsResource[] = [];
   const seen = new Set<string>();
 
   for (const resource of scanStatus.on_disk.resources) {
@@ -129,20 +212,43 @@ async function untrackedFromProjectScan(
       continue;
     }
     const key = profileResourceKey(resource);
-    if (trackedKeys.has(key) || seen.has(key)) {
+    if (committedKeys.has(key) || seen.has(key)) {
+      continue;
+    }
+    const sourcePath = normalizeManagedPath(resource.source ?? "", resolvedRoot);
+    if (sourcePath && ownedPaths.has(sourcePath)) {
       continue;
     }
     seen.add(key);
-    untracked.push(toContentsResource(resource));
+    const live = ensureLiveLibraryRef(
+      {
+        type: resource.type,
+        name: resource.name,
+        description: resource.description,
+        content: resource.content,
+        metadata: resource.metadata,
+        source: resource.source,
+        namespace: resource.namespace,
+      },
+      resolvedRoot,
+    );
+    notStaged.push(toContentsResource(live));
   }
 
-  return untracked.sort((a, b) => {
-    const typeOrder = a.type.localeCompare(b.type);
-    return typeOrder !== 0 ? typeOrder : a.name.localeCompare(b.name);
-  });
+  return sortContentsResources(notStaged);
 }
 
+/** @deprecated Prefer detectNotStagedProfileResources — same behavior. */
 export async function detectUntrackedProfileResources(input: {
+  profileSelector: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}): Promise<ProfileContentsResource[]> {
+  return detectNotStagedProfileResources(input);
+}
+
+export async function detectNotStagedProfileResources(input: {
   profileSelector: string;
   scope: ProfileApplyPreviewScope;
   projectPath?: string;
@@ -152,9 +258,9 @@ export async function detectUntrackedProfileResources(input: {
     if (!input.projectPath) {
       return [];
     }
-    return untrackedFromProjectScan(input.profileSelector, input.projectPath);
+    return notStagedFromProjectScan(input.profileSelector, input.projectPath);
   }
-  return untrackedFromHomeScan(input.profileSelector, input.harness);
+  return notStagedFromHomeScan(input.profileSelector, input.harness);
 }
 
 function filterScanResultsForResource(
@@ -243,7 +349,7 @@ async function resolveUntrackedScanResults(input: {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
 
-  const trackedKeys = trackedResourceKeys(input.profileSelector);
+  const committedKeys = resourceKeysAttachedToAnyProfile();
 
   if (input.scope === "project") {
     if (!input.projectPath) {
@@ -251,18 +357,42 @@ async function resolveUntrackedScanResults(input: {
     }
     const originRef = resolve(input.projectPath);
     const scanned = await scanProject(originRef);
+    const ownedPaths = await profileOwnedPaths(
+      input.profileSelector,
+      originRef,
+      scanned.map((result) => result.platformId),
+      "project",
+    );
     return {
       originRef,
-      scanResults: filterScanResultsToUntracked(scanned, trackedKeys),
+      scanResults: filterScanResultsToNotStaged(
+        scanned,
+        committedKeys,
+        ownedPaths,
+        originRef,
+      ),
     };
   }
 
-  const mainHarness = resolveMainHarnessTarget(input.harness);
   const originRef = resolveHomeRoot();
-  const scanned = await scanHomeDefaults(mainHarness, originRef);
+  const scanned = await scanHomeDefaults(
+    input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
+    originRef,
+  );
+  const ownedPaths = await profileOwnedPaths(
+    input.profileSelector,
+    originRef,
+    scanned.map((result) => result.platformId),
+    "global",
+  );
   return {
     originRef,
-    scanResults: filterScanResultsToUntracked(scanned, trackedKeys),
+    scanResults: filterScanResultsToNotStaged(
+      scanned,
+      committedKeys,
+      ownedPaths,
+      originRef,
+    ),
   };
 }
 
@@ -317,17 +447,27 @@ export interface UntrackedStashCapture {
   files: StashedFileSnapshot[];
 }
 
-function filterScanResultsToUntracked(
+function filterScanResultsToNotStaged(
   results: ScanResult[],
-  trackedKeys: ReadonlySet<string>,
+  committedKeys: ReadonlySet<string>,
+  ownedPaths: ReadonlySet<string>,
+  rootPath: string,
 ): ScanResult[] {
   const filtered: ScanResult[] = [];
   for (const result of results) {
-    const resources = result.resources.filter(
-      (resource) =>
-        isMaterialResource(resource)
-        && !trackedKeys.has(profileResourceKey(resource)),
-    );
+    const resources = result.resources.filter((resource) => {
+      if (!isMaterialResource(resource)) {
+        return false;
+      }
+      if (committedKeys.has(profileResourceKey(resource))) {
+        return false;
+      }
+      const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
+      if (sourcePath && ownedPaths.has(sourcePath)) {
+        return false;
+      }
+      return true;
+    });
     if (resources.length > 0) {
       filtered.push({ ...result, resources });
     }

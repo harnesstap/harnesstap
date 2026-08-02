@@ -127,3 +127,53 @@ export function groupLibraryResourcesByType(
 export function resourceDisplayName(resource: LibraryResource): string {
   return displayName(resource);
 }
+
+export function filterContentsResourcesBySearch(
+  resources: ProfileContentsResource[],
+  search: string,
+): ProfileContentsResource[] {
+  const parsed = parseListSearchQuery(search);
+  if (parsed.raw.length === 0) {
+    return resources;
+  }
+
+  const sectionIsResourceType =
+    parsed.section !== undefined && RESOURCE_TYPE_PREFIXES.has(parsed.section);
+  const textQuery = sectionIsResourceType
+    ? parsed
+    : parsed.section !== undefined
+      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+      : parsed;
+
+  return resources.filter((resource) => {
+    if (sectionIsResourceType && resource.type !== parsed.section) {
+      return false;
+    }
+    return matchesListSearchQuery(
+      `${resource.name} ${resource.type} ${resource.source}`,
+      textQuery,
+    );
+  });
+}
+
+export function filterPathsBySearch(paths: string[], search: string): string[] {
+  const parsed = parseListSearchQuery(search);
+  if (parsed.raw.length === 0) {
+    return paths;
+  }
+  const textQuery =
+    parsed.section !== undefined
+      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+      : parsed;
+  return paths.filter((path) => matchesListSearchQuery(path, textQuery));
+}
+
+export const LIST_PAGE_SIZE = 12;
+
+export function nextVisibleCount(
+  current: number,
+  total: number,
+  pageSize = LIST_PAGE_SIZE,
+): number {
+  return Math.min(total, current + pageSize);
+}

@@ -273,6 +273,8 @@ export interface ProfileApplyPreview {
   harnesses?: Record<string, HarnessLiveStatus>;
   /** Material resources on disk that are not in the profile stack. */
   untracked_resources: ProfileContentsResource[];
+  /** Preferred alias for untracked_resources (not staged / working tree). */
+  not_staged?: ProfileContentsResource[];
   files: {
     expected_count: number;
     changes: DriftFileChange[];
@@ -282,10 +284,11 @@ export interface ProfileApplyPreview {
 }
 
 export interface ProfileAddResourceRequest {
-  resourceType: string;
-  resourceName: string;
+  resourceType?: string;
+  resourceName?: string;
   scope: ViewScope;
   projectPath?: string;
+  path?: string;
 }
 
 export interface ProfileAddResourceResult {

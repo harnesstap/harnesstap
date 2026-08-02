@@ -694,6 +694,59 @@ button:focus-visible,
   color: var(--fg);
 }
 
+.list-search {
+  display: block;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.list-search input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+.list-truncation-controls {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.list-truncation-sep {
+  opacity: 0.55;
+}
+
+.link-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.link-btn:hover {
+  color: var(--fg);
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1028,9 +1081,70 @@ button:focus-visible,
   cursor: pointer;
   user-select: none;
   display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
   text-align: left;
+}
+
+.diff-section > .compare-title .compare-title-text {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.stack-change-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.diff-section[open] > .compare-title .stack-change-summary {
+  display: none;
+}
+
+.stack-change-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.stack-change-stat strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.stack-change-stat > span:last-child {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.stack-change-tone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stack-change-stat.tone-add .stack-change-tone {
+  color: var(--green);
+}
+
+.stack-change-stat.tone-remove .stack-change-tone {
+  color: var(--red);
+}
+
+.stack-change-stat.tone-mixed .stack-change-tone {
+  color: var(--yellow);
+}
+
+.diff-section > .compare-title .compare-title-action {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .diff-section > .compare-title::-webkit-details-marker {

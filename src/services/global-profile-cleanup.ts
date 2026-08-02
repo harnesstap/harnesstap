@@ -79,17 +79,22 @@ export function collectOrphanSkillFilesOnDisk(
   return [...orphans];
 }
 
+/**
+ * Plan removals for profile switch/re-apply.
+ * Only previously profile-managed paths that are not in the incoming desired set
+ * are removed — on-disk skills that were never applied by a profile (not staged)
+ * are left alone.
+ */
 export function planStaleGlobalProfileFiles(
-  homeRoot: string,
+  _homeRoot: string,
   desiredFiles: readonly string[],
   previousTrackedFiles: readonly string[],
-  harnesses: string[],
+  _harnesses: string[],
 ): string[] {
   const desired = new Set(desiredFiles);
   return [
-    ...new Set([
-      ...previousTrackedFiles.filter((filePath) => !desired.has(filePath)),
-      ...collectOrphanSkillFilesOnDisk(homeRoot, harnesses, desired),
-    ]),
+    ...new Set(
+      previousTrackedFiles.filter((filePath) => !desired.has(filePath)),
+    ),
   ];
 }

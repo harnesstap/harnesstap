@@ -92,7 +92,10 @@ describe("resource-tracked-directories service", () => {
         (entry) => entry.kind === "home_default",
       );
       expect(homeDefault).toBeTruthy();
-      expect(() => removeResourceTrackedDirectory(homeDefault!.path)).toThrow(
+      if (!homeDefault) {
+        return;
+      }
+      expect(() => removeResourceTrackedDirectory(homeDefault.path)).toThrow(
         "Cannot remove home harness defaults",
       );
     } finally {

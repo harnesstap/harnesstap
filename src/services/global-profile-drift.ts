@@ -14,7 +14,7 @@ import {
 import { mergeLayersForApply } from "./layer-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import type { DriftFileChange } from "./project-drift.js";
-import { detectUntrackedProfileResources } from "./profile-untracked-resources.js";
+import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import {
   buildProfileContents,
   type ProfileContents,
@@ -49,6 +49,8 @@ export interface GlobalProfileStatus {
   drift_summary: GlobalProfileDriftSummary;
   contents?: ProfileContents | null;
   untracked_resource_count?: number;
+  /** Alias for untracked_resource_count (not-staged working-tree resources). */
+  not_staged_count?: number;
 }
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
@@ -217,12 +219,16 @@ async function finalizeGlobalProfileStatus(
     return status;
   }
   try {
-    const untracked = await detectUntrackedProfileResources({
+    const notStaged = await detectNotStagedProfileResources({
       profileSelector: status.active_profile,
       scope: "home",
       ...(harness ? { harness } : {}),
     });
-    return { ...status, untracked_resource_count: untracked.length };
+    return {
+      ...status,
+      untracked_resource_count: notStaged.length,
+      not_staged_count: notStaged.length,
+    };
   } catch {
     return status;
   }

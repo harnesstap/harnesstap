@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import {
+  filterContentsResourcesBySearch,
   filterLibraryResourcesByProfile,
   filterLibraryResourcesBySearch,
+  filterPathsBySearch,
   groupLibraryResourcesByType,
+  nextVisibleCount,
 } from "../../apps/desktop/src/lib/resource-search.ts";
 import type { LibraryResource } from "../../apps/desktop/src/lib/types.ts";
 
@@ -92,5 +95,30 @@ describe("groupLibraryResourcesByType", () => {
       "alpha",
       "zeta",
     ]);
+  });
+});
+
+describe("filterContentsResourcesBySearch", () => {
+  it("supports type:name and case-insensitive substrings", () => {
+    const rows = [
+      { id: "1", type: "skill", name: "Pair-Agent", source: "/a" },
+      { id: "2", type: "rule", name: "api", source: "/b" },
+    ];
+    expect(
+      filterContentsResourcesBySearch(rows, "skill:pair").map((row) => row.id),
+    ).toEqual(["1"]);
+    expect(
+      filterContentsResourcesBySearch(rows, "API").map((row) => row.id),
+    ).toEqual(["2"]);
+  });
+});
+
+describe("list truncation helpers", () => {
+  it("filters paths and grows visible counts", () => {
+    expect(filterPathsBySearch(["a/foo.md", "b/bar.md"], "foo")).toEqual([
+      "a/foo.md",
+    ]);
+    expect(nextVisibleCount(12, 40)).toBe(24);
+    expect(nextVisibleCount(36, 40)).toBe(40);
   });
 });

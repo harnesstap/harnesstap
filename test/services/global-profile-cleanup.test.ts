@@ -33,7 +33,7 @@ describe("global-profile-cleanup service", () => {
     }
   });
 
-  it("removes orphan skill directories when re-applying the same profile", async () => {
+  it("leaves not-staged skill directories on disk when re-applying the same profile", async () => {
     const context = await createInitializedTestContext("global-profile-cleanup-reapply");
     try {
       const profile = createLayer({ name: "default" });
@@ -56,21 +56,69 @@ describe("global-profile-cleanup service", () => {
       });
       setActiveProfileName("default");
 
-      const orphanPath = join(
+      const notStagedPath = join(
         context.homeDir,
         ".claude/skills/building-dbt-semantic-layer/SKILL.md",
       );
-      mkdirSync(dirname(orphanPath), { recursive: true });
-      writeFileSync(orphanPath, "# dbt semantic layer", "utf-8");
+      mkdirSync(dirname(notStagedPath), { recursive: true });
+      writeFileSync(notStagedPath, "# dbt semantic layer", "utf-8");
 
       const reapplied = await applyProfileLayer("default", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
 
-      expect(existsSync(orphanPath)).toBe(false);
-      expect(reapplied.removed_files).toContain(
+      expect(existsSync(notStagedPath)).toBe(true);
+      expect(reapplied.removed_files ?? []).not.toContain(
         ".claude/skills/building-dbt-semantic-layer/SKILL.md",
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("removes managed skill A but leaves not-staged skill B when switching to an empty profile", async () => {
+    const context = await createInitializedTestContext("global-profile-cleanup-a-b-switch");
+    try {
+      const profile1 = createLayer({ name: "profile-1" });
+      setLayerTags(profile1.id, ["profile"]);
+      addResourceToLayer(
+        profile1.id,
+        createResource({
+          type: "skill",
+          name: "skill-a",
+          description: "managed",
+          content: "# Skill A",
+          metadata: {},
+          source: "manual",
+        }).id,
+      );
+
+      const profile2 = createLayer({ name: "profile-2" });
+      setLayerTags(profile2.id, ["profile"]);
+
+      await applyProfileLayer("profile-1", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+      setActiveProfileName("profile-1");
+
+      const skillAPath = join(context.homeDir, ".claude/skills/skill-a/SKILL.md");
+      const skillBPath = join(context.homeDir, ".claude/skills/skill-b/SKILL.md");
+      expect(existsSync(skillAPath)).toBe(true);
+      mkdirSync(dirname(skillBPath), { recursive: true });
+      writeFileSync(skillBPath, "# Skill B", "utf-8");
+
+      const switched = await applyProfileLayer("profile-2", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+
+      expect(existsSync(skillAPath)).toBe(false);
+      expect(existsSync(skillBPath)).toBe(true);
+      expect(switched.removed_files).toContain(".claude/skills/skill-a/SKILL.md");
+      expect(switched.removed_files ?? []).not.toContain(
+        ".claude/skills/skill-b/SKILL.md",
       );
     } finally {
       await context.cleanup();

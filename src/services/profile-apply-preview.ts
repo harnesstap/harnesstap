@@ -4,12 +4,13 @@ import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import { resolveLayerSelector } from "../models/layer-model.js";
+import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
+import { generateFiles } from "./applier.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
   buildHarnessLiveStatusMap,
-  resolveProjectDriftSummary,
   type HarnessLiveStatus,
 } from "./global-profile-status-panel.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
@@ -25,8 +26,9 @@ import {
   type ProfileContents,
   type ProfileContentsResource,
 } from "./profile-contents.js";
-import { detectUntrackedProfileResources } from "./profile-untracked-resources.js";
 import type { DriftFileChange } from "./project-drift.js";
+import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
+import { detectPlatforms } from "./scanner.js";
 
 export type ProfileApplyPreviewScope = "home" | "project";
 
@@ -42,7 +44,9 @@ export interface ProfileApplyPreview {
   scope: ProfileApplyPreviewScope;
   contents: ProfileContents | null;
   harnesses?: Record<string, HarnessLiveStatus>;
-  /** Material resources on disk that are not in the profile stack. */
+  /** Material resources on disk not attached to any profile (not staged). */
+  not_staged: ProfileContentsResource[];
+  /** @deprecated Use not_staged. */
   untracked_resources: ProfileContentsResource[];
   files: {
     expected_count: number;
@@ -53,8 +57,8 @@ export interface ProfileApplyPreview {
   warning?: string;
 }
 
-function readGlobalFile(homeRoot: string, relativePath: string): string | null {
-  const fullPath = join(homeRoot, relativePath);
+function readRootFile(rootPath: string, relativePath: string): string | null {
+  const fullPath = join(rootPath, relativePath);
   if (!existsSync(fullPath)) {
     return null;
   }
@@ -98,13 +102,28 @@ function declaredMcpNamesFromExpectedApply(
   return byHarness;
 }
 
-function compareExpectedHomeFiles(
-  homeRoot: string,
+function uniqueExpectedFiles(
+  expectedFiles: Array<{ path: string; content: string }>,
+): Array<{ path: string; content: string }> {
+  const seen = new Set<string>();
+  const unique: Array<{ path: string; content: string }> = [];
+  for (const file of expectedFiles) {
+    if (seen.has(file.path)) {
+      continue;
+    }
+    seen.add(file.path);
+    unique.push(file);
+  }
+  return unique;
+}
+
+function compareExpectedFiles(
+  rootPath: string,
   expectedFiles: Array<{ path: string; content: string }>,
 ): DriftFileChange[] {
   const changes: DriftFileChange[] = [];
-  for (const file of expectedFiles) {
-    const current = readGlobalFile(homeRoot, file.path);
+  for (const file of uniqueExpectedFiles(expectedFiles)) {
+    const current = readRootFile(rootPath, file.path);
     if (current === null) {
       changes.push({ path: file.path, type: "deleted" });
       continue;
@@ -114,6 +133,30 @@ function compareExpectedHomeFiles(
     }
   }
   return changes;
+}
+
+function withManagedRemovals(
+  changes: DriftFileChange[],
+  removedFiles: string[] | undefined,
+): DriftFileChange[] {
+  if (!removedFiles || removedFiles.length === 0) {
+    return changes;
+  }
+  const seen = new Set(changes.map((change) => change.path));
+  const next = [...changes];
+  for (const path of removedFiles) {
+    if (seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    // Drift "added" = on disk but not expected → UI maps to remove on apply.
+    next.push({ path, type: "added" });
+  }
+  return next;
+}
+
+function isMaterialResource(resource: Resource): boolean {
+  return resource.type !== "plugin_pin" && resource.type !== "layer";
 }
 
 async function previewHomeApply(
@@ -136,7 +179,7 @@ async function previewHomeApply(
       };
     }
     const homeRoot = resolveHomeRoot();
-    const expectedFiles = expectedApply.expected_files ?? [];
+    const expectedFiles = uniqueExpectedFiles(expectedApply.expected_files ?? []);
     return {
       harnesses: buildHarnessLiveStatusMap({
         depth: "full",
@@ -146,7 +189,10 @@ async function previewHomeApply(
       }),
       files: {
         expected_count: expectedFiles.length,
-        changes: compareExpectedHomeFiles(homeRoot, expectedFiles),
+        changes: withManagedRemovals(
+          compareExpectedFiles(homeRoot, expectedFiles),
+          expectedApply.removed_files,
+        ),
       },
     };
   }
@@ -198,7 +244,7 @@ async function previewHomeApply(
   }
 
   const homeRoot = resolveHomeRoot();
-  const expectedFiles = expectedApply.expected_files ?? [];
+  const expectedFiles = uniqueExpectedFiles(expectedApply.expected_files ?? []);
   const declaredPins = mergeLayersForApply(layerIds).pluginPins;
 
   return {
@@ -210,25 +256,19 @@ async function previewHomeApply(
     }),
     files: {
       expected_count: expectedFiles.length,
-      changes: compareExpectedHomeFiles(homeRoot, expectedFiles),
+      changes: withManagedRemovals(
+        compareExpectedFiles(homeRoot, expectedFiles),
+        expectedApply.removed_files,
+      ),
     },
   };
 }
 
-function countSnapshotFiles(
-  platformFiles: Record<string, Record<string, string>>,
-): number {
-  let count = 0;
-  for (const files of Object.values(platformFiles)) {
-    count += Object.keys(files).length;
-  }
-  return count;
-}
-
-function previewProjectApply(projectPath?: string): Pick<
-  ProfileApplyPreview,
-  "files" | "warning"
-> {
+async function previewProjectApply(
+  profile: string,
+  projectPath?: string,
+  harness?: string,
+): Promise<Pick<ProfileApplyPreview, "files" | "warning">> {
   if (!projectPath) {
     return {
       files: { expected_count: 0, changes: [] },
@@ -236,15 +276,67 @@ function previewProjectApply(projectPath?: string): Pick<
     };
   }
 
-  const projectDrift = resolveProjectDriftSummary(projectPath);
-  if (!projectDrift || projectDrift.status === "na" || !projectDrift.report) {
+  const resolvedRoot = resolve(projectPath);
+  const layer = resolveLayerSelector(profile);
+  if (!layer) {
     return {
       files: { expected_count: 0, changes: [] },
-      warning: "Project is not tracked yet — bootstrap or apply to create a snapshot",
+      warning: `missing layer "${profile}"`,
+    };
+  }
+  if (!isProfileLayer(layer) && !isEmptyBuiltinProfile(profile)) {
+    return {
+      files: { expected_count: 0, changes: [] },
+      warning: `layer "${layer.name}" is not tagged as a profile`,
     };
   }
 
-  const resolvedRoot = resolve(projectPath);
+  const detected = detectPlatforms(resolvedRoot);
+  const platformIds = harness
+    ? detected.filter((id) => id === harness)
+    : detected;
+
+  if (isEmptyBuiltinProfile(profile) || platformIds.length === 0) {
+    const gitOriginRaw = getGitOrigin(resolvedRoot);
+    const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
+    const project =
+      getProjectByLocalPath(resolvedRoot)
+      ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
+      ?? null;
+    const snapshot = project ? getLatestSnapshot(project.id) : null;
+    const previousPaths = snapshot
+      ? Object.values(snapshot.state.platform_files).flatMap((files) =>
+          Object.keys(files),
+        )
+      : [];
+    return {
+      files: {
+        expected_count: 0,
+        changes: withManagedRemovals([], previousPaths),
+      },
+    };
+  }
+
+  const merged = mergeLayersForApply(collectProfileLayerIds(layer));
+  const material = merged.resources.filter(isMaterialResource);
+  let expectedFiles: Array<{ path: string; content: string }> = [];
+  try {
+    const generated = await generateFiles(material, platformIds, resolvedRoot, {
+      target: "project",
+      claudeConfig: merged.claude,
+    });
+    expectedFiles = uniqueExpectedFiles(
+      generated.flatMap((result) =>
+        result.files.map((file) => ({ path: file.path, content: file.content })),
+      ),
+    );
+  } catch (error) {
+    return {
+      files: { expected_count: 0, changes: [] },
+      warning: error instanceof Error ? error.message : String(error),
+    };
+  }
+
   const gitOriginRaw = getGitOrigin(resolvedRoot);
   const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
   const project =
@@ -252,14 +344,21 @@ function previewProjectApply(projectPath?: string): Pick<
     ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
     ?? null;
   const snapshot = project ? getLatestSnapshot(project.id) : null;
-  const expectedCount = snapshot
-    ? countSnapshotFiles(snapshot.state.platform_files)
-    : 0;
+  const previousPaths = snapshot
+    ? Object.values(snapshot.state.platform_files).flatMap((files) =>
+        Object.keys(files),
+      )
+    : [];
+  const desired = new Set(expectedFiles.map((file) => file.path));
+  const removedFiles = previousPaths.filter((path) => !desired.has(path));
 
   return {
     files: {
-      expected_count: expectedCount,
-      changes: projectDrift.report.changes,
+      expected_count: expectedFiles.length,
+      changes: withManagedRemovals(
+        compareExpectedFiles(resolvedRoot, expectedFiles),
+        removedFiles,
+      ),
     },
   };
 }
@@ -270,7 +369,7 @@ export async function previewProfileApply(
   const profile = input.profile.trim();
   const contents = buildProfileContents(profile);
   const relativeToActive = getActiveProfileName() === profile;
-  const untrackedResources = await detectUntrackedProfileResources({
+  const notStaged = await detectNotStagedProfileResources({
     profileSelector: profile,
     scope: input.scope,
     ...(input.projectPath ? { projectPath: input.projectPath } : {}),
@@ -278,12 +377,17 @@ export async function previewProfileApply(
   });
 
   if (input.scope === "project") {
-    const projectPreview = previewProjectApply(input.projectPath);
+    const projectPreview = await previewProjectApply(
+      profile,
+      input.projectPath,
+      input.harness,
+    );
     return {
       profile,
       scope: "project",
       contents,
-      untracked_resources: untrackedResources,
+      not_staged: notStaged,
+      untracked_resources: notStaged,
       files: projectPreview.files,
       relative_to_active: relativeToActive,
       ...(projectPreview.warning ? { warning: projectPreview.warning } : {}),
@@ -295,7 +399,8 @@ export async function previewProfileApply(
     profile,
     scope: "home",
     contents,
-    untracked_resources: untrackedResources,
+    not_staged: notStaged,
+    untracked_resources: notStaged,
     ...(homePreview.harnesses ? { harnesses: homePreview.harnesses } : {}),
     files: homePreview.files,
     relative_to_active: relativeToActive,

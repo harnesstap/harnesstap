@@ -25,6 +25,7 @@ import {
   subscribeSwitchEvents,
   addAllProfileResources,
   addProfileResource,
+  commitProfileResource,
   openResourcePath,
   removeProfileResource,
 } from "./lib/agent-client";
@@ -214,6 +215,7 @@ export function App() {
   const [applyPreviewError, setApplyPreviewError] = useState<string | null>(null);
   const [applyPreviewLoading, setApplyPreviewLoading] = useState(false);
   const [addingResourceKey, setAddingResourceKey] = useState<string | null>(null);
+  const [committingManagedChanges, setCommittingManagedChanges] = useState(false);
   const [removingResourceKey, setRemovingResourceKey] = useState<string | null>(null);
   const [addingAllResources, setAddingAllResources] = useState(false);
   const [addResourceError, setAddResourceError] = useState<string | null>(null);
@@ -310,7 +312,8 @@ export function App() {
       selectedProfile === activeProfile
       && applyPreview?.profile === activeProfile
     ) {
-      return applyPreview.untracked_resources.length;
+      return applyPreview.not_staged?.length
+        ?? applyPreview.untracked_resources.length;
     }
     if (view === "home") {
       return status?.untracked_resource_count ?? 0;
@@ -329,7 +332,7 @@ export function App() {
       ? "Switch to Global view to stash"
       : (status?.untracked_resource_count ?? 0) > 0
         ? undefined
-        : "No untracked resources to stash";
+        : "No not-staged resources to stash";
   const projectTracked =
     status?.drift_summary.project?.status !== "na" && status?.drift_summary.project !== undefined;
   // Config init ≠ DB tracking. Project view only needs config.toml; drift "na"
@@ -611,6 +614,55 @@ export function App() {
       view,
     ],
   );
+
+  const handleCommitManagedChanges = useCallback(async () => {
+    if (!baseUrl || !selectedProfile || !applyPreview) {
+      return;
+    }
+    const paths = (applyPreview.files?.changes ?? [])
+      .filter((change) => change.type === "modified")
+      .map((change) => change.path);
+    if (paths.length === 0) {
+      return;
+    }
+    setCommittingManagedChanges(true);
+    setAddResourceError(null);
+    try {
+      for (const path of paths) {
+        await commitProfileResource(baseUrl, token, selectedProfile, {
+          path,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+      }
+      const preview = await fetchApplyPreview(baseUrl, token, {
+        profile: selectedProfile,
+        scope: view,
+        ...(view === "project" && projectPath ? { projectPath } : {}),
+      });
+      setApplyPreview(preview);
+      if (selectedProfile === activeProfile) {
+        await refreshStatus("full");
+      }
+    } catch (error) {
+      setAddResourceError(
+        error instanceof Error
+          ? error.message
+          : "Could not commit live changes into profile",
+      );
+    } finally {
+      setCommittingManagedChanges(false);
+    }
+  }, [
+    activeProfile,
+    applyPreview,
+    baseUrl,
+    projectPath,
+    refreshStatus,
+    selectedProfile,
+    token,
+    view,
+  ]);
 
   const refreshProfilePreview = useCallback(async () => {
     const previewProfile = selectedProfile ?? activeProfile;
@@ -1447,13 +1499,13 @@ export function App() {
                   }
                   aria-label={
                     canStashProfile
-                      ? `Stash untracked resources for ${activeProfile}`
-                      : "Stash untracked resources"
+                      ? `Stash not-staged resources for ${activeProfile}`
+                      : "Stash not-staged resources"
                   }
                   title={
                     canStashProfile
-                      ? `Stash ${status?.untracked_resource_count ?? 0} untracked resource${(status?.untracked_resource_count ?? 0) === 1 ? "" : "s"}`
-                      : stashDisabledReason ?? "Stash untracked resources"
+                      ? `Stash ${status?.untracked_resource_count ?? 0} not-staged resource${(status?.untracked_resource_count ?? 0) === 1 ? "" : "s"}`
+                      : stashDisabledReason ?? "Stash not-staged resources"
                   }
                 >
                   <Archive size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
@@ -1632,8 +1684,8 @@ export function App() {
                     <button
                       type="button"
                       className="icon-action profile-item-action"
-                      aria-label={`Add ${activeProfileUntrackedCount} untracked resources to profile`}
-                      title={`Add all ${activeProfileUntrackedCount} untracked resources to profile`}
+                      aria-label={`Commit ${activeProfileUntrackedCount} not-staged resources into profile`}
+                      title={`Commit all ${activeProfileUntrackedCount} not-staged resources into profile`}
                       disabled={
                         !connected
                         || !token
@@ -1877,6 +1929,12 @@ export function App() {
                 onBrowseResources={() => setWorkspaceFocus("resources")}
                 onAddResource={handleAddResource}
                 addingResourceKey={addingResourceKey}
+                onCommitManagedChanges={
+                  connected && token && !switching
+                    ? handleCommitManagedChanges
+                    : undefined
+                }
+                committingManagedChanges={committingManagedChanges}
                 onOpenResourceInEditor={
                   connected && token && !switching
                     ? handleOpenResourceInEditor

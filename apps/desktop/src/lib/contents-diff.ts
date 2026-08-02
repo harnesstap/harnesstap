@@ -232,6 +232,80 @@ export function typeCountsFromItems(
   return counts;
 }
 
+export type StackChangeTone = "add" | "remove" | "mixed";
+
+export interface StackChangeSummaryRow {
+  type: string;
+  count: number;
+  label: string;
+  tone: StackChangeTone;
+  added: number;
+  removed: number;
+}
+
+/** Aggregate add/remove stack diffs into per-type summary rows for collapsed headers. */
+export function summarizeStackChanges(
+  added: ContentsDiffItem[],
+  removed: ContentsDiffItem[],
+): StackChangeSummaryRow[] {
+  const byType = new Map<string, { added: number; removed: number }>();
+
+  for (const item of added) {
+    const current = byType.get(item.iconType) ?? { added: 0, removed: 0 };
+    current.added += 1;
+    byType.set(item.iconType, current);
+  }
+  for (const item of removed) {
+    const current = byType.get(item.iconType) ?? { added: 0, removed: 0 };
+    current.removed += 1;
+    byType.set(item.iconType, current);
+  }
+
+  const seen = new Set<string>();
+  const rows: StackChangeSummaryRow[] = [];
+
+  const pushRow = (type: string, counts: { added: number; removed: number }) => {
+    const count = counts.added + counts.removed;
+    if (count <= 0) {
+      return;
+    }
+    let tone: StackChangeTone;
+    if (counts.added > 0 && counts.removed > 0) {
+      tone = "mixed";
+    } else if (counts.added > 0) {
+      tone = "add";
+    } else {
+      tone = "remove";
+    }
+    rows.push({
+      type,
+      count,
+      label: labelForType(type, count),
+      tone,
+      added: counts.added,
+      removed: counts.removed,
+    });
+  };
+
+  for (const type of TYPE_ORDER) {
+    const counts = byType.get(type);
+    if (!counts) {
+      continue;
+    }
+    seen.add(type);
+    pushRow(type, counts);
+  }
+
+  for (const [type, counts] of byType) {
+    if (seen.has(type)) {
+      continue;
+    }
+    pushRow(type, counts);
+  }
+
+  return rows;
+}
+
 /** Map drift/apply file change types into user-facing apply verbs. */
 export function fileChangeAction(change: DriftFileChange): {
   action: "add" | "update" | "remove";

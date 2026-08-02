@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from "react";
 import {
   Bot,
+  Diff,
   ExternalLink,
   FileCode2,
   FileText,
   Layers,
+  Minus,
   Package,
   Plug,
   Plus,
@@ -22,10 +24,19 @@ import {
   fallbackTypeCounts,
   fileChangeAction,
   orderedTypeCounts,
+  summarizeStackChanges,
   typeCountsFromItems,
   type ContentsDiffItem,
+  type StackChangeSummaryRow,
+  type StackChangeTone,
 } from "../lib/contents-diff";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import {
+  filterContentsResourcesBySearch,
+  filterPathsBySearch,
+  LIST_PAGE_SIZE,
+  nextVisibleCount,
+} from "../lib/resource-search";
 import type {
   DriftFileChange,
   HarnessLiveStatus,
@@ -42,7 +53,66 @@ import {
 } from "./ResourceDetailPane";
 
 const ICON_SIZE = 14;
-const FILE_PREVIEW_LIMIT = 8;
+
+function ListSearchField({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <label className="list-search">
+      <span className="sr-only">{label}</span>
+      <input
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+      />
+    </label>
+  );
+}
+
+function ListTruncationControls({
+  visible,
+  total,
+  onMore,
+  onShowAll,
+}: {
+  visible: number;
+  total: number;
+  onMore: () => void;
+  onShowAll: () => void;
+}) {
+  if (visible >= total) {
+    return null;
+  }
+  return (
+    <div className="list-truncation-controls muted">
+      <span>
+        Showing {visible} of {total}
+      </span>
+      <span aria-hidden className="list-truncation-sep">
+        |
+      </span>
+      <button type="button" className="link-btn" onClick={onMore}>
+        More
+      </button>
+      <span aria-hidden className="list-truncation-sep">
+        |
+      </span>
+      <button type="button" className="link-btn" onClick={onShowAll}>
+        Show all
+      </button>
+    </div>
+  );
+}
 
 function TypeIcon({ type }: { type: string }): ReactNode {
   switch (type) {
@@ -236,6 +306,64 @@ function ResourceSummaryStrip({
   );
 }
 
+function stackChangeToneIcon(tone: StackChangeTone): ReactNode {
+  switch (tone) {
+    case "add":
+      return <Plus size={ICON_SIZE} strokeWidth={2.25} aria-hidden />;
+    case "remove":
+      return <Minus size={ICON_SIZE} strokeWidth={2.25} aria-hidden />;
+    case "mixed":
+      return <Diff size={ICON_SIZE} strokeWidth={2.25} aria-hidden />;
+    default: {
+      const neverTone: never = tone;
+      return neverTone;
+    }
+  }
+}
+
+function stackChangeToneTitle(row: StackChangeSummaryRow): string {
+  switch (row.tone) {
+    case "add":
+      return `${row.added} ${row.label} added`;
+    case "remove":
+      return `${row.removed} ${row.label} removed`;
+    case "mixed":
+      return `${row.added} added, ${row.removed} removed`;
+    default: {
+      const neverTone: never = row.tone;
+      return neverTone;
+    }
+  }
+}
+
+function StackChangeSummary({
+  rows,
+}: {
+  rows: StackChangeSummaryRow[];
+}) {
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <span className="stack-change-summary" aria-label="Stack change summary">
+      {rows.map((row) => (
+        <span
+          className={`stack-change-stat tone-${row.tone}`}
+          key={row.type}
+          title={stackChangeToneTitle(row)}
+        >
+          <span className="stack-change-tone" aria-hidden>
+            {stackChangeToneIcon(row.tone)}
+          </span>
+          <TypeIcon type={row.type} />
+          <strong>{row.count}</strong>
+          <span>{row.label}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function DiffRow({
   item,
   tone,
@@ -323,8 +451,8 @@ function UntrackedResourceRow({
         <button
           type="button"
           className="icon-action untracked-add-btn"
-          aria-label={`Add ${resource.name} to profile`}
-          title={`Add ${resource.name} to profile`}
+          aria-label={`Commit ${resource.name} into profile`}
+          title={`Commit ${resource.name} into profile`}
           disabled={adding}
           onClick={onAdd}
         >
@@ -471,20 +599,107 @@ function pinIdentityKey(pin: { ref: string }): string {
   return `pin:${pin.ref}`;
 }
 
+function dedupeContentsResources(
+  resources: ProfileContentsResource[],
+): ProfileContentsResource[] {
+  const seen = new Set<string>();
+  const deduped: ProfileContentsResource[] = [];
+  for (const resource of resources) {
+    const key = `${resource.type}:${resource.name}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(resource);
+  }
+  return deduped;
+}
+
+function matchesLayerSearch(
+  layer: ProfileContentsLayer,
+  search: string,
+): boolean {
+  if (!search.trim()) {
+    return true;
+  }
+  return filterContentsResourcesBySearch(
+    [
+      {
+        id: layer.id,
+        type: "layer",
+        name: layer.name,
+        source: layer.id,
+      },
+    ],
+    search,
+  ).length > 0;
+}
+
+function matchesPinSearch(
+  pin: { ref: string; version_constraint?: string },
+  search: string,
+): boolean {
+  if (!search.trim()) {
+    return true;
+  }
+  return filterContentsResourcesBySearch(
+    [
+      {
+        id: pin.ref,
+        type: "plugin_pin",
+        name: pin.ref,
+        source: pin.version_constraint ?? "",
+      },
+    ],
+    search,
+  ).length > 0;
+}
+
 function FileChangeRows({ changes }: { changes: DriftFileChange[] }) {
-  if (changes.length === 0) {
+  const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(LIST_PAGE_SIZE);
+
+  const uniqueChanges = (() => {
+    const seen = new Set<string>();
+    const deduped: DriftFileChange[] = [];
+    for (const change of changes) {
+      const key = `${change.type}:${change.path}:${change.platform ?? ""}`;
+      if (seen.has(key) || seen.has(change.path)) {
+        continue;
+      }
+      seen.add(key);
+      seen.add(change.path);
+      deduped.push(change);
+    }
+    return deduped;
+  })();
+
+  if (uniqueChanges.length === 0) {
     return <div className="muted">No file changes vs live target</div>;
   }
 
-  const visible = changes.slice(0, FILE_PREVIEW_LIMIT);
+  const filteredChanges = uniqueChanges.filter((change) =>
+    filterPathsBySearch([change.path], search).length > 0,
+  );
+  const visible = filteredChanges.slice(0, visibleCount);
+
   return (
     <>
-      {visible.map((change) => {
+      <ListSearchField
+        value={search}
+        onChange={(value) => {
+          setSearch(value);
+          setVisibleCount(LIST_PAGE_SIZE);
+        }}
+        placeholder="Filter paths (name or type:name)"
+        label="Filter file changes"
+      />
+      {visible.map((change, index) => {
         const mapped = fileChangeAction(change);
         return (
           <div
             className={`diff-row ${mapped.action === "add" ? "add" : mapped.action === "remove" ? "remove" : "update"}`}
-            key={`${change.type}-${change.path}`}
+            key={`${change.type}-${change.path}-${change.platform ?? "na"}-${index}`}
           >
             <span className="diff-mark" aria-hidden>
               {mapped.action === "add" ? "+" : mapped.action === "remove" ? "−" : "~"}
@@ -499,11 +714,16 @@ function FileChangeRows({ changes }: { changes: DriftFileChange[] }) {
           </div>
         );
       })}
-      {changes.length > FILE_PREVIEW_LIMIT ? (
-        <div className="muted">
-          {changes.length - FILE_PREVIEW_LIMIT} more…
-        </div>
-      ) : null}
+      <ListTruncationControls
+        visible={visible.length}
+        total={filteredChanges.length}
+        onMore={() =>
+          setVisibleCount((current) =>
+            nextVisibleCount(current, filteredChanges.length),
+          )
+        }
+        onShowAll={() => setVisibleCount(filteredChanges.length)}
+      />
     </>
   );
 }
@@ -540,6 +760,8 @@ export interface LiveStatePanelProps {
   onBrowseResources?: () => void;
   onAddResource?: (resource: ProfileContentsResource) => Promise<void>;
   addingResourceKey?: string | null;
+  onCommitManagedChanges?: () => Promise<void>;
+  committingManagedChanges?: boolean;
   onOpenResourceInEditor?: (resource: ProfileContentsResource) => Promise<void>;
   onRemoveResourceFromProfile?: (
     resource: ProfileContentsResource,
@@ -567,6 +789,8 @@ export function LiveStatePanel({
   onBrowseResources,
   onAddResource,
   addingResourceKey = null,
+  onCommitManagedChanges,
+  committingManagedChanges = false,
   onOpenResourceInEditor,
   onRemoveResourceFromProfile,
   removingResourceKey = null,
@@ -574,6 +798,12 @@ export function LiveStatePanel({
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
   );
+  const [profileResourceSearch, setProfileResourceSearch] = useState("");
+  const [profileResourceVisible, setProfileResourceVisible] = useState(
+    LIST_PAGE_SIZE,
+  );
+  const [notStagedSearch, setNotStagedSearch] = useState("");
+  const [notStagedVisible, setNotStagedVisible] = useState(LIST_PAGE_SIZE);
   const openResource = (target: ResourceDetailTarget) => {
     setDetailTarget(target);
   };
@@ -618,7 +848,10 @@ export function LiveStatePanel({
   const installGaps = aggregateInstallGaps(
     view === "home" ? previewHarnesses : undefined,
   ).filter((row) => row.kind === "missing");
-  const untrackedResources = applyPreview?.untracked_resources ?? [];
+  const notStagedResources =
+    applyPreview?.not_staged
+    ?? applyPreview?.untracked_resources
+    ?? [];
   const showTargetDiff = Boolean(selectedProfile)
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
@@ -725,84 +958,195 @@ export function LiveStatePanel({
                   }
                   label="Profile resource summary"
                 />
+                <ListSearchField
+                  value={profileResourceSearch}
+                  onChange={(value) => {
+                    setProfileResourceSearch(value);
+                    setProfileResourceVisible(LIST_PAGE_SIZE);
+                  }}
+                  placeholder="Filter resources (name or type:name)"
+                  label="Filter profile resources"
+                />
                 <div className="enabled-list">
-                  {enabledLayers.map((layer) => (
-                    <EnabledLayerGroup
-                      key={layer.id}
-                      layer={layer}
-                      profileName={profileNameForActions}
-                      removingResourceKey={removingResourceKey}
-                      onOpenResource={openResource}
-                      onOpenInEditor={
-                        onOpenResourceInEditor
-                          ? (resource) => {
-                              void onOpenResourceInEditor(resource);
-                            }
-                          : undefined
+                  {(() => {
+                    const filteredLayers = enabledLayers
+                      .map((layer) => ({
+                        ...layer,
+                        resources: dedupeContentsResources(
+                          filterContentsResourcesBySearch(
+                            layer.resources,
+                            profileResourceSearch,
+                          ),
+                        ),
+                      }))
+                      .filter(
+                        (layer) =>
+                          layer.resources.length > 0
+                          || matchesLayerSearch(layer, profileResourceSearch),
+                      );
+                    const filteredPins = enabledPins.filter((pin) =>
+                      matchesPinSearch(pin, profileResourceSearch),
+                    );
+                    const totalResourceRows = filteredLayers.reduce(
+                      (sum, layer) => sum + layer.resources.length,
+                      0,
+                    ) + filteredPins.length;
+
+                    let remaining = profileResourceVisible;
+                    const truncatedLayers: ProfileContentsLayer[] = [];
+                    for (const layer of filteredLayers) {
+                      if (remaining <= 0) {
+                        break;
                       }
-                      onRemoveFromProfile={
-                        onRemoveResourceFromProfile
-                          ? (resource, layerId) => {
-                              void onRemoveResourceFromProfile(resource, layerId);
-                            }
-                          : undefined
+                      if (layer.resources.length === 0) {
+                        truncatedLayers.push(layer);
+                        remaining -= 1;
+                        continue;
                       }
-                    />
-                  ))}
-                  {enabledPins.map((pin) => (
-                    <EnabledResourceRow
-                      key={pinIdentityKey(pin)}
-                      item={{
-                        key: pinIdentityKey(pin),
-                        kind: "unchanged",
-                        category: "plugin_pin",
-                        iconType: "plugin_pin",
-                        label: pin.ref,
-                        detail: pin.version_constraint
-                          ? `@${pin.version_constraint}`
-                          : undefined,
-                      }}
-                    />
-                  ))}
+                      const take = layer.resources.slice(0, remaining);
+                      remaining -= take.length;
+                      truncatedLayers.push({ ...layer, resources: take });
+                    }
+                    const pinSlice =
+                      remaining > 0
+                        ? filteredPins.slice(0, remaining)
+                        : [];
+                    const visibleResourceRows =
+                      truncatedLayers.reduce(
+                        (sum, layer) =>
+                          sum + Math.max(layer.resources.length, layer.resources.length === 0 ? 1 : 0),
+                        0,
+                      ) + pinSlice.length;
+
+                    return (
+                      <>
+                        {truncatedLayers.map((layer) => (
+                          <EnabledLayerGroup
+                            key={layer.id}
+                            layer={layer}
+                            profileName={profileNameForActions}
+                            removingResourceKey={removingResourceKey}
+                            onOpenResource={openResource}
+                            onOpenInEditor={
+                              onOpenResourceInEditor
+                                ? (resource) => {
+                                    void onOpenResourceInEditor(resource);
+                                  }
+                                : undefined
+                            }
+                            onRemoveFromProfile={
+                              onRemoveResourceFromProfile
+                                ? (resource, layerId) => {
+                                    void onRemoveResourceFromProfile(
+                                      resource,
+                                      layerId,
+                                    );
+                                  }
+                                : undefined
+                            }
+                          />
+                        ))}
+                        {pinSlice.map((pin) => (
+                          <EnabledResourceRow
+                            key={pinIdentityKey(pin)}
+                            item={{
+                              key: pinIdentityKey(pin),
+                              kind: "unchanged",
+                              category: "plugin_pin",
+                              iconType: "plugin_pin",
+                              label: pin.ref,
+                              detail: pin.version_constraint
+                                ? `@${pin.version_constraint}`
+                                : undefined,
+                            }}
+                          />
+                        ))}
+                        <ListTruncationControls
+                          visible={visibleResourceRows}
+                          total={totalResourceRows}
+                          onMore={() =>
+                            setProfileResourceVisible((current) =>
+                              nextVisibleCount(current, totalResourceRows),
+                            )
+                          }
+                          onShowAll={() =>
+                            setProfileResourceVisible(totalResourceRows)
+                          }
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
               </>
             )}
           </div>
         </details>
 
-        {selectedProfile && untrackedResources.length > 0 ? (
+        {selectedProfile && notStagedResources.length > 0 ? (
           <details
             className="contents-block"
             open
-            aria-label="Untracked resources"
+            aria-label="Not staged"
           >
             <summary className="contents-header">
-              <span>Untracked resources</span>
+              <span>Not staged</span>
               <span className="contents-header-meta muted">
-                {untrackedResources.length} on disk
+                {notStagedResources.length} on disk
               </span>
             </summary>
             <div className="contents-body">
               <p className="muted untracked-hint">
-                Found on disk but not in this profile — add to include them on apply.
+                On disk but not in any profile — commit to include them on apply.
               </p>
+              <ListSearchField
+                value={notStagedSearch}
+                onChange={(value) => {
+                  setNotStagedSearch(value);
+                  setNotStagedVisible(LIST_PAGE_SIZE);
+                }}
+                placeholder="Filter not staged (name or type:name)"
+                label="Filter not staged resources"
+              />
               <div className="enabled-list">
-                {untrackedResources.map((resource) => {
-                  const key = `${resource.type}:${resource.name}`;
-                  return (
-                    <UntrackedResourceRow
-                      key={key}
-                      resource={resource}
-                      adding={addingResourceKey === key}
-                      onAdd={() => {
-                        if (onAddResource) {
-                          void onAddResource(resource);
-                        }
-                      }}
-                      onOpenResource={openResource}
-                    />
+                {(() => {
+                  const filtered = dedupeContentsResources(
+                    filterContentsResourcesBySearch(
+                      notStagedResources,
+                      notStagedSearch,
+                    ),
                   );
-                })}
+                  const visible = filtered.slice(0, notStagedVisible);
+                  return (
+                    <>
+                      {visible.map((resource) => {
+                        const key = `${resource.type}:${resource.name}`;
+                        return (
+                          <UntrackedResourceRow
+                            key={key}
+                            resource={resource}
+                            adding={addingResourceKey === key}
+                            onAdd={() => {
+                              if (onAddResource) {
+                                void onAddResource(resource);
+                              }
+                            }}
+                            onOpenResource={openResource}
+                          />
+                        );
+                      })}
+                      <ListTruncationControls
+                        visible={visible.length}
+                        total={filtered.length}
+                        onMore={() =>
+                          setNotStagedVisible((current) =>
+                            nextVisibleCount(current, filtered.length),
+                          )
+                        }
+                        onShowAll={() => setNotStagedVisible(filtered.length)}
+                      />
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </details>
@@ -846,8 +1190,13 @@ export function LiveStatePanel({
                       applied with no file writes.
                     </p>
                   ) : showTargetDiff ? (
-                    <details className="diff-section" open>
-                      <summary className="compare-title">Stack changes</summary>
+                    <details className="diff-section">
+                      <summary className="compare-title">
+                        <span className="compare-title-text">Stack changes</span>
+                        <StackChangeSummary
+                          rows={summarizeStackChanges(diff.added, diff.removed)}
+                        />
+                      </summary>
                       {diff.added.map((item) => (
                         <DiffRow
                           key={`add-${item.key}`}
@@ -904,14 +1253,37 @@ export function LiveStatePanel({
 
                   <details className="diff-section" open>
                     <summary className="compare-title">
-                      File changes
-                      {(applyPreview.files?.expected_count ?? 0) > 0
-                        ? ` · ${applyPreview.files?.changes?.length ?? 0} of ${applyPreview.files?.expected_count ?? 0}`
-                        : (applyPreview.files?.changes?.length ?? 0) > 0
-                          ? ` · ${applyPreview.files?.changes?.length ?? 0}`
-                          : ""}
+                      <span className="compare-title-text">
+                        File changes
+                        {(applyPreview.files?.expected_count ?? 0) > 0
+                          ? ` · ${(applyPreview.files?.changes?.length ?? 0)} would change · ${applyPreview.files?.expected_count ?? 0} managed`
+                          : (applyPreview.files?.changes?.length ?? 0) > 0
+                            ? ` · ${applyPreview.files?.changes?.length ?? 0} would change`
+                            : ""}
+                      </span>
+                      {onCommitManagedChanges
+                        && (applyPreview.files?.changes ?? []).some(
+                          (change) => fileChangeAction(change).action === "update",
+                        ) ? (
+                        <button
+                          type="button"
+                          className="icon-action compare-title-action"
+                          disabled={committingManagedChanges}
+                          aria-label="Commit live file updates into profile"
+                          title="Commit live file updates into profile"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void onCommitManagedChanges();
+                          }}
+                        >
+                          <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                        </button>
+                      ) : null}
                     </summary>
-                    <FileChangeRows changes={applyPreview.files?.changes ?? []} />
+                    <FileChangeRows
+                      changes={applyPreview.files?.changes ?? []}
+                    />
                   </details>
                 </div>
               ) : (
