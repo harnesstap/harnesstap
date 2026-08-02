@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Bot,
   Diff,
@@ -30,6 +30,7 @@ import {
   type StackChangeSummaryRow,
   type StackChangeTone,
 } from "../lib/contents-diff";
+import { fileChangeRowActions } from "../lib/file-change-actions";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
   filterContentsResourcesBySearch,
@@ -655,7 +656,88 @@ function matchesPinSearch(
   ).length > 0;
 }
 
-function FileChangeRows({ changes }: { changes: DriftFileChange[] }) {
+function FileChangeRowActions({
+  change,
+  row,
+  busy,
+  onOpenFileChange,
+  onAddFileChange,
+  onDropFileChange,
+}: {
+  change: DriftFileChange;
+  row: ReturnType<typeof fileChangeRowActions>;
+  busy: boolean;
+  onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onAddFileChange?: (change: DriftFileChange) => Promise<void>;
+  onDropFileChange?: (change: DriftFileChange) => Promise<void>;
+}) {
+  const absolutePath = row.absolutePath;
+  const canOpen = row.canOpen && Boolean(onOpenFileChange && absolutePath);
+  const canAdd = row.canAdd && Boolean(onAddFileChange);
+  const canDrop = row.canDrop && Boolean(onDropFileChange);
+  if (!canOpen && !canAdd && !canDrop) {
+    return null;
+  }
+
+  return (
+    <span className="diff-row-actions">
+      {canOpen && onOpenFileChange && absolutePath ? (
+        <button
+          type="button"
+          className="icon-action profile-resource-open-btn"
+          aria-label={`Open ${change.path} in editor`}
+          title="Open in default editor"
+          disabled={busy}
+          onClick={() => void onOpenFileChange(change, absolutePath)}
+        >
+          <ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+      {canAdd && onAddFileChange ? (
+        <button
+          type="button"
+          className="icon-action untracked-add-btn"
+          aria-label={`Commit ${change.path} into profile`}
+          title={`Commit ${change.path} into profile`}
+          disabled={busy}
+          onClick={() => void onAddFileChange(change)}
+        >
+          <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+      {canDrop && onDropFileChange ? (
+        <button
+          type="button"
+          className="icon-action profile-resource-remove-btn"
+          aria-label={`Restore profile version of ${change.path}`}
+          title="Restore profile version"
+          disabled={busy}
+          onClick={() => void onDropFileChange(change)}
+        >
+          <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
+function FileChangeRows({
+  changes,
+  filesRootPath,
+  profileResourceKeys,
+  fileChangeBusyPath = null,
+  onOpenFileChange,
+  onAddFileChange,
+  onDropFileChange,
+}: {
+  changes: DriftFileChange[];
+  filesRootPath?: string | null;
+  profileResourceKeys: Set<string>;
+  fileChangeBusyPath?: string | null;
+  onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onAddFileChange?: (change: DriftFileChange) => Promise<void>;
+  onDropFileChange?: (change: DriftFileChange) => Promise<void>;
+}) {
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(LIST_PAGE_SIZE);
 
@@ -695,22 +777,41 @@ function FileChangeRows({ changes }: { changes: DriftFileChange[] }) {
         label="Filter file changes"
       />
       {visible.map((change, index) => {
-        const mapped = fileChangeAction(change);
+        const profileHasResource = change.resource
+          ? profileResourceKeys.has(`${change.resource.type}:${change.resource.name}`)
+          : false;
+        const row = fileChangeRowActions(change, {
+          rootPath: filesRootPath ?? null,
+          profileHasResource,
+        });
+        const busy = fileChangeBusyPath === change.path;
         return (
           <div
-            className={`diff-row ${mapped.action === "add" ? "add" : mapped.action === "remove" ? "remove" : "update"}`}
+            className={`diff-row ${row.action === "add" ? "add" : row.action === "remove" ? "remove" : "update"}`}
             key={`${change.type}-${change.path}-${change.platform ?? "na"}-${index}`}
           >
             <span className="diff-mark" aria-hidden>
-              {mapped.action === "add" ? "+" : mapped.action === "remove" ? "−" : "~"}
+              {row.action === "add" ? "+" : row.action === "remove" ? "−" : "~"}
             </span>
             <span className="diff-body">
-              <span className="diff-label mono">{change.path}</span>
-              <span className="diff-detail muted">{mapped.label}</span>
+              <span
+                className="diff-label mono"
+                title={row.absolutePath ?? undefined}
+              >
+                {change.path}
+              </span>
               {change.platform ? (
                 <RelatedHarnessIcons harnessIds={[change.platform]} />
               ) : null}
             </span>
+            <FileChangeRowActions
+              change={change}
+              row={row}
+              busy={busy}
+              onOpenFileChange={onOpenFileChange}
+              onAddFileChange={onAddFileChange}
+              onDropFileChange={onDropFileChange}
+            />
           </div>
         );
       })}
@@ -768,6 +869,11 @@ export interface LiveStatePanelProps {
     layerId?: string,
   ) => Promise<void>;
   removingResourceKey?: string | null;
+  onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onAddFileChange?: (change: DriftFileChange) => Promise<void>;
+  onDropFileChange?: (change: DriftFileChange) => Promise<void>;
+  fileChangeBusyPath?: string | null;
+  filesRootPath?: string | null;
 }
 
 export function LiveStatePanel({
@@ -794,6 +900,11 @@ export function LiveStatePanel({
   onOpenResourceInEditor,
   onRemoveResourceFromProfile,
   removingResourceKey = null,
+  onOpenFileChange,
+  onAddFileChange,
+  onDropFileChange,
+  fileChangeBusyPath = null,
+  filesRootPath = null,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -810,6 +921,14 @@ export function LiveStatePanel({
   const closeResource = () => {
     setDetailTarget(null);
   };
+
+  const profileResourceKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const resource of applyPreview?.contents?.resources ?? []) {
+      keys.add(`${resource.type}:${resource.name}`);
+    }
+    return keys;
+  }, [applyPreview?.contents?.resources]);
 
   const targetContents = applyPreview?.contents ?? null;
   const relativeToActive = applyPreview?.relative_to_active ?? false;
@@ -1283,6 +1402,12 @@ export function LiveStatePanel({
                     </summary>
                     <FileChangeRows
                       changes={applyPreview.files?.changes ?? []}
+                      filesRootPath={filesRootPath ?? applyPreview.files?.root_path ?? null}
+                      profileResourceKeys={profileResourceKeys}
+                      fileChangeBusyPath={fileChangeBusyPath}
+                      onOpenFileChange={onOpenFileChange}
+                      onAddFileChange={onAddFileChange}
+                      onDropFileChange={onDropFileChange}
                     />
                   </details>
                 </div>

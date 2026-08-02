@@ -1164,9 +1164,14 @@ button:focus-visible,
 
 .diff-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.4rem;
   padding: 0.22rem 0;
+}
+
+.diff-row-actions {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .diff-mark {
