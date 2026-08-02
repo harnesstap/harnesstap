@@ -975,7 +975,7 @@ export function LiveStatePanel({
     applyPreview?.not_staged
     ?? applyPreview?.untracked_resources
     ?? [];
-  const showTargetDiff = Boolean(selectedProfile)
+  const hasStackChanges = Boolean(selectedProfile)
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
 
@@ -1312,7 +1312,7 @@ export function LiveStatePanel({
                       This profile has no resources yet — apply will record it as
                       applied with no file writes.
                     </p>
-                  ) : showTargetDiff ? (
+                  ) : hasStackChanges ? (
                     <details className="diff-section">
                       <summary className="compare-title">
                         <span className="compare-title-text">Stack changes</span>
@@ -1338,11 +1338,15 @@ export function LiveStatePanel({
                       ))}
                     </details>
                   ) : (
-                    <p className="muted">
-                      {relativeToActive
-                        ? "Same stack as the active profile — only live file/install gaps below would change."
-                        : "No stack add/remove vs the active profile."}
-                    </p>
+                    <div
+                      className="diff-section is-disabled"
+                      aria-disabled="true"
+                    >
+                      <div className="compare-title">
+                        <span className="compare-title-text">Stack changes</span>
+                        <span className="muted">No changes</span>
+                      </div>
+                    </div>
                   )}
 
                   {view === "home" && installGaps.length > 0 ? (
@@ -1374,7 +1378,7 @@ export function LiveStatePanel({
                     </details>
                   ) : null}
 
-                  <details className="diff-section" open>
+                  <details className="diff-section">
                     <summary className="compare-title">
                       <span className="compare-title-text">
                         File changes

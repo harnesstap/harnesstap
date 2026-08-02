@@ -137,6 +137,45 @@ function compareExpectedFiles(
   return changes;
 }
 
+/**
+ * Hide "would add" gaps for alternate harness materializations when the same
+ * profile resource is already present on disk under another harness path.
+ * Apply still writes those files; File changes stays transparent.
+ */
+export function omitTransparentCrossHarnessAdds(
+  rootPath: string,
+  expectedFiles: Array<{ path: string; content: string }>,
+  changes: DriftFileChange[],
+): DriftFileChange[] {
+  const siblingPathsByResource = new Map<string, string[]>();
+  for (const file of uniqueExpectedFiles(expectedFiles)) {
+    const mapped = resourceKeyFromManagedPath(file.path);
+    if (!mapped) {
+      continue;
+    }
+    const key = `${mapped.type}:${mapped.name}`;
+    const siblings = siblingPathsByResource.get(key) ?? [];
+    siblings.push(file.path);
+    siblingPathsByResource.set(key, siblings);
+  }
+
+  return changes.filter((change) => {
+    if (change.type !== "deleted") {
+      return true;
+    }
+    const mapped = resourceKeyFromManagedPath(change.path);
+    if (!mapped) {
+      return true;
+    }
+    const siblings = siblingPathsByResource.get(`${mapped.type}:${mapped.name}`) ?? [];
+    const materializedElsewhere = siblings.some(
+      (path) =>
+        path !== change.path && readRootFile(rootPath, path) !== null,
+    );
+    return !materializedElsewhere;
+  });
+}
+
 function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
   return changes.map((change) => {
     const mapped = resourceKeyFromManagedPath(change.path);
@@ -162,6 +201,23 @@ function withManagedRemovals(
     next.push({ path, type: "added" });
   }
   return next;
+}
+
+function buildPreviewFileChanges(
+  rootPath: string,
+  expectedFiles: Array<{ path: string; content: string }>,
+  removedFiles: string[] | undefined,
+): DriftFileChange[] {
+  return withMappedResources(
+    withManagedRemovals(
+      omitTransparentCrossHarnessAdds(
+        rootPath,
+        expectedFiles,
+        compareExpectedFiles(rootPath, expectedFiles),
+      ),
+      removedFiles,
+    ),
+  );
 }
 
 function isMaterialResource(resource: Resource): boolean {
@@ -406,11 +462,10 @@ async function previewHomeApply(
       }),
       files: {
         expected_count: collected.expectedFiles.length,
-        changes: withMappedResources(
-          withManagedRemovals(
-            compareExpectedFiles(collected.rootPath, collected.expectedFiles),
-            collected.removedFiles,
-          ),
+        changes: buildPreviewFileChanges(
+          collected.rootPath,
+          collected.expectedFiles,
+          collected.removedFiles,
         ),
         root_path: collected.rootPath,
       },
@@ -431,11 +486,10 @@ async function previewHomeApply(
     }),
     files: {
       expected_count: collected.expectedFiles.length,
-      changes: withMappedResources(
-        withManagedRemovals(
-          compareExpectedFiles(collected.rootPath, collected.expectedFiles),
-          collected.removedFiles,
-        ),
+      changes: buildPreviewFileChanges(
+        collected.rootPath,
+        collected.expectedFiles,
+        collected.removedFiles,
       ),
       root_path: collected.rootPath,
     },
@@ -456,11 +510,10 @@ async function previewProjectApply(
   return {
     files: {
       expected_count: collected.expectedFiles.length,
-      changes: withMappedResources(
-        withManagedRemovals(
-          compareExpectedFiles(collected.rootPath, collected.expectedFiles),
-          collected.removedFiles,
-        ),
+      changes: buildPreviewFileChanges(
+        collected.rootPath,
+        collected.expectedFiles,
+        collected.removedFiles,
       ),
       root_path: collected.rootPath,
     },

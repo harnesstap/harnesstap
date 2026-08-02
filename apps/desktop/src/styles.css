@@ -1076,6 +1076,10 @@ button:focus-visible,
   background: var(--bg);
 }
 
+.diff-section.is-disabled {
+  opacity: 0.72;
+}
+
 .diff-section > .compare-title {
   list-style: none;
   cursor: pointer;
@@ -1085,6 +1089,15 @@ button:focus-visible,
   align-items: center;
   gap: 0.35rem 0.55rem;
   text-align: left;
+}
+
+.diff-section.is-disabled > .compare-title {
+  cursor: default;
+  margin-bottom: 0;
+}
+
+.diff-section.is-disabled > .compare-title::before {
+  visibility: hidden;
 }
 
 .diff-section > .compare-title .compare-title-text {
