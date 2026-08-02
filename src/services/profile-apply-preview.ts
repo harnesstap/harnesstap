@@ -26,6 +26,7 @@ import {
   type ProfileContents,
   type ProfileContentsResource,
 } from "./profile-contents.js";
+import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import { detectPlatforms } from "./scanner.js";
@@ -52,6 +53,7 @@ export interface ProfileApplyPreview {
     expected_count: number;
     /** File changes for tracked (profile-managed) paths only. */
     changes: DriftFileChange[];
+    root_path: string;
   };
   relative_to_active: boolean;
   warning?: string;
@@ -135,6 +137,13 @@ function compareExpectedFiles(
   return changes;
 }
 
+function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
+  return changes.map((change) => {
+    const mapped = resourceKeyFromManagedPath(change.path);
+    return mapped ? { ...change, resource: mapped } : change;
+  });
+}
+
 function withManagedRemovals(
   changes: DriftFileChange[],
   removedFiles: string[] | undefined,
@@ -173,8 +182,13 @@ async function previewHomeApply(
         pull: false,
       });
     } catch (error) {
+      const homeRoot = resolveHomeRoot();
       return {
-        files: { expected_count: 0, changes: [] },
+        files: {
+          expected_count: 0,
+          changes: withMappedResources([]),
+          root_path: homeRoot,
+        },
         warning: error instanceof Error ? error.message : String(error),
       };
     }
@@ -189,24 +203,37 @@ async function previewHomeApply(
       }),
       files: {
         expected_count: expectedFiles.length,
-        changes: withManagedRemovals(
-          compareExpectedFiles(homeRoot, expectedFiles),
-          expectedApply.removed_files,
+        changes: withMappedResources(
+          withManagedRemovals(
+            compareExpectedFiles(homeRoot, expectedFiles),
+            expectedApply.removed_files,
+          ),
         ),
+        root_path: homeRoot,
       },
     };
   }
 
   const layer = resolveLayerSelector(profile);
   if (!layer) {
+    const homeRoot = resolveHomeRoot();
     return {
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: homeRoot,
+      },
       warning: `missing layer "${profile}"`,
     };
   }
   if (!isProfileLayer(layer)) {
+    const homeRoot = resolveHomeRoot();
     return {
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: homeRoot,
+      },
       warning: `layer "${layer.name}" is not tagged as a profile`,
     };
   }
@@ -238,7 +265,11 @@ async function previewHomeApply(
         declaredPins: merged.pluginPins,
         declaredMcpByHarness,
       }),
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: homeRoot,
+      },
       warning: error instanceof Error ? error.message : String(error),
     };
   }
@@ -256,10 +287,13 @@ async function previewHomeApply(
     }),
     files: {
       expected_count: expectedFiles.length,
-      changes: withManagedRemovals(
-        compareExpectedFiles(homeRoot, expectedFiles),
-        expectedApply.removed_files,
+      changes: withMappedResources(
+        withManagedRemovals(
+          compareExpectedFiles(homeRoot, expectedFiles),
+          expectedApply.removed_files,
+        ),
       ),
+      root_path: homeRoot,
     },
   };
 }
@@ -271,7 +305,11 @@ async function previewProjectApply(
 ): Promise<Pick<ProfileApplyPreview, "files" | "warning">> {
   if (!projectPath) {
     return {
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: resolve(""),
+      },
       warning: "projectPath is required for project scope",
     };
   }
@@ -280,13 +318,21 @@ async function previewProjectApply(
   const layer = resolveLayerSelector(profile);
   if (!layer) {
     return {
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: resolvedRoot,
+      },
       warning: `missing layer "${profile}"`,
     };
   }
   if (!isProfileLayer(layer) && !isEmptyBuiltinProfile(profile)) {
     return {
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: resolvedRoot,
+      },
       warning: `layer "${layer.name}" is not tagged as a profile`,
     };
   }
@@ -312,7 +358,8 @@ async function previewProjectApply(
     return {
       files: {
         expected_count: 0,
-        changes: withManagedRemovals([], previousPaths),
+        changes: withMappedResources(withManagedRemovals([], previousPaths)),
+        root_path: resolvedRoot,
       },
     };
   }
@@ -332,7 +379,11 @@ async function previewProjectApply(
     );
   } catch (error) {
     return {
-      files: { expected_count: 0, changes: [] },
+      files: {
+        expected_count: 0,
+        changes: withMappedResources([]),
+        root_path: resolvedRoot,
+      },
       warning: error instanceof Error ? error.message : String(error),
     };
   }
@@ -355,10 +406,13 @@ async function previewProjectApply(
   return {
     files: {
       expected_count: expectedFiles.length,
-      changes: withManagedRemovals(
-        compareExpectedFiles(resolvedRoot, expectedFiles),
-        removedFiles,
+      changes: withMappedResources(
+        withManagedRemovals(
+          compareExpectedFiles(resolvedRoot, expectedFiles),
+          removedFiles,
+        ),
       ),
+      root_path: resolvedRoot,
     },
   };
 }

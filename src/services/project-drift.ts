@@ -8,6 +8,7 @@ export interface DriftFileChange {
   path: string;
   type: DriftChangeType;
   platform?: string;
+  resource?: { type: string; name: string };
 }
 
 export interface ProjectDriftReport {

@@ -223,6 +223,7 @@ export interface DriftFileChange {
   path: string;
   type: "added" | "modified" | "deleted";
   platform?: string;
+  resource?: { type: string; name: string };
 }
 
 export interface GlobalProfilePanelStatus {
@@ -278,6 +279,7 @@ export interface ProfileApplyPreview {
   files: {
     expected_count: number;
     changes: DriftFileChange[];
+    root_path: string;
   };
   relative_to_active: boolean;
   warning?: string;
