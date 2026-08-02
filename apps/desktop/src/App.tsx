@@ -28,6 +28,7 @@ import {
   commitProfileResource,
   openResourcePath,
   removeProfileResource,
+  restoreProfileFile,
 } from "./lib/agent-client";
 import {
   loadRecentProjects,
@@ -38,6 +39,7 @@ import type {
   CloudAuthStatus,
   GlobalProfileStatus,
   PanelTrafficStatus,
+  DriftFileChange,
   ProfileApplyPreview,
   ProfileContentsResource,
   ProfileCreateSource,
@@ -220,6 +222,7 @@ export function App() {
   const [addingAllResources, setAddingAllResources] = useState(false);
   const [addResourceError, setAddResourceError] = useState<string | null>(null);
   const [resourceActionError, setResourceActionError] = useState<string | null>(null);
+  const [fileChangeBusyPath, setFileChangeBusyPath] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   /** When true, keep an empty selection until the user picks a profile again. */
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
@@ -709,6 +712,120 @@ export function App() {
       }
     },
     [baseUrl, token],
+  );
+
+  const handleOpenFileChange = useCallback(
+    async (_change: DriftFileChange, absolutePath: string) => {
+      if (!baseUrl || !token) {
+        return;
+      }
+      setResourceActionError(null);
+      try {
+        await openResourcePath(baseUrl, token, { path: absolutePath });
+      } catch (error) {
+        setResourceActionError(
+          error instanceof Error ? error.message : "Could not open file in editor",
+        );
+      }
+    },
+    [baseUrl, token],
+  );
+
+  const handleAddFileChange = useCallback(
+    async (change: DriftFileChange) => {
+      const profileName = selectedProfile ?? activeProfile;
+      if (!baseUrl || !profileName) {
+        return;
+      }
+      setFileChangeBusyPath(change.path);
+      setResourceActionError(null);
+      try {
+        const scopeOpts = {
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        };
+        if (change.type === "modified") {
+          await commitProfileResource(baseUrl, token, profileName, {
+            path: change.path,
+            ...scopeOpts,
+          });
+        } else if (change.type === "added" && change.resource) {
+          await addProfileResource(baseUrl, token, profileName, {
+            resourceType: change.resource.type,
+            resourceName: change.resource.name,
+            ...scopeOpts,
+          });
+        } else {
+          return;
+        }
+        await refreshProfilePreview();
+      } catch (error) {
+        setResourceActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not commit file change into profile",
+        );
+      } finally {
+        setFileChangeBusyPath(null);
+      }
+    },
+    [
+      activeProfile,
+      baseUrl,
+      projectPath,
+      refreshProfilePreview,
+      selectedProfile,
+      token,
+      view,
+    ],
+  );
+
+  const handleDropFileChange = useCallback(
+    async (change: DriftFileChange) => {
+      const profileName = selectedProfile ?? activeProfile;
+      if (!baseUrl || !profileName) {
+        return;
+      }
+      setFileChangeBusyPath(change.path);
+      setResourceActionError(null);
+      try {
+        const scopeOpts = {
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        };
+        if (change.type === "modified") {
+          await restoreProfileFile(baseUrl, token, profileName, {
+            path: change.path,
+            ...scopeOpts,
+          });
+        } else if (change.resource) {
+          await removeProfileResource(baseUrl, token, profileName, {
+            resourceType: change.resource.type,
+            resourceName: change.resource.name,
+          });
+        } else {
+          return;
+        }
+        await refreshProfilePreview();
+      } catch (error) {
+        setResourceActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not drop file change",
+        );
+      } finally {
+        setFileChangeBusyPath(null);
+      }
+    },
+    [
+      activeProfile,
+      baseUrl,
+      projectPath,
+      refreshProfilePreview,
+      selectedProfile,
+      token,
+      view,
+    ],
   );
 
   const handleRemoveResourceFromProfile = useCallback(
@@ -1946,6 +2063,23 @@ export function App() {
                     : undefined
                 }
                 removingResourceKey={removingResourceKey}
+                filesRootPath={applyPreview?.files?.root_path ?? null}
+                fileChangeBusyPath={fileChangeBusyPath}
+                onOpenFileChange={
+                  connected && token && !switching
+                    ? handleOpenFileChange
+                    : undefined
+                }
+                onAddFileChange={
+                  connected && token && !switching
+                    ? handleAddFileChange
+                    : undefined
+                }
+                onDropFileChange={
+                  connected && token && !switching
+                    ? handleDropFileChange
+                    : undefined
+                }
               />
             )}
 
