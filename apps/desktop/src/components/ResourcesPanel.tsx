@@ -64,6 +64,8 @@ export interface ResourcesPanelProps {
   selectedProfile: string | null;
   profileResources: ProfileContentsResource[] | null;
   profileContentsLoading: boolean;
+  /** Bump to force a library reload (e.g. after header refresh rescans tracked dirs). */
+  reloadKey?: number;
   disabled?: boolean;
 }
 
@@ -73,6 +75,7 @@ export function ResourcesPanel({
   selectedProfile,
   profileResources,
   profileContentsLoading,
+  reloadKey = 0,
   disabled = false,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
@@ -117,7 +120,7 @@ export function ResourcesPanel({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token, resourcesReloadKey]);
+  }, [baseUrl, token, resourcesReloadKey, reloadKey]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => filterRef.current?.focus(), 0);

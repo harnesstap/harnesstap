@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
@@ -74,6 +74,51 @@ fn host_target_triple() -> &'static str {
     {
         "unknown"
     }
+}
+
+fn sidecar_reload_stamp_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("binaries")
+        .join(".sidecar-reload")
+}
+
+fn read_reload_stamp() -> Option<String> {
+    fs::read_to_string(sidecar_reload_stamp_path())
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn spawn_sidecar_reload_watcher(app: AppHandle) {
+    thread::spawn(move || {
+        let mut last_stamp = read_reload_stamp();
+        loop {
+            thread::sleep(Duration::from_millis(750));
+            let Some(stamp) = read_reload_stamp() else {
+                continue;
+            };
+            if last_stamp.as_ref() == Some(&stamp) {
+                continue;
+            }
+            last_stamp = Some(stamp);
+            eprintln!("ht-agent sidecar binary updated; restarting…");
+            let app_for_restart = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let Some(state) = app_for_restart.try_state::<AppState>() else {
+                    return;
+                };
+                match restart_sidecar(app_for_restart.clone(), state).await {
+                    Ok(port) => {
+                        let _ = app_for_restart.emit("sidecar-reloaded", port);
+                        eprintln!("ht-agent sidecar restarted on port {port}");
+                    }
+                    Err(error) => {
+                        eprintln!("ht-agent sidecar restart failed: {error}");
+                    }
+                }
+            });
+        }
+    });
 }
 
 fn sidecar_binary_path() -> Result<PathBuf, String> {
@@ -328,6 +373,12 @@ pub fn run() {
                 port: Mutex::new(Some(7474)),
                 starting: Mutex::new(false),
             },
+        })
+        .setup(|app| {
+            // Dev ergonomics: when prepare-sidecar rewrites the binary + stamp,
+            // restart the managed agent without relaunching Tauri.
+            spawn_sidecar_reload_watcher(app.handle().clone());
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             start_sidecar,

@@ -347,7 +347,7 @@ export class CursorSerializer extends BaseSerializer {
       });
     }
 
-    const mcps = resources.filter((r) => r.type === "mcp_server");
+    const mcps = this.mcpServersForTarget(resources, mcpPath);
     if (mcps.length > 0 && mcpPath) {
       const mcpServers: Record<string, Record<string, unknown>> = {};
       for (const resource of mcps) {

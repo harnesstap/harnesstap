@@ -145,6 +145,63 @@ export function parseMcpServersDocument(document: unknown): Record<string, McpSe
   return result;
 }
 
+/** Canonical payload for drift comparison (ignores harness serialization noise). */
+function mcpServerEquivalenceKey(metadata: McpServerMetadata): string {
+  return JSON.stringify({
+    transport: metadata.transport,
+    command: metadata.command ?? null,
+    url: metadata.url ?? null,
+    args: metadata.args ?? null,
+    env: metadata.env ?? null,
+    headers: metadata.headers ?? null,
+    env_file: metadata.env_file ?? null,
+    auth: metadata.auth ?? null,
+  });
+}
+
+export function mcpServerMetadataEquivalent(
+  left: McpServerMetadata,
+  right: McpServerMetadata,
+): boolean {
+  return mcpServerEquivalenceKey(left) === mcpServerEquivalenceKey(right);
+}
+
+/**
+ * True when two MCP config file payloads declare the same servers semantically.
+ * Used so formatting / harness-specific fields (tools, type aliases) are not drift.
+ */
+export function mcpConfigContentsEquivalent(left: string, right: string): boolean {
+  let leftDocument: unknown;
+  let rightDocument: unknown;
+  try {
+    leftDocument = JSON.parse(left) as unknown;
+    rightDocument = JSON.parse(right) as unknown;
+  } catch {
+    return false;
+  }
+
+  const leftServers = parseMcpServersDocument(leftDocument);
+  const rightServers = parseMcpServersDocument(rightDocument);
+  const leftNames = Object.keys(leftServers).sort();
+  const rightNames = Object.keys(rightServers).sort();
+  if (leftNames.length !== rightNames.length) {
+    return false;
+  }
+  for (let index = 0; index < leftNames.length; index += 1) {
+    const name = leftNames[index];
+    const otherName = rightNames[index];
+    if (name === undefined || otherName === undefined || name !== otherName) {
+      return false;
+    }
+    const leftMeta = leftServers[name];
+    const rightMeta = rightServers[name];
+    if (!leftMeta || !rightMeta || !mcpServerMetadataEquivalent(leftMeta, rightMeta)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function substituteMcpServerMetadata(
   metadata: McpServerMetadata,
   vars: Record<string, string>,

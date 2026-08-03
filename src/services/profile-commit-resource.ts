@@ -4,7 +4,11 @@ import {
   findResourceByKey,
   upsertResource,
 } from "../models/resource.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import {
+  addResourceToLayer,
+  removeResourceFromLayer,
+  resolveLayerSelector,
+} from "../models/layer-model.js";
 import { isProfileLayer } from "../constants/profile.js";
 import type { Resource, ResourceType } from "../types.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
@@ -19,8 +23,11 @@ import {
   persistScanResults,
   scanHomeDefaults,
   scanProject,
+  type ScanResult,
 } from "./scanner.js";
+import { getAllPlatforms } from "../platforms/registry.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { sourceMatchesManagedPath } from "./mcp-target.js";
 import { normalizeManagedPath } from "./profile-untracked-resources.js";
 
 function profileHasResource(
@@ -70,6 +77,129 @@ export function resourceKeyFromManagedPath(
   return null;
 }
 
+/** Aggregate MCP config files (many mcp_server resources per path). */
+export function isMcpConfigManagedPath(path: string, rootPath?: string): boolean {
+  const normalized = normalizeManagedPath(path, rootPath);
+  // Dedicated MCP JSON filenames used across harnesses.
+  if (/(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)) {
+    return true;
+  }
+  // Also accept any registry-declared MCP path (opencode.json, config.toml, …).
+  const stripped = normalized.replace(/^~\//, "");
+  for (const platform of getAllPlatforms()) {
+    for (const candidate of [
+      platform.projectPaths.mcp,
+      platform.globalPaths.mcp,
+    ]) {
+      if (!candidate) {
+        continue;
+      }
+      const candidateNorm = normalizeManagedPath(candidate).replace(/^~\//, "");
+      if (stripped === candidateNorm) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+async function scanForCommit(input: {
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}): Promise<{ originRef: string; scanned: ScanResult[] }> {
+  const originRef =
+    input.scope === "project"
+      ? resolve(input.projectPath ?? "")
+      : resolveHomeRoot();
+  if (input.scope === "project" && !input.projectPath) {
+    throw new Error("projectPath is required for project scope");
+  }
+  const scanned =
+    input.scope === "project"
+      ? await scanProject(originRef)
+      : await scanHomeDefaults(
+          input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
+          originRef,
+        );
+  return { originRef, scanned };
+}
+
+async function commitMcpConfigFromLive(input: {
+  profileSelector: string;
+  path: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+}): Promise<ProfileContentsResource[]> {
+  const profileLayer = resolveLayerSelector(input.profileSelector);
+  if (!profileLayer) {
+    throw new Error(`Profile not found: ${input.profileSelector}`);
+  }
+  if (!isProfileLayer(profileLayer)) {
+    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  }
+
+  const { originRef, scanned } = await scanForCommit(input);
+  const matching = scanned
+    .map((result) => ({
+      ...result,
+      resources: result.resources.filter(
+        (resource) =>
+          resource.type === "mcp_server"
+          && sourceMatchesManagedPath(resource.source, input.path, originRef),
+      ),
+    }))
+    .filter((result) => result.resources.length > 0);
+
+  const liveNames = new Set<string>();
+  const committed: ProfileContentsResource[] = [];
+
+  if (matching.length > 0) {
+    const persisted = persistScanResults(matching, {
+      conflictPolicy: "overwrite",
+      originRef,
+    });
+
+    for (const resource of persisted.resolved) {
+      if (resource.type !== "mcp_server") {
+        continue;
+      }
+      liveNames.add(resource.name);
+      if (!profileHasResource(input.profileSelector, resource.type, resource.name)) {
+        addResourceToLayer(profileLayer.id, resource.id);
+      }
+      committed.push(toContentsResource(resource));
+    }
+  }
+
+  // Live file is source of truth for this path: drop profile MCP servers that
+  // were bound to this path but are no longer on disk.
+  const merged = mergeLayersForApply(collectProfileLayerIds(profileLayer));
+  for (const resource of merged.resources) {
+    if (resource.type !== "mcp_server") {
+      continue;
+    }
+    if (!sourceMatchesManagedPath(resource.source, input.path, originRef)) {
+      continue;
+    }
+    if (liveNames.has(resource.name)) {
+      continue;
+    }
+    removeResourceFromLayer(profileLayer.id, resource.id);
+  }
+
+  if (matching.length === 0 && committed.length === 0) {
+    // Empty live MCP file is a valid commit (clears path-owned servers).
+    return [];
+  }
+
+  if (committed.length === 0 && matching.length > 0) {
+    throw new Error(`Could not commit MCP servers from: ${input.path}`);
+  }
+  return committed;
+}
+
 /**
  * Snapshot live disk content into the library for a profile-managed resource.
  */
@@ -114,21 +244,7 @@ export async function commitManagedResourceFromLive(input: {
     );
   }
 
-  const originRef =
-    input.scope === "project"
-      ? resolve(input.projectPath ?? "")
-      : resolveHomeRoot();
-  if (input.scope === "project" && !input.projectPath) {
-    throw new Error("projectPath is required for project scope");
-  }
-
-  const scanned =
-    input.scope === "project"
-      ? await scanProject(originRef)
-      : await scanHomeDefaults(
-          input.harness ? resolveMainHarnessTarget(input.harness) : undefined,
-          originRef,
-        );
+  const { originRef, scanned } = await scanForCommit(input);
 
   const matching = scanned
     .map((result) => ({
@@ -191,4 +307,48 @@ export async function commitManagedResourceFromLive(input: {
     );
   }
   return toContentsResource(resource);
+}
+
+/**
+ * Commit a managed path from live disk into the profile library.
+ * Supports 1:1 material paths and aggregate MCP config files.
+ */
+export async function commitManagedPathFromLive(input: {
+  profileSelector: string;
+  path: string;
+  scope: ProfileApplyPreviewScope;
+  projectPath?: string;
+  harness?: string;
+  resourceType?: string;
+  resourceName?: string;
+}): Promise<ProfileContentsResource[]> {
+  const mapped =
+    input.resourceType && input.resourceName
+      ? { type: input.resourceType, name: input.resourceName }
+      : resourceKeyFromManagedPath(input.path);
+
+  if (mapped) {
+    const resource = await commitManagedResourceFromLive({
+      profileSelector: input.profileSelector,
+      resourceType: mapped.type,
+      resourceName: mapped.name,
+      scope: input.scope,
+      path: input.path,
+      ...(input.projectPath ? { projectPath: input.projectPath } : {}),
+      ...(input.harness ? { harness: input.harness } : {}),
+    });
+    return [resource];
+  }
+
+  if (isMcpConfigManagedPath(input.path)) {
+    return commitMcpConfigFromLive({
+      profileSelector: input.profileSelector,
+      path: input.path,
+      scope: input.scope,
+      ...(input.projectPath ? { projectPath: input.projectPath } : {}),
+      ...(input.harness ? { harness: input.harness } : {}),
+    });
+  }
+
+  throw new Error(`Cannot map path to a resource for commit: ${input.path}`);
 }

@@ -8,6 +8,7 @@ import {
   startCloudLogin,
 } from "../lib/agent-client";
 import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 interface CloudAccountDrawerProps {
   open: boolean;
@@ -132,7 +133,7 @@ export function CloudAccountDrawer({
   }, [open, baseUrl, token, applyStatus, clearPoll, runPoll]);
 
   const onSignIn = async () => {
-    if (!baseUrl) {
+    if (!baseUrl || busy) {
       return;
     }
     setBusy(true);
@@ -175,7 +176,7 @@ export function CloudAccountDrawer({
   };
 
   const onSignOut = async () => {
-    if (!baseUrl) {
+    if (!baseUrl || busy) {
       return;
     }
     clearPoll();
@@ -323,12 +324,14 @@ export function CloudAccountDrawer({
               </dl>
               <div className="cloud-account-actions">
                 <button
-                  className="btn"
+                  className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
                   type="button"
                   onClick={() => void onSignOut()}
                   disabled={controlsDisabled}
+                  aria-busy={busy}
                 >
-                  Sign out
+                  {busy ? <ButtonSpinner size={16} /> : null}
+                  {busy ? "Signing out…" : "Sign out"}
                 </button>
               </div>
             </div>
@@ -341,12 +344,20 @@ export function CloudAccountDrawer({
               </p>
               <div className="cloud-account-actions">
                 <button
-                  className="btn primary"
+                  className={[
+                    "btn",
+                    "primary",
+                    busy ? "is-busy" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   type="button"
                   onClick={() => void onSignIn()}
                   disabled={controlsDisabled || !baseUrl}
+                  aria-busy={busy}
                 >
-                  Sign in to Cloud
+                  {busy ? <ButtonSpinner size={16} /> : null}
+                  {busy ? "Starting…" : "Sign in to Cloud"}
                 </button>
               </div>
             </div>

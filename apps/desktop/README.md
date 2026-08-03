@@ -16,7 +16,10 @@ From the repo root:
 bun run desktop:dev
 ```
 
-This cleans up stale sidecar/Vite listeners from a previous dev session, prepares the `ht-agent` sidecar, installs desktop deps, then runs `tauri dev`.
+This cleans up stale sidecar/Vite listeners from a previous dev session, prepares the `ht-agent` sidecar, installs desktop deps, then runs `tauri dev` **plus** a sidecar watcher.
+
+- **UI (`apps/desktop/src`)** — Vite HMR reloads automatically.
+- **Agent / library (`src/`)** — the watcher rebuilds `ht-agent` and the Tauri shell restarts the sidecar in place (no need to kill `desktop:dev`). The UI reconnects on `sidecar-reloaded`.
 
 To only clear orphaned listeners and session files:
 

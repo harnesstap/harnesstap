@@ -36,6 +36,31 @@ describe("fileChangeRowActions", () => {
     });
     expect(row.canAdd).toBe(true);
     expect(row.canDrop).toBe(true);
+    expect(row.canDiff).toBe(true);
+  });
+
+  it("shows Diff only on modified rows", () => {
+    const modified: DriftFileChange = {
+      path: ".cursor/mcp.json",
+      type: "modified",
+    };
+    const deleted: DriftFileChange = {
+      path: ".claude/skills/x/SKILL.md",
+      type: "deleted",
+      resource: { type: "skill", name: "x" },
+    };
+    expect(
+      fileChangeRowActions(modified, {
+        rootPath: root,
+        profileHasResource: false,
+      }).canDiff,
+    ).toBe(true);
+    expect(
+      fileChangeRowActions(deleted, {
+        rootPath: root,
+        profileHasResource: true,
+      }).canDiff,
+    ).toBe(false);
   });
 
   it("shows Add on remove (−) when mapped; Drop only if attached", () => {
@@ -55,7 +80,7 @@ describe("fileChangeRowActions", () => {
     ).toBe(true);
   });
 
-  it("hides Add when unmapped; ~ Drop still allowed", () => {
+  it("shows Add on unmapped modified rows (e.g. mcp.json)", () => {
     const change: DriftFileChange = {
       path: ".cursor/mcp.json",
       type: "modified",
@@ -64,7 +89,7 @@ describe("fileChangeRowActions", () => {
       rootPath: root,
       profileHasResource: false,
     });
-    expect(row.canAdd).toBe(false);
+    expect(row.canAdd).toBe(true);
     expect(row.canDrop).toBe(true);
   });
 });

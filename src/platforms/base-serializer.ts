@@ -4,6 +4,7 @@ import matter from "gray-matter";
 import { normalizeAgentInput } from "../services/agent-bridge.js";
 import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../services/skill-auxiliary.js";
 import { scanSkillCommandMetadataResources } from "../services/skill-command-metadata.js";
+import { filterMcpServersForTargetPath } from "../services/mcp-target.js";
 import type {
   PlatformSerializer,
   Resource,
@@ -79,6 +80,14 @@ export abstract class BaseSerializer implements PlatformSerializer {
 
   protected getTargetPaths(target: SerializerTarget = "project"): PlatformPaths {
     return target === "global" ? this.platform.globalPaths : this.platform.projectPaths;
+  }
+
+  /** MCP servers that belong on this harness MCP path (path-matched + portable). */
+  protected mcpServersForTarget(
+    resources: Resource[],
+    targetMcpPath: string | undefined,
+  ): Resource[] {
+    return filterMcpServersForTargetPath(resources, targetMcpPath);
   }
 
   protected toTargetRelativePath(

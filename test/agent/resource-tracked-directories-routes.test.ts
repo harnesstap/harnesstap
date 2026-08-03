@@ -79,4 +79,64 @@ describe("agent resource tracked directory routes", () => {
     });
     expect(removed.status).toBe(200);
   });
+
+  it("rescans tracked directories", async () => {
+    const previousOsHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
+    const server = withServer();
+    const workspace = process.env.HARNESSTAP_HOME;
+    expect(workspace).toBeTruthy();
+    if (!workspace) {
+      return;
+    }
+
+    const fakeHome = join(workspace, "user-home");
+    process.env.HOME = fakeHome;
+    process.env.USERPROFILE = fakeHome;
+    mkdirSync(join(fakeHome, ".cursor", "rules"), { recursive: true });
+    writeFileSync(
+      join(fakeHome, ".cursor", "rules", "home.mdc"),
+      "---\ndescription: Home\nalwaysApply: true\n---\n# Home",
+    );
+
+    try {
+      const denied = await fetch(
+        `${server.url}/v1/library/resource-directories/rescan`,
+        { method: "POST" },
+      );
+      expect(denied.status).toBe(401);
+
+      const rescanned = await fetch(
+        `${server.url}/v1/library/resource-directories/rescan`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${server.token}` },
+        },
+      );
+      expect(rescanned.status).toBe(200);
+      const body = (await rescanned.json()) as {
+        imported_count: number;
+        rescanned: Array<{ kind: string }>;
+        directories: Array<{ kind: string }>;
+      };
+      expect(body.imported_count).toBeGreaterThan(0);
+      expect(body.rescanned.some((entry) => entry.kind === "home_default")).toBe(
+        true,
+      );
+      expect(
+        body.directories.some((entry) => entry.kind === "home_default"),
+      ).toBe(true);
+    } finally {
+      if (previousOsHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = previousOsHome;
+      }
+      if (previousUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = previousUserProfile;
+      }
+    }
+  });
 });

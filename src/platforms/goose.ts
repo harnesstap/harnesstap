@@ -473,7 +473,7 @@ export class GooseSerializer extends BaseSerializer {
       });
     }
 
-    const mcpServers = resources.filter((r) => r.type === "mcp_server");
+    const mcpServers = this.mcpServersForTarget(resources, configPath);
     if (mcpServers.length > 0 && configPath) {
       const fullConfigPath = join(projectRoot, configPath);
       const existingContent = this.readFile(fullConfigPath);

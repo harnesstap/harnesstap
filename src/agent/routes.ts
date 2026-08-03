@@ -18,6 +18,7 @@ import { jsonResponse } from "./http.js";
 import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
 import { handleProfileAddAllResources, handleProfileAddResource, handleProfileCommitResource } from "./profile-add-resource-handlers.js";
 import { handleProfileRestoreFile } from "./profile-restore-file-handlers.js";
+import { handleProfileFileDiff } from "./profile-file-diff-handlers.js";
 import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.js";
 import { handleOpenPath } from "./open-path-handlers.js";
 import {
@@ -42,6 +43,7 @@ import {
 } from "./profile-library-handlers.js";
 import {
   handleResourceTrackedDirectoriesList,
+  handleResourceTrackedDirectoriesRescan,
   handleResourceTrackedDirectoryAdd,
   handleResourceTrackedDirectoryRemove,
 } from "./resource-tracked-directories-handlers.js";
@@ -571,6 +573,10 @@ export function createAgentFetchHandler(
       response = authError ?? handleLibraryResources();
     } else if (method === "GET" && url.pathname === "/v1/library/resource-directories") {
       response = handleResourceTrackedDirectoriesList(request, token);
+    } else if (
+      method === "POST" && url.pathname === "/v1/library/resource-directories/rescan"
+    ) {
+      response = await handleResourceTrackedDirectoriesRescan(request, token);
     } else if (method === "POST" && url.pathname === "/v1/library/resource-directories") {
       response = await handleResourceTrackedDirectoryAdd(request, token);
     } else if (method === "DELETE" && url.pathname === "/v1/library/resource-directories") {
@@ -636,6 +642,14 @@ export function createAgentFetchHandler(
                 decodeURIComponent(restoreMatch[1] ?? ""),
               );
             } else {
+            const fileDiffMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/file-diff$/);
+            if (method === "POST" && fileDiffMatch) {
+              response = await handleProfileFileDiff(
+                request,
+                token,
+                decodeURIComponent(fileDiffMatch[1] ?? ""),
+              );
+            } else {
             const removeMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/remove-resource$/);
             if (method === "POST" && removeMatch) {
               response = await handleProfileRemoveResource(
@@ -658,6 +672,7 @@ export function createAgentFetchHandler(
             } else {
               response = jsonResponse({ error: "not_found" }, { status: 404 });
             }
+          }
           }
           }
           }

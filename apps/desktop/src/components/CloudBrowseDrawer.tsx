@@ -9,6 +9,7 @@ import type {
   CloudProfile,
   CloudProfilePullResult,
 } from "../lib/types";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 interface CloudBrowseDrawerProps {
   open: boolean;
@@ -150,7 +151,7 @@ export function CloudBrowseDrawer({
   };
 
   const runPull = async (use: boolean) => {
-    if (!baseUrl || !selected) {
+    if (!baseUrl || !selected || busy) {
       return;
     }
     setBusy(true);
@@ -195,7 +196,7 @@ export function CloudBrowseDrawer({
   };
 
   const runTag = async () => {
-    if (!baseUrl || !pulled) {
+    if (!baseUrl || !pulled || busy) {
       return;
     }
     setBusy(true);
@@ -392,11 +393,13 @@ export function CloudBrowseDrawer({
                 </div>
               </div>
               <button
-                className="btn"
+                className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
                 type="button"
                 onClick={() => void runTag()}
                 disabled={controlsDisabled}
+                aria-busy={busy}
               >
+                {busy ? <ButtonSpinner size={16} /> : null}
                 {busy ? "Tagging…" : "Tag as profile"}
               </button>
             </div>
@@ -419,20 +422,35 @@ export function CloudBrowseDrawer({
           {!authRequired && !pulled ? (
             <>
               <button
-                className="btn"
+                className={[
+                  "btn",
+                  busy && !pendingUse ? "is-busy" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 type="button"
                 onClick={() => void runPull(false)}
                 disabled={pullDisabled}
+                aria-busy={busy && !pendingUse}
               >
-                {busy ? "Pulling…" : "Pull"}
+                {busy && !pendingUse ? <ButtonSpinner size={16} /> : null}
+                {busy && !pendingUse ? "Pulling…" : "Pull"}
               </button>
               <button
-                className="btn primary"
+                className={[
+                  "btn",
+                  "primary",
+                  busy && pendingUse ? "is-busy" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 type="button"
                 onClick={() => void runPull(true)}
                 disabled={pullDisabled}
+                aria-busy={busy && pendingUse}
               >
-                {busy ? "Pulling…" : "Pull & use"}
+                {busy && pendingUse ? <ButtonSpinner size={16} /> : null}
+                {busy && pendingUse ? "Pulling…" : "Pull & use"}
               </button>
             </>
           ) : null}

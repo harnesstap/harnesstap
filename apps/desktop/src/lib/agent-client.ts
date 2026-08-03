@@ -25,6 +25,8 @@ import type {
   ProfileRemoveResourceResult,
   ProfileRestoreFileRequest,
   ProfileRestoreFileResult,
+  ProfileFileDiffRequest,
+  ProfileFileDiffResult,
   ProfileCreatePreview,
   ProfileCreateRequest,
   ProfileCreateResult,
@@ -36,6 +38,7 @@ import type {
   ProfileStashPopResult,
   ProfileStashPushResult,
   ResourceTrackedDirectoriesResult,
+  ResourceTrackedDirectoriesRescanResult,
   ResourceTrackedDirectoryAddResult,
   SwitchScope,
 } from "./types";
@@ -152,11 +155,10 @@ async function throwAgentError(
     message?: string;
     error?: string;
   };
-  throw new AgentApiError(
-    body.message ?? fallback,
-    response.status,
-    body.error,
-  );
+  const detail = body.message
+    ?? (body.error ? `${fallback} (${body.error})` : null)
+    ?? `${fallback} (HTTP ${response.status})`;
+  throw new AgentApiError(detail, response.status, body.error);
 }
 
 export async function fetchProfiles(
@@ -312,6 +314,22 @@ export async function removeResourceTrackedDirectory(
   if (!response.ok) {
     return throwAgentError(response, "Could not remove tracked directory");
   }
+}
+
+export async function rescanResourceTrackedDirectories(
+  baseUrl: string,
+  token: string | null,
+): Promise<ResourceTrackedDirectoriesRescanResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    "/v1/library/resource-directories/rescan",
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not rescan tracked directories");
+  }
+  return (await response.json()) as ResourceTrackedDirectoriesRescanResult;
 }
 
 export async function fetchLibraryResourceDetail(
@@ -681,6 +699,28 @@ export async function restoreProfileFile(
     return throwAgentError(response, "Could not restore profile file");
   }
   return (await response.json()) as ProfileRestoreFileResult;
+}
+
+export async function fetchProfileFileDiff(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfileFileDiffRequest,
+): Promise<ProfileFileDiffResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/file-diff`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load file diff");
+  }
+  return (await response.json()) as ProfileFileDiffResult;
 }
 
 export async function bootstrapProject(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   emitCursorMcpServerEntry,
   inferMcpTransport,
+  mcpConfigContentsEquivalent,
   parseMcpServerEntry,
   parseMcpServersDocument,
 } from "../../src/services/mcp-config-bridge.ts";
@@ -188,6 +189,44 @@ describe("mcp config bridge", () => {
       ).toEqual({
         url: "https://mcp.example.com",
       });
+    });
+  });
+
+  describe("mcpConfigContentsEquivalent", () => {
+    it("treats harness formatting differences as equivalent", () => {
+      const live = `${JSON.stringify(
+        {
+          mcpServers: {
+            alpha: { url: "https://example.com/mcp" },
+          },
+        },
+        null,
+        2,
+      )}\n`;
+      const serialized = JSON.stringify(
+        {
+          mcpServers: {
+            alpha: {
+              type: "http",
+              url: "https://example.com/mcp",
+              tools: ["*"],
+            },
+          },
+        },
+        null,
+        2,
+      );
+      expect(mcpConfigContentsEquivalent(live, serialized)).toBe(true);
+    });
+
+    it("detects real server differences", () => {
+      const left = JSON.stringify({
+        mcpServers: { alpha: { url: "https://example.com/a" } },
+      });
+      const right = JSON.stringify({
+        mcpServers: { alpha: { url: "https://example.com/b" } },
+      });
+      expect(mcpConfigContentsEquivalent(left, right)).toBe(false);
     });
   });
 });

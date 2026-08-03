@@ -13,6 +13,7 @@ import {
 } from "./profile-apply.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import {
@@ -380,7 +381,7 @@ export async function detectGlobalProfileStatus(input: {
       changes.push({ path: file.path, type: "deleted" });
       continue;
     }
-    if (current !== file.content) {
+    if (!fileContentsEquivalentForDrift(file.path, current, file.content)) {
       changes.push({ path: file.path, type: "modified" });
     }
   }

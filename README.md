@@ -140,12 +140,11 @@ bunx harnesstap@latest init
 git clone https://github.com/harnesstap/harnesstap.git
 cd harnesstap
 bun install
-bun run build
-bun link
+bun run link
 ht init
 ```
 
-`bun link` registers the checkout as the global `harnesstap` and `ht` commands. If your shell cannot find them, add Bun's global bin directory to `PATH`:
+`bun run link` builds the CLI and registers the checkout as the global `harnesstap` and `ht` commands. If your shell cannot find them, add Bun's global bin directory to `PATH`:
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"

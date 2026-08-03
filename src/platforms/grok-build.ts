@@ -513,7 +513,7 @@ export class GrokBuildSerializer extends BaseSerializer {
       }
     }
 
-    const mcps = resources.filter((r) => r.type === "mcp_server");
+    const mcps = this.mcpServersForTarget(resources, configPath);
     const permissions = resources.filter((r) => r.type === "permission");
     const modelConfigs = resources.filter((r) => r.type === "model_config");
     const managedCount =

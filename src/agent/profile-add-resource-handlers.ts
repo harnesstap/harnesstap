@@ -1,5 +1,5 @@
 import type { ProfileApplyPreviewScope } from "../services/profile-apply-preview.js";
-import { commitManagedResourceFromLive } from "../services/profile-commit-resource.js";
+import { commitManagedPathFromLive, commitManagedResourceFromLive } from "../services/profile-commit-resource.js";
 import {
   addAllUntrackedResourcesToProfile,
   addResourceToProfile,
@@ -209,6 +209,17 @@ export async function handleProfileCommitResource(
   }
 
   try {
+    if (path && !resourceType && !resourceName) {
+      const resources = await commitManagedPathFromLive({
+        profileSelector: profileName,
+        path,
+        ...parsed,
+      });
+      return jsonResponse({
+        resource: resources[0] ?? null,
+        resources,
+      });
+    }
     const resource = await commitManagedResourceFromLive({
       profileSelector: profileName,
       resourceType,

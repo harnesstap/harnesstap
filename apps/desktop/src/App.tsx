@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Plus, RefreshCw, Unplug, User } from "lucide-react";
+import { shouldShowReapply } from "./lib/reapply";
+import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
+import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
@@ -29,6 +34,7 @@ import {
   openResourcePath,
   removeProfileResource,
   restoreProfileFile,
+  rescanResourceTrackedDirectories,
 } from "./lib/agent-client";
 import {
   loadRecentProjects,
@@ -38,7 +44,6 @@ import { mergeStatusUpdate } from "./lib/status-merge";
 import type {
   CloudAuthStatus,
   GlobalProfileStatus,
-  PanelTrafficStatus,
   DriftFileChange,
   ProfileApplyPreview,
   ProfileContentsResource,
@@ -77,90 +82,8 @@ function filterProfilesByQuery(
   });
 }
 
-function projectDriftLabel(
-  status: GlobalProfileStatus["drift_summary"]["project"] | undefined,
-): string | null {
-  if (!status) {
-    return null;
-  }
-  switch (status.status) {
-    case "na":
-      return "Project not tracked yet";
-    case "clean":
-      return "Project files in sync with last snapshot";
-    case "drifted":
-      return "Project files have drifted from last snapshot";
-    default: {
-      const neverStatus: never = status.status;
-      return neverStatus;
-    }
-  }
-}
-
 const POLL_MS = 2000;
 const ACTIVITY_TTL_MS = 60_000;
-
-function panelStatusLabel(status: PanelTrafficStatus | undefined): string {
-  switch (status) {
-    case "green":
-      return "In sync";
-    case "yellow":
-      return "Needs attention";
-    case "red":
-      return "Out of sync";
-    case undefined:
-      return "Checking…";
-    default: {
-      const neverStatus: never = status;
-      return neverStatus;
-    }
-  }
-}
-
-const PANEL_REASON_LABELS: Record<string, string> = {
-  switch_failed: "Last switch failed",
-  restore_failed: "Restore after switch failed",
-  status_warning: "Status warning",
-  profile_not_applied: "Active profile is not applied",
-  stack_out_of_sync: "Applied stack is out of sync",
-  owned_path_drift: "Owned global files have drifted",
-  missing_plugins: "Required plugins are missing",
-  missing_mcp: "Required MCP servers are missing",
-  non_owned_drift: "Other global files have changed",
-  project_drift: "Project files have drifted",
-  fast_depth: "Quick check — refresh for full status",
-};
-
-function panelReasonTooltip(
-  status: PanelTrafficStatus | undefined,
-  reasons: string[] | undefined,
-): string {
-  const headline = panelStatusLabel(status);
-  const details = (reasons ?? [])
-    .map((reason) => PANEL_REASON_LABELS[reason] ?? reason)
-    .filter((label, index, all) => all.indexOf(label) === index);
-  if (details.length === 0) {
-    return headline;
-  }
-  return `${headline}: ${details.join("; ")}`;
-}
-
-function globalDriftIssueLabel(
-  status: GlobalProfileStatus["drift_summary"]["global"]["status"],
-): string | null {
-  switch (status) {
-    case "clean":
-      return null;
-    case "pending":
-      return "Global profile not applied";
-    case "drifted":
-      return "Global files have drifted";
-    default: {
-      const neverStatus: never = status;
-      return neverStatus;
-    }
-  }
-}
 
 function formatView(view: ViewScope): string {
   switch (view) {
@@ -205,10 +128,12 @@ export function App() {
   const [token, setToken] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [retryBusy, setRetryBusy] = useState(false);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [profilesError, setProfilesError] = useState<string | null>(null);
   const [stashEntries, setStashEntries] = useState<ProfileStashEntry[]>([]);
   const [stashBusy, setStashBusy] = useState(false);
+  const [stashAction, setStashAction] = useState<"stash" | "unstash" | null>(null);
   const [status, setStatus] = useState<GlobalProfileStatus | null>(null);
   const [hasFullHarnessSnapshot, setHasFullHarnessSnapshot] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -223,6 +148,9 @@ export function App() {
   const [addResourceError, setAddResourceError] = useState<string | null>(null);
   const [resourceActionError, setResourceActionError] = useState<string | null>(null);
   const [fileChangeBusyPath, setFileChangeBusyPath] = useState<string | null>(null);
+  const [fileChangeBusyAction, setFileChangeBusyAction] = useState<
+    "open" | "add" | "drop" | null
+  >(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   /** When true, keep an empty selection until the user picks a profile again. */
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
@@ -235,6 +163,12 @@ export function App() {
   const [switchId, setSwitchId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [overwriteDialog, setOverwriteDialog] = useState(false);
+  const [reapplyConfirmOpen, setReapplyConfirmOpen] = useState(false);
+  const [pendingRestoreChange, setPendingRestoreChange] =
+    useState<DriftFileChange | null>(null);
+  const [diffFileChange, setDiffFileChange] = useState<DriftFileChange | null>(
+    null,
+  );
   const [createProfileOpen, setCreateProfileOpen] = useState(false);
   const [createProfileInitialSource, setCreateProfileInitialSource] =
     useState<ProfileCreateSource>("compose");
@@ -258,6 +192,7 @@ export function App() {
   const [refreshPhase, setRefreshPhase] = useState<"idle" | "loading" | "success">(
     "idle",
   );
+  const [libraryReloadKey, setLibraryReloadKey] = useState(0);
   const [renamingProfile, setRenamingProfile] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -384,8 +319,22 @@ export function App() {
       refreshFeedbackTimerRef.current = null;
     }
     setRefreshPhase("loading");
-    const ok = await refreshStatus("full");
-    if (!ok) {
+    let rescanOk = true;
+    if (baseUrl && token) {
+      try {
+        await rescanResourceTrackedDirectories(baseUrl, token);
+        setLibraryReloadKey((value) => value + 1);
+      } catch (error) {
+        rescanOk = false;
+        setStatusError(
+          error instanceof Error
+            ? error.message
+            : "Could not rescan tracked directories",
+        );
+      }
+    }
+    const statusOk = await refreshStatus("full");
+    if (!rescanOk || !statusOk) {
       setRefreshPhase("idle");
       return;
     }
@@ -394,7 +343,7 @@ export function App() {
       setRefreshPhase("idle");
       refreshFeedbackTimerRef.current = null;
     }, 1200);
-  }, [refreshPhase, refreshStatus]);
+  }, [baseUrl, refreshPhase, refreshStatus, token]);
 
   useEffect(() => {
     return () => {
@@ -492,6 +441,10 @@ export function App() {
   }, []);
 
   const retryConnection = useCallback(async () => {
+    if (retryBusy) {
+      return;
+    }
+    setRetryBusy(true);
     setConnectionError(null);
     setConnected(false);
     try {
@@ -504,7 +457,51 @@ export function App() {
       setConnectionError(
         error instanceof Error ? error.message : "Sidecar connection failed",
       );
+    } finally {
+      setRetryBusy(false);
     }
+  }, [retryBusy]);
+
+  // Sidecar watcher rebuilds ht-agent in place; reconnect so previews use new code.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    void listen<number>("sidecar-reloaded", () => {
+      if (cancelled) {
+        return;
+      }
+      void (async () => {
+        try {
+          const connection = await connectAgent();
+          if (cancelled) {
+            return;
+          }
+          setBaseUrl(connection.baseUrl);
+          setToken(connection.token);
+          setConnected(true);
+          setConnectionError(null);
+        } catch (error) {
+          if (!cancelled) {
+            setConnectionError(
+              error instanceof Error
+                ? error.message
+                : "Sidecar reconnect after reload failed",
+            );
+            setConnected(false);
+          }
+        }
+      })();
+    }).then((fn) => {
+      if (cancelled) {
+        fn();
+        return;
+      }
+      unlisten = fn;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -581,6 +578,9 @@ export function App() {
         return;
       }
       const key = `${resource.type}:${resource.name}`;
+      if (addingResourceKey) {
+        return;
+      }
       setAddingResourceKey(key);
       setAddResourceError(null);
       try {
@@ -609,6 +609,7 @@ export function App() {
     },
     [
       activeProfile,
+      addingResourceKey,
       baseUrl,
       projectPath,
       refreshStatus,
@@ -619,7 +620,7 @@ export function App() {
   );
 
   const handleCommitManagedChanges = useCallback(async () => {
-    if (!baseUrl || !selectedProfile || !applyPreview) {
+    if (!baseUrl || !selectedProfile || !applyPreview || committingManagedChanges) {
       return;
     }
     const paths = (applyPreview.files?.changes ?? [])
@@ -660,6 +661,7 @@ export function App() {
     activeProfile,
     applyPreview,
     baseUrl,
+    committingManagedChanges,
     projectPath,
     refreshStatus,
     selectedProfile,
@@ -715,10 +717,12 @@ export function App() {
   );
 
   const handleOpenFileChange = useCallback(
-    async (_change: DriftFileChange, absolutePath: string) => {
-      if (!baseUrl || !token) {
+    async (change: DriftFileChange, absolutePath: string) => {
+      if (!baseUrl || !token || fileChangeBusyPath) {
         return;
       }
+      setFileChangeBusyPath(change.path);
+      setFileChangeBusyAction("open");
       setResourceActionError(null);
       try {
         await openResourcePath(baseUrl, token, { path: absolutePath });
@@ -726,18 +730,26 @@ export function App() {
         setResourceActionError(
           error instanceof Error ? error.message : "Could not open file in editor",
         );
+      } finally {
+        setFileChangeBusyPath(null);
+        setFileChangeBusyAction(null);
       }
     },
-    [baseUrl, token],
+    [baseUrl, fileChangeBusyPath, token],
   );
+
+  const handleDiffFileChange = useCallback((change: DriftFileChange) => {
+    setDiffFileChange(change);
+  }, []);
 
   const handleAddFileChange = useCallback(
     async (change: DriftFileChange) => {
       const profileName = selectedProfile ?? activeProfile;
-      if (!baseUrl || !profileName) {
+      if (!baseUrl || !profileName || fileChangeBusyPath) {
         return;
       }
       setFileChangeBusyPath(change.path);
+      setFileChangeBusyAction("add");
       setResourceActionError(null);
       try {
         const scopeOpts = {
@@ -767,11 +779,13 @@ export function App() {
         );
       } finally {
         setFileChangeBusyPath(null);
+        setFileChangeBusyAction(null);
       }
     },
     [
       activeProfile,
       baseUrl,
+      fileChangeBusyPath,
       projectPath,
       refreshProfilePreview,
       selectedProfile,
@@ -780,13 +794,14 @@ export function App() {
     ],
   );
 
-  const handleDropFileChange = useCallback(
+  const executeDropFileChange = useCallback(
     async (change: DriftFileChange) => {
       const profileName = selectedProfile ?? activeProfile;
-      if (!baseUrl || !profileName) {
+      if (!baseUrl || !profileName || fileChangeBusyPath) {
         return;
       }
       setFileChangeBusyPath(change.path);
+      setFileChangeBusyAction("drop");
       setResourceActionError(null);
       try {
         const scopeOpts = {
@@ -815,11 +830,13 @@ export function App() {
         );
       } finally {
         setFileChangeBusyPath(null);
+        setFileChangeBusyAction(null);
       }
     },
     [
       activeProfile,
       baseUrl,
+      fileChangeBusyPath,
       projectPath,
       refreshProfilePreview,
       selectedProfile,
@@ -828,10 +845,22 @@ export function App() {
     ],
   );
 
+  const handleDropFileChange = useCallback(
+    async (change: DriftFileChange) => {
+      // Restoring a modified file overwrites live content and cannot be undone.
+      if (change.type === "modified") {
+        setPendingRestoreChange(change);
+        return;
+      }
+      await executeDropFileChange(change);
+    },
+    [executeDropFileChange],
+  );
+
   const handleRemoveResourceFromProfile = useCallback(
     async (resource: ProfileContentsResource, layerId?: string) => {
       const profileName = selectedProfile ?? activeProfile;
-      if (!baseUrl || !profileName) {
+      if (!baseUrl || !profileName || removingResourceKey) {
         return;
       }
       const key = `${resource.type}:${resource.name}`;
@@ -858,13 +887,14 @@ export function App() {
       activeProfile,
       baseUrl,
       refreshProfilePreview,
+      removingResourceKey,
       selectedProfile,
       token,
     ],
   );
 
   const handleAddAllResources = useCallback(async () => {
-    if (!baseUrl || !activeProfile) {
+    if (!baseUrl || !activeProfile || addingAllResources) {
       return;
     }
     setAddingAllResources(true);
@@ -896,6 +926,7 @@ export function App() {
     }
   }, [
     activeProfile,
+    addingAllResources,
     baseUrl,
     projectPath,
     refreshStatus,
@@ -1001,6 +1032,21 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [connected, switching, refreshStatus]);
 
+  const selectedProfileSummary = useMemo(
+    () => profiles.find((profile) => profile.name === selectedProfile) ?? null,
+    [profiles, selectedProfile],
+  );
+  const selectedIsActive = Boolean(
+    selectedProfile && selectedProfile === activeProfile,
+  );
+  const showReapply = shouldShowReapply({
+    selectedProfile,
+    activeProfile,
+    applied: Boolean(status?.applied),
+    view,
+    globalDriftStatus: status?.drift_summary.global.status ?? "clean",
+    projectDriftStatus: status?.drift_summary.project?.status,
+  });
   const applyHelper = useMemo(() => {
     if (switching) {
       return null;
@@ -1008,49 +1054,49 @@ export function App() {
     if (!selectedProfile) {
       return "Select a profile to apply";
     }
+    if (showReapply) {
+      return `Drift on ${formatView(view)} · re-apply to restore saved state`;
+    }
     if (selectedProfile === activeProfile && status?.applied) {
       return `Already applied to ${formatView(view)}`;
     }
-    return `Will apply: ${selectedProfile} · ${formatView(view)}`;
-  }, [activeProfile, selectedProfile, status?.applied, switching, view]);
-
-  const statusIssueParts = useMemo(() => {
-    const parts: string[] = [];
-    if (activeProfile && view === "home" && status) {
-      const globalStatus = status.drift_summary.global.status;
-      // Pending apply is rendered as a CTA, not plain text.
-      if (globalStatus !== "pending") {
-        const globalIssue = globalDriftIssueLabel(globalStatus);
-        if (globalIssue) {
-          parts.push(globalIssue);
-        }
-      }
+    return null;
+  }, [
+    activeProfile,
+    selectedProfile,
+    showReapply,
+    status?.applied,
+    switching,
+    view,
+  ]);
+  const applyButtonTitle = useMemo(() => {
+    if (showReapply && activeProfile) {
+      return [
+        `Re-apply ${activeProfile} to ${formatView(view)}.`,
+        "Overwrites modified harness files, recreates missing ones, and removes extras so disk matches the saved profile.",
+        "Hand edits in those paths cannot be restored.",
+      ].join(" ");
     }
-    if (view === "home" && status?.drift_summary.project?.status === "drifted") {
-      parts.push("Project files have drifted");
+    if (!selectedProfile) {
+      return "Select a profile to apply";
     }
-    return parts;
-  }, [activeProfile, status, view]);
-
-  const liveScopeLabel =
-    view === "home"
-      ? "Global live state"
-      : projectPath
-        ? `Project live state · ${projectPath}`
-        : "Project live state";
-
-  const projectStatusLine = useMemo(() => {
-    if (view !== "project") {
-      return null;
+    if (selectedProfile === activeProfile && status?.applied) {
+      return `Already applied to ${formatView(view)}. Choose another profile, or wait until drift appears to re-apply.`;
     }
-    return projectDriftLabel(status?.drift_summary.project);
-  }, [status?.drift_summary.project, view]);
-
-  const panelTooltip = useMemo(
-    () =>
-      panelReasonTooltip(status?.panel.status, status?.panel.reasons),
-    [status?.panel.reasons, status?.panel.status],
-  );
+    return `Apply ${selectedProfile} to ${formatView(view)}. Writes the profile's saved harness files onto disk for this scope.`;
+  }, [
+    activeProfile,
+    selectedProfile,
+    showReapply,
+    status?.applied,
+    view,
+  ]);
+  const selectedProfileMetaTags = useMemo(() => {
+    if (!selectedProfileSummary) {
+      return [];
+    }
+    return selectedProfileSummary.tags.filter((tag) => tag !== "profile");
+  }, [selectedProfileSummary]);
 
   const runSwitch = useCallback(
     async (
@@ -1155,6 +1201,7 @@ export function App() {
       return;
     }
     setStashBusy(true);
+    setStashAction("stash");
     setSwitchError(null);
     try {
       const result = await stashActiveProfile(baseUrl, token);
@@ -1178,6 +1225,7 @@ export function App() {
       );
     } finally {
       setStashBusy(false);
+      setStashAction(null);
     }
   }, [
     activeProfile,
@@ -1197,6 +1245,7 @@ export function App() {
       return;
     }
     setStashBusy(true);
+    setStashAction("unstash");
     setSwitchError(null);
     try {
       const result = await popProfileStash(baseUrl, token);
@@ -1218,6 +1267,7 @@ export function App() {
       );
     } finally {
       setStashBusy(false);
+      setStashAction(null);
     }
   }, [
     baseUrl,
@@ -1309,8 +1359,23 @@ export function App() {
     })();
   };
 
-  const onSwitchClick = () => {
+  const onApplyClick = () => {
+    if (showReapply) {
+      if (!activeProfile) {
+        return;
+      }
+      setReapplyConfirmOpen(true);
+      return;
+    }
     void runSwitch(false);
+  };
+
+  const onConfirmReapply = () => {
+    if (!activeProfile) {
+      return;
+    }
+    setReapplyConfirmOpen(false);
+    void runSwitch(false, activeProfile);
   };
 
   const openCreateProfile = (
@@ -1330,25 +1395,25 @@ export function App() {
     void runSwitch(false, activeProfile);
   };
 
-  const beginRenameActiveProfile = () => {
-    if (!activeProfile || !connected || switching || renameBusy) {
+  const beginRenameSelectedProfile = () => {
+    if (!selectedProfile || !connected || switching || renameBusy) {
       return;
     }
     renameIgnoreBlurRef.current = false;
-    setRenameDraft(activeProfile);
+    setRenameDraft(selectedProfile);
     setRenameError(null);
     setRenamingProfile(true);
   };
 
-  const cancelRenameActiveProfile = () => {
+  const cancelRenameSelectedProfile = () => {
     renameIgnoreBlurRef.current = true;
     setRenamingProfile(false);
     setRenameDraft("");
     setRenameError(null);
   };
 
-  const commitRenameActiveProfile = async () => {
-    if (!baseUrl || !activeProfile || renameBusy || renameIgnoreBlurRef.current) {
+  const commitRenameSelectedProfile = async () => {
+    if (!baseUrl || !selectedProfile || renameBusy || renameIgnoreBlurRef.current) {
       return;
     }
     const nextName = renameDraft.trim();
@@ -1357,17 +1422,15 @@ export function App() {
       window.setTimeout(() => renameInputRef.current?.focus(), 0);
       return;
     }
-    if (nextName === activeProfile) {
-      cancelRenameActiveProfile();
+    if (nextName === selectedProfile) {
+      cancelRenameSelectedProfile();
       return;
     }
     setRenameBusy(true);
     setRenameError(null);
     try {
-      const result = await renameProfile(baseUrl, token, activeProfile, nextName);
-      if (selectedProfile === result.old_name) {
-        setSelectedProfile(result.name);
-      }
+      const result = await renameProfile(baseUrl, token, selectedProfile, nextName);
+      setSelectedProfile(result.name);
       renameIgnoreBlurRef.current = true;
       setRenamingProfile(false);
       setRenameDraft("");
@@ -1411,14 +1474,23 @@ export function App() {
     if (!renamingProfile) {
       return;
     }
-    if (!activeProfile || switching) {
-      cancelRenameActiveProfile();
+    if (!selectedProfile || switching) {
+      cancelRenameSelectedProfile();
     }
-  }, [activeProfile, renamingProfile, switching]);
+  }, [selectedProfile, renamingProfile, switching]);
 
   const onConfirmOverwrite = () => {
     setOverwriteDialog(false);
-    void runSwitch(true);
+    void runSwitch(true, showReapply ? activeProfile ?? undefined : undefined);
+  };
+
+  const onConfirmRestoreFile = () => {
+    const change = pendingRestoreChange;
+    setPendingRestoreChange(null);
+    if (!change) {
+      return;
+    }
+    void executeDropFileChange(change);
   };
 
   const onCancelSwitch = async () => {
@@ -1434,13 +1506,15 @@ export function App() {
     }
   };
 
-  const switchDisabled =
+  const applyDisabled =
     !connected
     || switching
     || bootstrapBusy
-    || !selectedProfile
-    || (selectedProfile === activeProfile && Boolean(status?.applied))
-    || (view === "project" && (!projectPath || !projectReady));
+    || (view === "project" && (!projectPath || !projectReady))
+    || (showReapply
+      ? !activeProfile
+      : !selectedProfile
+        || (selectedProfile === activeProfile && Boolean(status?.applied)));
 
   return (
     <div className="app-shell">
@@ -1537,14 +1611,14 @@ export function App() {
                 ? "Refreshed"
                 : refreshPhase === "loading"
                   ? "Refreshing"
-                  : "Refresh"
+                  : "Refresh live status and rescan tracked directories"
             }
             title={
-              lastUpdated
-                ? `Updated ${lastUpdated}`
-                : refreshPhase === "loading"
-                  ? "Refreshing…"
-                  : "Refresh"
+              refreshPhase === "loading"
+                ? "Refreshing live status and rescanning tracked directories…"
+                : lastUpdated
+                  ? `Refresh live status and rescan tracked directories. Last updated: ${lastUpdated}`
+                  : "Refresh live status and rescan tracked directories"
             }
           >
             {refreshPhase === "success" ? (
@@ -1591,8 +1665,15 @@ export function App() {
             {connectionError
               ?? "Waiting for sidecar health check on 127.0.0.1:7474…"}
           </div>
-          <button className="btn" type="button" onClick={() => void retryConnection()}>
-            Retry
+          <button
+            className={["btn", retryBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
+            type="button"
+            onClick={() => void retryConnection()}
+            disabled={retryBusy}
+            aria-busy={retryBusy}
+          >
+            {retryBusy ? <ButtonSpinner size={16} /> : null}
+            {retryBusy ? "Retrying…" : "Retry"}
           </button>
         </div>
       )}
@@ -1604,7 +1685,13 @@ export function App() {
             <div className="profiles-brand-actions">
               <div className="profiles-rail-toolbar">
                 <button
-                  className="icon-action rail-icon-action"
+                  className={[
+                    "icon-action",
+                    "rail-icon-action",
+                    stashAction === "stash" ? "is-busy" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   type="button"
                   onClick={() => void onStashProfile()}
                   disabled={
@@ -1614,6 +1701,7 @@ export function App() {
                     || stashBusy
                     || !canStashProfile
                   }
+                  aria-busy={stashAction === "stash"}
                   aria-label={
                     canStashProfile
                       ? `Stash not-staged resources for ${activeProfile}`
@@ -1625,10 +1713,20 @@ export function App() {
                       : stashDisabledReason ?? "Stash not-staged resources"
                   }
                 >
-                  <Archive size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                  {stashAction === "stash" ? (
+                    <ButtonSpinner size={RAIL_ICON_SIZE} />
+                  ) : (
+                    <Archive size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                  )}
                 </button>
                 <button
-                  className="icon-action rail-icon-action"
+                  className={[
+                    "icon-action",
+                    "rail-icon-action",
+                    stashAction === "unstash" ? "is-busy" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   type="button"
                   onClick={() => void onUnstashProfile()}
                   onContextMenu={(event) => {
@@ -1645,6 +1743,7 @@ export function App() {
                     || stashBusy
                     || !canUnstashProfile
                   }
+                  aria-busy={stashAction === "unstash"}
                   aria-label={
                     canUnstashProfile && topStashEntry
                       ? `Restore stashed untracked resources from ${topStashEntry.profile_name}`
@@ -1656,7 +1755,11 @@ export function App() {
                       : "No stashed untracked resources to restore"
                   }
                 >
-                  <ArchiveRestore size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                  {stashAction === "unstash" ? (
+                    <ButtonSpinner size={RAIL_ICON_SIZE} />
+                  ) : (
+                    <ArchiveRestore size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                  )}
                 </button>
                 <button
                   className="icon-action rail-icon-action"
@@ -1800,9 +1903,16 @@ export function App() {
                   {showAddAll ? (
                     <button
                       type="button"
-                      className="icon-action profile-item-action"
+                      className={[
+                        "icon-action",
+                        "profile-item-action",
+                        addingAllResources ? "is-busy" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       aria-label={`Commit ${activeProfileUntrackedCount} not-staged resources into profile`}
                       title={`Commit all ${activeProfileUntrackedCount} not-staged resources into profile`}
+                      aria-busy={addingAllResources}
                       disabled={
                         !connected
                         || !token
@@ -1814,7 +1924,11 @@ export function App() {
                         void handleAddAllResources();
                       }}
                     >
-                      <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                      {addingAllResources ? (
+                        <ButtonSpinner size={RAIL_ICON_SIZE} />
+                      ) : (
+                        <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                      )}
                     </button>
                   ) : null}
                 </div>
@@ -1824,12 +1938,24 @@ export function App() {
           <div className="rail-controls">
             {applyHelper ? <p className="muted apply-helper">{applyHelper}</p> : null}
             <button
-              className="btn primary"
+              className={["btn", "primary", switching ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
               type="button"
-              onClick={onSwitchClick}
-              disabled={switchDisabled}
+              onClick={onApplyClick}
+              disabled={applyDisabled}
+              aria-busy={switching}
+              title={applyButtonTitle}
+              aria-label={
+                showReapply
+                  ? `Re-apply ${activeProfile ?? "profile"} to ${formatView(view)}`
+                  : selectedProfile
+                    ? `Apply ${selectedProfile} to ${formatView(view)}`
+                    : "Apply profile"
+              }
             >
-              {switching ? "Applying…" : "Apply"}
+              {switching ? <ButtonSpinner size={16} /> : null}
+              {switching ? "Applying…" : showReapply ? "Re-apply" : "Apply"}
             </button>
           </div>
         </nav>
@@ -1843,6 +1969,7 @@ export function App() {
             profileContentsLoading={
               Boolean(selectedProfile) && applyPreviewLoading
             }
+            reloadKey={libraryReloadKey}
             disabled={switching}
           />
         ) : (
@@ -1862,16 +1989,9 @@ export function App() {
 
             <div className="live-toolbar">
               <div>
-                <div className="live-scope-label">{liveScopeLabel}</div>
                 <div className="status-line" aria-live="polite">
-                  {activeProfile ? (
+                  {selectedProfile ? (
                     <>
-                      <span
-                        className={`status-dot ${status?.panel.status ?? "yellow"}`}
-                        title={panelTooltip}
-                        aria-label={panelTooltip}
-                        role="img"
-                      />
                       {renamingProfile ? (
                         <input
                           ref={renameInputRef}
@@ -1881,67 +2001,83 @@ export function App() {
                           onKeyDown={(event) => {
                             if (event.key === "Enter") {
                               event.preventDefault();
-                              void commitRenameActiveProfile();
+                              void commitRenameSelectedProfile();
                             } else if (event.key === "Escape") {
                               event.preventDefault();
-                              cancelRenameActiveProfile();
+                              cancelRenameSelectedProfile();
                             }
                           }}
                           onBlur={() => {
                             if (!renameBusy) {
-                              void commitRenameActiveProfile();
+                              void commitRenameSelectedProfile();
                             }
                           }}
                           disabled={renameBusy}
-                          aria-label="Rename active profile"
+                          aria-label="Rename selected profile"
                         />
                       ) : (
                         <button
                           type="button"
                           className="status-title"
-                          onDoubleClick={beginRenameActiveProfile}
+                          onDoubleClick={beginRenameSelectedProfile}
                           disabled={!connected || switching}
                           title="Double-click to rename"
                         >
-                          {activeProfile}
+                          {selectedProfile}
                         </button>
                       )}
+                      {selectedIsActive ? (
+                        <span className="badge">active</span>
+                      ) : null}
+                      {selectedProfileSummary?.version ? (
+                        <span className="badge badge-meta">
+                          v{selectedProfileSummary.version}
+                        </span>
+                      ) : null}
+                      {selectedProfileMetaTags.map((tag) => (
+                        <span key={tag} className="badge badge-meta">
+                          {tag}
+                        </span>
+                      ))}
                     </>
                   ) : (
-                    "No active profile"
+                    "No profile selected"
                   )}
                 </div>
+                {selectedProfile ? (
+                  <div
+                    className="muted status-subline status-description"
+                    title={selectedProfileSummary?.description ?? undefined}
+                  >
+                    {selectedProfileSummary?.description?.trim() || "\u00A0"}
+                  </div>
+                ) : null}
                 {renameError ? (
                   <div className="muted status-subline status-rename-error">
                     {renameError}
                   </div>
                 ) : null}
-                {projectStatusLine ? (
-                  <div className="muted status-subline">{projectStatusLine}</div>
-                ) : null}
-                {homeProfilePending || statusIssueParts.length > 0 ? (
+                {homeProfilePending && selectedIsActive && activeProfile ? (
                   <div className="muted status-subline">
-                    {homeProfilePending && activeProfile ? (
-                      <button
-                        type="button"
-                        className="status-cta"
-                        onClick={onPendingHomeApply}
-                        disabled={
-                          !connected || switching || bootstrapBusy
-                        }
-                      >
-                        Apply {activeProfile} to global
-                      </button>
-                    ) : null}
-                    {homeProfilePending && statusIssueParts.length > 0 ? (
-                      <span className="status-sep"> · </span>
-                    ) : null}
-                    {statusIssueParts.map((part, index) => (
-                      <span key={part}>
-                        {index > 0 ? <span className="status-sep"> · </span> : null}
-                        {part}
-                      </span>
-                    ))}
+                    <button
+                      type="button"
+                      className={[
+                        "status-cta",
+                        switching ? "is-busy" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={onPendingHomeApply}
+                      disabled={
+                        !connected || switching || bootstrapBusy
+                      }
+                      aria-busy={switching}
+                    >
+                      {switching ? <ButtonSpinner size={14} /> : null}
+                      {switching
+                        ? "Applying…"
+                        : `Apply ${activeProfile} to global`}
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -2065,9 +2201,15 @@ export function App() {
                 removingResourceKey={removingResourceKey}
                 filesRootPath={applyPreview?.files?.root_path ?? null}
                 fileChangeBusyPath={fileChangeBusyPath}
+                fileChangeBusyAction={fileChangeBusyAction}
                 onOpenFileChange={
                   connected && token && !switching
                     ? handleOpenFileChange
+                    : undefined
+                }
+                onDiffFileChange={
+                  connected && token && !switching
+                    ? handleDiffFileChange
                     : undefined
                 }
                 onAddFileChange={
@@ -2097,7 +2239,7 @@ export function App() {
             {switchError && !switching && (
               <div className="banner error">
                 <div>{switchError}</div>
-                <button className="btn" type="button" onClick={onSwitchClick}>
+                <button className="btn" type="button" onClick={onApplyClick}>
                   Retry
                 </button>
               </div>
@@ -2152,33 +2294,70 @@ export function App() {
         }}
       />
 
-      {overwriteDialog && (
-        <div className="dialog-backdrop" role="presentation">
-          <div className="dialog" role="dialog" aria-modal="true">
-            <h2>Overwrite owned profile paths?</h2>
-            <p className="muted">
-              HarnessTap detected hand-edits inside paths owned by the last apply
-              snapshot. Continuing will overwrite those owned keys.
-            </p>
-            <label className="muted">
-              <input
-                type="checkbox"
-                checked={skipOverwritePrompt}
-                onChange={(event) => setSkipOverwritePrompt(event.target.checked)}
-              />{" "}
-              Don&apos;t ask again this session
-            </label>
-            <div className="dialog-actions">
-              <button className="btn" type="button" onClick={() => setOverwriteDialog(false)}>
-                Cancel
-              </button>
-              <button className="btn primary" type="button" onClick={onConfirmOverwrite}>
-                Switch anyway
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={reapplyConfirmOpen}
+        title="Re-apply profile?"
+        description={
+          <p className="muted">
+            Re-applying <strong>{activeProfile}</strong> will overwrite live
+            harness files on {formatView(view)} with the saved profile state.
+            Hand edits in those paths cannot be restored.
+          </p>
+        }
+        confirmLabel="Re-apply"
+        onConfirm={onConfirmReapply}
+        onCancel={() => setReapplyConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={pendingRestoreChange !== null}
+        title="Restore profile version?"
+        description={
+          <p className="muted">
+            This will overwrite{" "}
+            <span className="mono">{pendingRestoreChange?.path}</span> with the
+            profile&apos;s expected content. Live edits to this file cannot be
+            restored.
+          </p>
+        }
+        confirmLabel="Restore"
+        onConfirm={onConfirmRestoreFile}
+        onCancel={() => setPendingRestoreChange(null)}
+      />
+
+      <FileDiffModal
+        open={diffFileChange !== null}
+        path={diffFileChange?.path ?? null}
+        profileName={selectedProfile ?? activeProfile}
+        scope={view}
+        projectPath={projectPath}
+        baseUrl={baseUrl}
+        token={token}
+        onClose={() => setDiffFileChange(null)}
+      />
+
+      <ConfirmDialog
+        open={overwriteDialog}
+        title="Overwrite owned profile paths?"
+        description={
+          <p className="muted">
+            HarnessTap detected hand-edits inside paths owned by the last apply
+            snapshot. Continuing will overwrite those owned keys.
+          </p>
+        }
+        confirmLabel={showReapply ? "Re-apply anyway" : "Switch anyway"}
+        onConfirm={onConfirmOverwrite}
+        onCancel={() => setOverwriteDialog(false)}
+      >
+        <label className="muted">
+          <input
+            type="checkbox"
+            checked={skipOverwritePrompt}
+            onChange={(event) => setSkipOverwritePrompt(event.target.checked)}
+          />{" "}
+          Don&apos;t ask again this session
+        </label>
+      </ConfirmDialog>
     </div>
   );
 }

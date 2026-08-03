@@ -462,7 +462,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
     }
 
     // MCP
-    const mcpServers = resources.filter((r) => r.type === "mcp_server");
+    const mcpServers = this.mcpServersForTarget(resources, mcpPath);
     if (mcpPath && mcpServers.length > 0) {
       const servers: Record<string, GenericSerializedMcpEntry> = {};
       for (const r of mcpServers) {

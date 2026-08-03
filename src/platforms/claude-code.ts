@@ -371,7 +371,10 @@ export class ClaudeCodeSerializer extends BaseSerializer {
     }
 
     // MCP servers → .mcp.json
-    const mcpServers = byType.get("mcp_server") ?? [];
+    const mcpServers = this.mcpServersForTarget(
+      byType.get("mcp_server") ?? [],
+      mcpPath,
+    );
     if (mcpServers.length > 0 && mcpPath) {
       const mcpConfig: Record<string, Record<string, unknown>> = {};
       for (const r of mcpServers) {

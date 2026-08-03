@@ -15,6 +15,7 @@ import {
 } from "./global-profile-status-panel.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
+import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import {
   applyProfileLayer,
   clearGlobalProfileApply,
@@ -130,7 +131,7 @@ function compareExpectedFiles(
       changes.push({ path: file.path, type: "deleted" });
       continue;
     }
-    if (current !== file.content) {
+    if (!fileContentsEquivalentForDrift(file.path, current, file.content)) {
       changes.push({ path: file.path, type: "modified" });
     }
   }

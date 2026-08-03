@@ -18,6 +18,7 @@ import {
   Webhook,
   Wrench,
 } from "lucide-react";
+import { ButtonSpinner } from "./ButtonSpinner";
 import {
   aggregateInstallGaps,
   diffProfileContents,
@@ -217,57 +218,48 @@ function ProfileResourceActions({
       {canRemove && onRemoveFromProfile ? (
         <button
           type="button"
-          className="icon-action profile-resource-remove-btn"
+          className={[
+            "icon-action",
+            "profile-resource-remove-btn",
+            removing ? "is-busy" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-label={`Remove ${resource.name} from ${profileName}`}
           title="Remove from profile"
           disabled={removing}
+          aria-busy={removing}
           onClick={() => onRemoveFromProfile(resource, layerId)}
         >
-          <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          {removing ? (
+            <ButtonSpinner size={ICON_SIZE} />
+          ) : (
+            <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          )}
         </button>
       ) : null}
     </span>
   );
 }
 
-type ProfileStackEmptyVariant = "no-overlap" | "empty";
-
 type ProfileStackEmptyStateProps = {
-  variant: ProfileStackEmptyVariant;
   onBrowseResources: () => void;
 };
 
-const PROFILE_STACK_EMPTY_COPY: Record<
-  ProfileStackEmptyVariant,
-  { title: string; body: string }
-> = {
-  "no-overlap": {
-    title: "Nothing shared with active",
-    body:
-      "This profile’s stack is entirely new — see Target preview for what would be added.",
-  },
-  empty: {
-    title: "No resources yet",
-    body: "Add layers or resources from your library to build this profile’s stack.",
-  },
-};
-
 function ProfileStackEmptyState({
-  variant,
   onBrowseResources,
 }: ProfileStackEmptyStateProps) {
-  const copy = PROFILE_STACK_EMPTY_COPY[variant];
   return (
     <div
       className="empty-state profile-stack-empty"
       role="status"
-      aria-label={copy.title}
+      aria-label="No resources yet"
     >
       <div className="profile-stack-empty-heading">
         <Layers size={ICON_SIZE} className="profile-stack-empty-icon" aria-hidden />
-        <h2>{copy.title}</h2>
+        <h2>No resources yet</h2>
       </div>
-      <p className="muted">{copy.body}</p>
+      <p className="muted">Add layers or resources from your library.</p>
       <button
         className="btn primary"
         type="button"
@@ -451,13 +443,24 @@ function UntrackedResourceRow({
         />
         <button
           type="button"
-          className="icon-action untracked-add-btn"
+          className={[
+            "icon-action",
+            "untracked-add-btn",
+            adding ? "is-busy" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-label={`Commit ${resource.name} into profile`}
           title={`Commit ${resource.name} into profile`}
           disabled={adding}
+          aria-busy={adding}
           onClick={onAdd}
         >
-          <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          {adding ? (
+            <ButtonSpinner size={ICON_SIZE} />
+          ) : (
+            <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          )}
         </button>
       </span>
     </div>
@@ -660,55 +663,104 @@ function FileChangeRowActions({
   change,
   row,
   busy,
+  busyAction,
   onOpenFileChange,
+  onDiffFileChange,
   onAddFileChange,
   onDropFileChange,
 }: {
   change: DriftFileChange;
   row: ReturnType<typeof fileChangeRowActions>;
   busy: boolean;
+  busyAction: "open" | "add" | "drop" | null;
   onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onDiffFileChange?: (change: DriftFileChange) => void;
   onAddFileChange?: (change: DriftFileChange) => Promise<void>;
   onDropFileChange?: (change: DriftFileChange) => Promise<void>;
 }) {
   const absolutePath = row.absolutePath;
   const canOpen = row.canOpen && Boolean(onOpenFileChange && absolutePath);
+  const canDiff = row.canDiff && Boolean(onDiffFileChange);
   const canAdd = row.canAdd && Boolean(onAddFileChange);
   const canDrop = row.canDrop && Boolean(onDropFileChange);
-  if (!canOpen && !canAdd && !canDrop) {
+  if (!canOpen && !canDiff && !canAdd && !canDrop) {
     return null;
   }
+
+  const openBusy = busy && busyAction === "open";
+  const addBusy = busy && busyAction === "add";
+  const dropBusy = busy && busyAction === "drop";
 
   return (
     <span className="diff-row-actions">
       {canOpen && onOpenFileChange && absolutePath ? (
         <button
           type="button"
-          className="icon-action profile-resource-open-btn"
+          className={[
+            "icon-action",
+            "profile-resource-open-btn",
+            openBusy ? "is-busy" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-label={`Open ${change.path} in editor`}
           title="Open in default editor"
           disabled={busy}
+          aria-busy={openBusy}
           onClick={() => void onOpenFileChange(change, absolutePath)}
         >
-          <ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          {openBusy ? (
+            <ButtonSpinner size={ICON_SIZE} />
+          ) : (
+            <ExternalLink size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          )}
+        </button>
+      ) : null}
+      {canDiff && onDiffFileChange ? (
+        <button
+          type="button"
+          className="icon-action file-change-diff-btn"
+          aria-label={`Show diff for ${change.path}`}
+          title="Show diff vs snapshot"
+          disabled={busy}
+          onClick={() => onDiffFileChange(change)}
+        >
+          <Diff size={ICON_SIZE} strokeWidth={2} aria-hidden />
         </button>
       ) : null}
       {canAdd && onAddFileChange ? (
         <button
           type="button"
-          className="icon-action untracked-add-btn"
+          className={[
+            "icon-action",
+            "untracked-add-btn",
+            addBusy ? "is-busy" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-label={`Commit ${change.path} into profile`}
-          title={`Commit ${change.path} into profile`}
+          title="Commit live changes into profile"
           disabled={busy}
+          aria-busy={addBusy}
           onClick={() => void onAddFileChange(change)}
         >
-          <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          {addBusy ? (
+            <ButtonSpinner size={ICON_SIZE} />
+          ) : (
+            <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          )}
         </button>
       ) : null}
       {canDrop && onDropFileChange ? (
         <button
           type="button"
-          className="icon-action profile-resource-remove-btn"
+          className={[
+            "icon-action",
+            "profile-resource-remove-btn",
+            dropBusy ? "is-busy" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-label={
             row.action === "update"
               ? `Restore profile version of ${change.path}`
@@ -716,9 +768,14 @@ function FileChangeRowActions({
           }
           title={row.action === "update" ? "Restore profile version" : "Remove from profile"}
           disabled={busy}
+          aria-busy={dropBusy}
           onClick={() => void onDropFileChange(change)}
         >
-          <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          {dropBusy ? (
+            <ButtonSpinner size={ICON_SIZE} />
+          ) : (
+            <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+          )}
         </button>
       ) : null}
     </span>
@@ -730,7 +787,9 @@ function FileChangeRows({
   filesRootPath,
   profileResourceKeys,
   fileChangeBusyPath = null,
+  fileChangeBusyAction = null,
   onOpenFileChange,
+  onDiffFileChange,
   onAddFileChange,
   onDropFileChange,
 }: {
@@ -738,7 +797,9 @@ function FileChangeRows({
   filesRootPath?: string | null;
   profileResourceKeys: Set<string>;
   fileChangeBusyPath?: string | null;
+  fileChangeBusyAction?: "open" | "add" | "drop" | null;
   onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onDiffFileChange?: (change: DriftFileChange) => void;
   onAddFileChange?: (change: DriftFileChange) => Promise<void>;
   onDropFileChange?: (change: DriftFileChange) => Promise<void>;
 }) {
@@ -812,7 +873,9 @@ function FileChangeRows({
               change={change}
               row={row}
               busy={busy}
+              busyAction={busy ? fileChangeBusyAction : null}
               onOpenFileChange={onOpenFileChange}
+              onDiffFileChange={onDiffFileChange}
               onAddFileChange={onAddFileChange}
               onDropFileChange={onDropFileChange}
             />
@@ -874,9 +937,11 @@ export interface LiveStatePanelProps {
   ) => Promise<void>;
   removingResourceKey?: string | null;
   onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
+  onDiffFileChange?: (change: DriftFileChange) => void;
   onAddFileChange?: (change: DriftFileChange) => Promise<void>;
   onDropFileChange?: (change: DriftFileChange) => Promise<void>;
   fileChangeBusyPath?: string | null;
+  fileChangeBusyAction?: "open" | "add" | "drop" | null;
   filesRootPath?: string | null;
 }
 
@@ -905,9 +970,11 @@ export function LiveStatePanel({
   onRemoveResourceFromProfile,
   removingResourceKey = null,
   onOpenFileChange,
+  onDiffFileChange,
   onAddFileChange,
   onDropFileChange,
   fileChangeBusyPath = null,
+  fileChangeBusyAction = null,
   filesRootPath = null,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
@@ -962,8 +1029,6 @@ export function LiveStatePanel({
   const hasEnabledList = enabledLayers.length > 0 || enabledPins.length > 0;
   const profileStackEmpty =
     previewMatchesSelection && (enabledItems.length === 0 || !hasEnabledList);
-  const profileStackEmptyVariant: ProfileStackEmptyVariant =
-    selectedProfile && !relativeToActive ? "no-overlap" : "empty";
 
   const profileNameForActions = selectedProfile ?? activeProfile;
 
@@ -978,6 +1043,14 @@ export function LiveStatePanel({
   const hasStackChanges = Boolean(selectedProfile)
     && !relativeToActive
     && (diff.added.length > 0 || diff.removed.length > 0);
+  const hasFileChanges = (applyPreview?.files?.changes?.length ?? 0) > 0;
+  const hasInstallGaps = view === "home" && installGaps.length > 0;
+  const targetPreviewTone =
+    previewMatchesSelection && applyPreview
+      ? hasStackChanges || hasFileChanges || hasInstallGaps
+        ? "drifted"
+        : "clean"
+      : null;
 
   const previewWarning = applyPreview?.warning ?? null;
   const showPreviewError = Boolean(selectedProfile && applyPreviewError && !applyPreview);
@@ -999,11 +1072,15 @@ export function LiveStatePanel({
             <div className="banner-actions">
               {onBootstrap ? (
                 <button
-                  className="btn"
+                  className={["btn", bootstrapBusy ? "is-busy" : ""]
+                    .filter(Boolean)
+                    .join(" ")}
                   type="button"
                   onClick={onBootstrap}
                   disabled={bootstrapBusy}
+                  aria-busy={bootstrapBusy}
                 >
+                  {bootstrapBusy ? <ButtonSpinner size={16} /> : null}
                   {bootstrapBusy ? "Bootstrapping…" : "Bootstrap"}
                 </button>
               ) : null}
@@ -1060,16 +1137,9 @@ export function LiveStatePanel({
               </p>
             ) : profileStackEmpty ? (
               onBrowseResources ? (
-                <ProfileStackEmptyState
-                  variant={profileStackEmptyVariant}
-                  onBrowseResources={onBrowseResources}
-                />
+                <ProfileStackEmptyState onBrowseResources={onBrowseResources} />
               ) : (
-                <p className="muted">
-                  {profileStackEmptyVariant === "no-overlap"
-                    ? PROFILE_STACK_EMPTY_COPY["no-overlap"].body
-                    : PROFILE_STACK_EMPTY_COPY.empty.body}
-                </p>
+                <p className="muted">Add layers or resources from your library.</p>
               )
             ) : (
               <>
@@ -1278,7 +1348,13 @@ export function LiveStatePanel({
 
         {selectedProfile ? (
           <details
-            className="contents-block"
+            className={[
+              "contents-block",
+              targetPreviewTone === "clean" ? "target-preview-clean" : "",
+              targetPreviewTone === "drifted" ? "target-preview-drifted" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             open
             aria-label="Target preview"
           >
@@ -1394,8 +1470,15 @@ export function LiveStatePanel({
                         ) ? (
                         <button
                           type="button"
-                          className="icon-action compare-title-action"
+                          className={[
+                            "icon-action",
+                            "compare-title-action",
+                            committingManagedChanges ? "is-busy" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
                           disabled={committingManagedChanges}
+                          aria-busy={committingManagedChanges}
                           aria-label="Commit live file updates into profile"
                           title="Commit live file updates into profile"
                           onClick={(event) => {
@@ -1404,7 +1487,11 @@ export function LiveStatePanel({
                             void onCommitManagedChanges();
                           }}
                         >
-                          <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                          {committingManagedChanges ? (
+                            <ButtonSpinner size={ICON_SIZE} />
+                          ) : (
+                            <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                          )}
                         </button>
                       ) : null}
                     </summary>
@@ -1413,7 +1500,9 @@ export function LiveStatePanel({
                       filesRootPath={filesRootPath ?? applyPreview.files?.root_path ?? null}
                       profileResourceKeys={profileResourceKeys}
                       fileChangeBusyPath={fileChangeBusyPath}
+                      fileChangeBusyAction={fileChangeBusyAction}
                       onOpenFileChange={onOpenFileChange}
+                      onDiffFileChange={onDiffFileChange}
                       onAddFileChange={onAddFileChange}
                       onDropFileChange={onDropFileChange}
                     />

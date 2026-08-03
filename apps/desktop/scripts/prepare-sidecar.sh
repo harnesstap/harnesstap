@@ -34,3 +34,8 @@ fi
 
 refresh_if_present "$ROOT/apps/desktop/src-tauri/target/debug/ht-agent"
 refresh_if_present "$ROOT/apps/desktop/src-tauri/target/release/ht-agent"
+
+# Signal the running Tauri shell to restart the sidecar (see lib.rs watcher).
+STAMP="$DEST_DIR/.sidecar-reload"
+date +%s >"$STAMP"
+echo "Wrote reload stamp: $STAMP"

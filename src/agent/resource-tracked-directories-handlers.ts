@@ -4,6 +4,7 @@ import {
   addResourceTrackedDirectory,
   listResourceTrackedDirectories,
   removeResourceTrackedDirectory,
+  rescanResourceTrackedDirectories,
   ResourceTrackedDirectoryError,
 } from "../services/resource-tracked-directories.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -30,6 +31,24 @@ export function handleResourceTrackedDirectoriesList(
   }
   ensureDbReady();
   return jsonResponse({ directories: listResourceTrackedDirectories() });
+}
+
+export async function handleResourceTrackedDirectoriesRescan(
+  request: Request,
+  token: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+  ensureDbReady();
+
+  try {
+    const result = await rescanResourceTrackedDirectories();
+    return jsonResponse(result);
+  } catch (error) {
+    return trackedDirectoryErrorResponse(error);
+  }
 }
 
 export async function handleResourceTrackedDirectoryAdd(

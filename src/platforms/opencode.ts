@@ -246,7 +246,7 @@ export class OpenCodeSerializer extends BaseSerializer {
     // Group by type
     const instructions = resources.filter((r) => r.type === "instruction");
     const skills = resources.filter((r) => r.type === "skill");
-    const mcps = resources.filter((r) => r.type === "mcp_server");
+    const mcps = this.mcpServersForTarget(resources, mcpPath);
     const agents = resources.filter((r) => r.type === "agent");
     const commands = resources.filter((r) => r.type === "command");
 

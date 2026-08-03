@@ -14,6 +14,7 @@ export function fileChangeRowActions(
   action: "add" | "update" | "remove";
   absolutePath: string | null;
   canOpen: boolean;
+  canDiff: boolean;
   canAdd: boolean;
   canDrop: boolean;
 } {
@@ -25,10 +26,14 @@ export function fileChangeRowActions(
   const canOpen = Boolean(absolutePath);
   let canAdd = false;
   let canDrop = false;
+  let canDiff = false;
   switch (mapped.action) {
     case "update":
-      canAdd = hasResource;
+      // Always allow committing live → profile snapshot for modified files
+      // (1:1 material paths and aggregate MCP configs).
+      canAdd = true;
       canDrop = true;
+      canDiff = true;
       break;
     case "remove":
       canAdd = hasResource;
@@ -43,5 +48,12 @@ export function fileChangeRowActions(
       return _never;
     }
   }
-  return { action: mapped.action, absolutePath, canOpen, canAdd, canDrop };
+  return {
+    action: mapped.action,
+    absolutePath,
+    canOpen,
+    canDiff,
+    canAdd,
+    canDrop,
+  };
 }

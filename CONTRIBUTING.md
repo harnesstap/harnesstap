@@ -37,6 +37,8 @@ Common development commands:
 | `bun run typecheck` | Run TypeScript-only validation |
 | `bun run start -- <args>` | Run the grouped CLI from source |
 | `bun run start:dist -- <args>` | Run the built CLI from `dist/` |
+| `bun run link` | Build and register global `ht` / `harnesstap` |
+| `bun run unlink` | Remove the global link |
 | `bun run lint:fix` | Apply Biome lint fixes |
 | `bun run clean` | Remove the `dist/` build output |
 | `bun run docs:vhs` | Rebuild recorded CLI VHS scenarios |
@@ -56,19 +58,18 @@ bun src/index.ts layer apply <layer-name> --project .
 ### Installing the current checkout globally
 
 If you want to exercise the built CLI exactly as an installed global command,
-build the repository and install the current checkout globally with Bun.
+build and link the current checkout:
 
 ```bash
 bun install
-bun run build
-bun link
-harnesstap status .
+bun run link
+ht status .
 ```
 
-Re-run `bun run build && bun link` after changes when you want the global
-`harnesstap` command to pick up a fresh build from your checkout. Bun installs
-global executables in `~/.bun/bin`, so make sure that directory is on your
-`PATH` if the command is still not found.
+Re-run `bun run link` after changes when you want the global `ht` /
+`harnesstap` commands to pick up a fresh build. Bun installs global executables
+in `~/.bun/bin`, so make sure that directory is on your `PATH` if the command
+is still not found. Use `bun run unlink` to remove the global link.
 
 ### Watch Mode
 

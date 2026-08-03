@@ -231,7 +231,7 @@ export class CopilotSerializer extends BaseSerializer {
     }
 
     // MCP servers
-    const mcps = resources.filter((r) => r.type === "mcp_server");
+    const mcps = this.mcpServersForTarget(resources, mcpPath);
     if (mcps.length > 0 && mcpPath) {
       const mcpServers: Record<string, CopilotSerializedMcpEntry> = {};
       for (const r of mcps) {

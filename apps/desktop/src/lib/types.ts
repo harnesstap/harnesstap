@@ -31,6 +31,12 @@ export interface LibraryResource {
   source?: string | null;
 }
 
+export interface ResourceTrackedFolderEntry {
+  path: string;
+  label: string;
+  platform_ids: string[];
+}
+
 export interface ResourceTrackedDirectoryEntry {
   path: string;
   kind: "home_default" | "custom";
@@ -38,6 +44,7 @@ export interface ResourceTrackedDirectoryEntry {
   platform_ids: string[];
   resource_count: number;
   removable: boolean;
+  folders: ResourceTrackedFolderEntry[];
 }
 
 export interface ResourceTrackedDirectoriesResult {
@@ -46,6 +53,20 @@ export interface ResourceTrackedDirectoriesResult {
 
 export interface ResourceTrackedDirectoryAddResult {
   directory: ResourceTrackedDirectoryEntry;
+  imported_count: number;
+}
+
+export interface ResourceTrackedDirectoryRescanEntry {
+  path: string;
+  kind: "home_default" | "custom";
+  imported_count: number;
+  skipped: boolean;
+  error?: string;
+}
+
+export interface ResourceTrackedDirectoriesRescanResult {
+  directories: ResourceTrackedDirectoryEntry[];
+  rescanned: ResourceTrackedDirectoryRescanEntry[];
   imported_count: number;
 }
 
@@ -327,6 +348,22 @@ export interface ProfileRestoreFileRequest {
 export interface ProfileRestoreFileResult {
   path: string;
   absolute_path: string;
+}
+
+export interface ProfileFileDiffRequest {
+  scope: ViewScope;
+  projectPath?: string;
+  harness?: string;
+  path: string;
+}
+
+export interface ProfileFileDiffResult {
+  path: string;
+  absolute_path: string;
+  /** Expected content from the profile snapshot. */
+  expected: string;
+  /** Current on-disk content, or null if missing. */
+  current: string | null;
 }
 
 export interface OpenPathRequest {

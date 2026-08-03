@@ -19,6 +19,7 @@ import type {
   ProfileCreateRequest,
   ProfileCreateSource,
 } from "../lib/types";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 interface CreateProfileDrawerProps {
   open: boolean;
@@ -231,7 +232,7 @@ export function CreateProfileDrawer({
   };
 
   const runPreview = async () => {
-    if (!baseUrl || !canContinue) {
+    if (!baseUrl || !canContinue || busy) {
       return;
     }
     setBusy(true);
@@ -246,7 +247,7 @@ export function CreateProfileDrawer({
   };
 
   const runCreate = async () => {
-    if (!baseUrl || !preview) {
+    if (!baseUrl || !preview || busy) {
       return;
     }
     setBusy(true);
@@ -476,20 +477,28 @@ export function CreateProfileDrawer({
           </button>
           {preview ? (
             <button
-              className="btn primary"
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
               type="button"
               onClick={() => void runCreate()}
               disabled={controlsDisabled}
+              aria-busy={busy}
             >
+              {busy ? <ButtonSpinner size={16} /> : null}
               {busy ? "Creating…" : "Create profile"}
             </button>
           ) : (
             <button
-              className="btn primary"
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
               type="button"
               onClick={() => void runPreview()}
               disabled={!canContinue || controlsDisabled}
+              aria-busy={busy}
             >
+              {busy ? <ButtonSpinner size={16} /> : null}
               {busy ? "Previewing…" : "Continue"}
             </button>
           )}

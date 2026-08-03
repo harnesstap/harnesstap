@@ -478,7 +478,7 @@ export class CodexSerializer extends BaseSerializer {
     const hooksPath = this.toTargetRelativePath(targetPaths.hooks, target);
 
     const instructions = resources.filter((r) => r.type === "instruction");
-    const mcps = resources.filter((r) => r.type === "mcp_server");
+    const mcps = this.mcpServersForTarget(resources, configPath);
     const permissions = resources.filter((r) => r.type === "permission");
     const envVars = resources.filter((r) => r.type === "env_var");
     const modelConfigs = resources.filter((r) => r.type === "model_config");

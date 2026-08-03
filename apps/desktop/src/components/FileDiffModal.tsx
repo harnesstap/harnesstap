@@ -1,0 +1,173 @@
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  AgentApiError,
+  fetchProfileFileDiff,
+} from "../lib/agent-client";
+import type { ProfileFileDiffResult, ViewScope } from "../lib/types";
+import { buildUnifiedDiffLines } from "../lib/unified-diff";
+
+export interface FileDiffModalProps {
+  open: boolean;
+  path: string | null;
+  profileName: string | null;
+  scope: ViewScope;
+  projectPath?: string | null;
+  baseUrl: string | null;
+  token: string | null;
+  onClose: () => void;
+}
+
+export function FileDiffModal({
+  open,
+  path,
+  profileName,
+  scope,
+  projectPath,
+  baseUrl,
+  token,
+  onClose,
+}: FileDiffModalProps) {
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [diff, setDiff] = useState<ProfileFileDiffResult | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [open, path]);
+
+  useEffect(() => {
+    if (!open || !path || !profileName || !baseUrl) {
+      setDiff(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setDiff(null);
+    void fetchProfileFileDiff(baseUrl, token, profileName, {
+      path,
+      scope,
+      ...(scope === "project" && projectPath ? { projectPath } : {}),
+    })
+      .then((next) => {
+        if (!cancelled) {
+          setDiff(next);
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(
+            loadError instanceof AgentApiError
+              ? loadError.message
+              : loadError instanceof Error
+                ? loadError.message
+                : "Could not load file diff",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, path, profileName, scope, projectPath, baseUrl, token]);
+
+  const lines = useMemo(() => {
+    if (!diff) {
+      return [];
+    }
+    return buildUnifiedDiffLines(diff.path, diff.expected, diff.current);
+  }, [diff]);
+
+  if (!open || !path) {
+    return null;
+  }
+
+  return (
+    <div
+      className="dialog-backdrop file-diff-backdrop"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="dialog file-diff-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="file-diff-header">
+          <div>
+            <div className="eyebrow">Diff vs snapshot</div>
+            <h2 id={titleId} className="mono">
+              {path}
+            </h2>
+          </div>
+          <button
+            ref={closeRef}
+            className="icon-btn"
+            type="button"
+            aria-label="Close file diff"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="file-diff-body">
+          {loading ? (
+            <p className="muted">Loading diff…</p>
+          ) : error ? (
+            <div className="banner error" role="alert">
+              <div>{error}</div>
+            </div>
+          ) : (
+            <pre className="file-diff-content" aria-label={`Diff for ${path}`}>
+              {lines.map((line, index) => (
+                <span
+                  key={`${line.kind}-${index}`}
+                  className={`file-diff-line file-diff-line-${line.kind}`}
+                >
+                  {line.text || " "}
+                </span>
+              ))}
+            </pre>
+          )}
+        </div>
+
+        <div className="dialog-actions">
+          <button className="btn" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
