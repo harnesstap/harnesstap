@@ -189,6 +189,20 @@ in `project_harnesses`:
 
 Inspect current value with `harnesstap harness project status --project . --format json`.
 
+### Cursor skill locations (user vs host-managed)
+
+Cursor keeps three distinct skill trees:
+
+| Path | Ownership | HarnessTap |
+| ---- | --------- | ---------- |
+| `~/.cursor/skills/` | User / personal skills | Global scan, persist, and apply |
+| `.agents/skills/` (project, `agents-skills` mode) | Project skills | Project scan / apply when configured |
+| `~/.cursor/skills-cursor/` | Cursor app-managed built-ins | **Inventory only** via `profile status` / apply-preview `host_managed.cursor` — never persisted, staged, or applied |
+
+Name collisions between host-managed built-ins and user/profile skills appear as
+panel reason `cursor_host_skill_collision` (yellow) and do not flip
+`has_drift` / `--check`.
+
 ## Workarounds
 
 When auto-bridging hits a limit, combine these patterns:

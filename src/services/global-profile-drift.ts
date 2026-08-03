@@ -21,6 +21,11 @@ import {
   type ProfileContents,
 } from "./profile-contents.js";
 import {
+  buildHostManagedStatus,
+  profileSkillNameMap,
+  type HostManagedStatus,
+} from "./cursor-host-managed-skills.js";
+import {
   buildHarnessLiveStatusMap,
   classifyGlobalDriftChanges,
   collectOwnedGlobalProfileFiles,
@@ -52,6 +57,8 @@ export interface GlobalProfileStatus {
   untracked_resource_count?: number;
   /** Alias for untracked_resource_count (not-staged working-tree resources). */
   not_staged_count?: number;
+  /** App-managed inventory (full depth only); never applied or persisted. */
+  host_managed?: HostManagedStatus;
 }
 
 function readGlobalFile(homeRoot: string, relativePath: string): string | null {
@@ -159,6 +166,17 @@ function buildBaseStatusFields(input: {
       ? countMissingHarnessRows(harnesses)
       : { missingPlugins: 0, missingMcp: 0 };
 
+  const contents = input.activeProfile
+    ? buildProfileContents(input.activeProfile)
+    : null;
+  const hostManaged =
+    input.depth === "full"
+      ? buildHostManagedStatus({
+          homeRoot,
+          profileSkills: profileSkillNameMap(contents?.resources ?? []),
+        })
+      : undefined;
+
   const projectDrift = resolveProjectDriftSummary(input.projectPath);
   const panel = computeGlobalProfilePanelStatus({
     depth: input.depth,
@@ -171,6 +189,7 @@ function buildBaseStatusFields(input: {
     missingMcpCount: missingMcp,
     projectDrift,
     warning: input.warning,
+    hostManagedCollisionCount: hostManaged?.cursor?.collisions.length ?? 0,
   });
 
   const driftSummary: GlobalProfileDriftSummary = {
@@ -201,9 +220,8 @@ function buildBaseStatusFields(input: {
     panel,
     harnesses,
     drift_summary: driftSummary,
-    contents: input.activeProfile
-      ? buildProfileContents(input.activeProfile)
-      : null,
+    contents,
+    ...(hostManaged ? { host_managed: hostManaged } : {}),
   };
 }
 

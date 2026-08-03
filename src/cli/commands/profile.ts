@@ -504,6 +504,16 @@ profileCmd
         ui.hint(`Run ${formatCommand(`profile use ${status.active_profile}`)} to refresh global harness files.`);
       }
 
+      const collisionCount = status.host_managed?.cursor?.collisions.length ?? 0;
+      if (format !== "json" && collisionCount > 0) {
+        ui.warn(
+          `${collisionCount} Cursor host-managed skill name collision(s) with user or profile skills.`,
+        );
+        ui.hint(
+          "Cursor built-ins live under ~/.cursor/skills-cursor/ (read-only inventory). User skills belong in ~/.cursor/skills/.",
+        );
+      }
+
       if (opts.check && status.has_drift) {
         process.exitCode = 1;
       }

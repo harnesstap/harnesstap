@@ -199,6 +199,8 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
+Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) but never imports or applies them.
+
 Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions — see the registry for the full list.
 
 ### Goose context engineering

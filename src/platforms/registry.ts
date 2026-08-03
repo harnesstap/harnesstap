@@ -3,21 +3,33 @@ import type { PlatformDefinition, PlatformFeature } from "../types.js";
 // ── Platform definitions ────────────────────────────────────────────────
 // Each platform declares what features it supports and where files live.
 
+type PlatformDefOptions = {
+  skillEmission?: PlatformDefinition["skillEmission"];
+  hostManagedPaths?: PlatformDefinition["hostManagedPaths"];
+};
+
 function def(
   id: string,
   name: string,
   features: PlatformFeature[],
   projectPaths: PlatformDefinition["projectPaths"],
   globalPaths: PlatformDefinition["globalPaths"],
-  skillEmission?: PlatformDefinition["skillEmission"],
+  options?: PlatformDefinition["skillEmission"] | PlatformDefOptions,
 ): PlatformDefinition {
+  const normalized: PlatformDefOptions =
+    typeof options === "string" || options === undefined
+      ? { skillEmission: options }
+      : options;
   return {
     id,
     name,
     supports: new Set(features),
     projectPaths,
     globalPaths,
-    ...(skillEmission ? { skillEmission } : {}),
+    ...(normalized.skillEmission ? { skillEmission: normalized.skillEmission } : {}),
+    ...(normalized.hostManagedPaths
+      ? { hostManagedPaths: normalized.hostManagedPaths }
+      : {}),
   };
 }
 
@@ -90,6 +102,10 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.cursor/mcp.json",
     agents: "~/.cursor/agents/",
     hooks: "~/.cursor/hooks.json",
+  }, {
+    hostManagedPaths: {
+      skills: "~/.cursor/skills-cursor/",
+    },
   }),
 
   // ── Platforms using .agents/ convention ──────────────────────────────

@@ -203,6 +203,7 @@ export function computeGlobalProfilePanelStatus(input: {
   warning?: string;
   switchFailed?: boolean;
   restoreFailed?: boolean;
+  hostManagedCollisionCount?: number;
 }): GlobalProfilePanelStatus {
   const reasons: string[] = [];
 
@@ -250,6 +251,9 @@ export function computeGlobalProfilePanelStatus(input: {
   }
   if (input.projectDrift?.status === "drifted") {
     reasons.push("project_drift");
+  }
+  if ((input.hostManagedCollisionCount ?? 0) > 0) {
+    reasons.push("cursor_host_skill_collision");
   }
   if (input.depth === "fast") {
     reasons.push("fast_depth");

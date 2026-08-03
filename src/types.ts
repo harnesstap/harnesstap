@@ -442,6 +442,11 @@ export interface PlatformPaths {
 
 export type SkillEmission = "native" | "instruction-only";
 
+/** Host-owned paths discovered for inventory only — never applied or persisted. */
+export interface HostManagedPaths {
+  skills?: string;
+}
+
 export interface PlatformDefinition {
   id: string;
   name: string;
@@ -450,6 +455,11 @@ export interface PlatformDefinition {
   globalPaths: PlatformPaths;
   /** When "instruction-only", skills are emitted as rules/instructions instead of native skill dirs. */
   skillEmission?: SkillEmission;
+  /**
+   * App-managed paths (e.g. Cursor `~/.cursor/skills-cursor/`).
+   * Surfaced for discovery/status only — excluded from scan persist and apply.
+   */
+  hostManagedPaths?: HostManagedPaths;
 }
 
 // ── Layer export format ─────────────────────────────────────────────────

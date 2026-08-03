@@ -10,6 +10,11 @@ import { getActiveProfileName } from "./active-profile.js";
 import { generateFiles } from "./applier.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import {
+  buildHostManagedStatus,
+  profileSkillNameMap,
+  type HostManagedStatus,
+} from "./cursor-host-managed-skills.js";
+import {
   buildHarnessLiveStatusMap,
   type HarnessLiveStatus,
 } from "./global-profile-status-panel.js";
@@ -58,6 +63,8 @@ export interface ProfileApplyPreview {
   };
   relative_to_active: boolean;
   warning?: string;
+  /** App-managed inventory for home scope; never applied or persisted. */
+  host_managed?: HostManagedStatus;
 }
 
 function readRootFile(rootPath: string, relativePath: string): string | null {
@@ -563,6 +570,10 @@ export async function previewProfileApply(
     ...(homePreview.harnesses ? { harnesses: homePreview.harnesses } : {}),
     files: homePreview.files,
     relative_to_active: relativeToActive,
+    host_managed: buildHostManagedStatus({
+      homeRoot: homePreview.files.root_path,
+      profileSkills: profileSkillNameMap(contents?.resources ?? []),
+    }),
     ...(homePreview.warning ? { warning: homePreview.warning } : {}),
   };
 }
