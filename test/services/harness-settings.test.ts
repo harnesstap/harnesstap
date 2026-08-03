@@ -215,4 +215,88 @@ describe("harness-settings service", () => {
       await context.cleanup();
     }
   });
+
+  it("does not persist global preference when project path lacks git origin", async () => {
+    const context = await createInitializedTestContext("harness-settings-nogit-put");
+    try {
+      const { putHarnessSettings } = await import(
+        "../../src/services/harness-settings.ts"
+      );
+      const { getHarnessPreference, setHarnessPreference } = await import(
+        "../../src/models/harness.ts"
+      );
+
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: ["cursor"],
+      });
+      expect(getHarnessPreference()).toMatchObject({
+        main_harness: "claude-code",
+        alias_harnesses: ["cursor"],
+      });
+
+      const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-nogit-put-"));
+      tempDirs.push(projectDir);
+
+      await expect(
+        putHarnessSettings({
+          global: {
+            main_harness: "codex",
+            alias_harnesses: [],
+          },
+          project: {
+            path: projectDir,
+            override: true,
+            main_harness: "cursor",
+            alias_harnesses: [],
+          },
+        }),
+      ).rejects.toThrow(/git origin/i);
+
+      expect(getHarnessPreference()).toMatchObject({
+        main_harness: "claude-code",
+        alias_harnesses: ["cursor"],
+      });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("does not persist global preference when project override main is missing", async () => {
+    const context = await createInitializedTestContext("harness-settings-nomain-put");
+    try {
+      const { putHarnessSettings } = await import(
+        "../../src/services/harness-settings.ts"
+      );
+      const { getHarnessPreference, setHarnessPreference } = await import(
+        "../../src/models/harness.ts"
+      );
+
+      setHarnessPreference({
+        main_harness: "claude-code",
+        alias_harnesses: [],
+      });
+
+      const projectDir = mkdtempSync(join(tmpdir(), "ht-hs-nomain-put-"));
+      tempDirs.push(projectDir);
+      initGitRepo(projectDir);
+
+      await expect(
+        putHarnessSettings({
+          global: {
+            main_harness: "codex",
+            alias_harnesses: [],
+          },
+          project: {
+            path: projectDir,
+            override: true,
+          },
+        }),
+      ).rejects.toThrow(/main_harness is required/i);
+
+      expect(getHarnessPreference()?.main_harness).toBe("claude-code");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

@@ -2291,6 +2291,7 @@ export function App() {
         onPull={onCloudPull}
         onRequestSignIn={() => {
           setCloudBrowseOpen(false);
+          setSettingsOpen(false);
           setCloudAccountOpen(true);
         }}
       />

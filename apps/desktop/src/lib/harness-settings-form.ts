@@ -34,3 +34,30 @@ export function isHarnessSettingsDirty(
         || baseline.materialization !== draft.materialization))
   );
 }
+
+export function canSaveHarnessSettings(options: {
+  dirty: boolean;
+  busy: boolean;
+  loading: boolean;
+  disabled: boolean;
+  globalMain: string;
+  baseUrl: string | null | undefined;
+  projectOverride: boolean;
+  projectAvailable: boolean;
+  projectMain: string;
+}): boolean {
+  if (
+    !options.dirty
+    || options.busy
+    || options.loading
+    || options.disabled
+    || !options.globalMain
+    || !options.baseUrl
+  ) {
+    return false;
+  }
+  if (options.projectOverride && options.projectAvailable && !options.projectMain) {
+    return false;
+  }
+  return true;
+}

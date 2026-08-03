@@ -144,6 +144,53 @@ export async function putHarnessSettings(
   const sync = deps?.syncProject ?? defaultSyncProject;
   assertKnownHarnesses(input.global.main_harness, input.global.alias_harnesses);
 
+  // Validate project fields before any preference / project mutations so a
+  // failing project path cannot leave a partially written global preference.
+  type ValidatedProject =
+    | {
+        root: string;
+        gitOrigin: string;
+        override: false;
+      }
+    | {
+        root: string;
+        gitOrigin: string;
+        override: true;
+        main: string;
+        aliases: string[];
+        strategy: MaterializationStrategy;
+      };
+
+  let validatedProject: ValidatedProject | undefined;
+  if (input.project) {
+    const root = resolve(input.project.path);
+    const gitOrigin = getGitOrigin(root);
+    if (!gitOrigin) {
+      throw new Error("Project harness override requires a git origin");
+    }
+    if (!input.project.override) {
+      validatedProject = { root, gitOrigin, override: false };
+    } else {
+      const main = input.project.main_harness;
+      if (!main || typeof main !== "string") {
+        throw new Error("Project main_harness is required when override is enabled");
+      }
+      const aliases = input.project.alias_harnesses ?? [];
+      assertKnownHarnesses(main, aliases);
+      validatedProject = {
+        root,
+        gitOrigin,
+        override: true,
+        main,
+        aliases,
+        strategy:
+          input.project.materialization_strategy === "copy"
+            ? "copy"
+            : "symlink-preferred",
+      };
+    }
+  }
+
   const savedGlobal = setHarnessPreference({
     main_harness: input.global.main_harness,
     alias_harnesses: input.global.alias_harnesses,
@@ -156,44 +203,27 @@ export async function putHarnessSettings(
     },
   };
 
-  if (!input.project) {
+  if (!validatedProject) {
     return result;
   }
 
-  const root = resolve(input.project.path);
-  const gitOrigin = getGitOrigin(root);
-  if (!gitOrigin) {
-    throw new Error("Project harness override requires a git origin");
-  }
-
   const project = upsertProject({
-    git_origin: normalizeGitUrl(gitOrigin),
-    name: projectNameFromUrl(gitOrigin),
-    local_path: root,
+    git_origin: normalizeGitUrl(validatedProject.gitOrigin),
+    name: projectNameFromUrl(validatedProject.gitOrigin),
+    local_path: validatedProject.root,
   });
 
-  if (!input.project.override) {
+  if (!validatedProject.override) {
     deleteProjectHarnessConfig(project.id);
     result.project = { available: true, override: false };
     return result;
   }
 
-  const main = input.project.main_harness;
-  if (!main || typeof main !== "string") {
-    throw new Error("Project main_harness is required when override is enabled");
-  }
-  const aliases = input.project.alias_harnesses ?? [];
-  assertKnownHarnesses(main, aliases);
-  const strategy =
-    input.project.materialization_strategy === "copy"
-      ? "copy"
-      : "symlink-preferred";
-
   const savedProject = setProjectHarnessConfig({
     project_id: project.id,
-    main_harness: main,
-    alias_harnesses: aliases,
-    materialization_strategy: strategy,
+    main_harness: validatedProject.main,
+    alias_harnesses: validatedProject.aliases,
+    materialization_strategy: validatedProject.strategy,
   });
 
   result.project = {
@@ -205,7 +235,7 @@ export async function putHarnessSettings(
   };
 
   try {
-    const mirror = await sync({ projectRoot: root });
+    const mirror = await sync({ projectRoot: validatedProject.root });
     result.mirror = {
       main_harness: mirror.main_harness,
       alias_harnesses: mirror.alias_harnesses,

@@ -5,6 +5,7 @@ import {
 } from "../lib/agent-client";
 import {
   aliasesExcludingMain,
+  canSaveHarnessSettings,
   isHarnessSettingsDirty,
   visibleHarnesses,
   type HarnessSettingsDraft,
@@ -83,6 +84,7 @@ export function SettingsDrawer({
   const [warning, setWarning] = useState<string | null>(null);
   const onSavedRef = useRef(onSaved);
   onSavedRef.current = onSaved;
+  const saveGenerationRef = useRef(0);
 
   const resetLocal = useCallback(() => {
     setHarnesses([]);
@@ -97,10 +99,21 @@ export function SettingsDrawer({
     setWarning(null);
   }, []);
 
-  useEffect(() => {
-    if (!open) {
+  const requestClose = useCallback(() => {
+    if (busy) {
       return;
     }
+    saveGenerationRef.current += 1;
+    onClose();
+  }, [busy, onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      saveGenerationRef.current += 1;
+      setBusy(false);
+      return;
+    }
+    const loadGeneration = ++saveGenerationRef.current;
     setError(null);
     setWarning(null);
     setShowAllHarnesses(false);
@@ -112,7 +125,7 @@ export function SettingsDrawer({
     setLoading(true);
     void fetchHarnessSettings(baseUrl, token, projectPath)
       .then((payload) => {
-        if (cancelled) {
+        if (cancelled || loadGeneration !== saveGenerationRef.current) {
           return;
         }
         const next = draftFromPayload(payload);
@@ -125,13 +138,13 @@ export function SettingsDrawer({
         setDraft(next);
       })
       .catch((loadError) => {
-        if (!cancelled) {
+        if (!cancelled && loadGeneration === saveGenerationRef.current) {
           resetLocal();
           setError(errorMessage(loadError, "Could not load harness settings."));
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!cancelled && loadGeneration === saveGenerationRef.current) {
           setLoading(false);
         }
       });
@@ -174,8 +187,17 @@ export function SettingsDrawer({
   );
 
   const controlsDisabled = disabled || busy || loading;
-  const canSave =
-    dirty && !busy && !loading && !disabled && Boolean(draft.globalMain) && Boolean(baseUrl);
+  const canSave = canSaveHarnessSettings({
+    dirty,
+    busy,
+    loading,
+    disabled,
+    globalMain: draft.globalMain,
+    baseUrl,
+    projectOverride: draft.projectOverride,
+    projectAvailable,
+    projectMain: draft.projectMain,
+  });
 
   const setGlobalMain = (main: string) => {
     setDraft((prev) => ({
@@ -215,6 +237,7 @@ export function SettingsDrawer({
     if (!baseUrl || !canSave) {
       return;
     }
+    const generation = ++saveGenerationRef.current;
     setBusy(true);
     setError(null);
     setWarning(null);
@@ -240,6 +263,9 @@ export function SettingsDrawer({
     }
     try {
       const result = await saveHarnessSettings(baseUrl, token, body);
+      if (generation !== saveGenerationRef.current) {
+        return;
+      }
       if (result.mirror_error) {
         setWarning(result.mirror_error);
       } else if (result.mirror?.surface_warnings?.length) {
@@ -269,9 +295,14 @@ export function SettingsDrawer({
       setDraft(next);
       onSavedRef.current?.();
     } catch (saveError) {
+      if (generation !== saveGenerationRef.current) {
+        return;
+      }
       setError(errorMessage(saveError, "Could not save harness settings."));
     } finally {
-      setBusy(false);
+      if (generation === saveGenerationRef.current) {
+        setBusy(false);
+      }
     }
   };
 
@@ -285,7 +316,7 @@ export function SettingsDrawer({
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
-          onClose();
+          requestClose();
         }
       }}
     >
@@ -304,7 +335,8 @@ export function SettingsDrawer({
             className="icon-btn"
             type="button"
             aria-label="Close settings"
-            onClick={onClose}
+            onClick={requestClose}
+            disabled={busy}
           >
             ×
           </button>
@@ -470,7 +502,7 @@ export function SettingsDrawer({
           <button
             className="btn"
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={busy}
           >
             Cancel

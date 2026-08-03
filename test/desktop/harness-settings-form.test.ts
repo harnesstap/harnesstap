@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   aliasesExcludingMain,
+  canSaveHarnessSettings,
   isHarnessSettingsDirty,
   visibleHarnesses,
 } from "../../apps/desktop/src/lib/harness-settings-form.ts";
@@ -38,6 +39,29 @@ describe("harness-settings-form", () => {
     expect(isHarnessSettingsDirty(baseline, baseline)).toBe(false);
     expect(
       isHarnessSettingsDirty(baseline, { ...baseline, globalMain: "cursor" }),
+    ).toBe(true);
+  });
+
+  it("canSave requires project main when override is enabled", () => {
+    const base = {
+      dirty: true,
+      busy: false,
+      loading: false,
+      disabled: false,
+      globalMain: "claude-code",
+      baseUrl: "http://127.0.0.1:9",
+      projectOverride: true,
+      projectAvailable: true,
+      projectMain: "",
+    };
+    expect(canSaveHarnessSettings(base)).toBe(false);
+    expect(canSaveHarnessSettings({ ...base, projectMain: "cursor" })).toBe(true);
+    expect(
+      canSaveHarnessSettings({
+        ...base,
+        projectAvailable: false,
+        projectMain: "",
+      }),
     ).toBe(true);
   });
 });
