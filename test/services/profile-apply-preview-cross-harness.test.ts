@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   omitTransparentCrossHarnessAdds,
   previewProfileApply,
+  withManagedRemovals,
 } from "../../src/services/profile-apply-preview.ts";
 import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
@@ -75,6 +76,32 @@ describe("omitTransparentCrossHarnessAdds", () => {
       expect(omitTransparentCrossHarnessAdds(root, expected, changes)).toEqual([
         { path: ".claude/skills/x/SKILL.md", type: "modified" },
         { path: ".claude/skills/old/SKILL.md", type: "added" },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("withManagedRemovals", () => {
+  it("only lists planned removals that still exist on disk", () => {
+    const root = mkdtempSync(join(tmpdir(), "ht-managed-removals-"));
+    try {
+      mkdirSync(join(root, ".claude/skills/live"), { recursive: true });
+      writeFileSync(join(root, ".claude/skills/live/SKILL.md"), "# live\n", "utf-8");
+
+      const changes = withManagedRemovals(
+        root,
+        [],
+        [
+          ".claude/skills/live/SKILL.md",
+          ".claude/skills/pair-agent/SKILL.md",
+          ".agents/skills/pair-agent/SKILL.md",
+        ],
+      );
+
+      expect(changes).toEqual([
+        { path: ".claude/skills/live/SKILL.md", type: "added" },
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });

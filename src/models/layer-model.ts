@@ -683,6 +683,18 @@ export function updateLayerName(layerId: string, name: string): boolean {
   return result.changes > 0;
 }
 
+export function updateLayerDescription(
+  layerId: string,
+  description: string,
+): boolean {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(`UPDATE layers SET description = ?, updated_at = ? WHERE id = ?`)
+    .run(description, now, layerId);
+  return result.changes > 0;
+}
+
 export function createLayerFromSources(input: {
   name: string;
   version?: string;

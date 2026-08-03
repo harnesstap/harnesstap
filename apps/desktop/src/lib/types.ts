@@ -503,6 +503,33 @@ export interface PutHarnessSettingsResult {
   mirror_error?: string;
 }
 
+export interface ProfileDetailResource {
+  id: string;
+  type: string;
+  name: string;
+  source: string;
+}
+
+export interface ProfileDetailDependency {
+  dependency_name: string;
+  version_constraint: string;
+  order: number;
+  resource_id: string | null;
+}
+
+export interface ProfileDetail {
+  profile: {
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    tags: string[];
+  };
+  active: boolean;
+  dependencies: ProfileDetailDependency[];
+  resources: ProfileDetailResource[];
+}
+
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {
   validate_baseline: "Validate baseline",
   apply_home: "Apply profile (global)",

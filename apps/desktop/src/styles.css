@@ -340,6 +340,10 @@ button:focus-visible,
   overflow: hidden;
 }
 
+.layout.resources-focus {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .profiles-rail {
   border-right: 1px solid var(--border);
   background: var(--surface);
@@ -454,6 +458,17 @@ button:focus-visible,
 .profile-item-action {
   flex-shrink: 0;
   margin-right: 0.45rem;
+}
+
+.profile-item-edit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.profile-item:hover .profile-item-edit,
+.profile-item:focus-within .profile-item-edit {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .profile-item.selected {
@@ -583,6 +598,122 @@ button:focus-visible,
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.edit-profile-pane {
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 1rem 1.25rem;
+  gap: 0.75rem;
+}
+
+.edit-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.edit-profile-title h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-active-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--green);
+  text-transform: lowercase;
+}
+
+.edit-profile-title .muted {
+  margin: 0.25rem 0 0;
+  font-size: 12px;
+}
+
+.edit-profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow: auto;
+  min-height: 0;
+  padding-bottom: 1rem;
+}
+
+.edit-profile-section h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+}
+
+.edit-metadata-details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.35rem 0.75rem 0.65rem;
+}
+
+.edit-metadata-details > summary {
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.35rem 0;
+  list-style: none;
+}
+
+.edit-metadata-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.edit-metadata-details > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.4rem;
+  color: var(--muted);
+}
+
+.edit-metadata-details[open] > summary::before {
+  content: "▾";
+}
+
+.edit-metadata-body {
+  padding-bottom: 0.25rem;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+  font-size: 12px;
+}
+
+.edit-field input,
+.edit-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+}
+
+.edit-profile-pane .compose-library {
+  min-height: 280px;
+}
+
+.edit-profile-pane .selection-list-rows {
+  max-height: min(50vh, 420px);
+  overflow: auto;
 }
 
 .resources-panel-header {
@@ -796,6 +927,10 @@ button:focus-visible,
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
+}
+
+.status-edit-action {
+  margin-left: 0.15rem;
 }
 
 .status-title {
@@ -2678,6 +2813,10 @@ button:focus-visible,
     grid-template-columns: 1fr;
     grid-template-rows: minmax(220px, 40vh) minmax(0, 1fr);
     overflow: hidden;
+  }
+
+  .layout.resources-focus {
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .profiles-rail {

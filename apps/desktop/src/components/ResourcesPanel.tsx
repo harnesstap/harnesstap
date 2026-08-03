@@ -22,12 +22,11 @@ import {
 import { fetchLibraryResources } from "../lib/agent-client";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
-  filterLibraryResourcesByProfile,
   filterLibraryResourcesBySearch,
   groupLibraryResourcesByType,
   resourceDisplayName,
 } from "../lib/resource-search";
-import type { LibraryResource, ProfileContentsResource } from "../lib/types";
+import type { LibraryResource } from "../lib/types";
 
 const ICON_SIZE = 14;
 
@@ -61,9 +60,6 @@ function TypeIcon({ type }: { type: string }): ReactNode {
 export interface ResourcesPanelProps {
   baseUrl: string | null;
   token: string | null;
-  selectedProfile: string | null;
-  profileResources: ProfileContentsResource[] | null;
-  profileContentsLoading: boolean;
   /** Bump to force a library reload (e.g. after header refresh rescans tracked dirs). */
   reloadKey?: number;
   disabled?: boolean;
@@ -72,9 +68,6 @@ export interface ResourcesPanelProps {
 export function ResourcesPanel({
   baseUrl,
   token,
-  selectedProfile,
-  profileResources,
-  profileContentsLoading,
   reloadKey = 0,
   disabled = false,
 }: ResourcesPanelProps) {
@@ -127,21 +120,9 @@ export function ResourcesPanel({
     return () => window.clearTimeout(timer);
   }, []);
 
-  const scopedResources = useMemo(() => {
-    if (!selectedProfile) {
-      return resources;
-    }
-    // Treat null/undefined as "not resolved yet" so missing contents.resources
-    // from older agents cannot crash the panel on profile select.
-    if (profileResources == null) {
-      return [];
-    }
-    return filterLibraryResourcesByProfile(resources, profileResources);
-  }, [profileResources, resources, selectedProfile]);
-
   const filteredResources = useMemo(
-    () => filterLibraryResourcesBySearch(scopedResources, filter),
-    [filter, scopedResources],
+    () => filterLibraryResourcesBySearch(resources, filter),
+    [filter, resources],
   );
 
   const groups = useMemo(
@@ -149,17 +130,15 @@ export function ResourcesPanel({
     [filteredResources],
   );
 
-  const scopeLabel = selectedProfile
-    ? `Linked to ${selectedProfile}`
-    : "All registered resources";
-
   return (
     <main className="resources-panel" aria-label="Resources">
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
           <div className="resources-panel-title">
             <span>Resources</span>
-            <span className="muted resources-panel-scope">{scopeLabel}</span>
+            <span className="muted resources-panel-scope">
+              All registered resources
+            </span>
           </div>
           <button
             type="button"
@@ -191,18 +170,14 @@ export function ResourcesPanel({
           </div>
         ) : loading ? (
           <p className="muted">Loading resources…</p>
-        ) : selectedProfile && profileContentsLoading && profileResources == null ? (
-          <p className="muted">Resolving profile resources…</p>
         ) : filteredResources.length === 0 ? (
           <div className="empty-state">
             <p className="muted">
               {resources.length === 0
                 ? "No registered resources yet."
-                : selectedProfile && scopedResources.length === 0
-                  ? `No library resources linked to ${selectedProfile}.`
-                  : filter.trim()
-                    ? "No matches."
-                    : "No resources to show."}
+                : filter.trim()
+                  ? "No matches."
+                  : "No resources to show."}
             </p>
           </div>
         ) : (

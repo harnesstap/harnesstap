@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Plus, RefreshCw, Settings, Unplug, User } from "lucide-react";
-import { shouldShowReapply } from "./lib/reapply";
+import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Unplug, User } from "lucide-react";
+import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
 import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
+import { EditProfilePane } from "./components/EditProfilePane";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { ProjectPicker } from "./components/ProjectPicker";
@@ -157,6 +158,7 @@ export function App() {
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
+  const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
   const [switchEvents, setSwitchEvents] = useState<ProfileSwitchStepEvent[]>([]);
@@ -410,11 +412,24 @@ export function App() {
   const clearProfileSelection = useCallback(() => {
     setPreferEmptySelection(true);
     setSelectedProfile(null);
+    setEditingProfile(null);
   }, []);
 
   const selectProfile = useCallback((name: string) => {
     setPreferEmptySelection(false);
     setSelectedProfile(name);
+    setEditingProfile((current) => (current ? name : null));
+  }, []);
+
+  const openEditProfile = useCallback((name: string) => {
+    setPreferEmptySelection(false);
+    setSelectedProfile(name);
+    setWorkspaceFocus("scope");
+    setEditingProfile(name);
+  }, []);
+
+  const closeEditProfile = useCallback(() => {
+    setEditingProfile(null);
   }, []);
 
   useEffect(() => {
@@ -573,53 +588,6 @@ export function App() {
     token,
     view,
   ]);
-
-  const handleAddResource = useCallback(
-    async (resource: ProfileContentsResource) => {
-      if (!baseUrl || !selectedProfile) {
-        return;
-      }
-      const key = `${resource.type}:${resource.name}`;
-      if (addingResourceKey) {
-        return;
-      }
-      setAddingResourceKey(key);
-      setAddResourceError(null);
-      try {
-        await addProfileResource(baseUrl, token, selectedProfile, {
-          resourceType: resource.type,
-          resourceName: resource.name,
-          scope: view,
-          ...(view === "project" && projectPath ? { projectPath } : {}),
-        });
-        const preview = await fetchApplyPreview(baseUrl, token, {
-          profile: selectedProfile,
-          scope: view,
-          ...(view === "project" && projectPath ? { projectPath } : {}),
-        });
-        setApplyPreview(preview);
-        if (selectedProfile === activeProfile) {
-          await refreshStatus("full");
-        }
-      } catch (error) {
-        setAddResourceError(
-          error instanceof Error ? error.message : "Could not add resource to profile",
-        );
-      } finally {
-        setAddingResourceKey(null);
-      }
-    },
-    [
-      activeProfile,
-      addingResourceKey,
-      baseUrl,
-      projectPath,
-      refreshStatus,
-      selectedProfile,
-      token,
-      view,
-    ],
-  );
 
   const handleCommitManagedChanges = useCallback(async () => {
     if (!baseUrl || !selectedProfile || !applyPreview || committingManagedChanges) {
@@ -859,42 +827,6 @@ export function App() {
     [executeDropFileChange],
   );
 
-  const handleRemoveResourceFromProfile = useCallback(
-    async (resource: ProfileContentsResource, layerId?: string) => {
-      const profileName = selectedProfile ?? activeProfile;
-      if (!baseUrl || !profileName || removingResourceKey) {
-        return;
-      }
-      const key = `${resource.type}:${resource.name}`;
-      setRemovingResourceKey(key);
-      setResourceActionError(null);
-      try {
-        await removeProfileResource(baseUrl, token, profileName, {
-          resourceType: resource.type,
-          resourceName: resource.name,
-          ...(layerId ? { layerId } : {}),
-        });
-        await refreshProfilePreview();
-      } catch (error) {
-        setResourceActionError(
-          error instanceof Error
-            ? error.message
-            : "Could not remove resource from profile",
-        );
-      } finally {
-        setRemovingResourceKey(null);
-      }
-    },
-    [
-      activeProfile,
-      baseUrl,
-      refreshProfilePreview,
-      removingResourceKey,
-      selectedProfile,
-      token,
-    ],
-  );
-
   const handleAddAllResources = useCallback(async () => {
     if (!baseUrl || !activeProfile || addingAllResources) {
       return;
@@ -976,24 +908,6 @@ export function App() {
     preferEmptySelection,
     selectedProfile,
     visibleProfiles,
-  ]);
-
-  const profilePanelResources = useMemo((): ProfileContentsResource[] | null => {
-    if (!selectedProfile) {
-      return null;
-    }
-    if (applyPreview?.contents) {
-      return applyPreview.contents.resources ?? [];
-    }
-    if (selectedProfile === activeProfile && status?.contents) {
-      return status.contents.resources ?? [];
-    }
-    return null;
-  }, [
-    activeProfile,
-    applyPreview?.contents,
-    selectedProfile,
-    status?.contents,
   ]);
 
   useEffect(() => {
@@ -1171,6 +1085,170 @@ export function App() {
       refreshStatus,
       selectedProfile,
       skipOverwritePrompt,
+      token,
+      view,
+    ],
+  );
+
+  const maybeAutoReapplyAfterMutation = useCallback(
+    async (input: { profileName: string; affectsApply: boolean }) => {
+      const shouldReapply = shouldAutoReapply({
+        mutatedProfile: input.profileName,
+        activeProfile,
+        applied: Boolean(status?.applied),
+        view,
+        preexistingGlobalDriftStatus:
+          status?.drift_summary.global.status ?? "clean",
+        preexistingProjectDriftStatus: status?.drift_summary.project?.status,
+        affectsApply: input.affectsApply,
+      });
+      await refreshProfiles();
+      if (input.profileName === selectedProfile || input.profileName === activeProfile) {
+        await refreshStatus("full");
+      }
+      if (shouldReapply) {
+        await runSwitch(true, input.profileName);
+      }
+    },
+    [
+      activeProfile,
+      refreshProfiles,
+      refreshStatus,
+      runSwitch,
+      selectedProfile,
+      status?.applied,
+      status?.drift_summary.global.status,
+      status?.drift_summary.project?.status,
+      view,
+    ],
+  );
+
+  const handleAddResource = useCallback(
+    async (resource: ProfileContentsResource) => {
+      if (!baseUrl || !selectedProfile) {
+        return;
+      }
+      const key = `${resource.type}:${resource.name}`;
+      if (addingResourceKey) {
+        return;
+      }
+      const preexisting = {
+        globalDriftStatus:
+          status?.drift_summary.global.status ?? ("clean" as const),
+        projectDriftStatus: status?.drift_summary.project?.status,
+        applied: Boolean(status?.applied),
+        activeProfile,
+      };
+      setAddingResourceKey(key);
+      setAddResourceError(null);
+      try {
+        await addProfileResource(baseUrl, token, selectedProfile, {
+          resourceType: resource.type,
+          resourceName: resource.name,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: selectedProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        setApplyPreview(preview);
+        if (
+          shouldAutoReapply({
+            mutatedProfile: selectedProfile,
+            activeProfile: preexisting.activeProfile,
+            applied: preexisting.applied,
+            view,
+            preexistingGlobalDriftStatus: preexisting.globalDriftStatus,
+            preexistingProjectDriftStatus: preexisting.projectDriftStatus,
+            affectsApply: true,
+          })
+        ) {
+          await runSwitch(true, selectedProfile);
+        } else if (selectedProfile === activeProfile) {
+          await refreshStatus("full");
+        }
+      } catch (error) {
+        setAddResourceError(
+          error instanceof Error ? error.message : "Could not add resource to profile",
+        );
+      } finally {
+        setAddingResourceKey(null);
+      }
+    },
+    [
+      activeProfile,
+      addingResourceKey,
+      baseUrl,
+      projectPath,
+      refreshStatus,
+      runSwitch,
+      selectedProfile,
+      status?.applied,
+      status?.drift_summary.global.status,
+      status?.drift_summary.project?.status,
+      token,
+      view,
+    ],
+  );
+
+  const handleRemoveResourceFromProfile = useCallback(
+    async (resource: ProfileContentsResource, layerId?: string) => {
+      const profileName = selectedProfile ?? activeProfile;
+      if (!baseUrl || !profileName || removingResourceKey) {
+        return;
+      }
+      const key = `${resource.type}:${resource.name}`;
+      const preexisting = {
+        globalDriftStatus:
+          status?.drift_summary.global.status ?? ("clean" as const),
+        projectDriftStatus: status?.drift_summary.project?.status,
+        applied: Boolean(status?.applied),
+        activeProfile,
+      };
+      setRemovingResourceKey(key);
+      setResourceActionError(null);
+      try {
+        await removeProfileResource(baseUrl, token, profileName, {
+          resourceType: resource.type,
+          resourceName: resource.name,
+          ...(layerId ? { layerId } : {}),
+        });
+        await refreshProfilePreview();
+        if (
+          shouldAutoReapply({
+            mutatedProfile: profileName,
+            activeProfile: preexisting.activeProfile,
+            applied: preexisting.applied,
+            view,
+            preexistingGlobalDriftStatus: preexisting.globalDriftStatus,
+            preexistingProjectDriftStatus: preexisting.projectDriftStatus,
+            affectsApply: true,
+          })
+        ) {
+          await runSwitch(true, profileName);
+        }
+      } catch (error) {
+        setResourceActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not remove resource from profile",
+        );
+      } finally {
+        setRemovingResourceKey(null);
+      }
+    },
+    [
+      activeProfile,
+      baseUrl,
+      refreshProfilePreview,
+      removingResourceKey,
+      runSwitch,
+      selectedProfile,
+      status?.applied,
+      status?.drift_summary.global.status,
+      status?.drift_summary.project?.status,
       token,
       view,
     ],
@@ -1529,7 +1607,10 @@ export function App() {
             <button
               type="button"
               className={`header-focus-btn${workspaceFocus === "resources" ? " on" : ""}`}
-              onClick={() => setWorkspaceFocus("resources")}
+              onClick={() => {
+                setEditingProfile(null);
+                setWorkspaceFocus("resources");
+              }}
               disabled={switching}
               aria-label="Resources"
               title="Resources"
@@ -1696,7 +1777,8 @@ export function App() {
         </div>
       )}
 
-      <div className="layout">
+      <div className={`layout${workspaceFocus === "resources" ? " resources-focus" : ""}`}>
+        {workspaceFocus === "scope" ? (
         <nav className="profiles-rail" aria-label="Profiles">
           <div className="profiles-brand">
             <span>Profiles</span>
@@ -1918,6 +2000,16 @@ export function App() {
                     {profile.name}
                     {isActive ? <span className="badge">active</span> : null}
                   </button>
+                  <button
+                    type="button"
+                    className="icon-action profile-item-action profile-item-edit"
+                    aria-label={`Edit ${profile.name}`}
+                    title={`Edit ${profile.name}`}
+                    disabled={!connected || switching || stashBusy}
+                    onClick={() => openEditProfile(profile.name)}
+                  >
+                    <Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                  </button>
                   {showAddAll ? (
                     <button
                       type="button"
@@ -1977,18 +2069,27 @@ export function App() {
             </button>
           </div>
         </nav>
+        ) : null}
 
         {workspaceFocus === "resources" ? (
           <ResourcesPanel
             baseUrl={baseUrl}
             token={token}
-            selectedProfile={selectedProfile}
-            profileResources={profilePanelResources}
-            profileContentsLoading={
-              Boolean(selectedProfile) && applyPreviewLoading
-            }
             reloadKey={libraryReloadKey}
             disabled={switching}
+          />
+        ) : editingProfile ? (
+          <EditProfilePane
+            profileName={editingProfile}
+            baseUrl={baseUrl}
+            token={token}
+            disabled={switching}
+            onClose={closeEditProfile}
+            onProfileRenamed={(nextName) => {
+              setSelectedProfile(nextName);
+              setEditingProfile(nextName);
+            }}
+            onMutated={maybeAutoReapplyAfterMutation}
           />
         ) : (
           <main className="live-pane" aria-label="Live state">
@@ -2057,6 +2158,16 @@ export function App() {
                           {tag}
                         </span>
                       ))}
+                      <button
+                        type="button"
+                        className="icon-action status-edit-action"
+                        onClick={() => openEditProfile(selectedProfile)}
+                        disabled={!connected || switching}
+                        aria-label={`Edit ${selectedProfile}`}
+                        title="Edit profile"
+                      >
+                        <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                      </button>
                     </>
                   ) : (
                     "No profile selected"
@@ -2197,7 +2308,11 @@ export function App() {
                 onCreateProfileFromProject={() => {
                   openCreateProfile("project", true);
                 }}
-                onBrowseResources={() => setWorkspaceFocus("resources")}
+                onEditProfile={
+                  selectedProfile
+                    ? () => openEditProfile(selectedProfile)
+                    : undefined
+                }
                 onAddResource={handleAddResource}
                 addingResourceKey={addingResourceKey}
                 onCommitManagedChanges={
@@ -2240,17 +2355,16 @@ export function App() {
                     ? handleDropFileChange
                     : undefined
                 }
+                resourceActionError={
+                  resourceActionError && !switching ? resourceActionError : null
+                }
+                onDismissResourceActionError={() => setResourceActionError(null)}
               />
             )}
 
             {addResourceError && !switching ? (
               <div className="banner error" role="alert">
                 <div>{addResourceError}</div>
-              </div>
-            ) : null}
-            {resourceActionError && !switching ? (
-              <div className="banner error" role="alert">
-                <div>{resourceActionError}</div>
               </div>
             ) : null}
 

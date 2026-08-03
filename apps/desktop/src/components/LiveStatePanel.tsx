@@ -243,11 +243,11 @@ function ProfileResourceActions({
 }
 
 type ProfileStackEmptyStateProps = {
-  onBrowseResources: () => void;
+  onEditProfile: () => void;
 };
 
 function ProfileStackEmptyState({
-  onBrowseResources,
+  onEditProfile,
 }: ProfileStackEmptyStateProps) {
   return (
     <div
@@ -259,13 +259,13 @@ function ProfileStackEmptyState({
         <Layers size={ICON_SIZE} className="profile-stack-empty-icon" aria-hidden />
         <h2>No resources yet</h2>
       </div>
-      <p className="muted">Add layers or resources from your library.</p>
+      <p className="muted">Add layers or resources by editing this profile.</p>
       <button
         className="btn primary"
         type="button"
-        onClick={onBrowseResources}
+        onClick={onEditProfile}
       >
-        Browse resources
+        Edit profile
       </button>
     </div>
   );
@@ -925,7 +925,7 @@ export interface LiveStatePanelProps {
   bootstrapBusy?: boolean;
   onBootstrap?: () => void;
   onCreateProfileFromProject?: () => void;
-  onBrowseResources?: () => void;
+  onEditProfile?: () => void;
   onAddResource?: (resource: ProfileContentsResource) => Promise<void>;
   addingResourceKey?: string | null;
   onCommitManagedChanges?: () => Promise<void>;
@@ -943,6 +943,9 @@ export interface LiveStatePanelProps {
   fileChangeBusyPath?: string | null;
   fileChangeBusyAction?: "open" | "add" | "drop" | null;
   filesRootPath?: string | null;
+  /** Row-action failures (open / add / drop / remove resource). */
+  resourceActionError?: string | null;
+  onDismissResourceActionError?: () => void;
 }
 
 export function LiveStatePanel({
@@ -961,7 +964,7 @@ export function LiveStatePanel({
   bootstrapBusy = false,
   onBootstrap,
   onCreateProfileFromProject,
-  onBrowseResources,
+  onEditProfile,
   onAddResource,
   addingResourceKey = null,
   onCommitManagedChanges,
@@ -976,6 +979,8 @@ export function LiveStatePanel({
   fileChangeBusyPath = null,
   fileChangeBusyAction = null,
   filesRootPath = null,
+  resourceActionError = null,
+  onDismissResourceActionError,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -1065,6 +1070,22 @@ export function LiveStatePanel({
           <div>{applyPreviewError}</div>
         </div>
       ) : null}
+      {resourceActionError ? (
+        <div className="banner error" role="alert">
+          <div>{resourceActionError}</div>
+          {onDismissResourceActionError ? (
+            <div className="banner-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={onDismissResourceActionError}
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {previewWarning ? (
         <div className="banner" role="status">
           <div>{previewWarning}</div>
@@ -1108,21 +1129,6 @@ export function LiveStatePanel({
         >
           <summary className="contents-header">
             <span>Profile resources</span>
-            {selectedProfile && onBrowseResources ? (
-              <button
-                type="button"
-                className="icon-action contents-header-action"
-                aria-label="Add resources"
-                title="Browse resources to add to profile"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onBrowseResources();
-                }}
-              >
-                <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
-              </button>
-            ) : null}
           </summary>
           <div className="contents-body">
             {!activeProfile && !selectedProfile ? (
@@ -1136,8 +1142,8 @@ export function LiveStatePanel({
                     : "No profile resources yet."}
               </p>
             ) : profileStackEmpty ? (
-              onBrowseResources ? (
-                <ProfileStackEmptyState onBrowseResources={onBrowseResources} />
+              onEditProfile ? (
+                <ProfileStackEmptyState onEditProfile={onEditProfile} />
               ) : (
                 <p className="muted">Add layers or resources from your library.</p>
               )

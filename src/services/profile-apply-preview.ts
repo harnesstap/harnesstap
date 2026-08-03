@@ -191,7 +191,13 @@ function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
   });
 }
 
-function withManagedRemovals(
+/**
+ * Map planned apply removals into File changes as drift "added" (on disk, not
+ * expected → apply would delete). Skip paths that are already gone so Target
+ * preview does not show phantom − rows.
+ */
+export function withManagedRemovals(
+  rootPath: string,
   changes: DriftFileChange[],
   removedFiles: string[] | undefined,
 ): DriftFileChange[] {
@@ -204,8 +210,10 @@ function withManagedRemovals(
     if (seen.has(path)) {
       continue;
     }
+    if (readRootFile(rootPath, path) === null) {
+      continue;
+    }
     seen.add(path);
-    // Drift "added" = on disk but not expected → UI maps to remove on apply.
     next.push({ path, type: "added" });
   }
   return next;
@@ -218,6 +226,7 @@ function buildPreviewFileChanges(
 ): DriftFileChange[] {
   return withMappedResources(
     withManagedRemovals(
+      rootPath,
       omitTransparentCrossHarnessAdds(
         rootPath,
         expectedFiles,

@@ -33,6 +33,7 @@ import type {
   ProfileCreatePreview,
   ProfileCreateRequest,
   ProfileCreateResult,
+  ProfileDetail,
   ProfileSummary,
   ProfileSwitchStepEvent,
   ProfileTagResult,
@@ -576,6 +577,88 @@ export async function renameProfile(
     return throwAgentError(response, "Could not rename profile");
   }
   return (await response.json()) as ProfileRenameResult;
+}
+
+export async function fetchProfileDetail(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+): Promise<ProfileDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load profile");
+  }
+  return (await response.json()) as ProfileDetail;
+}
+
+export async function patchProfileMetadata(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+  body: { description?: string; tags?: string[] },
+): Promise<ProfileDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not update profile");
+  }
+  return (await response.json()) as ProfileDetail;
+}
+
+export async function attachProfileComposition(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+  body: { layerId?: string; resourceId?: string },
+): Promise<ProfileDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}/attachments`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not attach to profile");
+  }
+  return (await response.json()) as ProfileDetail;
+}
+
+export async function detachProfileComposition(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+  body: { resourceId?: string; dependencyName?: string },
+): Promise<ProfileDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}/attachments`,
+    {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not detach from profile");
+  }
+  return (await response.json()) as ProfileDetail;
 }
 
 export async function fetchStatus(

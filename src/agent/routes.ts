@@ -36,6 +36,12 @@ import {
   handleProfileTag,
 } from "./profile-create-handlers.js";
 import {
+  handleProfileAttach,
+  handleProfileDetach,
+  handleProfileDetail,
+  handleProfilePatch,
+} from "./profile-edit-handlers.js";
+import {
   handleProfileStashList,
   handleProfileStashPop,
   handleProfileStashPush,
@@ -493,7 +499,10 @@ function withCors(request: Request, response: Response): Response {
     "Access-Control-Allow-Headers",
     "Authorization, Content-Type, Accept",
   );
-  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
+  headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PATCH, DELETE, OPTIONS, HEAD",
+  )
   headers.set("Vary", "Origin");
   return new Response(response.body, {
     status: response.status,
@@ -602,6 +611,36 @@ export function createAgentFetchHandler(
         });
       }
     } else {
+      const profileAttachmentMatch = url.pathname.match(
+        /^\/v1\/profiles\/([^/]+)\/attachments$/,
+      );
+      if (method === "POST" && profileAttachmentMatch) {
+        response = await handleProfileAttach(
+          request,
+          token,
+          decodeURIComponent(profileAttachmentMatch[1] ?? ""),
+        );
+      } else if (method === "DELETE" && profileAttachmentMatch) {
+        response = await handleProfileDetach(
+          request,
+          token,
+          decodeURIComponent(profileAttachmentMatch[1] ?? ""),
+        );
+      } else {
+      const profileDetailMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)$/);
+      if (method === "GET" && profileDetailMatch) {
+        response = handleProfileDetail(
+          request,
+          token,
+          decodeURIComponent(profileDetailMatch[1] ?? ""),
+        );
+      } else if (method === "PATCH" && profileDetailMatch) {
+        response = await handleProfilePatch(
+          request,
+          token,
+          decodeURIComponent(profileDetailMatch[1] ?? ""),
+        );
+      } else {
       const renameMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/rename$/);
       if (method === "POST" && renameMatch) {
         response = await handleProfileRename(
@@ -687,6 +726,8 @@ export function createAgentFetchHandler(
           }
           }
         }
+      }
+      }
       }
     }
 

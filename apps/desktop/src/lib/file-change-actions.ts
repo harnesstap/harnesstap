@@ -23,7 +23,8 @@ export function fileChangeRowActions(
     ? fileChangeAbsolutePath(opts.rootPath, change.path)
     : null;
   const hasResource = Boolean(change.resource);
-  const canOpen = Boolean(absolutePath);
+  // `deleted` (+ would create) means the live file is missing — Open would 404.
+  const canOpen = Boolean(absolutePath) && change.type !== "deleted";
   let canAdd = false;
   let canDrop = false;
   let canDiff = false;

@@ -18,10 +18,35 @@ describe("fileChangeRowActions", () => {
       rootPath: root,
       profileHasResource: true,
     });
-    expect(row.canOpen).toBe(true);
+    expect(row.canOpen).toBe(false);
     expect(row.canAdd).toBe(false);
     expect(row.canDrop).toBe(true);
     expect(row.absolutePath).toBe(`${root}/.claude/skills/x/SKILL.md`);
+  });
+
+  it("allows Open on modified and remove (−) rows", () => {
+    const modified: DriftFileChange = {
+      path: ".claude/skills/x/SKILL.md",
+      type: "modified",
+      resource: { type: "skill", name: "x" },
+    };
+    const added: DriftFileChange = {
+      path: ".claude/skills/x/SKILL.md",
+      type: "added",
+      resource: { type: "skill", name: "x" },
+    };
+    expect(
+      fileChangeRowActions(modified, {
+        rootPath: root,
+        profileHasResource: true,
+      }).canOpen,
+    ).toBe(true);
+    expect(
+      fileChangeRowActions(added, {
+        rootPath: root,
+        profileHasResource: true,
+      }).canOpen,
+    ).toBe(true);
   });
 
   it("shows Add on modified when mapped; Drop always for restore", () => {
