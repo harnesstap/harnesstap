@@ -10,6 +10,9 @@ import type {
   CloudProfilePullResult,
   GlobalProfileStatus,
   GlobalProfileStatusDepth,
+  HarnessSettingsPayload,
+  PutHarnessSettingsInput,
+  PutHarnessSettingsResult,
   LibraryLayer,
   LibraryResource,
   LibraryResourceDetail,
@@ -431,6 +434,38 @@ export async function fetchCloudAuthStatus(
     return throwAgentError(response, "Could not load cloud account");
   }
   return (await response.json()) as CloudAuthStatus;
+}
+
+export async function fetchHarnessSettings(
+  baseUrl: string,
+  token: string | null,
+  projectPath?: string | null,
+): Promise<HarnessSettingsPayload> {
+  const query =
+    projectPath && projectPath.trim()
+      ? `?project=${encodeURIComponent(projectPath.trim())}`
+      : "";
+  const response = await agentFetch(baseUrl, token, `/v1/harness${query}`);
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load harness settings");
+  }
+  return (await response.json()) as HarnessSettingsPayload;
+}
+
+export async function saveHarnessSettings(
+  baseUrl: string,
+  token: string | null,
+  body: PutHarnessSettingsInput,
+): Promise<PutHarnessSettingsResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/harness", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not save harness settings");
+  }
+  return (await response.json()) as PutHarnessSettingsResult;
 }
 
 export async function startCloudLogin(

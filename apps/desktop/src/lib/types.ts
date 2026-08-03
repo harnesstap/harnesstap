@@ -443,6 +443,66 @@ export interface AgentHealth {
   port: number;
 }
 
+export type MaterializationStrategy = "symlink-preferred" | "copy";
+
+export interface HarnessCatalogEntry {
+  id: string;
+  name: string;
+  supported: boolean;
+}
+
+export interface HarnessSettingsGlobal {
+  main_harness: string | null;
+  alias_harnesses: string[];
+}
+
+export interface HarnessSettingsProject {
+  available: boolean;
+  override: boolean;
+  main_harness?: string | null;
+  alias_harnesses?: string[];
+  materialization_strategy?: MaterializationStrategy;
+  reason?: string;
+}
+
+export interface HarnessSettingsPayload {
+  global: HarnessSettingsGlobal;
+  project?: HarnessSettingsProject;
+  harnesses: HarnessCatalogEntry[];
+}
+
+export interface PutHarnessSettingsInput {
+  global: { main_harness: string; alias_harnesses: string[] };
+  project?: {
+    path: string;
+    override: boolean;
+    main_harness?: string;
+    alias_harnesses?: string[];
+    materialization_strategy?: MaterializationStrategy;
+  };
+}
+
+export interface PutHarnessSettingsMirrorSummary {
+  main_harness: string;
+  alias_harnesses: string[];
+  platforms_synced: string[];
+  files_written: number;
+  surface_warnings: Array<{
+    harness: string;
+    path: string;
+    category: string;
+    message: string;
+    alias_harnesses: string[];
+  }>;
+}
+
+export interface PutHarnessSettingsResult {
+  global: HarnessSettingsGlobal;
+  project?: HarnessSettingsProject;
+  mirror?: PutHarnessSettingsMirrorSummary;
+  mirror_error?: string;
+}
+
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {
   validate_baseline: "Validate baseline",
   apply_home: "Apply profile (global)",
