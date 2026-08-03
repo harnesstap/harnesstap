@@ -2389,7 +2389,7 @@ button:focus-visible,
   padding: 0.4rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
 }
 
 .resource-tracked-dirs-folder-main {
