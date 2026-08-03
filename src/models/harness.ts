@@ -164,3 +164,11 @@ export function setProjectHarnessConfig(input: {
     updated_at: now,
   };
 }
+
+export function deleteProjectHarnessConfig(projectId: string): boolean {
+  const db = getDb();
+  const result = db
+    .prepare("DELETE FROM project_harnesses WHERE project_id = ?")
+    .run(projectId);
+  return result.changes > 0;
+}

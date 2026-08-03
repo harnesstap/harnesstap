@@ -230,4 +230,32 @@ describe("harness model", () => {
       await context.cleanup();
     }
   });
+
+  it("deletes a project harness config", async () => {
+    const context = await createInitializedTestContext("harness-project-delete");
+    try {
+      const harness = await import("../../src/models/harness.ts");
+      const { upsertProject } = await import("../../src/models/project.ts");
+
+      const project = upsertProject({
+        git_origin: "git@github.com:acme/delete-harness.git",
+        name: "delete-harness",
+        local_path: context.homeDir,
+      });
+      harness.setProjectHarnessConfig({
+        project_id: project.id,
+        main_harness: "claude-code",
+        alias_harnesses: ["cursor"],
+      });
+      expect(harness.getProjectHarnessConfig(project.id)?.main_harness).toBe(
+        "claude-code",
+      );
+
+      expect(harness.deleteProjectHarnessConfig(project.id)).toBe(true);
+      expect(harness.getProjectHarnessConfig(project.id)).toBeUndefined();
+      expect(harness.deleteProjectHarnessConfig(project.id)).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
