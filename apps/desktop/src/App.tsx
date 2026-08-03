@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Plus, RefreshCw, Unplug, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Plus, RefreshCw, Settings, Unplug, User } from "lucide-react";
 import { shouldShowReapply } from "./lib/reapply";
 import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
@@ -12,6 +12,7 @@ import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
+import { SettingsDrawer } from "./components/SettingsDrawer";
 import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
 import {
   AgentApiError,
@@ -179,6 +180,7 @@ export function App() {
   const [cloudBrowseOpen, setCloudBrowseOpen] = useState(false);
   const [stashBrowseOpen, setStashBrowseOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [cloudAuth, setCloudAuth] = useState<CloudAuthStatus | null>(null);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
@@ -1633,6 +1635,19 @@ export function App() {
             )}
           </button>
           <button
+            className="icon-action"
+            type="button"
+            onClick={() => {
+              setCloudAccountOpen(false);
+              setSettingsOpen(true);
+            }}
+            disabled={!connected}
+            aria-label="Settings"
+            title="Settings"
+          >
+            <Settings size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button
             className={[
               "icon-action",
               "account-action",
@@ -1641,7 +1656,10 @@ export function App() {
               .filter(Boolean)
               .join(" ")}
             type="button"
-            onClick={() => setCloudAccountOpen(true)}
+            onClick={() => {
+              setSettingsOpen(false);
+              setCloudAccountOpen(true);
+            }}
             disabled={!connected}
             aria-label={
               cloudAuth?.authenticated
@@ -2281,6 +2299,18 @@ export function App() {
         open={stashBrowseOpen}
         entries={stashEntries}
         onClose={() => setStashBrowseOpen(false)}
+      />
+
+      <SettingsDrawer
+        open={settingsOpen}
+        baseUrl={baseUrl}
+        token={token}
+        projectPath={view === "project" ? projectPath : null}
+        disabled={switching}
+        onClose={() => setSettingsOpen(false)}
+        onSaved={() => {
+          void refreshStatus("full");
+        }}
       />
 
       <CloudAccountDrawer
