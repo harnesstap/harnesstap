@@ -2,20 +2,32 @@ import { useEffect, useMemo, useState } from "react";
 import { Scissors, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AgentApiError,
+  addProfilePlugin,
   attachProfileComposition,
   detachProfileComposition,
   fetchLibraryLayers,
   fetchLibraryResources,
+  fetchMarketplacePlugins,
+  fetchMarketplaces,
   fetchProfileDetail,
   patchProfileMetadata,
   renameProfile,
 } from "../lib/agent-client";
 import type {
+  CatalogPlugin,
   LibraryLayer,
   LibraryResource,
+  PluginMarketplaceEntry,
   ProfileDetail,
 } from "../lib/types";
 import {
@@ -27,6 +39,7 @@ export interface EditProfilePaneProps {
   profileName: string;
   baseUrl: string | null;
   token: string | null;
+  projectPath?: string | null;
   disabled?: boolean;
   onClose: () => void;
   onProfileRenamed: (nextName: string) => void;
@@ -48,6 +61,7 @@ export function EditProfilePane({
   profileName,
   baseUrl,
   token,
+  projectPath = null,
   disabled = false,
   onClose,
   onProfileRenamed,
@@ -66,6 +80,13 @@ export function EditProfilePane({
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [resourceFilter, setResourceFilter] = useState("");
+  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
+  const [marketplaceName, setMarketplaceName] = useState("");
+  const [catalogPlugins, setCatalogPlugins] = useState<CatalogPlugin[]>([]);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [pluginsLoading, setPluginsLoading] = useState(false);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
+  const [pluginRef, setPluginRef] = useState("");
 
   const applyDetail = (next: ProfileDetail) => {
     setDetail(next);
@@ -136,6 +157,74 @@ export function EditProfilePane({
       cancelled = true;
     };
   }, [baseUrl, token]);
+
+  useEffect(() => {
+    if (!baseUrl) {
+      return;
+    }
+    let cancelled = false;
+    setMarketplaceLoading(true);
+    setMarketplaceError(null);
+    void fetchMarketplaces(baseUrl, token)
+      .then((result) => {
+        if (!cancelled) {
+          setMarketplaces(result.marketplaces);
+          setMarketplaceName(result.marketplaces[0]?.name ?? "");
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setMarketplaces([]);
+          setMarketplaceName("");
+          setMarketplaceError(
+            errorMessage(loadError, "Could not load marketplaces"),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setMarketplaceLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token]);
+
+  useEffect(() => {
+    if (!baseUrl || !marketplaceName) {
+      setCatalogPlugins([]);
+      setPluginRef("");
+      return;
+    }
+    let cancelled = false;
+    setPluginsLoading(true);
+    setMarketplaceError(null);
+    void fetchMarketplacePlugins(baseUrl, token, marketplaceName)
+      .then((result) => {
+        if (!cancelled) {
+          setCatalogPlugins(result.plugins);
+          setPluginRef(result.plugins[0]?.ref ?? "");
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setCatalogPlugins([]);
+          setPluginRef("");
+          setMarketplaceError(
+            errorMessage(loadError, "Could not load marketplace plugins"),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPluginsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, marketplaceName, token]);
 
   const layerRows = useMemo(
     () =>
@@ -279,6 +368,23 @@ export function EditProfilePane({
     );
   };
 
+  const addPluginPin = () => {
+    const ref = pluginRef.trim();
+    if (!baseUrl || !detail || !ref) {
+      return;
+    }
+    void runMutation(
+      async () => {
+        await addProfilePlugin(baseUrl, token, profileName, {
+          ref,
+          ...(projectPath ? { projectPath } : {}),
+        });
+        return fetchProfileDetail(baseUrl, token, profileName);
+      },
+      { affectsApply: true },
+    );
+  };
+
   const toggleResource = (resourceId: string) => {
     if (!baseUrl || !detail) {
       return;
@@ -298,6 +404,13 @@ export function EditProfilePane({
   };
 
   const controlsDisabled = disabled || busy || loading;
+  const pluginControlsDisabled =
+    controlsDisabled
+    || !token
+    || marketplaceLoading
+    || pluginsLoading
+    || !pluginRef.trim()
+    || catalogPlugins.length === 0;
 
   return (
     <main className="edit-profile-pane" aria-label={`Edit ${profileName}`}>
@@ -397,6 +510,85 @@ export function EditProfilePane({
               </div>
             </div>
           </details>
+
+          <section className="edit-profile-section" aria-label="Marketplace plugins">
+            <h3>Marketplace plugins</h3>
+            {marketplaceLoading ? (
+              <p className="muted">Loading marketplaces…</p>
+            ) : marketplaceError ? (
+              <div className="banner error">{marketplaceError}</div>
+            ) : marketplaces.length === 0 ? (
+              <p className="muted">
+                No marketplaces registered. Add one in Settings.
+              </p>
+            ) : (
+              <div className="edit-plugin-pin">
+                {marketplaces.length > 1 ? (
+                  <div className="form-field gap-1.5">
+                    <Label htmlFor="edit-plugin-marketplace">Marketplace</Label>
+                    <Select
+                      value={marketplaceName}
+                      onValueChange={setMarketplaceName}
+                      disabled={controlsDisabled || pluginsLoading}
+                    >
+                      <SelectTrigger
+                        id="edit-plugin-marketplace"
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Select a marketplace…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {marketplaces.map((entry) => (
+                          <SelectItem key={entry.name} value={entry.name}>
+                            {entry.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+                <div className="form-field gap-1.5">
+                  <Label htmlFor="edit-plugin-ref">Plugin</Label>
+                  {pluginsLoading ? (
+                    <p className="muted">Loading plugins…</p>
+                  ) : catalogPlugins.length === 0 ? (
+                    <p className="muted">No plugins in this marketplace.</p>
+                  ) : (
+                    <Select
+                      value={pluginRef}
+                      onValueChange={setPluginRef}
+                      disabled={controlsDisabled}
+                    >
+                      <SelectTrigger
+                        id="edit-plugin-ref"
+                        className="w-full"
+                        data-testid="edit-plugin-ref"
+                      >
+                        <SelectValue placeholder="Select a plugin…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {catalogPlugins.map((plugin) => (
+                          <SelectItem key={plugin.ref} value={plugin.ref}>
+                            {plugin.name}
+                            {plugin.version ? ` @ ${plugin.version}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn primary"
+                  data-testid="edit-plugin-add"
+                  onClick={addPluginPin}
+                  disabled={pluginControlsDisabled}
+                >
+                  Pin plugin
+                </button>
+              </div>
+            )}
+          </section>
 
           <section className="edit-profile-section" aria-label="Composition">
             <h3>Composition</h3>

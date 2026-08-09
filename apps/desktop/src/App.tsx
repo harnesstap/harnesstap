@@ -2146,6 +2146,7 @@ export function App() {
             profileName={editingProfile}
             baseUrl={baseUrl}
             token={token}
+            projectPath={view === "project" ? projectPath : null}
             disabled={switching}
             onClose={closeEditProfile}
             onProfileRenamed={(nextName) => {
