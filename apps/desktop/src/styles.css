@@ -14,7 +14,9 @@
   --font: "IBM Plex Sans", "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  /* shadcn / Tailwind theme bridge (dark-only) */
+  /* shadcn / Tailwind theme bridge (dark-only).
+     App --accent/--muted are brand blue and muted text; do not repurpose them
+     as shadcn surface tokens — bg-muted/bg-accent map via @theme inline below. */
   --background: var(--bg);
   --foreground: var(--fg);
   --card: var(--surface);
@@ -29,7 +31,7 @@
   --accent-foreground: var(--fg);
   --destructive: var(--red);
   --destructive-foreground: #fff5f5;
-  --input: #2a3340;
+  --input: var(--border);
   --ring: var(--accent);
   --radius: 0.25rem;
 }
@@ -45,7 +47,9 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--surface);
   --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--surface-2);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
