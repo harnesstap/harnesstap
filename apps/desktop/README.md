@@ -66,3 +66,12 @@ Output: `apps/desktop/src-tauri/target/release/bundle/`
 - [ ] Switch shows SSE steps; Cancel disabled during apply step
 - [ ] Live panel G/Y/R from `GET /v1/status`
 - [ ] Project view auto-bootstraps `.harnesstap/config.toml` on first use
+
+## End-to-end tests (Tauri + WebdriverIO)
+
+```bash
+bun run desktop:e2e:build   # debug build with --features e2e
+bun run desktop:e2e         # WebdriverIO golden path
+```
+
+Uses isolated `HOME` / `HARNESSTAP_HOME` and `HARNESSTAP_E2E_PROJECT_PATH` (only honored when built with Cargo feature `e2e`). CI: `.github/workflows/desktop-e2e.yml` (Ubuntu, nightly / manual — not a PR gate yet).
