@@ -3,10 +3,12 @@ import { join } from "node:path";
 
 export interface HarnesstapSettings {
   plugins: { refreshMaxAgeHours: number };
+  layerVersionHistoryLimit: number;
 }
 
 const DEFAULTS: HarnesstapSettings = {
   plugins: { refreshMaxAgeHours: 24 },
+  layerVersionHistoryLimit: 10,
 };
 
 export function parseJsonc(content: string): unknown {
@@ -131,6 +133,7 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
   try {
     const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings>;
     const hours = raw.plugins?.refreshMaxAgeHours;
+    const limit = raw.layerVersionHistoryLimit;
     return {
       plugins: {
         refreshMaxAgeHours:
@@ -138,6 +141,10 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
             ? hours
             : DEFAULTS.plugins.refreshMaxAgeHours,
       },
+      layerVersionHistoryLimit:
+        typeof limit === "number" && Number.isInteger(limit) && limit >= 1
+          ? limit
+          : DEFAULTS.layerVersionHistoryLimit,
     };
   } catch {
     return DEFAULTS;

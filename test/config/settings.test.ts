@@ -11,6 +11,12 @@ describe("loadSettings", () => {
     expect(settings.plugins.refreshMaxAgeHours).toBe(24);
   });
 
+  it("defaults layerVersionHistoryLimit to 10 when config missing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    const settings = loadSettings(dir);
+    expect(settings.layerVersionHistoryLimit).toBe(10);
+  });
+
   it("reads refreshMaxAgeHours from config.json", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
@@ -86,4 +92,34 @@ describe("loadSettings", () => {
     );
     expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(24);
   });
+
+  it("reads layerVersionHistoryLimit from config.jsonc", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ layerVersionHistoryLimit: 25 }),
+    );
+    expect(loadSettings(dir).layerVersionHistoryLimit).toBe(25);
+  });
+
+  it("defaults layerVersionHistoryLimit to 10 when key missing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ plugins: { refreshMaxAgeHours: 48 } }),
+    );
+    expect(loadSettings(dir).layerVersionHistoryLimit).toBe(10);
+  });
+
+  it.each([0, -1, 1.5, "5", null, {}])(
+    "falls back to default for invalid layerVersionHistoryLimit (%p)",
+    (invalidValue) => {
+      const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+      writeFileSync(
+        join(dir, "config.jsonc"),
+        JSON.stringify({ layerVersionHistoryLimit: invalidValue }),
+      );
+      expect(loadSettings(dir).layerVersionHistoryLimit).toBe(10);
+    },
+  );
 });
