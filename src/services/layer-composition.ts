@@ -12,6 +12,7 @@ import {
   resolveResource,
   upsertResource,
 } from "../models/resource.js";
+import { markLayerDirty } from "./layer-versioning.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
 import { parseResourceSelector } from "./resource-selector.js";
 import { syncPluginResource } from "./resource-sync.js";
@@ -470,6 +471,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
       await syncPluginResource(resource, { policy: "overwrite" });
     }
     const versionLabel = input.version ? ` (${input.version})` : "";
+    markLayerDirty(input.layer.id);
     return `Attached plugin pin ${ref}${versionLabel} to layer ${input.layer.name}`;
   }
 
@@ -485,6 +487,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
     });
     addResourceToLayer(input.layer.id, resource.id);
     const versionLabel = input.version ? ` (${input.version})` : "";
+    markLayerDirty(input.layer.id);
     return `Attached layer ${resource.name}${versionLabel} to layer ${input.layer.name}`;
   }
 
@@ -500,6 +503,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
 
   const resource = resolveTypedResource(selector, attachmentType);
   addResourceToLayer(input.layer.id, resource.id);
+  markLayerDirty(input.layer.id);
   return `Added ${resource.type} "${resource.name}" to layer ${input.layer.name}`;
 }
 
@@ -522,6 +526,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     }
     removeResourceFromLayer(input.layer.id, pin.resource.id);
     syncClaudeLayerPluginsAfterRemove(input.layer, pin.ref);
+    markLayerDirty(input.layer.id);
     return {
       removed: true,
       message: `Removed plugin pin ${pin.ref} from layer ${input.layer.name}`,
@@ -546,6 +551,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
       );
     }
     removeResourceFromLayer(input.layer.id, resourceResult.resource.id);
+    markLayerDirty(input.layer.id);
     return {
       removed: true,
       message: `Removed layer ${resourceResult.resource.name} from layer ${input.layer.name}`,
@@ -554,6 +560,7 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
 
   const resource = resolveTypedResource(selector, attachmentType);
   removeResourceFromLayer(input.layer.id, resource.id);
+  markLayerDirty(input.layer.id);
   return {
     removed: true,
     message: `Removed ${resource.type} "${resource.name}" from layer ${input.layer.name}`,

@@ -230,16 +230,24 @@ export function markLayerDirty(layerId: string): void {
   if (!row) {
     throw new LayerVersionError("not_found", `Layer not found: ${layerId}`);
   }
+  if (row.frozen_at) {
+    throw new LayerVersionError(
+      "frozen_layer",
+      `Layer ${row.name}@${row.version} is frozen and cannot be marked dirty`,
+    );
+  }
   if (row.dirty === 1) {
     return;
   }
 
-  captureWorkingSnapshot(layerId);
   const db = getDb();
-  db.prepare("UPDATE layers SET dirty = 1, updated_at = ? WHERE id = ?").run(
-    new Date().toISOString(),
-    layerId,
-  );
+  db.transaction(() => {
+    captureWorkingSnapshot(layerId);
+    db.prepare("UPDATE layers SET dirty = 1, updated_at = ? WHERE id = ?").run(
+      new Date().toISOString(),
+      layerId,
+    );
+  })();
 }
 
 export function cutLayerVersion(input: {

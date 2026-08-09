@@ -21,6 +21,7 @@ import {
   formatPluginRef,
   removeLayerAttachment,
 } from "./layer-composition.js";
+import { markLayerDirty } from "./layer-versioning.js";
 import { ProfileRenameError, ProfileReservedNameError } from "./profile-commands.js";
 import { toContentsResource } from "./profile-contents.js";
 
@@ -125,6 +126,9 @@ export function updateProfileMetadata(
     }
     setLayerTags(profile.id, nextTags);
   }
+  if (input.description !== undefined || input.tags !== undefined) {
+    markLayerDirty(profile.id);
+  }
   const refreshed = getLayerById(profile.id) ?? resolveProfileLayer(selector);
   return getProfileDetail(refreshed.name);
 }
@@ -166,6 +170,7 @@ export function attachProfileResource(
   );
   if (!already) {
     addResourceToLayer(profile.id, resource.id);
+    markLayerDirty(profile.id);
   }
   return getProfileDetail(profile.name);
 }
@@ -208,6 +213,7 @@ export function detachProfileAttachment(
       });
     } else {
       removeResourceFromLayer(profile.id, resourceId);
+      markLayerDirty(profile.id);
     }
     return getProfileDetail(profile.name);
   }

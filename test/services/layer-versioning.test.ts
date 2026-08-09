@@ -151,6 +151,23 @@ describe("layer versioning", () => {
     }
   });
 
+  it("rejects markLayerDirty on frozen layer", async () => {
+    const context = await createInitializedTestContext("layer-version-frozen-dirty");
+    try {
+      const layer = createLayer({ name: "frozen", version: "1.0.0" });
+      const head = cutLayerVersion({ layerId: layer.id, newVersion: "1.1.0" });
+      const frozen = getLayerByName("frozen", "1.0.0");
+      expect(frozen?.frozen_at).toBeDefined();
+
+      expect(() => markLayerDirty(frozen!.id)).toThrowError(
+        expect.objectContaining<Partial<LayerVersionError>>({ code: "frozen_layer" }),
+      );
+      expect(getLayerById(head.id)?.dirty).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("createLayer arrives clean", async () => {
     const context = await createInitializedTestContext("layer-version-create-clean");
     try {

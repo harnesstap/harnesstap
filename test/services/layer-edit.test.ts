@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { createLayer, addResourceToLayer, getLayerResources } from "../../src/models/layer-model.ts";
+import {
+  createLayer,
+  addResourceToLayer,
+  getLayerById,
+  getLayerResources,
+} from "../../src/models/layer-model.ts";
 import { upsertResource } from "../../src/models/resource.ts";
 import {
   applyLayerEdit,
@@ -10,6 +15,8 @@ import {
   validateLayerEditSelection,
   type LayerEditRow,
 } from "../../src/services/layer-edit.ts";
+import { addLayerAttachment } from "../../src/services/layer-composition.ts";
+import { updateProfileMetadata } from "../../src/services/profile-edit.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
@@ -174,6 +181,50 @@ describe("layer-edit", () => {
       } as LayerEditRow,
     ];
     expect(() => validateLayerEditSelection(layer, rows)).toThrow(/cannot reference itself/i);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("marks layer dirty when adding an attachment", async () => {
+    const context = await createTestContext("layer-edit-marks-dirty");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const layer = createLayer({ name: "stack", version: "1.0.0" });
+      const skill = upsertResource(
+        makeResourceInput({ type: "skill", name: "helper" }),
+        { policy: "overwrite" },
+      ).resource;
+
+      expect(getLayerById(layer.id)?.dirty).toBe(false);
+
+      await addLayerAttachment({
+        layer,
+        selector: skill.name,
+        type: "skill",
+      });
+
+      expect(getLayerById(layer.id)?.dirty).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("marks profile dirty when metadata is updated", async () => {
+    const context = await createTestContext("layer-edit-profile-metadata-dirty");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const profile = createLayer({
+        name: "work",
+        version: "1.0.0",
+        tags: ["profile"],
+      });
+
+      expect(getLayerById(profile.id)?.dirty).toBe(false);
+
+      updateProfileMetadata(profile.name, { description: "Updated profile" });
+
+      expect(getLayerById(profile.id)?.dirty).toBe(true);
     } finally {
       await context.cleanup();
     }
