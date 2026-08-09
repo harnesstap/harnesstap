@@ -87,23 +87,38 @@ export function resolveUpdatedAtBounds(
   updated: UpdatedFilter,
   now: Date = new Date(),
 ): { start: Date; end: Date } | null {
-  if (updated.preset === "all") return null;
-
-  if (updated.preset === "custom") {
-    if (!isUpdatedFilterValid(updated) || !updated.from || !updated.to) {
+  let days: number;
+  switch (updated.preset) {
+    case "all":
       return null;
+    case "custom": {
+      // Fail-open: invalid custom range → no date filter until from/to are valid.
+      if (!isUpdatedFilterValid(updated) || !updated.from || !updated.to) {
+        return null;
+      }
+      const from = parseLocalDate(updated.from);
+      const to = parseLocalDate(updated.to);
+      if (!from || !to) return null;
+      return {
+        start: startOfLocalDay(from.y, from.m, from.d),
+        end: endOfLocalDay(to.y, to.m, to.d),
+      };
     }
-    const from = parseLocalDate(updated.from);
-    const to = parseLocalDate(updated.to);
-    if (!from || !to) return null;
-    return {
-      start: startOfLocalDay(from.y, from.m, from.d),
-      end: endOfLocalDay(to.y, to.m, to.d),
-    };
+    case "7d":
+      days = 7;
+      break;
+    case "30d":
+      days = 30;
+      break;
+    case "90d":
+      days = 90;
+      break;
+    default: {
+      const _exhaustive: never = updated.preset;
+      return _exhaustive;
+    }
   }
 
-  const days =
-    updated.preset === "7d" ? 7 : updated.preset === "30d" ? 30 : 90;
   const end = endOfLocalDay(now.getFullYear(), now.getMonth(), now.getDate());
   const startDate = new Date(
     now.getFullYear(),
@@ -156,6 +171,7 @@ export function applyLibraryResourceFilters(
   }
 
   const bounds = resolveUpdatedAtBounds(state.updated, now);
+  // Fail-open: null bounds (e.g. invalid custom range) skip date filtering until valid.
   if (bounds) {
     next = next.filter((resource) => {
       if (!resource.updated_at) return false;

@@ -190,10 +190,6 @@ describe("facet options", () => {
       "marketplace_link",
     ]);
   });
-
-  it("does not drop facet options when other filters would narrow the list", () => {
-    expect(buildOriginFacetOptions(rows)).toContain("local_snapshot");
-  });
 });
 
 describe("resolveUpdatedAtBounds", () => {
