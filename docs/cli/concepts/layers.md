@@ -59,6 +59,32 @@ Refresh policy for marketplace metadata is configured in `~/.harnesstap/config.j
 
 `resource sync` uses cached metadata unless it is stale; pass `--force` to refresh regardless.
 
+## Version cuts and dirty heads
+
+Each layer name has a **working head** — the latest editable version. Edits after a cut (for example `layer edit --add`) mark the head **dirty** without changing its semver. Dirty heads are shown with a trailing `*` in human output (`layer list`, `layer show`) — for example `1.2.0*` — while JSON output keeps the real `version` string and a separate `dirty` flag.
+
+Cut a new semver to freeze the current composition and advance the head:
+
+```bash
+ht layer cut my-setup --version 1.3.0
+```
+
+The previous head is frozen in place (copy-on-write); the new head starts clean at the requested version. Frozen versions cannot be edited or cut again.
+
+HarnessTap keeps at most `layerVersionHistoryLimit` versions per layer name (head included). Oldest frozen versions are pruned on cut when over the limit. Configure in `~/.harnesstap/config.jsonc` (default `10`):
+
+```jsonc
+{
+  "layerVersionHistoryLimit": 10
+}
+```
+
+**Sharing rules:** export, `migrate export --layer`, and `layer publish` refuse dirty heads so bundles and catalog uploads always reflect a cut version. Cut first, or pass `--version <semver>` on `layer publish` to cut and publish in one step:
+
+```bash
+ht layer publish my-setup --version 1.3.0 --account acme
+```
+
 ## Environment cascade
 
 Environments carry *how* values (env vars, model config, permissions, secret refs). During apply, values resolve through a cascade — **last wins**:
@@ -128,6 +154,7 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessTap 
 | Add resources or deps | `layer edit --add` / `--remove` |
 | Diagnose before apply | `layer doctor` |
 | Compare versions | `layer diff` |
+| Cut a new semver | `layer cut --version` |
 | Infer from a repo | `layer from-project` |
 | Apply to a project | `layer apply` |
 | Apply to home harness | `profile use` (profile-tagged layers) |
