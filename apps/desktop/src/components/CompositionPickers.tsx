@@ -5,6 +5,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { SelectionList as UiSelectionList } from "@/components/ui/selection-list";
 import {
   filterLibraryResourcesBySearch,
   groupLibraryResourcesByType,
@@ -36,28 +40,19 @@ export function SelectionList({
   onToggle,
 }: SelectionListProps) {
   return (
-    <fieldset className="selection-list" disabled={disabled}>
-      <legend>{title}</legend>
-      <div className="selection-list-rows">
-        {rows.length === 0 ? (
-          <p className="muted">{emptyLabel}</p>
-        ) : (
-          rows.map((row) => (
-            <label key={row.id} className="selection-row">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(row.id)}
-                onChange={() => onToggle(row.id)}
-              />
-              <span>
-                <strong>{row.name}</strong>
-                {row.description ? <small>{row.description}</small> : null}
-              </span>
-            </label>
-          ))
-        )}
-      </div>
-    </fieldset>
+    <UiSelectionList
+      title={title}
+      emptyLabel={emptyLabel}
+      items={rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+      }))}
+      selectedIds={selectedIds}
+      disabled={disabled}
+      onToggle={onToggle}
+      idPrefix={`layers-${title}`}
+    />
   );
 }
 
@@ -146,8 +141,8 @@ export function ResourceSelectionList({
   return (
     <fieldset className="selection-list" disabled={disabled}>
       <legend>Resources</legend>
-      <input
-        className="selection-list-filter"
+      <Input
+        className="selection-list-filter h-8 text-xs"
         type="search"
         placeholder="Filter (skill:name)…"
         value={filter}
@@ -185,21 +180,28 @@ export function ResourceSelectionList({
                   </button>
                   {expanded ? (
                     <div className="selection-type-body">
-                      {group.resources.map((resource) => (
-                        <label key={resource.id} className="selection-row">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(resource.id)}
-                            onChange={() => onToggle(resource.id)}
-                          />
-                          <span>
-                            <strong>{resourceDisplayName(resource)}</strong>
-                            {resource.description ? (
-                              <small>{resource.description}</small>
-                            ) : null}
-                          </span>
-                        </label>
-                      ))}
+                      {group.resources.map((resource) => {
+                        const id = `resource-${resource.id}`;
+                        return (
+                          <div key={resource.id} className="selection-row">
+                            <Checkbox
+                              id={id}
+                              checked={selectedIds.includes(resource.id)}
+                              disabled={disabled}
+                              onCheckedChange={() => onToggle(resource.id)}
+                            />
+                            <Label
+                              htmlFor={id}
+                              className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal"
+                            >
+                              <strong>{resourceDisplayName(resource)}</strong>
+                              {resource.description ? (
+                                <small>{resource.description}</small>
+                              ) : null}
+                            </Label>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : null}
                 </section>
@@ -227,7 +229,12 @@ export function ResourceSelectionList({
                 <div className="selection-type-body">
                   {group.resources.map((resource) => (
                     <div key={resource.id} className="selection-row">
-                      <input type="checkbox" tabIndex={-1} readOnly />
+                      <Checkbox
+                        checked={false}
+                        disabled
+                        tabIndex={-1}
+                        aria-hidden
+                      />
                       <span>
                         <strong>{resourceDisplayName(resource)}</strong>
                         {resource.description ? (
