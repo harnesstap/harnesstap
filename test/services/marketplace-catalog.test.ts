@@ -61,4 +61,19 @@ describe("marketplace-catalog", () => {
     refreshMarketplaceCatalog(home, { name: "local-market", force: true });
     expect(searchCatalogPlugins(home, "alp").map((p) => p.name)).toEqual(["alpha"]);
   });
+
+  it("rejects goose-only marketplace refresh", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    addMarketplace(home, {
+      name: "goose-market",
+      url: "/tmp/dummy-goose-marketplace",
+      platforms: ["goose"],
+    });
+    const refreshed = refreshMarketplaceCatalog(home, {
+      name: "goose-market",
+      force: true,
+    });
+    expect(refreshed.ok).toBe(false);
+    expect(refreshed.message.toLowerCase()).toContain("goose");
+  });
 });
