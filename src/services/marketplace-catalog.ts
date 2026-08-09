@@ -21,6 +21,7 @@ export type { CatalogPlugin } from "./marketplace-catalog-parse.js";
 
 export interface StoredMarketplaceCatalog extends ParsedMarketplaceCatalog {
   marketplaceEntryName: string;
+  manifestName?: string;
   refreshedAt: string;
   sha?: string;
 }
@@ -124,6 +125,25 @@ function parseManifest(
   }
 }
 
+function catalogWithRegistryIdentity(
+  parsed: ParsedMarketplaceCatalog,
+  registryName: string,
+): Pick<StoredMarketplaceCatalog, "marketplaceName" | "manifestName" | "plugins"> {
+  const manifestName =
+    parsed.marketplaceName.length > 0 && parsed.marketplaceName !== registryName
+      ? parsed.marketplaceName
+      : undefined;
+
+  return {
+    marketplaceName: registryName,
+    ...(manifestName ? { manifestName } : {}),
+    plugins: parsed.plugins.map((plugin) => ({
+      ...plugin,
+      ref: `${plugin.name}@${registryName}`,
+    })),
+  };
+}
+
 export function refreshMarketplaceCatalog(
   harnesstapDir: string,
   options: RefreshMarketplaceCatalogOptions,
@@ -179,8 +199,9 @@ export function refreshMarketplaceCatalog(
   }
 
   const parsed = parseManifest(manifest.platform, raw);
+  const catalog = catalogWithRegistryIdentity(parsed, entry.name);
   const stored: StoredMarketplaceCatalog = {
-    ...parsed,
+    ...catalog,
     marketplaceEntryName: entry.name,
     refreshedAt: new Date().toISOString(),
     ...(refresh.sha ? { sha: refresh.sha } : {}),

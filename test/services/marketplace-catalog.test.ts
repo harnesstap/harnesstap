@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -10,13 +10,13 @@ import {
   searchCatalogPlugins,
 } from "../../src/services/marketplace-catalog.js";
 
-function initLocalMarketplaceRepo(): string {
+function initLocalMarketplaceRepo(manifestName = "local-market"): string {
   const repo = mkdtempSync(join(tmpdir(), "ht-mkt-repo-"));
   mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
   writeFileSync(
     join(repo, ".claude-plugin", "marketplace.json"),
     JSON.stringify({
-      name: "local-market",
+      name: manifestName,
       plugins: [
         { name: "alpha", version: "1.0.0" },
         { name: "beta", version: "2.0.0" },
@@ -60,6 +60,24 @@ describe("marketplace-catalog", () => {
     });
     refreshMarketplaceCatalog(home, { name: "local-market", force: true });
     expect(searchCatalogPlugins(home, "alp").map((p) => p.name)).toEqual(["alpha"]);
+  });
+
+  it("uses registry name for plugin refs when manifest name differs", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-home-"));
+    const repo = initLocalMarketplaceRepo("acme-plugins");
+    addMarketplace(home, {
+      name: "team",
+      url: repo,
+      platforms: ["claude-code"],
+    });
+    const refreshed = refreshMarketplaceCatalog(home, { name: "team", force: true });
+    expect(refreshed.ok).toBe(true);
+    const plugins = listCatalogPlugins(home, { name: "team" });
+    expect(plugins.map((p) => p.ref).sort()).toEqual(["alpha@team", "beta@team"]);
+    const catalogPath = join(home, "cache", "marketplaces", "team", "catalog.json");
+    const stored = JSON.parse(readFileSync(catalogPath, "utf8"));
+    expect(stored.marketplaceName).toBe("team");
+    expect(stored.manifestName).toBe("acme-plugins");
   });
 
   it("rejects goose-only marketplace refresh", () => {

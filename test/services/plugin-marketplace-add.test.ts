@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { createTestContext } from "../helpers/db.ts";
 import { createLayer, getLayerById } from "../../src/models/layer-model.ts";
 import { addMarketplace } from "../../src/services/marketplace-registry.ts";
@@ -15,6 +18,25 @@ import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts"
 
 function harnesstapDirFromContext(context: Awaited<ReturnType<typeof createTestContext>>) {
   return join(context.homeDir, ".harnesstap");
+}
+
+function initLocalMarketplaceRepo(manifestName: string): string {
+  const repo = mkdtempSync(join(tmpdir(), "ht-mkt-repo-"));
+  mkdirSync(join(repo, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    join(repo, ".claude-plugin", "marketplace.json"),
+    JSON.stringify({
+      name: manifestName,
+      plugins: [{ name: "alpha", version: "1.0.0" }],
+    }),
+  );
+  spawnSync("git", ["init"], { cwd: repo });
+  spawnSync("git", ["add", "."], { cwd: repo });
+  spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init"], {
+    cwd: repo,
+  });
+  spawnSync("git", ["branch", "-M", "main"], { cwd: repo });
+  return repo;
 }
 
 describe("claudeSourceFromMarketplaceUrl", () => {
@@ -178,6 +200,46 @@ describe("addPluginFromMarketplace", () => {
       expect(refreshed?.claude?.marketplaces?.["acme-marketplace"]).toEqual({
         source: { source: "github", repo: "acme/plugins" },
       });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("adds plugin when ref uses registry name not manifest name", async () => {
+    const context = await createTestContext("plugin-marketplace-add-registry-name");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      clearActiveProfileName();
+
+      const harnesstapDir = harnesstapDirFromContext(context);
+      const repo = initLocalMarketplaceRepo("acme-plugins");
+      addMarketplace(harnesstapDir, {
+        name: "team",
+        url: repo,
+        platforms: ["claude-code"],
+      });
+
+      const layer = createLayer({ name: "registry-name-layer" });
+
+      const result = await addPluginFromMarketplace({
+        harnesstapDir,
+        homeRoot: context.homeDir,
+        projectRoot: context.projectDir,
+        ref: "alpha@team",
+        layerName: layer.name,
+        versionConstraint: "1.0.0",
+      });
+
+      expect(result.status).toBe("attached");
+      expect(result.marketplaceCopied).toBe(true);
+
+      const refreshed = getLayerById(layer.id);
+      expect(refreshed?.claude?.marketplaces?.["team"]).toEqual({
+        source: { source: "url", url: repo },
+      });
+      expect(refreshed?.claude?.plugins).toEqual([
+        { id: "alpha@team", version: "1.0.0", enabled: true },
+      ]);
     } finally {
       await context.cleanup();
     }
