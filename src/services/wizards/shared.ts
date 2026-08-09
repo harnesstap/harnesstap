@@ -43,6 +43,29 @@ export async function withPromptBack<T>(prompt: () => Promise<T>): Promise<T> {
   }
 }
 
+export function shouldUseBrowsePicker(input: {
+  noInteractive?: boolean;
+  format?: string;
+}): boolean {
+  const noInteractive =
+    input.noInteractive ?? process.argv.includes("--no-interactive");
+  const ciValue = process.env.CI?.trim().toLowerCase();
+  const ciEnabled = Boolean(
+    ciValue && ciValue !== "0" && ciValue !== "false" && ciValue !== "no",
+  );
+  const forceWizard = process.env.HARNESSTAP_FORCE_WIZARD === "1";
+  const interactiveTerminal =
+    forceWizard || (Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY));
+
+  return Boolean(
+    interactiveTerminal
+      && !ciEnabled
+      && process.env.HARNESSTAP_NO_INTERACTIVE !== "1"
+      && !noInteractive
+      && input.format !== "json",
+  );
+}
+
 export function shouldUseWizard(input: WizardTriggerInput): boolean {
   const noInteractive =
     input.noInteractive ?? process.argv.includes("--no-interactive");

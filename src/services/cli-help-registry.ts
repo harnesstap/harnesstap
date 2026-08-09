@@ -528,6 +528,34 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "auth logout --account work",
     ],
   },
+  "marketplace.add": {
+    description: "Register a plugin marketplace URL",
+    examples: [
+      "marketplace add https://github.com/example/demo.git --name demo",
+      "marketplace add https://github.com/example/demo.git --platform claude-code --format json",
+    ],
+  },
+  "marketplace.list": {
+    description: "List configured plugin marketplaces",
+    examples: [
+      "marketplace list",
+      "marketplace ls --format json",
+    ],
+  },
+  "marketplace.remove": {
+    description: "Remove a configured plugin marketplace",
+    examples: [
+      "marketplace remove demo",
+      "marketplace rm demo --format json",
+    ],
+  },
+  "marketplace.show": {
+    description: "List or browse plugins from a marketplace catalog",
+    examples: [
+      "marketplace show demo",
+      "marketplace show demo --refresh --format json",
+    ],
+  },
 };
 
 function normalizeCommandName(name: string): string {
