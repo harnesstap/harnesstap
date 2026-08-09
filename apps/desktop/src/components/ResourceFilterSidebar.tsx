@@ -28,6 +28,8 @@ const UPDATED_PRESETS: Array<{ id: UpdatedPreset; label: string }> = [
   { id: "custom", label: "Custom" },
 ];
 
+const CUSTOM_DATE_RANGE_HINT_ID = "resource-filter-custom-date-hint";
+
 function typeCounts(resources: LibraryResource[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const resource of resources) {
@@ -110,6 +112,7 @@ export function ResourceFilterSidebar({
               key={preset.id}
               type="button"
               className={state.updated.preset === preset.id ? "on" : undefined}
+              aria-pressed={state.updated.preset === preset.id}
               disabled={disabled}
               onClick={() =>
                 onChange({
@@ -133,6 +136,10 @@ export function ResourceFilterSidebar({
                 type="date"
                 value={state.updated.from ?? ""}
                 disabled={disabled}
+                aria-invalid={customInvalid}
+                aria-describedby={
+                  customInvalid ? CUSTOM_DATE_RANGE_HINT_ID : undefined
+                }
                 onChange={(event) =>
                   onChange({
                     ...state,
@@ -151,6 +158,10 @@ export function ResourceFilterSidebar({
                 type="date"
                 value={state.updated.to ?? ""}
                 disabled={disabled}
+                aria-invalid={customInvalid}
+                aria-describedby={
+                  customInvalid ? CUSTOM_DATE_RANGE_HINT_ID : undefined
+                }
                 onChange={(event) =>
                   onChange({
                     ...state,
@@ -164,14 +175,20 @@ export function ResourceFilterSidebar({
               />
             </label>
             {customInvalid ? (
-              <p className="resource-filter-hint">Choose a valid from ≤ to range.</p>
+              <p
+                id={CUSTOM_DATE_RANGE_HINT_ID}
+                className="resource-filter-hint"
+                role="alert"
+              >
+                Choose a valid from ≤ to range.
+              </p>
             ) : null}
           </div>
         ) : null}
       </div>
 
-      <div className="resource-filter-section">
-        <span className="resource-filter-section-label">Namespace</span>
+      <fieldset className="resource-filter-section">
+        <legend className="resource-filter-section-label">Namespace</legend>
         <label
           className={`resource-filter-option${state.namespace.mode === "all" ? " selected" : ""}`}
         >
@@ -212,10 +229,10 @@ export function ResourceFilterSidebar({
             </label>
           );
         })}
-      </div>
+      </fieldset>
 
-      <div className="resource-filter-section">
-        <span className="resource-filter-section-label">Origin</span>
+      <fieldset className="resource-filter-section">
+        <legend className="resource-filter-section-label">Origin</legend>
         <label
           className={`resource-filter-option${state.originKind === null ? " selected" : ""}`}
         >
@@ -243,12 +260,12 @@ export function ResourceFilterSidebar({
             <span>{origin}</span>
           </label>
         ))}
-      </div>
+      </fieldset>
 
       {dirty ? (
         <button
           type="button"
-          className="resource-filter-clear"
+          className="link-btn resource-filter-clear"
           disabled={disabled}
           onClick={onClear}
         >
