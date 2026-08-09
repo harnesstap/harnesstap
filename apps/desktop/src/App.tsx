@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Scissors, Settings, Unplug, User } from "lucide-react";
@@ -228,6 +229,14 @@ export function App() {
     setBootstrapError(null);
     setProjectConfigReadyPath(null);
   }, []);
+
+  useEffect(() => {
+    void invoke<string | null>("e2e_project_path").then((path) => {
+      if (path) {
+        selectProject(path);
+      }
+    });
+  }, [selectProject]);
 
   const browseProject = useCallback(async () => {
     try {

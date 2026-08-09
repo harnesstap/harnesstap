@@ -4,6 +4,8 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "wdio:default",
+    "wdio-webdriver:default",
     "dialog:default",
     "shell:allow-open",
     "shell:allow-kill",

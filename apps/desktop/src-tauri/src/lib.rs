@@ -208,11 +208,14 @@ fn get_sidecar_port(state: State<'_, AppState>) -> Result<Option<u16>, String> {
 fn spawn_sidecar_via_shell(
     app: &AppHandle,
 ) -> Result<tauri_plugin_shell::process::CommandChild, String> {
-    let sidecar = app
+    let mut sidecar = app
         .shell()
         .sidecar("ht-agent")
         .map_err(|error| error.to_string())?
         .env("HARNESSTAP_AGENT_PORT", "7474");
+    if let Ok(home) = std::env::var("HARNESSTAP_HOME") {
+        sidecar = sidecar.env("HARNESSTAP_HOME", home);
+    }
     let (mut rx, child) = sidecar.spawn().map_err(|error| error.to_string())?;
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -355,9 +358,21 @@ async fn restart_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u
     start_sidecar(app, state).await
 }
 
+#[tauri::command]
+fn e2e_project_path() -> Option<String> {
+    #[cfg(feature = "e2e")]
+    {
+        std::env::var("HARNESSTAP_E2E_PROJECT_PATH").ok()
+    }
+    #[cfg(not(feature = "e2e"))]
+    {
+        None
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -365,7 +380,14 @@ pub fn run() {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
-        }))
+        }));
+
+    #[cfg(feature = "e2e")]
+    let builder = builder
+        .plugin(tauri_plugin_wdio::init())
+        .plugin(tauri_plugin_wdio_webdriver::init());
+
+    builder
         .manage(AppState {
             sidecar: SidecarState {
                 child: Mutex::new(None),
@@ -384,7 +406,8 @@ pub fn run() {
             start_sidecar,
             restart_sidecar,
             read_agent_token,
-            get_sidecar_port
+            get_sidecar_port,
+            e2e_project_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running HarnessTap desktop");

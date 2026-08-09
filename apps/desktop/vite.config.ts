@@ -7,6 +7,8 @@ import { defineConfig } from "vite";
 const host = process.env.TAURI_DEV_HOST;
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
+// VITE_E2E=1 (from the shell env) gates WDIO client bootstrap in main.tsx via import.meta.env.VITE_E2E.
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
