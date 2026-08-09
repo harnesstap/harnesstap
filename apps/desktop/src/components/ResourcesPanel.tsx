@@ -14,6 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { RelatedHarnessIcons } from "./HarnessIcons";
+import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
 import {
   ResourceDetailPane,
@@ -22,7 +23,13 @@ import {
 import { fetchLibraryResources } from "../lib/agent-client";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
-  filterLibraryResourcesBySearch,
+  applyLibraryResourceFilters,
+  defaultResourceFilterState,
+  isResourceFilterStateActive,
+  resetResourceFilterState,
+  type ResourceFilterState,
+} from "../lib/resource-filters";
+import {
   groupLibraryResourcesByType,
   resourceDisplayName,
 } from "../lib/resource-search";
@@ -74,7 +81,9 @@ export function ResourcesPanel({
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
+  const [filterState, setFilterState] = useState<ResourceFilterState>(
+    defaultResourceFilterState,
+  );
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
   );
@@ -121,8 +130,8 @@ export function ResourcesPanel({
   }, []);
 
   const filteredResources = useMemo(
-    () => filterLibraryResourcesBySearch(resources, filter),
-    [filter, resources],
+    () => applyLibraryResourceFilters(resources, filterState),
+    [filterState, resources],
   );
 
   const groups = useMemo(
@@ -151,86 +160,86 @@ export function ResourcesPanel({
             <FolderInput size={16} aria-hidden />
           </button>
         </div>
-        <input
-          ref={filterRef}
-          className="resources-panel-filter"
-          type="search"
-          placeholder="Filter (skill:name)…"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          disabled={disabled || loading}
-          aria-label="Filter resources"
-        />
       </div>
 
-      <div className="resources-panel-body">
-        {error ? (
-          <div className="empty-state">
-            <p>{error}</p>
-          </div>
-        ) : loading ? (
-          <p className="muted">Loading resources…</p>
-        ) : filteredResources.length === 0 ? (
-          <div className="empty-state">
-            <p className="muted">
-              {resources.length === 0
-                ? "No registered resources yet."
-                : filter.trim()
-                  ? "No matches."
-                  : "No resources to show."}
-            </p>
-          </div>
-        ) : (
-          groups.map((group) => (
-            <section
-              className="resources-type-group"
-              key={group.type}
-              aria-label={group.type}
-            >
-              <h3 className="resources-type-heading">
-                <TypeIcon type={group.type} />
-                <span>{group.type}</span>
-                <span className="muted">{group.resources.length}</span>
-              </h3>
-              <ul className="resources-list">
-                {group.resources.map((resource) => {
-                  const label = resourceDisplayName(resource);
-                  return (
-                    <li className="resources-list-item" key={resource.id}>
-                      <div className="resources-list-main">
-                        <button
-                          type="button"
-                          className="resource-name-btn resources-list-name"
-                          title={resource.source || undefined}
-                          disabled={disabled}
-                          onClick={() =>
-                            setDetailTarget({
-                              selector: resource.id,
-                              label,
-                              pathHint: resource.source,
-                            })
-                          }
-                        >
-                          {label}
-                        </button>
-                        <RelatedHarnessIcons
-                          harnessIds={relatedHarnessesForResourceType(
-                            resource.type,
-                          )}
-                        />
-                      </div>
-                      {resource.description ? (
-                        <span className="resources-list-desc muted">
-                          {resource.description}
-                        </span>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))
-        )}
+      <div className="resources-panel-layout">
+        <ResourceFilterSidebar
+          resources={resources}
+          state={filterState}
+          onChange={setFilterState}
+          onClear={() => setFilterState(resetResourceFilterState())}
+          disabled={disabled || loading || Boolean(error)}
+          searchInputRef={filterRef}
+        />
+        <div className="resources-panel-body">
+          {error ? (
+            <div className="empty-state">
+              <p>{error}</p>
+            </div>
+          ) : loading ? (
+            <p className="muted">Loading resources…</p>
+          ) : filteredResources.length === 0 ? (
+            <div className="empty-state">
+              <p className="muted">
+                {resources.length === 0
+                  ? "No registered resources yet."
+                  : isResourceFilterStateActive(filterState)
+                    ? "No matches."
+                    : "No resources to show."}
+              </p>
+            </div>
+          ) : (
+            groups.map((group) => (
+              <section
+                className="resources-type-group"
+                key={group.type}
+                aria-label={group.type}
+              >
+                <h3 className="resources-type-heading">
+                  <TypeIcon type={group.type} />
+                  <span>{group.type}</span>
+                  <span className="muted">{group.resources.length}</span>
+                </h3>
+                <ul className="resources-list">
+                  {group.resources.map((resource) => {
+                    const label = resourceDisplayName(resource);
+                    return (
+                      <li className="resources-list-item" key={resource.id}>
+                        <div className="resources-list-main">
+                          <button
+                            type="button"
+                            className="resource-name-btn resources-list-name"
+                            title={resource.source || undefined}
+                            disabled={disabled}
+                            onClick={() =>
+                              setDetailTarget({
+                                selector: resource.id,
+                                label,
+                                pathHint: resource.source,
+                              })
+                            }
+                          >
+                            {label}
+                          </button>
+                          <RelatedHarnessIcons
+                            harnessIds={relatedHarnessesForResourceType(
+                              resource.type,
+                            )}
+                          />
+                        </div>
+                        {resource.description ? (
+                          <span className="resources-list-desc muted">
+                            {resource.description}
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))
+          )}
+        </div>
       </div>
 
       <ResourceDetailPane
