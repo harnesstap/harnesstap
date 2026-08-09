@@ -35,7 +35,6 @@ export async function handleProfilePluginAdd(
     );
   }
 
-  const name = decodeURIComponent(profileName);
   const projectRoot =
     typeof record.projectPath === "string" && record.projectPath.trim()
       ? record.projectPath.trim()
@@ -47,7 +46,7 @@ export async function handleProfilePluginAdd(
       homeRoot: process.env.HOME ?? homedir(),
       projectRoot,
       ref: record.ref.trim(),
-      layerName: name,
+      layerName: profileName,
       ...(typeof record.versionConstraint === "string"
         ? { versionConstraint: record.versionConstraint }
         : {}),
