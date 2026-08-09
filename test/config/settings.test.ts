@@ -1,8 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { loadSettings } from "../../src/config/settings.js";
+import { loadSettings, saveSettings } from "../../src/config/settings.js";
 
 describe("loadSettings", () => {
   it("defaults refreshMaxAgeHours to 24 when config missing", () => {
@@ -122,4 +122,63 @@ describe("loadSettings", () => {
       expect(loadSettings(dir).layerVersionHistoryLimit).toBe(10);
     },
   );
+});
+
+describe("plugins.marketplaces", () => {
+  it("defaults marketplaces to [] when missing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    expect(loadSettings(dir).plugins.marketplaces).toEqual([]);
+  });
+
+  it("reads marketplaces from config.json", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({
+        plugins: {
+          refreshMaxAgeHours: 24,
+          marketplaces: [
+            {
+              name: "demo",
+              url: "https://github.com/example/demo.git",
+              platforms: ["claude-code"],
+            },
+          ],
+        },
+      }),
+    );
+    expect(loadSettings(dir).plugins.marketplaces).toEqual([
+      {
+        name: "demo",
+        url: "https://github.com/example/demo.git",
+        platforms: ["claude-code"],
+      },
+    ]);
+  });
+
+  it("saveSettings writes marketplaces to config.json", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    saveSettings(dir, {
+      plugins: {
+        refreshMaxAgeHours: 24,
+        marketplaces: [
+          {
+            name: "demo",
+            url: "https://github.com/example/demo.git",
+            platforms: ["claude-code"],
+          },
+        ],
+      },
+      layerVersionHistoryLimit: 10,
+    });
+    const raw = JSON.parse(readFileSync(join(dir, "config.json"), "utf-8"));
+    expect(raw.plugins.marketplaces).toEqual([
+      {
+        name: "demo",
+        url: "https://github.com/example/demo.git",
+        platforms: ["claude-code"],
+      },
+    ]);
+    expect(loadSettings(dir).plugins.marketplaces[0]?.name).toBe("demo");
+  });
 });

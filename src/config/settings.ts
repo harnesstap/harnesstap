@@ -1,15 +1,66 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+export type PluginMarketplacePlatform = "claude-code" | "cursor" | "goose";
+
+export interface PluginMarketplaceEntry {
+  name: string;
+  url: string;
+  platforms: PluginMarketplacePlatform[];
+}
+
 export interface HarnesstapSettings {
-  plugins: { refreshMaxAgeHours: number };
+  plugins: {
+    refreshMaxAgeHours: number;
+    marketplaces: PluginMarketplaceEntry[];
+  };
   layerVersionHistoryLimit: number;
 }
 
+const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
+  "claude-code",
+  "cursor",
+  "goose",
+]);
+
 const DEFAULTS: HarnesstapSettings = {
-  plugins: { refreshMaxAgeHours: 24 },
+  plugins: { refreshMaxAgeHours: 24, marketplaces: [] },
   layerVersionHistoryLimit: 10,
 };
+
+function isPluginMarketplacePlatform(
+  value: unknown,
+): value is PluginMarketplacePlatform {
+  return (
+    typeof value === "string" &&
+    VALID_PLATFORMS.has(value as PluginMarketplacePlatform)
+  );
+}
+
+export function parseMarketplaces(value: unknown): PluginMarketplaceEntry[] {
+  if (!Array.isArray(value)) return [];
+
+  const marketplaces: PluginMarketplaceEntry[] = [];
+  for (const row of value) {
+    if (typeof row !== "object" || row === null) continue;
+
+    const record = row as Record<string, unknown>;
+    const name = record.name;
+    const url = record.url;
+    const platforms = record.platforms;
+
+    if (typeof name !== "string" || name.length === 0) continue;
+    if (typeof url !== "string" || url.length === 0) continue;
+    if (!Array.isArray(platforms)) continue;
+
+    const parsedPlatforms = platforms.filter(isPluginMarketplacePlatform);
+    if (parsedPlatforms.length === 0) continue;
+
+    marketplaces.push({ name, url, platforms: parsedPlatforms });
+  }
+
+  return marketplaces;
+}
 
 export function parseJsonc(content: string): unknown {
   let normalized = "";
@@ -140,6 +191,7 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
           typeof hours === "number" && hours > 0
             ? hours
             : DEFAULTS.plugins.refreshMaxAgeHours,
+        marketplaces: parseMarketplaces(raw.plugins?.marketplaces),
       },
       layerVersionHistoryLimit:
         typeof limit === "number" && Number.isInteger(limit) && limit >= 1
@@ -149,4 +201,15 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
   } catch {
     return DEFAULTS;
   }
+}
+
+export function saveSettings(
+  harnesstapDir: string,
+  settings: HarnesstapSettings,
+): void {
+  const path = existsSync(join(harnesstapDir, "config.jsonc"))
+    ? join(harnesstapDir, "config.jsonc")
+    : join(harnesstapDir, "config.json");
+  mkdirSync(harnesstapDir, { recursive: true });
+  writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
 }
