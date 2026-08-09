@@ -1780,6 +1780,7 @@ export function App() {
           <button
             className="icon-action"
             type="button"
+            data-testid="open-settings"
             onClick={() => {
               setCloudAccountOpen(false);
               setSettingsOpen(true);
