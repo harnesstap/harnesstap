@@ -95,6 +95,28 @@ export function normalizeManagedPath(path: string, rootPath?: string): string {
   return normalized.replace(/^\.\//, "");
 }
 
+const MERGED_CONTAINER_RESOURCE_TYPES = new Set([
+  "permission",
+  "env_var",
+  "hook",
+]);
+
+function isClaudeSettingsPath(normalizedPath: string): boolean {
+  const path = normalizedPath.replace(/^~\//, "");
+  return path === ".claude/settings.json" || path.endsWith("/.claude/settings.json");
+}
+
+function isMergedContainerResource(
+  resource: Pick<Resource, "type" | "source"> | Pick<ResourceCreateInput, "type" | "source">,
+  rootPath: string,
+): boolean {
+  if (!MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type)) {
+    return false;
+  }
+  const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
+  return Boolean(sourcePath) && isClaudeSettingsPath(sourcePath);
+}
+
 async function profileOwnedPaths(
   profileSelector: string,
   rootPath: string,
@@ -172,8 +194,12 @@ async function notStagedFromHomeScan(
         continue;
       }
       const sourcePath = normalizeManagedPath(resource.source ?? "", homeRoot);
-      if (sourcePath && ownedPaths.has(sourcePath)) {
-        // Singleton / merged file owned by the profile (e.g. CLAUDE.md).
+      if (
+        sourcePath &&
+        ownedPaths.has(sourcePath) &&
+        !isMergedContainerResource(resource, homeRoot)
+      ) {
+        // Singleton file materialized by the profile (e.g. CLAUDE.md).
         continue;
       }
       seen.add(key);
@@ -217,7 +243,11 @@ async function notStagedFromProjectScan(
       continue;
     }
     const sourcePath = normalizeManagedPath(resource.source ?? "", resolvedRoot);
-    if (sourcePath && ownedPaths.has(sourcePath)) {
+    if (
+      sourcePath &&
+      ownedPaths.has(sourcePath) &&
+      !isMergedContainerResource(resource, resolvedRoot)
+    ) {
       continue;
     }
     seen.add(key);
@@ -466,7 +496,11 @@ function filterScanResultsToNotStaged(
         return false;
       }
       const sourcePath = normalizeManagedPath(resource.source ?? "", rootPath);
-      if (sourcePath && ownedPaths.has(sourcePath)) {
+      if (
+        sourcePath &&
+        ownedPaths.has(sourcePath) &&
+        !isMergedContainerResource(resource, rootPath)
+      ) {
         return false;
       }
       return true;

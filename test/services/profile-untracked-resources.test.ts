@@ -118,6 +118,16 @@ describe("profile-untracked-resources service", () => {
 
       // Extra permission on disk not in the profile
       const settingsPath = join(context.homeDir, ".claude", "settings.json");
+      mkdirSync(join(context.homeDir, ".claude"), { recursive: true });
+      writeFileSync(
+        settingsPath,
+        JSON.stringify(
+          { permissions: { allow: ["Bash(*)"], deny: [] } },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
       const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as {
         permissions?: { allow?: string[]; deny?: string[] };
       };

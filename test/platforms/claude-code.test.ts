@@ -179,6 +179,36 @@ describe("ClaudeCodeSerializer", () => {
     expect(files).toEqual([]);
   });
 
+  it("scans hooks from home ~/.claude/settings.json", async () => {
+    const home = createTempDir("claude-home-hooks-");
+    try {
+      writeTextFile(
+        join(home, ".claude", "settings.json"),
+        JSON.stringify(
+          {
+            hooks: {
+              PreToolUse: [
+                {
+                  matcher: "Bash",
+                  hooks: [{ type: "command", command: "echo hi" }],
+                },
+              ],
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const serializer = new ClaudeCodeSerializer();
+      const resources = await serializer.scanGlobal(home);
+
+      expect(resources.some((resource) => resource.type === "hook")).toBe(true);
+    } finally {
+      cleanupDir(home);
+    }
+  });
+
   it("round-trips HTTP MCP headers on scan and serialize", async () => {
     const projectDir = createTempDir("claude-mcp-headers");
 

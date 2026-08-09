@@ -277,6 +277,13 @@ export class ClaudeCodeSerializer extends BaseSerializer {
             }),
           );
         }
+
+        resources.push(
+          ...scanHooksFile(
+            join(homeRoot, ".claude", "settings.json"),
+            "~/.claude/settings.json",
+          ),
+        );
       } catch {
         // invalid JSON — skip
       }

@@ -184,6 +184,59 @@ export function omitTransparentCrossHarnessAdds(
   });
 }
 
+const CLAUDE_SETTINGS_RELATIVE = ".claude/settings.json";
+const CLAUDE_MERGED_CONTAINER_RESOURCE_TYPES = new Set([
+  "permission",
+  "env_var",
+  "hook",
+]);
+
+function profileManagesClaudeSettings(layerIds: string[] | undefined): boolean {
+  if (!layerIds || layerIds.length === 0) {
+    return false;
+  }
+  const merged = mergeLayersForApply(layerIds);
+  return merged.resources.some((resource) =>
+    CLAUDE_MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type),
+  );
+}
+
+/**
+ * When Claude `.claude/settings.json` exists on disk but is not among expected
+ * apply files, surface it as drift type `added` (on disk, not expected by the
+ * profile).
+ */
+function withUnmanagedMergedContainers(
+  rootPath: string,
+  expectedFiles: Array<{ path: string; content: string }>,
+  changes: DriftFileChange[],
+  profileManagesSettings: boolean,
+): DriftFileChange[] {
+  const expectedNormalized = new Set(
+    expectedFiles.map((file) =>
+      file.path.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^~\//, ""),
+    ),
+  );
+  const settingsAlreadyExpected = [...expectedNormalized].some(
+    (path) => path === CLAUDE_SETTINGS_RELATIVE || path.endsWith(`/${CLAUDE_SETTINGS_RELATIVE}`),
+  );
+  if (settingsAlreadyExpected || profileManagesSettings) {
+    return changes;
+  }
+  if (readRootFile(rootPath, CLAUDE_SETTINGS_RELATIVE) === null) {
+    return changes;
+  }
+  const alreadyListed = changes.some(
+    (change) =>
+      change.path.replace(/\\/g, "/").replace(/^~\//, "") === CLAUDE_SETTINGS_RELATIVE
+      || change.path.replace(/\\/g, "/").endsWith(`/${CLAUDE_SETTINGS_RELATIVE}`),
+  );
+  if (alreadyListed) {
+    return changes;
+  }
+  return [...changes, { path: CLAUDE_SETTINGS_RELATIVE, type: "added" }];
+}
+
 function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
   return changes.map((change) => {
     const mapped = resourceKeyFromManagedPath(change.path);
@@ -223,16 +276,22 @@ function buildPreviewFileChanges(
   rootPath: string,
   expectedFiles: Array<{ path: string; content: string }>,
   removedFiles: string[] | undefined,
+  layerIds?: string[],
 ): DriftFileChange[] {
   return withMappedResources(
-    withManagedRemovals(
+    withUnmanagedMergedContainers(
       rootPath,
-      omitTransparentCrossHarnessAdds(
+      expectedFiles,
+      withManagedRemovals(
         rootPath,
-        expectedFiles,
-        compareExpectedFiles(rootPath, expectedFiles),
+        omitTransparentCrossHarnessAdds(
+          rootPath,
+          expectedFiles,
+          compareExpectedFiles(rootPath, expectedFiles),
+        ),
+        removedFiles,
       ),
-      removedFiles,
+      profileManagesClaudeSettings(layerIds),
     ),
   );
 }
@@ -385,7 +444,8 @@ async function collectProjectExpectedManagedFiles(
     };
   }
 
-  const merged = mergeLayersForApply(collectProfileLayerIds(layer));
+  const layerIds = collectProfileLayerIds(layer);
+  const merged = mergeLayersForApply(layerIds);
   const material = merged.resources.filter(isMaterialResource);
   try {
     const generated = await generateFiles(material, platformIds, resolvedRoot, {
@@ -403,12 +463,14 @@ async function collectProjectExpectedManagedFiles(
     return {
       rootPath: resolvedRoot,
       expectedFiles,
+      layerIds,
       removedFiles,
     };
   } catch (error) {
     return {
       rootPath: resolvedRoot,
       expectedFiles: [],
+      layerIds,
       warning: error instanceof Error ? error.message : String(error),
     };
   }
@@ -483,6 +545,7 @@ async function previewHomeApply(
           collected.rootPath,
           collected.expectedFiles,
           collected.removedFiles,
+          collected.layerIds,
         ),
         root_path: collected.rootPath,
       },
@@ -507,6 +570,7 @@ async function previewHomeApply(
         collected.rootPath,
         collected.expectedFiles,
         collected.removedFiles,
+        collected.layerIds,
       ),
       root_path: collected.rootPath,
     },
@@ -531,6 +595,7 @@ async function previewProjectApply(
         collected.rootPath,
         collected.expectedFiles,
         collected.removedFiles,
+        collected.layerIds,
       ),
       root_path: collected.rootPath,
     },
