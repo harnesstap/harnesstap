@@ -96,8 +96,68 @@ describe("agent marketplace routes", () => {
     });
     expect(plugins.status).toBe(200);
     const pluginBody = (await plugins.json()) as {
+      marketplace: string;
       plugins: Array<{ name: string; ref: string }>;
     };
+    expect(pluginBody.marketplace).toBe("e2e-market");
     expect(pluginBody.plugins.some((p) => p.ref === "demo-plugin@e2e-market")).toBe(true);
+  });
+
+  it("returns 404 for plugins on unknown marketplace", async () => {
+    const server = withServer();
+
+    const plugins = await fetch(`${server.url}/v1/marketplaces/no-such-market/plugins`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(plugins.status).toBe(404);
+    await expect(plugins.json()).resolves.toEqual({
+      error: "not_found",
+      message: "Marketplace not found: no-such-market",
+    });
+  });
+
+  it("defaults platforms to claude-code when omitted", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+      }),
+    });
+    expect(add.status).toBe(200);
+    const addBody = (await add.json()) as {
+      entry: { platforms: string[] };
+    };
+    expect(addBody.entry.platforms).toEqual(["claude-code"]);
+  });
+
+  it("returns 400 for invalid platform", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["not-a-platform"],
+      }),
+    });
+    expect(add.status).toBe(400);
+    await expect(add.json()).resolves.toEqual({
+      error: "invalid_platform",
+      message: "Each platform must be claude-code, cursor, or goose",
+    });
   });
 });

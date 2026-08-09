@@ -19,15 +19,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parsePlatforms(value: unknown): PluginMarketplacePlatform[] | Response {
-  if (!Array.isArray(value) || value.length === 0) {
-    return jsonResponse(
-      { error: "invalid_platforms", message: "platforms must be a non-empty array" },
-      { status: 400 },
-    );
-  }
+  const ids =
+    Array.isArray(value) && value.length > 0 ? value : (["claude-code"] as const);
 
   const platforms: PluginMarketplacePlatform[] = [];
-  for (const item of value) {
+  for (const item of ids) {
     if (typeof item !== "string" || !VALID_PLATFORMS.has(item as PluginMarketplacePlatform)) {
       return jsonResponse(
         {
@@ -122,6 +118,14 @@ export function handleMarketplacePluginsList(
   if (authError) return authError;
 
   const harnesstapDir = getHarnesstapDir();
-  const plugins = listCatalogPlugins(harnesstapDir, { name });
-  return jsonResponse({ plugins });
+  const entry = listMarketplaces(harnesstapDir).find((marketplace) => marketplace.name === name);
+  if (!entry) {
+    return jsonResponse(
+      { error: "not_found", message: `Marketplace not found: ${name}` },
+      { status: 404 },
+    );
+  }
+
+  const plugins = listCatalogPlugins(harnesstapDir, { name: entry.name });
+  return jsonResponse({ marketplace: entry.name, plugins });
 }
