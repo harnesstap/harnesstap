@@ -71,6 +71,7 @@ export function ProjectPicker({
       <button
         type="button"
         className="project-picker-trigger"
+        data-testid="project-path"
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}

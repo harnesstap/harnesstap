@@ -47,6 +47,7 @@ export function SelectionList({
         id: row.id,
         name: row.name,
         description: row.description,
+        testId: `create-layer-${row.name}`,
       }))}
       selectedIds={selectedIds}
       disabled={disabled}
@@ -183,7 +184,11 @@ export function ResourceSelectionList({
                       {group.resources.map((resource) => {
                         const id = `resource-${resource.id}`;
                         return (
-                          <div key={resource.id} className="selection-row">
+                          <div
+                            key={resource.id}
+                            className="selection-row"
+                            data-testid={`create-resource-${resourceDisplayName(resource)}`}
+                          >
                             <Checkbox
                               id={id}
                               checked={selectedIds.includes(resource.id)}

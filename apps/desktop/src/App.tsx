@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Scissors, Settings, Unplug, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Scissors, Settings, Unplug, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
@@ -1701,6 +1701,7 @@ export function App() {
                 className={
                   workspaceFocus === "scope" && view === "home" ? "on" : ""
                 }
+                data-testid="view-home"
                 onClick={() => onSelectView("home")}
                 disabled={switching || bootstrapBusy}
                 aria-label="Global"
@@ -1713,6 +1714,7 @@ export function App() {
                 className={
                   workspaceFocus === "scope" && view === "project" ? "on" : ""
                 }
+                data-testid="view-project"
                 onClick={() => onSelectView("project")}
                 disabled={switching || bootstrapBusy}
                 aria-label="Project"
@@ -1740,7 +1742,17 @@ export function App() {
           )}
         </div>
         <div className="header-status" aria-live="polite">
-          {!connected ? (
+          {connected ? (
+            <span
+              className="connection-indicator connected"
+              data-testid="agent-connected"
+              title="Connected"
+              aria-label="Connected"
+              role="img"
+            >
+              <Plug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            </span>
+          ) : (
             <span
               className="connection-indicator"
               title="Disconnected"
@@ -1749,7 +1761,7 @@ export function App() {
             >
               <Unplug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
             </span>
-          ) : null}
+          )}
           <button
             className={[
               "icon-action",
@@ -1760,6 +1772,7 @@ export function App() {
               .filter(Boolean)
               .join(" ")}
             type="button"
+            data-testid="header-refresh"
             onClick={() => void onRefreshClick()}
             disabled={!connected || switching || refreshPhase === "loading"}
             aria-busy={refreshPhase === "loading"}
@@ -1939,6 +1952,7 @@ export function App() {
                 <button
                   className="icon-action rail-icon-action"
                   type="button"
+                  data-testid="open-create-profile"
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching || stashBusy}
                   aria-label="Create profile"
@@ -2020,6 +2034,7 @@ export function App() {
                 <button
                   className="btn primary"
                   type="button"
+                  data-testid="open-create-profile"
                   onClick={() => openCreateProfile()}
                   disabled={!connected || switching}
                 >
@@ -2063,6 +2078,7 @@ export function App() {
                   <button
                     type="button"
                     className="profile-item-main"
+                    data-testid={`profile-rail-${profile.name}`}
                     onClick={() => {
                       if (isSelected) {
                         clearProfileSelection();
@@ -2078,6 +2094,7 @@ export function App() {
                   <button
                     type="button"
                     className="icon-action profile-item-action profile-item-edit"
+                    data-testid={`edit-profile-${profile.name}`}
                     aria-label={`Edit ${profile.name}`}
                     title={`Edit ${profile.name}`}
                     disabled={!connected || switching || stashBusy}

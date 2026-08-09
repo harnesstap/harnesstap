@@ -151,6 +151,10 @@ button:focus-visible,
   color: var(--red);
 }
 
+.connection-indicator.connected {
+  color: var(--green);
+}
+
 .icon-action {
   display: inline-flex;
   align-items: center;

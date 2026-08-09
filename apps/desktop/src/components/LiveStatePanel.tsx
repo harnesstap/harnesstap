@@ -416,7 +416,10 @@ function UntrackedResourceRow({
   const selector = resource.id ?? `${resource.type}:${resource.name}`;
   const canOpen = Boolean(onOpenResource);
   return (
-    <div className="enabled-row untracked-row">
+    <div
+      className="enabled-row untracked-row"
+      data-testid={`resource-row-${resource.name}`}
+    >
       <span className="enabled-type">
         <TypeIcon type={resource.type} />
       </span>
@@ -478,7 +481,7 @@ function EnabledResourceRow({
   const canOpen =
     item.category === "resource" && Boolean(selector) && Boolean(onOpenResource);
   return (
-    <div className="enabled-row">
+    <div className="enabled-row" data-testid={`resource-row-${item.label}`}>
       <span className="enabled-type">
         <TypeIcon type={item.iconType} />
       </span>
@@ -557,6 +560,7 @@ function EnabledLayerGroup({
               <div
                 className="enabled-row enabled-nested-row"
                 key={resourceKey}
+                data-testid={`resource-row-${resource.name}`}
               >
                 <span className="enabled-type">
                   <TypeIcon type={resource.type} />

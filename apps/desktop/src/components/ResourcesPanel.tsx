@@ -204,7 +204,11 @@ export function ResourcesPanel({
                   {group.resources.map((resource) => {
                     const label = resourceDisplayName(resource);
                     return (
-                      <li className="resources-list-item" key={resource.id}>
+                      <li
+                        className="resources-list-item"
+                        key={resource.id}
+                        data-testid={`resource-row-${label}`}
+                      >
                         <div className="resources-list-main">
                           <button
                             type="button"

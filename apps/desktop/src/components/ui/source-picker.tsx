@@ -7,6 +7,7 @@ export interface SourcePickerOption {
   title: string;
   description: string;
   disabled?: boolean;
+  testId?: string;
 }
 
 export interface SourcePickerProps {
@@ -42,6 +43,7 @@ export function SourcePicker({
             <Label
               key={option.value}
               htmlFor={id}
+              data-testid={option.testId}
               className={cn(
                 "flex cursor-pointer items-start gap-1.5 rounded border border-border bg-background p-2.5",
                 selected && "border-primary bg-primary/10",

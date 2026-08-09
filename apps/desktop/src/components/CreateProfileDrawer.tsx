@@ -316,6 +316,7 @@ export function CreateProfileDrawer({
             <Label htmlFor="create-profile-name">Name</Label>
             <Input
               id="create-profile-name"
+              data-testid="create-profile-name"
               autoFocus
               value={name}
               onChange={(event) => {
@@ -356,6 +357,7 @@ export function CreateProfileDrawer({
                 value: "compose",
                 title: "Compose",
                 description: "Select existing layers and resources.",
+                testId: "create-source-compose",
               },
               {
                 value: "home",
@@ -495,6 +497,7 @@ export function CreateProfileDrawer({
                 .filter(Boolean)
                 .join(" ")}
               type="button"
+              data-testid="create-profile-submit"
               onClick={() => void runCreate()}
               disabled={controlsDisabled}
               aria-busy={busy}
@@ -508,6 +511,7 @@ export function CreateProfileDrawer({
                 .filter(Boolean)
                 .join(" ")}
               type="button"
+              data-testid="create-profile-submit"
               onClick={() => void runPreview()}
               disabled={!canContinue || controlsDisabled}
               aria-busy={busy}

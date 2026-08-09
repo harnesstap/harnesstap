@@ -9,6 +9,7 @@ export interface SelectionListItem {
   description?: string | null;
   leading?: ReactNode;
   trailing?: ReactNode;
+  testId?: string;
 }
 
 export interface SelectionListProps {
@@ -54,6 +55,7 @@ export function SelectionList({
               <div
                 key={item.id}
                 className="selection-row flex items-start gap-2 border-b border-border px-2.5 py-2 last:border-b-0"
+                data-testid={item.testId}
               >
                 <Checkbox
                   id={id}
