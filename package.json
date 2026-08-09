@@ -22,6 +22,8 @@
     "desktop:icons": "cd apps/desktop && bun run icons",
     "desktop:dev": "bash apps/desktop/scripts/desktop-dev.sh",
     "desktop:build": "bun run desktop:prepare-sidecar && cd apps/desktop && bun install && bun run tauri build",
+    "desktop:e2e:build": "bash apps/desktop/scripts/e2e-build.sh",
+    "desktop:e2e": "bash apps/desktop/scripts/e2e-run.sh",
     "dev": "tsup --watch",
     "start": "bun src/index.ts",
     "start:dist": "node dist/index.js",
