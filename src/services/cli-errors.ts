@@ -1,7 +1,10 @@
 export class CliUsageError extends Error {
-  constructor(message: string, readonly hints: string[] = []) {
+  readonly exitCode: number;
+
+  constructor(message: string, readonly hints: string[] = [], exitCode = 1) {
     super(message);
     this.name = "CliUsageError";
+    this.exitCode = exitCode;
   }
 }
 

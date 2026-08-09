@@ -210,18 +210,30 @@ function pluginMatchesQuery(plugin: CatalogPlugin, query: string): boolean {
   return false;
 }
 
+export interface SearchCatalogPluginsOptions {
+  refresh?: boolean;
+}
+
 export function searchCatalogPlugins(
   harnesstapDir: string,
   query: string,
+  options: SearchCatalogPluginsOptions = {},
 ): CatalogPlugin[] {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
+  if (options.refresh) {
+    for (const marketplace of listMarketplaces(harnesstapDir)) {
+      refreshMarketplaceCatalog(harnesstapDir, {
+        name: marketplace.name,
+        force: true,
+      });
+    }
+  }
 
+  const trimmed = query.trim();
   const results: CatalogPlugin[] = [];
   for (const marketplace of listMarketplaces(harnesstapDir)) {
     const plugins = listCatalogPlugins(harnesstapDir, { name: marketplace.name });
     for (const plugin of plugins) {
-      if (pluginMatchesQuery(plugin, trimmed)) {
+      if (!trimmed || pluginMatchesQuery(plugin, trimmed)) {
         results.push(plugin);
       }
     }

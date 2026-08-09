@@ -556,6 +556,20 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "marketplace show demo --refresh --format json",
     ],
   },
+  "plugin.search": {
+    description: "Search marketplace catalogs for plugins",
+    examples: [
+      "plugin search typescript",
+      "plugin search --refresh --format json",
+    ],
+  },
+  "plugin.add": {
+    description: "Attach a marketplace plugin pin to a layer",
+    examples: [
+      "plugin add fmt@demo --layer team-stack",
+      "plugin add fmt@demo --layer team-stack --format json",
+    ],
+  },
 };
 
 function normalizeCommandName(name: string): string {
