@@ -29,6 +29,7 @@ import {
 import {
   setLayerDefaultEnvironment,
 } from "../models/layer-model.js";
+import { markLayerDirty } from "./layer-versioning.js";
 import type {
   EnvVarMetadata,
   Environment,
@@ -228,6 +229,7 @@ export function setLayerEnvironmentCommand(
 ): { configured_layer_id: string; environment_id: string } {
   const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
   const environment = resolveEnvironmentOrThrow(environmentSelector);
+  markLayerDirty(configuredLayer.id);
   const updated = setLayerDefaultEnvironment(
     configuredLayer.id,
     environment.id,
@@ -245,6 +247,7 @@ export function unsetLayerEnvironmentCommand(layerSelector: string): {
   configured_layer_id: string;
 } {
   const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
+  markLayerDirty(configuredLayer.id);
   const updated = setLayerDefaultEnvironment(configuredLayer.id, null);
   if (!updated) {
     throw new Error(`Configured layer not found: ${configuredLayer.id}`);

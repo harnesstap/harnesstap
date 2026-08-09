@@ -12,6 +12,7 @@ import {
 import { isProfileLayer } from "../constants/profile.js";
 import type { Resource, ResourceType } from "../types.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { markLayerDirty } from "./layer-versioning.js";
 import { collectProfileLayerIds } from "./profile-apply.js";
 import {
   toContentsResource,
@@ -161,6 +162,7 @@ async function commitMcpConfigFromLive(input: {
       originRef,
     });
 
+    markLayerDirty(profileLayer.id);
     for (const resource of persisted.resolved) {
       if (resource.type !== "mcp_server") {
         continue;
@@ -176,6 +178,7 @@ async function commitMcpConfigFromLive(input: {
   // Live file is source of truth for this path: drop profile MCP servers that
   // were bound to this path but are no longer on disk.
   const merged = mergeLayersForApply(collectProfileLayerIds(profileLayer));
+  let removedAny = false;
   for (const resource of merged.resources) {
     if (resource.type !== "mcp_server") {
       continue;
@@ -185,6 +188,10 @@ async function commitMcpConfigFromLive(input: {
     }
     if (liveNames.has(resource.name)) {
       continue;
+    }
+    if (!removedAny) {
+      markLayerDirty(profileLayer.id);
+      removedAny = true;
     }
     removeResourceFromLayer(profileLayer.id, resource.id);
   }
@@ -264,6 +271,7 @@ export async function commitManagedResourceFromLive(input: {
         throw new Error(`Live file not found: ${input.path}`);
       }
       const content = readFileSync(fullPath, "utf-8");
+      markLayerDirty(profileLayer.id);
       const updated = upsertResource(
         {
           type: attached.type,
@@ -288,6 +296,7 @@ export async function commitManagedResourceFromLive(input: {
     );
   }
 
+  markLayerDirty(profileLayer.id);
   const persisted = persistScanResults(matching, {
     conflictPolicy: "overwrite",
     originRef,

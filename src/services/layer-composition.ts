@@ -268,6 +268,7 @@ export function attachPluginPinToLayer(
   versionConstraint: string,
   opts?: { embedOnExport?: boolean; order?: number },
 ): void {
+  markLayerDirty(layerId);
   const selector = ref.includes(":") ? ref : `plugin_pin:${ref}`;
   const constraint =
     versionConstraint === "latest" || versionConstraint === "*"
@@ -283,6 +284,7 @@ export function attachPluginPinToLayer(
 export function detachPluginPinFromLayer(layerId: string, ref: string): void {
   const pin = listAttachedPluginPins(layerId).find((entry) => entry.ref === ref);
   if (!pin) return;
+  markLayerDirty(layerId);
   removeResourceFromLayer(layerId, pin.resource.id);
 }
 
@@ -314,6 +316,7 @@ export function attachCompositionResource(
   pluginId: string,
   resource: Resource,
 ): void {
+  markLayerDirty(pluginId);
   addResourceToLayer(pluginId, resource.id);
 }
 
@@ -453,6 +456,7 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
   const attachmentType = resolveAttachmentType(selector, explicitType, {
     layerName: input.layer.name,
   });
+  markLayerDirty(input.layer.id);
 
   if (attachmentType === "plugin_pin") {
     if (input.version) {
@@ -471,7 +475,6 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
       await syncPluginResource(resource, { policy: "overwrite" });
     }
     const versionLabel = input.version ? ` (${input.version})` : "";
-    markLayerDirty(input.layer.id);
     return `Attached plugin pin ${ref}${versionLabel} to layer ${input.layer.name}`;
   }
 
@@ -487,7 +490,6 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
     });
     addResourceToLayer(input.layer.id, resource.id);
     const versionLabel = input.version ? ` (${input.version})` : "";
-    markLayerDirty(input.layer.id);
     return `Attached layer ${resource.name}${versionLabel} to layer ${input.layer.name}`;
   }
 
@@ -503,7 +505,6 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
 
   const resource = resolveTypedResource(selector, attachmentType);
   addResourceToLayer(input.layer.id, resource.id);
-  markLayerDirty(input.layer.id);
   return `Added ${resource.type} "${resource.name}" to layer ${input.layer.name}`;
 }
 
@@ -524,9 +525,9 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     if (!pin) {
       throw new Error(`Plugin pin not found: ${ref}`);
     }
+    markLayerDirty(input.layer.id);
     removeResourceFromLayer(input.layer.id, pin.resource.id);
     syncClaudeLayerPluginsAfterRemove(input.layer, pin.ref);
-    markLayerDirty(input.layer.id);
     return {
       removed: true,
       message: `Removed plugin pin ${pin.ref} from layer ${input.layer.name}`,
@@ -550,8 +551,8 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
         `Type mismatch: selector "${selector}" resolved to ${resourceResult.resource.type}, expected layer`,
       );
     }
-    removeResourceFromLayer(input.layer.id, resourceResult.resource.id);
     markLayerDirty(input.layer.id);
+    removeResourceFromLayer(input.layer.id, resourceResult.resource.id);
     return {
       removed: true,
       message: `Removed layer ${resourceResult.resource.name} from layer ${input.layer.name}`,
@@ -559,8 +560,8 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
   }
 
   const resource = resolveTypedResource(selector, attachmentType);
-  removeResourceFromLayer(input.layer.id, resource.id);
   markLayerDirty(input.layer.id);
+  removeResourceFromLayer(input.layer.id, resource.id);
   return {
     removed: true,
     message: `Removed ${resource.type} "${resource.name}" from layer ${input.layer.name}`,

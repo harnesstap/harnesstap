@@ -7,6 +7,7 @@ import {
 } from "../models/layer-model.js";
 import { resolveResource } from "../models/resource.js";
 import { collectProfileLayerIds } from "./profile-apply.js";
+import { markLayerDirty } from "./layer-versioning.js";
 import {
   type ProfileContentsResource,
   toContentsResource,
@@ -52,6 +53,7 @@ export function removeResourceFromProfile(input: {
   for (const layerId of searchLayerIds) {
     const attached = getLayerResources(layerId);
     if (attached.some((resource) => resource.id === resourceId)) {
+      markLayerDirty(layerId);
       removeResourceFromLayer(layerId, resourceId);
       touchLayerUpdatedAt(layerId);
       removedFromLayerId = layerId;

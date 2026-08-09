@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, setLayerTags, getLayerById } from "../../src/models/layer-model.ts";
 import { createResource, getResource } from "../../src/models/resource.ts";
 import { applyProfileLayer } from "../../src/services/profile-apply.ts";
 import {
@@ -75,6 +75,7 @@ describe("profile-commit-resource", () => {
       expect(committed.name).toBe("manual-skill");
       const library = getResource(skill.id);
       expect(library?.content).toContain("# updated live");
+      expect(getLayerById(profile.id)?.dirty).toBe(true);
     } finally {
       await context.cleanup();
     }

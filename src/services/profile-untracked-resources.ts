@@ -13,6 +13,7 @@ import {
   type ResourceCreateInput,
 } from "../types.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { markLayerDirty } from "./layer-versioning.js";
 import { collectProfileLayerIds } from "./profile-apply.js";
 import {
   type ProfileContents,
@@ -332,6 +333,7 @@ export async function addResourceToProfile(input: {
     );
   }
 
+  markLayerDirty(profileLayer.id);
   addResourceToLayer(profileLayer.id, resource.id);
   touchLayerUpdatedAt(profileLayer.id);
 
@@ -424,6 +426,7 @@ export async function addAllUntrackedResourcesToProfile(input: {
     throw new Error("No untracked resources to add to profile.");
   }
 
+  markLayerDirty(profileLayer.id);
   for (const resource of materialResources) {
     addResourceToLayer(profileLayer.id, resource.id);
   }

@@ -60,7 +60,13 @@ function assertNotReservedProfileName(name: string): void {
 }
 
 export function listProfileLayersCommand() {
-  return listProfileLayers();
+  const names = new Set<string>();
+  for (const layer of listProfileLayers()) {
+    names.add(layer.name);
+  }
+  return [...names]
+    .map((name) => getLayerByName(name))
+    .filter((layer): layer is Layer => layer !== undefined && isProfileLayer(layer));
 }
 
 export function showProfileCommand(selector: string): {

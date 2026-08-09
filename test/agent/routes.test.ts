@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
+import { cutLayerVersion } from "../../src/services/layer-versioning.ts";
+import { createLayer, setLayerTags } from "../../src/models/layer-model.ts";
 import { writeStarterProjectConfig } from "../../src/services/project-config-write.ts";
 
 describe("agent routes", () => {
@@ -81,6 +83,22 @@ describe("agent routes", () => {
     expect(byName.get("side")?.scopes).toEqual(["home"]);
     expect(byName.get("side")?.dirty).toBe(false);
     expect(byName.has("empty")).toBe(false);
+  });
+
+  it("lists profile head semver version instead of lexicographic sort", async () => {
+    const server = withServer();
+
+    const profile = createLayer({ name: "versioned", version: "1.9.0", tags: ["profile"] });
+    setLayerTags(profile.id, ["profile"]);
+    cutLayerVersion({ layerId: profile.id, newVersion: "1.10.0" });
+
+    const response = await fetch(`${server.url}/v1/profiles`);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      profiles: Array<{ name: string; version: string }>;
+    };
+    const listed = body.profiles.find((entry) => entry.name === "versioned");
+    expect(listed?.version).toBe("1.10.0");
   });
 
   it("does not list the removed empty builtin profile", async () => {

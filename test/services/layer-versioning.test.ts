@@ -12,6 +12,7 @@ import {
   listLayers,
 } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
+import { addLayerAttachment } from "../../src/services/layer-composition.ts";
 import {
   assertLayersCleanForShare,
   cutLayerVersion,
@@ -72,6 +73,37 @@ describe("layer versioning", () => {
       const frozen = getLayerByName("cow", "1.0.0");
       expect(frozen?.frozen_at).toBeDefined();
       expect(frozen?.dirty).toBe(false);
+      expect(getLayerResources(frozen!.id).map((resource) => resource.name)).toEqual([
+        "skill-a",
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("COW: addLayerAttachment snapshots before first edit", async () => {
+    const context = await createInitializedTestContext("layer-version-cow-attachment");
+    try {
+      const layer = createLayer({ name: "attach-cow", version: "1.0.0" });
+      const resourceA = createResource(makeResourceInput({ name: "skill-a" }));
+      const resourceB = createResource(makeResourceInput({ name: "skill-b" }));
+      addResourceToLayer(layer.id, resourceA.id);
+
+      await addLayerAttachment({
+        layer,
+        selector: resourceB.name,
+        type: "skill",
+      });
+
+      const head = cutLayerVersion({ layerId: layer.id, newVersion: "1.1.0" });
+      expect(head.version).toBe("1.1.0");
+      expect(head.dirty).toBe(false);
+
+      const headResourceIds = getLayerResources(head.id).map((resource) => resource.name);
+      expect(headResourceIds).toEqual(["skill-a", "skill-b"]);
+
+      const frozen = getLayerByName("attach-cow", "1.0.0");
+      expect(frozen?.frozen_at).toBeDefined();
       expect(getLayerResources(frozen!.id).map((resource) => resource.name)).toEqual([
         "skill-a",
       ]);

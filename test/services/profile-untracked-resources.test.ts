@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, setLayerTags, getLayerById } from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.js";
 import { createInitializedTestContext } from "../helpers/db.ts";
@@ -87,6 +87,7 @@ describe("profile-untracked-resources service", () => {
         harness: "claude-code",
       });
       expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(false);
+      expect(getLayerById(profile.id)?.dirty).toBe(true);
     } finally {
       await context.cleanup();
     }
