@@ -1,0 +1,10 @@
+{
+  "name": "e2e-market",
+  "plugins": [
+    {
+      "name": "demo-plugin",
+      "version": "1.0.0",
+      "description": "HarnessTap desktop E2E demo plugin"
+    }
+  ]
+}
