@@ -71,11 +71,15 @@ describe("agent routes", () => {
     );
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      profiles: Array<{ name: string; scopes: string[] }>;
+      profiles: Array<{ name: string; scopes: string[]; dirty: boolean }>;
     };
-    const byName = new Map(body.profiles.map((profile) => [profile.name, profile.scopes]));
-    expect(byName.get("work")).toEqual(["home", "project"]);
-    expect(byName.get("side")).toEqual(["home"]);
+    const byName = new Map(
+      body.profiles.map((profile) => [profile.name, profile]),
+    );
+    expect(byName.get("work")?.scopes).toEqual(["home", "project"]);
+    expect(byName.get("work")?.dirty).toBe(false);
+    expect(byName.get("side")?.scopes).toEqual(["home"]);
+    expect(byName.get("side")?.dirty).toBe(false);
     expect(byName.has("empty")).toBe(false);
   });
 

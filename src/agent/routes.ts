@@ -41,6 +41,7 @@ import {
   handleProfileDetail,
   handleProfilePatch,
 } from "./profile-edit-handlers.js";
+import { handleProfileCut } from "./profile-cut-handlers.js";
 import {
   handleProfileStashList,
   handleProfileStashPop,
@@ -79,6 +80,7 @@ export interface ProfileSummaryPayload {
   tags: string[];
   description: string | null;
   scopes: ProfileViewScope[];
+  dirty: boolean;
 }
 
 function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
@@ -91,6 +93,7 @@ function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
       tags: profile.tags,
       description: profile.description ?? null,
       scopes: ["home"],
+      dirty: profile.dirty,
     });
   }
 
@@ -114,6 +117,7 @@ function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
           tags: [PROFILE_LAYER_TAG],
           description: null,
           scopes: ["project"],
+          dirty: false,
         });
       }
     }
@@ -649,6 +653,14 @@ export function createAgentFetchHandler(
           decodeURIComponent(renameMatch[1] ?? ""),
         );
       } else {
+        const cutMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/cut$/);
+        if (method === "POST" && cutMatch) {
+          response = await handleProfileCut(
+            request,
+            token,
+            decodeURIComponent(cutMatch[1] ?? ""),
+          );
+        } else {
         const tagMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)\/tag$/);
         if (method === "POST" && tagMatch) {
           response = handleProfileTag(
@@ -719,6 +731,7 @@ export function createAgentFetchHandler(
             } else {
               response = jsonResponse({ error: "not_found" }, { status: 404 });
             }
+          }
           }
           }
           }

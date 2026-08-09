@@ -66,11 +66,12 @@ describe("agent profile edit routes", () => {
     );
     expect(detailResponse.status).toBe(200);
     const detail = (await detailResponse.json()) as {
-      profile: { description: string; tags: string[] };
+      profile: { description: string; tags: string[]; dirty: boolean };
       resources: unknown[];
       dependencies: unknown[];
     };
     expect(detail.profile.description).toBe("before");
+    expect(detail.profile.dirty).toBe(false);
     expect(detail.resources).toEqual([]);
     expect(detail.dependencies).toEqual([]);
 
@@ -87,9 +88,10 @@ describe("agent profile edit routes", () => {
     );
     expect(patchResponse.status).toBe(200);
     const patched = (await patchResponse.json()) as {
-      profile: { description: string; tags: string[] };
+      profile: { description: string; tags: string[]; dirty: boolean };
     };
     expect(patched.profile.description).toBe("after");
+    expect(patched.profile.dirty).toBe(true);
     expect(patched.profile.tags).toContain("focus");
     expect(patched.profile.tags).toContain("profile");
 

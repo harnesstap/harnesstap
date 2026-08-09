@@ -20,7 +20,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function profileEditErrorResponse(error: unknown): Response {
+export function profileEditErrorResponse(error: unknown): Response {
   if (error instanceof ProfileReservedNameError) {
     return jsonResponse(
       { error: "reserved_name", message: error.message },
