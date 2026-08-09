@@ -9,6 +9,7 @@ import {
 } from "../services/layer-composition.js";
 import { claudeConfigFromPluginPins } from "../services/claude-plugin-pins.js";
 import type {
+  ClaudeMarketplaceEntry,
   ClaudePluginEntry,
   ClaudeLayerConfig,
   Layer,
@@ -585,6 +586,25 @@ export function getLayerResources(layerId: string): Resource[] {
     .all(layerId) as ResourceRow[];
 
   return rows.map(mapResourceRow);
+}
+
+export function ensureLayerClaudeMarketplace(
+  layer: Layer,
+  marketplaceName: string,
+  entry: ClaudeMarketplaceEntry,
+): boolean {
+  if (layer.claude?.marketplaces?.[marketplaceName]) {
+    return false;
+  }
+  const marketplaces = {
+    ...(layer.claude?.marketplaces ?? {}),
+    [marketplaceName]: entry,
+  };
+  writeLayerClaudeConfig(layer.id, {
+    ...(layer.claude ?? {}),
+    marketplaces,
+  });
+  return true;
 }
 
 export function syncClaudeLayerPluginsAfterAdd(
