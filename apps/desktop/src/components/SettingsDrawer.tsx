@@ -1,4 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SelectionList } from "@/components/ui/selection-list";
+import { Switch } from "@/components/ui/switch";
 import {
   fetchHarnessSettings,
   saveHarnessSettings,
@@ -17,6 +27,7 @@ import type {
   PutHarnessSettingsInput,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { HarnessIcon } from "./HarnessIcons";
 
 export interface SettingsDrawerProps {
   open: boolean;
@@ -59,6 +70,20 @@ function toggleAlias(aliases: string[], id: string): string[] {
   return aliases.includes(id)
     ? aliases.filter((alias) => alias !== id)
     : [...aliases, id];
+}
+
+function aliasListItems(
+  harnesses: HarnessCatalogEntry[],
+  mainId: string,
+) {
+  return harnesses
+    .filter((harness) => harness.id !== mainId)
+    .map((harness) => ({
+      id: harness.id,
+      name: harness.name,
+      leading: <HarnessIcon id={harness.id} />,
+      trailing: !harness.supported ? <small>Registered</small> : undefined,
+    }));
 }
 
 export function SettingsDrawer({
@@ -213,6 +238,16 @@ export function SettingsDrawer({
         selectedIds: projectSelectedIds,
       }),
     [harnesses, projectSelectedIds, showAllHarnesses],
+  );
+
+  const globalAliasItems = useMemo(
+    () => aliasListItems(globalVisible, draft.globalMain),
+    [draft.globalMain, globalVisible],
+  );
+
+  const projectAliasItems = useMemo(
+    () => aliasListItems(projectVisible, draft.projectMain),
+    [draft.projectMain, projectVisible],
   );
 
   const controlsDisabled = disabled || busy || loading;
@@ -399,28 +434,35 @@ export function SettingsDrawer({
             <>
               <section className="settings-section">
                 <h3>Global harness</h3>
-                <label className="form-field">
-                  <span>Main harness</span>
-                  <select
-                    value={draft.globalMain}
-                    onChange={(event) => setGlobalMain(event.target.value)}
+                <div className="form-field">
+                  <Label htmlFor="settings-global-main">Main harness</Label>
+                  <Select
+                    value={draft.globalMain || undefined}
+                    onValueChange={setGlobalMain}
                     disabled={controlsDisabled}
                   >
-                    <option value="">Select a harness…</option>
-                    {globalVisible.map((harness) => (
-                      <option key={harness.id} value={harness.id}>
-                        {harness.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <SelectTrigger id="settings-global-main" className="w-full">
+                      <SelectValue placeholder="Select a harness…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {globalVisible.map((harness) => (
+                        <SelectItem key={harness.id} value={harness.id}>
+                          <HarnessIcon id={harness.id} />
+                          {harness.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <AliasHarnessList
+                <SelectionList
                   title="Alias harnesses"
-                  harnesses={globalVisible}
-                  mainId={draft.globalMain}
+                  emptyLabel="No harnesses available."
+                  items={globalAliasItems}
                   selectedIds={draft.globalAliases}
                   disabled={controlsDisabled}
+                  className="settings-alias-list"
+                  listClassName="settings-alias-list-rows max-h-[180px] h-auto"
                   onToggle={(id) =>
                     setDraft((prev) => ({
                       ...prev,
@@ -429,25 +471,33 @@ export function SettingsDrawer({
                 />
               </section>
 
-              <label className="switch-after-create settings-show-all">
-                <input
-                  type="checkbox"
+              <div className="switch-after-create settings-show-all flex items-center gap-2">
+                <Switch
+                  id="settings-show-all-harnesses"
                   checked={showAllHarnesses}
-                  onChange={(event) => setShowAllHarnesses(event.target.checked)}
+                  onCheckedChange={setShowAllHarnesses}
                   disabled={controlsDisabled}
                 />
-                Show all harnesses
-              </label>
+                <Label htmlFor="settings-show-all-harnesses">
+                  Show all harnesses
+                </Label>
+              </div>
 
               {hasProjectSection ? (
                 <section className="settings-section">
                   <h3>Project override</h3>
                   {!projectAvailable ? (
                     <>
-                      <label className="switch-after-create settings-override-toggle">
-                        <input type="checkbox" checked={false} disabled />
-                        Use project override
-                      </label>
+                      <div className="switch-after-create settings-override-toggle flex items-center gap-2">
+                        <Switch
+                          id="settings-project-override-unavailable"
+                          checked={false}
+                          disabled
+                        />
+                        <Label htmlFor="settings-project-override-unavailable">
+                          Use project override
+                        </Label>
+                      </div>
                       <p className="field-note muted">
                         {projectReason
                           || "Project override is unavailable for this project."}
@@ -455,45 +505,60 @@ export function SettingsDrawer({
                     </>
                   ) : (
                     <>
-                      <label className="switch-after-create settings-override-toggle">
-                        <input
-                          type="checkbox"
+                      <div className="switch-after-create settings-override-toggle flex items-center gap-2">
+                        <Switch
+                          id="settings-project-override"
                           checked={draft.projectOverride}
-                          onChange={(event) =>
-                            onOverrideChange(event.target.checked)}
+                          onCheckedChange={onOverrideChange}
                           disabled={controlsDisabled}
                         />
-                        Use project override
-                      </label>
+                        <Label htmlFor="settings-project-override">
+                          Use project override
+                        </Label>
+                      </div>
                       {!draft.projectOverride ? (
                         <p className="field-note muted">
                           This project uses global harness preferences.
                         </p>
                       ) : (
                         <>
-                          <label className="form-field">
-                            <span>Main harness</span>
-                            <select
-                              value={draft.projectMain}
-                              onChange={(event) =>
-                                setProjectMain(event.target.value)}
+                          <div className="form-field">
+                            <Label htmlFor="settings-project-main">
+                              Main harness
+                            </Label>
+                            <Select
+                              value={draft.projectMain || undefined}
+                              onValueChange={setProjectMain}
                               disabled={controlsDisabled}
                             >
-                              <option value="">Select a harness…</option>
-                              {projectVisible.map((harness) => (
-                                <option key={harness.id} value={harness.id}>
-                                  {harness.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                              <SelectTrigger
+                                id="settings-project-main"
+                                className="w-full"
+                              >
+                                <SelectValue placeholder="Select a harness…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {projectVisible.map((harness) => (
+                                  <SelectItem
+                                    key={harness.id}
+                                    value={harness.id}
+                                  >
+                                    <HarnessIcon id={harness.id} />
+                                    {harness.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                          <AliasHarnessList
+                          <SelectionList
                             title="Alias harnesses"
-                            harnesses={projectVisible}
-                            mainId={draft.projectMain}
+                            emptyLabel="No harnesses available."
+                            items={projectAliasItems}
                             selectedIds={draft.projectAliases}
                             disabled={controlsDisabled}
+                            className="settings-alias-list"
+                            listClassName="settings-alias-list-rows max-h-[180px] h-auto"
                             onToggle={(id) =>
                               setDraft((prev) => ({
                                 ...prev,
@@ -504,24 +569,34 @@ export function SettingsDrawer({
                               }))}
                           />
 
-                          <label className="form-field">
-                            <span>Materialization</span>
-                            <select
+                          <div className="form-field">
+                            <Label htmlFor="settings-materialization">
+                              Materialization
+                            </Label>
+                            <Select
                               value={draft.materialization}
-                              onChange={(event) =>
+                              onValueChange={(value) =>
                                 setDraft((prev) => ({
                                   ...prev,
-                                  materialization: event.target
-                                    .value as MaterializationStrategy,
+                                  materialization:
+                                    value as MaterializationStrategy,
                                 }))}
                               disabled={controlsDisabled}
                             >
-                              <option value="symlink-preferred">
-                                Symlink preferred
-                              </option>
-                              <option value="copy">Copy</option>
-                            </select>
-                          </label>
+                              <SelectTrigger
+                                id="settings-materialization"
+                                className="w-full"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="symlink-preferred">
+                                  Symlink preferred
+                                </SelectItem>
+                                <SelectItem value="copy">Copy</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
                           <p className="field-note muted">
                             Saving rematerializes alias harness files from the
@@ -561,49 +636,5 @@ export function SettingsDrawer({
         </div>
       </div>
     </div>
-  );
-}
-
-interface AliasHarnessListProps {
-  title: string;
-  harnesses: HarnessCatalogEntry[];
-  mainId: string;
-  selectedIds: string[];
-  disabled: boolean;
-  onToggle: (id: string) => void;
-}
-
-function AliasHarnessList({
-  title,
-  harnesses,
-  mainId,
-  selectedIds,
-  disabled,
-  onToggle,
-}: AliasHarnessListProps) {
-  const rows = harnesses.filter((harness) => harness.id !== mainId);
-  return (
-    <fieldset className="selection-list settings-alias-list" disabled={disabled}>
-      <legend>{title}</legend>
-      <div className="selection-list-rows">
-        {rows.length === 0 ? (
-          <p className="muted">No harnesses available.</p>
-        ) : (
-          rows.map((harness) => (
-            <label key={harness.id} className="selection-row">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(harness.id)}
-                onChange={() => onToggle(harness.id)}
-              />
-              <span>
-                <strong>{harness.name}</strong>
-                {!harness.supported ? <small>Registered</small> : null}
-              </span>
-            </label>
-          ))
-        )}
-      </div>
-    </fieldset>
   );
 }
