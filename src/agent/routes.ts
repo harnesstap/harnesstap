@@ -24,6 +24,11 @@ import {
   handleHarnessSettingsGet,
   handleHarnessSettingsPut,
 } from "./harness-settings-handlers.js";
+import {
+  handleMarketplacePluginsList,
+  handleMarketplacesAdd,
+  handleMarketplacesList,
+} from "./marketplace-handlers.js";
 import { handleOpenPath } from "./open-path-handlers.js";
 import {
   createProfileCloudHandlers,
@@ -586,6 +591,15 @@ export function createAgentFetchHandler(
       response = handleHarnessSettingsGet(request, token);
     } else if (method === "PUT" && url.pathname === "/v1/harness") {
       response = await handleHarnessSettingsPut(request, token);
+    } else if (method === "GET" && url.pathname === "/v1/marketplaces") {
+      response = handleMarketplacesList(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/marketplaces") {
+      response = await handleMarketplacesAdd(request, token);
+    } else if (method === "GET" && url.pathname.match(/^\/v1\/marketplaces\/[^/]+\/plugins$/)) {
+      const name = decodeURIComponent(
+        url.pathname.slice("/v1/marketplaces/".length).replace(/\/plugins$/, ""),
+      );
+      response = handleMarketplacePluginsList(request, token, name);
     } else if (method === "GET" && url.pathname === "/v1/library/layers") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryLayers();
