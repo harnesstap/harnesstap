@@ -2081,6 +2081,7 @@ layerPublishCmd
   .argument("[target]", "One-off org/catalog target")
   .option("--org <slug>", "One-off organization slug")
   .option("--catalog <slug>", "One-off catalog slug (default: default)")
+  .option("--version <semver>", "Cut the layer to this semver before publishing")
   .option("--account <name>", "Cloud account to use")
   .option("--format <mode>", "Output format: human or json", "human")
   .action((layer: string, target: string | undefined, opts: {
@@ -2088,6 +2089,7 @@ layerPublishCmd
     catalog?: string;
     account?: string;
     format?: string;
+    version?: string;
   }) => handleLayerPublishCommand(layer, target, opts));
 
 layerCmd

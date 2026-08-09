@@ -48,6 +48,30 @@ describe("exporter services", () => {
     }
   });
 
+  it("rejects export when the layer head is dirty", async () => {
+    const context = await createInitializedTestContext("export-dirty-layer");
+
+    try {
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const versioning = await import("../../src/services/layer-versioning.ts");
+      const exporter = await loadLayerTransportServices();
+
+      const layer = layerModel.createLayer({ name: "dirty-export", version: "1.0.0" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ name: "shared", description: "Shared skill" }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+      versioning.markLayerDirty(layer.id);
+
+      expect(() => exporter.exportLayer(layer.id)).toThrow(
+        /Cannot share layers with unpublished edits: dirty-export@1\.0\.0/,
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("writes and re-imports bundles from disk", async () => {
     const exportContext = await createInitializedTestContext("export-import-export");
 

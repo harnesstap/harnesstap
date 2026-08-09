@@ -11,17 +11,32 @@ import {
   renderPublishResults,
 } from "../../services/layer-publish.js";
 import { formatPublishedSelector } from "../../services/layer-selector.js";
+import {
+  assertLayersCleanForShare,
+  cutLayerVersion,
+  LayerVersionError,
+} from "../../services/layer-versioning.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
+
+function publishVersionRequiredMessage(layerName: string, reason: string): string {
+  return `${reason} Pass --version <semver> to cut a new layer version before publishing (e.g. \`layer publish ${layerName} --version 1.1.0\`).`;
+}
 
 export async function handleLayerPublishCommand(
   layerName: string,
   catalogSelector: string | undefined,
-  opts: { org?: string; catalog?: string; account?: string; format?: string },
+  opts: {
+    org?: string;
+    catalog?: string;
+    account?: string;
+    format?: string;
+    version?: string;
+  },
 ) {
   const db = getDb();
   initializeSchema(db);
-  const layer = getLayer(layerName);
+  let layer = getLayer(layerName);
   if (!layer) {
     process.exitCode = 1;
     ui.danger(`Layer not found: ${layerName}`);
@@ -29,6 +44,21 @@ export async function handleLayerPublishCommand(
   }
 
   try {
+    if (opts.version) {
+      layer = cutLayerVersion({ layerId: layer.id, newVersion: opts.version });
+    } else if (layer.dirty) {
+      throw new LayerVersionError(
+        "dirty_layers",
+        publishVersionRequiredMessage(
+          layer.name,
+          `Layer ${layer.name}@${layer.version} has unpublished edits.`,
+        ),
+        { dirtyLayers: [{ name: layer.name, version: layer.version }] },
+      );
+    }
+
+    assertLayersCleanForShare([layer]);
+
     const oneOffTargets = resolveOneOffPublishTarget({
       catalogSelector,
       org: opts.org,
@@ -65,6 +95,10 @@ export async function handleLayerPublishCommand(
     }
   } catch (err) {
     process.exitCode = 1;
+    if (err instanceof LayerVersionError) {
+      ui.danger(err.message);
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }

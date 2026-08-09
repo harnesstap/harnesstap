@@ -39,6 +39,7 @@ import {
   parseLayerExportToml,
   readTransportFile,
 } from "./transport/index.js";
+import { assertLayersCleanForShare } from "./layer-versioning.js";
 
 export interface ExportLayerOptions {
   /** When true, embed marketplace-installed plugins too if their install paths resolve from `HOME`. */
@@ -433,6 +434,7 @@ export function exportLayer(
     if (!layer) throw new Error(`Layer not found: ${selector}`);
     return layer;
   });
+  assertLayersCleanForShare(layers);
   const payloads = layers.map((layer) => collectBundlePayload(layer, exportOpts));
   return buildMultiLayerExport(payloads);
 }

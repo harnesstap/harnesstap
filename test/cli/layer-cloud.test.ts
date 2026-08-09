@@ -1340,4 +1340,147 @@ describe("CLI cloud layer workflows", () => {
       await context.cleanup();
     }
   });
+
+  it("layer publish rejects dirty layers without --version", async () => {
+    const context = await createTestContext("cli-layer-publish-dirty");
+    try {
+      await runCli(["init"]);
+
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudAccounts.setDefaultCloudAccount("test");
+
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const versioning = await import("../../src/services/layer-versioning.ts");
+      const layer = layerModel.createLayer({ name: "dirty-pub", version: "1.0.0" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ name: "r", content: "#x" }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+      versioning.markLayerDirty(layer.id);
+
+      await runCli(["layer", "catalog", "register", "acme/default"]);
+
+      const result = await runCli(
+        ["layer", "publish", "dirty-pub", "--account", "test"],
+        { isTTY: false },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("unpublished edits");
+      expect(result.stderr).toContain("--version");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("layer publish --version cuts dirty head then publishes", async () => {
+    const context = await createTestContext("cli-layer-publish-cut");
+    try {
+      await runCli(["init"]);
+
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudAccounts.setDefaultCloudAccount("test");
+
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const versioning = await import("../../src/services/layer-versioning.ts");
+      const layer = layerModel.createLayer({ name: "cut-pub", version: "1.0.0" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ name: "r", content: "#x" }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+      versioning.markLayerDirty(layer.id);
+
+      const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
+
+      await runCli(["layer", "catalog", "register", "acme/default"]);
+
+      const publish = await runCli([
+        "layer",
+        "publish",
+        "cut-pub",
+        "--version",
+        "1.1.0",
+        "--account",
+        "test",
+        "--format",
+        "json",
+      ]);
+
+      expect(publish.exitCode === undefined || publish.exitCode === 0).toBe(true);
+      expect(JSON.parse(publish.stdout)).toEqual(
+        expect.objectContaining({
+          layer: "cut-pub",
+          results: [expect.objectContaining({ ok: true, version: "1.0.0" })],
+        }),
+      );
+
+      const { closeDb, getDb } = await import("../../src/db/connection.ts");
+      closeDb();
+      const rows = getDb()
+        .prepare(
+          "SELECT version, dirty, frozen_at FROM layers WHERE name = ? ORDER BY frozen_at IS NULL DESC",
+        )
+        .all("cut-pub") as Array<{
+        version: string;
+        dirty: number;
+        frozen_at: string | null;
+      }>;
+      const head = rows.find((row) => row.frozen_at == null);
+      const frozen = rows.find((row) => row.frozen_at != null);
+      expect(head?.dirty).toBe(0);
+      expect(frozen?.version).toBe("1.0.0");
+      expect(frozen?.frozen_at).toBeTruthy();
+
+      restorePublishFetch();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("migrate export rejects dirty layer heads", async () => {
+    const context = await createTestContext("cli-migrate-export-dirty");
+    try {
+      await runCli(["init"]);
+
+      const layerModel = await import("../../src/models/layer-model.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const versioning = await import("../../src/services/layer-versioning.ts");
+      const layer = layerModel.createLayer({ name: "dirty-migrate", version: "1.0.0" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ name: "r", content: "#x" }),
+      );
+      layerModel.addResourceToLayer(layer.id, resource.id);
+      versioning.markLayerDirty(layer.id);
+
+      const bundlePath = join(context.projectDir, "dirty.harnesstap.toml");
+      const result = await runCli([
+        "migrate",
+        "export",
+        bundlePath,
+        "--layer",
+        "dirty-migrate",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Cannot share layers with unpublished edits");
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
