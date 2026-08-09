@@ -557,6 +557,36 @@ export async function tagProfile(
   return (await response.json()) as ProfileTagResult;
 }
 
+export interface ProfileCutResult {
+  profile: {
+    name: string;
+    version: string;
+    dirty: boolean;
+  };
+}
+
+export async function cutProfile(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+  version: string,
+): Promise<ProfileCutResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(name)}/cut`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version }),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not cut profile version");
+  }
+  return (await response.json()) as ProfileCutResult;
+}
+
 export async function renameProfile(
   baseUrl: string,
   token: string | null,

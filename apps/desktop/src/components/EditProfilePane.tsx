@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Scissors, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +34,7 @@ export interface EditProfilePaneProps {
     profileName: string;
     affectsApply: boolean;
   }) => void | Promise<void>;
+  onRequestCut?: (name: string, version: string) => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -51,6 +52,7 @@ export function EditProfilePane({
   onClose,
   onProfileRenamed,
   onMutated,
+  onRequestCut,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -306,10 +308,35 @@ export function EditProfilePane({
             {detail?.active ? (
               <span className="badge edit-active-badge">active</span>
             ) : null}
+            {detail?.profile.version ? (
+              <span className="badge badge-meta">
+                v{detail.profile.version}
+                {detail.profile.dirty ? "*" : ""}
+              </span>
+            ) : null}
           </h2>
           <p className="muted">Changes save automatically.</p>
         </div>
-        <button
+        <div className="edit-profile-header-actions">
+          {detail && onRequestCut ? (
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                onRequestCut(detail.profile.name, detail.profile.version)
+              }
+              disabled={controlsDisabled}
+              title={
+                detail.profile.dirty
+                  ? "Cut unpublished edits to a new version"
+                  : "Cut a new version (fork current state)"
+              }
+            >
+              <Scissors size={15} strokeWidth={2} aria-hidden />
+              Cut version
+            </button>
+          ) : null}
+          <button
           type="button"
           className="icon-action"
           onClick={onClose}
@@ -319,6 +346,7 @@ export function EditProfilePane({
         >
           <X size={18} strokeWidth={2} aria-hidden />
         </button>
+        </div>
       </div>
 
       {error ? <div className="banner error">{error}</div> : null}

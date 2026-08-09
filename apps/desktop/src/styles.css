@@ -2123,6 +2123,71 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   margin-top: 0.75rem;
 }
 
+.cut-versions-table-wrap {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+}
+
+.cut-versions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.cut-versions-table th,
+.cut-versions-table td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cut-versions-table th {
+  font-weight: 600;
+  background: var(--surface-2);
+}
+
+.cut-versions-table input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.35rem 0.45rem;
+  min-height: 30px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.cut-versions-table input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: var(--accent);
+}
+
+.cut-versions-table input.has-error {
+  border-color: var(--red);
+}
+
+.cut-versions-field-error {
+  margin: 0.25rem 0 0;
+  color: var(--red);
+  font-size: 11px;
+}
+
+.edit-profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.edit-profile-header-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .create-profile-backdrop {
   z-index: 40;
   padding: 0;

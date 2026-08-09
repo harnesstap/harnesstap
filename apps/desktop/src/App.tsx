@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Unplug, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Scissors, Settings, Unplug, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
@@ -9,6 +9,7 @@ import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { CutVersionsModal } from "./components/CutVersionsModal";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
 import { EditProfilePane } from "./components/EditProfilePane";
 import { FileDiffModal } from "./components/FileDiffModal";
@@ -35,6 +36,7 @@ import {
   addAllProfileResources,
   addProfileResource,
   commitProfileResource,
+  cutProfile,
   openResourcePath,
   removeProfileResource,
   restoreProfileFile,
@@ -44,6 +46,7 @@ import {
   loadRecentProjects,
   rememberProject,
 } from "./lib/recent-projects";
+import type { CutVersionRow } from "./lib/cut-versions-form";
 import { mergeStatusUpdate } from "./lib/status-merge";
 import type {
   CloudAuthStatus,
@@ -203,6 +206,9 @@ export function App() {
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameBusy, setRenameBusy] = useState(false);
+  const [cutModalOpen, setCutModalOpen] = useState(false);
+  const [cutRows, setCutRows] = useState<CutVersionRow[]>([]);
+  const [cutBusy, setCutBusy] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameIgnoreBlurRef = useRef(false);
   const [projectPath, setProjectPath] = useState<string>(() => {
@@ -1015,6 +1021,60 @@ export function App() {
     }
     return selectedProfileSummary.tags.filter((tag) => tag !== "profile");
   }, [selectedProfileSummary]);
+
+  const openCutForProfile = useCallback((name: string, version: string) => {
+    setCutRows([
+      {
+        name,
+        currentVersion: version,
+        newVersion: version,
+      },
+    ]);
+    setCutModalOpen(true);
+  }, []);
+
+  const handleCutConfirm = useCallback(async () => {
+    if (!baseUrl || !token || cutBusy || cutRows.length === 0) {
+      return;
+    }
+    setCutBusy(true);
+    setSwitchError(null);
+    try {
+      for (const row of cutRows) {
+        await cutProfile(baseUrl, token, row.name, row.newVersion.trim());
+      }
+      setCutModalOpen(false);
+      await refreshProfiles();
+      await refreshStatus("full");
+      if (selectedProfile) {
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: selectedProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        setApplyPreview(preview);
+      }
+      const cutNames = cutRows.map((row) => row.name).join(", ");
+      setSuccessMessage(`Cut version for ${cutNames}`);
+      window.setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setSwitchError(
+        error instanceof Error ? error.message : "Could not cut profile version",
+      );
+    } finally {
+      setCutBusy(false);
+    }
+  }, [
+    baseUrl,
+    cutBusy,
+    cutRows,
+    projectPath,
+    refreshProfiles,
+    refreshStatus,
+    selectedProfile,
+    token,
+    view,
+  ]);
 
   const runSwitch = useCallback(
     async (
@@ -2092,6 +2152,11 @@ export function App() {
               setEditingProfile(nextName);
             }}
             onMutated={maybeAutoReapplyAfterMutation}
+            onRequestCut={
+              editingProfile && baseUrl && token
+                ? (name, version) => openCutForProfile(name, version)
+                : undefined
+            }
           />
         ) : (
           <main className="live-pane" aria-label="Live state">
@@ -2153,6 +2218,7 @@ export function App() {
                       {selectedProfileSummary?.version ? (
                         <span className="badge badge-meta">
                           v{selectedProfileSummary.version}
+                          {selectedProfileSummary.dirty ? "*" : ""}
                         </span>
                       ) : null}
                       {selectedProfileMetaTags.map((tag) => (
@@ -2169,6 +2235,34 @@ export function App() {
                         title="Edit profile"
                       >
                         <Pencil size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-action status-edit-action"
+                        onClick={() =>
+                          openCutForProfile(
+                            selectedProfile,
+                            selectedProfileSummary?.version ?? "",
+                          )
+                        }
+                        disabled={
+                          !connected
+                          || !token
+                          || switching
+                          || !selectedProfileSummary?.version
+                        }
+                        aria-label={`Cut version for ${selectedProfile}`}
+                        title={
+                          selectedProfileSummary?.dirty
+                            ? "Cut unpublished edits to a new version"
+                            : "Cut a new version (fork current state)"
+                        }
+                      >
+                        <Scissors
+                          size={HEADER_ICON_SIZE}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
                       </button>
                     </>
                   ) : (
@@ -2510,6 +2604,19 @@ export function App() {
           </Label>
         </div>
       </ConfirmDialog>
+
+      <CutVersionsModal
+        open={cutModalOpen}
+        rows={cutRows}
+        busy={cutBusy}
+        onRowsChange={setCutRows}
+        onConfirm={() => void handleCutConfirm()}
+        onCancel={() => {
+          if (!cutBusy) {
+            setCutModalOpen(false);
+          }
+        }}
+      />
     </div>
   );
 }

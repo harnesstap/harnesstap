@@ -11,6 +11,8 @@ export interface ProfileSummary {
   description: string | null;
   /** Where this profile is enabled; appears in each matching Home/Project view. */
   scopes: ViewScope[];
+  /** Unpublished edits on the working head (shown as version*). */
+  dirty?: boolean;
 }
 
 export interface LibraryLayer {
@@ -526,6 +528,7 @@ export interface ProfileDetail {
     version: string;
     description: string;
     tags: string[];
+    dirty?: boolean;
   };
   active: boolean;
   dependencies: ProfileDetailDependency[];
