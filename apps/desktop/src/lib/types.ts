@@ -585,6 +585,77 @@ export interface ProfilePluginAddResult {
   marketplaceCopied: boolean;
 }
 
+export type MigrateScope = "workspace" | "layer" | "resource" | "environment";
+
+export interface LibraryEnvironment {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface EnvironmentsListResult {
+  environments: LibraryEnvironment[];
+}
+
+export interface MigrateDetectImportScopeResult {
+  scope: MigrateScope;
+}
+
+export interface MigrateExportInput {
+  scope: MigrateScope;
+  path: string;
+  layer?: string;
+  resource?: string;
+  environment?: string;
+  include_plugins?: boolean;
+}
+
+/** Workspace export matches CLI JSON: flattened manifest fields + output + scope. */
+export type MigrateExportResult =
+  | {
+      scope: "workspace";
+      output: string;
+      version: number;
+      exported_at: string;
+      layer_count: number;
+      environment_count?: number;
+      include_plugins: boolean;
+      includes_active_profile: boolean;
+    }
+  | { scope: "layer"; output: string; layers: string[] }
+  | { scope: "resource"; output: string; resource: string }
+  | { scope: "environment"; output: string; environment: string };
+
+export interface MigrateImportInput {
+  path: string;
+  scope?: MigrateScope | null;
+}
+
+export type MigrateImportResult =
+  | {
+      scope: "workspace";
+      manifest: Record<string, unknown>;
+      layers_imported: number;
+      environments_imported: number;
+    }
+  | {
+      scope: "layer";
+      layer: string;
+      layers: string[];
+      resources_imported: number;
+    }
+  | {
+      scope: "resource";
+      resource: string;
+      action: "created" | "updated" | "unchanged";
+    }
+  | {
+      scope: "environment";
+      environment: string;
+      imported_keys: string[];
+      imported_secret_refs: string[];
+    };
+
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {
   validate_baseline: "Validate baseline",
   apply_home: "Apply profile (global)",

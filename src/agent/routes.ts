@@ -20,6 +20,8 @@ import { handleProfileAddAllResources, handleProfileAddResource, handleProfileCo
 import { handleProfileRestoreFile } from "./profile-restore-file-handlers.js";
 import { handleProfileFileDiff } from "./profile-file-diff-handlers.js";
 import { handleProfileRemoveResource } from "./profile-remove-resource-handlers.js";
+import { handleEnvironmentsList } from "./environment-handlers.js";
+import { handleMigrateDetectImportScope, handleMigrateExport, handleMigrateImport } from "./migrate-handlers.js";
 import {
   handleHarnessSettingsGet,
   handleHarnessSettingsPut,
@@ -601,6 +603,14 @@ export function createAgentFetchHandler(
         url.pathname.slice("/v1/marketplaces/".length).replace(/\/plugins$/, ""),
       );
       response = handleMarketplacePluginsList(request, token, name);
+    } else if (method === "GET" && url.pathname === "/v1/environments") {
+      response = handleEnvironmentsList(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/migrate/detect-import-scope") {
+      response = await handleMigrateDetectImportScope(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/migrate/export") {
+      response = await handleMigrateExport(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/migrate/import") {
+      response = await handleMigrateImport(request, token);
     } else if (method === "GET" && url.pathname === "/v1/library/layers") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryLayers();

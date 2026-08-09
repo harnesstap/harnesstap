@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Scissors, Settings, Unplug, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Scissors, Settings, Unplug, Upload, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
@@ -15,6 +15,8 @@ import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
 import { EditProfilePane } from "./components/EditProfilePane";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
+import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
+import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SettingsDrawer } from "./components/SettingsDrawer";
@@ -189,6 +191,9 @@ export function App() {
   const [stashBrowseOpen, setStashBrowseOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [migrateExportOpen, setMigrateExportOpen] = useState(false);
+  const [migrateImportOpen, setMigrateImportOpen] = useState(false);
+  const [migrateBusy, setMigrateBusy] = useState(false);
   const [cloudAuth, setCloudAuth] = useState<CloudAuthStatus | null>(null);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
@@ -1805,9 +1810,49 @@ export function App() {
           <button
             className="icon-action"
             type="button"
+            data-testid="open-migrate-export"
+            onClick={() => {
+              setCreateProfileOpen(false);
+              setCloudBrowseOpen(false);
+              setStashBrowseOpen(false);
+              setCloudAccountOpen(false);
+              setSettingsOpen(false);
+              setMigrateImportOpen(false);
+              setMigrateExportOpen(true);
+            }}
+            disabled={!connected || switching || migrateBusy}
+            aria-label="Export"
+            title="Export"
+          >
+            <Upload size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button
+            className="icon-action"
+            type="button"
+            data-testid="open-migrate-import"
+            onClick={() => {
+              setCreateProfileOpen(false);
+              setCloudBrowseOpen(false);
+              setStashBrowseOpen(false);
+              setCloudAccountOpen(false);
+              setSettingsOpen(false);
+              setMigrateExportOpen(false);
+              setMigrateImportOpen(true);
+            }}
+            disabled={!connected || switching || migrateBusy}
+            aria-label="Import"
+            title="Import"
+          >
+            <Download size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button
+            className="icon-action"
+            type="button"
             data-testid="open-settings"
             onClick={() => {
               setCloudAccountOpen(false);
+              setMigrateExportOpen(false);
+              setMigrateImportOpen(false);
               setSettingsOpen(true);
             }}
             disabled={!connected}
@@ -2563,6 +2608,39 @@ export function App() {
         onClose={() => setCloudAccountOpen(false)}
         onAuthChange={(next) => {
           setCloudAuth(next);
+        }}
+      />
+
+      <MigrateExportDrawer
+        open={migrateExportOpen}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={switching}
+        onBusyChange={setMigrateBusy}
+        onClose={() => {
+          setMigrateExportOpen(false);
+          setMigrateBusy(false);
+        }}
+        onExported={() => {
+          setMigrateBusy(false);
+        }}
+      />
+      <MigrateImportDrawer
+        open={migrateImportOpen}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={switching}
+        onBusyChange={setMigrateBusy}
+        onClose={() => {
+          setMigrateImportOpen(false);
+          setMigrateBusy(false);
+        }}
+        onImported={() => {
+          setMigrateBusy(false);
+          setLibraryReloadKey((value) => value + 1);
+          void refreshProfiles();
+          void refreshStatus("full");
+          void refreshStash();
         }}
       />
 

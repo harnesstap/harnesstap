@@ -13,9 +13,15 @@ import type {
   HarnessSettingsPayload,
   PutHarnessSettingsInput,
   PutHarnessSettingsResult,
+  EnvironmentsListResult,
   LibraryLayer,
   LibraryResource,
   LibraryResourceDetail,
+  MigrateDetectImportScopeResult,
+  MigrateExportInput,
+  MigrateExportResult,
+  MigrateImportInput,
+  MigrateImportResult,
   MarketplaceAddRequest,
   MarketplaceAddResult,
   MarketplaceListResult,
@@ -282,6 +288,65 @@ export async function fetchLibraryResources(
   }
   const body = (await response.json()) as { resources: LibraryResource[] };
   return body.resources;
+}
+
+export async function fetchEnvironments(
+  baseUrl: string,
+  token: string | null,
+): Promise<EnvironmentsListResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/environments");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not list environments");
+  }
+  return (await response.json()) as EnvironmentsListResult;
+}
+
+export async function detectMigrateImportScope(
+  baseUrl: string,
+  token: string | null,
+  path: string,
+): Promise<MigrateDetectImportScopeResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/migrate/detect-import-scope", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not detect import scope");
+  }
+  return (await response.json()) as MigrateDetectImportScopeResult;
+}
+
+export async function migrateExport(
+  baseUrl: string,
+  token: string | null,
+  body: MigrateExportInput,
+): Promise<MigrateExportResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/migrate/export", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not export");
+  }
+  return (await response.json()) as MigrateExportResult;
+}
+
+export async function migrateImport(
+  baseUrl: string,
+  token: string | null,
+  body: MigrateImportInput,
+): Promise<MigrateImportResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/migrate/import", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not import");
+  }
+  return (await response.json()) as MigrateImportResult;
 }
 
 export async function fetchResourceTrackedDirectories(
