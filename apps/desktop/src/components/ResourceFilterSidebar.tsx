@@ -1,8 +1,10 @@
 import { useMemo, type Ref } from "react";
+import { FilterX } from "lucide-react";
 import {
   LISTABLE_FILTER_RESOURCE_TYPES,
   buildNamespaceFacetOptions,
   buildOriginFacetOptions,
+  formatOriginKindLabel,
   isResourceFilterStateActive,
   isUpdatedFilterValid,
   type NamespaceSelection,
@@ -20,12 +22,15 @@ export interface ResourceFilterSidebarProps {
   searchInputRef?: Ref<HTMLInputElement>;
 }
 
-const UPDATED_PRESETS: Array<{ id: UpdatedPreset; label: string }> = [
+const UPDATED_SEGMENT_PRESETS: Array<{
+  id: Exclude<UpdatedPreset, "custom">;
+  label: string;
+}> = [
   { id: "all", label: "All time" },
+  { id: "1d", label: "1d" },
   { id: "7d", label: "7d" },
   { id: "30d", label: "30d" },
   { id: "90d", label: "90d" },
-  { id: "custom", label: "Custom" },
 ];
 
 const CUSTOM_DATE_RANGE_HINT_ID = "resource-filter-custom-date-hint";
@@ -59,18 +64,30 @@ export function ResourceFilterSidebar({
   return (
     <aside className="resource-filter-sidebar" aria-label="Resource filters">
       <div className="resource-filter-section">
-        <input
-          ref={searchInputRef}
-          className="resources-panel-filter"
-          type="search"
-          placeholder="Filter (skill:name)…"
-          value={state.search}
-          onChange={(event) =>
-            onChange({ ...state, search: event.target.value })
-          }
-          disabled={disabled}
-          aria-label="Filter resources"
-        />
+        <div className="resource-filter-search-row">
+          <input
+            ref={searchInputRef}
+            className="resources-panel-filter"
+            type="search"
+            placeholder="Filter (skill:name)…"
+            value={state.search}
+            onChange={(event) =>
+              onChange({ ...state, search: event.target.value })
+            }
+            disabled={disabled}
+            aria-label="Filter resources"
+          />
+          <button
+            type="button"
+            className="icon-action resource-filter-clear"
+            aria-label="Clear filters"
+            title="Clear filters"
+            disabled={disabled || !dirty}
+            onClick={onClear}
+          >
+            <FilterX size={16} aria-hidden />
+          </button>
+        </div>
       </div>
 
       <div className="resource-filter-section">
@@ -106,8 +123,12 @@ export function ResourceFilterSidebar({
 
       <div className="resource-filter-section">
         <span className="resource-filter-section-label">Updated</span>
-        <div className="segment" role="group" aria-label="Updated at">
-          {UPDATED_PRESETS.map((preset) => (
+        <div
+          className="segment resource-filter-updated-segment"
+          role="group"
+          aria-label="Updated at"
+        >
+          {UPDATED_SEGMENT_PRESETS.map((preset) => (
             <button
               key={preset.id}
               type="button"
@@ -117,10 +138,7 @@ export function ResourceFilterSidebar({
               onClick={() =>
                 onChange({
                   ...state,
-                  updated:
-                    preset.id === "custom"
-                      ? { ...state.updated, preset: "custom" }
-                      : { preset: preset.id, from: null, to: null },
+                  updated: { preset: preset.id, from: null, to: null },
                 })
               }
             >
@@ -128,6 +146,22 @@ export function ResourceFilterSidebar({
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className={`link-btn resource-filter-updated-custom${
+            state.updated.preset === "custom" ? " on" : ""
+          }`}
+          aria-pressed={state.updated.preset === "custom"}
+          disabled={disabled}
+          onClick={() =>
+            onChange({
+              ...state,
+              updated: { ...state.updated, preset: "custom" },
+            })
+          }
+        >
+          Custom
+        </button>
         {state.updated.preset === "custom" ? (
           <div className="resource-filter-custom-dates">
             <label>
@@ -257,21 +291,10 @@ export function ResourceFilterSidebar({
               disabled={disabled}
               onChange={() => onChange({ ...state, originKind: origin })}
             />
-            <span>{origin}</span>
+            <span>{formatOriginKindLabel(origin)}</span>
           </label>
         ))}
       </fieldset>
-
-      {dirty ? (
-        <button
-          type="button"
-          className="link-btn resource-filter-clear"
-          disabled={disabled}
-          onClick={onClear}
-        >
-          Clear filters
-        </button>
-      ) : null}
     </aside>
   );
 }

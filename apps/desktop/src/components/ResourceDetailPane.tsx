@@ -3,6 +3,7 @@ import {
   AgentApiError,
   fetchLibraryResourceDetail,
 } from "../lib/agent-client";
+import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
 
 export interface ResourceDetailTarget {
@@ -27,10 +28,11 @@ function displayName(resource: LibraryResourceDetail): string {
 }
 
 function originLabel(resource: LibraryResourceDetail): string {
+  const kind = formatOriginKindLabel(resource.origin_kind);
   if (resource.origin_ref) {
-    return `${resource.origin_kind} (${resource.origin_ref})`;
+    return `${kind} (${resource.origin_ref})`;
   }
-  return resource.origin_kind;
+  return kind;
 }
 
 export function ResourceDetailPane({

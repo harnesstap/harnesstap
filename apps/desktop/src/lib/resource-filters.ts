@@ -15,7 +15,7 @@ export const LISTABLE_FILTER_RESOURCE_TYPES = [
   "plugin_pin",
 ] as const;
 
-export type UpdatedPreset = "all" | "7d" | "30d" | "90d" | "custom";
+export type UpdatedPreset = "all" | "1d" | "7d" | "30d" | "90d" | "custom";
 
 export type UpdatedFilter = {
   preset: UpdatedPreset;
@@ -104,6 +104,9 @@ export function resolveUpdatedAtBounds(
         end: endOfLocalDay(to.y, to.m, to.d),
       };
     }
+    case "1d":
+      days = 1;
+      break;
     case "7d":
       days = 7;
       break;
@@ -214,4 +217,15 @@ export function buildOriginFacetOptions(resources: LibraryResource[]): string[] 
     }
   }
   return [...kinds].sort((a, b) => a.localeCompare(b));
+}
+
+const ORIGIN_KIND_LABELS: Record<string, string> = {
+  local_snapshot: "Local snapshot",
+  marketplace_link: "Marketplace",
+  manual: "Manual",
+  untracked: "Untracked",
+};
+
+export function formatOriginKindLabel(originKind: string): string {
+  return ORIGIN_KIND_LABELS[originKind] ?? originKind.replaceAll("_", " ");
 }

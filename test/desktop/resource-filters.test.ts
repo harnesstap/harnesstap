@@ -5,6 +5,7 @@ import {
   buildNamespaceFacetOptions,
   buildOriginFacetOptions,
   defaultResourceFilterState,
+  formatOriginKindLabel,
   isResourceFilterStateActive,
   isUpdatedFilterValid,
   resetResourceFilterState,
@@ -130,6 +131,19 @@ describe("applyLibraryResourceFilters", () => {
     expect(filtered.map((r) => r.id).sort()).toEqual(["1", "3"]);
   });
 
+  it("filters updated_at with 1d preset using injected now", () => {
+    const now = new Date(2026, 7, 7, 12, 0, 0); // local Aug 7, 2026
+    const filtered = applyLibraryResourceFilters(
+      rows,
+      {
+        ...defaultResourceFilterState(),
+        updated: { preset: "1d", from: null, to: null },
+      },
+      now,
+    );
+    expect(filtered.map((r) => r.id)).toEqual(["3"]);
+  });
+
   it("applies inclusive custom local-date range", () => {
     const filtered = applyLibraryResourceFilters(rows, {
       ...defaultResourceFilterState(),
@@ -190,9 +204,29 @@ describe("facet options", () => {
       "marketplace_link",
     ]);
   });
+
+  it("formats origin kinds as human-readable labels", () => {
+    expect(formatOriginKindLabel("local_snapshot")).toBe("Local snapshot");
+    expect(formatOriginKindLabel("marketplace_link")).toBe("Marketplace");
+    expect(formatOriginKindLabel("manual")).toBe("Manual");
+    expect(formatOriginKindLabel("other_kind")).toBe("other kind");
+  });
 });
 
 describe("resolveUpdatedAtBounds", () => {
+  it("resolves 1d preset to local calendar day", () => {
+    const now = new Date(2026, 7, 8, 18, 30, 0);
+    const bounds = resolveUpdatedAtBounds(
+      { preset: "1d", from: null, to: null },
+      now,
+    );
+    expect(bounds).not.toBeNull();
+    expect(bounds?.start.getFullYear()).toBe(2026);
+    expect(bounds?.start.getMonth()).toBe(7);
+    expect(bounds?.start.getDate()).toBe(8);
+    expect(bounds?.end.getDate()).toBe(8);
+  });
+
   it("resolves 30d preset to local calendar window", () => {
     const now = new Date(2026, 7, 8, 18, 30, 0);
     const bounds = resolveUpdatedAtBounds(

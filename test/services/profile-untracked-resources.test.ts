@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -88,6 +88,75 @@ describe("profile-untracked-resources service", () => {
       });
       expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(false);
       expect(getLayerById(profile.id)?.dirty).toBe(true);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lists extra permissions from settings.json even when the profile owns that file", async () => {
+    const context = await createInitializedTestContext("profile-not-staged-extra-perm");
+    try {
+      const profile = createLayer({ name: "work" });
+      setLayerTags(profile.id, ["profile"]);
+      addResourceToLayer(
+        profile.id,
+        createResource({
+          type: "permission",
+          name: "allow-Bash(*)",
+          description: "",
+          content: "",
+          metadata: { action: "allow", pattern: "Bash(*)" },
+          source: "manual",
+        }).id,
+      );
+
+      await applyProfileLayer("work", {
+        harness: "claude-code",
+        conflictPolicy: "replace",
+      });
+      setActiveProfileName("work");
+
+      // Extra permission on disk not in the profile
+      const settingsPath = join(context.homeDir, ".claude", "settings.json");
+      const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as {
+        permissions?: { allow?: string[]; deny?: string[] };
+      };
+      const allow = new Set(settings.permissions?.allow ?? []);
+      allow.add("Read(*)");
+      writeFileSync(
+        settingsPath,
+        JSON.stringify(
+          {
+            ...settings,
+            permissions: {
+              allow: [...allow],
+              deny: settings.permissions?.deny ?? [],
+            },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      const notStaged = await detectNotStagedProfileResources({
+        profileSelector: "work",
+        scope: "home",
+        harness: "claude-code",
+      });
+
+      expect(
+        notStaged.some(
+          (resource) =>
+            resource.type === "permission" && resource.name === "allow-Read(*)",
+        ),
+      ).toBe(true);
+      expect(
+        notStaged.some(
+          (resource) =>
+            resource.type === "permission" && resource.name === "allow-Bash(*)",
+        ),
+      ).toBe(false);
     } finally {
       await context.cleanup();
     }
