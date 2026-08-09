@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Archive, ArchiveRestore, Check, Cloud, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Unplug, User } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
 import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
@@ -2494,14 +2496,19 @@ export function App() {
         onConfirm={onConfirmOverwrite}
         onCancel={() => setOverwriteDialog(false)}
       >
-        <label className="muted">
-          <input
-            type="checkbox"
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="skip-overwrite-prompt"
             checked={skipOverwritePrompt}
-            onChange={(event) => setSkipOverwritePrompt(event.target.checked)}
-          />{" "}
-          Don&apos;t ask again this session
-        </label>
+            onCheckedChange={(value) => setSkipOverwritePrompt(value === true)}
+          />
+          <Label
+            htmlFor="skip-overwrite-prompt"
+            className="font-normal text-muted-foreground"
+          >
+            Don&apos;t ask again this session
+          </Label>
+        </div>
       </ConfirmDialog>
     </div>
   );

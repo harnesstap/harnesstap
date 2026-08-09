@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AgentApiError,
   attachProfileComposition,
@@ -326,9 +329,10 @@ export function EditProfilePane({
           <details className="edit-metadata-details">
             <summary>Metadata</summary>
             <div className="edit-metadata-body">
-              <label className="edit-field">
-                <span>Name</span>
-                <input
+              <div className="form-field gap-1.5">
+                <Label htmlFor="edit-profile-name">Name</Label>
+                <Input
+                  id="edit-profile-name"
                   value={nameDraft}
                   onChange={(event) => setNameDraft(event.target.value)}
                   onBlur={commitName}
@@ -340,27 +344,29 @@ export function EditProfilePane({
                   }}
                   disabled={controlsDisabled}
                 />
-              </label>
-              <label className="edit-field">
-                <span>Description</span>
-                <textarea
+              </div>
+              <div className="form-field gap-1.5">
+                <Label htmlFor="edit-profile-description">Description</Label>
+                <Textarea
+                  id="edit-profile-description"
                   value={descriptionDraft}
                   onChange={(event) => setDescriptionDraft(event.target.value)}
                   onBlur={commitDescription}
                   disabled={controlsDisabled}
                   rows={3}
                 />
-              </label>
-              <label className="edit-field">
-                <span>Tags</span>
-                <input
+              </div>
+              <div className="form-field gap-1.5">
+                <Label htmlFor="edit-profile-tags">Tags</Label>
+                <Input
+                  id="edit-profile-tags"
                   value={tagsDraft}
                   onChange={(event) => setTagsDraft(event.target.value)}
                   onBlur={commitTags}
                   disabled={controlsDisabled}
                   placeholder="comma-separated (profile tag kept automatically)"
                 />
-              </label>
+              </div>
             </div>
           </details>
 
