@@ -31,6 +31,7 @@ describe("initializeSchema", () => {
           "project_layers",
           "projects",
           "resources",
+          "layer_working_snapshots",
           "schema_version",
           "snapshots",
         ]),
@@ -41,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(22);
+      expect(versionRow.version).toBe(23);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -136,7 +137,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 22 }]);
+      expect(versionRows).toEqual([{ version: 23 }]);
     } finally {
       await context.cleanup();
     }
@@ -353,6 +354,58 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
       expect(versionRow.version).toBe(18);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades v22 databases in place to v23 with dirty/frozen_at/snapshots", async () => {
+    const context = await createTestContext("schema-v23-upgrade");
+    try {
+      const db = context.connection.getDb();
+      // Simulate a v22 DB: create minimal v22 layers table then stamp version 22
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (22);
+        CREATE TABLE layers (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          org_slug TEXT NOT NULL DEFAULT '',
+          catalog_slug TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          default_environment_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(org_slug, catalog_slug, name, version)
+        );
+      `);
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(23);
+
+      const cols = db
+        .prepare("PRAGMA table_info(layers)")
+        .all() as Array<{ name: string }>;
+      expect(cols.map((c) => c.name)).toEqual(
+        expect.arrayContaining(["dirty", "frozen_at"]),
+      );
+
+      const snap = db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='layer_working_snapshots'",
+        )
+        .get();
+      expect(snap).toBeTruthy();
     } finally {
       await context.cleanup();
     }

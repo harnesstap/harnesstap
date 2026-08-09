@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 23;
 
 const MIGRATIONS: Record<number, string> = {
   22: `
@@ -192,6 +192,16 @@ const MIGRATIONS: Record<number, string> = {
 
     INSERT INTO schema_version (version) VALUES (22);
   `,
+  23: `
+    ALTER TABLE layers ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE layers ADD COLUMN frozen_at TEXT;
+    CREATE TABLE IF NOT EXISTS layer_working_snapshots (
+      layer_id TEXT PRIMARY KEY REFERENCES layers(id) ON DELETE CASCADE,
+      source_version TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `,
 };
 
 export interface InitializeSchemaOptions {
@@ -207,7 +217,7 @@ export function initializeSchema(
 
   if (currentVersion >= SCHEMA_VERSION) return;
 
-  if (currentVersion > 0) {
+  if (currentVersion > 0 && currentVersion < 22) {
     if (options.allowLegacyRead) {
       return;
     }
@@ -219,9 +229,20 @@ export function initializeSchema(
   }
 
   db.transaction(() => {
-    const migration = MIGRATIONS[SCHEMA_VERSION];
-    if (migration) {
-      db.exec(migration);
+    if (currentVersion === 0) {
+      const bootstrap = MIGRATIONS[22];
+      if (bootstrap) {
+        db.exec(bootstrap);
+      }
+    }
+
+    const startVersion = currentVersion === 0 ? 23 : currentVersion + 1;
+    for (let v = startVersion; v <= SCHEMA_VERSION; v++) {
+      const migration = MIGRATIONS[v];
+      if (migration) {
+        db.exec(migration);
+      }
+      db.prepare("UPDATE schema_version SET version = ?").run(v);
     }
   })();
 }
