@@ -37,6 +37,12 @@ function isPluginMarketplacePlatform(
   );
 }
 
+export function settingsPath(harnesstapDir: string): string {
+  return existsSync(join(harnesstapDir, "config.jsonc"))
+    ? join(harnesstapDir, "config.jsonc")
+    : join(harnesstapDir, "config.json");
+}
+
 export function parseMarketplaces(value: unknown): PluginMarketplaceEntry[] {
   if (!Array.isArray(value)) return [];
 
@@ -49,14 +55,22 @@ export function parseMarketplaces(value: unknown): PluginMarketplaceEntry[] {
     const url = record.url;
     const platforms = record.platforms;
 
-    if (typeof name !== "string" || name.length === 0) continue;
-    if (typeof url !== "string" || url.length === 0) continue;
+    if (typeof name !== "string") continue;
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) continue;
+    if (typeof url !== "string") continue;
+    const trimmedUrl = url.trim();
+    if (trimmedUrl.length === 0) continue;
     if (!Array.isArray(platforms)) continue;
 
     const parsedPlatforms = platforms.filter(isPluginMarketplacePlatform);
     if (parsedPlatforms.length === 0) continue;
 
-    marketplaces.push({ name, url, platforms: parsedPlatforms });
+    marketplaces.push({
+      name: trimmedName,
+      url: trimmedUrl,
+      platforms: parsedPlatforms,
+    });
   }
 
   return marketplaces;
@@ -177,9 +191,7 @@ export function parseJsonc(content: string): unknown {
 }
 
 export function loadSettings(harnesstapDir: string): HarnesstapSettings {
-  const path = existsSync(join(harnesstapDir, "config.jsonc"))
-    ? join(harnesstapDir, "config.jsonc")
-    : join(harnesstapDir, "config.json");
+  const path = settingsPath(harnesstapDir);
   if (!existsSync(path)) return DEFAULTS;
   try {
     const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings>;
@@ -207,9 +219,7 @@ export function saveSettings(
   harnesstapDir: string,
   settings: HarnesstapSettings,
 ): void {
-  const path = existsSync(join(harnesstapDir, "config.jsonc"))
-    ? join(harnesstapDir, "config.jsonc")
-    : join(harnesstapDir, "config.json");
+  const path = settingsPath(harnesstapDir);
   mkdirSync(harnesstapDir, { recursive: true });
   writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
 }

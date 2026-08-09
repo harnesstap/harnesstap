@@ -181,4 +181,83 @@ describe("plugins.marketplaces", () => {
     ]);
     expect(loadSettings(dir).plugins.marketplaces[0]?.name).toBe("demo");
   });
+
+  it("saveSettings writes to existing config.jsonc", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.jsonc"),
+      JSON.stringify({ plugins: { refreshMaxAgeHours: 48 } }),
+    );
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ plugins: { refreshMaxAgeHours: 99 } }),
+    );
+    saveSettings(dir, {
+      plugins: {
+        refreshMaxAgeHours: 24,
+        marketplaces: [
+          {
+            name: "demo",
+            url: "https://github.com/example/demo.git",
+            platforms: ["cursor"],
+          },
+        ],
+      },
+      layerVersionHistoryLimit: 10,
+    });
+    const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
+    expect(jsonc.plugins.marketplaces).toEqual([
+      {
+        name: "demo",
+        url: "https://github.com/example/demo.git",
+        platforms: ["cursor"],
+      },
+    ]);
+    const json = JSON.parse(readFileSync(join(dir, "config.json"), "utf-8"));
+    expect(json.plugins.refreshMaxAgeHours).toBe(99);
+  });
+
+  it("trims marketplace name and url", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({
+        plugins: {
+          marketplaces: [
+            {
+              name: "  demo  ",
+              url: "  https://github.com/example/demo.git  ",
+              platforms: ["claude-code"],
+            },
+          ],
+        },
+      }),
+    );
+    expect(loadSettings(dir).plugins.marketplaces).toEqual([
+      {
+        name: "demo",
+        url: "https://github.com/example/demo.git",
+        platforms: ["claude-code"],
+      },
+    ]);
+  });
+
+  it("skips marketplace rows with whitespace-only name", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({
+        plugins: {
+          marketplaces: [
+            {
+              name: "   ",
+              url: "https://github.com/example/demo.git",
+              platforms: ["claude-code"],
+            },
+          ],
+        },
+      }),
+    );
+    expect(loadSettings(dir).plugins.marketplaces).toEqual([]);
+  });
 });
