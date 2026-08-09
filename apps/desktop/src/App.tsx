@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Scissors, Settings, Unplug, Upload, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Settings, Tag, Unplug, Upload, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
@@ -2334,7 +2334,7 @@ export function App() {
                             : "Cut a new version (fork current state)"
                         }
                       >
-                        <Scissors
+                        <Tag
                           size={HEADER_ICON_SIZE}
                           strokeWidth={2}
                           aria-hidden="true"

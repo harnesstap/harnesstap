@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Scissors, X } from "lucide-react";
+import { Tag, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -434,19 +434,19 @@ export function EditProfilePane({
           {detail && onRequestCut ? (
             <button
               type="button"
-              className="btn"
+              className="icon-action"
               onClick={() =>
                 onRequestCut(detail.profile.name, detail.profile.version)
               }
               disabled={controlsDisabled}
+              aria-label="Cut version"
               title={
                 detail.profile.dirty
                   ? "Cut unpublished edits to a new version"
                   : "Cut a new version (fork current state)"
               }
             >
-              <Scissors size={15} strokeWidth={2} aria-hidden />
-              Cut version
+              <Tag size={18} strokeWidth={2} aria-hidden />
             </button>
           ) : null}
           <button
