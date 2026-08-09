@@ -2197,7 +2197,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
 }
 
 .form-field input,
-.form-field select,
 .form-field textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -2209,13 +2208,11 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
 }
 
 .form-field input:focus,
-.form-field select:focus,
 .form-field textarea:focus {
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-color: var(--accent);
 }
 
-.source-picker,
 .selection-list,
 .conflict-policy {
   border: 0;
@@ -2224,7 +2221,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   min-width: 0;
 }
 
-.source-picker > legend,
 .selection-list > legend,
 .conflict-policy > legend {
   padding: 0;
@@ -2233,38 +2229,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   font-weight: 600;
 }
 
-.source-picker {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
-}
-
-.source-picker > legend {
-  grid-column: 1 / -1;
-}
-
-.source-option {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.55rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  background: var(--bg);
-  cursor: pointer;
-}
-
-.source-option.selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
-}
-
-.source-option:has(input:disabled) {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.source-option span,
 .selection-row span {
   min-width: 0;
   display: flex;
@@ -2272,12 +2236,10 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   gap: 0.12rem;
 }
 
-.source-option strong,
 .selection-row strong {
   font-size: 12px;
 }
 
-.source-option small,
 .selection-row small {
   color: var(--muted);
   font-size: 11px;
@@ -2420,10 +2382,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
 .selection-type-body .selection-row:last-child,
 .selection-row:last-child {
   border-bottom: 0;
-}
-
-.selection-row:has(input:checked) {
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
 }
 
 .create-preview {
@@ -3026,7 +2984,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
     flex-wrap: wrap;
   }
 
-  .source-picker,
   .compose-library,
   .cloud-browser {
     grid-template-columns: 1fr;
