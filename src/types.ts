@@ -200,6 +200,8 @@ export interface Layer {
   catalog_slug: string;
   description: string;
   tags: string[];
+  dirty: boolean;
+  frozen_at?: string;
   claude?: ClaudeLayerConfig;
   /** Config contract keys this layer requires from an environment. */
   needs?: string[];
@@ -469,7 +471,14 @@ export const LAYER_SCHEMA_VERSION = 1 as const;
 
 export type LayerExportLayer = Omit<
   Layer,
-  "id" | "created_at" | "updated_at" | "org_slug" | "catalog_slug" | "default_environment_id"
+  | "id"
+  | "created_at"
+  | "updated_at"
+  | "org_slug"
+  | "catalog_slug"
+  | "default_environment_id"
+  | "dirty"
+  | "frozen_at"
 >;
 
 export type LayerExportResource = Omit<

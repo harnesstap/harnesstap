@@ -204,6 +204,7 @@ export async function createLayerFromSource(
         catalog_slug: "",
         description: options.description ?? "",
         tags: options.tags ?? [],
+        dirty: false,
         created_at: "",
         updated_at: "",
       },

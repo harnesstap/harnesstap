@@ -28,6 +28,8 @@ interface LayerRow {
   claude_config: string;
   needs_config: string;
   default_environment_id: string | null;
+  dirty?: number;
+  frozen_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -95,6 +97,8 @@ function rowToLayer(row: LayerRow): Layer {
     catalog_slug: row.catalog_slug,
     description: row.description,
     tags: JSON.parse(row.tags) as string[],
+    dirty: row.dirty === 1,
+    ...(row.frozen_at ? { frozen_at: row.frozen_at } : {}),
     ...(claude ? { claude } : {}),
     ...(needs ? { needs } : {}),
     ...(row.default_environment_id
@@ -103,6 +107,10 @@ function rowToLayer(row: LayerRow): Layer {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+export function isFrozenLayer(layer: Layer): boolean {
+  return layer.frozen_at != null;
 }
 
 function writeLayerClaudeConfig(layerId: string, config: ClaudeLayerConfig): void {
@@ -270,8 +278,9 @@ export function createLayer(input: {
   db.prepare(
     `INSERT INTO layers (
       id, name, version, org_slug, catalog_slug, description, tags,
-      claude_config, needs_config, default_environment_id, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      claude_config, needs_config, default_environment_id, dirty, frozen_at,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
@@ -283,6 +292,8 @@ export function createLayer(input: {
     serializeClaudeConfig(input.claude),
     serializeNeedsConfig(input.needs),
     input.default_environment_id ?? null,
+    0,
+    null,
     now,
     now,
   );
@@ -295,6 +306,7 @@ export function createLayer(input: {
     catalog_slug: input.catalog_slug ?? "",
     description: input.description ?? "",
     tags: input.tags ?? [],
+    dirty: false,
     ...(input.claude ? { claude: input.claude } : {}),
     ...(input.needs && input.needs.length > 0 ? { needs: input.needs } : {}),
     ...(input.default_environment_id

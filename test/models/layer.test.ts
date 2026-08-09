@@ -3,6 +3,54 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("layer model", () => {
+  it("creates layers clean and unfrozen by default", async () => {
+    const context = await createInitializedTestContext("layer-dirty-defaults");
+    try {
+      const { createLayer, getLayerById } = await import("../../src/models/layer-model.ts");
+      const layer = createLayer({ name: "clean-head", version: "1.0.0" });
+      expect(layer.dirty).toBe(false);
+      expect(layer.frozen_at).toBeUndefined();
+      const reloaded = getLayerById(layer.id);
+      expect(reloaded?.dirty).toBe(false);
+      expect(reloaded?.frozen_at).toBeUndefined();
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("isFrozenLayer returns true only when frozen_at is set", async () => {
+    const { isFrozenLayer } = await import("../../src/models/layer-model.ts");
+    expect(
+      isFrozenLayer({
+        id: "1",
+        name: "x",
+        version: "1.0.0",
+        org_slug: "",
+        catalog_slug: "",
+        description: "",
+        tags: [],
+        dirty: false,
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      isFrozenLayer({
+        id: "1",
+        name: "x",
+        version: "1.0.0",
+        org_slug: "",
+        catalog_slug: "",
+        description: "",
+        tags: [],
+        dirty: false,
+        frozen_at: "2026-01-02T00:00:00.000Z",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
   it("creates a layer with claude config and needs", async () => {
     const context = await createInitializedTestContext("layer-needs");
 

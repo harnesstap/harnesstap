@@ -350,6 +350,7 @@ export function parsedLayerExportToDeckJson(
           catalog_slug: "",
           description: layer.description ?? "",
           tags: layer.tags ?? [],
+          dirty: false,
           created_at: "",
           updated_at: "",
         },
