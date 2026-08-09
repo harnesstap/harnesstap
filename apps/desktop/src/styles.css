@@ -2384,6 +2384,11 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   border-bottom: 0;
 }
 
+/* Radix Checkbox uses button[data-state], not input:checked */
+.selection-row:has([data-state="checked"]) {
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
+}
+
 .create-preview {
   border: 1px solid var(--border);
   border-radius: 4px;
