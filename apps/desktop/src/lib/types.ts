@@ -536,6 +536,55 @@ export interface ProfileDetail {
   resources: ProfileDetailResource[];
 }
 
+export type PluginMarketplacePlatform = "claude-code" | "cursor" | "goose";
+
+export interface PluginMarketplaceEntry {
+  name: string;
+  url: string;
+  platforms: PluginMarketplacePlatform[];
+}
+
+export interface MarketplaceListResult {
+  marketplaces: PluginMarketplaceEntry[];
+}
+
+export interface MarketplaceAddRequest {
+  url: string;
+  name: string;
+  platforms?: PluginMarketplacePlatform[];
+}
+
+export interface MarketplaceAddResult {
+  status: "added" | "already_configured";
+  entry: PluginMarketplaceEntry;
+  refresh: { ok: boolean; message: string };
+}
+
+export interface CatalogPlugin {
+  name: string;
+  version?: string;
+  ref: string;
+  description?: string;
+}
+
+export interface MarketplacePluginsResult {
+  marketplace: string;
+  plugins: CatalogPlugin[];
+}
+
+export interface ProfilePluginAddRequest {
+  ref: string;
+  projectPath?: string;
+  versionConstraint?: string;
+}
+
+export interface ProfilePluginAddResult {
+  status: "attached" | "already_attached";
+  ref: string;
+  layerName: string;
+  marketplaceCopied: boolean;
+}
+
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {
   validate_baseline: "Validate baseline",
   apply_home: "Apply profile (global)",

@@ -16,6 +16,10 @@ import type {
   LibraryLayer,
   LibraryResource,
   LibraryResourceDetail,
+  MarketplaceAddRequest,
+  MarketplaceAddResult,
+  MarketplaceListResult,
+  MarketplacePluginsResult,
   ProfileApplyPreview,
   ProfileApplyPreviewRequest,
   ProfileAddAllResourcesRequest,
@@ -30,6 +34,8 @@ import type {
   ProfileRestoreFileResult,
   ProfileFileDiffRequest,
   ProfileFileDiffResult,
+  ProfilePluginAddRequest,
+  ProfilePluginAddResult,
   ProfileCreatePreview,
   ProfileCreateRequest,
   ProfileCreateResult,
@@ -467,6 +473,71 @@ export async function saveHarnessSettings(
     return throwAgentError(response, "Could not save harness settings");
   }
   return (await response.json()) as PutHarnessSettingsResult;
+}
+
+export async function fetchMarketplaces(
+  baseUrl: string,
+  token: string | null,
+): Promise<MarketplaceListResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/marketplaces");
+  if (!response.ok) {
+    return throwAgentError(response, "Could not list marketplaces");
+  }
+  return (await response.json()) as MarketplaceListResult;
+}
+
+export async function addMarketplace(
+  baseUrl: string,
+  token: string | null,
+  body: MarketplaceAddRequest,
+): Promise<MarketplaceAddResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/marketplaces", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not add marketplace");
+  }
+  return (await response.json()) as MarketplaceAddResult;
+}
+
+export async function fetchMarketplacePlugins(
+  baseUrl: string,
+  token: string | null,
+  name: string,
+): Promise<MarketplacePluginsResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/marketplaces/${encodeURIComponent(name)}/plugins`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load marketplace plugins");
+  }
+  return (await response.json()) as MarketplacePluginsResult;
+}
+
+export async function addProfilePlugin(
+  baseUrl: string,
+  token: string | null,
+  profileName: string,
+  body: ProfilePluginAddRequest,
+): Promise<ProfilePluginAddResult> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/profiles/${encodeURIComponent(profileName)}/plugins`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not add plugin to profile");
+  }
+  return (await response.json()) as ProfilePluginAddResult;
 }
 
 export async function startCloudLogin(
