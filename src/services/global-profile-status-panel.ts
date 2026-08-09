@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { findInstalledRefForCatalogPin } from "../plugins/claude-plugin-ref.js";
-import { loadInstalled } from "../plugins/claude-installed.js";
+import { loadInstalled, parsePluginRef } from "../plugins/claude-installed.js";
+import { listCursorPluginInstalls } from "../plugins/providers/cursor.js";
+import type { PluginInstall } from "../plugins/types.js";
 import { getPlatform } from "../platforms/registry.js";
 import { listGlobalApplySnapshotInstalls } from "../models/global-apply-snapshot.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
@@ -137,6 +139,55 @@ export function buildHarnessPluginRows(
 
   for (const install of installed) {
     if (!matchedInstalledRefs.has(install.ref)) {
+      rows.push({ id: install.ref, state: "extra" });
+    }
+  }
+
+  return rows;
+}
+
+function findEnabledCursorInstallForPin(
+  pinRef: string,
+  installs: readonly PluginInstall[],
+): PluginInstall | undefined {
+  const enabled = installs.filter((row) => row.enabled);
+  const exact = enabled.find((row) => row.ref === pinRef);
+  if (exact) return exact;
+
+  const { name } = parsePluginRef(pinRef);
+  return enabled.find((row) => row.name === name);
+}
+
+/** Cursor status rows: only enabled installs count as installed/extra. */
+export function buildCursorHarnessPluginRows(
+  declaredPins: PluginConstraintPin[],
+  homeRoot: string,
+): HarnessPluginStatusRow[] {
+  const installs = listCursorPluginInstalls(homeRoot);
+  const cursorNames = new Set(installs.map((row) => row.name));
+  const matchedEnabledRefs = new Set<string>();
+
+  const rows: HarnessPluginStatusRow[] = [];
+  for (const pin of declaredPins) {
+    const { name } = parsePluginRef(pin.ref);
+    // Skip pins with no Cursor cache/local/marketplace footprint so Claude-only
+    // pins are not double-counted as Cursor "missing".
+    if (!cursorNames.has(name) && !installs.some((row) => row.ref === pin.ref)) {
+      continue;
+    }
+
+    const match = findEnabledCursorInstallForPin(pin.ref, installs);
+    if (match) {
+      matchedEnabledRefs.add(match.ref);
+      rows.push({ id: pin.ref, state: "installed" });
+    } else {
+      rows.push({ id: pin.ref, state: "missing" });
+    }
+  }
+
+  for (const install of installs) {
+    if (!install.enabled) continue;
+    if (!matchedEnabledRefs.has(install.ref)) {
       rows.push({ id: install.ref, state: "extra" });
     }
   }
@@ -282,10 +333,24 @@ export function buildHarnessLiveStatusMap(input: {
 
     const declaredMcp = input.declaredMcpByHarness[harnessId] ?? [];
     const liveMcp = readGlobalMcpServerNames(input.homeRoot, harnessId);
-    const plugins =
-      harnessId === "claude-code"
-        ? buildHarnessPluginRows(input.declaredPins, input.homeRoot)
-        : [];
+    let plugins: HarnessPluginStatusRow[] = [];
+    switch (harnessId) {
+      case "claude-code":
+        plugins = buildHarnessPluginRows(input.declaredPins, input.homeRoot);
+        break;
+      case "cursor":
+        plugins = buildCursorHarnessPluginRows(
+          input.declaredPins,
+          input.homeRoot,
+        );
+        break;
+      default: {
+        const _exhaustive: never = harnessId;
+        void _exhaustive;
+        plugins = [];
+        break;
+      }
+    }
 
     harnesses[harnessId] = {
       plugins,

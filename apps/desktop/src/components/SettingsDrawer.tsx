@@ -82,11 +82,33 @@ export function SettingsDrawer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const onSavedRef = useRef(onSaved);
   onSavedRef.current = onSaved;
   const saveGenerationRef = useRef(0);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSuccessTimer = useCallback(() => {
+    if (successTimerRef.current !== null) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+  }, []);
+
+  const flashSuccess = useCallback(
+    (message: string) => {
+      clearSuccessTimer();
+      setSuccess(message);
+      successTimerRef.current = setTimeout(() => {
+        setSuccess(null);
+        successTimerRef.current = null;
+      }, 3000);
+    },
+    [clearSuccessTimer],
+  );
 
   const resetLocal = useCallback(() => {
+    clearSuccessTimer();
     setHarnesses([]);
     setProjectAvailable(false);
     setProjectReason(null);
@@ -97,7 +119,8 @@ export function SettingsDrawer({
     setShowAllHarnesses(false);
     setError(null);
     setWarning(null);
-  }, []);
+    setSuccess(null);
+  }, [clearSuccessTimer]);
 
   const requestClose = useCallback(() => {
     if (busy) {
@@ -111,11 +134,15 @@ export function SettingsDrawer({
     if (!open) {
       saveGenerationRef.current += 1;
       setBusy(false);
+      clearSuccessTimer();
+      setSuccess(null);
       return;
     }
     const loadGeneration = ++saveGenerationRef.current;
     setError(null);
     setWarning(null);
+    setSuccess(null);
+    clearSuccessTimer();
     setShowAllHarnesses(false);
     if (!baseUrl) {
       resetLocal();
@@ -151,7 +178,9 @@ export function SettingsDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, baseUrl, token, projectPath, resetLocal]);
+  }, [open, baseUrl, token, projectPath, resetLocal, clearSuccessTimer]);
+
+  useEffect(() => () => clearSuccessTimer(), [clearSuccessTimer]);
 
   const dirty = useMemo(
     () => isHarnessSettingsDirty(baseline, draft),
@@ -241,6 +270,8 @@ export function SettingsDrawer({
     setBusy(true);
     setError(null);
     setWarning(null);
+    setSuccess(null);
+    clearSuccessTimer();
     const body: PutHarnessSettingsInput = {
       global: {
         main_harness: draft.globalMain,
@@ -293,11 +324,14 @@ export function SettingsDrawer({
       }
       setBaseline(next);
       setDraft(next);
+      flashSuccess("Settings saved.");
       onSavedRef.current?.();
     } catch (saveError) {
       if (generation !== saveGenerationRef.current) {
         return;
       }
+      setSuccess(null);
+      clearSuccessTimer();
       setError(errorMessage(saveError, "Could not save harness settings."));
     } finally {
       if (generation === saveGenerationRef.current) {
@@ -351,6 +385,11 @@ export function SettingsDrawer({
           {warning ? (
             <div className="banner" role="status">
               {warning}
+            </div>
+          ) : null}
+          {success ? (
+            <div className="success-flash" role="status">
+              {success}
             </div>
           ) : null}
 

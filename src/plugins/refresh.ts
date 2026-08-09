@@ -52,3 +52,15 @@ export function cursorRepoSourceKey(url: string): string {
 export function cursorCacheRoot(homeRoot: string): string {
   return join(homeRoot, ".cursor", "plugins", "cache");
 }
+
+export function cursorLocalRoot(homeRoot: string): string {
+  return join(homeRoot, ".cursor", "plugins", "local");
+}
+
+export function cursorMarketplacesRoot(homeRoot: string): string {
+  return join(homeRoot, ".cursor", "plugins", "marketplaces");
+}
+
+export function cursorProjectsMcpsRoot(homeRoot: string): string {
+  return join(homeRoot, ".cursor", "projects", "mcps");
+}

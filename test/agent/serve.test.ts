@@ -120,6 +120,25 @@ describe("agent serve", () => {
     expect(preflight.headers.get("Access-Control-Allow-Origin")).toBe(
       "http://localhost:1420",
     );
+    expect(preflight.headers.get("Access-Control-Allow-Methods")).toContain(
+      "PUT",
+    );
+
+    const putPreflight = await fetch(`${server.url}/v1/harness`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://127.0.0.1:1420",
+        "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": "authorization, content-type",
+      },
+    });
+    expect(putPreflight.status).toBe(204);
+    expect(putPreflight.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://127.0.0.1:1420",
+    );
+    expect(putPreflight.headers.get("Access-Control-Allow-Methods")).toContain(
+      "PUT",
+    );
   });
 
   it("requires bearer auth for mutating routes", async () => {

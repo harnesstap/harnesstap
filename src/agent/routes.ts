@@ -501,8 +501,8 @@ function withCors(request: Request, response: Response): Response {
   );
   headers.set(
     "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, OPTIONS, HEAD",
-  )
+    "GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD",
+  );
   headers.set("Vary", "Origin");
   return new Response(response.body, {
     status: response.status,
