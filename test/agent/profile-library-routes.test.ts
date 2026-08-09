@@ -66,6 +66,9 @@ describe("agent library routes", () => {
     );
     expect(ship).toBeTruthy();
     expect(ship.source).toBe("manual");
+    expect(typeof ship.updated_at).toBe("string");
+    expect(ship.updated_at.length).toBeGreaterThan(0);
+    expect(ship.origin_kind).toBe("manual");
 
     const detail = await fetch(
       `${server.url}/v1/library/resources/${encodeURIComponent("skill:ship")}`,

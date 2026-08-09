@@ -29,6 +29,8 @@ export interface LibraryResource {
   description: string | null;
   /** On-disk path or import origin label. */
   source?: string | null;
+  updated_at?: string | null;
+  origin_kind?: string | null;
 }
 
 export interface ResourceTrackedFolderEntry {
