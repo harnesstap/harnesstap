@@ -47,6 +47,7 @@ import {
   handleProfilePatch,
 } from "./profile-edit-handlers.js";
 import { handleProfileCut } from "./profile-cut-handlers.js";
+import { handleProfilePluginAdd } from "./profile-plugin-handlers.js";
 import {
   handleProfileStashList,
   handleProfileStashPop,
@@ -632,6 +633,9 @@ export function createAgentFetchHandler(
       const profileAttachmentMatch = url.pathname.match(
         /^\/v1\/profiles\/([^/]+)\/attachments$/,
       );
+      const profilePluginMatch = url.pathname.match(
+        /^\/v1\/profiles\/([^/]+)\/plugins$/,
+      );
       if (method === "POST" && profileAttachmentMatch) {
         response = await handleProfileAttach(
           request,
@@ -643,6 +647,12 @@ export function createAgentFetchHandler(
           request,
           token,
           decodeURIComponent(profileAttachmentMatch[1] ?? ""),
+        );
+      } else if (method === "POST" && profilePluginMatch) {
+        response = await handleProfilePluginAdd(
+          request,
+          token,
+          decodeURIComponent(profilePluginMatch[1] ?? ""),
         );
       } else {
       const profileDetailMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)$/);
