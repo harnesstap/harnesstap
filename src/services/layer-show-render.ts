@@ -8,6 +8,7 @@ import {
   resolveLayerSelector,
 } from "../models/layer-model.js";
 import { listAttachedPluginPins } from "./layer-composition.js";
+import { formatLayerVersionLabel } from "./layer-versioning.js";
 import { formatRelativeTimeWithAbsolute, shortenId } from "../ui/format.js";
 import { renderPanel } from "../ui/panel.js";
 import { renderSubheader } from "../ui/section.js";
@@ -40,8 +41,8 @@ function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
   return summary.join(", ");
 }
 
-function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
-  return `${layer.name}@${layer.version}`;
+function formatLayerLabel(layer: Pick<Layer, "name" | "version" | "dirty">): string {
+  return `${layer.name}@${formatLayerVersionLabel(layer.version, layer.dirty)}`;
 }
 
 function dependencyLayerName(dependencyName: string): string {

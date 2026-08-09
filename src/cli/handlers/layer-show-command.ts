@@ -58,6 +58,7 @@ export function handleLayerShowCommand(
       id: layer.id,
       name: layer.name,
       version: layer.version,
+      dirty: layer.dirty,
       description: layer.description,
       tags: layer.tags,
       ...(layer.claude ? { claude: layer.claude } : {}),

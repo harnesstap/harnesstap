@@ -1,5 +1,6 @@
 import semver from "semver";
 import type { CatalogLayer } from "../services/catalog-types.js";
+import { formatLayerVersionLabel } from "../services/layer-versioning.js";
 import { isProfileLayer } from "../constants/profile.js";
 import type { Layer } from "../types.js";
 import * as format from "./format.js";
@@ -368,7 +369,7 @@ function renderLocalSectionTable(
     name: formatLocalLayerListName(row.layer, {
       selected: row.layer.id === activeLayerId,
     }),
-    version: row.layer.version,
+    version: formatLayerVersionLabel(row.layer.version, row.layer.dirty),
     ...(opts.profileMode
       ? {
           active: opts.activeProfileName === row.layer.name ? "yes" : "",

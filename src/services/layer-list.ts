@@ -5,6 +5,7 @@ import {
   resolveCatalogScope,
 } from "../config/catalog.js";
 import { listLayers } from "../models/layer-model.js";
+import { formatLayerVersionLabel } from "./layer-versioning.js";
 import type { Layer } from "../types.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";
 import { renderCatalogListChunk } from "../ui/catalog-list-render.js";
@@ -152,8 +153,10 @@ export function renderLocalLayerListTable(
       },
     ],
     rows: layers.map((layer) => ({
-      ...layer,
+      ...(opts.showId ? { id: layer.id } : {}),
       name: formatLocalLayerListName(layer, { static: true }),
+      version: formatLayerVersionLabel(layer.version, layer.dirty),
+      description: layer.description ?? "",
     })),
     summary: `${layers.length} layers ${ui.icons.bullet} run \`${formatCommand("layer show <name>")}\` for details`,
     empty: "No layers found.",
@@ -181,7 +184,7 @@ function renderProfileLocalLayerListTable(layers: Layer[]): string {
     ],
     rows: layers.map((layer) => ({
       name: formatLocalLayerListName(layer, { static: true }),
-      version: layer.version,
+      version: formatLayerVersionLabel(layer.version, layer.dirty),
       active: activeProfile === layer.name ? "yes" : "",
       description: layer.description ?? "",
     })),

@@ -104,6 +104,10 @@ import {
 import { resolvePluginInstallScope, type InstallPluginPinResult } from "../../services/plugin-install.js";
 import { resolveClaudeEnabledPluginRef } from "../../plugins/claude-plugin-ref.js";
 import { diffLayers } from "../../services/layer-diff.js";
+import {
+  cutLayerVersion,
+  LayerVersionError,
+} from "../../services/layer-versioning.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "../../services/layer-doctor.js";
 import { mergeLayersForApply } from "../../services/layer-apply-merge.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
@@ -1044,6 +1048,38 @@ function parseLayerSourceConflictPolicy(
   throw new Error(
     `Invalid --on-conflict value: ${value}. Use cancel, merge, or overwrite.`,
   );
+}
+
+function handleLayerCutCommand(
+  layerSelector: string,
+  opts: { version: string; format?: string },
+): void {
+  const db = getDb();
+  initializeSchema(db);
+  const format = parseOutputFormat(opts.format);
+
+  const layer = getLayer(layerSelector);
+  if (!layer) {
+    process.exitCode = 1;
+    ui.danger(`Layer not found: ${layerSelector}`);
+    return;
+  }
+
+  try {
+    const cut = cutLayerVersion({ layerId: layer.id, newVersion: opts.version });
+    if (format === "json") {
+      printJson(cut);
+      return;
+    }
+    ui.success(`Cut layer ${ui.theme.accent(formatLayerLabel(cut))}`);
+  } catch (err) {
+    process.exitCode = 1;
+    if (err instanceof LayerVersionError) {
+      ui.danger(err.message);
+      return;
+    }
+    ui.danger(err instanceof Error ? err.message : String(err));
+  }
 }
 
 function handleLayerDiffCommand(
@@ -2091,6 +2127,16 @@ layerPublishCmd
     format?: string;
     version?: string;
   }) => handleLayerPublishCommand(layer, target, opts));
+
+layerCmd
+  .command("cut")
+  .argument("<layer>", "Layer name, name@version, or id")
+  .requiredOption("--version <semver>", "New version (must differ from current)")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Cut a new local version from the working head")
+  .action((layer: string, opts: { version: string; format?: string }) => {
+    handleLayerCutCommand(layer, opts);
+  });
 
 layerCmd
   .command("diff")
