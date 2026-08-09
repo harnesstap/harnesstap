@@ -45,7 +45,7 @@ const capabilities: TauriCapability[] = [
 
 export const config = {
   runner: "local",
-  specs: ["./specs/**/*.spec.ts"],
+  specs: ["./specs/**/*.e2e.ts", "./specs/**/*.spec.ts"],
   exclude: [],
   maxInstances: 1,
   capabilities,
