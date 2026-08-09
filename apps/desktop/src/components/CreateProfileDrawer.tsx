@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SourcePicker } from "@/components/ui/source-picker";
 import {
   AgentApiError,
   createProfile,
@@ -306,9 +312,10 @@ export function CreateProfileDrawer({
         </div>
 
         <div className="create-profile-body">
-          <label className="form-field">
-            <span>Name</span>
-            <input
+          <div className="form-field gap-1.5">
+            <Label htmlFor="create-profile-name">Name</Label>
+            <Input
+              id="create-profile-name"
               autoFocus
               value={name}
               onChange={(event) => {
@@ -318,10 +325,13 @@ export function CreateProfileDrawer({
               disabled={controlsDisabled}
               placeholder="engineering"
             />
-          </label>
-          <label className="form-field">
-            <span>Description <span className="muted">(optional)</span></span>
-            <textarea
+          </div>
+          <div className="form-field gap-1.5">
+            <Label htmlFor="create-profile-description">
+              Description <span className="muted">(optional)</span>
+            </Label>
+            <Textarea
+              id="create-profile-description"
               value={description}
               onChange={(event) => {
                 setDescription(event.target.value);
@@ -331,45 +341,35 @@ export function CreateProfileDrawer({
               rows={2}
               placeholder="Shared tools for engineering work"
             />
-          </label>
+          </div>
 
-          <fieldset className="source-picker" disabled={controlsDisabled}>
-            <legend>Source</legend>
-            {(["compose", "home", "project"] as const).map((value) => (
-              <label
-                key={value}
-                className={`source-option${source === value ? " selected" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="profile-source"
-                  value={value}
-                  checked={source === value}
-                  disabled={value === "project" && !projectPath}
-                  onChange={() => {
-                    setSource(value);
-                    invalidatePreview();
-                  }}
-                />
-                <span>
-                  <strong>
-                    {value === "compose"
-                      ? "Compose"
-                      : value === "home"
-                        ? "From global"
-                        : "From project"}
-                  </strong>
-                  <small>
-                    {value === "compose"
-                      ? "Select existing layers and resources."
-                      : value === "home"
-                        ? "Import detected global harness configuration."
-                        : "Import configuration from the selected project."}
-                  </small>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+          <SourcePicker
+            legend="Source"
+            value={source}
+            disabled={controlsDisabled}
+            onValueChange={(next) => {
+              setSource(next as ProfileCreateSource);
+              invalidatePreview();
+            }}
+            options={[
+              {
+                value: "compose",
+                title: "Compose",
+                description: "Select existing layers and resources.",
+              },
+              {
+                value: "home",
+                title: "From global",
+                description: "Import detected global harness configuration.",
+              },
+              {
+                value: "project",
+                title: "From project",
+                description: "Import configuration from the selected project.",
+                disabled: !projectPath,
+              },
+            ]}
+          />
 
           {!projectPath ? (
             <p className="field-note muted">
@@ -430,36 +430,50 @@ export function CreateProfileDrawer({
                     </ul>
                   </div>
                   <fieldset
-                    className="conflict-policy"
+                    className="conflict-policy m-0 border-0 p-0"
                     disabled={controlsDisabled}
                   >
-                    <legend>When a resource already exists</legend>
-                    {(["skip", "overwrite"] as const).map((policy) => (
-                      <label key={policy}>
-                        <input
-                          type="radio"
-                          name="conflict-policy"
-                          checked={conflictPolicy === policy}
-                          onChange={() => setConflictPolicy(policy)}
+                    <legend className="mb-1.5 text-xs font-semibold">
+                      When a resource already exists
+                    </legend>
+                    <RadioGroup
+                      value={conflictPolicy}
+                      onValueChange={(next) =>
+                        setConflictPolicy(next as ProfileConflictPolicy)}
+                      disabled={controlsDisabled}
+                      className="flex flex-col gap-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem id="conflict-skip" value="skip" />
+                        <Label htmlFor="conflict-skip" className="font-normal">
+                          Keep the library version
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem
+                          id="conflict-overwrite"
+                          value="overwrite"
                         />
-                        {policy === "skip"
-                          ? "Keep the library version"
-                          : "Overwrite with imported content"}
-                      </label>
-                    ))}
+                        <Label
+                          htmlFor="conflict-overwrite"
+                          className="font-normal"
+                        >
+                          Overwrite with imported content
+                        </Label>
+                      </div>
+                    </RadioGroup>
                   </fieldset>
                 </>
               ) : null}
-              <label className="switch-after-create">
-                <input
-                  type="checkbox"
+              <div className="switch-after-create flex items-center gap-2 border-t border-border pt-2.5">
+                <Switch
+                  id="switch-after-create"
                   checked={switchAfterCreate}
-                  onChange={(event) =>
-                    setSwitchAfterCreate(event.target.checked)}
+                  onCheckedChange={setSwitchAfterCreate}
                   disabled={controlsDisabled}
                 />
-                Switch after create
-              </label>
+                <Label htmlFor="switch-after-create">Switch after create</Label>
+              </div>
             </section>
           ) : null}
 
