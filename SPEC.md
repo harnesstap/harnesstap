@@ -772,4 +772,4 @@ bun run build
 
 - Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
 - `migrate export --layer` / `migrate import` operate on layer TOML bundles; full workspace handoff uses archive paths (`.tar.gz`).
-- HarnessTap does not host a plugin marketplace or wrap `claude plugin install|uninstall`.
+- HarnessTap does not host a plugin marketplace. CLI `marketplace` / `plugin search|add` browse configured marketplace URLs and pin plugins onto layers; host install/ensure runs through providers when the target profile is active (or on apply/use). Uninstall/disable remains out of scope.
