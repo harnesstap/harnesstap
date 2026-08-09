@@ -231,6 +231,9 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (import.meta.env.VITE_E2E !== "1") {
+      return;
+    }
     void invoke<string | null>("e2e_project_path").then((path) => {
       if (path) {
         selectProject(path);

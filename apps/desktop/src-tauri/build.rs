@@ -1,3 +1,14 @@
+struct CapabilitiesRestoreGuard {
+    path: std::path::PathBuf,
+    canonical: String,
+}
+
+impl Drop for CapabilitiesRestoreGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::write(&self.path, &self.canonical);
+    }
+}
+
 fn main() {
     let cap_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("capabilities/default.json");
     let canonical = std::fs::read_to_string(&cap_path).expect("read default capabilities");
@@ -8,9 +19,12 @@ fn main() {
         std::fs::write(&cap_path, stripped).expect("write stripped capabilities");
     }
 
-    tauri_build::build();
+    let _guard = CapabilitiesRestoreGuard {
+        path: cap_path,
+        canonical,
+    };
 
-    std::fs::write(&cap_path, canonical).expect("restore default capabilities");
+    tauri_build::build();
 }
 
 fn strip_wdio_permissions(json: &str) -> String {
