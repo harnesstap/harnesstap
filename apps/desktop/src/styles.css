@@ -767,6 +767,16 @@ button:focus-visible,
   min-height: 280px;
 }
 
+.edit-plugin-pin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.edit-plugin-pin .btn {
+  align-self: flex-start;
+}
+
 .edit-profile-pane .selection-list-rows {
   max-height: min(50vh, 420px);
   overflow: auto;
