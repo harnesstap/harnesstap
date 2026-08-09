@@ -457,6 +457,7 @@ export function SettingsDrawer({
 
                 <SelectionList
                   title="Alias harnesses"
+                  idPrefix="global-aliases"
                   emptyLabel="No harnesses available."
                   items={globalAliasItems}
                   selectedIds={draft.globalAliases}
@@ -553,6 +554,7 @@ export function SettingsDrawer({
 
                           <SelectionList
                             title="Alias harnesses"
+                            idPrefix="project-aliases"
                             emptyLabel="No harnesses available."
                             items={projectAliasItems}
                             selectedIds={draft.projectAliases}

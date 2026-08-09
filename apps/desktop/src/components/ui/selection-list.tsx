@@ -18,6 +18,7 @@ export interface SelectionListProps {
   selectedIds: string[];
   disabled?: boolean;
   onToggle: (id: string) => void;
+  idPrefix?: string;
   className?: string;
   listClassName?: string;
 }
@@ -29,6 +30,7 @@ export function SelectionList({
   selectedIds,
   disabled = false,
   onToggle,
+  idPrefix,
   className,
   listClassName,
 }: SelectionListProps) {
@@ -47,7 +49,7 @@ export function SelectionList({
         ) : (
           items.map((item) => {
             const checked = selected.has(item.id);
-            const id = `selection-${title}-${item.id}`;
+            const id = `selection-${idPrefix ?? title}-${item.id}`;
             return (
               <div
                 key={item.id}
