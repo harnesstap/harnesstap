@@ -2,15 +2,16 @@ import { describe, expect, it } from "bun:test";
 import {
   aliasesExcludingMain,
   canSaveHarnessSettings,
+  genericHarnessTooltip,
   isHarnessSettingsDirty,
   visibleHarnesses,
 } from "../../apps/desktop/src/lib/harness-settings-form.ts";
 
 describe("harness-settings-form", () => {
   const catalog = [
-    { id: "claude-code", name: "Claude Code", supported: true },
-    { id: "cursor", name: "Cursor", supported: true },
-    { id: "some-generic", name: "Generic", supported: false },
+    { id: "claude-code", name: "Claude Code", supported: true, supports: [] as string[] },
+    { id: "cursor", name: "Cursor", supported: true, supports: [] as string[] },
+    { id: "some-generic", name: "Generic", supported: false, supports: [] as string[] },
   ];
 
   it("excludes main from aliases", () => {
@@ -63,5 +64,19 @@ describe("harness-settings-form", () => {
         projectMain: "",
       }),
     ).toBe(true);
+  });
+});
+
+describe("genericHarnessTooltip", () => {
+  it("returns base text when supports is empty", () => {
+    expect(genericHarnessTooltip([])).toBe(
+      "Path-based mirroring (no dedicated serializer)",
+    );
+  });
+
+  it("appends supports list when non-empty", () => {
+    expect(genericHarnessTooltip(["skills", "agents"])).toBe(
+      "Path-based mirroring (no dedicated serializer) — Supports: skills, agents",
+    );
   });
 });

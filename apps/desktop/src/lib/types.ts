@@ -453,6 +453,7 @@ export interface HarnessCatalogEntry {
   id: string;
   name: string;
   supported: boolean;
+  supports: string[];
 }
 
 export interface HarnessSettingsGlobal {

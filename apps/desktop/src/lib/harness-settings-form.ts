@@ -11,6 +11,16 @@ export function visibleHarnesses<T extends { id: string; supported: boolean }>(
   return harnesses.filter((h) => h.supported || selected.has(h.id));
 }
 
+const GENERIC_HARNESS_BASE =
+  "Path-based mirroring (no dedicated serializer)";
+
+export function genericHarnessTooltip(supports: string[]): string {
+  if (supports.length === 0) {
+    return GENERIC_HARNESS_BASE;
+  }
+  return `${GENERIC_HARNESS_BASE} — Supports: ${supports.join(", ")}`;
+}
+
 export interface HarnessSettingsDraft {
   globalMain: string;
   globalAliases: string[];

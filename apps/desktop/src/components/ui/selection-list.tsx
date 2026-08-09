@@ -65,7 +65,6 @@ export function SelectionList({
                   <span className="flex items-center gap-1.5">
                     {item.leading}
                     <strong className="text-xs font-semibold">{item.name}</strong>
-                    {item.trailing}
                   </span>
                   {item.description ? (
                     <small className="text-[11px] font-normal text-muted-foreground">
@@ -73,6 +72,11 @@ export function SelectionList({
                     </small>
                   ) : null}
                 </Label>
+                {item.trailing ? (
+                  <span className="selection-row-trailing shrink-0 self-center">
+                    {item.trailing}
+                  </span>
+                ) : null}
               </div>
             );
           })

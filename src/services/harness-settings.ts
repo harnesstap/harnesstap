@@ -8,6 +8,7 @@ import {
 } from "../models/harness.js";
 import { getProjectByOrigin, upsertProject } from "../models/project.js";
 import { getAllPlatforms } from "../platforms/registry.js";
+import { PLATFORM_FEATURES } from "../types.js";
 import { getDedicatedSerializerPlatformIds } from "./platform-serializers.js";
 import {
   getGitOrigin,
@@ -22,6 +23,8 @@ export interface HarnessCatalogEntry {
   id: string;
   name: string;
   supported: boolean;
+  /** Declared PlatformFeature values, ordered by PLATFORM_FEATURES. */
+  supports: string[];
 }
 
 export interface HarnessSettingsGlobal {
@@ -86,6 +89,7 @@ function catalog(): HarnessCatalogEntry[] {
     id: p.id,
     name: p.name,
     supported: supported.has(p.id),
+    supports: PLATFORM_FEATURES.filter((feature) => p.supports.has(feature)),
   }));
 }
 

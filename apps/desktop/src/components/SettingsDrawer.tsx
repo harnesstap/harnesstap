@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Info } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -16,6 +17,7 @@ import {
 import {
   aliasesExcludingMain,
   canSaveHarnessSettings,
+  genericHarnessTooltip,
   isHarnessSettingsDirty,
   visibleHarnesses,
   type HarnessSettingsDraft,
@@ -82,7 +84,16 @@ function aliasListItems(
       id: harness.id,
       name: harness.name,
       leading: <HarnessIcon id={harness.id} />,
-      trailing: !harness.supported ? <small>Registered</small> : undefined,
+      trailing: !harness.supported ? (
+        <span
+          className="harness-generic-info"
+          title={genericHarnessTooltip(harness.supports)}
+          aria-label={genericHarnessTooltip(harness.supports)}
+          role="img"
+        >
+          <Info aria-hidden="true" size={14} strokeWidth={2} />
+        </span>
+      ) : undefined,
     }));
 }
 

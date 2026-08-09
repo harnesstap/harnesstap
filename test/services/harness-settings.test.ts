@@ -31,6 +31,13 @@ describe("harness-settings service", () => {
       expect(payload.harnesses.some((h) => h.id === "claude-code" && h.supported)).toBe(
         true,
       );
+      const claude = payload.harnesses.find((h) => h.id === "claude-code");
+      expect(claude?.supports).toContain("skills");
+      expect(claude?.supports).toContain("agents");
+
+      const generic = payload.harnesses.find((h) => !h.supported);
+      expect(generic).toBeDefined();
+      expect(Array.isArray(generic?.supports)).toBe(true);
       expect(payload.project).toEqual({
         available: false,
         override: false,

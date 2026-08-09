@@ -3013,6 +3013,17 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   max-height: 180px;
 }
 
+.harness-generic-info {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted-foreground, #6b7280);
+  cursor: help;
+}
+
+.harness-generic-info svg {
+  display: block;
+}
+
 .cloud-account-summary h3,
 .cloud-login-pending h3 {
   margin: 0.2rem 0 0.5rem;
