@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { LOCK_SCHEMA } from "../../src/services/lockfile.ts";
 import {
   BUNDLE_SCHEMA,
   DECK_SCHEMA,
@@ -14,5 +15,6 @@ describe("schema URNs", () => {
     expect(BUNDLE_SCHEMA).toBe("urn:harnesstap:bundle:v1");
     expect(LAYER_SCHEMA).toBe("urn:harnesstap:layer:v1");
     expect(RESOURCE_SCHEMA).toBe("urn:harnesstap:resource:v1");
+    expect(LOCK_SCHEMA).toBe("urn:harnesstap:lock:v1");
   });
 });
