@@ -9,7 +9,8 @@ import {
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
-import type { PluginPinMetadata, Resource } from "../types.js";
+import { getLayerByName } from "../models/layer-model.js";
+import type { PluginDependencyMetadata, PluginPinMetadata, Resource } from "../types.js";
 import {
   readPluginVersionFromInstallRoot,
   scanPluginSource,
@@ -19,6 +20,7 @@ import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./layer-composition.js";
 import { assertSyncable } from "./layer-origin.js";
+import { parseDependencyRef } from "./plugin-dependency.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
@@ -102,24 +104,34 @@ function resolveConflictPolicy(
   return "fail";
 }
 
-function layerIdsForResource(resourceId: string): string[] {
-  const db = getDb();
-  return (
-    db
-      .prepare(
-        "SELECT layer_id AS id FROM layer_resources WHERE resource_id = ?",
-      )
-      .all(resourceId) as Array<{ id: string }>
-  ).map((row) => row.id);
+/**
+ * Sync is about refreshing an upstream/catalog install tree — not about
+ * consumer layers that merely attach the dependency. Local composition deps
+ * gate on the named layer's origin (authored → refuse).
+ */
+function assertPluginResourceSyncable(pluginResource: Resource): void {
+  const metadata = (pluginResource.metadata ?? {}) as PluginDependencyMetadata;
+  const sourceKind =
+    metadata.source_kind ??
+    parseDependencyRef(pluginResource.origin_ref || pluginResource.name).source_kind;
+  if (sourceKind !== "local") {
+    return;
+  }
+  const layer =
+    getLayerByName(pluginResource.name) ??
+    (pluginResource.origin_ref
+      ? getLayerByName(pluginResource.origin_ref)
+      : undefined);
+  if (layer) {
+    assertSyncable(layer.id);
+  }
 }
 
 export async function syncPluginResource(
   pluginResource: Resource,
   options: SyncLinkedResourcesOptions = {},
 ): Promise<SyncLinkedResourcesResult> {
-  for (const layerId of layerIdsForResource(pluginResource.id)) {
-    assertSyncable(layerId);
-  }
+  assertPluginResourceSyncable(pluginResource);
 
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const claudePluginsRoot =
