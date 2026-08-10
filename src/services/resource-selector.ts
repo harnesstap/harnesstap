@@ -6,14 +6,33 @@ export interface ParsedResourceSelector {
   namespace: string;
 }
 
+const LEGACY_TYPE_ALIASES: Record<string, string> = {
+  plugin_pin: "plugin",
+  layer: "plugin",
+};
+
+let deprecations: string[] = [];
+
+/** Drain and return deprecation notices recorded since the last call. */
+export function takeSelectorDeprecations(): string[] {
+  const collected = deprecations;
+  deprecations = [];
+  return collected;
+}
+
 export function parseResourceSelector(selector: string): ParsedResourceSelector {
   let type: ResourceType | undefined;
   let namePart = selector;
 
   const colonIndex = selector.indexOf(":");
   if (colonIndex !== -1) {
-    type = selector.slice(0, colonIndex) as ResourceType;
+    const rawType = selector.slice(0, colonIndex);
     namePart = selector.slice(colonIndex + 1);
+    const alias = LEGACY_TYPE_ALIASES[rawType];
+    if (alias) {
+      deprecations.push(`${rawType}: is now ${alias}: — use ${alias}:${namePart}`);
+    }
+    type = (alias ?? rawType) as ResourceType;
   }
 
   const atIndex = namePart.lastIndexOf("@");

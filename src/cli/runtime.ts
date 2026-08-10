@@ -4,6 +4,7 @@ import { getDb } from "../db/connection.js";
 import { listProfileLayersCommand } from "../services/profile-commands.js";
 import { CliUsageError } from "../services/cli-errors.js";
 import { isPromptCancellationError } from "../services/wizards/shared.js";
+import { takeSelectorDeprecations } from "../services/resource-selector.js";
 import { ui } from "../ui/index.js";
 import { program } from "./program.js";
 import {
@@ -110,6 +111,9 @@ export async function runHarnesstapCli(
   const effectiveArgv = rewriteProfileShorthandArgv(argv);
   try {
     await program.parseAsync(effectiveArgv);
+    for (const notice of takeSelectorDeprecations()) {
+      ui.warn(notice);
+    }
   } catch (error) {
     if (isPromptCancellationError(error)) {
       return;
