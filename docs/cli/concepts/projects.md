@@ -8,51 +8,51 @@ A **project** is a repository (or directory tree) where HarnessTap materializes 
 
 ## Repo-scoped apply
 
-`layer apply` is the canonical write path for project baselines:
+`apply` is the canonical write path for project baselines:
 
 ```bash
-ht layer apply my-setup --project . --harness claude-code,codex,cursor --dry-run
-ht layer apply my-setup --project . --harness claude-code,codex,cursor
+ht apply my-setup --project . --harness claude-code,codex,cursor --dry-run
+ht apply my-setup --project . --harness claude-code,codex,cursor
 ht status .
 ```
 
-Stack multiple layers in one command (see [Scenario 25](../../scenarios/details/25-stack-layers.md)). `layer apply` resolves bare catalog names at apply time, so public baselines work without a prior `layer pull`:
+Stack multiple plugins in one command (see [Scenario 25](../../scenarios/details/25-stack-plugins.md)). `apply` resolves bare catalog names at apply time, so public baselines work without a prior `plugin pull`:
 
 ```bash
-ht layer apply engineering-foundation --project .
+ht apply engineering-foundation --project .
 ```
 
-Plugin-version policy when the layer carries plugin pins:
+Plugin-version policy when the plugin carries plugin pins:
 
 ```bash
-ht layer apply my-setup --strict-plugin-versions   # exit 2 on pin violation
-ht layer apply my-setup --ignore-plugin-versions   # skip validation
-ht layer apply my-setup --sync-plugins             # refresh plugin resources first
+ht apply my-setup --strict-plugin-versions   # exit 2 on pin violation
+ht apply my-setup --ignore-plugin-versions   # skip validation
+ht apply my-setup --sync-plugins             # refresh plugin resources first
 ```
 
-Applying a layer writes a known baseline onto disk. It is distinct from **mirror**, which syncs alias harness outputs from the current on-disk main harness without re-specifying the layer.
+Applying a plugin writes a known baseline onto disk. It is distinct from **mirror**, which syncs alias harness outputs from the current on-disk main harness without re-specifying the plugin.
 
 ## Scan and track
 
-Discover existing configuration before composing layers:
+Discover existing configuration before composing plugins:
 
 ```bash
 ht scan .
 ht resource list
-ht layer from-project inferred-stack --project .
+ht plugin from-project inferred-stack --project .
 ```
 
-When the target repository has a git `origin`, `layer apply` stores a **snapshot** of tracked generated files before writing. Snapshots power history, drift detection, and revert.
+When the target repository has a git `origin`, `apply` stores a **snapshot** of tracked generated files before writing. Snapshots power history, drift detection, and revert.
 
 | Command | Git requirement |
 | --- | --- |
 | `history` | Git-backed project with `origin` |
 | `status --check` | Git-backed project |
-| `layer apply` (with snapshot) | Git `origin` on target project |
+| `apply` (with snapshot) | Git `origin` on target project |
 | `revert` | Snapshot ID from `history` |
 | `harness project set` / `harness project status` | Git-backed project |
 
-`layer apply` can write files outside git, but snapshot and history support only works when the target project has a git `origin`.
+`apply` can write files outside git, but snapshot and history support only works when the target project has a git `origin`.
 
 ## Mirror
 
@@ -64,7 +64,7 @@ ht mirror . --force-shift-reference codex
 ht mirror . --dry-run
 ```
 
-Mirror compares and shifts references between harness-specific file layouts. It does not re-resolve layer composition; use `layer apply` when you need a fresh baseline from the library.
+Mirror compares and shifts references between harness-specific file layouts. It does not re-resolve plugin composition; use `apply` when you need a fresh baseline from the library.
 
 See [Scenario 27](../../scenarios/details/27-project-sync.md) for the cross-harness mirror walkthrough and [Scenario 33](../../scenarios/details/33-mirror-plugin-fallback.md) for plugin fallback behavior.
 
@@ -92,31 +92,31 @@ ht harness project status .
 ht harness project set --main claude-code --aliases cursor
 ```
 
-These require a git-backed project and influence which harnesses `layer apply` and `mirror` target by default.
+These require a git-backed project and influence which harnesses `apply` and `mirror` target by default.
 
 ## Snapshots in practice
 
 Typical lifecycle:
 
-1. `ht layer apply team-baseline --project .` — writes files, stores snapshot (when git `origin` exists)
+1. `ht apply team-baseline --project .` — writes files, stores snapshot (when git `origin` exists)
 2. Developer edits `.cursor/rules/foo.mdc` by hand
 3. `ht status . --check` — reports divergence from snapshot
-4. Either re-apply the layer, mirror from main, or `ht revert <id>` to restore
+4. Either re-apply the plugin, mirror from main, or `ht revert <id>` to restore
 
 Preview before writing:
 
 ```bash
-ht layer apply team-baseline --project . --dry-run
+ht apply team-baseline --project . --dry-run
 ```
 
-See [Scenario 7](../../scenarios/details/07-preview-apply-layer.md).
+See [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md).
 
 ## Profiles vs projects
 
 | | Profiles | Projects |
 | --- | --- | --- |
 | **Scope** | Machine home harness paths | Repository working tree |
-| **Primary command** | `profile use` | `layer apply` |
+| **Primary command** | `profile use` | `apply` |
 | **Typical use** | Work/personal machine presets | Team repo baselines |
 | **Drift / revert** | Not tracked | `status --check` / `revert` |
 
@@ -124,7 +124,7 @@ Use [Profiles](./profiles.md) for machine-wide defaults and projects for reposit
 
 ## Project profile config
 
-Repositories can declare named **profiles** in `.harnesstap/config.toml`. This file maps profile keys to local layers, catalog selectors, or inline layer tables — plus optional project-scoped environments.
+Repositories can declare named **profiles** in `.harnesstap/config.toml`. This file maps profile keys to local plugins, catalog selectors, or inline plugin tables — plus optional project-scoped environments.
 
 Example:
 
@@ -147,7 +147,7 @@ selector = "acme/platform/frontend@1.0.0"
 [[profiles]]
 name = "custom"
 source = "inline"
-layer = "embedded-layer"
+plugin = "embedded-plugin"
 
 [[environments]]
 name = "shared"
@@ -155,9 +155,9 @@ name = "shared"
 [environments.values]
 REGION = "us"
 
-[[layers]]
-name = "embedded-layer"
-description = "Small inline layer bundled with the repo"
+[[plugins]]
+name = "embedded-plugin"
+description = "Small inline plugin bundled with the repo"
 ```
 
 Inspect and validate the resolved config:
@@ -169,7 +169,7 @@ ht config validate --project .
 ht config validate --format json   # exit 1 when invalid
 ```
 
-Create a starter config from local profile layers:
+Create a starter config from local profile plugins:
 
 ```bash
 ht config init
@@ -177,7 +177,7 @@ ht config init --profile work --profile personal --default work
 ht config init --force   # overwrite an existing file
 ```
 
-`config init` maps each selected profile layer to a `source = "local"` entry and sets `default_profile`.
+`config init` maps each selected profile plugin to a `source = "local"` entry and sets `default_profile`.
 
 Switch to a configured profile with `ht use`:
 
@@ -187,15 +187,15 @@ ht use --profile dev          # apply the dev profile directly
 ht use --list                 # list profiles without applying
 ```
 
-Project profiles reuse the same layer sources as machine-wide [Profiles](./profiles.md), but apply through `ht use` in the repository instead of `profile use` at home paths.
+Project profiles reuse the same plugin sources as machine-wide [Profiles](./profiles.md), but apply through `ht use` in the repository instead of `profile use` at home paths.
 
 ## Related
 
-- [Layers](./layers.md) — what you apply
+- [Plugins](./plugins.md) — what you apply
 - [Resources](./resources.md) — what scan imports
 - [Profiles](./profiles.md) — machine-wide apply
 - [Portability limits](../../portability-limits.md) — cross-harness mirror caveats
-- [Command reference](../command-reference.md) — `scan`, `mirror`, `status`, `history`, `revert`, and `layer apply`
-- [Scenario 7](../../scenarios/details/07-preview-apply-layer.md) — preview and apply
+- [Command reference](../command-reference.md) — `scan`, `mirror`, `status`, `history`, `revert`, and `apply`
+- [Scenario 7](../../scenarios/details/07-preview-apply-plugin.md) — preview and apply
 - [Scenario 21](../../scenarios/details/21-detect-drift.md) — detect drift
 - [Scenario 27](../../scenarios/details/27-project-sync.md) — mirror

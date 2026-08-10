@@ -1,9 +1,9 @@
-# Scenario 24: Apply a layer directly from a URL
+# Scenario 24: Apply a plugin directly from a URL
 
 **Frequency: Occasional** · **Status: Shipped**
 
 [← Back to scenarios index](../scenarios.md)
 
 ```bash
-harnesstap layer apply https://team.example.com/baselines/web.json --project .
+harnesstap apply https://team.example.com/baselines/web.json --project .
 ```

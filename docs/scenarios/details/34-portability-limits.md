@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when planning a multi-harness rollout, evaluating a plugin repo, or
-debugging why `layer apply` / `mirror` did not reproduce every on-disk
+debugging why `apply` / `mirror` did not reproduce every on-disk
 artifact from the source repo.
 
 Start with the full reference:
@@ -19,7 +19,7 @@ Quick checklist:
 harnesstap scan . --dry-run
 
 # Preview what each harness would receive
-harnesstap layer apply my-setup --project . --harness claude-code,codex,windsurf,opencode --dry-run
+harnesstap apply my-setup --project . --harness claude-code,codex,windsurf,opencode --dry-run
 
 # Check mirror warnings for harness-specific surfaces
 harnesstap mirror . --dry-run --format json
@@ -37,7 +37,7 @@ plugin install), Copilot namespaced commands.
 **Harness-specific (mirror warnings):** OpenCode `.mjs` server plugins, pi
 extensions, Gemini extension manifests, statusline hooks, runtime session config.
 
-**Workarounds:** layer plugin pins + `resource sync`, automatic dual-mode scan,
+**Workarounds:** plugin pins + `resource sync`, automatic dual-mode scan,
 mirror `--reference auto|plugin`, and native `copilot plugin install` for Copilot
 plugin trees.
 

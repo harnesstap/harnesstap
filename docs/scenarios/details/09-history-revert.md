@@ -4,7 +4,7 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when a layer write produced files you want to inspect or undo.
+Use this when a plugin write produced files you want to inspect or undo.
 
 Typical commands:
 
@@ -14,7 +14,7 @@ harnesstap history .
 harnesstap revert <snapshot-id>
 ```
 
-This is the safety-net workflow. Snapshots are created during `layer apply`
+This is the safety-net workflow. Snapshots are created during `apply`
 **only when the project has a git `origin`** — repos without a remote will
 see an empty history and have nothing to revert to. If you need this safety
 net for a local-only repo, push to a remote (even a local bare repo) before

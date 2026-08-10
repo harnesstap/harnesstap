@@ -4,43 +4,43 @@ description: Named how-values, secret refs, environment cascade, and MCP authent
 
 # Environments
 
-An **environment** is a named bundle of *how* values — env vars, model defaults, permission overrides, and secret references — that layers and profiles satisfy at apply time. Environments do not replace layers; they parameterize the same context stack for different machines, accounts, or deployment targets.
+An **environment** is a named bundle of *how* values — env vars, model defaults, permission overrides, and secret references — that plugins and profiles satisfy at apply time. Environments do not replace plugins; they parameterize the same context stack for different machines, accounts, or deployment targets.
 
 ## Context vs environment
 
 | Side | Examples | Stored as |
 | --- | --- | --- |
-| **Context** (what the model sees) | Skills, rules, MCP server definitions | Layer resources in SQLite |
+| **Context** (what the model sees) | Skills, rules, MCP server definitions | Plugin resources in SQLite |
 | **Environment** (how it runs) | API tokens, model choice, env vars | `environments` + `environment_resources` + `environment_secret_refs` |
 
 See [Resources](./resources.md) for the full resource-type split.
 
 ## Cascade (last wins)
 
-On `layer apply` and `profile use`, environment values merge with this precedence:
+On `apply` and `profile use`, environment values merge with this precedence:
 
 ```
-home environment  ◂  layer default environment  ◂  deck active environment
+home environment  ◂  plugin default environment  ◂  deck active environment
 ```
 
 - **Home** — fragments under `~/.harnesstap/environments/` (optional)
-- **Layer default** — `default_environment_id` on a configured layer
+- **Plugin default** — `default_environment_id` on a configured plugin
 - **Deck active** — pointer from `environment use` (global) or `environment use --local` (terminal session)
 
-Switch the active environment to change secrets and env vars without rebuilding the layer stack:
+Switch the active environment to change secrets and env vars without rebuilding the plugin stack:
 
 ```bash
-ht environment create work --from-layer my-setup --bind
+ht environment create work --from-plugin my-setup --bind
 ht environment edit work --secret SLACK_TOKEN:keychain:harnesstap/slack-work
 ht environment use work
 ht profile use default --reapply
 ```
 
-Use `environment status` to see the active pointer and terminal drift. Use `environment show <name> --layer <selector>` to find missing keys required by a layer's MCP env vars or plugin `needs[]`.
+Use `environment status` to see the active pointer and terminal drift. Use `environment show <name> --plugin <selector>` to find missing keys required by a plugin's MCP env vars or plugin `needs[]`.
 
 ## Environment resource types
 
-| Type | Role | Exported in migrate/layer archives? |
+| Type | Role | Exported in migrate/plugin archives? |
 | --- | --- | --- |
 | **env_var** | Plain key/value pairs | Yes (values) |
 | **model_config** | Default model and provider | Yes |
@@ -61,7 +61,7 @@ ht environment edit staging --secret SLACK_TOKEN:keychain:harnesstap/slack-stagi
 ht environment edit staging --secret API_KEY:file:/run/secrets/api-key
 ```
 
-Secret values are resolved when the cascade is built, merged into the substitution `vars` map, and never written into layer exports or migrate archives.
+Secret values are resolved when the cascade is built, merged into the substitution `vars` map, and never written into plugin exports or migrate archives.
 
 ## MCP servers and environments
 
@@ -85,7 +85,7 @@ Recommended workflow for switching accounts (static tokens):
 
 1. Create one environment per account (`work`, `personal`).
 2. Set a `secret_ref` (or `env_var`) for each token key the MCP server expects.
-3. `environment use <name>` then `profile use` / `layer apply --reapply` (or `environment use --reapply` when only env changed).
+3. `environment use <name>` then `profile use` / `apply --reapply` (or `environment use --reapply` when only env changed).
 
 ## MCP authentication limitations
 
@@ -95,7 +95,7 @@ MCP auth falls into two models. HarnessTap only controls the first.
 
 Credentials live in config or environment variables: API keys, bot tokens, Bearer headers, `${ENV_VAR}` / `${env:VAR}` expansion.
 
-HarnessTap can switch these across environments via `secret_ref` + apply. Keep tokens out of committed layers — use placeholders and resolve at apply time.
+HarnessTap can switch these across environments via `secret_ref` + apply. Keep tokens out of committed plugins — use placeholders and resolve at apply time.
 
 ### OAuth 2.1 (host-managed, not switchable via environments)
 
@@ -120,7 +120,7 @@ flowchart LR
   subgraph HD[HarnessTap controls]
     Env[Environment secret_refs]
     McpDef[MCP resource definitions]
-    Apply[profile use / layer apply]
+    Apply[profile use / apply]
   end
 
   subgraph Disk[On disk]
@@ -175,7 +175,7 @@ Other harnesses still benefit from the cascade for **MCP `${VAR}` substitution**
 ## Related
 
 - [Resources](./resources.md) — context vs environment resource types
-- [Layers](./layers.md) — `default_environment_id` and `needs[]`
+- [Plugins](./plugins.md) — `default_environment_id` and `needs[]`
 - [Profiles](./profiles.md) — global apply and home environment pointer
 - [Portability limits — MCP auth](../../portability-limits.md#mcp-authentication-and-environments)
 - [Supported harnesses](../../supported-harnesses.md) — per-harness MCP and environment matrix
@@ -189,7 +189,7 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 
 | Item | Resolution |
 | --- | --- |
-| **Cursor MCP scan/emit** | `CursorSerializer` scans `.cursor/mcp.json` (project) and `~/.cursor/mcp.json` (global); emits `mcpServers` on `layer apply` / `profile use`. |
+| **Cursor MCP scan/emit** | `CursorSerializer` scans `.cursor/mcp.json` (project) and `~/.cursor/mcp.json` (global); emits `mcpServers` on `apply` / `profile use`. |
 | **`headers` in `McpServerMetadata`** | HTTP MCP `headers` round-trip through scan/import and Cursor emit; `${VAR}` substitution applies to header values. |
 | **`auth` / `env_file` / `connection_type` metadata** | Static OAuth `auth`, stdio `envFile`, and `type`/`connection_type` are modeled and emitted in Cursor-native shape via `mcp-config-bridge`. |
 | **Substitution for `headers` / `url` / `auth`** | `substituteMcpServerMetadata` resolves `${VAR}` in `url`, `headers`, and `auth.CLIENT_ID` / `auth.CLIENT_SECRET` at apply time. |
@@ -201,7 +201,7 @@ Tracked limitations as of the current CLI. **Shipped** items are resolved in the
 | Gap | Impact | Proposed fix |
 | --- | --- | --- |
 | **Claude global MCP not scanned** | `init` / home scan imports `~/.claude/skills` but not user-scoped MCP (Claude may store these outside project `.mcp.json`). | Discover Claude Code user MCP path from upstream docs; add `scanGlobal` import if stable. |
-| **Environment switch without re-apply** | `environment use` updates pointer; harness files stay stale until `profile use --reapply` or `layer apply`. | Document workflow; consider `environment use --reapply` default or clearer status warning when drift detected. |
+| **Environment switch without re-apply** | `environment use` updates pointer; harness files stay stale until `profile use --reapply` or `apply`. | Document workflow; consider `environment use --reapply` default or clearer status warning when drift detected. |
 | **`environment create --from-project` captures plaintext secrets** | Import may pull literal tokens from scanned MCP `env` into `env_var` instead of promoting to `secret_ref`. | Wizard prompt: offer `secret_ref` promotion for keys matching MCP env / `needs[]`. |
 | **Copilot HTTP MCP auth fields** | Copilot may use auth blocks beyond `env`; not modeled in metadata. | Audit Copilot MCP schema; extend metadata if needed for round-trip. |
 

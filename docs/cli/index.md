@@ -1,6 +1,6 @@
 # HarnessTap CLI documentation
 
-HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. Scan existing setup, store canonical resources, compose layers, and materialize into any supported harness.
+HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs. Scan existing setup, store canonical resources, compose plugins, and materialize into any supported harness.
 
 ## Start here
 
@@ -14,14 +14,14 @@ HarnessTap is an agent harness configuration toolkit for Claude Code, Codex, Cur
 - [Supported harnesses](../supported-harnesses.md) — harness matrix and resource types
 - [Portability limits](../portability-limits.md) — what transfers across harnesses
 - [Interactive UX](./interactive-ux.md) — keyboard reference for TTY browse prompts
-- [HarnessTap Cloud](./cloud.md) — authenticate, search, pull, and publish shared layers
+- [HarnessTap Cloud](./cloud.md) — authenticate, search, pull, and publish shared plugins
 
 ## Quick links
 
 ```bash
 ht init --main codex --aliases claude-code,cursor
-ht layer list --search foundation --remote-only
-ht layer apply engineering-foundation
+ht plugin list --search foundation --remote-only
+ht apply engineering-foundation
 ht status .
 ```
 

@@ -8,14 +8,14 @@ HarnessTap keeps assistant configuration in one place while materializing platfo
 
 ## Architecture
 
-Configuration flows from sources (home defaults, existing project files, cloud layers, public catalog baselines) into a local SQLite library, then out to target harnesses on disk.
+Configuration flows from sources (home defaults, existing project files, cloud plugins, public catalog baselines) into a local SQLite library, then out to target harnesses on disk.
 
 ```mermaid
 flowchart TB
   subgraph Sources[Configuration sources]
     Home[Home defaults]
     Repo[Existing project files]
-    Cloud[HarnessTap Cloud layers]
+    Cloud[HarnessTap Cloud plugins]
     BuiltIn[Public catalog baselines]
   end
 
@@ -23,8 +23,8 @@ flowchart TB
     Resources[Canonical resources in SQLite]
     Plugins[Plugins — the what]
     Envs[Environments — the how]
-    Layers[Configured layers]
-    Bundles[Layer v1 TOML]
+    Plugins[Configured plugins]
+    Bundles[Plugin v1 TOML]
   end
 
   subgraph Targets[Materialized harnesses]
@@ -36,16 +36,16 @@ flowchart TB
 
   Home --> Resources
   Repo --> Resources
-  Cloud --> Layers
+  Cloud --> Plugins
   BuiltIn --> Plugins
   Resources --> Plugins
-  Plugins --> Layers
-  Envs --> Layers
-  Layers --> Bundles
-  Layers --> Claude
-  Layers --> Codex
-  Layers --> Cursor
-  Layers --> Generic
+  Plugins --> Plugins
+  Envs --> Plugins
+  Plugins --> Bundles
+  Plugins --> Claude
+  Plugins --> Codex
+  Plugins --> Cursor
+  Plugins --> Generic
 ```
 
 A typical session looks like this:
@@ -60,9 +60,9 @@ sequenceDiagram
   User->>CLI: ht scan .
   CLI->>Project: Detect supported harness files
   CLI->>DB: Import resources canonically
-  User->>CLI: ht layer create / edit
-  CLI->>DB: Save reusable layer
-  User->>CLI: ht layer apply layer --harness ...
+  User->>CLI: ht plugin create / edit
+  CLI->>DB: Save reusable plugin
+  User->>CLI: ht apply plugin --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
   User->>CLI: ht status / drift / revert
@@ -78,19 +78,19 @@ HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules �
 | **Resource** | Atomic instruction, skill, rule, MCP server, hook, agent, command, etc. |
 | **Plugin** | Bundle of *what* resources plus Claude config and a `needs` contract |
 | **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
-| **Layer** | One or more plugins plus an optional default environment |
-| **Workspace** | Local library of layers, resources, and environments at `~/.harnesstap` |
+| **Plugin** | One or more plugins plus an optional default environment |
+| **Workspace** | Local library of plugins, resources, and environments at `~/.harnesstap` |
 
-A **layer** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **layer** refs are dependencies attached during composition.
+A **plugin** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **plugin** refs are dependencies attached during composition.
 
-**Cascade (last wins):** `home env ◂ layer default env`. Switch the home active environment to change how-values without reloading the same layer stack.
+**Cascade (last wins):** `home env ◂ plugin default env`. Switch the home active environment to change how-values without reloading the same plugin stack.
 
 ```mermaid
 flowchart LR
   A[Init local toolkit state] --> B[Scan repo and home defaults]
   B --> C[Store canonical resources]
   C --> D[Plugins and environments]
-  D --> E[Configured layers]
+  D --> E[Configured plugins]
   E --> F[Apply with environment cascade]
 ```
 
@@ -101,7 +101,7 @@ HarnessTap materializes configuration in two places:
 | Surface | Scope | Primary commands |
 | --- | --- | --- |
 | **Profiles** | Machine-wide home harness paths (`~/.claude/`, `~/.codex/`, …) | `profile use`, `ht <profile-name>` |
-| **Projects** | Repository working tree | `layer apply`, `mirror`, `status --check` |
+| **Projects** | Repository working tree | `apply`, `mirror`, `status --check` |
 
 Profiles answer "what stack runs on this machine by default?" Projects answer "what baseline does this repo get?" See [Profiles](./profiles.md) and [Projects](./projects.md).
 
@@ -109,7 +109,7 @@ Profiles answer "what stack runs on this machine by default?" Projects answer "w
 
 | Topic | Page |
 | --- | --- |
-| Layers, plugins, pins, catalog | [Layers](./layers.md) |
+| Plugins, plugins, pins, catalog | [Plugins](./plugins.md) |
 | Scan, import, canonical library | [Resources](./resources.md) |
 | Machine-wide home harness state | [Profiles](./profiles.md) |
 | Env vars, secret refs, MCP auth limits | [Environments](./environments.md) |

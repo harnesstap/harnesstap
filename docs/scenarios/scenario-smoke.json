@@ -37,7 +37,7 @@
   {
     "id": 5,
     "argv": [
-      "layer",
+      "plugin",
       "list",
       "--format",
       "json"
@@ -46,7 +46,7 @@
   {
     "id": 6,
     "argv": [
-      "layer",
+      "plugin",
       "doctor",
       "--list-checks"
     ]
@@ -87,14 +87,14 @@
       "export",
       "/dev/null",
       "--plugin",
-      "missing-layer-smoke"
+      "missing-plugin-smoke"
     ],
     "expectFailure": true
   },
   {
     "id": 11,
     "argv": [
-      "layer",
+      "plugin",
       "list",
       "--search",
       "foundation",
@@ -141,7 +141,7 @@
   {
     "id": 16,
     "argv": [
-      "layer",
+      "plugin",
       "doctor",
       "--list-checks"
     ]
@@ -201,7 +201,7 @@
   {
     "id": 22,
     "argv": [
-      "layer",
+      "plugin",
       "list",
       "--format",
       "json"
@@ -210,7 +210,7 @@
   {
     "id": 23,
     "argv": [
-      "layer",
+      "plugin",
       "doctor",
       "--list-checks"
     ]
@@ -218,7 +218,7 @@
   {
     "id": 24,
     "argv": [
-      "layer",
+      "plugin",
       "list",
       "--search",
       "foundation",
@@ -230,7 +230,7 @@
   {
     "id": 25,
     "argv": [
-      "layer",
+      "plugin",
       "list",
       "--format",
       "json"
@@ -239,7 +239,7 @@
   {
     "id": 26,
     "argv": [
-      "layer",
+      "plugin",
       "from-project",
       "--project",
       ".",
@@ -343,9 +343,9 @@
   {
     "id": 38,
     "argv": [
-      "layer",
+      "plugin",
       "create",
-      "smoke-skill-layer",
+      "smoke-skill-plugin",
       "--from",
       "__SKILL_PACKAGE_FIXTURE__",
       "--skill",

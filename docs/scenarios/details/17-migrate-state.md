@@ -12,8 +12,8 @@ Manual workflow with current commands:
 ```bash
 # On the old machine
 mkdir -p ./bundles
-for p in $(harnesstap layer list --format json | jq -r '.[].name'); do
-  harnesstap migrate export "./bundles/$p.harnesstap.toml" --layer "$p" --embed-plugins
+for p in $(harnesstap plugin list --format json | jq -r '.[].name'); do
+  harnesstap migrate export "./bundles/$p.harnesstap.toml" --plugin "$p" --embed-plugins
 done
 
 # Copy ./bundles/ to the new machine, then:

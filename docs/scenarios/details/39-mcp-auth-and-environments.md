@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when you need to switch Slack workspaces, API tokens, or deployment
-targets across profiles/layers — or when OAuth MCP servers do not respond after
+targets across profiles/plugins — or when OAuth MCP servers do not respond after
 an environment switch.
 
 ## Quick decision
@@ -20,20 +20,20 @@ Full reference: **[Environments — MCP authentication limitations](../../cli/co
 ## Static token workflow (supported)
 
 ```bash
-# Seed from layer MCP env keys
-ht environment create work --from-layer my-setup
+# Seed from plugin MCP env keys
+ht environment create work --from-plugin my-setup
 ht environment edit work --secret SLACK_BOT_TOKEN:keychain:harnesstap/slack-work
 
-ht environment create personal --from-layer my-setup
+ht environment create personal --from-plugin my-setup
 ht environment edit personal --secret SLACK_BOT_TOKEN:keychain:harnesstap/slack-personal
 
 # Switch and materialize
 ht environment use work
 ht profile use default --reapply
-# or: ht layer apply my-setup --project . --harness claude-code,cursor
+# or: ht apply my-setup --project . --harness claude-code,cursor
 ```
 
-Layer MCP definitions should use placeholders, not literals:
+Plugin MCP definitions should use placeholders, not literals:
 
 ```json
 "env": { "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}" }
@@ -42,7 +42,7 @@ Layer MCP definitions should use placeholders, not literals:
 Verify resolved keys before apply:
 
 ```bash
-ht environment show work --layer my-setup
+ht environment show work --plugin my-setup
 ht profile use default --dry-run
 ```
 

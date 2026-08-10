@@ -4,7 +4,7 @@
 
 [← Back to scenarios index](../scenarios.md)
 
-Use this when applying a layer to harnesses that load skills as **always-on
+Use this when applying a plugin to harnesses that load skills as **always-on
 instructions or rules** rather than agent-requested skill directories. Harnesses
 with registry `skillEmission: instruction-only` include `windsurf`, `cline`,
 `github-copilot`, `gemini-cli`, and `kiro`.
@@ -13,10 +13,10 @@ Typical commands:
 
 ```bash
 # Preview per-harness output paths
-harnesstap layer apply my-setup --project . --harness windsurf,cline,github-copilot --dry-run
+harnesstap apply my-setup --project . --harness windsurf,cline,github-copilot --dry-run
 
 # Apply to instruction-tier harnesses alongside native-skill hosts
-harnesstap layer apply my-setup --project . --harness claude-code,codex,windsurf,cursor
+harnesstap apply my-setup --project . --harness claude-code,codex,windsurf,cursor
 
 # List all harnesses; instruction-tier hosts have skillEmission: instruction-only
 harnesstap harness list --format json

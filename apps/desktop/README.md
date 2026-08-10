@@ -62,7 +62,7 @@ Output: `apps/desktop/src-tauri/target/release/bundle/`
 - [ ] Fresh machine: install app, no global `ht` required
 - [ ] Second launch focuses existing window (single-instance)
 - [ ] Sidecar health must succeed before UI shows connected
-- [ ] Profiles rail lists profile-tagged layers (default seeded on first boot)
+- [ ] Profiles rail lists profile-tagged plugins (default seeded on first boot)
 - [ ] Switch shows SSE steps; Cancel disabled during apply step
 - [ ] Live panel G/Y/R from `GET /v1/status`
 - [ ] Project view auto-bootstraps `.harnesstap/config.toml` on first use

@@ -1,4 +1,4 @@
-# Scenario 5: Build a reusable layer from imported resources
+# Scenario 5: Build a reusable plugin from imported resources
 
 **Frequency: Occasional** · **Status: Shipped**
 
@@ -10,14 +10,14 @@ reusable harness baseline.
 Typical commands:
 
 ```bash
-harnesstap layer create my-setup --description "Shared project assistant setup"
+harnesstap plugin create my-setup --description "Shared project assistant setup"
 harnesstap resource list --search auth        # find what to add
-harnesstap layer edit my-setup --add auth-helper --type skill
-harnesstap layer show my-setup
+harnesstap plugin edit my-setup --add auth-helper --type skill
+harnesstap plugin show my-setup
 ```
 
-`layer edit` is for local resources and plugin pins. `layer pull` installs a
-layer from the remote catalog instead — do not confuse the two.
+`plugin edit` is for local resources and plugin pins. `plugin pull` installs a
+plugin from the remote catalog instead — do not confuse the two.
 
 This is where HarnessTap becomes useful as a setup optimizer rather than just
 a scanner: you can separate reusable instructions, skills, hooks, MCP config,

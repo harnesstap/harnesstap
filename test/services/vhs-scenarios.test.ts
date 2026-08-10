@@ -149,7 +149,7 @@ describe("VHS scenario manifest", () => {
     expect(tape).toContain('Type "ht scan ."');
     expect(tape).toContain('Type "ht resource list"');
     expect(tape).toContain('Type "ht plugin list --search foundation --remote-only"');
-    expect(tape).toContain('Type "ht plugin apply engineering-foundation"');
+    expect(tape).toContain('Type "ht apply engineering-foundation"');
     expect(tape).toContain('Type "ht status ."');
 
     // Tape does not use --format json

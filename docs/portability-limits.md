@@ -14,7 +14,7 @@ It was informed by stress-testing against multi-harness plugin repos that mix
 
 ## Fully bridgeable
 
-These resource types scan, compose in layers, and serialize to native on-disk
+These resource types scan, compose in plugins, and serialize to native on-disk
 paths for supported harnesses:
 
 | Type | Notes |
@@ -44,7 +44,7 @@ HarnessTap falls back to the first plugin pack listed in a repo-root
 
 HarnessTap environments switch **static** MCP credentials (API keys, bot tokens,
 `${VAR}` placeholders in MCP `env`, `args`, or `headers`) via `secret_ref` and
-the home → layer-default cascade. They do **not** switch **OAuth 2.1** sessions
+the home → plugin-default cascade. They do **not** switch **OAuth 2.1** sessions
 that hosts store in OS keychains or private token caches (Cursor, Claude Code,
 Copilot CLI, VS Code).
 
@@ -52,7 +52,7 @@ Copilot CLI, VS Code).
 | ---------- | ----------------------- | --------- |
 | API key / PAT / bot token in MCP config | Yes | `environment edit --secret` + `${VAR}` substitution on apply |
 | OAuth HTTP MCP (browser login in IDE) | No | Token lives in host credential store, not in materialized `mcp.json` |
-| Per-host OAuth after `layer apply` | Manual | Log in separately in each target harness |
+| Per-host OAuth after `apply` | Manual | Log in separately in each target harness |
 
 Full detail, host storage locations, workarounds, and remaining gaps: [Environments — MCP authentication
 limitations](./cli/concepts/environments.md#mcp-authentication-limitations).
@@ -70,13 +70,13 @@ and environments](#mcp-authentication-and-environments).
 
 ### Agent host-specific fields
 
-Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcpServers`, `hooks`, `isolation`, `skills`, …) that other harnesses do not model. HarnessTap preserves unknown keys in `metadata.extra` for same-harness round-trip but does not translate them when applying a layer to Codex or Cursor.
+Claude Code subagents support rich frontmatter (`tools`, `disallowedTools`, `mcpServers`, `hooks`, `isolation`, `skills`, …) that other harnesses do not model. HarnessTap preserves unknown keys in `metadata.extra` for same-harness round-trip but does not translate them when applying a plugin to Codex or Cursor.
 
 ### Skill auxiliary files without scan origin
 
 Skill `scripts/` and `reference(s)/` directories are listed during scan and
-emitted on `layer apply` when HarnessTap can still read the original tree
-(typically `origin_ref` from `scan` or `layer from-project`). Layer
+emitted on `apply` when HarnessTap can still read the original tree
+(typically `origin_ref` from `scan` or `plugin from-project`). Plugin
 export to another machine without embedded plugin trees still drops auxiliary
 files unless you use `ht add` (full tree install) or `--embed-plugins` on export.
 
@@ -110,7 +110,7 @@ plugin install.
 GitHub Copilot discovers commands under `.github/copilot/commands/` with
 namespaced filenames. HarnessTap imports and emits command content, but
 Copilot's runtime may require specific naming conventions or a
-`copilot plugin install` step for plugin-packaged commands. Layer apply to
+`copilot plugin install` step for plugin-packaged commands. Plugin apply to
 `github-copilot` uses `skillEmission: instruction-only` — skills merge into
 `.github/copilot-instructions.md` rather than `.agents/skills/`.
 
@@ -129,8 +129,8 @@ Examples of surfaces that stay on their native harness:
 | **Pi extensions** (`pi-extension/`) | Pi | Installed via Pi CLI; not emitted to other harnesses. |
 | **Gemini extension manifest** (`gemini-extension.json`) | Gemini CLI / Antigravity | Extension metadata applies to Gemini-family hosts only. |
 | **Statusline hooks** | Claude Code (and similar) | Terminal chrome integrations; not part of the shared resource model. |
-| **Runtime mode / session config** | Host-specific | Environment variables and `~/.config/…` state are outside layer resources. |
-| **Goose subagents / plan mode / MOIM / prompt templates** | Goose | Session workflows and per-turn env injection; not file-based layer resources. |
+| **Runtime mode / session config** | Host-specific | Environment variables and `~/.config/…` state are outside plugin resources. |
+| **Goose subagents / plan mode / MOIM / prompt templates** | Goose | Session workflows and per-turn env injection; not file-based plugin resources. |
 
 Warnings look like:
 
@@ -158,8 +158,8 @@ rule files against a canonical source) are a repo maintenance pattern.
 HarnessTap takes a different approach: **merge and canonicalize** resources in
 the local database, then emit per-harness output through serializers. It does
 not replicate hand-tuned adapter copies or run post-apply consistency scripts.
-If your repo relies on per-host wording differences, review `layer apply --dry-run`
-output per harness and adjust layer composition or project harness preferences
+If your repo relies on per-host wording differences, review `apply --dry-run`
+output per harness and adjust plugin composition or project harness preferences
 rather than expecting byte-identical copies across hosts.
 
 ### Instruction-tier emission (`skillEmission`)
@@ -178,7 +178,7 @@ are used for harnesses without `instruction-only` emission.
 
 ### Cursor skill modes (`cursor_skill_mode` / `skillCursorMode`)
 
-Cursor `layer apply` and mirror honor a project-level `cursor_skill_mode` stored
+Cursor `apply` and mirror honor a project-level `cursor_skill_mode` stored
 in `project_harnesses`:
 
 | Mode | Behavior |
@@ -209,7 +209,7 @@ When auto-bridging hits a limit, combine these patterns:
 
 ### Plugin pins + `resource sync`
 
-Pin marketplace or local plugins in a layer (`layer edit`, `layer show`).
+Pin marketplace or local plugins in a plugin (`plugin edit`, `plugin show`).
 After the host installs the plugin, refresh HarnessTap's library copy:
 
 ```bash
@@ -227,7 +227,7 @@ are scanned automatically — plugin-source resources merge with harness files:
 
 ```bash
 harnesstap scan . --dry-run
-harnesstap layer from-project my-layer --project .
+harnesstap plugin from-project my-plugin --project .
 ```
 
 ### Mirror fallback for empty main harness
@@ -245,14 +245,14 @@ shared `AGENTS.md` instruction resources.
 ### Copilot plugin install
 
 For GitHub Copilot plugin-packaged commands and hooks, install through Copilot's
-plugin mechanism after layer apply:
+plugin mechanism after apply:
 
 ```bash
 copilot plugin install <source>
 harnesstap resource sync --overwrite
 ```
 
-Then re-run `layer apply` or `mirror` if alias harnesses need refreshed
+Then re-run `apply` or `mirror` if alias harnesses need refreshed
 copies.
 
 ## Related scenarios
