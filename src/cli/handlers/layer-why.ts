@@ -65,9 +65,11 @@ export function handleLayerWhyCommand(
   }
 
   const locked =
-    lock?.plugins.some(
-      (entry) => entry.name === plugin.name && entry.version === plugin.version,
-    ) ?? false;
+    plugin.depth === 0
+      ? lock?.root === plugin.name
+      : (lock?.plugins.some(
+          (entry) => entry.name === plugin.name && entry.version === plugin.version,
+        ) ?? false);
 
   if (format === "json") {
     printJson({

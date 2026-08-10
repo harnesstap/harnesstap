@@ -64,6 +64,29 @@ describe("layer why", () => {
     expect(result.stdout).toContain("base@2.1.0");
   });
 
+  it("treats lockfile root as locked", async () => {
+    await seedAndApply();
+    const result = await runCli([
+      "layer",
+      "why",
+      "root",
+      "--project",
+      ctx.projectDir,
+      "--format",
+      "json",
+    ]);
+    const payload = JSON.parse(result.stdout) as {
+      name: string;
+      depth: number;
+      locked: boolean;
+    };
+    expect(payload).toMatchObject({
+      name: "root",
+      depth: 0,
+      locked: true,
+    });
+  });
+
   it("emits JSON and agrees with the lockfile", async () => {
     await seedAndApply();
     const result = await runCli([
