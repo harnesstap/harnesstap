@@ -99,6 +99,7 @@ import {
   editCatalogLayerComposition,
 } from "../../services/catalog-layer-manage.js";
 import {
+  collectPluginPinsForPrepare,
   preparePluginPinsForApply,
   type SyncPluginPinsForApplyResult,
 } from "../../services/plugin-pin-apply.js";
@@ -185,26 +186,19 @@ async function deleteLocalLayerByName(nameOrId: string): Promise<void> {
   ui.success(`Deleted layer ${ui.theme.accent(formatLayerLabel(layer))}`);
 }
 
-async function resolveApplyLayers(
+async function resolveApplyRootSelectors(
   layerNames: [string, ...string[]],
   projectRoot: string,
   options: ResolveApplyLayerSourceOptions & {
     onFetched?: (sourceLabel: string) => void;
-    lockedVersions?: Map<string, string>;
   } = {},
-): Promise<{
-  layers: ReturnType<typeof getLayer>[];
-  resources: Resource[];
-  claude?: ClaudeLayerConfig;
-  configuredLayerIds: string[];
-  primaryConfiguredLayerId: string;
-  resolution: ResolutionResult;
-}> {
+): Promise<{ selectors: string[]; rootLayerIds: string[] }> {
   const resolvedSources = await Promise.all(
     layerNames.map((selector) => resolveApplyLayerSource(selector, options)),
   );
 
   const selectors: string[] = [];
+  const rootLayerIds: string[] = [];
   for (const source of resolvedSources) {
     if (source.kind === "layer-export") {
       if (resolvedSources.length > 1) {
@@ -221,6 +215,7 @@ async function resolveApplyLayers(
         : undefined;
       if (existing) {
         selectors.push(`${existing.name}@${existing.version}`);
+        rootLayerIds.push(existing.id);
       } else {
         const imported = importFromFile(source.path, {
           embeddedTargetDir: projectRoot,
@@ -228,13 +223,40 @@ async function resolveApplyLayers(
         const last = imported.layers[imported.layers.length - 1];
         if (!last) throw new Error("Bundle contains no layers.");
         selectors.push(`${last.layer.name}@${last.layer.version}`);
+        rootLayerIds.push(last.layer.id);
       }
       continue;
     }
     const layer = getLayerById(source.layerId);
     if (!layer) throw new Error(`Layer not found: ${source.layerId}`);
     selectors.push(`${layer.name}@${layer.version}`);
+    rootLayerIds.push(layer.id);
   }
+
+  return { selectors, rootLayerIds };
+}
+
+async function resolveApplyLayers(
+  layerNames: [string, ...string[]],
+  projectRoot: string,
+  options: ResolveApplyLayerSourceOptions & {
+    onFetched?: (sourceLabel: string) => void;
+    lockedVersions?: Map<string, string>;
+  } = {},
+): Promise<{
+  layers: ReturnType<typeof getLayer>[];
+  resources: Resource[];
+  claude?: ClaudeLayerConfig;
+  configuredLayerIds: string[];
+  primaryConfiguredLayerId: string;
+  resolution: ResolutionResult;
+  rootLayerIds: string[];
+}> {
+  const { selectors, rootLayerIds } = await resolveApplyRootSelectors(
+    layerNames,
+    projectRoot,
+    options,
+  );
 
   const resolution = resolveComposition({
     rootSelectors: selectors,
@@ -260,6 +282,7 @@ async function resolveApplyLayers(
       ? (configuredLayerIds[configuredLayerIds.length - 1] ?? "")
       : resolution.root.layerId,
     resolution,
+    rootLayerIds,
   };
 }
 
@@ -370,27 +393,109 @@ async function handleApplyCommand(
     existingLock && lockIsUsable(existingLock, resolvedLayerNames[0] ?? "")
       ? lockedVersionsFrom(existingLock)
       : undefined;
+
+  const resolveSourceOptions = {
+    account: opts.account,
+    baseUrl: opts.baseUrl,
+    interactive: opts.interactive,
+    noInteractive: opts.noInteractive,
+    format: outputFormat,
+    onFetched:
+      outputFormat === "human"
+        ? (sourceLabel: string) => {
+            ui.info(`Fetched ${sourceLabel} from catalog`);
+          }
+        : undefined,
+  };
+
+  // Resolve argv selectors to concrete local layers without walking the graph,
+  // so marketplace/git pins on those roots can be prepared first.
+  let rootLayerIds: string[];
+  try {
+    ({ rootLayerIds } = await resolveApplyRootSelectors(
+      resolvedLayerNames as [string, ...string[]],
+      projectRoot,
+      resolveSourceOptions,
+    ));
+  } catch (err) {
+    resolveSpin.stop();
+    process.exitCode = 1;
+    if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
+    ui.danger(err instanceof Error ? err.message : String(err));
+    return;
+  }
+
+  const rootPluginPins = collectPluginPinsForPrepare(rootLayerIds);
+  const skipPluginSync =
+    opts.ignorePluginVersions || rootPluginPins.length === 0 || opts.dryRun;
+
+  let pluginValidationIssues: Awaited<
+    ReturnType<typeof preparePluginPinsForApply>
+  >["validationIssues"] = [];
+  let pluginPrepare: Awaited<ReturnType<typeof preparePluginPinsForApply>> = {
+    installs: [],
+    syncedResourceCount: 0,
+    unresolvedPins: [],
+    applyResources: [],
+    extraMaterialized: 0,
+    validationIssues: [],
+  };
+  const pluginProgressState: { current: ProgressHandle | null } = { current: null };
+
+  if (!skipPluginSync) {
+    resolveSpin.stop();
+    console.log(ui.theme.muted("Plugins"));
+    const rootClaude = mergeLayersById(rootLayerIds).claude;
+    pluginPrepare = await preparePluginPinsForApply({
+      pins: rootPluginPins,
+      baseResources: [],
+      projectRoot,
+      claudeConfig: rootClaude,
+      skipSync: false,
+      syncAll: opts.syncPlugins,
+      scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
+      ignoreMissingInstall: opts.ignorePluginVersions,
+      progress: {
+        onInstallStart: (ref) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = createProgress(`Installing ${ref}…`);
+        },
+        onInstallComplete: (install) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
+          printPluginInstallLine(install);
+        },
+        onSyncStart: (ref) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
+        },
+        onSyncComplete: () => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
+        },
+      },
+    });
+    pluginProgressState.current?.stop();
+    pluginValidationIssues = pluginPrepare.validationIssues;
+  }
+
+  const compositionSpin = skipPluginSync
+    ? resolveSpin
+    : createProgress(`Resolving ${layerLabel}…`);
   try {
     applyBundle = await resolveApplyLayers(
       resolvedLayerNames as [string, ...string[]],
       projectRoot,
       {
-        account: opts.account,
-        baseUrl: opts.baseUrl,
-        interactive: opts.interactive,
-        noInteractive: opts.noInteractive,
-        format: outputFormat,
+        ...resolveSourceOptions,
         ...(lockedVersions ? { lockedVersions } : {}),
-        onFetched:
-          outputFormat === "human"
-            ? (sourceLabel) => {
-                ui.info(`Fetched ${sourceLabel} from catalog`);
-              }
-            : undefined,
       },
     );
   } catch (err) {
-    resolveSpin.stop();
+    compositionSpin.stop();
     process.exitCode = 1;
     if (
       err instanceof UnsatisfiableConstraintError ||
@@ -421,7 +526,7 @@ async function handleApplyCommand(
     ui.danger(err instanceof Error ? err.message : String(err));
     return;
   }
-  resolveSpin.stop();
+  compositionSpin.stop();
 
   for (const warning of applyBundle.resolution.warnings) {
     ui.warn(warning);
@@ -484,88 +589,110 @@ async function handleApplyCommand(
     return [...pins.values()];
   })();
 
-  const skipPluginSync =
-    opts.ignorePluginVersions || mergedPluginPins.length === 0 || opts.dryRun;
   let applyResources = resources;
-  let pluginValidationIssues: Awaited<
-    ReturnType<typeof preparePluginPinsForApply>
-  >["validationIssues"] = [];
 
-  if (!skipPluginSync) {
-    console.log(ui.theme.muted("Plugins"));
-  }
-  const pluginProgressState: { current: ProgressHandle | null } = { current: null };
+  // Prepare any marketplace/git pins discovered on non-root selected layers
+  // after the first successful resolve (root pins were prepared above).
+  const rootPinRefs = new Set(rootPluginPins.map((pin) => pin.ref));
+  const additionalPins = collectPluginPinsForPrepare(
+    applyBundle.configuredLayerIds,
+  ).filter((pin) => !rootPinRefs.has(pin.ref));
+  const shouldPrepareAdditional =
+    !opts.ignorePluginVersions &&
+    !opts.dryRun &&
+    additionalPins.length > 0;
 
-  const pluginPrepare = await preparePluginPinsForApply({
-    pins: mergedPluginPins,
-    baseResources: resources,
-    projectRoot,
-    claudeConfig: claude,
-    skipSync: skipPluginSync,
-    syncAll: opts.syncPlugins,
-    scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
-    ignoreMissingInstall: opts.ignorePluginVersions,
-    progress: skipPluginSync
-      ? undefined
-      : {
-          onInstallStart: (ref) => {
-            pluginProgressState.current?.stop();
-            pluginProgressState.current = createProgress(`Installing ${ref}…`);
-          },
-          onInstallComplete: (install) => {
-            pluginProgressState.current?.stop();
-            pluginProgressState.current = null;
-            printPluginInstallLine(install);
-          },
-          onSyncStart: (ref) => {
-            pluginProgressState.current?.stop();
-            pluginProgressState.current = createProgress(`Syncing ${ref}…`);
-          },
-          onSyncComplete: () => {
-            pluginProgressState.current?.stop();
-            pluginProgressState.current = null;
-          },
+  if (shouldPrepareAdditional) {
+    if (skipPluginSync) {
+      console.log(ui.theme.muted("Plugins"));
+    }
+    const additionalPrepare = await preparePluginPinsForApply({
+      pins: additionalPins,
+      baseResources: resources,
+      projectRoot,
+      claudeConfig: claude,
+      skipSync: false,
+      syncAll: opts.syncPlugins,
+      scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
+      ignoreMissingInstall: opts.ignorePluginVersions,
+      progress: {
+        onInstallStart: (ref) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = createProgress(`Installing ${ref}…`);
         },
-  });
-  pluginProgressState.current?.stop();
-
-  // Resolution owns the resource set. The prepare step still installs and
-  // syncs plugin trees, and materializes them as upstream layers; those
-  // layers then participate in the graph on the next resolution.
-  pluginValidationIssues = pluginPrepare.validationIssues;
-
-  if (
-    !skipPluginSync &&
-    pluginPrepare.installs.some((install) => install.status !== "already_installed")
-  ) {
-    try {
-      applyBundle = await resolveApplyLayers(
-        resolvedLayerNames as [string, ...string[]],
-        projectRoot,
-        {
-          account: opts.account,
-          baseUrl: opts.baseUrl,
-          interactive: opts.interactive,
-          noInteractive: opts.noInteractive,
-          format: outputFormat,
-          ...(lockedVersions ? { lockedVersions } : {}),
+        onInstallComplete: (install) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
+          printPluginInstallLine(install);
         },
-      );
-      resources = applyBundle.resources;
-      claude = applyBundle.claude;
-      applyResources = resources;
-    } catch (err) {
-      process.exitCode = 1;
-      if (
-        err instanceof UnsatisfiableConstraintError ||
-        err instanceof SingletonConflictError
-      ) {
-        ui.danger(err.message, { hints: err.hints });
+        onSyncStart: (ref) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = createProgress(`Syncing ${ref}…`);
+        },
+        onSyncComplete: () => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
+        },
+      },
+    });
+    pluginProgressState.current?.stop();
+    pluginPrepare = {
+      ...additionalPrepare,
+      installs: [...pluginPrepare.installs, ...additionalPrepare.installs],
+      syncedResourceCount:
+        pluginPrepare.syncedResourceCount + additionalPrepare.syncedResourceCount,
+      unresolvedPins: [
+        ...pluginPrepare.unresolvedPins,
+        ...additionalPrepare.unresolvedPins,
+      ],
+    };
+    pluginValidationIssues = additionalPrepare.validationIssues;
+
+    if (
+      additionalPrepare.installs.some(
+        (install) => install.status !== "already_installed",
+      )
+    ) {
+      try {
+        applyBundle = await resolveApplyLayers(
+          resolvedLayerNames as [string, ...string[]],
+          projectRoot,
+          {
+            account: opts.account,
+            baseUrl: opts.baseUrl,
+            interactive: opts.interactive,
+            noInteractive: opts.noInteractive,
+            format: outputFormat,
+            ...(lockedVersions ? { lockedVersions } : {}),
+          },
+        );
+        resources = applyBundle.resources;
+        claude = applyBundle.claude;
+        applyResources = resources;
+      } catch (err) {
+        process.exitCode = 1;
+        if (
+          err instanceof UnsatisfiableConstraintError ||
+          err instanceof SingletonConflictError
+        ) {
+          ui.danger(err.message, { hints: err.hints });
+          return;
+        }
+        ui.danger(err instanceof Error ? err.message : String(err));
         return;
       }
-      ui.danger(err instanceof Error ? err.message : String(err));
-      return;
     }
+  } else if (mergedPluginPins.length > 0 && !opts.ignorePluginVersions && !opts.dryRun) {
+    // Validate the full pin set even when sync already ran for root pins.
+    pluginValidationIssues = (
+      await preparePluginPinsForApply({
+        pins: mergedPluginPins,
+        baseResources: resources,
+        projectRoot,
+        claudeConfig: claude,
+        skipSync: true,
+      })
+    ).validationIssues;
   }
 
   const substituted = substituteResourcesForApply(

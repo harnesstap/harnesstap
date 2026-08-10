@@ -38,7 +38,7 @@ import {
   planStaleGlobalProfileFiles,
 } from "./global-profile-cleanup.js";
 import { substituteResourcesForApply } from "./environment-var-substitution.js";
-import { preparePluginPinsForApply } from "./plugin-pin-apply.js";
+import { preparePluginPinsForApply, collectPluginPinsForPrepare } from "./plugin-pin-apply.js";
 import {
   assertSupportedHarnessTargets,
   parsePlatformFilter,
@@ -448,8 +448,23 @@ export async function applyProfileLayer(
     profileLayer,
     options,
   );
-  const resolution = resolveComposition({ rootSelectors: [profileLayer.name] });
-  const merged = {
+  const homeRoot = resolveHomeRoot();
+  const rootPluginPins = collectPluginPinsForPrepare([profileLayer.id]);
+  const skipPluginSync = options.dryRun || rootPluginPins.length === 0;
+
+  // Marketplace/git pins on the profile root must be materialized before the
+  // first composition resolve can walk them as upstream layers.
+  await preparePluginPinsForApply({
+    pins: rootPluginPins,
+    baseResources: [],
+    projectRoot: homeRoot,
+    claudeConfig: mergeLayersById([profileLayer.id]).claude,
+    scope: "user",
+    skipSync: skipPluginSync,
+  });
+
+  let resolution = resolveComposition({ rootSelectors: [profileLayer.name] });
+  let merged = {
     layers: resolution.selected
       .map((plugin) => getLayerById(plugin.layerId))
       .filter((layer): layer is NonNullable<typeof layer> => layer != null),
@@ -469,7 +484,6 @@ export async function applyProfileLayer(
     .filter((plugin) => plugin.depth > 0)
     .map((plugin) => ({ name: plugin.name, version: plugin.version }));
   const harnesses = resolveGlobalApplyHarnessTargets(options.harness);
-  const homeRoot = resolveHomeRoot();
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
     configuredLayerIds,
   });
@@ -485,23 +499,41 @@ export async function applyProfileLayer(
     defaultEnvironmentName = environment.name;
   }
 
-  const pluginPrepare = await preparePluginPinsForApply({
-    pins: merged.pluginPins,
-    baseResources: merged.resources,
-    projectRoot: homeRoot,
-    claudeConfig: merged.claude,
-    scope: "user",
-    skipSync: options.dryRun || merged.pluginPins.length === 0,
-  });
-  let resolvedResources = merged.resources;
-  if (
-    !options.dryRun &&
-    merged.pluginPins.length > 0 &&
-    pluginPrepare.installs.some((install) => install.status !== "already_installed")
-  ) {
-    const refreshed = resolveComposition({ rootSelectors: [profileLayer.name] });
-    resolvedResources = refreshed.resources;
+  const rootPinRefs = new Set(rootPluginPins.map((pin) => pin.ref));
+  const additionalPins = collectPluginPinsForPrepare(configuredLayerIds).filter(
+    (pin) => !rootPinRefs.has(pin.ref),
+  );
+  if (!options.dryRun && additionalPins.length > 0) {
+    const additionalPrepare = await preparePluginPinsForApply({
+      pins: additionalPins,
+      baseResources: merged.resources,
+      projectRoot: homeRoot,
+      claudeConfig: merged.claude,
+      scope: "user",
+      skipSync: false,
+    });
+    if (
+      additionalPrepare.installs.some(
+        (install) => install.status !== "already_installed",
+      )
+    ) {
+      resolution = resolveComposition({ rootSelectors: [profileLayer.name] });
+      merged = {
+        layers: resolution.selected
+          .map((plugin) => getLayerById(plugin.layerId))
+          .filter((layer): layer is NonNullable<typeof layer> => layer != null),
+        resources: resolution.resources,
+        claude: mergeLayersById(
+          [...resolution.selected]
+            .sort((a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex)
+            .map((plugin) => plugin.layerId),
+        ).claude,
+        pluginPins: listResolvedPluginPins(resolution),
+      };
+    }
   }
+
+  const resolvedResources = merged.resources;
   let applyResources = substituteResourcesForApply(
     resolvedResources,
     resolvedEnvironment.vars,

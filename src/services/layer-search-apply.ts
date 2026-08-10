@@ -5,16 +5,18 @@ import {
   type ConflictResolution,
   type MaterializationConflict,
 } from "./applier.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
-import { getLayerById } from "../models/layer-model.js";
-import { listAttachedPluginPins } from "./layer-composition.js";
+import { getLayerById, mergeLayersById } from "../models/layer-model.js";
 import {
   resolveApplyLayerSource,
   type ResolveApplyLayerSourceOptions,
 } from "./layer-apply-source.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
 import { substituteResourcesForApply } from "./environment-var-substitution.js";
-import { preparePluginPinsForApply } from "./plugin-pin-apply.js";
+import {
+  collectPluginPinsForPrepare,
+  preparePluginPinsForApply,
+} from "./plugin-pin-apply.js";
+import { resolveComposition } from "./resolve/index.js";
 import { resolveScanGlobalHarnessTargets } from "./harness-targets.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { resolveClaudeEnabledPluginRef } from "../plugins/claude-plugin-ref.js";
@@ -45,15 +47,16 @@ export async function promptCatalogSearchApplyScope(): Promise<CatalogSearchAppl
   });
 }
 
-async function resolveMergedApplyBundle(
+async function resolveRootLayersForSearchApply(
   selectors: [string, ...string[]],
-  _projectRoot: string,
   options: ResolveApplyLayerSourceOptions,
-) {
+): Promise<{ rootLayerIds: string[]; rootSelectors: string[] }> {
   const resolvedSources = await Promise.all(
     selectors.map((selector) => resolveApplyLayerSource(selector, options)),
   );
-  const configuredLayerIds = resolvedSources.map((source) => {
+  const rootLayerIds: string[] = [];
+  const rootSelectors: string[] = [];
+  for (const source of resolvedSources) {
     if (source.kind === "layer-export") {
       throw new Error("Layer export paths cannot be applied from catalog search.");
     }
@@ -61,24 +64,10 @@ async function resolveMergedApplyBundle(
     if (!layer) {
       throw new Error(`Layer not found: ${source.layerId}`);
     }
-    return layer.id;
-  });
-  return mergeLayersForApply(configuredLayerIds);
-}
-
-function mergedPluginPinsFromLayers(
-  layerIds: string[],
-): Array<{ ref: string; version_constraint: string }> {
-  const pins = new Map<string, { ref: string; version_constraint: string }>();
-  for (const layerId of layerIds) {
-    for (const plugin of listAttachedPluginPins(layerId)) {
-      pins.set(plugin.ref, {
-        ref: plugin.ref,
-        version_constraint: plugin.version_constraint,
-      });
-    }
+    rootLayerIds.push(layer.id);
+    rootSelectors.push(`${layer.name}@${layer.version}`);
   }
-  return [...pins.values()];
+  return { rootLayerIds, rootSelectors };
 }
 
 export async function applyLayersGlobally(
@@ -95,54 +84,82 @@ export async function applyLayersGlobally(
   },
 ): Promise<{ cancelled: boolean }> {
   const homeRoot = resolveHomeRoot();
-  const merged = await resolveMergedApplyBundle(selectors, homeRoot, {
+  const sourceOptions: ResolveApplyLayerSourceOptions = {
     account: options.account,
     baseUrl: options.baseUrl,
     onFetched: options.onFetched,
+  };
+  const { rootLayerIds, rootSelectors } = await resolveRootLayersForSearchApply(
+    selectors,
+    sourceOptions,
+  );
+
+  const rootPluginPins = collectPluginPinsForPrepare(rootLayerIds);
+  await preparePluginPinsForApply({
+    pins: rootPluginPins,
+    baseResources: [],
+    projectRoot: homeRoot,
+    claudeConfig: mergeLayersById(rootLayerIds).claude,
+    scope: "user",
+    skipSync: rootPluginPins.length === 0,
   });
-  const configuredLayerIds = merged.layers.map((layer) => layer.id);
+
+  let resolution = resolveComposition({ rootSelectors });
+  const configuredLayerIds = resolution.selected
+    .filter((plugin) => !(plugin.depth === 0 && resolution.root.ephemeral))
+    .map((plugin) => plugin.layerId);
+
+  const rootPinRefs = new Set(rootPluginPins.map((pin) => pin.ref));
+  const additionalPins = collectPluginPinsForPrepare(configuredLayerIds).filter(
+    (pin) => !rootPinRefs.has(pin.ref),
+  );
+  if (additionalPins.length > 0) {
+    const additionalPrepare = await preparePluginPinsForApply({
+      pins: additionalPins,
+      baseResources: resolution.resources,
+      projectRoot: homeRoot,
+      claudeConfig: mergeLayersById(
+        [...resolution.selected]
+          .sort((a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex)
+          .map((plugin) => plugin.layerId),
+      ).claude,
+      scope: "user",
+      skipSync: false,
+    });
+    if (
+      additionalPrepare.installs.some(
+        (install) => install.status !== "already_installed",
+      )
+    ) {
+      resolution = resolveComposition({ rootSelectors });
+    }
+  }
+
   const harnesses = resolveScanGlobalHarnessTargets(options.harness, homeRoot);
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
     configuredLayerIds,
   });
-  const mergedPluginPins = mergedPluginPinsFromLayers(configuredLayerIds);
 
-  const pluginPrepare = await preparePluginPinsForApply({
-    pins: mergedPluginPins,
-    baseResources: merged.resources,
-    projectRoot: homeRoot,
-    claudeConfig: merged.claude,
-    scope: "user",
-    skipSync: mergedPluginPins.length === 0,
-  });
-
-  let resolvedResources = merged.resources;
-  if (
-    mergedPluginPins.length > 0 &&
-    pluginPrepare.installs.some((install) => install.status !== "already_installed")
-  ) {
-    const refreshed = await resolveMergedApplyBundle(selectors, homeRoot, {
-      account: options.account,
-      baseUrl: options.baseUrl,
-      onFetched: options.onFetched,
-    });
-    resolvedResources = refreshed.resources;
-  }
+  const mergedClaude = mergeLayersById(
+    [...resolution.selected]
+      .sort((a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex)
+      .map((plugin) => plugin.layerId),
+  ).claude;
 
   const homeRootForClaude = resolveHomeRoot();
   const resolvedClaude =
-    merged.claude?.plugins && merged.claude.plugins.length > 0
+    mergedClaude?.plugins && mergedClaude.plugins.length > 0
       ? {
-          ...merged.claude,
-          plugins: merged.claude.plugins.map((plugin) => ({
+          ...mergedClaude,
+          plugins: mergedClaude.plugins.map((plugin) => ({
             ...plugin,
             id: resolveClaudeEnabledPluginRef(plugin.id, homeRootForClaude),
           })),
         }
-      : merged.claude;
+      : mergedClaude;
 
   const applyResources = substituteResourcesForApply(
-    resolvedResources,
+    resolution.resources,
     resolvedEnvironment.vars,
   ).resources;
 

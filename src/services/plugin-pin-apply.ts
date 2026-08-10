@@ -4,7 +4,10 @@ import {
   findPluginResourceByPin,
 } from "./layer-composition.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
-import { parseDependencyRef } from "./plugin-dependency.js";
+import {
+  listDependencies,
+  parseDependencyRef,
+} from "./plugin-dependency.js";
 import {
   installPluginPins,
   type InstallPluginPinResult,
@@ -19,6 +22,7 @@ import {
 import { materializeUpstreamPluginLayer } from "./upstream-plugin-layer.js";
 import { listResources } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
+import type { DependencySourceKind } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
 import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
@@ -28,6 +32,34 @@ import {
 import type { ClaudeLayerConfig } from "../types.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
+
+/** Dependency sources that need install/sync before composition can see them. */
+const PREPARE_BEFORE_RESOLVE_SOURCES = new Set<DependencySourceKind>([
+  "marketplace",
+  "git",
+]);
+
+/**
+ * Collect marketplace/git pins attached directly to the given layers.
+ * Used to materialize upstream layers before the first composition resolve.
+ */
+export function collectPluginPinsForPrepare(
+  layerIds: string[],
+): PluginConstraintPin[] {
+  const pins = new Map<string, PluginConstraintPin>();
+  for (const layerId of layerIds) {
+    for (const dependency of listDependencies(layerId)) {
+      if (!PREPARE_BEFORE_RESOLVE_SOURCES.has(dependency.source_kind)) {
+        continue;
+      }
+      pins.set(dependency.ref, {
+        ref: dependency.ref,
+        version_constraint: dependency.version_constraint,
+      });
+    }
+  }
+  return [...pins.values()];
+}
 
 export interface SyncPluginPinsForApplyProgress extends InstallPluginPinsProgress {
   onSyncStart?: (ref: string) => void;

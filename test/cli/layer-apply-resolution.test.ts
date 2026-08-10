@@ -1,12 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/layer-model.ts";
+import {
+  addResourceToLayer,
+  createLayer,
+  getLayerByName,
+} from "../../src/models/layer-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { addLayerAttachment } from "../../src/services/layer-composition.ts";
+import {
+  addLayerAttachment,
+  attachPluginPinToLayer,
+} from "../../src/services/layer-composition.ts";
+
+const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
 
 let ctx: TestContext;
 
@@ -187,5 +196,33 @@ describe("layer apply resolution", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("instruction:context");
     expect(result.stderr).toContain("--override");
+  });
+
+  it("prepares marketplace pins before composition so first apply includes plugin skills", async () => {
+    cpSync(join(fixtureHome, ".claude"), join(ctx.homeDir, ".claude"), {
+      recursive: true,
+    });
+
+    const root = createLayer({ name: "root" });
+    attachPluginPinToLayer(root.id, "formatter@acme-marketplace", "1.2.3");
+    // Deliberately do not call materializeUpstreamPluginLayer — apply must
+    // prepare the pin before the first composition resolve.
+    expect(getLayerByName("formatter", "1.2.3")).toBeUndefined();
+
+    const result = await runCli([
+      "layer",
+      "apply",
+      "root",
+      "--project",
+      ctx.projectDir,
+      "--harness",
+      "claude-code,cursor",
+    ]);
+
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(getLayerByName("formatter", "1.2.3")).toBeDefined();
+    expect(
+      existsSync(join(ctx.projectDir, ".cursor", "rules", "format-code.mdc")),
+    ).toBe(true);
   });
 });
