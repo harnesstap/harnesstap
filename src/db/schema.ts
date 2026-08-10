@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 27;
+const SCHEMA_VERSION = 28;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -216,6 +216,9 @@ const MIGRATIONS: Record<number, Migration> = {
   `,
   26: migrateResourcesToPluginDependencyType,
   27: migrateLayerTablesToPluginTables,
+  28: `
+    ALTER TABLE plugins ADD COLUMN ap_name TEXT NOT NULL DEFAULT '';
+  `,
 };
 
 function tableExists(db: SqliteDatabase, name: string): boolean {

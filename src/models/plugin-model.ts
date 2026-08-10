@@ -8,6 +8,7 @@ import {
 } from "../services/plugin-composition.js";
 import { listDependencies } from "../services/plugin-dependency.js";
 import { claudeConfigFromPluginPins } from "../services/claude-plugin-pins.js";
+import { slugifyApName } from "../services/agent-plugins/name.js";
 import type {
   ClaudeMarketplaceEntry,
   ClaudePluginEntry,
@@ -33,6 +34,7 @@ interface PluginRow {
   needs_config: string;
   overrides: string;
   default_environment_id: string | null;
+  ap_name: string;
   dirty?: number;
   frozen_at: string | null;
   created_at: string;
@@ -123,6 +125,7 @@ function rowToPlugin(row: PluginRow): Plugin {
     ...(row.default_environment_id
       ? { default_environment_id: row.default_environment_id }
       : {}),
+    ...(row.ap_name ? { ap_name: row.ap_name } : {}),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -726,6 +729,21 @@ export function setPluginTags(
     )
     .run(JSON.stringify([...new Set(tags)]), now, pluginId);
   return result.changes > 0;
+}
+
+export function setPluginApName(pluginId: string, apName: string): boolean {
+  const db = getDb();
+  const result = db
+    .prepare("UPDATE plugins SET ap_name = ?, updated_at = ? WHERE id = ?")
+    .run(apName, new Date().toISOString(), pluginId);
+  return result.changes > 0;
+}
+
+/** The AP package name: the stored override, or a slug of the local name. */
+export function resolveApName(plugin: Pick<Plugin, "name" | "ap_name">): string {
+  return plugin.ap_name && plugin.ap_name !== ""
+    ? plugin.ap_name
+    : slugifyApName(plugin.name);
 }
 
 export function updatePluginName(pluginId: string, name: string): boolean {

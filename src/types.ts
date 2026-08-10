@@ -231,6 +231,8 @@ export interface Plugin {
   needs?: string[];
   overrides?: PluginOverrides;
   default_environment_id?: string;
+  /** Stable Agent Plugins package name override; omitted when unset. */
+  ap_name?: string;
   created_at: string;
   updated_at: string;
 }

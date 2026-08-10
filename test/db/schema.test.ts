@@ -42,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(27);
+      expect(versionRow.version).toBe(28);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -64,6 +64,7 @@ describe("initializeSchema", () => {
           "needs_config",
           "overrides",
           "origin",
+          "ap_name",
         ]),
       );
 
@@ -147,7 +148,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 27 }]);
+      expect(versionRows).toEqual([{ version: 28 }]);
     } finally {
       await context.cleanup();
     }
@@ -407,7 +408,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(27);
+      expect(version).toBe(28);
 
       const cols = db
         .prepare("PRAGMA table_info(plugins)")
@@ -477,7 +478,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(27);
+      expect(version).toBe(28);
 
       const pluginCols = db
         .prepare("PRAGMA table_info(plugins)")
@@ -544,7 +545,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(27);
+      expect(version).toBe(28);
 
       const localOrigin = (
         db.prepare("SELECT origin FROM plugins WHERE id = 'local'").get() as {
