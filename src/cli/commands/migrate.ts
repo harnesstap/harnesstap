@@ -9,6 +9,10 @@ import {
   type ScopedExportResult,
   type ScopedImportResult,
 } from "../../services/migrate-scope.js";
+import {
+  migrateOrderToOverrides,
+  type OrderMigrationReport,
+} from "../../services/order-to-override-migration.js";
 import { runMigrateExportWizard } from "../../services/wizards/migrate-export.js";
 import { runMigrateImportWizard } from "../../services/wizards/migrate-import.js";
 import { shouldUseWizard } from "../../services/wizards/shared.js";
@@ -194,6 +198,37 @@ async function handleMigrateImportCommand(
   }
 }
 
+function printMigrateResolveOrderHuman(
+  report: OrderMigrationReport,
+  dryRun: boolean,
+): void {
+  const overrideCount = formatCount(report.overridesWritten.length, "override");
+  const projectCount = formatCount(report.projectsWithSnapshot, "project");
+  const dryRunSuffix = dryRun ? ` ${ui.icons.bullet} dry-run` : "";
+  ui.success(
+    `Migrated ordering → overrides ${ui.icons.bullet} ${overrideCount} across ${projectCount}${dryRunSuffix}`,
+  );
+  for (const warning of report.warnings) {
+    ui.warn(warning);
+  }
+}
+
+function handleMigrateResolveOrderCommand(opts: {
+  dryRun?: boolean;
+  format?: string;
+}): void {
+  const db = getDb();
+  initializeSchema(db, { allowLegacyRead: true });
+  const format = parseOutputFormat(opts.format);
+  const dryRun = opts.dryRun === true;
+  const report = migrateOrderToOverrides({ dryRun });
+  if (format === "json") {
+    printJson(report);
+    return;
+  }
+  printMigrateResolveOrderHuman(report, dryRun);
+}
+
 export function registerMigrateCommands(root: Command): void {
   const migrateCmd = configureCommandGroup(
     root
@@ -226,4 +261,13 @@ export function registerMigrateCommands(root: Command): void {
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Import workspace, layer, or resource from file")
     .action(handleMigrateImportCommand);
+
+  migrateCmd
+    .command("resolve-order")
+    .option("--dry-run", "Report what would be written without writing")
+    .option("--format <mode>", "Output format: human or json", "human")
+    .description(
+      "Convert apply-order dependence into explicit overrides so previously applied results reproduce",
+    )
+    .action(handleMigrateResolveOrderCommand);
 }
