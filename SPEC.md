@@ -12,17 +12,21 @@ The product currently supports these main workflows:
 
 - Initialize local state, discover supported home-directory defaults, and choose global harness preferences.
 - Scan an existing repository (or plugin source) and import agent configuration into a local database.
-- Group imported resources into versioned **local layers** (`name` + `version` only).
-- Diff, doctor, export, import, publish, search, install, or derive layers from a scan.
+- Add skills from a remote or local skill package (`add`), optionally attaching them to a new or existing layer.
+- Group imported resources into versioned **local layers** (`name` + semver); edit the working head, **cut** immutable versions, and open definitions in `$EDITOR`.
+- Diff, doctor, export, import, publish, search, install, or derive layers from a scan or skill package (`layer create --from`).
 - Compose layers by attaching context-side material resources, **`plugin_pin`** references (host marketplace/local plugins), and nested **`layer`** references through one attachment model.
+- Register plugin **marketplaces**, search catalogs, and attach pins with `marketplace` / `plugin`.
 - Apply one or more layers, a local bundle file, or a layer export URL to a project.
+- Declare repo **project profiles** in `.harnesstap/config.toml` and switch with `ht use`.
 - Sync plugin composition resources from marketplace or local install roots via `resource sync`.
 - Sync alias harness outputs, inspect drift from the latest snapshot, and revert a tracked project to an earlier snapshot.
-- Export or import a machine-transfer archive of local layers, harness preferences, and config.
-- Authenticate with HarnessTap Cloud; search, install, and publish layers into org **catalogs**.
-- Create **environments** (blank, from a project, or from configured layer requirements); edit values interactively; bind default environments to layers; switch home active environment; resolve the home → layer-default cascade on `layer apply`.
-- Manage **profiles** (layers tagged `profile`) for global machine presets; switch active profile and apply to home harness paths with `profile use`.
+- Export or import a machine-transfer archive of local layers, harness preferences, and config (`migrate`).
+- Authenticate with HarnessTap Cloud (`auth`); search, install, and publish layers into org **catalogs**.
+- Create **environments** (blank, from a project, or from configured layer requirements); edit values; bind default environments to layers; switch home or session-local active environment; cascade on `layer apply` / `profile use`.
+- Manage **profiles** (layers tagged `profile`) for global machine presets; switch with `profile use` / `profile switch`; stash untracked home resources with `profile stash`.
 - Authenticate HarnessTap Cloud with named **accounts** (`cloud-accounts.json`, `--account` on catalog commands).
+- Optional **desktop** control plane (`apps/desktop`) talks to a local `ht-agent` sidecar (`agent serve` / `ui --serve` for engineering debug).
 
 ## Core concepts
 
@@ -46,9 +50,14 @@ flowchart TB
     PL --> AP
   end
 
+  subgraph Project["project (.harnesstap/config.toml)"]
+    PC[named profiles + envs]
+  end
+
   PubL -->|layer pull| Workspace
   Workspace --> Cascade["home env ◂ layer default env"]
   AP -->|profile use| Global["global harness files ~/.claude …"]
+  PC -->|ht use| Global
   Cascade --> Out[Harness outputs in the project]
 ```
 
@@ -66,6 +75,7 @@ The CLI uses a small set of concepts consistently across commands.
 - `profile`: a layer whose `tags` include the reserved string `profile`; switchable global preset. `profile use` merges the profile stack (including transitive `layer` refs) and applies to machine home harness paths. Stored as a normal layer row — not a separate entity type.
 - `workspace`: the single implicit local library in `~/.harnesstap/harnesstap.db` — all layers, resources, and environments. Share offline with `migrate export` / `import` (`--workspace`, `--layer`, or `--resource`).
 - `account`: a named HarnessTap Cloud login identity in `~/.harnesstap/cloud-accounts.json` (access tokens, refresh tokens, active org). Use `--account <name>` on catalog commands; distinct from a profile layer.
+- `project config`: optional `{project}/.harnesstap/config.toml` declaring named profiles (local / catalog / inline) and environments for `ht use`.
 - `agent harness`: a supported target environment such as Claude Code, Codex, Cursor, or another tool-specific agent wrapper.
 - `main harness`: the project's canonical harness reference. Imports, layer application, and sync planning normalize through this harness first.
 - `alias harness`: an additional supported harness that mirrors the main harness. Alias harnesses use symlinks when the file layout allows it, and generated copies otherwise.
@@ -115,6 +125,7 @@ Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.
 | **Workspace** | Single local SQLite library; offline share via `migrate` | `~/.harnesstap/harnesstap.db` |
 | **Catalog** | Org-scoped published layer collection (multiplayer) | `layer list --search`, `layer pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
+| **Project config** | Repo-declared profiles for `ht use` | `.harnesstap/config.toml` · `config show|init`, `use` |
 
 **Package.json analogy:** a **layer** is the package; **context-side resources** are source files; **`plugin_pin`** / **`layer` ref** are dependencies; **`environment`** is runtime config (.env).
 
@@ -235,11 +246,12 @@ Global options:
 | --- | --- |
 | `layer` | `l` |
 | `resource` | `r` |
-| `project` | `p` |
 | `harness` | `h` |
 | `environment` | `e` |
 | `profile` | `p` |
-| `cloud` | `c` |
+| `auth` | `a` |
+| `migrate` | `m` |
+| `marketplace` | `mkt` |
 
 ## Command surface
 
@@ -249,30 +261,38 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 
 | Command | Current behavior |
 | --- | --- |
-| `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds built-in layers, scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
-| `harnesstap layer ...` | Layer CRUD, **apply**, composition attach/detach, bundle export/import, cloud catalog workflows, diff, and doctor. |
-| `harnesstap migrate ...` | Exports or imports a machine-transfer archive (offline workspace sharing). |
+| `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `default` profile layer (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
+| `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a layer. |
+| `harnesstap layer ...` | Layer CRUD, **cut**, **editor**, **apply**, composition attach/detach, cloud catalog workflows, diff, and doctor. |
+| `harnesstap migrate ...` | Exports or imports workspace archives, layer/resource/environment TOML (offline sharing). |
 | `harnesstap resource ...` | Lists, shows, deletes, and syncs canonical resources. |
+| `harnesstap marketplace ...` | Registers and browses plugin marketplace sources. |
+| `harnesstap plugin ...` | Searches marketplaces and attaches `plugin_pin` refs to layers. |
 | `harnesstap scan`, `mirror`, `status`, `history`, `revert` | Scans, mirrors, reports status/drift, and manages snapshots for git-backed projects. |
+| `harnesstap use` | Switches to a profile/environment declared in `.harnesstap/config.toml`. |
+| `harnesstap config ...` | Shows, validates, or initializes project profile config (`.harnesstap/config.toml`). |
 | `harnesstap harness ...` | Lists harness targets and manages global/project main/alias preferences. |
-| `harnesstap environment ...` | Creates and manages environments (blank, from project, or layer requirements), edits values, secret refs, active-environment pointers, requirement-gap analysis, and cascade preview. |
-| `harnesstap profile ...` | Lists, shows, creates, tags, and switches profile layers; global apply via `profile use`. |
-| `harnesstap cloud ...` | Authenticates with HarnessTap Cloud and manages local cloud accounts. |
+| `harnesstap environment ...` | Creates and manages environments; edits values and secret refs; sets global or session-local active environment; status/drift against terminal env. |
+| `harnesstap profile ...` | Lists, shows, creates, tags, switches, and stashes profile layers; global apply via `profile use`. |
+| `harnesstap auth ...` | Authenticates with HarnessTap Cloud and manages local cloud accounts. |
+| `harnesstap help` / `help scenario` | Core concepts and numbered scenario playbooks. |
+| `harnesstap completion <shell>` | Prints bash/zsh/fish completion scripts (dynamic layer/resource/harness completion). |
+| `harnesstap agent` / `ui` | Engineering debug: loopback agent HTTP server and desktop UI entry (not primary end-user workflows). |
 
 ### `layer` subcommands
 
 | Command | Current behavior |
 | --- | --- |
-| `layer create` | Creates a local layer with optional description, tags, and version. |
-| `layer list` | Lists local layers, then streams remote catalog layers from catalog scope ∪ registered publish catalogs (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). `--local-only` lists local layers only; `--search` filters local and remote. Interactive TTY browse can install a selected remote layer. |
-| `layer show` | Shows layer metadata, resources, dependencies, composition attachments, and default environment when set. |
-| `layer edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
+| `layer create` | Creates a local layer with optional description, tags, and version; or imports a skill package with `--from` (attach selected skills, optional `--install` to hub paths). |
+| `layer list` | Lists local layers, then streams remote catalog layers from catalog scope ∪ registered publish catalogs (`NAME`, `VERSION`, `DESCRIPTION` columns; `--show-id` optional). Dirty heads show a trailing `*` on the version. `--local-only` / `--remote-only`; `--search` filters local and remote. Interactive TTY browse can install a selected remote layer. |
+| `layer show` | Shows layer metadata, resources, dependencies, composition attachments, dirty/frozen state, and default environment when set. |
+| `layer edit` | Edit composition attachments and default environment (interactive checkbox UI, or `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment` scripting). Marks the working head **dirty** after a cut. Selectors may use `type:` prefixes (`skill:foo`, `plugin_pin:posthog@mp`, `layer:baseline`) or `--type` when the prefix is omitted. Plugin pin attach is lazy by default; use `--sync` or `resource sync` to materialize install roots. |
+| `layer editor` | Opens the layer definition in `$EDITOR` (or the system editor) for direct editing. |
+| `layer cut` | Freezes the current working head and advances to a new semver (`--version`). Previous version becomes immutable. |
 | `layer delete` | Deletes a layer by selector. |
-| `migrate export` | Export workspace archive, layer bundle, or resource TOML. |
-| `migrate import` | Import workspace archive, layer bundle, or resource TOML. |
 | `layer apply` | Applies layer selectors, bundle paths, or bundle URLs to a project; resolves environment cascade; serializes per platform; snapshots git-backed projects. Flags: `--strict-plugin-versions`, `--ignore-plugin-versions`, `--sync-plugins`. |
 | `layer pull` | Downloads a published layer and imports it locally (`org/catalog/name[@version]`; `org/library[@version]` accepted during migration). |
-| `layer publish` | Publishes a local layer to effective publish targets (all registered catalogs, or per-layer allow list). One-off `org/catalog` override supported. |
+| `layer publish` | Publishes a local layer to effective publish targets (all registered catalogs, or per-layer allow list). Refuses dirty heads unless `--version` cuts first. One-off `org/catalog` override supported. |
 | `layer publish plan` | Dry-run publish: effective targets and planned versions per catalog. |
 | `layer catalog` | Interactive wizard for per-layer publish bindings. |
 | `layer catalog bindings` | Show or set per-layer publish allow list (`--add` replaces full list, `--remove`, `--clear`). |
@@ -293,17 +313,36 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Behavior |
 | --- | --- |
 | `environment create` | Creates a blank environment (default), from a project (`--from-project`), or from configured layer requirements (`--from-layer`). Interactive wizard on TTY when no mode flags are set. |
-| `environment edit` | Edits environment values interactively; `--format json` returns a read-only snapshot on non-TTY. |
+| `environment edit` | Edits environment values interactively or via scripting flags (`--var` / `--unset-var`, `--model`, `--permission`, `--secret` / `--unset-*`). `--format json` returns a read-only snapshot on non-TTY. |
 | `environment list` | Lists environments with value counts and layer bindings. |
 | `environment show` | Shows environment values, secret refs, and reverse references; `--layer` analyzes requirement gaps against a configured layer. |
 | `environment delete` | Deletes an environment when unreferenced (or with `--force`). |
-| `environment set` | Upserts environment values (`--var`, `--model`, `--permission`). |
-| `environment unset` | Removes environment values. |
-| `environment secret set` / `secret unset` | Manages secret references. |
-| `environment import` / `export` | Reads or writes environment JSONC transport. |
-| `environment use` | Sets the home active environment pointer; `--reapply` opt-in re-runs last applied layers. |
-| `environment active` | Shows active environment and cascade preview. |
-| `environment resolve` | Dry-run merged environment values per cascade tier. |
+| `environment use` | Sets the home active environment pointer; `--local` applies only to the current terminal session. |
+| `environment status` | Shows active environment and whether terminal env vars match expected values; `--check` exits non-zero on drift. |
+
+### `marketplace` / `plugin` subcommands
+
+| Command | Current behavior |
+| --- | --- |
+| `marketplace add <url>` | Registers a plugin marketplace URL in toolkit config. |
+| `marketplace list` | Lists configured marketplace sources. |
+| `marketplace remove <name>` | Removes a marketplace registration. |
+| `marketplace show <name>` | Lists or interactively browses plugins from a marketplace catalog. |
+| `plugin search [query]` | Searches configured marketplace catalogs for plugins. |
+| `plugin add <ref>` | Attaches a marketplace plugin pin to a layer (`--layer`). |
+
+Host install/ensure of pinned plugins still runs through providers when a profile is active or on apply/use — see [Known gaps](#known-gaps-and-non-goals).
+
+### `config` / `use` (project profile config)
+
+Repositories may declare named profiles in `.harnesstap/config.toml` (`urn:harnesstap:project:v1`): local layers, catalog selectors, or inline layer tables, plus optional project-scoped environments.
+
+| Command | Current behavior |
+| --- | --- |
+| `config show` | Shows resolved project profile config. |
+| `config validate` | Validates references (inline layers, default profile/environment keys); exits `1` when invalid. |
+| `config init` | Creates a starter `.harnesstap/config.toml` from local profile layers (`--profile`, `--default`, `--force`). |
+| `use` | Resolves a profile from project config and applies it to **home** harness paths (same materialization path as `profile use`), optionally switching the active environment. `--list` lists profiles without applying; `--profile` selects a key; interactive picker when multiple profiles exist. |
 
 ### `resource` subcommands
 
@@ -319,6 +358,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | Command | Current behavior |
 | --- | --- |
 | `scan` | Detects harnesses, imports resources via hash-aware upsert, respects `.harnesstapignore`, canonicalizes shared `AGENTS.md` instruction imports, prompts on TTY when content differs. Accepts plugin directories and marketplace manifests as scan sources. `--global` installs imported plugin sources into global harness locations. |
+| `use` | Applies a profile from `.harnesstap/config.toml` to home harness paths (see [config / use](#config--use-project-profile-config)). |
 | `status --check` | Compares working tree against the latest apply/sync snapshot. |
 | `mirror` | Re-materializes alias harness outputs from the main harness reference. |
 | `history` | Lists stored snapshots (requires git-backed project). |
@@ -335,7 +375,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `harness project set` | Sets project-scoped main/alias harness preferences and materialization strategy. |
 | `harness project status` | Shows project-scoped harness preferences. |
 
-### `cloud` subcommands
+### `auth` subcommands
 
 | Command | Current behavior |
 | --- | --- |
@@ -352,9 +392,11 @@ A **profile** is a layer whose `tags` include the reserved string `profile`. Pro
 | --- | --- |
 | `profile list` | Lists local profile layers, then streams remote catalog layers with `tag=profile` (same discovery model as `layer list`). Marks the active profile from `active-profile.json`. |
 | `profile show <name>` | Same detail view as `layer show`, plus active profile marker. |
-| `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). |
+| `profile status` | Shows the active profile and whether global harness files match it (drift, pending apply, stack changes). `--check` exits `1` when out of sync. |
 | `profile use <name>` | Resolves and merges the profile stack (transitive `layer` refs), optionally auto-pulls missing published dependencies, applies to **global** harness paths, writes `active-profile.json`, and records a global apply snapshot. If the profile layer has `default_environment_id`, updates the home active environment pointer. |
-| `profile create <name>` | Creates an empty local layer with `tags: ["profile"]`, or promotes an existing layer with the same name. |
+| `profile switch <name>` | Like `profile use`, but restores the previous active profile if the switch fails. |
+| `profile stash` | Stashes untracked on-disk resources for the active profile (git-stash-like). Subcommands: `stash list`, `stash pop`, `stash apply`. |
+| `profile create <name>` | Creates an empty local layer with `tags: ["profile"]`, promotes an existing layer with the same name, or imports from `--from` (skill package). `--use` applies globally after create. |
 | `profile delete <name>` | Demotes a profile layer (removes `profile` tag, clears `active-profile.json` when deleting the active profile) and optionally deletes the underlying layer. |
 | `profile pull <selector>` | Alias for `layer pull`; warns when the installed layer is not profile-tagged. |
 | `profile publish <name>` | Alias for `layer publish` with profile validation warnings (empty stack, unpublished local deps). |
@@ -387,8 +429,16 @@ Remote catalog workflows live on **`layer`**, not `cloud`:
 
 | Command | Current behavior |
 | --- | --- |
-| `migrate export <file>` | Exports local layers, environments (secret refs only), harness preferences, and config as a portable archive. |
-| `migrate import <file>` | Imports a machine-transfer archive into the local workspace. |
+| `migrate export [file]` | Exports workspace archive, layer TOML, resource TOML, or environment TOML (`--workspace`, `--layer`, `--resource`, `--environment`). Interactive when `[file]` omitted on a TTY. Optional `--include-plugins` / `--embed-plugins`. |
+| `migrate import [file]` | Imports a machine-transfer archive or TOML into the local workspace (auto-detects scope; force with `--workspace` / `--layer` / `--resource` / `--environment`). |
+
+### `add`, `help`, `completion`
+
+| Command | Current behavior |
+| --- | --- |
+| `add <source>` | Installs skills from GitHub `owner/repo`, a Git URL, or a local skill-package directory. Discovers skills recursively, imports under a source namespace, installs a subset to the hub (`~/.agents/skills/` or `{project}/.agents/skills/`) with fan-out to harnesses, and optionally creates/attaches a layer. `--list`, `--dry-run`, `--create-layer` / `--layer`. |
+| `help` | Prints core concepts; `help scenario <id>` shows a numbered playbook from `docs/scenarios/`. |
+| `completion <shell>` | Emits bash, zsh, or fish completion (commands, flags, and dynamic names). |
 
 ## CLI UX contract
 
@@ -401,7 +451,7 @@ Structured read/report commands support:
 - `--format human` (default)
 - `--format json`
 
-JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show`, `profile list|show|status|use`, `environment list|show|edit|active|resolve`, `status|history`, `harness list|status`, `layer apply --dry-run`, `init`, `auth status|orgs`, `layer doctor`, `migrate export|import`, `environment create` with `--dry-run`.
+JSON coverage includes (non-exhaustive): `resource list|show`, `layer list|show|cut|apply --dry-run|doctor`, `profile list|show|status|use|switch|stash`, `environment list|show|edit|status|create --dry-run`, `status|history`, `harness list|status`, `init`, `auth status|orgs`, `migrate export|import`, `config show|validate|init`, `use --dry-run`, `add --dry-run|--list`, `marketplace list|show`, `plugin search`.
 
 Mutation commands return concise human verdict lines unless they already expose structured summaries useful to scripts.
 
@@ -437,7 +487,7 @@ When human output supports follow-up commands, it includes canonical identifiers
 
 ## Wizard mode
 
-Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer edit`, `layer from-project`, `layer apply`, `resource delete`, `environment create`, `environment edit`, `environment delete`, `environment use`, `init`, `harness set`, and `harness project set`.
+Several commands support wizard mode for interactive use: `layer pull`, `layer show`, `layer delete`, `layer edit`, `layer editor`, `layer from-project`, `layer apply`, `resource delete`, `environment create`, `environment edit`, `environment delete`, `environment use`, `init`, `harness set`, `harness project set`, `use`, `config init`, `add`, `plugin add`, and `marketplace show`.
 
 Wizard mode triggers when all of these are true:
 
@@ -491,31 +541,39 @@ Persistent operational state lives in SQLite at `~/.harnesstap/harnesstap.db` (o
 | `~/.harnesstap/plugin-refresh-cache.json` | Internal refresh timestamps used during `resource sync` |
 | `~/.harnesstap/environments/<name>.json` | Named environment fragments (JSONC) |
 | `~/.harnesstap/blobs/sha256/…` | Content-addressed resource bodies |
+| `{project}/.harnesstap/config.toml` | Project profile config (`urn:harnesstap:project:v1`) for `ht use` |
 
 Example `config.jsonc`:
 
 ```jsonc
 {
   "plugins": {
-    "refreshMaxAgeHours": 24
-  }
+    "refreshMaxAgeHours": 24,
+    "marketplaces": []
+  },
+  "layerVersionHistoryLimit": 10
 }
 ```
 
-Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age.
+Edit `config.jsonc` directly to tune toolkit options such as plugin refresh age, registered marketplaces, and how many frozen layer versions to retain per name.
 
 ### Schema (logical tables)
 
-**Target model** (single layer table with optional `org_slug`, `catalog_slug`, composition attachments, and `default_environment_id`):
+**Target model** (single layer table with optional `org_slug`, `catalog_slug`, composition attachments, dirty/frozen versioning, and `default_environment_id`):
 
-- `layers` — versioned capabilities (local or published identity).
+- `layers` — versioned capabilities (local or published identity); `dirty` and `frozen_at` track working-head edits and immutable cuts.
+- `layer_working_snapshots` — payload captured when a dirty head diverges from its cut base (schema v23).
 - `layer_resources` — ordered attachments on a layer.
+- `layer_publish_targets` — per-layer publish allow list.
 - `environments`, `environment_resources`, `environment_secret_refs` — named how-value bundles.
 - `projects`, `project_layers` — tracked directories and applied layers.
 - `resources` — canonical configuration items (including `plugin_pin` and `layer` composition resource types).
+- `imported_snapshots`, `imported_snapshot_installs` — plugin/skill-package import install records.
 - `harness_preferences`, `project_harnesses`, `snapshots`, `global_apply_snapshots`, `global_apply_snapshot_installs`, `schema_version`.
 
-**Global apply snapshots** (schema v20): each `profile use` records a `global_apply_snapshots` row plus per-harness file maps in `global_apply_snapshot_installs` for conflict tracking and future revert support. Project-bound `snapshots` remain separate.
+**Current schema version:** **23**. Fresh databases bootstrap at v22 DDL then apply v23. Databases older than v22 cannot upgrade in place — export with `ht migrate export`, remove the old DB, then `ht migrate import`.
+
+**Global apply snapshots:** each `profile use` / `profile switch` / successful `ht use` records a `global_apply_snapshots` row plus per-harness file maps in `global_apply_snapshot_installs` for conflict tracking and future revert support. Project-bound `snapshots` remain separate.
 
 ### Project tracking
 
@@ -584,9 +642,11 @@ A **layer** is the primary composable unit.
 - Nested `layer` refs expand depth-first; published refs resolve through catalog scope and semver constraints.
 - Resource order is preserved during serialization.
 
-**CLI selectors:** ULID; `name` (highest version wins locally); `name@version`; `org/catalog/name@version` for published layers.
+**CLI selectors:** ULID; `name` (highest version / working head wins locally); `name@version`; `org/catalog/name@version` for published layers.
 
-**Implementation (SQLite v15):** composition and apply identity share one `layers` row per capability. `layer_resources` holds ordered attachments. Published identity uses `org_slug` / `catalog_slug` (empty strings for local layers).
+**Version cuts and dirty heads:** Each layer name has a **working head** — the latest editable version. Edits after a cut mark the head **dirty** without changing its semver (human lists show `1.2.0*`; JSON keeps `version` plus `dirty: true`). `layer cut --version <semver>` freezes the current composition (copy-on-write) and advances a clean head. Frozen versions cannot be edited or cut again. At most `layerVersionHistoryLimit` versions are retained per name (default `10` in `config.jsonc`); oldest frozen rows prune on cut. `migrate export --layer` and `layer publish` refuse dirty heads; pass `--version` on `layer publish` to cut and publish in one step.
+
+**Implementation (SQLite v23):** composition and apply identity share one `layers` row per capability version. `layer_resources` holds ordered attachments. Published identity uses `org_slug` / `catalog_slug` (empty strings for local layers). Dirty/frozen metadata and `layer_working_snapshots` support cut history.
 
 ### Workspace model
 
@@ -600,7 +660,7 @@ Not every host surface round-trips through apply or mirror. Static resources (sk
 
 ### Native serializers
 
-Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `opencode`, `github-copilot`, and `copilot-cli`. Remaining registered harnesses use the generic serializer.
+Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, and `grok-build`. Remaining registered harnesses use the generic serializer.
 
 ### Generic serializer
 
@@ -608,7 +668,7 @@ Other registered harnesses use the generic serializer with registry-declared pat
 
 ### Registered harnesses
 
-`harness list` is the executable source of truth (31 harness IDs at time of writing). `harness status` and `harness project status` report configured main and alias harness selection.
+`harness list` is the executable source of truth (**41** harness IDs at time of writing). `harness list --supported` filters to the nine native serializers. `harness status` and `harness project status` report configured main and alias harness selection. See [docs/supported-harnesses.md](docs/supported-harnesses.md) for the full capability matrix.
 
 ## Scan, apply, import, and sync behavior
 
@@ -622,7 +682,7 @@ The CLI favors deterministic file I/O over merge-heavy workflows.
 
 **`.harnesstapignore`:** gitignore-style patterns at the project root exclude paths from scan and `layer from-project`. Applies to project-derived flows only (not home-default discovery during `init`).
 
-**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
+**Plugin sources:** scanning a plugin root (`.cursor-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.github/plugin/plugin.json`, Goose Open Plugins manifests) or marketplace manifest snapshots plugin content into canonical resources. `--global` installs into each configured harness's global paths; `--harness` limits targets.
 
 **Dual-mode repos:** when a project has both harness files and a plugin manifest, `scan` automatically merges harness scan with plugin-source import. `layer from-project` always uses the merged scan.
 
@@ -646,16 +706,16 @@ When generated files already exist, `layer apply` uses `--on-conflict replace|sk
 
 ### Global profile apply
 
-`profile use` applies merged profile layer resources to **machine home** harness paths (e.g. `~/.claude/`, `~/.codex/`). Flow:
+`profile use` (and `profile switch`, `ht use`) applies merged profile layer resources to **machine home** harness paths (e.g. `~/.claude/`, `~/.codex/`). Flow:
 
-1. Resolve profile layer by selector; require `tags` includes `profile`.
+1. Resolve profile layer by selector; require `tags` includes `profile` (or resolve from project config for `ht use`).
 2. `mergeLayersForApply` for the profile layer plus transitive `layer` refs (auto-pull missing published refs unless `--no-pull`).
 3. Resolve harness targets from global `harness_preferences` when `--harness` is omitted.
 4. `resolveEnvironmentCascadeForApply` with `projectRoot: homedir()`, configured layer IDs from the merged stack.
 5. `preparePluginPinsForApply` at global/home scope.
 6. `applyToGlobal` with conflict policy; record `global_apply_snapshots`.
 
-`environment use` without `--project` remains valid for env-only switches; prefer `profile use` when changing both stack and default environment.
+`profile switch` wraps the same path and restores the previous active profile if apply fails. `environment use` (optionally `--local` for session scope) remains valid for env-only switches; prefer `profile use` when changing both stack and default environment.
 
 For `layer apply`, when no `--harness` list is passed, platforms are detected from the target directory. If none are detected, the command warns and does not write files.
 
@@ -681,19 +741,24 @@ Orphans are removed only with `--prune`.
 
 ## Transport formats
 
-All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport files are rejected. Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC.
+All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport files are rejected. Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. Project profile config (`.harnesstap/config.toml`) is TOML with schema `urn:harnesstap:project:v1`.
 
 ### Layer v1
 
 `urn:harnesstap:layer:v1` in `*.harnesstap.toml`. Each file contains one or more `[[layers]]` rows with nested `[[layers.resources]]`, optional `plugin_pins` (or `[[layers.plugin_pins]]` tables), optional root `embedded_plugins`, and optional `claude` configuration. Multiline resource and host-plugin file bodies use TOML `"""` strings.
 
-Default export path: `<name>.harnesstap.toml`.
+Default export path: `<name>.harnesstap.toml`. Dirty heads cannot be exported — cut first.
+
+### Resource and environment TOML
+
+- `urn:harnesstap:resource:v1` — single-resource export via `migrate export --resource`.
+- Environment export via `migrate export --environment` (secret refs only; never secret values).
 
 ### Machine transfer archives
 
-`migrate export` writes layer bundles and environment definitions inside a tar.gz archive with JSON metadata. `migrate import` restores them into the local workspace. Archives include harness preferences, config, and `active-profile.json` when present. Environment secret refs are preserved; secret values are not embedded. They do not include tracked project records, project snapshots, or cloud accounts.
+`migrate export --workspace` writes layer bundles and environment definitions inside a tar.gz archive with JSON metadata. `migrate import` restores them into the local workspace. Archives include harness preferences, config, and `active-profile.json` when present. Environment secret refs are preserved; secret values are not embedded. They do not include tracked project records, project snapshots, or cloud accounts.
 
-Use `migrate export` / `import` for workspace, layer, or resource sharing.
+Use `migrate export` / `import` for workspace, layer, resource, or environment sharing.
 
 ## HarnessTap Cloud
 
@@ -756,7 +821,7 @@ The primary walkthrough is a single adoption story (`init` → `scan` → `resou
 
 ## Build, test, and release workflow
 
-The project uses Bun for local dependency management, CI, and builds. Distribution is through the npm registry.
+The project uses Bun for local dependency management, CI, and builds. Distribution of the CLI is through the npm registry. An optional Tauri desktop app lives under `apps/desktop/` (`bun run desktop:dev` / `desktop:build`); it is not part of the published npm package.
 
 ```bash
 bun install
@@ -766,10 +831,12 @@ bun run test:run
 bun run build
 ```
 
-`tsup` builds the CLI from `src/index.ts` into `dist/` as a Node 20 ESM CLI with declaration files and a `#!/usr/bin/env node` banner. `prepublishOnly` runs `bun run build`.
+`tsup` builds the CLI from `src/index.ts` into `dist/` as a Node 20 ESM CLI with declaration files and a `#!/usr/bin/env node` banner. `prepublishOnly` runs `bun run build`. The agent sidecar used by desktop is built with `bun run build:sidecar`.
 
 ## Known gaps and non-goals
 
-- Remaining registered harnesses (beyond the six dedicated serializers) use path-driven generic serialization.
+- Remaining registered harnesses (beyond the nine dedicated serializers) use path-driven generic serialization.
 - `migrate export --layer` / `migrate import` operate on layer TOML bundles; full workspace handoff uses archive paths (`.tar.gz`).
 - HarnessTap does not host a plugin marketplace. CLI `marketplace` / `plugin search|add` browse configured marketplace URLs and pin plugins onto layers; host install/ensure runs through providers when the target profile is active (or on apply/use). Uninstall/disable remains out of scope.
+- Desktop (`apps/desktop`) and `agent serve` / `ui` are engineering/control-plane surfaces; the published npm package remains the CLI.
+- Project profile config (`ht use`) applies selected stacks to **home** harness paths today — it does not replace `layer apply` for repository working-tree baselines.
