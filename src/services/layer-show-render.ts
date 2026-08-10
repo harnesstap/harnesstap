@@ -110,7 +110,7 @@ export function renderLayerShow(
 ): string {
   const allResources = getLayerResources(layer.id);
   const resources = allResources.filter(
-    (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+    (resource) => resource.type !== "plugin",
   );
   const pluginPins = listAttachedPluginPins(layer.id);
   const dependencies = listLayerDependencies(layer.id);

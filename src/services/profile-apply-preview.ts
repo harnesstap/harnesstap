@@ -297,7 +297,7 @@ function buildPreviewFileChanges(
 }
 
 function isMaterialResource(resource: Resource): boolean {
-  return resource.type !== "plugin_pin" && resource.type !== "layer";
+  return resource.type !== "plugin";
 }
 
 export interface CollectExpectedManagedFilesInput {

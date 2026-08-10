@@ -41,7 +41,7 @@ function completeUncombineAttachments(layerId: string): CompletionCandidate[] {
   const candidates: CompletionCandidate[] = [];
 
   for (const resource of getLayerResources(layerId)) {
-    if (resource.type === "plugin_pin") {
+    if (resource.type === "plugin") {
       candidates.push({
         value: formatResourceSelector(resource, { includeType: true }),
         description: formatPluginRef(resource),

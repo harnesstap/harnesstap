@@ -276,7 +276,7 @@ async function handleInitCommand(opts: {
   const homeDefaults = await scanAndPersistHomeDefaults();
   if (opts.defaultProfile !== false) {
     const homeProfileResources = homeDefaults.resolved.filter(
-      (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+      (resource) => resource.type !== "plugin",
     );
     let defaultProfileLayer = listLayers().find(
       (layer) => layer.name === "default" && isProfileLayer(layer),
@@ -284,7 +284,7 @@ async function handleInitCommand(opts: {
     const shouldSeedDefaultProfile =
       !defaultProfileLayer
       || getLayerResources(defaultProfileLayer.id).filter(
-        (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+        (resource) => resource.type !== "plugin",
       ).length === 0;
 
     if (!defaultProfileLayer) {

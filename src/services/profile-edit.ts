@@ -72,7 +72,13 @@ function resolveProfileLayer(selector: string): Layer {
 
 /** Direct attachments shown in Edit (material resources + plugin pins; not nested layers). */
 function editableDirectResources(resources: Resource[]): Resource[] {
-  return resources.filter((resource) => resource.type !== "layer");
+  return resources.filter((resource) => {
+    if (resource.type !== "plugin") {
+      return true;
+    }
+    const metadata = resource.metadata as { source_kind?: string };
+    return metadata.source_kind !== "local";
+  });
 }
 
 function layerRefResourceId(
@@ -81,7 +87,9 @@ function layerRefResourceId(
 ): string | null {
   const attached = getLayerResources(layerId).find(
     (resource) =>
-      resource.type === "layer" && resource.name === dependencyName,
+      resource.type === "plugin" &&
+      resource.name === dependencyName &&
+      (resource.metadata as { source_kind?: string }).source_kind === "local",
   );
   return attached?.id ?? null;
 }
@@ -150,7 +158,7 @@ export async function attachProfileLayer(
   await addLayerAttachment({
     layer: profile,
     selector: layer.name,
-    type: "layer",
+    type: "plugin",
   });
   return getProfileDetail(profile.name);
 }
@@ -164,8 +172,8 @@ export function attachProfileResource(
   if (!resource) {
     throw new Error(`Resource not found: ${resourceId}`);
   }
-  if (resource.type === "layer") {
-    throw new Error("Use layer attachment for type \"layer\"");
+  if (resource.type === "plugin") {
+    throw new Error("Use layer attachment for type \"plugin\"");
   }
   const already = getLayerResources(profile.id).some(
     (entry) => entry.id === resource.id,
@@ -186,7 +194,7 @@ export function detachProfileAttachment(
     const result = removeLayerAttachment({
       layer: profile,
       selector: input.dependencyName.trim(),
-      type: "layer",
+      type: "plugin",
     });
     if (!result.removed) {
       throw new Error(result.message);
@@ -201,17 +209,11 @@ export function detachProfileAttachment(
     if (!attached) {
       throw new Error(`Attachment not found on profile: ${resourceId}`);
     }
-    if (attached.type === "layer") {
-      removeLayerAttachment({
-        layer: profile,
-        selector: attached.name,
-        type: "layer",
-      });
-    } else if (attached.type === "plugin_pin") {
+    if (attached.type === "plugin") {
       removeLayerAttachment({
         layer: profile,
         selector: formatPluginRef(attached),
-        type: "plugin_pin",
+        type: "plugin",
       });
     } else {
       removeResourceFromLayer(profile.id, resourceId);

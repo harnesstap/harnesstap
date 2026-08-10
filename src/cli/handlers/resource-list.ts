@@ -18,7 +18,7 @@ export function isLayerAttachmentOnlyType(type: string | undefined): boolean {
   if (!type) {
     return false;
   }
-  return type === "plugin_pin" || type === "layer";
+  return type === "plugin";
 }
 
 export function resolveResourceListType(

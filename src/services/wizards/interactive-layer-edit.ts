@@ -34,7 +34,7 @@ type PromptContext = {
 };
 
 function requiresVersionConstraint(row: LayerEditRow): boolean {
-  return row.type === "plugin_pin" || row.type === "layer";
+  return row.type === "plugin";
 }
 
 function renderCompositionShow(row: LayerEditRow): string {

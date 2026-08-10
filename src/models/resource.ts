@@ -515,13 +515,13 @@ export function renameLayerTypedResources(
   const now = new Date().toISOString();
   const rows = db
     .prepare(
-      `SELECT id, namespace, origin_ref FROM resources WHERE type = 'layer' AND name = ?`,
+      `SELECT id, namespace, origin_ref FROM resources WHERE type = 'plugin' AND name = ?`,
     )
     .all(oldName) as Array<{ id: string; namespace: string; origin_ref: string }>;
 
   let updated = 0;
   for (const row of rows) {
-    if (findResourceByKey("layer", newName, row.namespace)) {
+    if (findResourceByKey("plugin", newName, row.namespace)) {
       continue;
     }
     const originRef = row.origin_ref === oldName ? newName : row.origin_ref;

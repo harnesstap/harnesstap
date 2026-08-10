@@ -196,7 +196,7 @@ export function mergeLayersById(layerIds: string[]): MergedLayerContent {
     layers.push(layer);
 
     for (const resource of getLayerResources(layer.id)) {
-      if (resource.type === "plugin_pin" || resource.type === "layer") {
+      if (resource.type === "plugin") {
         continue;
       }
       const key = resourceKey(resource);

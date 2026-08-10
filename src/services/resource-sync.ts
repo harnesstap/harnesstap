@@ -234,17 +234,17 @@ export async function syncLinkedResources(
 ): Promise<SyncLinkedResourcesResult> {
   if (options.selector) {
     const resolved = resolveResource(options.selector, { mode: "compose" });
-    if (resolved.status === "found" && resolved.resource.type === "plugin_pin") {
+    if (resolved.status === "found" && resolved.resource.type === "plugin") {
       return syncPluginResource(resolved.resource, options);
     }
   }
 
   const pluginTargets = options.selector
     ? []
-    : listResources({ type: "plugin_pin", includeComposition: true });
+    : listResources({ type: "plugin", includeComposition: true });
 
   const linkedTargets = listLinkedResources(options.selector).filter(
-    (resource) => resource.type !== "plugin_pin",
+    (resource) => resource.type !== "plugin",
   );
 
   const aggregated: SyncLinkedResourcesResult = {

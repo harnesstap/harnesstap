@@ -1,8 +1,10 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 25;
+const SCHEMA_VERSION = 26;
 
-const MIGRATIONS: Record<number, string> = {
+type Migration = string | ((db: SqliteDatabase) => void);
+
+const MIGRATIONS: Record<number, Migration> = {
   22: `
     CREATE TABLE IF NOT EXISTS resources (
       id          TEXT PRIMARY KEY,
@@ -212,11 +214,154 @@ const MIGRATIONS: Record<number, string> = {
     UPDATE layers SET origin = 'catalog'
       WHERE org_slug != '' AND catalog_slug != '';
   `,
+  26: migrateResourcesToPluginDependencyType,
 };
+
+function tableExists(db: SqliteDatabase, name: string): boolean {
+  const row = db
+    .prepare(
+      `SELECT 1 as ok FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`,
+    )
+    .get(name) as { ok: number } | undefined;
+  return row !== undefined;
+}
+
+/**
+ * Rebuild resources CHECK to accept `plugin` (not plugin_pin/layer), convert
+ * existing composition rows, and de-dupe (type,name,namespace) collisions by
+ * keeping the plugin_pin row and repointing layer_resources.
+ *
+ * Adaptation: FK pragma must be toggled outside the migration transaction
+ * (SQLite ignores foreign_keys changes mid-transaction), so initializeSchema
+ * disables FKs around the whole upgrade loop when running v26+.
+ * Incomplete upgrade fixtures without a resources table are a no-op.
+ */
+function migrateResourcesToPluginDependencyType(db: SqliteDatabase): void {
+  if (!tableExists(db, "resources")) {
+    return;
+  }
+
+  if (tableExists(db, "layer_resources")) {
+    // Drop layer attachments that would collide on PK after repointing to the pin.
+    db.exec(`
+      DELETE FROM layer_resources
+      WHERE resource_id IN (
+        SELECT l.id FROM resources l
+        INNER JOIN resources p
+          ON p.type = 'plugin_pin' AND l.type = 'layer'
+         AND p.name = l.name AND p.namespace = l.namespace
+      )
+      AND EXISTS (
+        SELECT 1
+        FROM layer_resources lr_pin
+        INNER JOIN resources p ON p.id = lr_pin.resource_id AND p.type = 'plugin_pin'
+        INNER JOIN resources l ON l.id = layer_resources.resource_id AND l.type = 'layer'
+        WHERE lr_pin.layer_id = layer_resources.layer_id
+          AND p.name = l.name
+          AND p.namespace = l.namespace
+      );
+    `);
+
+    db.exec(`
+      UPDATE layer_resources
+      SET resource_id = (
+        SELECT p.id FROM resources p
+        INNER JOIN resources l ON l.id = layer_resources.resource_id
+        WHERE p.type = 'plugin_pin' AND l.type = 'layer'
+          AND p.name = l.name AND p.namespace = l.namespace
+      )
+      WHERE resource_id IN (
+        SELECT l.id FROM resources l
+        INNER JOIN resources p
+          ON p.type = 'plugin_pin' AND l.type = 'layer'
+         AND p.name = l.name AND p.namespace = l.namespace
+      );
+    `);
+  }
+
+  db.exec(`
+    DELETE FROM resources
+    WHERE type = 'layer'
+      AND EXISTS (
+        SELECT 1 FROM resources p
+        WHERE p.type = 'plugin_pin'
+          AND p.name = resources.name
+          AND p.namespace = resources.namespace
+      );
+  `);
+
+  db.exec(`
+    CREATE TABLE resources_new (
+      id          TEXT PRIMARY KEY,
+      type        TEXT NOT NULL CHECK(type IN (
+        'instruction','skill','rule','mcp_server','permission',
+        'hook','agent','command','env_var','model_config','plugin'
+      )),
+      name        TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      content     TEXT NOT NULL DEFAULT '',
+      metadata    TEXT NOT NULL DEFAULT '{}',
+      source      TEXT NOT NULL DEFAULT 'manual',
+      namespace   TEXT NOT NULL DEFAULT '',
+      origin_kind TEXT NOT NULL DEFAULT 'manual'
+        CHECK(origin_kind IN ('local_snapshot','marketplace_link','manual')),
+      origin_ref  TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '',
+      content_blob_ref TEXT NOT NULL DEFAULT '',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    );
+
+    INSERT INTO resources_new
+      SELECT
+        id,
+        CASE WHEN type IN ('plugin_pin','layer') THEN 'plugin' ELSE type END,
+        name,
+        description,
+        content,
+        CASE
+          WHEN type = 'plugin_pin' THEN json_set(
+            CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END,
+            '$.source_kind',
+            COALESCE(json_extract(metadata, '$.source_kind'), 'marketplace')
+          )
+          WHEN type = 'layer' THEN json_set(
+            CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END,
+            '$.source_kind', 'local'
+          )
+          ELSE metadata
+        END,
+        CASE WHEN type IN ('plugin_pin','layer') THEN 'composition:plugin' ELSE source END,
+        namespace,
+        origin_kind,
+        CASE WHEN type = 'layer' AND origin_ref = '' THEN name ELSE origin_ref END,
+        content_hash,
+        content_blob_ref,
+        created_at,
+        updated_at
+      FROM resources;
+
+    DROP TABLE resources;
+    ALTER TABLE resources_new RENAME TO resources;
+
+    CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
+    CREATE INDEX IF NOT EXISTS idx_resources_name ON resources(name);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_type_name_namespace
+      ON resources(type, name, namespace);
+  `);
+}
 
 export interface InitializeSchemaOptions {
   /** Allow opening a pre-v20 database for read-only export (migrate export). */
   allowLegacyRead?: boolean;
+}
+
+function runMigration(db: SqliteDatabase, migration: Migration): void {
+  if (typeof migration === "function") {
+    migration(db);
+  } else {
+    db.exec(migration);
+  }
 }
 
 export function initializeSchema(
@@ -238,23 +383,34 @@ export function initializeSchema(
     );
   }
 
-  db.transaction(() => {
-    if (currentVersion === 0) {
-      const bootstrap = MIGRATIONS[22];
-      if (bootstrap) {
-        db.exec(bootstrap);
+  // Table rebuilds (v26) need FKs off; SQLite ignores FK pragma changes inside a transaction.
+  const needsFkOff = currentVersion < 26 && SCHEMA_VERSION >= 26;
+  if (needsFkOff) {
+    db.exec("PRAGMA foreign_keys = OFF");
+  }
+  try {
+    db.transaction(() => {
+      if (currentVersion === 0) {
+        const bootstrap = MIGRATIONS[22];
+        if (bootstrap) {
+          runMigration(db, bootstrap);
+        }
       }
-    }
 
-    const startVersion = currentVersion === 0 ? 23 : currentVersion + 1;
-    for (let v = startVersion; v <= SCHEMA_VERSION; v++) {
-      const migration = MIGRATIONS[v];
-      if (migration) {
-        db.exec(migration);
+      const startVersion = currentVersion === 0 ? 23 : currentVersion + 1;
+      for (let v = startVersion; v <= SCHEMA_VERSION; v++) {
+        const migration = MIGRATIONS[v];
+        if (migration) {
+          runMigration(db, migration);
+        }
+        db.prepare("UPDATE schema_version SET version = ?").run(v);
       }
-      db.prepare("UPDATE schema_version SET version = ?").run(v);
+    })();
+  } finally {
+    if (needsFkOff) {
+      db.exec("PRAGMA foreign_keys = ON");
     }
-  })();
+  }
 }
 
 function getSchemaVersion(db: SqliteDatabase): number {

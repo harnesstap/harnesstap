@@ -13,7 +13,7 @@ import {
   toContentsResource,
 } from "./profile-contents.js";
 
-const COMPOSITION_RESOURCE_TYPES = new Set(["layer", "plugin_pin"]);
+const COMPOSITION_RESOURCE_TYPES = new Set(["plugin"]);
 
 export function removeResourceFromProfile(input: {
   profileSelector: string;

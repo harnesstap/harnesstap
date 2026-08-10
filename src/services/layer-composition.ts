@@ -1,28 +1,22 @@
-import { getDb } from "../db/connection.js";
 import {
   addResourceToLayer,
-  getLayerResources,
   removeResourceFromLayer,
   syncClaudeLayerPluginsAfterAdd,
   syncClaudeLayerPluginsAfterRemove,
 } from "../models/layer-model.js";
-import {
-  findResourceByKey,
-  normalizeResourceInput,
-  resolveResource,
-  upsertResource,
-} from "../models/resource.js";
+import { findResourceByKey, resolveResource } from "../models/resource.js";
 import { markLayerDirty } from "./layer-versioning.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import {
+  addDependency,
+  ensureDependencyResource,
+  listDependencies,
+  parseDependencyRef,
+  removeDependency,
+} from "./plugin-dependency.js";
 import { parseResourceSelector } from "./resource-selector.js";
 import { syncPluginResource } from "./resource-sync.js";
-import type {
-  Layer,
-  LayerResourceMetadata,
-  PluginPinMetadata,
-  Resource,
-  ResourceType,
-} from "../types.js";
+import type { Layer, Resource, ResourceType } from "../types.js";
 import {
   COMPOSITION_RESOURCE_TYPES,
   LISTABLE_RESOURCE_TYPES,
@@ -77,7 +71,7 @@ export function findPluginResourceByPin(
 ): Resource | undefined {
   const identity = parsePluginRef(ref);
   const withConstraint = findResourceByKey(
-    "plugin_pin",
+    "plugin",
     identity.name,
     pluginResourceNamespace(identity, versionConstraint),
   );
@@ -85,50 +79,43 @@ export function findPluginResourceByPin(
     return withConstraint;
   }
   if (!versionConstraint) {
-    return findResourceByKey("plugin_pin", identity.name, identity.namespace);
+    return findResourceByKey("plugin", identity.name, identity.namespace);
   }
   return undefined;
 }
 
+/** @deprecated Prefer parseDependencyRef from plugin-dependency.ts */
 export function parsePluginRef(ref: string): {
   name: string;
   namespace: string;
   origin_ref: string;
 } {
-  const trimmed = ref.trim();
-  if (trimmed.startsWith("./") || trimmed.startsWith("../")) {
-    const name = trimmed.split("/").filter(Boolean).pop() ?? trimmed;
-    return { name, namespace: "", origin_ref: trimmed };
-  }
-
-  const at = trimmed.lastIndexOf("@");
-  if (at === -1) {
-    return { name: trimmed, namespace: "", origin_ref: trimmed };
-  }
-
-  const name = trimmed.slice(0, at);
-  const namespace = trimmed.slice(at + 1);
-  return { name, namespace, origin_ref: trimmed };
-}
-
-function pluginMetadataFromRef(
-  ref: string,
-  opts?: {
-    versionConstraint?: string;
-    portable?: "reference" | "embed";
-  },
-): PluginPinMetadata {
-  const parsed = parsePluginRef(ref);
-  const isLocal = parsed.namespace === "" && parsed.origin_ref.startsWith(".");
+  const parsed = parseDependencyRef(ref);
   return {
-    source_kind: isLocal ? "local" : "marketplace",
-    marketplace_name: parsed.namespace || undefined,
-    version_constraint: opts?.versionConstraint,
-    sync_status: "never_synced",
-    portable: opts?.portable ?? "reference",
+    name: parsed.name,
+    namespace: parsed.namespace,
+    origin_ref: parsed.origin_ref,
   };
 }
 
+function stripTypePrefix(selector: string): string {
+  const colonIndex = selector.indexOf(":");
+  if (colonIndex === -1) {
+    return selector;
+  }
+  const type = selector.slice(0, colonIndex);
+  if (
+    type === "plugin" ||
+    type === "plugin_pin" ||
+    type === "layer" ||
+    (RESOURCE_TYPES as readonly string[]).includes(type)
+  ) {
+    return selector.slice(colonIndex + 1);
+  }
+  return selector;
+}
+
+/** @deprecated Use ensureDependencyResource */
 export function ensurePluginResource(
   selector: string,
   opts?: {
@@ -136,122 +123,29 @@ export function ensurePluginResource(
     portable?: "reference" | "embed";
   },
 ): Resource {
-  const parsed = parseResourceSelector(selector);
-  const type = parsed.type ?? "plugin_pin";
-  if (type !== "plugin_pin") {
-    throw new Error(`Expected plugin_pin selector, got type: ${type}`);
-  }
-
-  const ref = parsed.namespace ? `${parsed.name}@${parsed.namespace}` : parsed.name;
-  const identity = parsePluginRef(ref);
-  const namespace = pluginResourceNamespace(identity, opts?.versionConstraint);
-  const existing = findResourceByKey("plugin_pin", identity.name, namespace);
-  if (existing) {
-    if (opts?.versionConstraint) {
-      const metadata = {
-        ...(existing.metadata as PluginPinMetadata),
-        version_constraint: opts.versionConstraint,
-      };
-      if (opts.portable) {
-        metadata.portable = opts.portable;
-      }
-      const db = getDb();
-      db.prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?").run(
-        JSON.stringify(metadata),
-        new Date().toISOString(),
-        existing.id,
-      );
-      return { ...existing, metadata };
-    }
-    return existing;
-  }
-
-  const metadata = pluginMetadataFromRef(ref, opts);
-
-  const result = upsertResource(
-    normalizeResourceInput({
-      type: "plugin_pin",
-      name: identity.name,
-      namespace,
-      description: `Plugin pin: ${ref}`,
-      content: "{}",
-      metadata,
-      source: "composition:plugin_pin",
-      origin_kind: identity.namespace ? "marketplace_link" : "manual",
-      origin_ref: identity.origin_ref,
-    }),
-    { policy: "overwrite" },
-  );
-
-  if (result.action === "skipped") {
-    throw new Error(`Failed to create plugin resource: ${ref}`);
-  }
-  return result.resource;
+  const ref = stripTypePrefix(selector);
+  return ensureDependencyResource(ref, opts);
 }
 
+/** @deprecated Use ensureDependencyResource */
 export function ensureLayerResource(
   layerName: string,
   opts?: { versionConstraint?: string },
 ): Resource {
-  const parsed = parseResourceSelector(layerName);
-  const name = parsed.type === "layer" ? parsed.name : layerName.split("@")[0] ?? layerName;
-  if (!name) {
-    throw new Error(`Invalid layer selector: ${layerName}`);
-  }
-
-  const versionConstraint =
-    opts?.versionConstraint ??
-    (parsed.namespace && parsed.type === "layer" ? parsed.namespace : undefined);
-  const namespace = versionConstraint ?? "";
-
-  if (versionConstraint) {
-    parseVersionConstraint(versionConstraint);
-  }
-
-  const existing = findResourceByKey("layer", name, namespace);
-  if (existing) {
-    return existing;
-  }
-
-  const metadata: LayerResourceMetadata = {};
-  if (versionConstraint) {
-    metadata.version_constraint = versionConstraint;
-  }
-
-  const result = upsertResource(
-    normalizeResourceInput({
-      type: "layer",
-      name,
-      namespace,
-      description: `Layer reference: ${name}${versionConstraint ? `@${versionConstraint}` : ""}`,
-      content: "{}",
-      metadata,
-      source: "composition:layer",
-      origin_kind: "manual",
-      origin_ref: name,
-    }),
-    { policy: "overwrite" },
-  );
-
-  if (result.action === "skipped") {
-    throw new Error(`Failed to create layer resource: ${name}`);
-  }
-  return result.resource;
+  const ref = stripTypePrefix(layerName);
+  return ensureDependencyResource(ref, {
+    ...(opts?.versionConstraint ? { versionConstraint: opts.versionConstraint } : {}),
+  });
 }
 
-export function listAttachedPluginPins(pluginId: string): PluginPinView[] {
-  return getLayerResources(pluginId)
-    .filter((resource) => resource.type === "plugin_pin")
-    .map((resource) => {
-      const metadata = resource.metadata as PluginPinMetadata;
-      const ref = formatPluginRef(resource);
-      return {
-        ref,
-        version_constraint: metadata.version_constraint ?? "",
-        embed_on_export: metadata.portable === "embed",
-        resource,
-      };
-    });
+/** @deprecated Use listDependencies */
+export function listAttachedPluginPins(layerId: string): PluginPinView[] {
+  return listDependencies(layerId).map((dependency) => ({
+    ref: dependency.ref,
+    version_constraint: dependency.version_constraint,
+    embed_on_export: dependency.embed_on_export,
+    resource: dependency.resource,
+  }));
 }
 
 export interface LayerPluginRow {
@@ -262,30 +156,26 @@ export interface LayerPluginRow {
   embed_on_export: boolean;
 }
 
+/** @deprecated Use addDependency */
 export function attachPluginPinToLayer(
   layerId: string,
   ref: string,
   versionConstraint: string,
   opts?: { embedOnExport?: boolean; order?: number },
 ): void {
-  markLayerDirty(layerId);
-  const selector = ref.includes(":") ? ref : `plugin_pin:${ref}`;
   const constraint =
     versionConstraint === "latest" || versionConstraint === "*"
       ? undefined
       : versionConstraint;
-  const resource = ensurePluginResource(selector, {
-    versionConstraint: constraint,
-    portable: opts?.embedOnExport ? "embed" : "reference",
+  addDependency(layerId, ref, {
+    ...(constraint ? { versionConstraint: constraint } : {}),
+    ...(opts?.embedOnExport ? { embedOnExport: true } : {}),
   });
-  addResourceToLayer(layerId, resource.id);
 }
 
+/** @deprecated Use removeDependency */
 export function detachPluginPinFromLayer(layerId: string, ref: string): void {
-  const pin = listAttachedPluginPins(layerId).find((entry) => entry.ref === ref);
-  if (!pin) return;
-  markLayerDirty(layerId);
-  removeResourceFromLayer(layerId, pin.resource.id);
+  removeDependency(layerId, ref);
 }
 
 export function listLayerPlugins(layerId: string): LayerPluginRow[] {
@@ -298,26 +188,31 @@ export function listLayerPlugins(layerId: string): LayerPluginRow[] {
   }));
 }
 
-export function listAttachedLayerRefs(pluginId: string): LayerRefView[] {
-  return getLayerResources(pluginId)
-    .filter((resource) => resource.type === "layer")
-    .map((resource) => {
-      const metadata = resource.metadata as LayerResourceMetadata;
-      return {
-        dependency_name: resource.name,
-        version_constraint:
-          metadata.version_constraint ?? resource.namespace ?? "",
-        resource,
-      };
-    });
+/** @deprecated Use listDependencies */
+export function listAttachedLayerRefs(layerId: string): LayerRefView[] {
+  return listDependencies(layerId).map((dependency) => ({
+    dependency_name: dependency.name,
+    version_constraint: dependency.version_constraint,
+    resource: dependency.resource,
+  }));
 }
 
 export function attachCompositionResource(
-  pluginId: string,
+  layerId: string,
   resource: Resource,
 ): void {
-  markLayerDirty(pluginId);
-  addResourceToLayer(pluginId, resource.id);
+  markLayerDirty(layerId);
+  addResourceToLayer(layerId, resource.id);
+}
+
+function normalizeCompositionType(type: string): ResourceType | undefined {
+  if (type === "plugin" || type === "plugin") {
+    return "plugin";
+  }
+  if ((RESOURCE_TYPES as readonly string[]).includes(type)) {
+    return type as ResourceType;
+  }
+  return undefined;
 }
 
 export function resolveAttachmentType(
@@ -327,16 +222,18 @@ export function resolveAttachmentType(
 ): ResourceType {
   const parsed = parseResourceSelector(selector);
   if (parsed.type) {
-    if (!(RESOURCE_TYPES as readonly string[]).includes(parsed.type)) {
+    const normalized = normalizeCompositionType(parsed.type);
+    if (!normalized) {
       throw new Error(`Invalid --type: ${parsed.type}`);
     }
-    return parsed.type;
+    return normalized;
   }
   if (explicitType) {
-    if (!(RESOURCE_TYPES as readonly string[]).includes(explicitType)) {
+    const normalized = normalizeCompositionType(explicitType);
+    if (!normalized) {
       throw new Error(`Invalid --type: ${explicitType}`);
     }
-    return explicitType as ResourceType;
+    return normalized;
   }
   throw new LayerAttachmentHintError(
     `Attachment type required for selector "${selector}"`,
@@ -356,8 +253,7 @@ export class LayerAttachmentHintError extends Error {
 
 export const LAYER_ATTACHMENT_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
-  "plugin_pin",
-  "layer",
+  "plugin",
 ] as const;
 
 export function attachmentTypeRequiredHints(
@@ -368,7 +264,7 @@ export function attachmentTypeRequiredHints(
   return [
     `ht layer edit ${exampleLayer} --add ${selector} --type skill`,
     `Valid types: ${LAYER_ATTACHMENT_TYPES.join(", ")}`,
-    "Or use a typed selector: skill:name, plugin_pin:ref@marketplace, layer:dep",
+    "Or use a typed selector: skill:name, plugin:ref@marketplace",
   ];
 }
 
@@ -377,6 +273,9 @@ export type LayerAttachmentType = (typeof LAYER_ATTACHMENT_TYPES)[number];
 export function validateLayerAttachmentType(type: string | undefined): string | undefined {
   if (!type) {
     return undefined;
+  }
+  if (type === "plugin") {
+    return "plugin";
   }
   if (!(LAYER_ATTACHMENT_TYPES as readonly string[]).includes(type)) {
     throw new Error(
@@ -432,11 +331,8 @@ function normalizeAttachmentSelector(selector: string, explicitType?: string): s
     return selector;
   }
   const type = explicitType;
-  if (type === "plugin_pin") {
-    return `plugin_pin:${selector}`;
-  }
-  if (type === "layer") {
-    return `layer:${selector}`;
+  if (type === "plugin" || type === "plugin") {
+    return `plugin:${selector}`;
   }
   if (
     type &&
@@ -458,49 +354,34 @@ export async function addLayerAttachment(input: AddLayerAttachmentInput): Promis
   });
   markLayerDirty(input.layer.id);
 
-  if (attachmentType === "plugin_pin") {
+  if (attachmentType === "plugin") {
     if (input.version) {
       parseVersionConstraint(input.version);
     }
-    const resource = ensurePluginResource(selector, {
-      versionConstraint: input.version,
-      portable: input.embed ? "embed" : undefined,
+    const ref = stripTypePrefix(selector);
+    const resource = addDependency(input.layer.id, ref, {
+      ...(input.version ? { versionConstraint: input.version } : {}),
+      ...(input.embed ? { embedOnExport: true } : {}),
     });
-    addResourceToLayer(input.layer.id, resource.id);
-    const ref = formatPluginRef(resource);
+    const displayRef = formatPluginRef(resource);
     if (input.version) {
-      syncClaudeLayerPluginsAfterAdd(input.layer, ref, input.version);
+      syncClaudeLayerPluginsAfterAdd(input.layer, displayRef, input.version);
     }
     if (input.sync) {
       await syncPluginResource(resource, { policy: "overwrite" });
     }
     const versionLabel = input.version ? ` (${input.version})` : "";
-    return `Attached plugin pin ${ref}${versionLabel} to layer ${input.layer.name}`;
-  }
-
-  if (attachmentType === "layer") {
-    if (input.embed) {
-      throw new Error("--embed is only supported for plugin_pin attachments");
-    }
-    if (input.version) {
-      parseVersionConstraint(input.version);
-    }
-    const resource = ensureLayerResource(selector, {
-      versionConstraint: input.version,
-    });
-    addResourceToLayer(input.layer.id, resource.id);
-    const versionLabel = input.version ? ` (${input.version})` : "";
-    return `Attached layer ${resource.name}${versionLabel} to layer ${input.layer.name}`;
+    return `Attached plugin ${displayRef}${versionLabel} to layer ${input.layer.name}`;
   }
 
   if (input.version) {
-    throw new Error("--version is only supported for plugin_pin and layer attachments");
+    throw new Error("--version is only supported for plugin attachments");
   }
   if (input.embed) {
-    throw new Error("--embed is only supported for plugin_pin attachments");
+    throw new Error("--embed is only supported for plugin attachments");
   }
   if (input.sync) {
-    throw new Error("--sync is only supported for plugin_pin attachments");
+    throw new Error("--sync is only supported for plugin attachments");
   }
 
   const resource = resolveTypedResource(selector, attachmentType);
@@ -518,44 +399,22 @@ export function removeLayerAttachment(input: RemoveLayerAttachmentInput): {
     layerName: input.layer.name,
   });
 
-  if (attachmentType === "plugin_pin") {
-    const parsed = parseResourceSelector(selector);
-    const ref = parsed.namespace ? `${parsed.name}@${parsed.namespace}` : parsed.name;
-    const pin = listAttachedPluginPins(input.layer.id).find((entry) => entry.ref === ref);
+  if (attachmentType === "plugin") {
+    const ref = stripTypePrefix(selector);
+    const pin = listAttachedPluginPins(input.layer.id).find(
+      (entry) => entry.ref === ref || entry.resource.name === parseDependencyRef(ref).name,
+    );
     if (!pin) {
-      throw new Error(`Plugin pin not found: ${ref}`);
+      return {
+        removed: false,
+        message: `Plugin dependency "${ref}" not found on layer ${input.layer.name}`,
+      };
     }
-    markLayerDirty(input.layer.id);
-    removeResourceFromLayer(input.layer.id, pin.resource.id);
+    removeDependency(input.layer.id, pin.ref);
     syncClaudeLayerPluginsAfterRemove(input.layer, pin.ref);
     return {
       removed: true,
-      message: `Removed plugin pin ${pin.ref} from layer ${input.layer.name}`,
-    };
-  }
-
-  if (attachmentType === "layer") {
-    const resourceResult = resolveResource(selector, { mode: "compose" });
-    if (resourceResult.status === "not_found") {
-      const depName = parseResourceSelector(selector).name;
-      return {
-        removed: false,
-        message: `Layer dependency "${depName}" not found on layer ${input.layer.name}`,
-      };
-    }
-    if (resourceResult.status === "ambiguous") {
-      throw new Error(formatAmbiguousResourceMessage(selector, resourceResult.matches));
-    }
-    if (resourceResult.resource.type !== "layer") {
-      throw new Error(
-        `Type mismatch: selector "${selector}" resolved to ${resourceResult.resource.type}, expected layer`,
-      );
-    }
-    markLayerDirty(input.layer.id);
-    removeResourceFromLayer(input.layer.id, resourceResult.resource.id);
-    return {
-      removed: true,
-      message: `Removed layer ${resourceResult.resource.name} from layer ${input.layer.name}`,
+      message: `Removed plugin ${pin.ref} from layer ${input.layer.name}`,
     };
   }
 

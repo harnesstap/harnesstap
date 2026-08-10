@@ -62,7 +62,7 @@ export interface ProjectStatusPayload {
 
 function materialResources(resources: Resource[]): Resource[] {
   return resources.filter(
-    (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+    (resource) => resource.type !== "plugin",
   );
 }
 

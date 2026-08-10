@@ -13,17 +13,17 @@ export const MATERIAL_RESOURCE_TYPES = [
   "model_config",
 ] as const;
 
-export const COMPOSITION_RESOURCE_TYPES = ["plugin_pin", "layer"] as const;
+export const COMPOSITION_RESOURCE_TYPES = ["plugin"] as const;
 
 export const RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
   ...COMPOSITION_RESOURCE_TYPES,
 ] as const;
 
-/** Resource types shown in default `ht resource list` (excludes layer composition refs). */
+/** Resource types shown in default `ht resource list`. */
 export const LISTABLE_RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
-  "plugin_pin",
+  "plugin",
 ] as const;
 
 export type MaterialResourceType = (typeof MATERIAL_RESOURCE_TYPES)[number];
@@ -103,8 +103,18 @@ export interface ModelConfigMetadata {
   provider?: string;
 }
 
-export interface PluginPinMetadata {
-  source_kind?: "marketplace" | "local" | "git";
+export const DEPENDENCY_SOURCE_KINDS = [
+  "local",
+  "marketplace",
+  "git",
+  "catalog",
+] as const;
+
+export type DependencySourceKind = (typeof DEPENDENCY_SOURCE_KINDS)[number];
+
+export interface PluginDependencyMetadata {
+  source_kind: DependencySourceKind;
+  /** Marketplace name, or `org/catalog` for catalog sources. */
   marketplace_name?: string;
   version_constraint?: string;
   resolved_version?: string;
@@ -116,11 +126,11 @@ export interface PluginPinMetadata {
   };
 }
 
-export interface LayerResourceMetadata {
-  version_constraint?: string;
-  resolved_version?: string;
-  resolved_layer_id?: string;
-}
+/** @deprecated Use PluginDependencyMetadata */
+export type PluginPinMetadata = PluginDependencyMetadata;
+
+/** @deprecated Use PluginDependencyMetadata */
+export type LayerResourceMetadata = PluginDependencyMetadata;
 
 export type ResourceMetadata =
   | RuleMetadata
@@ -131,8 +141,7 @@ export type ResourceMetadata =
   | AgentMetadata
   | EnvVarMetadata
   | ModelConfigMetadata
-  | PluginPinMetadata
-  | LayerResourceMetadata
+  | PluginDependencyMetadata
   | Record<string, unknown>;
 
 // ── Core entities ───────────────────────────────────────────────────────

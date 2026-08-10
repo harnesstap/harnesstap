@@ -81,23 +81,34 @@ function layerRowFromLayer(
 ): LayerEditRow {
   return {
     id: `layer-candidate:${layer.id}`,
-    type: "layer",
+    type: "plugin",
     name: layer.name,
-    namespace: constraint,
+    namespace: constraint === "latest" ? "" : constraint,
     description: layer.description ?? "",
-    source: "composition:layer",
+    source: "composition:plugin",
     origin_kind: "manual",
     origin_ref: layer.name,
     content_hash: "",
     content_blob_ref: "",
     content: "{}",
-    metadata: { version_constraint: constraint },
+    metadata: { source_kind: "local", version_constraint: constraint },
     created_at: layer.created_at,
     updated_at: layer.updated_at,
     display_name: `${layer.name}@${layer.version}`,
     checked,
     version_constraint: constraint,
   };
+}
+
+function isLayerDependencyRow(row: Pick<LayerEditRow, "type" | "id" | "metadata">): boolean {
+  if (row.id.startsWith("layer-candidate:")) {
+    return true;
+  }
+  if (row.type !== "plugin") {
+    return false;
+  }
+  const metadata = row.metadata as { source_kind?: string };
+  return metadata.source_kind === "local";
 }
 
 export function buildLayerEditCandidates(target: Layer): LayerEditRow[] {
@@ -120,12 +131,12 @@ export function buildLayerEditCandidates(target: Layer): LayerEditRow[] {
 
   const attachedLayerNames = new Set(
     attached
-      .filter((resource) => resource.type === "layer")
+      .filter((resource) => isLayerDependencyRow(resource))
       .map((resource) => resource.name),
   );
 
   const materialAndPins = listResources({ includeComposition: true }).filter(
-    (resource) => resource.type !== "layer",
+    (resource) => !isLayerDependencyRow(resource),
   );
 
   const byId = new Map<string, LayerEditRow>();
@@ -158,7 +169,7 @@ export function buildLayerEditCandidates(target: Layer): LayerEditRow[] {
       continue;
     }
     const existing = [...byId.values()].find(
-      (row) => row.type === "layer" && row.name === layer.name,
+      (row) => isLayerDependencyRow(row) && row.name === layer.name,
     );
     if (existing) {
       continue;
@@ -206,23 +217,23 @@ export function validateLayerEditSelection(
     if (!row.checked) {
       continue;
     }
-    if (row.type === "layer" && row.name === target.name) {
+    if (isLayerDependencyRow(row) && row.name === target.name) {
       throw new Error(`Layer "${target.name}" cannot reference itself`);
     }
   }
 
   const dependencyNames = pending
-    .filter((row) => row.checked && row.type === "layer")
+    .filter((row) => row.checked && isLayerDependencyRow(row))
     .map((row) => row.name);
   validateLayerDependencyGraph(target.name, dependencyNames);
 }
 
 function resolveAttachmentSelector(row: LayerEditRow): string {
-  if (row.type === "plugin_pin") {
+  if (row.type === "plugin") {
+    if (isLayerDependencyRow(row)) {
+      return row.name;
+    }
     return row.namespace ? `${row.name}@${row.namespace}` : row.name;
-  }
-  if (row.type === "layer") {
-    return row.name;
   }
   return row.namespace ? `${row.name}@${row.namespace}` : row.name;
 }
@@ -353,7 +364,7 @@ export async function applyLayerEdit(input: {
   }
 
   for (const row of diff.added) {
-    if (row.type === "plugin_pin" || row.type === "layer") {
+    if (row.type === "plugin") {
       await addLayerAttachment({
         layer: input.layer,
         selector: resolveAttachmentSelector(row),

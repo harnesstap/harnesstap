@@ -42,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(25);
+      expect(versionRow.version).toBe(26);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -118,8 +118,8 @@ describe("initializeSchema", () => {
           "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'resources'",
         )
         .get() as { sql: string };
-      expect(resourceTableSql.sql).toContain("'plugin_pin'");
-      expect(resourceTableSql.sql).not.toContain("'plugin'");
+      expect(resourceTableSql.sql).toContain("'plugin'");
+      expect(resourceTableSql.sql).not.toContain("'plugin_pin'");
 
       const resourceIndexes = context.connection
         .getDb()
@@ -147,7 +147,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 25 }]);
+      expect(versionRows).toEqual([{ version: 26 }]);
     } finally {
       await context.cleanup();
     }
@@ -369,7 +369,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v22 databases in place to v25 with dirty/frozen_at/snapshots/overrides/origin", async () => {
+  it("upgrades v22 databases in place to v26 with dirty/frozen_at/snapshots/overrides/origin", async () => {
     const context = await createTestContext("schema-v24-upgrade");
     try {
       const db = context.connection.getDb();
@@ -407,7 +407,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(25);
+      expect(version).toBe(26);
 
       const cols = db
         .prepare("PRAGMA table_info(layers)")
@@ -432,7 +432,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v23 databases in place to v25 with overrides, resolved_set, and origin", async () => {
+  it("upgrades v23 databases in place to v26 with overrides, resolved_set, and origin", async () => {
     const context = await createTestContext("schema-v23-to-v24-upgrade");
     try {
       const db = context.connection.getDb();
@@ -477,7 +477,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(25);
+      expect(version).toBe(26);
 
       const layerCols = db
         .prepare("PRAGMA table_info(layers)")
@@ -497,7 +497,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v24 databases in place to v25 and backfills catalog origin", async () => {
+  it("upgrades v24 databases in place to v26 and backfills catalog origin", async () => {
     const context = await createTestContext("schema-v24-to-v25-upgrade");
     try {
       const db = context.connection.getDb();
@@ -544,7 +544,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(25);
+      expect(version).toBe(26);
 
       const localOrigin = (
         db.prepare("SELECT origin FROM layers WHERE id = 'local'").get() as {

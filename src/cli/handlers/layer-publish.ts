@@ -150,6 +150,6 @@ export async function handleLayerPublishPlanCommand(
 
 export function countMaterialLayerResources(layerId: string): number {
   return getLayerResources(layerId).filter(
-    (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+    (resource) => resource.type !== "plugin",
   ).length;
 }

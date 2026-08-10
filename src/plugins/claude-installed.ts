@@ -179,7 +179,7 @@ export function listInstalledPluginPinCreateInputs(
         portable: "reference",
       };
       return {
-        type: "plugin_pin" as const,
+        type: "plugin" as const,
         name,
         namespace: marketplace,
         description:
