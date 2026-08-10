@@ -13,7 +13,7 @@ const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
   "delete",
   "export",
   "import",
-  "apply",
+  "add",
   "cut",
   "diff",
   "doctor",

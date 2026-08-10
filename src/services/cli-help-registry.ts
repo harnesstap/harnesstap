@@ -162,27 +162,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin delete",
     ],
   },
-  "plugin.apply": {
-    description:
-      "Apply one or more plugins (or a plugin export URL) to a project, serializing for each harness",
-    details:
-      "Resolution: apply walks the dependency graph, unifies each plugin name to one\n" +
-      "version, and materializes one resource per type:name. When two plugins declare\n" +
-      "the same resource, the one closest to what you applied wins. At equal depth,\n" +
-      "the last-declared plugin wins for skills, rules, agents, commands, hooks, and\n" +
-      "MCP servers, with a warning; conflicting instructions, model config,\n" +
-      "permissions, or env vars are an error you resolve with an override.\n" +
-      "\n" +
-      "Run with --explain to see every decision. Pass --update to ignore\n" +
-      ".harnesstap/lock.toml and re-resolve.",
-    examples: [
-      "plugin apply my-plugin",
-      "plugin apply team-base team-overrides --project .",
-      "plugin apply my-plugin --dry-run",
-      "plugin apply my-plugin --explain",
-      "plugin apply my-plugin --update",
-    ],
-  },
   "plugin.catalog.list": {
     description: "Show default and connected catalog sources",
     examples: [
@@ -609,10 +588,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "plugin.add": {
-    description: "Attach a marketplace plugin pin to a plugin",
+    description: "Add a dependency to a plugin",
     examples: [
-      "plugin add fmt@demo --plugin team-stack",
-      "plugin add fmt@demo --plugin team-stack --format json",
+      "plugin add base --to root",
+      "plugin add fmt@demo --to team-stack",
     ],
   },
 };

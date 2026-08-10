@@ -11,8 +11,8 @@ describe("CLI help and command organization", () => {
     expect(result.stderr).toBe("");
   });
 
-  it("layer from-project -h shows help instead of requiring --harness value", async () => {
-    const result = await runCli(["layer", "from-project", "-h"]);
+  it("plugin from-project -h shows help instead of requiring --harness value", async () => {
+    const result = await runCli(["plugin", "from-project", "-h"]);
     expect(result.exitCode).toBeUndefined();
     expect(result.stdout).toContain("USAGE");
     expect(result.stderr).toBe("");
@@ -20,7 +20,7 @@ describe("CLI help and command organization", () => {
 
   it("shows grouped command help without throwing when no subcommand is provided", async () => {
     const groupedCommands = [
-      ["layer"],
+      ["plugin"],
       ["resource"],
       ["auth"],
       ["migrate"],
@@ -33,7 +33,7 @@ describe("CLI help and command organization", () => {
       expect(result.exitCode).toBeUndefined();
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("USAGE");
-      if (args[0] === "layer") {
+      if (args[0] === "plugin") {
         expect(result.stdout).toContain("LOCAL LIBRARY");
         expect(result.stdout).toContain("REMOTE CATALOG");
       } else {
@@ -67,11 +67,11 @@ describe("CLI help and command organization", () => {
     }
   });
 
-  it("rejects unknown layer subcommands", async () => {
+  it("rejects unknown plugin subcommands", async () => {
     for (const args of [
-      ["layer", "validate", "empty-layer"],
-      ["layer", "export", "empty-layer"],
-      ["layer", "import", "./missing.harnesstap.toml"],
+      ["plugin", "validate", "empty-plugin"],
+      ["plugin", "export", "empty-plugin"],
+      ["plugin", "import", "./missing.harnesstap.toml"],
     ]) {
       await expect(runCli(args)).rejects.toMatchObject({
         code: "commander.unknownCommand",
@@ -168,12 +168,13 @@ describe("CLI help and command organization", () => {
 
   it("shows project-local verbs in top-level help", async () => {
     const help = await runCli(["-h"]);
-    const layerHelp = await runCli(["layer", "-h"]);
+    const pluginHelp = await runCli(["plugin", "-h"]);
     const harnessHelp = await runCli(["harness", "-h"]);
 
     expect(help.stdout).toContain("COMMAND GROUPS");
     expect(help.stdout).toContain("PROJECT");
-    expect(help.stdout).toContain("layer");
+    expect(help.stdout).toContain("plugin");
+    expect(help.stdout).not.toMatch(/^\s+layer\b/m);
     expect(help.stdout).toContain("scan");
     expect(help.stdout).toContain("mirror");
     expect(help.stdout).toContain("status");
@@ -187,12 +188,12 @@ describe("CLI help and command organization", () => {
     expect(harnessHelp.stdout).toContain("list");
     expect(harnessHelp.stdout).toContain("project");
     expect(help.stdout).not.toContain("help [command]");
-    expect(help.stdout).not.toContain("apply [options] <layer>");
-    expect(help.stdout).not.toContain("export [options] <layer>");
+    expect(help.stdout).not.toContain("apply [options] <plugin>");
+    expect(help.stdout).not.toContain("export [options] <plugin>");
     expect(help.stdout).not.toContain("import <file>");
     expect(help.stdout).not.toContain("\n  platforms");
     expect(help.stdout).not.toContain("\n  project ");
-    expect(layerHelp.stdout).not.toContain("help [command]");
+    expect(pluginHelp.stdout).not.toContain("help [command]");
     // auth command group should exist in top-level help
     expect(help.stdout).toContain("auth");
     expect(help.stdout).not.toContain("\n  cloud");
@@ -203,26 +204,26 @@ describe("CLI help and command organization", () => {
   });
 
   it("does not append [options] to subcommands in grouped help", async () => {
-    const layerHelp = await runCli(["layer", "--help"]);
+    const pluginHelp = await runCli(["plugin", "--help"]);
     
     // Should show arguments but not [options] for subcommands
-    expect(layerHelp.stdout).toContain("show [name]");
-    expect(layerHelp.stdout).toContain("publish <layer>");
+    expect(pluginHelp.stdout).toContain("show [name]");
+    expect(pluginHelp.stdout).toContain("publish <plugin>");
     
     // Should NOT contain [options] in the command name column
-    expect(layerHelp.stdout).not.toContain("show [options]");
-    expect(layerHelp.stdout).not.toContain("publish [options]");
-    expect(layerHelp.stdout).not.toContain("export [options]");
+    expect(pluginHelp.stdout).not.toContain("show [options]");
+    expect(pluginHelp.stdout).not.toContain("publish [options]");
+    expect(pluginHelp.stdout).not.toContain("export [options]");
   });
 
-  it("exposes layer edit with scripting flags in layer help", async () => {
-    const layerHelp = await runCli(["layer", "--help"]);
+  it("exposes plugin edit with scripting flags in plugin help", async () => {
+    const pluginHelp = await runCli(["plugin", "--help"]);
     
-    expect(layerHelp.stdout).toContain("edit");
-    expect(layerHelp.stdout).toContain("scripting");
+    expect(pluginHelp.stdout).toContain("edit");
+    expect(pluginHelp.stdout).toContain("scripting");
     
-    expect(layerHelp.stdout).toContain("from-project");
-    expect(layerHelp.stdout).toContain("Scan current folder and create a layer from its resources");
+    expect(pluginHelp.stdout).toContain("from-project");
+    expect(pluginHelp.stdout).toContain("Scan current folder and create a plugin from its resources");
   });
 
   it("prints help with concepts and scenario index", async () => {
@@ -231,10 +232,10 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("CORE CONCEPTS");
     expect(result.stdout).toContain("SCENARIOS");
     expect(result.stdout).toContain("resource");
-    expect(result.stdout).toContain("layer");
-    expect(result.stdout).toContain("layer apply");
+    expect(result.stdout).toContain("plugin");
+    expect(result.stdout).toContain("plugin apply");
     expect(result.stdout).toContain("mirror .");
-    expect(result.stdout).toContain("layer list --search foundation");
+    expect(result.stdout).toContain("plugin list --search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");
     expect(result.stdout).toContain("ht help scenario");
     expect(result.stdout).toMatch(/11\s+Start from a catalog baseline/);
@@ -249,8 +250,8 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).not.toMatch(/\n {2}scenario /);
   });
 
-  it("shows grouped layer help sections", async () => {
-    const result = await runCli(["layer", "--help"]);
+  it("shows grouped plugin help sections", async () => {
+    const result = await runCli(["plugin", "--help"]);
     expect(result.stdout).toContain("LOCAL LIBRARY");
     expect(result.stdout).toContain("REMOTE CATALOG");
     expect(result.stdout).toContain("edit");
