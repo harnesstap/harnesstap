@@ -1,16 +1,22 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { resolveResource } from "../models/resource.js";
-import {
-  normalizeResourceInput,
-  upsertResource,
-} from "../models/resource.js";
+import { getPluginResources } from "../models/plugin-model.js";
+import { getResource, resolveResource } from "../models/resource.js";
 import type { Resource, ResourceExport } from "../types.js";
 import { RESOURCE_SCHEMA, RESOURCE_SCHEMA_VERSION } from "../types.js";
-import { parseResourceSelector } from "./resource-selector.js";
+import {
+  buildApPackageFilesForResource,
+  readApPackageFiles,
+  writeApPackageFiles,
+} from "./agent-plugins/files.js";
+import {
+  isApEnvelopePath,
+  readApEnvelope,
+  writeApEnvelope,
+} from "./agent-plugins/envelope.js";
+import { importApPackageFiles } from "./agent-plugins/import.js";
 import { isCompositionResourceType } from "./plugin-composition.js";
-import { formatResourceExportToml, parseResourceExportToml } from "./transport/resource.js";
-import { assertTransportExtension } from "./transport/validate.js";
+import { parseResourceSelector } from "./resource-selector.js";
 
 function toResourceExport(resource: Resource): ResourceExport {
   const { id, created_at, updated_at, source, ...payload } = resource;
@@ -33,7 +39,8 @@ export function formatResourceSelector(
 export function exportResourceToFile(
   selector: string,
   filePath: string,
-): ResourceExport {
+  options?: { singleFile?: boolean },
+): ResourceExport & { files: string[] } {
   const parsed = parseResourceSelector(selector);
   if (parsed.type && isCompositionResourceType(parsed.type)) {
     throw new Error(
@@ -54,10 +61,15 @@ export function exportResourceToFile(
     );
   }
   const out = resolve(filePath);
-  assertTransportExtension(out);
-  const exportDoc = toResourceExport(resolved.resource);
-  writeFileSync(out, formatResourceExportToml(exportDoc), "utf-8");
-  return exportDoc;
+  const files = buildApPackageFilesForResource(resolved.resource.id);
+  const singleFile = options?.singleFile === true || isApEnvelopePath(out);
+  const written = singleFile
+    ? (writeApEnvelope(files, out), Object.keys(files).sort())
+    : writeApPackageFiles(files, out);
+  return {
+    ...toResourceExport(resolved.resource),
+    files: written,
+  };
 }
 
 export function importResourceFromFile(filePath: string): {
@@ -65,32 +77,28 @@ export function importResourceFromFile(filePath: string): {
   action: "created" | "updated" | "unchanged";
 } {
   const resolved = resolve(filePath);
-  const exportDoc = parseResourceExportToml(readFileSync(resolved, "utf-8"));
-  if (exportDoc.type.length === 0 || exportDoc.name.length === 0) {
-    throw new Error("Resource export must include non-empty type and name.");
+  if (!existsSync(resolved)) {
+    throw new Error(`Path not found: ${resolved}`);
   }
-  if (isCompositionResourceType(exportDoc.type)) {
-    throw new Error(`Cannot import composition resource type: ${exportDoc.type}`);
+  const packageFiles = statSync(resolved).isDirectory()
+    ? readApPackageFiles(resolved)
+    : isApEnvelopePath(resolved)
+      ? readApEnvelope(resolved)
+      : (() => {
+          throw new Error(
+            `${resolved} is not an Agent Plugins package directory or .ap.json envelope.`,
+          );
+        })();
+
+  const plugin = importApPackageFiles(packageFiles);
+  const resources = getPluginResources(plugin.id);
+  const resource = resources[0];
+  if (!resource) {
+    throw new Error(`Package ${resolved} did not contain any resources.`);
   }
-  const upserted = upsertResource(
-    normalizeResourceInput({
-      type: exportDoc.type,
-      name: exportDoc.name,
-      namespace: exportDoc.namespace,
-      description: exportDoc.description,
-      content: exportDoc.content,
-      metadata: exportDoc.metadata,
-      source: `import:${resolved}`,
-      origin_kind: exportDoc.origin_kind,
-      origin_ref: exportDoc.origin_ref,
-    }),
-    { policy: "overwrite" },
-  );
-  if (upserted.action === "skipped") {
-    throw new Error(`Failed to import resource: ${exportDoc.type}:${exportDoc.name}`);
-  }
+  const stored = getResource(resource.id) ?? resource;
   return {
-    resource: upserted.resource,
-    action: upserted.action,
+    resource: stored,
+    action: "created",
   };
 }

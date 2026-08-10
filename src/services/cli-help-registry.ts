@@ -445,18 +445,21 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "migrate.export": {
     description:
-      "Export workspace, plugin, environment, or resource for offline sharing",
+      "Export workspace, plugin, or resource as an Agent Plugins package or workspace archive",
     examples: [
       "migrate export backup.tar.gz --workspace",
-      "migrate export --plugin my-plugin -o my-plugin.harnesstap.toml",
+      "migrate export --plugin my-plugin -o ./my-plugin",
+      "migrate export --plugin my-plugin --single-file -o my-plugin.ap.json",
       "migrate export --resource skill:caveman",
     ],
   },
   "migrate.import": {
-    description: "Import workspace, plugin, or resource from file",
+    description:
+      "Import a package directory, .ap.json envelope, or .tar.gz workspace archive",
     examples: [
       "migrate import backup.tar.gz",
-      "migrate import my-plugin.harnesstap.toml --plugin",
+      "migrate import ./my-plugin",
+      "migrate import my-plugin.ap.json",
     ],
   },
   "migrate.resolve-order": {

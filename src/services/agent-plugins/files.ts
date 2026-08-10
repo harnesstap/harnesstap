@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import matter from "gray-matter";
 import { getPluginById, getPluginByName, getPluginResources } from "../../models/plugin-model.js";
+import { getResource } from "../../models/resource.js";
 import type {
   EnvVarMetadata,
   McpServerMetadata,
@@ -17,8 +18,11 @@ import {
   HT_EXTENSION_NAMESPACE,
   HT_EXTENSION_SCHEMA,
   buildApManifest,
+  type ApManifest,
+  type HarnesstapExtension,
 } from "./manifest.js";
-import { validateApManifest } from "./validate.js";
+import { slugifyApName } from "./name.js";
+import { AP_SCHEMA_URL, validateApManifest } from "./validate.js";
 
 export const AP_PACKAGE_SCHEMA = "urn:harnesstap:ap-package:v1";
 
@@ -125,28 +129,21 @@ function partitionByType(resources: Resource[]): Map<string, Resource[]> {
   return byType;
 }
 
-function buildApPackageFilesInner(
-  pluginId: string,
-  options: BuildApPackageOptions | undefined,
-  visited: Set<string>,
-): ApPackageFiles {
-  if (visited.has(pluginId)) {
-    throw new Error(
-      `Cycle detected while embedding plugins: ${[...visited, pluginId].join(" -> ")}`,
-    );
+function componentsForResources(resources: Resource[]): Record<string, string> {
+  const present = new Set(resources.map((resource) => resource.type));
+  const components: Record<string, string> = {};
+  for (const [type, layout] of Object.entries(COMPONENT_LAYOUT)) {
+    if (present.has(type as never)) components[layout.key] = layout.path;
   }
-  visited.add(pluginId);
+  return components;
+}
 
-  const plugin = getPluginById(pluginId);
-  if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
-
-  const files: ApPackageFiles = {};
-
-  const manifest = buildApManifest(pluginId);
-  validateApManifest(manifest);
-  putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
-
-  const byType = partitionByType(getPluginResources(pluginId));
+function emitResourceFiles(
+  files: ApPackageFiles,
+  resources: Resource[],
+  options?: BuildApPackageOptions,
+): void {
+  const byType = partitionByType(resources);
 
   const skills = byType.get("skill") ?? [];
   for (const resource of [...skills].sort((a, b) => a.name.localeCompare(b.name))) {
@@ -190,9 +187,9 @@ function buildApPackageFilesInner(
 
   for (const type of MARKDOWN_COMPONENT_TYPES) {
     const layout = COMPONENT_LAYOUT[type];
-    const resources = byType.get(type) ?? [];
-    if (!layout || resources.length === 0) continue;
-    for (const resource of [...resources].sort((a, b) => a.name.localeCompare(b.name))) {
+    const typedResources = byType.get(type) ?? [];
+    if (!layout || typedResources.length === 0) continue;
+    for (const resource of [...typedResources].sort((a, b) => a.name.localeCompare(b.name))) {
       const relativePath = `${layout.path}/${resource.name}.md`;
       putUtf8(
         files,
@@ -211,10 +208,38 @@ function buildApPackageFilesInner(
 
   for (const type of TOML_COMPONENT_TYPES) {
     const layout = COMPONENT_LAYOUT[type];
-    const resources = byType.get(type) ?? [];
-    if (!layout || resources.length === 0) continue;
-    putUtf8(files, layout.path, formatTransportToml(buildTomlComponentDocument(type, resources)));
+    const typedResources = byType.get(type) ?? [];
+    if (!layout || typedResources.length === 0) continue;
+    putUtf8(
+      files,
+      layout.path,
+      formatTransportToml(buildTomlComponentDocument(type, typedResources)),
+    );
   }
+}
+
+function buildApPackageFilesInner(
+  pluginId: string,
+  options: BuildApPackageOptions | undefined,
+  visited: Set<string>,
+): ApPackageFiles {
+  if (visited.has(pluginId)) {
+    throw new Error(
+      `Cycle detected while embedding plugins: ${[...visited, pluginId].join(" -> ")}`,
+    );
+  }
+  visited.add(pluginId);
+
+  const plugin = getPluginById(pluginId);
+  if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
+
+  const files: ApPackageFiles = {};
+
+  const manifest = buildApManifest(pluginId);
+  validateApManifest(manifest);
+  putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
+
+  emitResourceFiles(files, getPluginResources(pluginId), options);
 
   if (plugin.claude) {
     putUtf8(
@@ -259,6 +284,35 @@ export function buildApPackageFiles(
   options?: BuildApPackageOptions,
 ): ApPackageFiles {
   return buildApPackageFilesInner(pluginId, options, new Set());
+}
+
+/** One-resource throwaway package — manifest name is slugified; version is always 0.0.0. */
+export function buildApPackageFilesForResource(resourceId: string): ApPackageFiles {
+  const resource = getResource(resourceId);
+  if (!resource) throw new Error(`Resource not found: ${resourceId}`);
+
+  const files: ApPackageFiles = {};
+  const apName = slugifyApName(resource.name);
+  const extension: HarnesstapExtension = {
+    schema: HT_EXTENSION_SCHEMA,
+    sourceName: resource.name,
+    profile: false,
+    dependencies: [],
+    overrides: { versions: {}, resources: {} },
+    needs: [],
+    components: componentsForResources([resource]),
+  };
+  const manifest: ApManifest = {
+    $schema: AP_SCHEMA_URL,
+    name: apName,
+    version: "0.0.0",
+    ...(resource.description ? { description: resource.description } : {}),
+    extensions: { [HT_EXTENSION_NAMESPACE]: extension },
+  };
+  validateApManifest(manifest);
+  putUtf8(files, "plugin.json", JSON.stringify(manifest, null, 2));
+  emitResourceFiles(files, [resource]);
+  return files;
 }
 
 export function writeApPackageFiles(files: ApPackageFiles, targetDir: string): string[] {

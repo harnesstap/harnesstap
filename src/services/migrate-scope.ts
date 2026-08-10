@@ -1,22 +1,28 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { extname, resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { extname, join, resolve } from "node:path";
+import { getPlugin, getPluginResources } from "../models/plugin-model.js";
+import type { Plugin } from "../types.js";
+import {
+  buildApPackageFiles,
+  readApPackageFiles,
+  writeApPackageFiles,
+} from "./agent-plugins/files.js";
+import { importApPackageFiles } from "./agent-plugins/import.js";
+import {
+  isApEnvelopePath,
+  readApEnvelope,
+  writeApEnvelope,
+} from "./agent-plugins/envelope.js";
+import { slugifyApName } from "./agent-plugins/name.js";
 import type { AnyMigrateManifest, MigrateManifest } from "./migrate.js";
 import { exportMigrationState, importMigrationState } from "./migrate.js";
-import {
-  exportEnvironmentToml,
-  importEnvironmentFile,
-} from "./environment-import-export.js";
-import { exportToFile } from "./plugin-export.js";
-import { importFromFile } from "./plugin-import.js";
 import {
   exportResourceToFile,
   formatResourceSelector,
   importResourceFromFile,
 } from "./resource-import-export.js";
-import { parseTransportToml } from "./transport/read.js";
-import { PLUGIN_SCHEMA, RESOURCE_SCHEMA } from "../types.js";
 
-export type MigrateScope = "workspace" | "plugin" | "resource" | "environment";
+export type MigrateScope = "workspace" | "plugin" | "resource";
 
 export interface MigrateExportCliOpts {
   file?: string;
@@ -24,9 +30,11 @@ export interface MigrateExportCliOpts {
   workspace?: boolean;
   plugin?: string;
   resource?: string;
+  /** Deprecated — rejected by {@link rejectEnvironmentScope}. */
   environment?: string;
   includePlugins?: boolean;
   embedPlugins?: boolean;
+  singleFile?: boolean;
 }
 
 export interface MigrateImportCliOpts {
@@ -34,7 +42,8 @@ export interface MigrateImportCliOpts {
   workspace?: boolean;
   plugin?: boolean;
   resource?: boolean;
-  environment?: boolean;
+  /** Deprecated — rejected by {@link rejectEnvironmentScope}. */
+  environment?: boolean | string;
 }
 
 export type WorkspaceExportResult = {
@@ -47,25 +56,20 @@ export type PluginExportResult = {
   scope: "plugin";
   output: string;
   plugins: string[];
+  files: string[];
 };
 
 export type ResourceExportResult = {
   scope: "resource";
   output: string;
   resource: string;
-};
-
-export type EnvironmentExportResult = {
-  scope: "environment";
-  output: string;
-  environment: string;
+  files: string[];
 };
 
 export type ScopedExportResult =
   | WorkspaceExportResult
   | PluginExportResult
-  | ResourceExportResult
-  | EnvironmentExportResult;
+  | ResourceExportResult;
 
 export type WorkspaceImportResult = {
   scope: "workspace";
@@ -87,30 +91,20 @@ export type ResourceImportResult = {
   action: "created" | "updated" | "unchanged";
 };
 
-export type EnvironmentImportResult = {
-  scope: "environment";
-  environment: string;
-  imported_keys: string[];
-  imported_secret_refs: string[];
-};
-
 export type ScopedImportResult =
   | WorkspaceImportResult
   | PluginImportResult
-  | ResourceImportResult
-  | EnvironmentImportResult;
+  | ResourceImportResult;
 
 function countScopeFlags(opts: {
   workspace?: boolean;
   plugin?: string | boolean;
   resource?: string | boolean;
-  environment?: string | boolean;
 }): number {
   let count = 0;
   if (opts.workspace) count++;
   if (opts.plugin) count++;
   if (opts.resource) count++;
-  if (opts.environment) count++;
   return count;
 }
 
@@ -118,10 +112,18 @@ export function assertExclusiveScopeFlags(opts: {
   workspace?: boolean;
   plugin?: string | boolean;
   resource?: string | boolean;
-  environment?: string | boolean;
 }): void {
   if (countScopeFlags(opts) > 1) {
-    throw new Error("Choose only one of --workspace, --plugin, --resource, or --environment.");
+    throw new Error("Choose only one of --workspace, --plugin, or --resource.");
+  }
+}
+
+export function rejectEnvironmentScope(opts: { environment?: string | boolean }): void {
+  if (opts.environment) {
+    throw new Error(
+      "Environments are no longer exported on their own — they are machine-local " +
+        "secret references. Use --workspace to back them up with everything else.",
+    );
   }
 }
 
@@ -129,14 +131,13 @@ function embedPlugins(opts: MigrateExportCliOpts): boolean {
   return opts.includePlugins ?? opts.embedPlugins ?? false;
 }
 
-function isEnvironmentTomlDocument(document: Record<string, unknown>): boolean {
-  if (document.$schema === PLUGIN_SCHEMA || document.$schema === RESOURCE_SCHEMA) {
-    return false;
+function resolvePluginOrThrow(selector: string): Plugin {
+  const first = selector.split(",")[0]?.trim() ?? selector;
+  const plugin = getPlugin(first);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${first}`);
   }
-  if (document.environments && typeof document.environments === "object") {
-    return true;
-  }
-  return typeof document.name === "string" && document.values !== undefined;
+  return plugin;
 }
 
 export function resolveExportScope(opts: MigrateExportCliOpts): {
@@ -144,46 +145,39 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
   outputPath: string;
   pluginSelector?: string;
   resourceSelector?: string;
-  environmentSelector?: string;
+  singleFile: boolean;
 } {
+  rejectEnvironmentScope(opts);
   assertExclusiveScopeFlags(opts);
   const outputPath = opts.outputFile ?? opts.file;
-
-  if (opts.environment) {
-    const path = outputPath && outputPath.length > 0
-      ? resolve(outputPath)
-      : resolve(`${opts.environment}.environment.toml`);
-    return {
-      scope: "environment",
-      outputPath: path,
-      environmentSelector: opts.environment,
-    };
-  }
+  const singleFile = opts.singleFile === true;
 
   if (opts.plugin) {
     const firstPlugin = opts.plugin.split(",")[0]?.trim() ?? "plugin";
+    const apName = slugifyApName(firstPlugin);
     const path = outputPath && outputPath.length > 0
       ? resolve(outputPath)
-      : resolve(`${firstPlugin}.harnesstap.toml`);
+      : resolve(singleFile ? `${apName}.ap.json` : apName);
     return {
       scope: "plugin",
       outputPath: path,
       pluginSelector: opts.plugin,
+      singleFile,
     };
   }
 
   if (opts.resource) {
     const colon = opts.resource.indexOf(":");
-    const type = colon === -1 ? "resource" : opts.resource.slice(0, colon);
     const rest = colon === -1 ? opts.resource : opts.resource.slice(colon + 1);
-    const name = rest.split("@")[0] ?? "export";
+    const name = slugifyApName(rest.split("@")[0] ?? "export");
     const path = outputPath && outputPath.length > 0
       ? resolve(outputPath)
-      : resolve(`${type}-${name}.harnesstap.toml`);
+      : resolve(singleFile ? `${name}.ap.json` : name);
     return {
       scope: "resource",
       outputPath: path,
       resourceSelector: opts.resource,
+      singleFile,
     };
   }
 
@@ -191,48 +185,60 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     if (!outputPath || outputPath.length === 0) {
       throw new Error("Output path is required for workspace export.");
     }
-    return { scope: "workspace", outputPath: resolve(outputPath) };
+    return { scope: "workspace", outputPath: resolve(outputPath), singleFile: false };
   }
 
   if (outputPath && outputPath.length > 0) {
     const resolvedOutput = resolve(outputPath);
     const lower = resolvedOutput.toLowerCase();
-    if (lower.endsWith(".tar.gz") || extname(resolvedOutput).toLowerCase() === ".json") {
-      return { scope: "workspace", outputPath: resolvedOutput };
+    if (lower.endsWith(".tar.gz")) {
+      return { scope: "workspace", outputPath: resolvedOutput, singleFile: false };
+    }
+    if (
+      extname(resolvedOutput).toLowerCase() === ".json"
+      && !isApEnvelopePath(resolvedOutput)
+    ) {
+      return { scope: "workspace", outputPath: resolvedOutput, singleFile: false };
     }
   }
 
   throw new Error(
-    "Specify export scope: --workspace, --plugin <name>, --resource <selector>, or --environment <name>.",
+    "Specify export scope: --workspace, --plugin <name>, or --resource <selector>.",
   );
 }
 
 export function detectImportScopeFromFile(filePath: string): MigrateScope {
   const resolved = resolve(filePath);
+  if (statSync(resolved).isDirectory()) {
+    if (!existsSync(join(resolved, "plugin.json"))) {
+      throw new Error(
+        `${resolved} is a directory but has no plugin.json — expected an Agent Plugins package.`,
+      );
+    }
+    return "plugin";
+  }
   const lower = resolved.toLowerCase();
-  if (lower.endsWith(".tar.gz") || extname(resolved).toLowerCase() === ".json") {
-    return "workspace";
-  }
-  if (extname(resolved).toLowerCase() === ".toml") {
-    const document = parseTransportToml(
-      readFileSync(resolved, "utf-8"),
-      "migrate import",
+  if (lower.endsWith(".tar.gz")) return "workspace";
+  if (isApEnvelopePath(resolved)) return "plugin";
+  if (lower.endsWith(".harnesstap.toml") || lower.endsWith(".environment.toml")) {
+    throw new Error(
+      `${resolved} is a HarnessTap TOML transport file, which is no longer supported. ` +
+        "Portable artifacts are Agent Plugins packages: a directory with a plugin.json, " +
+        "or a single .ap.json envelope.",
     );
-    const schema = document.schema;
-    if (schema === PLUGIN_SCHEMA) return "plugin";
-    if (schema === RESOURCE_SCHEMA) return "resource";
-    if (isEnvironmentTomlDocument(document)) return "environment";
-    throw new Error(`Unsupported TOML schema for migrate import: ${String(schema)}`);
   }
-  throw new Error(`Cannot detect import scope for file: ${resolved}`);
+  throw new Error(
+    `Cannot tell what ${resolved} is. Pass an Agent Plugins package directory, ` +
+      "an .ap.json envelope, or a .tar.gz workspace archive.",
+  );
 }
 
 export function resolveImportScope(opts: MigrateImportCliOpts): MigrateScope {
+  rejectEnvironmentScope(opts);
   assertExclusiveScopeFlags({
     workspace: opts.workspace,
     plugin: opts.plugin,
     resource: opts.resource,
-    environment: opts.environment,
   });
   if (!opts.file || opts.file.length === 0) {
     throw new Error("Import file path is required.");
@@ -245,8 +251,6 @@ export function resolveImportScope(opts: MigrateImportCliOpts): MigrateScope {
     scope = "plugin";
   } else if (opts.resource) {
     scope = "resource";
-  } else if (opts.environment) {
-    scope = "environment";
   } else {
     return detectImportScopeFromFile(opts.file);
   }
@@ -282,21 +286,16 @@ export function exportScopedMigration(
       if (!resolved.pluginSelector) {
         throw new Error("Plugin selector is required for plugin export.");
       }
-      const plugins = resolved.pluginSelector
-        .split(",")
-        .map((name) => name.trim())
-        .filter((name) => name.length > 0);
-      if (plugins.length === 0) {
-        throw new Error("Provide at least one plugin name or ID to export.");
-      }
-      const exportSelector = plugins.length === 1 ? (plugins[0] ?? plugins) : plugins;
-      exportToFile(exportSelector, resolved.outputPath, {
-        embedPlugins: includePlugins,
-      });
+      const plugin = resolvePluginOrThrow(resolved.pluginSelector);
+      const files = buildApPackageFiles(plugin.id);
+      const written = resolved.singleFile
+        ? (writeApEnvelope(files, resolved.outputPath), Object.keys(files).sort())
+        : writeApPackageFiles(files, resolved.outputPath);
       return {
         scope: "plugin",
         output: resolved.outputPath,
-        plugins,
+        plugins: [plugin.name],
+        files: written,
       };
     }
     case "resource": {
@@ -306,23 +305,13 @@ export function exportScopedMigration(
       const exportDoc = exportResourceToFile(
         resolved.resourceSelector,
         resolved.outputPath,
+        { singleFile: resolved.singleFile },
       );
       return {
         scope: "resource",
         output: resolved.outputPath,
         resource: formatResourceSelector(exportDoc),
-      };
-    }
-    case "environment": {
-      if (!resolved.environmentSelector) {
-        throw new Error("Environment selector is required for environment export.");
-      }
-      const { environment, toml } = exportEnvironmentToml(resolved.environmentSelector);
-      writeFileSync(resolved.outputPath, toml, "utf-8");
-      return {
-        scope: "environment",
-        output: resolved.outputPath,
-        environment: environment.name,
+        files: exportDoc.files,
       };
     }
     default: {
@@ -349,17 +338,15 @@ export function importScopedMigration(
       };
     }
     case "plugin": {
-      const imported = importFromFile(resolved);
-      const pluginNames = imported.plugins.map((entry) => entry.plugin.name);
-      const resourcesImported = imported.plugins.reduce(
-        (total, entry) => total + entry.resources.length,
-        0,
-      );
+      const files = statSync(resolved).isDirectory()
+        ? readApPackageFiles(resolved)
+        : readApEnvelope(resolved);
+      const plugin = importApPackageFiles(files);
       return {
         scope: "plugin",
-        plugin: pluginNames.join(", "),
-        plugins: pluginNames,
-        resources_imported: resourcesImported,
+        plugin: plugin.name,
+        plugins: [plugin.name],
+        resources_imported: getPluginResources(plugin.id).length,
       };
     }
     case "resource": {
@@ -368,15 +355,6 @@ export function importScopedMigration(
         scope: "resource",
         resource: formatResourceSelector(result.resource),
         action: result.action,
-      };
-    }
-    case "environment": {
-      const result = importEnvironmentFile(resolved);
-      return {
-        scope: "environment",
-        environment: result.environment.name,
-        imported_keys: result.imported_keys,
-        imported_secret_refs: result.imported_secret_refs,
       };
     }
     default: {

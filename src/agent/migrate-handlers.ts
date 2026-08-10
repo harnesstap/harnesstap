@@ -37,7 +37,6 @@ function isMigrateScope(value: string): value is MigrateScope {
     case "workspace":
     case "plugin":
     case "resource":
-    case "environment":
       return true;
     default:
       return false;
@@ -45,7 +44,7 @@ function isMigrateScope(value: string): value is MigrateScope {
 }
 
 function clientErrorStatus(message: string): number {
-  return /required|unknown|not found|cannot detect|unsupported|choose only one|looks like|provide at least/i.test(
+  return /required|unknown|not found|cannot detect|cannot tell|unsupported|choose only one|looks like|provide at least|no longer|toml transport/i.test(
     message,
   )
     ? 400
@@ -106,12 +105,24 @@ export async function handleMigrateExport(
   const body = readJsonObject(bodyResult);
   if (body instanceof Response) return body;
 
+  if (typeof body.environment === "string" && body.environment.trim().length > 0) {
+    return jsonResponse(
+      {
+        error: "invalid_scope",
+        message:
+          "Environments are no longer exported on their own — they are machine-local " +
+          "secret references. Use workspace to back them up with everything else.",
+      },
+      { status: 400 },
+    );
+  }
+
   const scopeRaw = body.scope;
   if (typeof scopeRaw !== "string" || !isMigrateScope(scopeRaw)) {
     return jsonResponse(
       {
         error: "invalid_scope",
-        message: "scope must be workspace, plugin, resource, or environment",
+        message: "scope must be workspace, plugin, or resource",
       },
       { status: 400 },
     );
@@ -127,9 +138,8 @@ export async function handleMigrateExport(
 
   const plugin = typeof body.plugin === "string" ? body.plugin : undefined;
   const resource = typeof body.resource === "string" ? body.resource : undefined;
-  const environment =
-    typeof body.environment === "string" ? body.environment : undefined;
   const includePlugins = body.include_plugins === true;
+  const singleFile = body.single_file === true;
 
   switch (scopeRaw) {
     case "plugin":
@@ -154,17 +164,6 @@ export async function handleMigrateExport(
         );
       }
       break;
-    case "environment":
-      if (!environment || environment.trim().length === 0) {
-        return jsonResponse(
-          {
-            error: "environment_required",
-            message: "environment is required for environment export",
-          },
-          { status: 400 },
-        );
-      }
-      break;
     case "workspace":
       break;
     default: {
@@ -179,10 +178,10 @@ export async function handleMigrateExport(
   const exportOpts: MigrateExportCliOpts = {
     file: resolve(path.trim()),
     includePlugins,
+    singleFile,
     workspace: scopeRaw === "workspace" ? true : undefined,
     plugin: scopeRaw === "plugin" ? plugin : undefined,
     resource: scopeRaw === "resource" ? resource : undefined,
-    environment: scopeRaw === "environment" ? environment : undefined,
   };
 
   try {
@@ -231,11 +230,22 @@ export async function handleMigrateImport(
   const scopeRaw = body.scope;
   let forcedScope: MigrateScope | undefined;
   if (scopeRaw !== null && scopeRaw !== undefined) {
+    if (scopeRaw === "environment") {
+      return jsonResponse(
+        {
+          error: "invalid_scope",
+          message:
+            "Environments are no longer imported on their own — they are machine-local " +
+            "secret references. Use workspace to restore them with everything else.",
+        },
+        { status: 400 },
+      );
+    }
     if (typeof scopeRaw !== "string" || !isMigrateScope(scopeRaw)) {
       return jsonResponse(
         {
           error: "invalid_scope",
-          message: "scope must be workspace, plugin, resource, or environment",
+          message: "scope must be workspace, plugin, or resource",
         },
         { status: 400 },
       );
@@ -248,7 +258,6 @@ export async function handleMigrateImport(
     workspace: forcedScope === "workspace" ? true : undefined,
     plugin: forcedScope === "plugin" ? true : undefined,
     resource: forcedScope === "resource" ? true : undefined,
-    environment: forcedScope === "environment" ? true : undefined,
   };
 
   try {

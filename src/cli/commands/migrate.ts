@@ -38,11 +38,6 @@ function printMigrateExportHuman(result: ScopedExportResult): void {
         `Exported resource ${ui.theme.accent(result.resource)} ${ui.icons.hint} ${result.output}`,
       );
       return;
-    case "environment":
-      ui.success(
-        `Exported environment ${ui.theme.accent(result.environment)} ${ui.icons.hint} ${result.output}`,
-      );
-      return;
     default: {
       const neverResult: never = result;
       throw new Error(`Unsupported export result: ${String(neverResult)}`);
@@ -67,11 +62,6 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
         `Imported resource ${ui.theme.accent(result.resource)} ${ui.icons.bullet} ${result.action}`,
       );
       return;
-    case "environment":
-      ui.success(
-        `Imported environment ${ui.theme.accent(result.environment)} ${ui.icons.bullet} ${formatCount(result.imported_keys.length, "var")}`,
-      );
-      return;
     default: {
       const neverResult: never = result;
       throw new Error(`Unsupported import result: ${String(neverResult)}`);
@@ -89,6 +79,7 @@ async function handleMigrateExportCommand(
     environment?: string;
     includePlugins?: boolean;
     embedPlugins?: boolean;
+    singleFile?: boolean;
     format?: string;
     noInteractive?: boolean;
     interactive?: boolean;
@@ -123,8 +114,8 @@ async function handleMigrateExportCommand(
       workspace: wizard.scope === "workspace" ? true : undefined,
       plugin: wizard.plugin,
       resource: wizard.resource,
-      environment: wizard.environment,
       includePlugins: wizard.embedPlugins,
+      singleFile: wizard.singleFile,
     };
   }
 
@@ -234,18 +225,25 @@ export function registerMigrateCommands(root: Command): void {
     root
       .command("migrate")
       .alias("m")
-      .description("Export or import workspace, plugins, environments, or resources for offline sharing"),
+      .description("Export or import workspace, plugins, or resources for offline sharing"),
   );
 
   migrateCmd
     .command("export")
-    .argument("[file]", "Output path (.tar.gz, .json, or .harnesstap.toml)")
+    .argument(
+      "[file]",
+      "Output path (package directory, .ap.json envelope, or .tar.gz workspace archive)",
+    )
     .option("--workspace", "Export full workspace archive")
     .option("--plugin <name>", "Export plugin(s); comma-separated names or IDs")
     .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")
-    .option("--environment <name>", "Export one environment as TOML")
+    .option(
+      "--environment <name>",
+      "Removed — environments are machine-local; use --workspace",
+    )
+    .option("--single-file", "Write a .ap.json envelope instead of a package directory")
     .option("-o, --file <path>", "Output path (overrides positional)")
-    .option("--include-plugins", "Embed plugin trees (workspace and plugin scope)")
+    .option("--include-plugins", "Embed plugin trees (workspace scope)")
     .option("--embed-plugins", "Alias for --include-plugins")
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Export workspace, plugin, or resource for offline sharing")
@@ -253,11 +251,17 @@ export function registerMigrateCommands(root: Command): void {
 
   migrateCmd
     .command("import")
-    .argument("[file]", "Archive or TOML export file")
+    .argument(
+      "[file]",
+      "package directory, .ap.json envelope, or .tar.gz workspace archive",
+    )
     .option("--workspace", "Force workspace archive import")
-    .option("--plugin", "Force plugin bundle import")
-    .option("--resource", "Force resource document import")
-    .option("--environment", "Force environment document import")
+    .option("--plugin", "Force Agent Plugins package import")
+    .option("--resource", "Force single-resource package import")
+    .option(
+      "--environment",
+      "Removed — environments are machine-local; use --workspace",
+    )
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Import workspace, plugin, or resource from file")
     .action(handleMigrateImportCommand);
