@@ -142,6 +142,16 @@ export async function syncPluginPinsForApply(
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const needsSync = options.syncAll || !metadata.resolved_version;
     if (!needsSync) {
+      // Already resolved — still ensure the upstream layer exists so the
+      // graph can treat the install as an ordinary node without a re-sync.
+      if (metadata.resolved_version) {
+        const parsed = parseDependencyRef(pin.ref);
+        materializeUpstreamPluginLayer({
+          ref: pin.ref,
+          name: parsed.name,
+          version: metadata.resolved_version,
+        });
+      }
       continue;
     }
 

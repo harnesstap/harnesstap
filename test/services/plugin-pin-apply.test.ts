@@ -7,8 +7,9 @@ import {
   preparePluginPinsForApply,
   syncPluginPinsForApply,
 } from "../../src/services/plugin-pin-apply.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer, deleteLayer, getLayerByName } from "../../src/models/layer-model.ts";
 import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
+import { getLayerOrigin } from "../../src/services/layer-origin.ts";
 import type { RunCommand } from "../../src/plugins/run-command.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
@@ -34,6 +35,41 @@ describe("syncPluginPinsForApply", () => {
       );
       expect(result.installs[0]?.status).toBe("already_installed");
       expect(result.unresolvedPins).toEqual([]);
+      const upstream = getLayerByName("formatter", "1.2.3");
+      expect(upstream).toBeDefined();
+      expect(getLayerOrigin(upstream!.id)).toBe("upstream");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rematerializes upstream layers when the pin is already resolved", async () => {
+    const context = await createTestContext("plugin-apply-rematerialize");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const layer = createLayer({ name: "sync-me" });
+      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+
+      await syncPluginPinsForApply({
+        pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
+        homeRoot: fixtureHome,
+        projectRoot: context.projectDir,
+        scope: "project",
+      });
+      const first = getLayerByName("formatter", "1.2.3");
+      expect(first).toBeDefined();
+      deleteLayer(first!.id);
+      expect(getLayerByName("formatter", "1.2.3")).toBeUndefined();
+
+      await syncPluginPinsForApply({
+        pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
+        homeRoot: fixtureHome,
+        projectRoot: context.projectDir,
+        scope: "project",
+      });
+      const rematerialized = getLayerByName("formatter", "1.2.3");
+      expect(rematerialized).toBeDefined();
+      expect(getLayerOrigin(rematerialized!.id)).toBe("upstream");
     } finally {
       await context.cleanup();
     }
