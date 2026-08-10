@@ -2,11 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setHarnessPreference } from "../../src/models/harness.js";
 import { setActiveProfileName } from "../../src/services/active-profile.js";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import {
   detectProfileHarnessSyncStatus,
   updateProfileFromMainHarness,
@@ -29,11 +29,11 @@ describe("profile-harness-sync service", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(profile.id, createSkill("kept-skill", "# kept").id);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(profile.id, createSkill("kept-skill", "# kept").id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -66,20 +66,20 @@ describe("profile-harness-sync service", () => {
     }
   });
 
-  it("updates the profile layer from the main harness before switching away", async () => {
+  it("updates the profile plugin from the main harness before switching away", async () => {
     const context = await createInitializedTestContext("profile-harness-sync-update");
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("kept-skill", "# kept").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("kept-skill", "# kept").id);
 
-      const profileB = createLayer({ name: "profile-b" });
-      setLayerTags(profileB.id, ["profile"]);
-      addResourceToLayer(profileB.id, createSkill("other-skill", "# other").id);
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
+      addResourceToPlugin(profileB.id, createSkill("other-skill", "# other").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });

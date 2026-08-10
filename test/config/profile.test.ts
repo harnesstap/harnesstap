@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { isProfileLayer } from "../../src/constants/profile.ts";
+import { isProfilePlugin } from "../../src/constants/profile.ts";
 
 describe("profile constants", () => {
-  it("recognizes profile-tagged layers", () => {
-    expect(isProfileLayer({ tags: ["profile"] })).toBe(true);
-    expect(isProfileLayer({ tags: ["local", "profile"] })).toBe(true);
-    expect(isProfileLayer({ tags: ["local"] })).toBe(false);
+  it("recognizes profile-tagged plugins", () => {
+    expect(isProfilePlugin({ tags: ["profile"] })).toBe(true);
+    expect(isProfilePlugin({ tags: ["local", "profile"] })).toBe(true);
+    expect(isProfilePlugin({ tags: ["local"] })).toBe(false);
   });
 });

@@ -2,14 +2,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
-import { listProfileLayers } from "../../src/constants/profile.ts";
+import { listProfilePlugins } from "../../src/constants/profile.ts";
 import { getDb } from "../../src/db/connection.ts";
 import { initializeSchema } from "../../src/db/schema.ts";
 import { getActiveProfileName } from "../../src/services/active-profile.ts";
-import { ensureDefaultProfileLayer } from "../../src/services/ensure-default-profile.ts";
+import { ensureDefaultProfilePlugin } from "../../src/services/ensure-default-profile.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
 
-describe("ensureDefaultProfileLayer", () => {
+describe("ensureDefaultProfilePlugin", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
   const tempDirs: string[] = [];
 
@@ -34,12 +34,12 @@ describe("ensureDefaultProfileLayer", () => {
 
   it("creates and activates a default profile when none exist", () => {
     withHome();
-    expect(listProfileLayers()).toHaveLength(0);
+    expect(listProfilePlugins()).toHaveLength(0);
 
-    const result = ensureDefaultProfileLayer();
+    const result = ensureDefaultProfilePlugin();
     expect(result.created).toBe(true);
-    expect(result.layer.name).toBe("default");
-    expect(listProfileLayers().map((layer) => layer.name)).toEqual(["default"]);
+    expect(result.plugin.name).toBe("default");
+    expect(listProfilePlugins().map((plugin) => plugin.name)).toEqual(["default"]);
     expect(getActiveProfileName()).toBe("default");
   });
 
@@ -47,9 +47,9 @@ describe("ensureDefaultProfileLayer", () => {
     withHome();
     createProfileCommand({ name: "work" });
 
-    const result = ensureDefaultProfileLayer();
+    const result = ensureDefaultProfilePlugin();
     expect(result.created).toBe(false);
-    expect(result.layer.name).toBe("work");
-    expect(listProfileLayers().map((layer) => layer.name)).toEqual(["work"]);
+    expect(result.plugin.name).toBe("work");
+    expect(listProfilePlugins().map((plugin) => plugin.name)).toEqual(["work"]);
   });
 });

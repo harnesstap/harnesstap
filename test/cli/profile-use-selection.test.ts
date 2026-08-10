@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { createLayer, setLayerTags, addResourceToLayer } from "../../src/models/plugin-model.ts";
+import { createPlugin, setPluginTags, addResourceToPlugin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
@@ -12,9 +12,9 @@ function writeProjectConfig(projectDir: string, toml: string) {
   writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
 }
 
-function createProfileLayer(name: string) {
-  const layer = createLayer({ name });
-  setLayerTags(layer.id, ["profile"]);
+function createProfilePlugin(name: string) {
+  const plugin = createPlugin({ name });
+  setPluginTags(plugin.id, ["profile"]);
   const resource = createResource({
     type: "instruction",
     name: `${name}-guide`,
@@ -23,8 +23,8 @@ function createProfileLayer(name: string) {
     metadata: {},
     source: "manual",
   });
-  addResourceToLayer(layer.id, resource.id);
-  return layer;
+  addResourceToPlugin(plugin.id, resource.id);
+  return plugin;
 }
 
 describe("profile use selection", () => {
@@ -33,8 +33,8 @@ describe("profile use selection", () => {
 
     try {
       await runCli(["init", "--no-default-profile"]);
-      createProfileLayer("repo-dev");
-      createProfileLayer("work");
+      createProfilePlugin("repo-dev");
+      createProfilePlugin("work");
 
       writeProjectConfig(
         context.projectDir,
@@ -69,12 +69,12 @@ selector = "repo-dev"
     }
   });
 
-  it("applies a global profile layer by name even when project config exists", async () => {
+  it("applies a global profile plugin by name even when project config exists", async () => {
     const context = await createTestContext("cli-profile-use-global");
 
     try {
       await runCli(["init", "--no-default-profile"]);
-      createProfileLayer("work");
+      createProfilePlugin("work");
       writeProjectConfig(
         context.projectDir,
         `schema = "urn:harnesstap:project:v1"

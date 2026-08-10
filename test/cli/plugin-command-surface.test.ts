@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 describe("ht plugin command surface", () => {
-  it("exposes every former layer subcommand under plugin", async () => {
+  it("exposes every former plugin subcommand under plugin", async () => {
     const result = await runCli(["plugin", "--help"]);
     for (const sub of [
       "create",

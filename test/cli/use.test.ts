@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
@@ -12,9 +12,9 @@ function writeProjectConfig(projectDir: string, toml: string) {
   writeTextFile(join(projectDir, ".harnesstap", "config.toml"), toml);
 }
 
-function createProfileLayer(name: string) {
-  const layer = createLayer({ name });
-  setLayerTags(layer.id, ["profile"]);
+function createProfilePlugin(name: string) {
+  const plugin = createPlugin({ name });
+  setPluginTags(plugin.id, ["profile"]);
   const resource = createResource({
     type: "instruction",
     name: `${name}-guide`,
@@ -23,8 +23,8 @@ function createProfileLayer(name: string) {
     metadata: {},
     source: "manual",
   });
-  addResourceToLayer(layer.id, resource.id);
-  return layer;
+  addResourceToPlugin(plugin.id, resource.id);
+  return plugin;
 }
 
 describe("CLI use", () => {
@@ -33,7 +33,7 @@ describe("CLI use", () => {
 
     try {
       await runCli(["init"]);
-      createProfileLayer("team-stack");
+      createProfilePlugin("team-stack");
       writeProjectConfig(
         context.projectDir,
         `schema = "urn:harnesstap:project:v1"
@@ -74,7 +74,7 @@ selector = "team-stack"
 
     try {
       await runCli(["init"]);
-      createProfileLayer("team-stack");
+      createProfilePlugin("team-stack");
       writeProjectConfig(
         context.projectDir,
         `schema = "urn:harnesstap:project:v1"
@@ -120,7 +120,7 @@ environment = "staging"
 
     try {
       await runCli(["init"]);
-      createProfileLayer("team-stack");
+      createProfilePlugin("team-stack");
       writeProjectConfig(
         context.projectDir,
         `schema = "urn:harnesstap:project:v1"

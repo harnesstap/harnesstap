@@ -1,7 +1,7 @@
 {
   "$schema": "urn:harnesstap:layer:v1",
   "version": 1,
-  "layer": {
+  "plugin": {
     "name": "demo-stack",
     "description": "Next.js 15 fullstack app with TypeScript, Tailwind, Prisma, and Vitest",
     "tags": ["nextjs", "typescript", "react", "tailwind", "prisma"],

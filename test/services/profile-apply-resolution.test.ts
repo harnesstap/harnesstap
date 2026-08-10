@@ -4,14 +4,14 @@ import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import {
-  addResourceToLayer,
-  createLayer,
-  getLayerByName,
-  setLayerTags,
+  addResourceToPlugin,
+  createPlugin,
+  getPluginByName,
+  setPluginTags,
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { addLayerAttachment } from "../../src/services/layer-composition.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { listGlobalApplySnapshots } from "../../src/models/global-apply-snapshot.ts";
 
 let ctx: TestContext;
@@ -26,8 +26,8 @@ afterEach(async () => {
 
 describe("profile apply resolution", () => {
   it("lets the profile's own resource beat its dependency without ordering", async () => {
-    const base = createLayer({ name: "base" });
-    addResourceToLayer(
+    const base = createPlugin({ name: "base" });
+    addResourceToPlugin(
       base.id,
       createResource({
         type: "instruction",
@@ -39,9 +39,9 @@ describe("profile apply resolution", () => {
         namespace: "base",
       }).id,
     );
-    const work = createLayer({ name: "work" });
-    setLayerTags(work.id, ["profile"]);
-    addResourceToLayer(
+    const work = createPlugin({ name: "work" });
+    setPluginTags(work.id, ["profile"]);
+    addResourceToPlugin(
       work.id,
       createResource({
         type: "instruction",
@@ -53,11 +53,11 @@ describe("profile apply resolution", () => {
         namespace: "work",
       }).id,
     );
-    const workLayer = getLayerByName("work");
-    if (!workLayer) throw new Error("missing work");
-    await addLayerAttachment({ layer: workLayer, selector: "layer:base" });
+    const workPlugin = getPluginByName("work");
+    if (!workPlugin) throw new Error("missing work");
+    await addPluginAttachment({ plugin: workPlugin, selector: "plugin:base" });
 
-    await applyProfileLayer("work", {
+    await applyProfilePlugin("work", {
       harness: "claude-code",
       conflictPolicy: "replace",
     });
@@ -68,14 +68,14 @@ describe("profile apply resolution", () => {
   });
 
   it("records the resolved set on the global apply snapshot", async () => {
-    createLayer({ name: "base" });
-    const work = createLayer({ name: "work" });
-    setLayerTags(work.id, ["profile"]);
-    const workLayer = getLayerByName("work");
-    if (!workLayer) throw new Error("missing work");
-    await addLayerAttachment({ layer: workLayer, selector: "layer:base" });
+    createPlugin({ name: "base" });
+    const work = createPlugin({ name: "work" });
+    setPluginTags(work.id, ["profile"]);
+    const workPlugin = getPluginByName("work");
+    if (!workPlugin) throw new Error("missing work");
+    await addPluginAttachment({ plugin: workPlugin, selector: "plugin:base" });
 
-    await applyProfileLayer("work", {
+    await applyProfilePlugin("work", {
       harness: "claude-code",
       conflictPolicy: "replace",
     });

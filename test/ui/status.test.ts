@@ -9,10 +9,10 @@ describe("ui status", () => {
   });
 
   it("renders verdicts with icons and optional hints", () => {
-    expect(renderSuccess('Layer "team" is valid.')).toContain("✓");
+    expect(renderSuccess('Plugin "team" is valid.')).toContain("✓");
     expect(
-      renderDanger("Layer not found: team", {
-        hint: "Run `harnesstap layer list` to see available layers.",
+      renderDanger("Plugin not found: team", {
+        hint: "Run `harnesstap plugin list` to see available plugins.",
       }),
     ).toContain("→");
   });

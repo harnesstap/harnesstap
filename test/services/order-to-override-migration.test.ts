@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/plugin-model.ts";
+import { addResourceToPlugin, createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createSnapshot } from "../../src/models/snapshot.ts";
 import { upsertProject } from "../../src/models/project.ts";
-import { addLayerAttachment } from "../../src/services/layer-composition.ts";
-import { getLayerOverrides } from "../../src/services/layer-overrides.ts";
+import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
+import { getPluginOverrides } from "../../src/services/plugin-overrides.ts";
 import { migrateOrderToOverrides } from "../../src/services/order-to-override-migration.ts";
 
 let ctx: TestContext;
@@ -35,16 +35,16 @@ describe("migrateOrderToOverrides", () => {
   it("synthesizes an override when the previous winner differs from resolution", async () => {
     // dep declares skill:alpha; root also declares skill:alpha.
     // Old ordered merge applied dep last, so dep won. Nearest-wins gives root.
-    const dep = createLayer({ name: "dep" });
+    const dep = createPlugin({ name: "dep" });
     const depSkill = skill("alpha", "FROM-DEP", "dep");
-    addResourceToLayer(dep.id, depSkill.id);
+    addResourceToPlugin(dep.id, depSkill.id);
 
-    const root = createLayer({ name: "root" });
+    const root = createPlugin({ name: "root" });
     const rootSkill = skill("alpha", "FROM-ROOT", "root");
-    addResourceToLayer(root.id, rootSkill.id);
-    const rootLayer = getLayerByName("root");
-    if (!rootLayer) throw new Error("missing root");
-    await addLayerAttachment({ layer: rootLayer, selector: "layer:dep" });
+    addResourceToPlugin(root.id, rootSkill.id);
+    const rootPlugin = getPluginByName("root");
+    if (!rootPlugin) throw new Error("missing root");
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:dep" });
 
     const project = upsertProject({
       git_origin: "github.com/acme/repo",
@@ -55,7 +55,7 @@ describe("migrateOrderToOverrides", () => {
       project_id: project.id,
       label: "Before applying: root",
       state: {
-        layers: [rootLayer],
+        plugins: [rootPlugin],
         resources: [depSkill],
         platform_files: {},
       },
@@ -68,16 +68,16 @@ describe("migrateOrderToOverrides", () => {
       key: "skill:alpha",
       winner: "dep",
     });
-    expect(getLayerOverrides(root.id).resources["skill:alpha"]).toBe("dep");
+    expect(getPluginOverrides(root.id).resources["skill:alpha"]).toBe("dep");
   });
 
   it("writes nothing when the previous winner already matches resolution", async () => {
-    const dep = createLayer({ name: "dep" });
-    addResourceToLayer(dep.id, skill("beta", "FROM-DEP", "dep").id);
-    const root = createLayer({ name: "root" });
-    const rootLayer = getLayerByName("root");
-    if (!rootLayer) throw new Error("missing root");
-    await addLayerAttachment({ layer: rootLayer, selector: "layer:dep" });
+    const dep = createPlugin({ name: "dep" });
+    addResourceToPlugin(dep.id, skill("beta", "FROM-DEP", "dep").id);
+    const root = createPlugin({ name: "root" });
+    const rootPlugin = getPluginByName("root");
+    if (!rootPlugin) throw new Error("missing root");
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:dep" });
 
     const project = upsertProject({
       git_origin: "github.com/acme/repo2",
@@ -88,7 +88,7 @@ describe("migrateOrderToOverrides", () => {
       project_id: project.id,
       label: "Before applying: root",
       state: {
-        layers: [rootLayer],
+        plugins: [rootPlugin],
         resources: [],
         platform_files: {},
       },
@@ -96,17 +96,17 @@ describe("migrateOrderToOverrides", () => {
 
     const report = migrateOrderToOverrides();
     expect(report.overridesWritten).toEqual([]);
-    expect(getLayerOverrides(root.id).resources).toEqual({});
+    expect(getPluginOverrides(root.id).resources).toEqual({});
   });
 
   it("warns for projects with no snapshot instead of guessing", async () => {
-    const dep = createLayer({ name: "dep" });
-    addResourceToLayer(dep.id, skill("alpha", "FROM-DEP", "dep").id);
-    const root = createLayer({ name: "root" });
-    addResourceToLayer(root.id, skill("alpha", "FROM-ROOT", "root").id);
-    const rootLayer = getLayerByName("root");
-    if (!rootLayer) throw new Error("missing root");
-    await addLayerAttachment({ layer: rootLayer, selector: "layer:dep" });
+    const dep = createPlugin({ name: "dep" });
+    addResourceToPlugin(dep.id, skill("alpha", "FROM-DEP", "dep").id);
+    const root = createPlugin({ name: "root" });
+    addResourceToPlugin(root.id, skill("alpha", "FROM-ROOT", "root").id);
+    const rootPlugin = getPluginByName("root");
+    if (!rootPlugin) throw new Error("missing root");
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:dep" });
 
     upsertProject({
       git_origin: "github.com/acme/repo3",

@@ -1,15 +1,15 @@
 import { render } from "@inquirer/testing";
 import { describe, expect } from "bun:test";
-import type { CatalogLayer } from "../../src/services/catalog-types.js";
+import type { CatalogPlugin } from "../../src/services/catalog-types.js";
 import { promptIt, withPrompt } from "../helpers/prompt-test.ts";
 import { promptForInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.ts?actual";
 import { promptForInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.ts?actual";
 import { promptForInteractiveEnvironmentList } from "../../src/services/wizards/interactive-environment-list.ts?actual";
-import { promptForInteractiveLayerListBrowse } from "../../src/services/wizards/interactive-layer-list-browse.ts?actual";
+import { promptForInteractivePluginListBrowse } from "../../src/services/wizards/interactive-plugin-list-browse.ts?actual";
 import { promptForInteractiveResourceList } from "../../src/services/wizards/interactive-resource-list.ts?actual";
 import { promptForSearchableMultiSelect } from "../../src/services/wizards/searchable-multi-select.ts?actual";
 import type { EnvironmentListRow } from "../../src/ui/environment-list-render.ts";
-import type { Layer } from "../../src/types.js";
+import type { Plugin } from "../../src/types.js";
 
 const sampleResources = [
   {
@@ -84,7 +84,7 @@ function makeEnvironmentRow(name: string): EnvironmentListRow {
   };
 }
 
-const sampleLayers: CatalogLayer[] = [
+const samplePlugins: CatalogPlugin[] = [
   {
     orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
@@ -98,9 +98,9 @@ const sampleLayers: CatalogLayer[] = [
   },
 ];
 
-const localLayers: Layer[] = [
+const localPlugins: Plugin[] = [
   {
-    id: "layer-1",
+    id: "plugin-1",
     name: "team-stack",
     version: "1.0.0",
     org_slug: "",
@@ -187,15 +187,15 @@ describe("interactive list keyboard contract", () => {
     );
   });
 
-  promptIt("layer list browse shows esc cancel and unified chrome", async () => {
+  promptIt("plugin list browse shows esc cancel and unified chrome", async () => {
     await withPrompt(
       render(
-        promptForInteractiveLayerListBrowse,
+        promptForInteractivePluginListBrowse,
         {
-          message: "Select a layer to install",
+          message: "Select a plugin to install",
           scopeLabel: "harnesstap-cloud",
-          localLayers,
-          listRemoteLayers: async () => sampleLayers,
+          localPlugins,
+          listRemotePlugins: async () => samplePlugins,
         },
         { clearPromptOnDone: true },
       ),
@@ -214,9 +214,9 @@ describe("interactive list keyboard contract", () => {
       render(
         promptForInteractiveCatalogBrowser,
         {
-          message: "Browse catalog layers to install",
+          message: "Browse catalog plugins to install",
           scopeLabel: "harnesstap-cloud",
-          listLayers: async () => sampleLayers,
+          listPlugins: async () => samplePlugins,
         },
         { clearPromptOnDone: true },
       ),
@@ -254,10 +254,10 @@ describe("interactive list keyboard contract", () => {
       render(
         promptForInteractiveCatalogSearch,
         {
-          message: "Search catalog layers to apply",
+          message: "Search catalog plugins to apply",
           scopeLabel: "harnesstap-cloud",
           initialQuery: "fullstack",
-          listLayers: async () => sampleLayers,
+          listPlugins: async () => samplePlugins,
         },
         { clearPromptOnDone: true },
       ),

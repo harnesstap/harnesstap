@@ -4,11 +4,11 @@ import {
   extractMarketplaceRepos,
   marketplaceRepoKey,
 } from "../../src/services/claude-marketplace-bootstrap.ts";
-import type { ClaudeLayerConfig } from "../../src/types.ts";
+import type { ClaudePluginConfig } from "../../src/types.ts";
 
 describe("extractMarketplaceRepos", () => {
   it("returns github repo entries from claude.marketplaces", () => {
-    const config: ClaudeLayerConfig = {
+    const config: ClaudePluginConfig = {
       marketplaces: {
         "teads-plugins": {
           source: { source: "github", repo: "outbrain/claude-plugins" },
@@ -21,7 +21,7 @@ describe("extractMarketplaceRepos", () => {
   });
 
   it("skips entries without github repo", () => {
-    const config: ClaudeLayerConfig = {
+    const config: ClaudePluginConfig = {
       marketplaces: {
         other: { source: { source: "url", url: "https://example.com" } },
       },
@@ -30,7 +30,7 @@ describe("extractMarketplaceRepos", () => {
   });
 
   it("dedupes by marketplace name", () => {
-    const config: ClaudeLayerConfig = {
+    const config: ClaudePluginConfig = {
       marketplaces: {
         "teads-plugins": {
           source: { source: "github", repo: "outbrain/claude-plugins" },
@@ -52,7 +52,7 @@ describe("marketplaceRepoKey", () => {
 describe("ensureClaudeMarketplacesFromConfig", () => {
   it("adds unconfigured marketplaces via claude plugin marketplace add", () => {
     const calls: string[][] = [];
-    const config: ClaudeLayerConfig = {
+    const config: ClaudePluginConfig = {
       marketplaces: {
         "teads-plugins": {
           source: { source: "github", repo: "outbrain/claude-plugins" },

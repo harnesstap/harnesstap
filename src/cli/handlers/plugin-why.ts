@@ -26,7 +26,7 @@ export function handlePluginWhyCommand(
   if (!rootName) {
     process.exitCode = 1;
     ui.danger("No lockfile found and no --root given.", {
-      hints: ["ht plugin apply <plugin>", "ht plugin why <target> --root <plugin>"],
+      hints: ["ht apply <plugin>", "ht plugin why <target> --root <plugin>"],
     });
     return;
   }
@@ -99,6 +99,6 @@ export function handlePluginWhyCommand(
     );
   }
   if (!locked) {
-    ui.warn("This selection is not in the lockfile. Run `ht plugin apply` to record it.");
+    ui.warn("This selection is not in the lockfile. Run `ht apply` to record it.");
   }
 }

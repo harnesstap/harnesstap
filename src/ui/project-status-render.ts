@@ -90,7 +90,7 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
   subheader("APPLIED PLUGINS");
   if (payload.applied_plugins.length === 0) {
     console.log("  (none applied)");
-    status.dim("  Run `ht plugin apply <plugin>`");
+    status.dim("  Run `ht apply <plugin>`");
   } else {
     for (const row of payload.applied_plugins) {
       const summary = formatResourceCountLine(row.resource_count, row.resource_summary);
@@ -178,7 +178,7 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
     for (const name of payload.lock.removed) {
       console.log(`  ${name}  (removed)`);
     }
-    status.dim(`  hint: ht plugin apply ${payload.lock.root} --update`);
+    status.dim(`  hint: ht apply ${payload.lock.root} --update`);
   }
 }
 

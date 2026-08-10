@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createTestContext } from "../helpers/db.ts";
-import { createLayer, getLayerById } from "../../src/models/plugin-model.ts";
+import { createPlugin, getPluginById } from "../../src/models/plugin-model.ts";
 import { addMarketplace } from "../../src/services/marketplace-registry.ts";
 import {
   addPluginFromMarketplace,
@@ -14,7 +14,7 @@ import {
   clearActiveProfileName,
   setActiveProfileName,
 } from "../../src/services/active-profile.ts";
-import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
+import { attachPluginPinToPlugin } from "../../src/services/plugin-composition.ts";
 
 function harnesstapDirFromContext(context: Awaited<ReturnType<typeof createTestContext>>) {
   return join(context.homeDir, ".harnesstap");
@@ -73,7 +73,7 @@ describe("addPluginFromMarketplace", () => {
         platforms: ["claude-code"],
       });
 
-      const layer = createLayer({ name: "inactive-layer", tags: ["profile"] });
+      const plugin = createPlugin({ name: "inactive-plugin", tags: ["profile"] });
       const installCalls: unknown[] = [];
       const ensureCalls: unknown[] = [];
 
@@ -82,7 +82,7 @@ describe("addPluginFromMarketplace", () => {
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
         ref: "formatter@acme-marketplace",
-        layerName: layer.name,
+        pluginName: plugin.name,
         versionConstraint: "1.2.3",
         install: async (opts) => {
           installCalls.push(opts);
@@ -106,7 +106,7 @@ describe("addPluginFromMarketplace", () => {
       expect(installCalls).toEqual([]);
       expect(ensureCalls).toEqual([]);
 
-      const refreshed = getLayerById(layer.id);
+      const refreshed = getPluginById(plugin.id);
       expect(refreshed?.claude?.marketplaces?.["acme-marketplace"]).toEqual({
         source: { source: "github", repo: "acme/plugins" },
       });
@@ -118,7 +118,7 @@ describe("addPluginFromMarketplace", () => {
     }
   });
 
-  it("installs when the layer matches the active profile", async () => {
+  it("installs when the plugin matches the active profile", async () => {
     const context = await createTestContext("plugin-marketplace-add-active");
     try {
       context.schema.initializeSchema(context.connection.getDb());
@@ -130,8 +130,8 @@ describe("addPluginFromMarketplace", () => {
         platforms: ["claude-code"],
       });
 
-      const layer = createLayer({ name: "active-layer", tags: ["profile"] });
-      setActiveProfileName(layer.name);
+      const plugin = createPlugin({ name: "active-plugin", tags: ["profile"] });
+      setActiveProfileName(plugin.name);
 
       const installCalls: unknown[] = [];
       const ensureCalls: unknown[] = [];
@@ -141,7 +141,7 @@ describe("addPluginFromMarketplace", () => {
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
         ref: "formatter@acme-marketplace",
-        layerName: layer.name,
+        pluginName: plugin.name,
         versionConstraint: "1.2.3",
         install: async (opts) => {
           installCalls.push(opts);
@@ -181,22 +181,22 @@ describe("addPluginFromMarketplace", () => {
         platforms: ["claude-code"],
       });
 
-      const layer = createLayer({ name: "already-layer" });
-      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      const plugin = createPlugin({ name: "already-plugin" });
+      attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.2.3");
 
       const result = await addPluginFromMarketplace({
         harnesstapDir,
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
         ref: "formatter@acme-marketplace",
-        layerName: layer.name,
+        pluginName: plugin.name,
         versionConstraint: "1.2.3",
       });
 
       expect(result.status).toBe("already_attached");
       expect(result.marketplaceCopied).toBe(true);
 
-      const refreshed = getLayerById(layer.id);
+      const refreshed = getPluginById(plugin.id);
       expect(refreshed?.claude?.marketplaces?.["acme-marketplace"]).toEqual({
         source: { source: "github", repo: "acme/plugins" },
       });
@@ -219,21 +219,21 @@ describe("addPluginFromMarketplace", () => {
         platforms: ["claude-code"],
       });
 
-      const layer = createLayer({ name: "registry-name-layer" });
+      const plugin = createPlugin({ name: "registry-name-plugin" });
 
       const result = await addPluginFromMarketplace({
         harnesstapDir,
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
         ref: "alpha@team",
-        layerName: layer.name,
+        pluginName: plugin.name,
         versionConstraint: "1.0.0",
       });
 
       expect(result.status).toBe("attached");
       expect(result.marketplaceCopied).toBe(true);
 
-      const refreshed = getLayerById(layer.id);
+      const refreshed = getPluginById(plugin.id);
       expect(refreshed?.claude?.marketplaces?.["team"]).toEqual({
         source: { source: "url", url: repo },
       });
@@ -258,21 +258,21 @@ describe("addPluginFromMarketplace", () => {
         platforms: ["cursor"],
       });
 
-      const layer = createLayer({ name: "cursor-layer" });
+      const plugin = createPlugin({ name: "cursor-plugin" });
 
       const result = await addPluginFromMarketplace({
         harnesstapDir,
         homeRoot: context.homeDir,
         projectRoot: context.projectDir,
         ref: "formatter@cursor-marketplace",
-        layerName: layer.name,
+        pluginName: plugin.name,
         versionConstraint: "2.0.0",
       });
 
       expect(result.status).toBe("attached");
       expect(result.marketplaceCopied).toBe(false);
 
-      const refreshed = getLayerById(layer.id);
+      const refreshed = getPluginById(plugin.id);
       expect(refreshed?.claude?.marketplaces).toBeUndefined();
       expect(refreshed?.claude?.plugins).toEqual([
         { id: "formatter@cursor-marketplace", version: "2.0.0", enabled: true },

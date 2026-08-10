@@ -148,8 +148,8 @@ describe("VHS scenario manifest", () => {
     // Tape contains the visible commands from the approved story
     expect(tape).toContain('Type "ht scan ."');
     expect(tape).toContain('Type "ht resource list"');
-    expect(tape).toContain('Type "ht layer list --search foundation --remote-only"');
-    expect(tape).toContain('Type "ht layer apply engineering-foundation"');
+    expect(tape).toContain('Type "ht plugin list --search foundation --remote-only"');
+    expect(tape).toContain('Type "ht plugin apply engineering-foundation"');
     expect(tape).toContain('Type "ht status ."');
 
     // Tape does not use --format json
@@ -167,8 +167,8 @@ describe("VHS scenario manifest", () => {
     const staleDetailPaths = [
       "docs/scenarios/details/01-bootstrap-machine.md",
       "docs/scenarios/details/04-scan-import-repo.md",
-      "docs/scenarios/details/07-preview-apply-layer.md",
-      "docs/scenarios/details/11-builtin-layer.md",
+      "docs/scenarios/details/07-preview-apply-plugin.md",
+      "docs/scenarios/details/11-builtin-plugin.md",
       "docs/scenarios/details/21-detect-drift.md",
       "docs/scenarios/details/27-project-sync.md",
     ];
@@ -194,14 +194,14 @@ describe("VHS scenario manifest", () => {
 
     expect(readme).toContain("Agent harness configuration toolkit");
     expect(readme).toContain("ht harness list");
-    expect(readme).toContain("ht layer doctor");
-    expect(readme).toContain("ht layer edit my-setup --add research-helper --type skill");
+    expect(readme).toContain("ht plugin doctor");
+    expect(readme).toContain("ht plugin edit my-setup --add research-helper --type skill");
     expect(readme).toContain(
-      "ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version",
+      "ht plugin edit my-setup --add plugin_pin:formatter@my-marketplace --version",
     );
     expect(readme).not.toContain("ht platform list");
-    expect(readme).not.toContain("ht layer validate");
-    expect(readme).not.toContain("ht layer pull-plugin");
+    expect(readme).not.toContain("ht plugin validate");
+    expect(readme).not.toContain("ht plugin pull-plugin");
     expect(readme).toContain("```mermaid");
   });
 
@@ -211,13 +211,13 @@ describe("VHS scenario manifest", () => {
 
     expect(spec).toContain("Agent harness configuration toolkit");
     expect(spec).toContain("harness list");
-    expect(spec).toContain("layer doctor");
-    expect(spec).toContain("layer edit");
-    expect(spec).not.toContain("layer uncombine");
+    expect(spec).toContain("plugin doctor");
+    expect(spec).toContain("plugin edit");
+    expect(spec).not.toContain("plugin uncombine");
     expect(spec).toContain("wizard mode");
     expect(spec).toContain("```mermaid");
     expect(spec).not.toContain("harnesstap platform list");
-    expect(spec).not.toContain("harnesstap layer validate");
+    expect(spec).not.toContain("harnesstap plugin validate");
   });
 
   it("generate script bakes isolated HOME and HARNESSTAP_HOME into the harnesstap wrapper", () => {
@@ -253,7 +253,7 @@ describe("VHS scenario manifest", () => {
     const obsoleteGifs = [
       "docs/scenarios/vhs/output/01-bootstrap-machine.gif",
       "docs/scenarios/vhs/output/04-scan-import-repo.gif",
-      "docs/scenarios/vhs/output/11-builtin-layer.gif",
+      "docs/scenarios/vhs/output/11-builtin-plugin.gif",
       "docs/scenarios/vhs/output/21-detect-drift.gif",
       "docs/scenarios/vhs/output/27-project-sync.gif",
     ].filter((gifPath) => !curatedOutputs.has(gifPath));

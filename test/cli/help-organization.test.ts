@@ -233,7 +233,7 @@ describe("CLI help and command organization", () => {
     expect(result.stdout).toContain("SCENARIOS");
     expect(result.stdout).toContain("resource");
     expect(result.stdout).toContain("plugin");
-    expect(result.stdout).toContain("plugin apply");
+    expect(result.stdout).toContain("apply");
     expect(result.stdout).toContain("mirror .");
     expect(result.stdout).toContain("plugin list --search foundation");
     expect(result.stdout).toContain("ENVIRONMENT CASCADE");

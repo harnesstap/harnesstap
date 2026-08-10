@@ -5,7 +5,7 @@ import { makeResourceInput } from "../helpers/resources.ts";
 const searchableMultiSelectMock = mock(() => Promise.resolve([] as string[]));
 const interactiveResourceListMock = mock(() => Promise.resolve({ action: "filter", query: "" }));
 const resourceDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
-const layerDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
+const pluginDeleteWizardMock = mock(() => Promise.resolve([] as string[]));
 
 mock.module("../../src/services/wizards/searchable-multi-select.js", () => ({
   promptForSearchableMultiSelect: searchableMultiSelectMock,
@@ -19,8 +19,8 @@ mock.module("../../src/services/wizards/resource-delete.js", () => ({
   runResourceDeleteWizard: resourceDeleteWizardMock,
 }));
 
-mock.module("../../src/services/wizards/layer-delete.js", () => ({
-  runLayerDeleteWizard: layerDeleteWizardMock,
+mock.module("../../src/services/wizards/plugin-delete.js", () => ({
+  runPluginDeleteWizard: pluginDeleteWizardMock,
 }));
 
 interface CapturedPrompt {
@@ -37,21 +37,21 @@ function _firstPrompt(input: unknown): CapturedPrompt {
 }
 
 describe("wizard prompts", () => {
-  it("uses the table browser when deleting layers interactively", async () => {
-    const context = await createInitializedTestContext("wizard-layer-delete-prompts");
-    layerDeleteWizardMock.mockReset();
-    layerDeleteWizardMock.mockResolvedValueOnce(["team@1.0.0"]);
+  it("uses the table browser when deleting plugins interactively", async () => {
+    const context = await createInitializedTestContext("wizard-plugin-delete-prompts");
+    pluginDeleteWizardMock.mockReset();
+    pluginDeleteWizardMock.mockResolvedValueOnce(["team@1.0.0"]);
 
     try {
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      layerModel.createLayer({ name: "team" });
-      layerModel.createLayer({ name: "baseline", version: "2.0.0" });
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      pluginModel.createPlugin({ name: "team" });
+      pluginModel.createPlugin({ name: "baseline", version: "2.0.0" });
 
-      const { runLayerDeleteWizard } = await import("../../src/services/wizards/layer-delete.ts");
-      const result = await runLayerDeleteWizard();
+      const { runPluginDeleteWizard } = await import("../../src/services/wizards/plugin-delete.ts");
+      const result = await runPluginDeleteWizard();
 
       expect(result).toEqual(["team@1.0.0"]);
-      expect(layerDeleteWizardMock).toHaveBeenCalled();
+      expect(pluginDeleteWizardMock).toHaveBeenCalled();
     } finally {
       await context.cleanup();
     }
@@ -137,30 +137,30 @@ describe("wizard prompts", () => {
     }
   });
 
-  it("uses a searchable choice prompt when layer apply needs a layer choice", async () => {
-    const context = await createInitializedTestContext("wizard-layer-apply-prompts");
+  it("uses a searchable choice prompt when plugin apply needs a plugin choice", async () => {
+    const context = await createInitializedTestContext("wizard-plugin-apply-prompts");
 
     try {
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      layerModel.createLayer({ name: "apply-layer" });
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      pluginModel.createPlugin({ name: "apply-plugin" });
 
       const shared = await import("../../src/services/wizards/shared.ts");
       const choiceSpy = spyOn(shared, "promptForSearchableChoice").mockResolvedValue(
-        "apply-layer@1.0.0",
+        "apply-plugin@1.0.0",
       );
 
       try {
-        const { runLayerApplyWizard } = await import("../../src/services/wizards/layer-apply.ts");
-        const result = await runLayerApplyWizard();
+        const { runPluginApplyWizard } = await import("../../src/services/wizards/plugin-apply.ts");
+        const result = await runPluginApplyWizard();
 
-        expect(result).toBe("apply-layer@1.0.0");
+        expect(result).toBe("apply-plugin@1.0.0");
         expect(choiceSpy).toHaveBeenCalledWith(
           expect.objectContaining({
-            message: "Which layer should be applied?",
+            message: "Which plugin should be applied?",
             choices: [
               {
-                name: "apply-layer@1.0.0",
-                value: "apply-layer@1.0.0",
+                name: "apply-plugin@1.0.0",
+                value: "apply-plugin@1.0.0",
                 description: undefined,
               },
             ],

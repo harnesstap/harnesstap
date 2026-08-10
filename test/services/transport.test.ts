@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import {
-  formatLayerExportToml,
-  parseLayerExportToml,
-} from "../../src/services/transport/layer.ts";
+  formatPluginExportToml,
+  parsePluginExportToml,
+} from "../../src/services/transport/plugin.ts";
 import {
-  makeMultiLayerExport,
-  makeSingleLayerExport,
-  parseTestLayerToml,
-  writeLayerExportToml,
+  makeMultiPluginExport,
+  makeSinglePluginExport,
+  parseTestPluginToml,
+  writePluginExportToml,
 } from "../helpers/transport-fixtures.ts";
 
 describe("transport TOML round-trip", () => {
@@ -22,8 +22,8 @@ describe("transport TOML round-trip", () => {
     }
   });
 
-  it("round-trips a single-layer export through TOML", () => {
-    const bundle = makeSingleLayerExport({
+  it("round-trips a single-plugin export through TOML", () => {
+    const bundle = makeSinglePluginExport({
       name: "pagerduty",
       version: "1.0.0",
       resources: [
@@ -42,33 +42,33 @@ describe("transport TOML round-trip", () => {
       ],
     });
 
-    const parsed = parseLayerExportToml(formatLayerExportToml(bundle));
-    expect(parsed.layers).toHaveLength(1);
-    expect(parsed.layers[0]?.name).toBe("pagerduty");
-    expect(parsed.layers[0]?.resources[0]?.content).toBe("# On-call");
+    const parsed = parsePluginExportToml(formatPluginExportToml(bundle));
+    expect(parsed.plugins).toHaveLength(1);
+    expect(parsed.plugins[0]?.name).toBe("pagerduty");
+    expect(parsed.plugins[0]?.resources[0]?.content).toBe("# On-call");
   });
 
-  it("round-trips a multi-layer export through TOML", () => {
-    const bundle = makeMultiLayerExport([
+  it("round-trips a multi-plugin export through TOML", () => {
+    const bundle = makeMultiPluginExport([
       { name: "alpha", version: "1.0.0" },
       { name: "beta", version: "2.0.0" },
     ]);
 
-    const parsed = parseTestLayerToml(formatLayerExportToml(bundle));
-    expect(parsed.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
+    const parsed = parseTestPluginToml(formatPluginExportToml(bundle));
+    expect(parsed.plugins.map((plugin) => plugin.name)).toEqual(["alpha", "beta"]);
   });
 
-  it("writes layer exports to .harnesstap.toml paths", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ht-transport-layer-"));
+  it("writes plugin exports to .harnesstap.toml paths", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-transport-plugin-"));
     tempDirs.push(dir);
 
     const bundlePath = join(dir, "bundle.harnesstap.toml");
-    writeLayerExportToml(
+    writePluginExportToml(
       bundlePath,
-      makeSingleLayerExport({ name: "exported-layer" }),
+      makeSinglePluginExport({ name: "exported-plugin" }),
     );
 
-    const parsed = parseLayerExportToml(readFileSync(bundlePath, "utf-8"));
-    expect(parsed.layers[0]?.name).toBe("exported-layer");
+    const parsed = parsePluginExportToml(readFileSync(bundlePath, "utf-8"));
+    expect(parsed.plugins[0]?.name).toBe("exported-plugin");
   });
 });

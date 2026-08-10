@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import * as layerModel from "../../src/models/plugin-model.ts";
+import * as pluginModel from "../../src/models/plugin-model.ts";
 import {
   createResource,
   listResources,
@@ -8,7 +8,7 @@ import {
   createProfileFromHome,
   previewProfileFromHome,
 } from "../../src/services/profile-from-home.ts";
-import { isProfileLayer } from "../../src/constants/profile.ts";
+import { isProfilePlugin } from "../../src/constants/profile.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
@@ -35,7 +35,7 @@ function createExistingSkill(name: string, content: string) {
 }
 
 describe("profile-from-home service", () => {
-  it("previews a home scan without creating a layer", async () => {
+  it("previews a home scan without creating a plugin", async () => {
     const context = await createInitializedTestContext("profile-from-home-preview");
     try {
       writeHomeSkill(context.homeDir);
@@ -50,7 +50,7 @@ describe("profile-from-home service", () => {
         platformIds: ["claude-code"],
         conflicts: [],
       });
-      expect(layerModel.getLayerByName("from-home")).toBeUndefined();
+      expect(pluginModel.getPluginByName("from-home")).toBeUndefined();
       expect(listResources()).toHaveLength(0);
     } finally {
       await context.cleanup();
@@ -97,7 +97,7 @@ describe("profile-from-home service", () => {
     }
   });
 
-  it("creates a profile layer containing scanned home resources", async () => {
+  it("creates a profile plugin containing scanned home resources", async () => {
     const context = await createInitializedTestContext("profile-from-home-create");
     try {
       writeHomeSkill(context.homeDir);
@@ -110,14 +110,14 @@ describe("profile-from-home service", () => {
         platform: "claude-code",
       });
 
-      expect(isProfileLayer(result.layer)).toBe(true);
-      expect(result.layer).toMatchObject({
+      expect(isProfilePlugin(result.plugin)).toBe(true);
+      expect(result.plugin).toMatchObject({
         name: "from-home",
         description: "Imported home profile",
       });
       expect(result.imported_count).toBe(1);
       expect(result.resources).toHaveLength(1);
-      expect(layerModel.getLayerResources(result.layer.id).map((resource) => resource.name)).toEqual([
+      expect(pluginModel.getPluginResources(result.plugin.id).map((resource) => resource.name)).toEqual([
         "research",
       ]);
     } finally {
@@ -139,7 +139,7 @@ describe("profile-from-home service", () => {
       });
 
       expect(result.resources.map((resource) => resource.id)).toEqual([existing.id]);
-      expect(layerModel.getLayerResources(result.layer.id)[0]?.content).toBe("# Existing");
+      expect(pluginModel.getPluginResources(result.plugin.id)[0]?.content).toBe("# Existing");
     } finally {
       await context.cleanup();
     }
@@ -160,7 +160,7 @@ describe("profile-from-home service", () => {
 
       expect(result.resources.map((resource) => resource.id)).toEqual([existing.id]);
       expect(result.resources[0]?.content).toBe("# Incoming");
-      expect(layerModel.getLayerResources(result.layer.id)[0]?.content).toBe("# Incoming");
+      expect(pluginModel.getPluginResources(result.plugin.id)[0]?.content).toBe("# Incoming");
     } finally {
       await context.cleanup();
     }
@@ -169,7 +169,7 @@ describe("profile-from-home service", () => {
   it("rejects duplicate names before persisting scanned resources", async () => {
     const context = await createInitializedTestContext("profile-from-home-duplicate");
     try {
-      layerModel.createLayer({ name: "duplicate" });
+      pluginModel.createPlugin({ name: "duplicate" });
       writeHomeSkill(context.homeDir);
 
       await expect(
@@ -179,22 +179,22 @@ describe("profile-from-home service", () => {
           homeRoot: context.homeDir,
           platform: "claude-code",
         }),
-      ).rejects.toThrow("Layer already exists: duplicate");
+      ).rejects.toThrow("Plugin already exists: duplicate");
       expect(listResources()).toHaveLength(0);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not promote a non-profile layer created during the home scan", async () => {
+  it("does not promote a non-profile plugin created during the home scan", async () => {
     const context = await createInitializedTestContext("profile-from-home-race");
-    const createLayerDirect = layerModel.createLayer;
+    const createPluginDirect = pluginModel.createPlugin;
     const createSpy = spyOn(
-      layerModel,
-      "createLayer",
+      pluginModel,
+      "createPlugin",
     ).mockImplementation((input) => {
-      createLayerDirect({ name: input.name, description: "Raced layer" });
-      return createLayerDirect(input);
+      createPluginDirect({ name: input.name, description: "Raced plugin" });
+      return createPluginDirect(input);
     });
     try {
       writeHomeSkill(context.homeDir);
@@ -206,11 +206,11 @@ describe("profile-from-home service", () => {
           homeRoot: context.homeDir,
           platform: "claude-code",
         }),
-      ).rejects.toThrow("Layer already exists: raced-profile");
-      const raced = layerModel.getLayerByName("raced-profile");
-      expect(raced?.description).toBe("Raced layer");
-      expect(raced ? isProfileLayer(raced) : true).toBe(false);
-      expect(layerModel.getLayerResources(raced?.id ?? "")).toHaveLength(0);
+      ).rejects.toThrow("Plugin already exists: raced-profile");
+      const raced = pluginModel.getPluginByName("raced-profile");
+      expect(raced?.description).toBe("Raced plugin");
+      expect(raced ? isProfilePlugin(raced) : true).toBe(false);
+      expect(pluginModel.getPluginResources(raced?.id ?? "")).toHaveLength(0);
     } finally {
       createSpy.mockRestore();
       await context.cleanup();

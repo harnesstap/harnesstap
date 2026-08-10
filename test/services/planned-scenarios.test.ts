@@ -17,14 +17,14 @@ describe("planned scenarios services", () => {
         "utf-8",
       );
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
       const projectModel = await import("../../src/models/project.ts");
       const drift = await import("../../src/services/project-drift.ts");
       const applier = await import("../../src/services/applier.ts");
 
-      const layer = layerModel.createLayer({ name: "drift-test" });
+      const plugin = pluginModel.createPlugin({ name: "drift-test" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -33,7 +33,7 @@ describe("planned scenarios services", () => {
           content: "# Original\n",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const generated = await applier.generateFiles(
         [resource],
@@ -49,7 +49,7 @@ describe("planned scenarios services", () => {
         project_id: project.id,
         label: "before",
         state: {
-          layers: [layer],
+          plugins: [plugin],
           resources: [resource],
           platform_files: Object.fromEntries(
             generated.map((r) => [
@@ -77,25 +77,25 @@ describe("planned scenarios services", () => {
     }
   });
 
-  it("diffs two layers", async () => {
+  it("diffs two plugins", async () => {
     const context = await createInitializedTestContext("diff");
     try {
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const { diffLayers } = await import("../../src/services/layer-diff.ts");
+      const { diffPlugins } = await import("../../src/services/plugin-diff.ts");
 
-      const a = layerModel.createLayer({ name: "base" });
-      const b = layerModel.createLayer({ name: "fork" });
+      const a = pluginModel.createPlugin({ name: "base" });
+      const b = pluginModel.createPlugin({ name: "fork" });
       const r1 = resourceModel.createResource(
         makeResourceInput({ type: "instruction", name: "ctx", namespace: "base", content: "a" }),
       );
       const r2 = resourceModel.createResource(
         makeResourceInput({ type: "instruction", name: "ctx", namespace: "fork", content: "b" }),
       );
-      layerModel.addResourceToLayer(a.id, r1.id);
-      layerModel.addResourceToLayer(b.id, r2.id);
+      pluginModel.addResourceToPlugin(a.id, r1.id);
+      pluginModel.addResourceToPlugin(b.id, r2.id);
 
-      const report = diffLayers("base", "fork");
+      const report = diffPlugins("base", "fork");
       expect(report.changes.some((c) => c.key === "instruction:ctx@fork")).toBe(true);
       const forkCtx = report.changes.find((c) => c.key === "instruction:ctx@fork");
       expect(forkCtx?.kind).toBe("resource");
@@ -105,22 +105,22 @@ describe("planned scenarios services", () => {
     }
   });
 
-  it("runs doctor and reports empty layers as warnings only", async () => {
+  it("runs doctor and reports empty plugins as warnings only", async () => {
     const context = await createInitializedTestContext("doctor");
     try {
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const { runLayerDoctor } = await import(
-        "../../src/services/layer-doctor.ts"
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const { runPluginDoctor } = await import(
+        "../../src/services/plugin-doctor.ts"
       );
 
-      layerModel.createLayer({ name: "empty-one" });
-      const report = runLayerDoctor({ nameOrId: "empty-one" });
-      const emptyLayerResult = report.results.find(
-        (result) => result.check === "empty-layer",
+      pluginModel.createPlugin({ name: "empty-one" });
+      const report = runPluginDoctor({ nameOrId: "empty-one" });
+      const emptyPluginResult = report.results.find(
+        (result) => result.check === "empty-plugin",
       );
       expect(report.valid).toBe(true);
-      expect(emptyLayerResult?.severity).toBe("warn");
-      expect(emptyLayerResult?.message).toMatch(/has no resources/i);
+      expect(emptyPluginResult?.severity).toBe("warn");
+      expect(emptyPluginResult?.message).toMatch(/has no resources/i);
     } finally {
       await context.cleanup();
     }
@@ -129,16 +129,16 @@ describe("planned scenarios services", () => {
   it("runs plugin-metadata checks against invalid plugin refs and versions", async () => {
     const context = await createInitializedTestContext("doctor-plugin-meta");
     try {
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
-      const { runLayerDoctor } = await import(
-        "../../src/services/layer-doctor.ts"
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
+      const { runPluginDoctor } = await import(
+        "../../src/services/plugin-doctor.ts"
       );
 
-      const layer = layerModel.createLayer({ name: "bad-plugin-meta" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter", "not-semver");
+      const plugin = pluginModel.createPlugin({ name: "bad-plugin-meta" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter", "not-semver");
 
-      const report = runLayerDoctor({
+      const report = runPluginDoctor({
         nameOrId: "bad-plugin-meta",
         checkIds: ["plugin-metadata"],
       });
@@ -163,7 +163,7 @@ describe("planned scenarios services", () => {
     }
   });
 
-  it("creates layer from project scan", async () => {
+  it("creates plugin from project scan", async () => {
     const context = await createInitializedTestContext("from-project");
     try {
       mkdirSync(join(context.projectDir, ".claude"), { recursive: true });
@@ -179,17 +179,17 @@ describe("planned scenarios services", () => {
         "utf-8",
       );
 
-      const { createLayerFromProject } = await import(
-        "../../src/services/layer-from-project.ts"
+      const { createPluginFromProject } = await import(
+        "../../src/services/plugin-from-project.ts"
       );
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
 
-      const result = await createLayerFromProject({
+      const result = await createPluginFromProject({
         name: "from-proj",
         projectRoot: context.projectDir,
       });
       expect(result.imported_count).toBeGreaterThan(0);
-      const resources = layerModel.getLayerResources(result.layer.id);
+      const resources = pluginModel.getPluginResources(result.plugin.id);
       expect(resources.length).toBeGreaterThan(0);
       expect(resources.some((resource) => resource.source === "AGENTS.md")).toBe(
         false,
@@ -205,17 +205,17 @@ describe("planned scenarios services", () => {
   it("exports and imports migration state", async () => {
     const context = await createInitializedTestContext("migrate");
     try {
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const harnessModel = await import("../../src/models/harness.ts");
       const environmentModel = await import("../../src/models/environment.ts");
       const migrate = await import("../../src/services/migrate.ts");
 
-      const layer = layerModel.createLayer({ name: "migrate-me" });
+      const plugin = pluginModel.createPlugin({ name: "migrate-me" });
       const resource = resourceModel.createResource(
         makeResourceInput({ type: "instruction", name: "m", content: "x" }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
       const environment = environmentModel.createEnvironment({ name: "migrate-env" });
       environmentModel.upsertEnvironmentEnvVar(environment.id, "PD_REGION", "eu");
       harnessModel.setHarnessPreference({
@@ -234,7 +234,7 @@ describe("planned scenarios services", () => {
         outputPath: archivePath,
         includePlugins: false,
       });
-      expect(exported.layer_count).toBe(1);
+      expect(exported.plugin_count).toBe(1);
       expect(exported.environment_count).toBe(1);
       expect(existsSync(archivePath)).toBe(true);
 
@@ -242,9 +242,9 @@ describe("planned scenarios services", () => {
       const context2 = await createInitializedTestContext("migrate-import");
       try {
         const imported = migrate.importMigrationState({ archivePath });
-        expect(imported.layers_imported).toBe(1);
+        expect(imported.plugins_imported).toBe(1);
         expect(imported.environments_imported).toBe(1);
-        expect(layerModel.getLayer("migrate-me")).toBeDefined();
+        expect(pluginModel.getPlugin("migrate-me")).toBeDefined();
         expect(environmentModel.getEnvironmentByName("migrate-env")).toBeDefined();
         expect(harnessModel.getHarnessPreference()?.main_harness).toBe(
           "claude-code",

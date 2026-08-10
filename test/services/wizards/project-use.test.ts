@@ -12,7 +12,7 @@ function makeConfig(
     configPath: "/tmp/project/.harnesstap/config.toml",
     profiles,
     environments: [],
-    layers: [],
+    plugins: [],
     ...overrides,
   };
 }
@@ -35,7 +35,7 @@ describe("project use wizard helpers", () => {
         {
           name: "custom",
           source: "inline",
-          layer: "embedded-layer",
+          plugin: "embedded-plugin",
         },
         {
           name: "local-fallback",
@@ -60,7 +60,7 @@ describe("project use wizard helpers", () => {
         value: "prod",
       },
       {
-        name: "custom · inline · embedded-layer · env shared",
+        name: "custom · inline · embedded-plugin · env shared",
         value: "custom",
       },
       {
@@ -75,7 +75,7 @@ describe("project use wizard helpers", () => {
       {
         name: "solo",
         source: "local",
-        selector: "solo-layer",
+        selector: "solo-plugin",
       },
     ]);
 

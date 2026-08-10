@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { completeCatalogProfiles } from "../../../src/services/completion/providers/catalog-profile.ts";
 
-const listLayersInScopeMock = mock(() => Promise.resolve([]));
+const listPluginsInScopeMock = mock(() => Promise.resolve([]));
 const getCloudAccountMock = mock(() =>
   Promise.resolve({ accountName: undefined, account: undefined }),
 );
 
 mock.module("../../../src/services/catalog-client.ts", () => ({
-  listLayersInScope: listLayersInScopeMock,
+  listPluginsInScope: listPluginsInScopeMock,
 }));
 
 mock.module("../../../src/config/cloud-accounts.ts", () => ({
@@ -15,7 +15,7 @@ mock.module("../../../src/config/cloud-accounts.ts", () => ({
 }));
 
 afterEach(() => {
-  listLayersInScopeMock.mockClear();
+  listPluginsInScopeMock.mockClear();
   getCloudAccountMock.mockClear();
 });
 
@@ -30,7 +30,7 @@ describe("completeCatalogProfiles", () => {
     });
 
     expect(candidates).toEqual([]);
-    expect(listLayersInScopeMock).not.toHaveBeenCalled();
+    expect(listPluginsInScopeMock).not.toHaveBeenCalled();
   });
 
   it("requests catalog results with profile tag filter", async () => {
@@ -44,7 +44,7 @@ describe("completeCatalogProfiles", () => {
         },
       }),
     );
-    listLayersInScopeMock.mockImplementationOnce(() =>
+    listPluginsInScopeMock.mockImplementationOnce(() =>
       Promise.resolve([
         {
           orgSlug: "acme",
@@ -68,7 +68,7 @@ describe("completeCatalogProfiles", () => {
       localDataAvailable: true,
     });
 
-    expect(listLayersInScopeMock).toHaveBeenCalledWith(
+    expect(listPluginsInScopeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         tag: "profile",
       }),

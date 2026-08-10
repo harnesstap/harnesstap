@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/plugin-model.ts";
+import { addResourceToPlugin, createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { addLayerAttachment } from "../../src/services/layer-composition.ts";
+import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
 import { resolveComposition } from "../../src/services/resolve/index.ts";
 import {
   LOCK_SCHEMA,
@@ -28,7 +28,7 @@ afterEach(async () => {
 });
 
 async function buildGraph(): Promise<void> {
-  const base = createLayer({ name: "base", version: "2.1.0" });
+  const base = createPlugin({ name: "base", version: "2.1.0" });
   const resource = createResource({
     type: "skill",
     name: "alpha",
@@ -37,11 +37,11 @@ async function buildGraph(): Promise<void> {
     metadata: {},
     source: "test",
   });
-  addResourceToLayer(base.id, resource.id);
-  createLayer({ name: "root", version: "1.0.0" });
-  const root = getLayerByName("root");
+  addResourceToPlugin(base.id, resource.id);
+  createPlugin({ name: "root", version: "1.0.0" });
+  const root = getPluginByName("root");
   if (!root) throw new Error("missing root");
-  await addLayerAttachment({ layer: root, selector: "layer:base", version: "^2.0.0" });
+  await addPluginAttachment({ plugin: root, selector: "plugin:base", version: "^2.0.0" });
 }
 
 describe("lockfile", () => {
@@ -82,7 +82,7 @@ describe("lockfile", () => {
     const lock = lockfileFromResolution(first);
     expect(lockfileMatchesResolution(lock, first)).toBe(true);
 
-    createLayer({ name: "base", version: "2.2.0" });
+    createPlugin({ name: "base", version: "2.2.0" });
     const second = resolveComposition({ rootSelectors: ["root"] });
     expect(second.selected.find((s) => s.name === "base")?.version).toBe("2.2.0");
     expect(lockfileMatchesResolution(lock, second)).toBe(false);

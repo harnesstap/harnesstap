@@ -1,21 +1,21 @@
 import { describe, expect, it } from "bun:test";
-import { createLayer, setLayerTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
 describe("CLI __complete", () => {
-  it("returns matching local layers for layer show completion", async () => {
-    const context = await createInitializedTestContext("cli-complete-layer");
+  it("returns matching local plugins for plugin show completion", async () => {
+    const context = await createInitializedTestContext("cli-complete-plugin");
     try {
-      createLayer({ name: "engineering-foundation", version: "1.2.0" });
-      createLayer({ name: "demo-layer", version: "0.1.0" });
+      createPlugin({ name: "engineering-foundation", version: "1.2.0" });
+      createPlugin({ name: "demo-plugin", version: "0.1.0" });
 
       const result = await runCli([
         "__complete",
         "zsh",
         "--",
         "ht",
-        "layer",
+        "plugin",
         "show",
         "eng",
       ]);
@@ -23,7 +23,7 @@ describe("CLI __complete", () => {
       expect(result.exitCode).toBeUndefined();
       expect(result.stdout).toContain("engineering-foundation");
       expect(result.stdout).toContain("engineering-foundation@1.2.0");
-      expect(result.stdout).not.toContain("demo-layer");
+      expect(result.stdout).not.toContain("demo-plugin");
     } finally {
       await context.cleanup();
     }
@@ -49,15 +49,15 @@ describe("CLI __complete", () => {
     }
   });
 
-  it("returns harness slugs for layer apply --harness completion", async () => {
-    const context = await createInitializedTestContext("cli-complete-layer-apply-harness");
+  it("returns harness slugs for plugin apply --harness completion", async () => {
+    const context = await createInitializedTestContext("cli-complete-plugin-apply-harness");
     try {
       const result = await runCli([
         "__complete",
         "zsh",
         "--",
         "ht",
-        "layer", "apply",
+        "apply",
         "--harness",
         "cur",
       ]);
@@ -69,15 +69,15 @@ describe("CLI __complete", () => {
     }
   });
 
-  it("returns empty catalog layer completion without auth for layer pull", async () => {
-    const context = await createInitializedTestContext("cli-complete-layer-pull");
+  it("returns empty catalog plugin completion without auth for plugin pull", async () => {
+    const context = await createInitializedTestContext("cli-complete-plugin-pull");
     try {
       const result = await runCli([
         "__complete",
         "zsh",
         "--",
         "ht",
-        "layer",
+        "plugin",
         "pull",
         "eng",
       ]);
@@ -97,7 +97,7 @@ describe("CLI __complete", () => {
         "zsh",
         "--",
         "ht",
-        "layer",
+        "plugin",
         "show",
         "--for",
       ]);
@@ -109,12 +109,12 @@ describe("CLI __complete", () => {
     }
   });
 
-  it("completes local profile layers for profile use and root shorthand", async () => {
-    const context = await createInitializedTestContext("cli-complete-profile-layer");
+  it("completes local profile plugins for profile use and root shorthand", async () => {
+    const context = await createInitializedTestContext("cli-complete-profile-plugin");
     try {
-      const work = createLayer({ name: "work" });
-      setLayerTags(work.id, ["profile"]);
-      createLayer({ name: "foundation" });
+      const work = createPlugin({ name: "work" });
+      setPluginTags(work.id, ["profile"]);
+      createPlugin({ name: "foundation" });
 
       const profileUse = await runCli([
         "__complete",

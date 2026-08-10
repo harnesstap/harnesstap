@@ -158,7 +158,7 @@ export function bundleExportFromTomlDocument(
   });
 
   const pluginExport = pluginExportFromTomlDocument({
-    schema: "urn:harnesstap:plugin:v1",
+    schema: "urn:harnesstap:layer:v1",
     version: 1,
     plugins: document.plugins,
     embedded_plugins: document.embedded_plugins,

@@ -3,13 +3,13 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 
 describe("parameter errors", () => {
-  it("layer show without name reports missing required argument", async () => {
-    const context = await createTestContext("cli-parameter-errors-layer-show");
+  it("plugin show without name reports missing required argument", async () => {
+    const context = await createTestContext("cli-parameter-errors-plugin-show");
     try {
       await runCli(["init"]);
-      await runCli(["layer", "create", "team-stack"]);
+      await runCli(["plugin", "create", "team-stack"]);
 
-      const r = await runCli(["layer", "show"], { isTTY: false });
+      const r = await runCli(["plugin", "show"], { isTTY: false });
 
       expect(r.exitCode).toBe(1);
       expect(r.stderr).toContain("missing required argument 'name'");
@@ -19,8 +19,8 @@ describe("parameter errors", () => {
     }
   });
 
-  it("layer edit conflicting environment flags", async () => {
-    const r = await runCli(["layer", "edit", "x", "--environment", "dev", "--clear-environment"]);
+  it("plugin edit conflicting environment flags", async () => {
+    const r = await runCli(["plugin", "edit", "x", "--environment", "dev", "--clear-environment"]);
     expect(r.stderr).toMatch(/cannot use.*together/i);
   });
 
@@ -30,12 +30,12 @@ describe("parameter errors", () => {
     expect(r.stdout).toContain("USAGE");
   });
 
-  it("layer delete without name reports missing required argument", async () => {
-    const context = await createTestContext("cli-parameter-errors-layer-delete");
+  it("plugin delete without name reports missing required argument", async () => {
+    const context = await createTestContext("cli-parameter-errors-plugin-delete");
     try {
       await runCli(["init"]);
 
-      const r = await runCli(["layer", "delete"], { isTTY: false });
+      const r = await runCli(["plugin", "delete"], { isTTY: false });
 
       expect(r.exitCode).toBe(1);
       expect(r.stderr).toContain("missing required argument 'name'");

@@ -29,35 +29,35 @@ describe("project model", () => {
     }
   });
 
-  it("records applied layers with platforms", async () => {
-    const context = await createInitializedTestContext("project-layers");
+  it("records applied plugins with platforms", async () => {
+    const context = await createInitializedTestContext("project-plugins");
 
     try {
       const projectModel = await import("../../src/models/project.ts");
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
 
       const project = projectModel.createProject({
         git_origin: "git@github.com:acme/repo.git",
         name: "acme/repo",
         local_path: "/tmp/repo",
       });
-      const layer = layerModel.createLayer({ name: "starter" });
-      const configuredLayerModel = await import("../../src/models/plugin-model.ts");
-      const configuredLayer = configuredLayerModel.createLayerFromSources({
+      const plugin = pluginModel.createPlugin({ name: "starter" });
+      const configuredPluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredPlugin = configuredPluginModel.createPluginFromSources({
         name: "starter-stack",
-        sourceLayerIds: [layer.id],
+        sourcePluginIds: [plugin.id],
       });
 
-      projectModel.applyConfiguredLayerToProject({
+      projectModel.applyConfiguredPluginToProject({
         project_id: project.id,
-        configured_layer_id: configuredLayer.id,
+        configured_plugin_id: configuredPlugin.id,
         platforms: ["claude-code", "cursor"],
       });
 
-      expect(projectModel.getProjectConfiguredLayers(project.id)).toEqual([
+      expect(projectModel.getProjectConfiguredPlugins(project.id)).toEqual([
         expect.objectContaining({
           project_id: project.id,
-          layer_id: configuredLayer.id,
+          plugin_id: configuredPlugin.id,
           platforms: ["claude-code", "cursor"],
         }),
       ]);

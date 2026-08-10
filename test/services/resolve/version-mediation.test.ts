@@ -114,7 +114,7 @@ describe("selectVersion", () => {
     expect(error.message).toContain("team-standards@2.1.0 → base ^2.0.0");
     expect(error.message).toContain("legacy-review@1.4.0 → base ^1.2.0");
     expect(error.hints[0]).toBe(
-      "ht layer edit my-setup --override plugin:base@<version>",
+      "ht plugin edit my-setup --override plugin:base@<version>",
     );
   });
 

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { createLayer } from "../../src/models/plugin-model.ts";
+import { createPlugin } from "../../src/models/plugin-model.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
-import { setLayerOrigin } from "../../src/services/layer-origin.ts";
+import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
 import { resolveComposition } from "../../src/services/resolve/index.ts";
 import { lockfileFromResolution } from "../../src/services/lockfile.ts";
 
@@ -19,11 +19,11 @@ afterEach(async () => {
 
 describe("lockfile provenance", () => {
   it("records the dependency source per entry", () => {
-    const upstream = createLayer({ name: "web-search", version: "1.2.0" });
-    setLayerOrigin(upstream.id, "upstream");
-    createLayer({ name: "base", version: "1.0.0" });
+    const upstream = createPlugin({ name: "web-search", version: "1.2.0" });
+    setPluginOrigin(upstream.id, "upstream");
+    createPlugin({ name: "base", version: "1.0.0" });
 
-    const root = createLayer({ name: "root" });
+    const root = createPlugin({ name: "root" });
     addDependency(root.id, "web-search@anthropics");
     addDependency(root.id, "base");
 

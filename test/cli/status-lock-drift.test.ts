@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-import { createLayer, getLayerByName } from "../../src/models/plugin-model.ts";
-import { addLayerAttachment } from "../../src/services/layer-composition.ts";
+import { createPlugin, getPluginByName } from "../../src/models/plugin-model.ts";
+import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
 
 let ctx: TestContext;
 
@@ -17,12 +17,12 @@ afterEach(async () => {
 
 describe("status lock drift", () => {
   it("reports no drift right after apply", async () => {
-    createLayer({ name: "base", version: "1.0.0" });
-    createLayer({ name: "root", version: "1.0.0" });
-    const root = getLayerByName("root");
+    createPlugin({ name: "base", version: "1.0.0" });
+    createPlugin({ name: "root", version: "1.0.0" });
+    const root = getPluginByName("root");
     if (!root) throw new Error("missing root");
-    await addLayerAttachment({ layer: root, selector: "layer:base" });
-    await runCli(["layer", "apply", "root", "--project", ctx.projectDir, "--harness", "claude-code"]);
+    await addPluginAttachment({ plugin: root, selector: "plugin:base" });
+    await runCli(["apply", "root", "--project", ctx.projectDir, "--harness", "claude-code"]);
 
     const result = await runCli([
       "status",
@@ -35,14 +35,14 @@ describe("status lock drift", () => {
   });
 
   it("reports drift when a newer dependency version appears", async () => {
-    createLayer({ name: "base", version: "1.0.0" });
-    createLayer({ name: "root", version: "1.0.0" });
-    const root = getLayerByName("root");
+    createPlugin({ name: "base", version: "1.0.0" });
+    createPlugin({ name: "root", version: "1.0.0" });
+    const root = getPluginByName("root");
     if (!root) throw new Error("missing root");
-    await addLayerAttachment({ layer: root, selector: "layer:base" });
-    await runCli(["layer", "apply", "root", "--project", ctx.projectDir, "--harness", "claude-code"]);
+    await addPluginAttachment({ plugin: root, selector: "plugin:base" });
+    await runCli(["apply", "root", "--project", ctx.projectDir, "--harness", "claude-code"]);
 
-    createLayer({ name: "base", version: "1.1.0" });
+    createPlugin({ name: "base", version: "1.1.0" });
 
     const result = await runCli([
       "status",

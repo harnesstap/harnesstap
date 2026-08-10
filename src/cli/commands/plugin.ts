@@ -388,7 +388,7 @@ export async function handleProjectApplyCommand(
       "Provide at least one plugin name, plugin export path, or URL.",
       {
         hints: [
-          formatCommand("plugin apply <plugin>"),
+          formatCommand("apply <plugin>"),
         ],
       },
     );

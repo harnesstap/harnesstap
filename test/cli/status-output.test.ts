@@ -16,28 +16,28 @@ describe("CLI status output", () => {
 
       expect(status.stdout).toContain("PROJECT");
       expect(status.stdout).toContain("PROFILE");
-      expect(status.stdout).toContain("APPLIED LAYERS");
+      expect(status.stdout).toContain("APPLIED PLUGINS");
       expect(status.stdout).toContain("RESOLVED");
       expect(status.stdout).toContain("PROJECT RESOURCES");
       expect(status.stdout).toContain("SCAN");
       expect(status.stdout).not.toContain("ENVIRONMENT CASCADE");
-      expect(status.stdout).not.toContain("layer_defaults");
+      expect(status.stdout).not.toContain("plugin_defaults");
       expect(status.stdout).not.toContain("secretRefs");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("reports applied layers with resource summaries", async () => {
-    const context = await createTestContext("cli-status-layers");
+  it("reports applied plugins with resource summaries", async () => {
+    const context = await createTestContext("cli-status-plugins");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/status-layers.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/status-plugins.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const layer = layerModel.createLayer({ name: "tracked" });
+      const plugin = pluginModel.createPlugin({ name: "tracked" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -45,10 +45,9 @@ describe("CLI status output", () => {
           content: "# Tracked instructions",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       await runCli([
-        "layer",
         "apply",
         "tracked",
         "--project",

@@ -52,11 +52,11 @@ describe("initializeSchema", () => {
         expect.arrayContaining(["cursor_skill_mode"]),
       );
 
-      const layerColumns = context.connection
+      const pluginColumns = context.connection
         .getDb()
         .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
-      expect(layerColumns.map((column) => column.name)).toEqual(
+      expect(pluginColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
           "org_slug",
           "catalog_slug",
@@ -153,8 +153,8 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("enforces layer uniqueness on org_slug, catalog_slug, name, and version", async () => {
-    const context = await createTestContext("schema-layer-uniqueness");
+  it("enforces plugin uniqueness on org_slug, catalog_slug, name, and version", async () => {
+    const context = await createTestContext("schema-plugin-uniqueness");
 
     try {
       context.schema.initializeSchema(context.connection.getDb());
@@ -162,7 +162,7 @@ describe("initializeSchema", () => {
       const now = new Date().toISOString();
 
       db.prepare(
-        `INSERT INTO layers (
+        `INSERT INTO plugins (
           id, name, version, org_slug, catalog_slug, description, tags,
           claude_config, needs_config, created_at, updated_at
         ) VALUES ('id1', 'foo', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
@@ -170,7 +170,7 @@ describe("initializeSchema", () => {
 
       expect(() =>
         db.prepare(
-          `INSERT INTO layers (
+          `INSERT INTO plugins (
             id, name, version, org_slug, catalog_slug, description, tags,
             claude_config, needs_config, created_at, updated_at
           ) VALUES ('id2', 'foo', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
@@ -179,7 +179,7 @@ describe("initializeSchema", () => {
 
       expect(() =>
         db.prepare(
-          `INSERT INTO layers (
+          `INSERT INTO plugins (
             id, name, version, org_slug, catalog_slug, description, tags,
             claude_config, needs_config, created_at, updated_at
           ) VALUES ('id3', 'foo', '2.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
@@ -190,8 +190,8 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("preserves layer_resources foreign key integrity", async () => {
-    const context = await createTestContext("schema-layer-resources-fk");
+  it("preserves plugin_resources foreign key integrity", async () => {
+    const context = await createTestContext("schema-plugin-resources-fk");
 
     try {
       context.schema.initializeSchema(context.connection.getDb());
@@ -199,10 +199,10 @@ describe("initializeSchema", () => {
       const now = new Date().toISOString();
 
       db.prepare(
-        `INSERT INTO layers (
+        `INSERT INTO plugins (
           id, name, version, org_slug, catalog_slug, description, tags,
           claude_config, needs_config, created_at, updated_at
-        ) VALUES ('p1', 'test-layer', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
+        ) VALUES ('p1', 'test-plugin', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
       ).run(now, now);
       db.prepare(
         `INSERT INTO resources (
@@ -212,13 +212,13 @@ describe("initializeSchema", () => {
         ) VALUES ('r1', 'instruction', 'my-instruction', '', '', '{}', 'manual', '', 'manual', '', '', '', ?, ?)`,
       ).run(now, now);
       db.prepare(
-        `INSERT INTO layer_resources (layer_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
+        `INSERT INTO plugin_resources (plugin_id, resource_id, "order") VALUES ('p1', 'r1', 0)`,
       ).run();
 
       const row = db
-        .prepare("SELECT * FROM layer_resources WHERE layer_id = 'p1'")
-        .get() as { layer_id: string } | undefined;
-      expect(row?.layer_id).toBe("p1");
+        .prepare("SELECT * FROM plugin_resources WHERE plugin_id = 'p1'")
+        .get() as { plugin_id: string } | undefined;
+      expect(row?.plugin_id).toBe("p1");
     } finally {
       await context.cleanup();
     }
@@ -410,7 +410,7 @@ describe("initializeSchema", () => {
       expect(version).toBe(27);
 
       const cols = db
-        .prepare("PRAGMA table_info(layers)")
+        .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string }>;
       expect(cols.map((c) => c.name)).toEqual(
         expect.arrayContaining(["dirty", "frozen_at", "overrides", "origin"]),
@@ -418,7 +418,7 @@ describe("initializeSchema", () => {
 
       const snap = db
         .prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='layer_working_snapshots'",
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='plugin_working_snapshots'",
         )
         .get();
       expect(snap).toBeTruthy();
@@ -479,12 +479,12 @@ describe("initializeSchema", () => {
       ).version;
       expect(version).toBe(27);
 
-      const layerCols = db
-        .prepare("PRAGMA table_info(layers)")
+      const pluginCols = db
+        .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
-      const overridesCol = layerCols.find((c) => c.name === "overrides");
+      const overridesCol = pluginCols.find((c) => c.name === "overrides");
       expect(overridesCol?.dflt_value).toBe("'{}'");
-      const originCol = layerCols.find((c) => c.name === "origin");
+      const originCol = pluginCols.find((c) => c.name === "origin");
       expect(originCol?.dflt_value).toBe("'authored'");
 
       const globalCols = db
@@ -547,14 +547,14 @@ describe("initializeSchema", () => {
       expect(version).toBe(27);
 
       const localOrigin = (
-        db.prepare("SELECT origin FROM layers WHERE id = 'local'").get() as {
+        db.prepare("SELECT origin FROM plugins WHERE id = 'local'").get() as {
           origin: string;
         }
       ).origin;
       expect(localOrigin).toBe("authored");
 
       const catalogOrigin = (
-        db.prepare("SELECT origin FROM layers WHERE id = 'catalog'").get() as {
+        db.prepare("SELECT origin FROM plugins WHERE id = 'catalog'").get() as {
           origin: string;
         }
       ).origin;

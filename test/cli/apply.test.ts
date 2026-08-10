@@ -4,9 +4,9 @@ import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
-import { writeLayerExportToml, makeSingleLayerExport } from "../helpers/transport-fixtures.ts";
+import { writePluginExportToml, makeSinglePluginExport } from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
-import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
+import { findPluginResourceByPin } from "../../src/services/plugin-composition.ts";
 import { getDb } from "../../src/db/connection.ts";
 
 function setPluginResolvedVersion(
@@ -78,9 +78,9 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-default-harness.git");
       await runCli(["init", "--main", "claude-code", "--aliases", "codex"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const layer = layerModel.createLayer({ name: "default-harness-layer" });
+      const plugin = pluginModel.createPlugin({ name: "default-harness-plugin" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -88,11 +88,11 @@ describe("CLI apply", () => {
           content: "# Default harness apply\n",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
-        "default-harness-layer",
+        "apply",
+        "default-harness-plugin",
         "--project",
         context.projectDir,
       ]);
@@ -114,11 +114,11 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-apply.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
-      const layer = layerModel.createLayer({ name: "applied" });
+      const plugin = pluginModel.createPlugin({ name: "applied" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -127,10 +127,10 @@ describe("CLI apply", () => {
           content: "# Applied instructions",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const dryRun = await runCli([
-        "layer", "apply",
+        "apply",
         "applied",
         "--project",
         context.projectDir,
@@ -142,7 +142,7 @@ describe("CLI apply", () => {
       expect(dryRun.stdout).toContain("CLAUDE.md");
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "applied",
         "--project",
         context.projectDir,
@@ -168,22 +168,22 @@ describe("CLI apply", () => {
     }
   });
 
-  it("writes Claude plugin settings for plugin-only layers", async () => {
+  it("writes Claude plugin settings for plugin-only plugins", async () => {
     const context = await createTestContext("cli-apply-plugin-only");
 
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugin-only.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "foundation-only" });
-      pluginPins.attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
-      pluginPins.attachPluginPinToLayer(layer.id, "context7@anthropics", "1.0.0");
+      const plugin = pluginModel.createPlugin({ name: "foundation-only" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "superpowers@obra", "5.1.0");
+      pluginPins.attachPluginPinToPlugin(plugin.id, "context7@anthropics", "1.0.0");
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "foundation-only",
         "--project",
         context.projectDir,
@@ -207,19 +207,19 @@ describe("CLI apply", () => {
     }
   });
 
-  it("resolves exact plugin pins from layer constraints when plugins are not installed locally", async () => {
+  it("resolves exact plugin pins from plugin constraints when plugins are not installed locally", async () => {
     const context = await createTestContext("cli-apply-plugins-exact-pin");
 
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-exact-pin.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "catalog-like" });
-      pluginPins.attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
+      const plugin = pluginModel.createPlugin({ name: "catalog-like" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "superpowers@obra", "5.1.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -227,10 +227,10 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "catalog-like",
         "--project",
         context.projectDir,
@@ -254,19 +254,19 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugin-materialize.git");
       await runCli(["init", "--main", "claude-code", "--aliases", "cursor"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
       const { cpSync } = await import("node:fs");
 
       cpSync(join(fixtureHome, ".claude"), join(context.homeDir, ".claude"), {
         recursive: true,
       });
 
-      const layer = layerModel.createLayer({ name: "plugin-skills" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      const plugin = pluginModel.createPlugin({ name: "plugin-skills" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.2.3");
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "plugin-skills",
         "--project",
         context.projectDir,
@@ -333,12 +333,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-auto-sync.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "auto-sync-plugins" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.9.0");
+      const plugin = pluginModel.createPlugin({ name: "auto-sync-plugins" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.9.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -346,10 +346,10 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "auto-sync-plugins",
         "--project",
         context.projectDir,
@@ -365,7 +365,7 @@ describe("CLI apply", () => {
     }
   });
 
-  it("warns on stderr for layer plugin constraint mismatch without failing", async () => {
+  it("warns on stderr for plugin plugin constraint mismatch without failing", async () => {
     const context = await createTestContext("cli-apply-plugins-warn");
 
     try {
@@ -373,12 +373,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugins.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "with-plugins" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const plugin = pluginModel.createPlugin({ name: "with-plugins" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
@@ -387,10 +387,10 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "with-plugins",
         "--project",
         context.projectDir,
@@ -415,12 +415,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-strict.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "strict-plugins" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const plugin = pluginModel.createPlugin({ name: "strict-plugins" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
@@ -429,10 +429,10 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "strict-plugins",
         "--project",
         context.projectDir,
@@ -458,12 +458,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-ignore.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "ignore-plugins" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const plugin = pluginModel.createPlugin({ name: "ignore-plugins" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -471,10 +471,10 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "ignore-plugins",
         "--project",
         context.projectDir,
@@ -498,13 +498,13 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-conflict.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "conflict-plugins" });
-      pluginPins.attachPluginPinToLayer(
-        layer.id,
+      const plugin = pluginModel.createPlugin({ name: "conflict-plugins" });
+      pluginPins.attachPluginPinToPlugin(
+        plugin.id,
         "formatter@acme-marketplace",
         ">=2.1.0 <3.0.0",
       );
@@ -515,10 +515,10 @@ describe("CLI apply", () => {
           content: "# Ctx",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "conflict-plugins",
         "--project",
         context.projectDir,
@@ -544,10 +544,10 @@ describe("CLI apply", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const layer = layerModel.createLayer({ name: "non-git-apply" });
+      const plugin = pluginModel.createPlugin({ name: "non-git-apply" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -555,10 +555,10 @@ describe("CLI apply", () => {
           content: "# Non-git",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "non-git-apply",
         "--project",
         context.projectDir,
@@ -574,7 +574,7 @@ describe("CLI apply", () => {
     }
   });
 
-  it("reuses imported layers when reapplying the same bundle path", async () => {
+  it("reuses imported plugins when reapplying the same bundle path", async () => {
     const context = await createTestContext("cli-apply-bundle-reuse");
 
     try {
@@ -582,9 +582,9 @@ describe("CLI apply", () => {
       await runCli(["init"]);
 
       const bundlePath = join(context.projectDir, "bundle.harnesstap.toml");
-      writeLayerExportToml(
+      writePluginExportToml(
         bundlePath,
-        makeSingleLayerExport({
+        makeSinglePluginExport({
           name: "bundle-reuse",
           resources: [
             {
@@ -604,7 +604,7 @@ describe("CLI apply", () => {
       );
 
       const firstApply = await runCli([
-        "layer", "apply",
+        "apply",
         bundlePath,
         "--project",
         context.projectDir,
@@ -612,7 +612,7 @@ describe("CLI apply", () => {
         "codex",
       ]);
       const secondApply = await runCli([
-        "layer", "apply",
+        "apply",
         bundlePath,
         "--project",
         context.projectDir,
@@ -623,17 +623,17 @@ describe("CLI apply", () => {
       expect(firstApply.exitCode).toBeUndefined();
       expect(secondApply.exitCode).toBeUndefined();
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const layers = layerModel
-        .listLayers()
-        .filter((layer) => layer.name === "bundle-reuse" && layer.version === "1.0.0");
-      expect(layers).toHaveLength(1);
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugins = pluginModel
+        .listPlugins()
+        .filter((plugin) => plugin.name === "bundle-reuse" && plugin.version === "1.0.0");
+      expect(plugins).toHaveLength(1);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("validates merged plugin pins from earlier layers in strict mode", async () => {
+  it("validates merged plugin pins from earlier plugins in strict mode", async () => {
     const context = await createTestContext("cli-apply-plugins-merged-strict");
 
     try {
@@ -641,12 +641,12 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-merged-strict.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const base = layerModel.createLayer({ name: "base-plugins" });
-      pluginPins.attachPluginPinToLayer(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
+      const base = pluginModel.createPlugin({ name: "base-plugins" });
+      pluginPins.attachPluginPinToPlugin(base.id, "formatter@acme-marketplace", ">=2.1.0 <3.0.0");
       setPluginResolvedVersion("formatter@acme-marketplace", "1.9.0", ">=2.1.0 <3.0.0");
       const baseResource = resourceModel.createResource(
         makeResourceInput({
@@ -655,9 +655,9 @@ describe("CLI apply", () => {
           content: "# Base",
         }),
       );
-      layerModel.addResourceToLayer(base.id, baseResource.id);
+      pluginModel.addResourceToPlugin(base.id, baseResource.id);
 
-      const overlay = layerModel.createLayer({ name: "overlay-no-plugins" });
+      const overlay = pluginModel.createPlugin({ name: "overlay-no-plugins" });
       const overlayResource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -665,10 +665,10 @@ describe("CLI apply", () => {
           content: "# Overlay",
         }),
       );
-      layerModel.addResourceToLayer(overlay.id, overlayResource.id);
+      pluginModel.addResourceToPlugin(overlay.id, overlayResource.id);
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         "base-plugins",
         "overlay-no-plugins",
         "--project",

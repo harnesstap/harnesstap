@@ -16,8 +16,8 @@ import {
   upsertEnvironmentPermission,
 } from "../../src/models/environment.ts";
 import {
-  createLayerFromSources,
-  setLayerDefaultEnvironment,
+  createPluginFromSources,
+  setPluginDefaultEnvironment,
 } from "../../src/models/plugin-model.ts";
 
 describe("environment model", () => {
@@ -103,26 +103,26 @@ describe("environment model", () => {
     }
   });
 
-  it("tracks configured layer environment references", async () => {
+  it("tracks configured plugin environment references", async () => {
     const context = await createInitializedTestContext("environment-references");
 
     try {
       const env = createEnvironment({ name: "prod" });
-      const configuredLayer = createLayerFromSources({
+      const configuredPlugin = createPluginFromSources({
         name: "backend",
-        sourceLayerIds: [],
+        sourcePluginIds: [],
         environmentId: env.id,
       });
 
       const references = listEnvironmentReferences(env.id);
-      expect(references.layers).toEqual([
-        expect.objectContaining({ id: configuredLayer.id, name: "backend" }),
+      expect(references.plugins).toEqual([
+        expect.objectContaining({ id: configuredPlugin.id, name: "backend" }),
       ]);
       expect(hasEnvironmentReferences(env.id)).toBe(true);
 
-      setLayerDefaultEnvironment(configuredLayer.id, null);
+      setPluginDefaultEnvironment(configuredPlugin.id, null);
       expect(listEnvironmentReferences(env.id)).toEqual({
-        layers: [],
+        plugins: [],
       });
       expect(hasEnvironmentReferences(env.id)).toBe(false);
 

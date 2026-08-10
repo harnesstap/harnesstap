@@ -90,7 +90,7 @@ function printQuickStartGuide(): void {
     `  ${formatCommand(`plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
   );
   console.log(
-    `  ${formatCommand(`plugin apply ${CANONICAL_CATALOG_BASELINE}`)}`,
+    `  ${formatCommand(`apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("help")}`);
   ui.dim(`Enable tab completion: ${formatCommand("completion zsh >> ~/.zshrc")}`);

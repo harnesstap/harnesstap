@@ -23,7 +23,7 @@ export async function maybePromptInitCatalogInstall(input: {
     message: "Browse public catalog plugins now?",
     choices: [
       { name: "Yes — install a plugin into the local library", value: "yes" as const },
-      { name: "No — I'll use plugin list / plugin apply later", value: "no" as const },
+      { name: "No — I'll use plugin list / apply later", value: "no" as const },
     ],
   });
 
@@ -49,5 +49,5 @@ export async function maybePromptInitCatalogInstall(input: {
   ui.success(
     `Installed plugin ${ui.theme.accent(installed.pluginName)} from catalog (${installed.sourceLabel})`,
   );
-  ui.hint(`Apply it with: ht plugin apply ${installed.pluginName}`);
+  ui.hint(`Apply it with: ht apply ${installed.pluginName}`);
 }

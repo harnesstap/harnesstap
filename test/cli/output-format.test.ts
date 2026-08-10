@@ -5,7 +5,7 @@ import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 
 describe("CLI output format", () => {
-  it("emits JSON for layer, status, history, harness, init, and apply dry-run commands", async () => {
+  it("emits JSON for plugin, status, history, harness, init, and apply dry-run commands", async () => {
     const context = await createTestContext("cli-output-format");
     try {
       await runCli(["init"]);
@@ -22,18 +22,18 @@ describe("CLI output format", () => {
         }),
       );
 
-      const layerList = await runCli(["layer", "list", "--local-only", "--format", "json"]);
-      expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
+      const pluginList = await runCli(["plugin", "list", "--local-only", "--format", "json"]);
+      expect(Array.isArray(JSON.parse(pluginList.stdout))).toBe(true);
 
-      const layerListCombined = await runCli(["layer", "list", "--format", "json", "--no-interactive"]);
-      const combined = JSON.parse(layerListCombined.stdout) as { local: unknown[]; remote: unknown[] };
+      const pluginListCombined = await runCli(["plugin", "list", "--format", "json", "--no-interactive"]);
+      const combined = JSON.parse(pluginListCombined.stdout) as { local: unknown[]; remote: unknown[] };
       expect(Array.isArray(combined.local)).toBe(true);
       expect(Array.isArray(combined.remote)).toBe(true);
 
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-output.git");
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const layer = layerModel.createLayer({ name: "dry-run-layer" });
+      const plugin = pluginModel.createPlugin({ name: "dry-run-plugin" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -41,11 +41,11 @@ describe("CLI output format", () => {
           content: "# Dry run",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const dryRun = await runCli([
-        "layer", "apply",
-        "dry-run-layer",
+        "apply",
+        "dry-run-plugin",
         "--project",
         context.projectDir,
         "--harness",
@@ -56,15 +56,15 @@ describe("CLI output format", () => {
       ]);
       expect(JSON.parse(dryRun.stdout)).toEqual(
         expect.objectContaining({
-          layer: "dry-run-layer",
+          plugin: "dry-run-plugin",
           project_root: expect.any(String),
           platforms: expect.any(Array),
         }),
       );
 
       await runCli([
-        "layer", "apply",
-        "dry-run-layer",
+        "apply",
+        "dry-run-plugin",
         "--project",
         context.projectDir,
         "--harness",
@@ -118,11 +118,11 @@ describe("CLI output format", () => {
       const { createCloudPublishFetchMock } = await import("../helpers/cloud-fetch.ts");
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        layers: [{
+        plugins: [{
           orgSlug: "harnesstap-cloud",
           slug: "lib",
-          name: "Lib Layer",
-          summary: "Remote layer",
+          name: "Lib Plugin",
+          summary: "Remote plugin",
           latestVersion: "1.0.0",
           updatedAt: new Date().toISOString(),
           tags: [],
@@ -133,7 +133,7 @@ describe("CLI output format", () => {
 
       try {
         const search = await runCli([
-          "layer",
+          "plugin",
           "list",
           "--search",
           "x",
@@ -148,7 +148,7 @@ describe("CLI output format", () => {
         expect(Array.isArray(JSON.parse(search.stdout))).toBe(true);
 
         const install = await runCli([
-          "layer",
+          "plugin",
           "pull",
           "harnesstap-cloud/default/lib@1.0",
           "--as",
@@ -162,23 +162,23 @@ describe("CLI output format", () => {
         ]);
         expect(JSON.parse(install.stdout)).toEqual(
           expect.objectContaining({
-            layer_name: expect.any(String),
+            plugin_name: expect.any(String),
             org_slug: expect.any(String),
-            layer_slug: expect.any(String),
+            plugin_slug: expect.any(String),
             version: expect.anything(),
           }),
         );
 
-        const publishLayer = layerModel.createLayer({ name: "pub1" });
+        const publishPlugin = pluginModel.createPlugin({ name: "pub1" });
         const publishResource = resourceModel.createResource(
           makeResourceInput({ name: "x", content: "#" }),
         );
-        layerModel.addResourceToLayer(publishLayer.id, publishResource.id);
+        pluginModel.addResourceToPlugin(publishPlugin.id, publishResource.id);
 
-        await runCli(["layer", "catalog", "register", "acme/default"]);
+        await runCli(["plugin", "catalog", "register", "acme/default"]);
 
         const publish = await runCli([
-          "layer",
+          "plugin",
           "publish",
           "pub1",
           "--account",

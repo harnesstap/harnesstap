@@ -53,7 +53,7 @@ function encodeCursor(offset: number): string {
 }
 
 export function createCatalogFetchMock(input?: {
-  layers?: Array<Record<string, unknown>>;
+  plugins?: Array<Record<string, unknown>>;
   plugins?: Array<Record<string, unknown>>;
   bundle?: string;
   baseUrl?: string;
@@ -61,11 +61,11 @@ export function createCatalogFetchMock(input?: {
   pageDelayMs?: number;
 }) {
   const baseUrl = (input?.baseUrl ?? DEFAULT_CLOUD_BASE_URL).replace(/\/+$/, "");
-  const plugins = (input?.plugins ?? input?.layers ?? [{
+  const plugins = (input?.plugins ?? input?.plugins ?? [{
     orgSlug: "harnesstap-cloud",
     slug: "team",
-    name: "Team Layer",
-    summary: "Team layer",
+    name: "Team Plugin",
+    summary: "Team plugin",
     latestVersion: "1.0.0",
     updatedAt: new Date().toISOString(),
     tags: [],
@@ -86,8 +86,8 @@ export function createCatalogFetchMock(input?: {
     const isPluginList =
       url.startsWith(`${baseUrl}/api/public/plugins`)
       || url.startsWith(`${baseUrl}/api/catalog/plugins`)
-      || url.startsWith(`${baseUrl}/api/public/layers`)
-      || url.startsWith(`${baseUrl}/api/catalog/layers`);
+      || url.startsWith(`${baseUrl}/api/public/plugins`)
+      || url.startsWith(`${baseUrl}/api/catalog/plugins`);
     if (isPluginList) {
       const parsed = new URL(url);
       const orgFilters = parsed.searchParams.getAll("org");
@@ -129,12 +129,12 @@ export function createCatalogFetchMock(input?: {
       }
       return {
         ok: true,
-        json: async () => ({ plugins: page, layers: page, nextCursor }),
+        json: async () => ({ plugins: page, plugins: page, nextCursor }),
       };
     }
     if (
-      /\/api\/public\/.+\/versions\/.+\/(?:plugin|layer)-export/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin|layer)-export/.test(url)
+      /\/api\/public\/.+\/versions\/.+\/(?:plugin|plugin)-export/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin|plugin)-export/.test(url)
     ) {
       return { ok: true, text: async () => bundle };
     }

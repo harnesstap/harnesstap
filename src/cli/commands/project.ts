@@ -482,11 +482,11 @@ async function handleProjectStatusCommand(
           snapshot_id: null,
           has_drift: false,
           changes: [],
-          message: `No project record. Run ${formatCommand("plugin apply")} first.`,
+          message: `No project record. Run ${formatCommand("apply")} first.`,
         });
         return;
       }
-      ui.warn(`No project record found. Run \`${formatCommand("plugin apply")}\` first.`);
+      ui.warn(`No project record found. Run \`${formatCommand("apply")}\` first.`);
       return;
     }
 

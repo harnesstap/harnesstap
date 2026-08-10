@@ -14,13 +14,13 @@ describe("ui table", () => {
         { key: "name", header: "NAME", width: 12 },
         { key: "description", header: "DESCRIPTION", width: 24 },
       ],
-      rows: [{ name: "demo-stack", description: "Demo web stack layer" }],
-      summary: "1 layer · run `harnesstap layer show <name>` for details",
+      rows: [{ name: "demo-stack", description: "Demo web stack plugin" }],
+      summary: "1 plugin · run `harnesstap plugin show <name>` for details",
     });
 
     expect(output).toContain("NAME");
     expect(output).toContain("demo-stack");
-    expect(output).toContain("1 layer");
+    expect(output).toContain("1 plugin");
   });
 
   it("uses heading role for table headers", () => {

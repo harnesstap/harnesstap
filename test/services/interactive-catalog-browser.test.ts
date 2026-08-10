@@ -2,10 +2,10 @@ import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
 import { describe, expect } from "bun:test";
 import { promptIt } from "../helpers/prompt-test.ts";
-import type { CatalogLayer } from "../../src/services/catalog-types.js";
+import type { CatalogPlugin } from "../../src/services/catalog-types.js";
 import { promptForInteractiveCatalogBrowser } from "../../src/services/wizards/interactive-catalog-browser.ts?actual";
 
-const sampleLayers: CatalogLayer[] = [
+const samplePlugins: CatalogPlugin[] = [
   {
     orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
@@ -31,13 +31,13 @@ const sampleLayers: CatalogLayer[] = [
 ];
 
 describe("interactive catalog browser prompt", () => {
-  promptIt("installs the selected layer on enter", async () => {
+  promptIt("installs the selected plugin on enter", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogBrowser,
       {
-        message: "Browse catalog layers to install",
+        message: "Browse catalog plugins to install",
         scopeLabel: "harnesstap-cloud",
-        listLayers: async () => sampleLayers,
+        listPlugins: async () => samplePlugins,
       },
       { clearPromptOnDone: true },
     );
@@ -54,16 +54,16 @@ describe("interactive catalog browser prompt", () => {
     });
   });
 
-  promptIt("does not re-fetch on every render when listLayers resolves synchronously", async () => {
+  promptIt("does not re-fetch on every render when listPlugins resolves synchronously", async () => {
     let callCount = 0;
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogBrowser,
       {
-        message: "Browse catalog layers to install",
+        message: "Browse catalog plugins to install",
         scopeLabel: "harnesstap-cloud",
-        listLayers: () => {
+        listPlugins: () => {
           callCount += 1;
-          return sampleLayers as unknown as Promise<typeof sampleLayers>;
+          return samplePlugins as unknown as Promise<typeof samplePlugins>;
         },
       },
       { clearPromptOnDone: true },
@@ -85,9 +85,9 @@ describe("interactive catalog browser prompt", () => {
     const { answer, events } = await render(
       promptForInteractiveCatalogBrowser,
       {
-        message: "Browse catalog layers to install",
+        message: "Browse catalog plugins to install",
         scopeLabel: "harnesstap-cloud",
-        listLayers: async () => sampleLayers,
+        listPlugins: async () => samplePlugins,
       },
       { clearPromptOnDone: true },
     );

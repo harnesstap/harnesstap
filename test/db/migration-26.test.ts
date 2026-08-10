@@ -182,7 +182,7 @@ describe("migration 26", () => {
 
     const attachments = db
       .prepare(
-        `SELECT resource_id FROM layer_resources WHERE layer_id = 'L1' ORDER BY "order"`,
+        `SELECT resource_id FROM plugin_resources WHERE plugin_id = 'L1' ORDER BY "order"`,
       )
       .all() as Array<{ resource_id: string }>;
     expect(attachments.map((row) => row.resource_id)).toEqual(["PIN1"]);

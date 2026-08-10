@@ -6,45 +6,45 @@ import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 import {
-  makeMultiLayerExport,
-  parseTestLayerToml,
-  writeLayerExportToml,
+  makeMultiPluginExport,
+  parseTestPluginToml,
+  writePluginExportToml,
 } from "../helpers/transport-fixtures.ts";
 import { initGitRepo } from "../helpers/git.ts";
 
 describe("CLI export and import", () => {
-  it("exports and imports a layer bundle across isolated homes", async () => {
+  it("exports and imports a plugin bundle across isolated homes", async () => {
     const exportContext = await createTestContext("cli-export");
 
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
-      const layer = layerModel.createLayer({ name: "bundle-layer" });
+      const plugin = pluginModel.createPlugin({ name: "bundle-plugin" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", content: "# Shared" }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       const bundlePath = `${exportContext.projectDir}/bundle.harnesstap.toml`;
       const exportResult = await runCli([
         "migrate",
         "export",
         bundlePath,
-        "--layer",
-        "bundle-layer",
+        "--plugin",
+        "bundle-plugin",
       ]);
 
-      expect(exportResult.stdout).toContain("Exported layer");
+      expect(exportResult.stdout).toContain("Exported plugin");
       expect(exportResult.stdout).toContain(bundlePath);
       expect(existsSync(bundlePath)).toBe(true);
 
-      const raw = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
+      const raw = parseTestPluginToml(readFileSync(bundlePath, "utf-8"));
       expect(raw.version).toBe(1);
       expect(raw.$schema).toBe("urn:harnesstap:layer:v1");
-      expect(raw.layers[0]?.plugin_pins ?? []).toEqual([]);
+      expect(raw.plugins[0]?.plugin_pins ?? []).toEqual([]);
       expect(raw.embedded_plugins ?? []).toEqual([]);
 
       const importContext = await createTestContext("cli-import");
@@ -52,10 +52,10 @@ describe("CLI export and import", () => {
       try {
         await runCli(["init"]);
         const importResult = await runCli(["migrate", "import", bundlePath]);
-        const importedLayerModel = await import("../../src/models/plugin-model.ts");
+        const importedPluginModel = await import("../../src/models/plugin-model.ts");
 
-        expect(importResult.stdout).toContain("Imported layer");
-        expect(importedLayerModel.getLayer("bundle-layer")).toBeDefined();
+        expect(importResult.stdout).toContain("Imported plugin");
+        expect(importedPluginModel.getPlugin("bundle-plugin")).toBeDefined();
       } finally {
         await importContext.cleanup();
       }
@@ -64,7 +64,7 @@ describe("CLI export and import", () => {
     }
   });
 
-  it("layer export --embed-plugins inlines a resolvable Claude marketplace plugin", async () => {
+  it("plugin export --embed-plugins inlines a resolvable Claude marketplace plugin", async () => {
     const context = await createTestContext("cli-export-embed");
 
     try {
@@ -94,24 +94,24 @@ describe("CLI export and import", () => {
         }),
       );
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const pluginPins = await import("../../src/services/plugin-composition.ts");
 
-      const layer = layerModel.createLayer({ name: "embed-flag" });
-      pluginPins.attachPluginPinToLayer(layer.id, "fmt-cli@acme-marketplace", "2.x");
+      const plugin = pluginModel.createPlugin({ name: "embed-flag" });
+      pluginPins.attachPluginPinToPlugin(plugin.id, "fmt-cli@acme-marketplace", "2.x");
 
       const bundlePath = join(context.projectDir, "embedded-cli.harnesstap.toml");
       const exportResult = await runCli([
         "migrate",
         "export",
         bundlePath,
-        "--layer",
+        "--plugin",
         "embed-flag",
         "--embed-plugins",
       ]);
 
       expect(exportResult.stderr).not.toContain("ENOENT");
-      const parsed = parseTestLayerToml(readFileSync(bundlePath, "utf-8"));
+      const parsed = parseTestPluginToml(readFileSync(bundlePath, "utf-8"));
       expect(parsed.version).toBe(1);
       expect(parsed.$schema).toBe("urn:harnesstap:layer:v1");
       expect(parsed.embedded_plugins).toEqual(
@@ -119,7 +119,7 @@ describe("CLI export and import", () => {
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
         ]),
       );
-      expect(parsed.layers[0]?.plugin_pins).toEqual(
+      expect(parsed.plugins[0]?.plugin_pins).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ ref: "fmt-cli@acme-marketplace" }),
         ]),
@@ -129,28 +129,28 @@ describe("CLI export and import", () => {
     }
   });
 
-  it("exports a layer bundle to a .harnesstap.toml path", async () => {
+  it("exports a plugin bundle to a .harnesstap.toml path", async () => {
     const context = await createTestContext("cli-export-toml");
 
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      layerModel.createLayer({ name: "toml-export" });
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      pluginModel.createPlugin({ name: "toml-export" });
 
       const bundlePath = join(context.projectDir, "bundle.harnesstap.toml");
       const exportResult = await runCli([
         "migrate",
         "export",
         bundlePath,
-        "--layer",
+        "--plugin",
         "toml-export",
       ]);
 
-      expect(exportResult.stdout).toContain("Exported layer");
+      expect(exportResult.stdout).toContain("Exported plugin");
       expect(existsSync(bundlePath)).toBe(true);
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw.startsWith("# HarnessTap layer export\n")).toBe(true);
+      expect(raw.startsWith("# HarnessTap plugin export\n")).toBe(true);
       expect(raw).toContain('schema = "urn:harnesstap:layer:v1"');
     } finally {
       await context.cleanup();
@@ -170,7 +170,7 @@ describe("CLI export and import", () => {
 schema = "urn:harnesstap:layer:v1"
 version = 1
 
-[[layers]]
+[[plugins]]
 name = "commented-import"
 description = "Imported from TOML"
 tags = ["commented"]
@@ -180,41 +180,41 @@ plugins = []
       );
 
       const importResult = await runCli(["migrate", "import", bundlePath]);
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
 
-      expect(importResult.stdout).toContain("Imported layer");
-      expect(layerModel.getLayer("commented-import")).toBeDefined();
+      expect(importResult.stdout).toContain("Imported plugin");
+      expect(pluginModel.getPlugin("commented-import")).toBeDefined();
     } finally {
       await context.cleanup();
     }
   });
 
-  it("exports multiple layers into a multi-layer bundle from the CLI", async () => {
-    const context = await createTestContext("cli-export-multi-layer");
+  it("exports multiple plugins into a multi-plugin bundle from the CLI", async () => {
+    const context = await createTestContext("cli-export-multi-plugin");
 
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      layerModel.createLayer({ name: "alpha" });
-      layerModel.createLayer({ name: "beta" });
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      pluginModel.createPlugin({ name: "alpha" });
+      pluginModel.createPlugin({ name: "beta" });
 
       const bundlePath = join(context.projectDir, "multi-export.harnesstap.toml");
       const exportResult = await runCli([
         "migrate",
         "export",
         bundlePath,
-        "--layer",
+        "--plugin",
         "alpha,beta",
       ]);
 
-      expect(exportResult.stdout).toContain("Exported layer");
+      expect(exportResult.stdout).toContain("Exported plugin");
       const raw = readFileSync(bundlePath, "utf-8");
-      expect(raw).toContain("[[layers]]");
+      expect(raw).toContain("[[plugins]]");
 
-      const parsed = await import("../../src/services/layer-export.ts");
-      const bundle = parsed.inspectLayerExportFile(bundlePath);
-      expect(bundle.layers.map((layer) => layer.name)).toEqual(["alpha", "beta"]);
+      const parsed = await import("../../src/services/plugin-export.ts");
+      const bundle = parsed.inspectPluginExportFile(bundlePath);
+      expect(bundle.plugins.map((plugin) => plugin.name)).toEqual(["alpha", "beta"]);
     } finally {
       await context.cleanup();
     }
@@ -248,7 +248,7 @@ plugins = []
     }
   });
 
-  it("applies every layer from a multi-layer bundle path in declaration order", async () => {
+  it("applies every plugin from a multi-plugin bundle path in declaration order", async () => {
     const context = await createTestContext("cli-apply-multi-bundle");
 
     try {
@@ -256,9 +256,9 @@ plugins = []
       initGitRepo(context.projectDir, "git@github.com:acme/multi-bundle-apply.git");
 
       const bundlePath = join(context.projectDir, "apply-bundle.harnesstap.toml");
-      writeLayerExportToml(
+      writePluginExportToml(
         bundlePath,
-        makeMultiLayerExport([
+        makeMultiPluginExport([
           {
             name: "alpha-imported",
             resources: [
@@ -297,7 +297,7 @@ plugins = []
       );
 
       const applyResult = await runCli([
-        "layer", "apply",
+        "apply",
         bundlePath,
         "--project",
         context.projectDir,
@@ -308,9 +308,9 @@ plugins = []
       expect(applyResult.exitCode).toBeUndefined();
       expect(readFileSync(join(context.projectDir, "AGENTS.md"), "utf-8")).toBe("# Beta");
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      expect(layerModel.getLayer("alpha-imported")).toBeDefined();
-      expect(layerModel.getLayer("beta-imported")).toBeDefined();
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      expect(pluginModel.getPlugin("alpha-imported")).toBeDefined();
+      expect(pluginModel.getPlugin("beta-imported")).toBeDefined();
     } finally {
       await context.cleanup();
     }

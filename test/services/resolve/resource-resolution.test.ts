@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import type { TestContext } from "../../helpers/db.ts";
-import { addResourceToLayer, createLayer } from "../../../src/models/plugin-model.ts";
+import { addResourceToPlugin, createPlugin } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import { resolveResources } from "../../../src/services/resolve/resource-resolution.ts";
 import { SingletonConflictError } from "../../../src/services/resolve/types.ts";
@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 function selection(
-  layerId: string,
+  pluginId: string,
   name: string,
   depth: number,
   declarationIndex: number,
@@ -26,7 +26,7 @@ function selection(
   return {
     name,
     version: "1.0.0",
-    layerId,
+    pluginId,
     depth,
     declarationIndex,
     constraints: [],
@@ -37,7 +37,7 @@ function selection(
 }
 
 function attach(
-  layerId: string,
+  pluginId: string,
   input: { type: "skill" | "instruction"; name: string; content: string; namespace?: string },
 ): void {
   const resource = createResource({
@@ -49,13 +49,13 @@ function attach(
     source: "test",
     ...(input.namespace ? { namespace: input.namespace } : {}),
   });
-  addResourceToLayer(layerId, resource.id);
+  addResourceToPlugin(pluginId, resource.id);
 }
 
 describe("resolveResources", () => {
-  it("materializes distinct keys from every selected layer", () => {
-    const root = createLayer({ name: "root" });
-    const dep = createLayer({ name: "dep" });
+  it("materializes distinct keys from every selected plugin", () => {
+    const root = createPlugin({ name: "root" });
+    const dep = createPlugin({ name: "dep" });
     attach(root.id, { type: "skill", name: "alpha", content: "A" });
     attach(dep.id, { type: "skill", name: "beta", content: "B" });
 
@@ -70,8 +70,8 @@ describe("resolveResources", () => {
   });
 
   it("gives the nearest-to-root copy the win, silently", () => {
-    const root = createLayer({ name: "root" });
-    const dep = createLayer({ name: "dep" });
+    const root = createPlugin({ name: "root" });
+    const dep = createPlugin({ name: "dep" });
     attach(root.id, { type: "skill", name: "alpha", content: "ROOT" });
     attach(dep.id, { type: "skill", name: "alpha", content: "DEP", namespace: "dep" });
 
@@ -85,14 +85,14 @@ describe("resolveResources", () => {
     expect(result.resources[0]?.content).toBe("ROOT");
     const decision = result.decisions.find((d) => d.key === "skill:alpha");
     expect(decision?.reason).toBe("nearest-to-root");
-    expect(decision?.winner.layerName).toBe("root");
-    expect(decision?.losers[0]?.layerName).toBe("dep");
+    expect(decision?.winner.pluginName).toBe("root");
+    expect(decision?.losers[0]?.pluginName).toBe("dep");
     expect(result.warnings).toEqual([]);
   });
 
   it("treats identical content at equal depth as a no-op", () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attach(a.id, { type: "skill", name: "alpha", content: "SAME" });
     attach(b.id, { type: "skill", name: "alpha", content: "SAME", namespace: "b" });
 
@@ -108,8 +108,8 @@ describe("resolveResources", () => {
   });
 
   it("warns and lets the last declaration win for set-like equal-depth conflicts", () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attach(a.id, { type: "skill", name: "alpha", content: "FROM-A" });
     attach(b.id, { type: "skill", name: "alpha", content: "FROM-B", namespace: "b" });
 
@@ -126,8 +126,8 @@ describe("resolveResources", () => {
   });
 
   it("errors on a singleton equal-depth conflict", () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attach(a.id, { type: "instruction", name: "context", content: "FROM-A" });
     attach(b.id, {
       type: "instruction",
@@ -146,8 +146,8 @@ describe("resolveResources", () => {
   });
 
   it("last-wins singleton ties when declarationOrderSingletons is set", () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attach(a.id, { type: "instruction", name: "context", content: "FROM-A" });
     attach(b.id, {
       type: "instruction",
@@ -169,8 +169,8 @@ describe("resolveResources", () => {
   });
 
   it("honors a root resource override over depth", () => {
-    const root = createLayer({ name: "root" });
-    const dep = createLayer({ name: "dep" });
+    const root = createPlugin({ name: "root" });
+    const dep = createPlugin({ name: "dep" });
     attach(root.id, { type: "skill", name: "alpha", content: "ROOT" });
     attach(dep.id, { type: "skill", name: "alpha", content: "DEP", namespace: "dep" });
 

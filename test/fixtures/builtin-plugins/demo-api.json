@@ -1,7 +1,7 @@
 {
   "$schema": "urn:harnesstap:layer:v1",
   "version": 1,
-  "layer": {
+  "plugin": {
     "name": "demo-api",
     "description": "FastAPI REST API with SQLAlchemy, Pydantic v2, and pytest",
     "tags": ["python", "fastapi", "sqlalchemy", "pydantic"],

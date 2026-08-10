@@ -427,7 +427,7 @@ export function exportPlugin(
   exportOpts?: ExportPluginOptions,
 ): MultiPluginExport {
   process.stderr.write(
-    "Warning: exportPlugin writes plugin v1 (urn:harnesstap:plugin:v1). Prefer migrate export --plugin for sharing.\n",
+    "Warning: exportPlugin writes plugin v1 (urn:harnesstap:layer:v1). Prefer migrate export --plugin for sharing.\n",
   );
   const selectors = Array.isArray(pluginNameOrId) ? pluginNameOrId : [pluginNameOrId];
   const plugins = selectors.map((selector) => {

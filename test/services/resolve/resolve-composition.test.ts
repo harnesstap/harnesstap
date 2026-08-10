@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import type { TestContext } from "../../helpers/db.ts";
 import {
-  addResourceToLayer,
-  createLayer,
-  getLayerByName,
+  addResourceToPlugin,
+  createPlugin,
+  getPluginByName,
 } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
-import { addLayerAttachment } from "../../../src/services/layer-composition.ts";
+import { addPluginAttachment } from "../../../src/services/plugin-composition.ts";
 import { resolveComposition } from "../../../src/services/resolve/index.ts";
 import { SingletonConflictError } from "../../../src/services/resolve/types.ts";
 
@@ -21,7 +21,7 @@ afterEach(async () => {
   await ctx.cleanup();
 });
 
-function attachSkill(layerId: string, name: string, content: string, ns: string): void {
+function attachSkill(pluginId: string, name: string, content: string, ns: string): void {
   const resource = createResource({
     type: "skill",
     name,
@@ -31,10 +31,10 @@ function attachSkill(layerId: string, name: string, content: string, ns: string)
     source: "test",
     namespace: ns,
   });
-  addResourceToLayer(layerId, resource.id);
+  addResourceToPlugin(pluginId, resource.id);
 }
 
-function attachInstruction(layerId: string, content: string, ns: string): void {
+function attachInstruction(pluginId: string, content: string, ns: string): void {
   const resource = createResource({
     type: "instruction",
     name: "context",
@@ -44,17 +44,17 @@ function attachInstruction(layerId: string, content: string, ns: string): void {
     source: "test",
     namespace: ns,
   });
-  addResourceToLayer(layerId, resource.id);
+  addResourceToPlugin(pluginId, resource.id);
 }
 
 describe("resolveComposition", () => {
   it("resolves a single named root", async () => {
-    const base = createLayer({ name: "base" });
-    const root = createLayer({ name: "root" });
+    const base = createPlugin({ name: "base" });
+    const root = createPlugin({ name: "root" });
     attachSkill(base.id, "alpha", "BASE", "base");
-    const rootLayer = getLayerByName("root");
-    if (!rootLayer) throw new Error("missing root");
-    await addLayerAttachment({ layer: rootLayer, selector: "layer:base" });
+    const rootPlugin = getPluginByName("root");
+    if (!rootPlugin) throw new Error("missing root");
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:base" });
 
     const result = resolveComposition({ rootSelectors: ["root"] });
     expect(result.root.ephemeral).toBe(false);
@@ -63,8 +63,8 @@ describe("resolveComposition", () => {
   });
 
   it("synthesizes an ephemeral root for multiple selectors and keeps last-wins", () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attachSkill(a.id, "alpha", "FROM-A", "a");
     attachSkill(b.id, "alpha", "FROM-B", "b");
 
@@ -75,8 +75,8 @@ describe("resolveComposition", () => {
   });
 
   it("last-wins conflicting instructions under an ephemeral multi-selector root", () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attachInstruction(a.id, "FROM-A", "a");
     attachInstruction(b.id, "FROM-B", "b");
 
@@ -88,31 +88,31 @@ describe("resolveComposition", () => {
   });
 
   it("errors on a durable equal-depth singleton diamond", async () => {
-    const a = createLayer({ name: "a" });
-    const b = createLayer({ name: "b" });
+    const a = createPlugin({ name: "a" });
+    const b = createPlugin({ name: "b" });
     attachInstruction(a.id, "FROM-A", "a");
     attachInstruction(b.id, "FROM-B", "b");
-    const root = createLayer({ name: "root" });
-    const rootLayer = getLayerByName("root");
-    if (!rootLayer) throw new Error("missing root");
-    await addLayerAttachment({ layer: rootLayer, selector: "layer:a" });
-    await addLayerAttachment({ layer: rootLayer, selector: "layer:b" });
+    const root = createPlugin({ name: "root" });
+    const rootPlugin = getPluginByName("root");
+    if (!rootPlugin) throw new Error("missing root");
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:a" });
+    await addPluginAttachment({ plugin: rootPlugin, selector: "plugin:b" });
 
     expect(() => resolveComposition({ rootSelectors: ["root"] })).toThrow(
       SingletonConflictError,
     );
   });
 
-  it("cleans up the ephemeral root layer row", () => {
-    createLayer({ name: "a" });
-    createLayer({ name: "b" });
+  it("cleans up the ephemeral root plugin row", () => {
+    createPlugin({ name: "a" });
+    createPlugin({ name: "b" });
     const result = resolveComposition({ rootSelectors: ["a", "b"] });
-    expect(getLayerByName(result.root.name)).toBeUndefined();
+    expect(getPluginByName(result.root.name)).toBeUndefined();
   });
 
   it("rejects an unknown selector", () => {
     expect(() => resolveComposition({ rootSelectors: ["nope"] })).toThrow(
-      /Layer not found: nope/,
+      /Plugin not found: nope/,
     );
   });
 });

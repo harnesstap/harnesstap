@@ -6,12 +6,12 @@ import {
 import type { ResolutionResult } from "../../../src/services/resolve/types.ts";
 
 const result: ResolutionResult = {
-  root: { name: "my-setup", version: "1.0.0", layerId: "L0", ephemeral: false },
+  root: { name: "my-setup", version: "1.0.0", pluginId: "L0", ephemeral: false },
   selected: [
     {
       name: "my-setup",
       version: "1.0.0",
-      layerId: "L0",
+      pluginId: "L0",
       depth: 0,
       declarationIndex: 0,
       constraints: [],
@@ -22,7 +22,7 @@ const result: ResolutionResult = {
     {
       name: "base",
       version: "2.1.0",
-      layerId: "L1",
+      pluginId: "L1",
       depth: 2,
       declarationIndex: 2,
       constraints: [
@@ -41,8 +41,8 @@ const result: ResolutionResult = {
   decisions: [
     {
       key: "skill:alpha",
-      winner: { layerName: "my-setup", layerVersion: "1.0.0", depth: 0 },
-      losers: [{ layerName: "base", layerVersion: "2.1.0", depth: 2 }],
+      winner: { pluginName: "my-setup", pluginVersion: "1.0.0", depth: 0 },
+      losers: [{ pluginName: "base", pluginVersion: "2.1.0", depth: 2 }],
       reason: "nearest-to-root",
     },
   ],

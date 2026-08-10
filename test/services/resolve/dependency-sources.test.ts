@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import type { TestContext } from "../../helpers/db.ts";
-import { addResourceToLayer, createLayer } from "../../../src/models/plugin-model.ts";
+import { addResourceToPlugin, createPlugin } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import { addDependency } from "../../../src/services/plugin-dependency.ts";
-import { setLayerOrigin } from "../../../src/services/layer-origin.ts";
+import { setPluginOrigin } from "../../../src/services/plugin-origin.ts";
 import { resolveComposition } from "../../../src/services/resolve/index.ts";
 
 let ctx: TestContext;
@@ -19,9 +19,9 @@ afterEach(async () => {
 
 describe("resolution across dependency sources", () => {
   it("pulls an upstream plugin's resources into the resolved set", () => {
-    const upstream = createLayer({ name: "web-search", version: "1.2.0" });
-    setLayerOrigin(upstream.id, "upstream");
-    addResourceToLayer(
+    const upstream = createPlugin({ name: "web-search", version: "1.2.0" });
+    setPluginOrigin(upstream.id, "upstream");
+    addResourceToPlugin(
       upstream.id,
       createResource({
         type: "skill",
@@ -34,7 +34,7 @@ describe("resolution across dependency sources", () => {
       }).id,
     );
 
-    const root = createLayer({ name: "root" });
+    const root = createPlugin({ name: "root" });
     addDependency(root.id, "web-search@anthropics", { versionConstraint: "^1.0.0" });
 
     const result = resolveComposition({ rootSelectors: ["root"] });
@@ -43,9 +43,9 @@ describe("resolution across dependency sources", () => {
   });
 
   it("lets the root's own resource beat an upstream plugin's", () => {
-    const upstream = createLayer({ name: "web-search", version: "1.2.0" });
-    setLayerOrigin(upstream.id, "upstream");
-    addResourceToLayer(
+    const upstream = createPlugin({ name: "web-search", version: "1.2.0" });
+    setPluginOrigin(upstream.id, "upstream");
+    addResourceToPlugin(
       upstream.id,
       createResource({
         type: "skill",
@@ -58,8 +58,8 @@ describe("resolution across dependency sources", () => {
       }).id,
     );
 
-    const root = createLayer({ name: "root" });
-    addResourceToLayer(
+    const root = createPlugin({ name: "root" });
+    addResourceToPlugin(
       root.id,
       createResource({
         type: "skill",
@@ -79,7 +79,7 @@ describe("resolution across dependency sources", () => {
   });
 
   it("errors clearly when an upstream dependency is not installed", () => {
-    const root = createLayer({ name: "root" });
+    const root = createPlugin({ name: "root" });
     addDependency(root.id, "not-installed@anthropics", { versionConstraint: "^1.0.0" });
     expect(() => resolveComposition({ rootSelectors: ["root"] })).toThrow(
       /not-installed/,

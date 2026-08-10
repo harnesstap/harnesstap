@@ -4,11 +4,11 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 
-const FROM_LAYER_ENV_KEYS = ["BIND_REGION", "BIND_TOKEN"];
+const FROM_PLUGIN_ENV_KEYS = ["BIND_REGION", "BIND_TOKEN"];
 
 describe("CLI environment revamp", () => {
   afterEach(() => {
-    for (const key of FROM_LAYER_ENV_KEYS) {
+    for (const key of FROM_PLUGIN_ENV_KEYS) {
       delete process.env[key];
     }
   });
@@ -62,14 +62,14 @@ describe("CLI environment revamp", () => {
         "utf-8",
       );
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const plugin = layerModel.createLayer({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({
         name: "revamp-capture-plugin",
         needs: ["CAPTURE_KEY", "MISSING_KEY"],
       });
-      const configuredLayer = layerModel.createLayerFromSources({
-        name: "revamp-capture-layer",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = pluginModel.createPluginFromSources({
+        name: "revamp-capture-plugin",
+        sourcePluginIds: [plugin.id],
       });
 
       const createResult = await runCli([
@@ -78,8 +78,8 @@ describe("CLI environment revamp", () => {
         "revamp-captured",
         "--from-project",
         context.projectDir,
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--dry-run",
         "--format",
         "json",
@@ -109,14 +109,14 @@ describe("CLI environment revamp", () => {
         "utf-8",
       );
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const plugin = layerModel.createLayer({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({
         name: "revamp-refresh-plugin",
         needs: ["CAPTURE_KEY"],
       });
-      const configuredLayer = layerModel.createLayerFromSources({
-        name: "revamp-refresh-layer",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = pluginModel.createPluginFromSources({
+        name: "revamp-refresh-plugin",
+        sourcePluginIds: [plugin.id],
       });
 
       const missingRefresh = await runCli([
@@ -125,8 +125,8 @@ describe("CLI environment revamp", () => {
         "missing-refresh-env",
         "--from-project",
         context.projectDir,
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--refresh",
         "--format",
         "json",
@@ -143,8 +143,8 @@ describe("CLI environment revamp", () => {
         "existing-refresh-env",
         "--from-project",
         context.projectDir,
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--refresh",
         "--dry-run",
         "--format",
@@ -162,37 +162,37 @@ describe("CLI environment revamp", () => {
     }
   });
 
-  it("environment create --from-layer --bind sets default_environment_id", async () => {
-    const context = await createTestContext("cli-environment-revamp-from-layer-bind");
+  it("environment create --from-plugin --bind sets default_environment_id", async () => {
+    const context = await createTestContext("cli-environment-revamp-from-plugin-bind");
     try {
       await runCli(["init"]);
 
       process.env.BIND_REGION = "eu";
       process.env.BIND_TOKEN = "secret-token";
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const plugin = layerModel.createLayer({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({
         name: "bind-plugin",
         needs: ["BIND_REGION", "BIND_TOKEN"],
       });
-      const configuredLayer = layerModel.createLayerFromSources({
-        name: "bind-layer",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = pluginModel.createPluginFromSources({
+        name: "bind-plugin",
+        sourcePluginIds: [plugin.id],
       });
 
       await runCli([
         "environment",
         "create",
         "bind-env",
-        "--from-layer",
-        configuredLayer.id,
+        "--from-plugin",
+        configuredPlugin.id,
         "--bind",
         "--format",
         "json",
       ]);
 
-      const refreshedLayer = layerModel.getLayerById(configuredLayer.id);
-      expect(refreshedLayer?.default_environment_id).toBeDefined();
+      const refreshedPlugin = pluginModel.getPluginById(configuredPlugin.id);
+      expect(refreshedPlugin?.default_environment_id).toBeDefined();
 
       const shown = await runCli(["environment", "show", "bind-env", "--format", "json"]);
       expect(JSON.parse(shown.stdout)).toEqual(
@@ -211,43 +211,43 @@ describe("CLI environment revamp", () => {
     }
   });
 
-  it("environment show lists REFERENCES when layer has default_environment_id", async () => {
+  it("environment show lists REFERENCES when plugin has default_environment_id", async () => {
     const context = await createTestContext("cli-environment-revamp-refs");
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const plugin = layerModel.createLayer({ name: "app-layer" });
-      const configuredLayer = layerModel.createLayerFromSources({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({ name: "app-plugin" });
+      const configuredPlugin = pluginModel.createPluginFromSources({
         name: plugin.name,
         version: plugin.version,
-        sourceLayerIds: [plugin.id],
+        sourcePluginIds: [plugin.id],
       });
 
       await runCli(["environment", "create", "staging"]);
-      await runCli(["layer", "edit", configuredLayer.id, "--environment", "staging"]);
+      await runCli(["plugin", "edit", configuredPlugin.id, "--environment", "staging"]);
 
       const show = await runCli(["environment", "show", "staging"]);
       expect(show.stdout).toContain("REFERENCES");
-      expect(show.stdout).toContain("app-layer@1.0.0");
+      expect(show.stdout).toContain("app-plugin@1.0.0");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("environment show --layer shows REQUIREMENT GAPS with missing keys", async () => {
+  it("environment show --plugin shows REQUIREMENT GAPS with missing keys", async () => {
     const context = await createTestContext("cli-environment-revamp-gaps");
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const plugin = layerModel.createLayer({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({
         name: "gap-plugin",
         needs: ["MISSING_VAR"],
       });
-      const configuredLayer = layerModel.createLayerFromSources({
-        name: "gap-layer",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = pluginModel.createPluginFromSources({
+        name: "gap-plugin",
+        sourcePluginIds: [plugin.id],
       });
 
       await runCli(["environment", "create", "gap-env"]);
@@ -256,8 +256,8 @@ describe("CLI environment revamp", () => {
         "environment",
         "show",
         "gap-env",
-        "--layer",
-        configuredLayer.id,
+        "--plugin",
+        configuredPlugin.id,
       ]);
       expect(show.stdout).toContain("REQUIREMENT GAPS");
       expect(show.stdout).toContain("MISSING_VAR");
@@ -298,16 +298,16 @@ describe("CLI environment revamp", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/plugin-model.ts");
-      const plugin = layerModel.createLayer({ name: "ref-layer" });
-      const configuredLayer = layerModel.createLayerFromSources({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({ name: "ref-plugin" });
+      const configuredPlugin = pluginModel.createPluginFromSources({
         name: plugin.name,
         version: plugin.version,
-        sourceLayerIds: [plugin.id],
+        sourcePluginIds: [plugin.id],
       });
 
       await runCli(["environment", "create", "referenced-env"]);
-      await runCli(["layer", "edit", configuredLayer.id, "--environment", "referenced-env"]);
+      await runCli(["plugin", "edit", configuredPlugin.id, "--environment", "referenced-env"]);
 
       const result = await runCli([
         "environment",

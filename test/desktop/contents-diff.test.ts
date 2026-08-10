@@ -12,7 +12,7 @@ function contents(
   overrides: Partial<ProfileContents> = {},
 ): ProfileContents {
   return {
-    layers: [
+    plugins: [
       {
         id: "l1",
         name: "work",
@@ -25,7 +25,7 @@ function contents(
     ],
     stack_resource_count: 2,
     stack_summary: "1 skill, 1 mcp_server",
-    type_counts: { layer: 1, skill: 1, mcp_server: 1 },
+    type_counts: { plugin: 1, skill: 1, mcp_server: 1 },
     resources: [
       { type: "skill", name: "ship" },
       { type: "mcp_server", name: "docs" },
@@ -44,7 +44,7 @@ describe("contents-diff helpers", () => {
         { type: "skill", name: "review" },
         { type: "mcp_server", name: "docs" },
       ],
-      type_counts: { layer: 1, skill: 2, mcp_server: 1 },
+      type_counts: { plugin: 1, skill: 2, mcp_server: 1 },
       stack_resource_count: 3,
     });
     const live = contents({
@@ -53,7 +53,7 @@ describe("contents-diff helpers", () => {
         { type: "mcp_server", name: "legacy" },
       ],
       mcp_servers: ["legacy"],
-      type_counts: { layer: 1, skill: 1, mcp_server: 1 },
+      type_counts: { plugin: 1, skill: 1, mcp_server: 1 },
     });
 
     const diff = diffProfileContents(target, live);
@@ -70,15 +70,15 @@ describe("contents-diff helpers", () => {
       orderedTypeCounts({
         mcp_server: 10,
         skill: 5,
-        layer: 2,
+        plugin: 2,
         plugin_pin: 1,
       }).map((row) => `${row.count} ${row.label}`),
-    ).toEqual(["2 layers", "5 skills", "10 MCP", "1 plugin"]);
+    ).toEqual(["2 plugins", "5 skills", "10 MCP", "1 plugin"]);
   });
 
   it("summarizes stack changes with add/remove/mixed tones", () => {
     const target = contents({
-      layers: [
+      plugins: [
         {
           id: "l1",
           name: "work",
@@ -98,10 +98,10 @@ describe("contents-diff helpers", () => {
         { type: "mcp_server", name: "docs" },
         { type: "command", name: "deploy" },
       ],
-      type_counts: { layer: 2, skill: 2, mcp_server: 1, command: 1 },
+      type_counts: { plugin: 2, skill: 2, mcp_server: 1, command: 1 },
     });
     const live = contents({
-      layers: [
+      plugins: [
         {
           id: "l1",
           name: "work",
@@ -115,7 +115,7 @@ describe("contents-diff helpers", () => {
         { type: "mcp_server", name: "old" },
         { type: "instruction", name: "readme" },
       ],
-      type_counts: { layer: 1, skill: 2, mcp_server: 1, instruction: 1 },
+      type_counts: { plugin: 1, skill: 2, mcp_server: 1, instruction: 1 },
     });
 
     const diff = diffProfileContents(target, live);
@@ -127,7 +127,7 @@ describe("contents-diff helpers", () => {
         tone: row.tone,
       })),
     ).toEqual([
-      { type: "layer", count: 1, label: "layer", tone: "add" },
+      { type: "plugin", count: 1, label: "plugin", tone: "add" },
       { type: "skill", count: 2, label: "skills", tone: "mixed" },
       { type: "mcp_server", count: 2, label: "MCP", tone: "mixed" },
       { type: "instruction", count: 1, label: "instruction", tone: "remove" },

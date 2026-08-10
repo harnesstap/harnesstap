@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { getGlobalActiveEnvironmentName } from "../../src/services/environment-session.ts";
 import { getEnvironmentByName } from "../../src/models/environment.ts";
@@ -15,9 +15,9 @@ function writeProjectConfig(projectDir: string, content: string): void {
   writeTextFile(join(projectDir, ".harnesstap", "config.toml"), content);
 }
 
-function createProfileLayer(name: string) {
-  const layer = createLayer({ name });
-  setLayerTags(layer.id, ["profile"]);
+function createProfilePlugin(name: string) {
+  const plugin = createPlugin({ name });
+  setPluginTags(plugin.id, ["profile"]);
   const resource = createResource({
     type: "instruction",
     name: `${name}-guide`,
@@ -26,15 +26,15 @@ function createProfileLayer(name: string) {
     metadata: {},
     source: "manual",
   });
-  addResourceToLayer(layer.id, resource.id);
-  return layer;
+  addResourceToPlugin(plugin.id, resource.id);
+  return plugin;
 }
 
 describe("project-config-use", () => {
   it("applies a local profile source from project config", async () => {
     const context = await createInitializedTestContext("project-use-local");
     try {
-      createProfileLayer("team-stack");
+      createProfilePlugin("team-stack");
 
       writeProjectConfig(
         context.projectDir,
@@ -59,7 +59,7 @@ selector = "team-stack"
         throw new Error("Expected project use to apply the profile");
       }
       expect(result.profile_key).toBe("dev");
-      expect(result.layer_name).toBe("team-stack");
+      expect(result.plugin_name).toBe("team-stack");
       expect(result.profile_name).toBe("team-stack");
       expect(result.dry_run).toBe(false);
       expect(result.cancelled).toBe(false);
@@ -72,7 +72,7 @@ selector = "team-stack"
     }
   });
 
-  it("imports and applies an inline profile layer from project config", async () => {
+  it("imports and applies an inline profile plugin from project config", async () => {
     const context = await createInitializedTestContext("project-use-inline");
     try {
       writeProjectConfig(
@@ -83,14 +83,14 @@ version = 1
 [[profiles]]
 name = "custom"
 source = "inline"
-layer = "embedded-layer"
+plugin = "embedded-plugin"
 
-[[layers]]
-name = "embedded-layer"
-description = "inline profile layer"
+[[plugins]]
+name = "embedded-plugin"
+description = "inline profile plugin"
 tags = ["profile"]
 
-[[layers.resources]]
+[[plugins.resources]]
 type = "instruction"
 name = "embedded-guide"
 description = ""
@@ -115,8 +115,8 @@ content_blob_ref = ""
         throw new Error("Expected project use to apply the inline profile");
       }
       expect(result.profile_key).toBe("custom");
-      expect(result.layer_name).toBe("embedded-layer");
-      expect(result.profile_name).toBe("embedded-layer");
+      expect(result.plugin_name).toBe("embedded-plugin");
+      expect(result.profile_name).toBe("embedded-plugin");
       expect(
         existsSync(join(context.homeDir, ".claude", "CLAUDE.md")) ||
           existsSync(join(context.homeDir, "CLAUDE.md")),
@@ -129,7 +129,7 @@ content_blob_ref = ""
   it("skips when the profile is already active and in sync", async () => {
     const context = await createInitializedTestContext("project-use-skip");
     try {
-      createProfileLayer("team-stack");
+      createProfilePlugin("team-stack");
 
       writeProjectConfig(
         context.projectDir,
@@ -143,7 +143,7 @@ selector = "team-stack"
 `,
       );
 
-      await applyProfileLayer("team-stack", {
+      await applyProfilePlugin("team-stack", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -157,7 +157,7 @@ selector = "team-stack"
 
       expect(result.skipped).toBe(true);
       expect(result.profile_key).toBe("dev");
-      expect(result.layer_name).toBe("team-stack");
+      expect(result.plugin_name).toBe("team-stack");
     } finally {
       await context.cleanup();
     }
@@ -166,8 +166,8 @@ selector = "team-stack"
   it("throws when multiple profiles exist without --profile", async () => {
     const context = await createInitializedTestContext("project-use-multi");
     try {
-      createProfileLayer("alpha");
-      createProfileLayer("beta");
+      createProfilePlugin("alpha");
+      createProfilePlugin("beta");
 
       writeProjectConfig(
         context.projectDir,
@@ -202,7 +202,7 @@ selector = "beta"
   it("uses the sole profile when --profile is omitted", async () => {
     const context = await createInitializedTestContext("project-use-single");
     try {
-      createProfileLayer("solo");
+      createProfilePlugin("solo");
 
       writeProjectConfig(
         context.projectDir,
@@ -224,7 +224,7 @@ selector = "solo"
 
       expect(result.skipped).toBe(false);
       expect(result.profile_key).toBe("solo");
-      expect(result.layer_name).toBe("solo");
+      expect(result.plugin_name).toBe("solo");
     } finally {
       await context.cleanup();
     }
@@ -260,8 +260,8 @@ selector = "acme/platform/frontend@1.0.0"
   it("does not import environments on dry-run", async () => {
     const context = await createInitializedTestContext("project-use-dry-run-env");
     try {
-      createProfileLayer("team-stack");
-      await applyProfileLayer("team-stack", {
+      createProfilePlugin("team-stack");
+      await applyProfilePlugin("team-stack", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -304,7 +304,7 @@ REGION = "eu"
   it("imports environments and sets the active environment", async () => {
     const context = await createInitializedTestContext("project-use-env");
     try {
-      createProfileLayer("team-stack");
+      createProfilePlugin("team-stack");
 
       writeProjectConfig(
         context.projectDir,

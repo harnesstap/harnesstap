@@ -1,35 +1,35 @@
-import type { LayerExport, LayerExportEntry, LayerExportResource } from "../../src/types.ts";
-import { formatLayerExportToml, parseLayerExportToml } from "../../src/services/transport/layer.ts";
+import type { PluginExport, PluginExportEntry, PluginExportResource } from "../../src/types.ts";
+import { formatPluginExportToml, parsePluginExportToml } from "../../src/services/transport/plugin.ts";
 import { writeTextFile } from "./fs.ts";
 
-export function formatTestLayerToml(bundle: LayerExport): string {
-  return formatLayerExportToml(bundle);
+export function formatTestPluginToml(bundle: PluginExport): string {
+  return formatPluginExportToml(bundle);
 }
 
-export function parseTestLayerToml(raw: string) {
-  return parseLayerExportToml(raw);
+export function parseTestPluginToml(raw: string) {
+  return parsePluginExportToml(raw);
 }
 
-export function writeLayerExportToml(path: string, bundle: LayerExport): void {
-  writeTextFile(path, formatLayerExportToml(bundle));
+export function writePluginExportToml(path: string, bundle: PluginExport): void {
+  writeTextFile(path, formatPluginExportToml(bundle));
 }
 
-export function makeSingleLayerExport(input: {
+export function makeSinglePluginExport(input: {
   name: string;
   version?: string;
   description?: string;
   tags?: string[];
-  resources?: LayerExportResource[];
-  plugin_pins?: LayerExportEntry["plugin_pins"];
-  dependencies?: LayerExportEntry["dependencies"];
-  claude?: LayerExportEntry["claude"];
+  resources?: PluginExportResource[];
+  plugin_pins?: PluginExportEntry["plugin_pins"];
+  dependencies?: PluginExportEntry["dependencies"];
+  claude?: PluginExportEntry["claude"];
   org?: string;
   catalog?: string;
-}): LayerExport {
+}): PluginExport {
   return {
     $schema: "urn:harnesstap:layer:v1",
     version: 1,
-    layers: [
+    plugins: [
       {
         name: input.name,
         version: input.version ?? "1.0.0",
@@ -47,26 +47,26 @@ export function makeSingleLayerExport(input: {
   };
 }
 
-export function makeMultiLayerExport(
-  layers: Array<{
+export function makeMultiPluginExport(
+  plugins: Array<{
     name: string;
     version?: string;
     description?: string;
     tags?: string[];
-    resources?: LayerExportResource[];
-    plugin_pins?: LayerExportEntry["plugin_pins"];
+    resources?: PluginExportResource[];
+    plugin_pins?: PluginExportEntry["plugin_pins"];
   }>,
-): LayerExport {
+): PluginExport {
   return {
     $schema: "urn:harnesstap:layer:v1",
     version: 1,
-    layers: layers.map((layer) => ({
-      name: layer.name,
-      version: layer.version ?? "1.0.0",
-      description: layer.description ?? "",
-      tags: layer.tags ?? [],
-      resources: layer.resources ?? [],
-      plugin_pins: layer.plugin_pins ?? [],
+    plugins: plugins.map((plugin) => ({
+      name: plugin.name,
+      version: plugin.version ?? "1.0.0",
+      description: plugin.description ?? "",
+      tags: plugin.tags ?? [],
+      resources: plugin.resources ?? [],
+      plugin_pins: plugin.plugin_pins ?? [],
     })),
     embedded_plugins: [],
   };

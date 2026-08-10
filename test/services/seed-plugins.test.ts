@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import {
-  makeMultiLayerExport,
-  writeLayerExportToml,
+  makeMultiPluginExport,
+  writePluginExportToml,
 } from "../helpers/transport-fixtures.ts";
 
 const BUILTIN_FIXTURE_DIR = join(import.meta.dirname, "../fixtures/builtin-plugins");
@@ -17,14 +17,14 @@ describe("seed plugins service", () => {
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
 
       const count = seedPlugins.seedBuiltInPlugins();
 
       expect(count).toBeGreaterThan(0);
 
-      const layers = layerModel.listLayers();
-      const names = layers.map((p) => p.name);
+      const plugins = pluginModel.listPlugins();
+      const names = plugins.map((p) => p.name);
       expect(names).toContain("demo-stack");
       expect(names).toContain("demo-api");
     } finally {
@@ -33,22 +33,22 @@ describe("seed plugins service", () => {
     }
   });
 
-  it("skips already-existing layers", async () => {
+  it("skips already-existing plugins", async () => {
     const context = await createInitializedTestContext("seed-duplicate");
     const previousDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
     process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
 
       // First seed
       seedPlugins.seedBuiltInPlugins();
-      const count1 = layerModel.listLayers().length;
+      const count1 = pluginModel.listPlugins().length;
 
       // Second seed - should skip existing
       seedPlugins.seedBuiltInPlugins();
-      const count2 = layerModel.listLayers().length;
+      const count2 = pluginModel.listPlugins().length;
 
       expect(count1).toBe(count2);
     } finally {
@@ -57,26 +57,26 @@ describe("seed plugins service", () => {
     }
   });
 
-  it("creates layers with resources from bundled JSON", async () => {
+  it("creates plugins with resources from bundled JSON", async () => {
     const context = await createInitializedTestContext("seed-with-resources");
     const previousDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
     process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = BUILTIN_FIXTURE_DIR;
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
-      // Remove existing layers
-      for (const p of [...layerModel.listLayers()]) {
-        layerModel.deleteLayer(p.id);
+      // Remove existing plugins
+      for (const p of [...pluginModel.listPlugins()]) {
+        pluginModel.deletePlugin(p.id);
       }
 
       const count = seedPlugins.seedBuiltInPlugins();
 
       expect(count).toBeGreaterThan(0);
 
-      const demoStack = layerModel.getLayer("demo-stack");
+      const demoStack = pluginModel.getPlugin("demo-stack");
       expect(demoStack).toBeDefined();
       expect(demoStack?.description).toContain("Demo web stack");
       expect(resourceModel.listResources({ source: "builtin:" })).toHaveLength(5);
@@ -93,12 +93,12 @@ describe("seed plugins service", () => {
 
     try {
       const seedPlugins = await import("../../src/services/seed-plugins.ts");
-      const layerModel = await import("../../src/models/plugin-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
-      // Remove existing layers
-      for (const p of [...layerModel.listLayers()]) {
-        layerModel.deleteLayer(p.id);
+      // Remove existing plugins
+      for (const p of [...pluginModel.listPlugins()]) {
+        pluginModel.deletePlugin(p.id);
       }
 
       seedPlugins.seedBuiltInPlugins();
@@ -112,7 +112,7 @@ describe("seed plugins service", () => {
     }
   });
 
-  it("seeds multi-layer built-in bundles without regex name sniffing", async () => {
+  it("seeds multi-plugin built-in bundles without regex name sniffing", async () => {
     const context = await createInitializedTestContext("seed-multi-builtin-bundle");
 
     try {
@@ -121,24 +121,24 @@ describe("seed plugins service", () => {
       const originalBuiltinDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
       try {
         process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = builtinDir;
-        writeLayerExportToml(
+        writePluginExportToml(
           join(builtinDir, "multi.harnesstap.toml"),
-          makeMultiLayerExport([
+          makeMultiPluginExport([
             { name: "multi-one", version: "1.0.0" },
             { name: "multi-two", version: "1.0.0" },
           ]),
         );
 
         const seedPlugins = await import("../../src/services/seed-plugins.ts");
-        const layerModel = await import("../../src/models/plugin-model.ts");
+        const pluginModel = await import("../../src/models/plugin-model.ts");
 
-        const before = new Set(layerModel.listLayers().map((layer) => layer.name));
+        const before = new Set(pluginModel.listPlugins().map((plugin) => plugin.name));
         const seededCount = seedPlugins.seedBuiltInPlugins();
-        const after = layerModel.listLayers().map((layer) => layer.name);
+        const after = pluginModel.listPlugins().map((plugin) => plugin.name);
 
         expect(seededCount).toBeGreaterThan(0);
-        expect(layerModel.getLayer("multi-one")).toBeDefined();
-        expect(layerModel.getLayer("multi-two")).toBeDefined();
+        expect(pluginModel.getPlugin("multi-one")).toBeDefined();
+        expect(pluginModel.getPlugin("multi-two")).toBeDefined();
         expect(before.has("multi-one")).toBe(false);
         expect(before.has("multi-two")).toBe(false);
         expect(after).toContain("multi-one");
@@ -156,7 +156,7 @@ describe("seed plugins service", () => {
     }
   });
 
-  it("seeds missing layers from a partially installed multi-layer built-in bundle", async () => {
+  it("seeds missing plugins from a partially installed multi-plugin built-in bundle", async () => {
     const context = await createInitializedTestContext("seed-partial-multi-builtin-bundle");
 
     try {
@@ -165,24 +165,24 @@ describe("seed plugins service", () => {
       const originalBuiltinDir = process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
       try {
         process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR = builtinDir;
-        writeLayerExportToml(
+        writePluginExportToml(
           join(builtinDir, "partial.harnesstap.toml"),
-          makeMultiLayerExport([
+          makeMultiPluginExport([
             { name: "partial-one", version: "1.0.0" },
             { name: "partial-two", version: "1.0.0" },
           ]),
         );
 
         const seedPlugins = await import("../../src/services/seed-plugins.ts");
-        const layerModel = await import("../../src/models/plugin-model.ts");
+        const pluginModel = await import("../../src/models/plugin-model.ts");
 
-        layerModel.createLayer({ name: "partial-one", version: "1.0.0" });
+        pluginModel.createPlugin({ name: "partial-one", version: "1.0.0" });
 
         const seededCount = seedPlugins.seedBuiltInPlugins();
 
         expect(seededCount).toBe(1);
-        expect(layerModel.getLayer("partial-one@1.0.0")).toBeDefined();
-        expect(layerModel.getLayer("partial-two@1.0.0")).toBeDefined();
+        expect(pluginModel.getPlugin("partial-one@1.0.0")).toBeDefined();
+        expect(pluginModel.getPlugin("partial-two@1.0.0")).toBeDefined();
       } finally {
         if (originalBuiltinDir === undefined) {
           delete process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;

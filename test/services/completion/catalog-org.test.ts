@@ -24,7 +24,7 @@ afterEach(() => {
 describe("completeCatalogOrgs", () => {
   it("returns empty output without an authenticated account", async () => {
     const candidates = await completeCatalogOrgs({
-      commandPath: ["layer", "publish"],
+      commandPath: ["plugin", "publish"],
       slot: "flag-value",
       flag: "org",
       positionalIndex: 0,
@@ -55,7 +55,7 @@ describe("completeCatalogOrgs", () => {
     );
 
     const candidates = await completeCatalogOrgs({
-      commandPath: ["layer", "publish"],
+      commandPath: ["plugin", "publish"],
       slot: "flag-value",
       flag: "org",
       positionalIndex: 0,

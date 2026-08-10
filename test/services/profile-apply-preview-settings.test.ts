@@ -2,9 +2,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
-  addResourceToLayer,
-  createLayer,
-  setLayerTags,
+  addResourceToPlugin,
+  createPlugin,
+  setPluginTags,
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
@@ -14,8 +14,8 @@ describe("previewProfileApply unmanaged settings.json", () => {
   it("lists ~/.claude/settings.json as added when the profile does not manage it", async () => {
     const context = await createInitializedTestContext("preview-settings-added");
     try {
-      const profile = createLayer({ name: "teads" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "teads" });
+      setPluginTags(profile.id, ["profile"]);
 
       mkdirSync(join(context.homeDir, ".claude"), { recursive: true });
       writeFileSync(
@@ -51,9 +51,9 @@ describe("previewProfileApply unmanaged settings.json", () => {
   it("does not list settings.json as added when the profile manages it", async () => {
     const context = await createInitializedTestContext("preview-settings-managed");
     try {
-      const profile = createLayer({ name: "managed" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(
+      const profile = createPlugin({ name: "managed" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
         profile.id,
         createResource({
           type: "env_var",

@@ -2,9 +2,9 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, mock } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { listGlobalApplySnapshots } from "../../src/models/global-apply-snapshot.ts";
 
@@ -20,13 +20,13 @@ function createSkill(name: string, content: string) {
 }
 
 describe("profile-apply service", () => {
-  it("supports dry-run global apply for profile layers", async () => {
+  it("supports dry-run global apply for profile plugins", async () => {
     const context = await createInitializedTestContext("profile-apply-dry-run");
     try {
-      const layer = createLayer({
+      const plugin = createPlugin({
         name: "work",
       });
-      setLayerTags(layer.id, ["profile"]);
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -35,9 +35,9 @@ describe("profile-apply service", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
-      const result = await applyProfileLayer("work", {
+      const result = await applyProfilePlugin("work", {
         dryRun: true,
         harness: "claude-code",
         conflictPolicy: "replace",
@@ -56,15 +56,15 @@ describe("profile-apply service", () => {
   it("removes tracked files from the previous profile when switching profiles", async () => {
     const context = await createInitializedTestContext("profile-apply-switch-cleanup");
     try {
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      const profileB = createLayer({ name: "profile-b" });
-      setLayerTags(profileB.id, ["profile"]);
-      addResourceToLayer(profileB.id, createSkill("skill-b", "# Skill B").id);
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
+      addResourceToPlugin(profileB.id, createSkill("skill-b", "# Skill B").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -72,7 +72,7 @@ describe("profile-apply service", () => {
       const skillAPath = join(context.homeDir, ".claude/skills/skill-a/SKILL.md");
       expect(existsSync(skillAPath)).toBe(true);
 
-      const switched = await applyProfileLayer("profile-b", {
+      const switched = await applyProfilePlugin("profile-b", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -89,25 +89,25 @@ describe("profile-apply service", () => {
   it("cleans up files from the active profile even when a newer snapshot belongs to another profile", async () => {
     const context = await createInitializedTestContext("profile-apply-active-profile-cleanup");
     try {
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      const profileB = createLayer({ name: "profile-b" });
-      setLayerTags(profileB.id, ["profile"]);
-      addResourceToLayer(profileB.id, createSkill("skill-b", "# Skill B").id);
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
+      addResourceToPlugin(profileB.id, createSkill("skill-b", "# Skill B").id);
 
-      const profileC = createLayer({ name: "profile-c" });
-      setLayerTags(profileC.id, ["profile"]);
-      addResourceToLayer(profileC.id, createSkill("skill-c", "# Skill C").id);
+      const profileC = createPlugin({ name: "profile-c" });
+      setPluginTags(profileC.id, ["profile"]);
+      addResourceToPlugin(profileC.id, createSkill("skill-c", "# Skill C").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
       setActiveProfileName("profile-a");
 
-      await applyProfileLayer("profile-b", {
+      await applyProfilePlugin("profile-b", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -118,7 +118,7 @@ describe("profile-apply service", () => {
       mkdirSync(join(context.homeDir, ".claude/skills/skill-a"), { recursive: true });
       writeFileSync(skillAPath, "# Skill A", "utf-8");
 
-      const switched = await applyProfileLayer("profile-c", {
+      const switched = await applyProfilePlugin("profile-c", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -137,16 +137,16 @@ describe("profile-apply service", () => {
   it("removes files from the latest other profile snapshot when the active pointer already matches", async () => {
     const context = await createInitializedTestContext("profile-apply-latest-other-snapshot");
     try {
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("shared-skill", "# Shared").id);
-      addResourceToLayer(profileA.id, createSkill("skill-a-only", "# A only").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("shared-skill", "# Shared").id);
+      addResourceToPlugin(profileA.id, createSkill("skill-a-only", "# A only").id);
 
-      const profileB = createLayer({ name: "profile-b" });
-      setLayerTags(profileB.id, ["profile"]);
-      addResourceToLayer(profileB.id, createSkill("shared-skill", "# Shared").id);
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
+      addResourceToPlugin(profileB.id, createSkill("shared-skill", "# Shared").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -158,7 +158,7 @@ describe("profile-apply service", () => {
       );
       expect(existsSync(skillAOnlyPath)).toBe(true);
 
-      const applied = await applyProfileLayer("profile-b", {
+      const applied = await applyProfilePlugin("profile-b", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -173,12 +173,12 @@ describe("profile-apply service", () => {
   it("does not prompt to replace files that already match on profile re-apply", async () => {
     const context = await createInitializedTestContext("profile-apply-identical-reapply");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(profile.id, createSkill("shared-skill", "# Shared").id);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(profile.id, createSkill("shared-skill", "# Shared").id);
 
       const resolver = mock(async () => "replace" as const);
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "prompt",
         conflictResolver: resolver,
@@ -187,7 +187,7 @@ describe("profile-apply service", () => {
 
       resolver.mockClear();
 
-      const reapplied = await applyProfileLayer("work", {
+      const reapplied = await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "prompt",
         conflictResolver: resolver,

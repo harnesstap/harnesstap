@@ -36,7 +36,7 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "plugin edit:0": [completeLocalPlugins],
   "plugin editor:0": [completeLocalPlugins],
   "plugin delete:0": [completeLocalPlugins],
-  "plugin apply:0": [completeLocalPlugins],
+  "apply:0": [completeLocalPlugins],
   "plugin diff:0": LOCAL_PLUGIN_OR_FILE,
   "plugin diff:1": LOCAL_PLUGIN_OR_FILE,
   "plugin pull:0": [completeCatalogPlugins],

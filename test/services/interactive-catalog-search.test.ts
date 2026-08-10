@@ -2,12 +2,12 @@ import { ExitPromptError } from "@inquirer/core";
 import { render } from "@inquirer/testing";
 import { describe, expect } from "bun:test";
 import { promptIt } from "../helpers/prompt-test.ts";
-import type { CatalogLayer } from "../../src/services/catalog-types.js";
+import type { CatalogPlugin } from "../../src/services/catalog-types.js";
 import { promptForInteractiveCatalogSearch } from "../../src/services/wizards/interactive-catalog-search.ts?actual";
 
 const CTRL_S = { name: "s", ctrl: true } as const;
 
-const sampleLayers: CatalogLayer[] = [
+const samplePlugins: CatalogPlugin[] = [
   {
     orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
@@ -33,14 +33,14 @@ const sampleLayers: CatalogLayer[] = [
 ];
 
 describe("interactive catalog search prompt", () => {
-  promptIt("toggles layers with space and applies checked layers on ctrl+s", async () => {
+  promptIt("toggles plugins with space and applies checked plugins on ctrl+s", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogSearch,
       {
-        message: "Search catalog layers to apply",
+        message: "Search catalog plugins to apply",
         scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
-        listLayers: async () => sampleLayers,
+        listPlugins: async () => samplePlugins,
       },
       { clearPromptOnDone: true },
     );
@@ -60,14 +60,14 @@ describe("interactive catalog search prompt", () => {
     });
   });
 
-  promptIt("shows layer details on enter and returns to browse on esc", async () => {
+  promptIt("shows plugin details on enter and returns to browse on esc", async () => {
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogSearch,
       {
-        message: "Search catalog layers to apply",
+        message: "Search catalog plugins to apply",
         scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
-        listLayers: async () => sampleLayers,
+        listPlugins: async () => samplePlugins,
       },
       { clearPromptOnDone: true },
     );
@@ -89,17 +89,17 @@ describe("interactive catalog search prompt", () => {
     });
   });
 
-  promptIt("does not re-fetch on every render when listLayers resolves synchronously", async () => {
+  promptIt("does not re-fetch on every render when listPlugins resolves synchronously", async () => {
     let callCount = 0;
     const { answer, events, nextRender } = await render(
       promptForInteractiveCatalogSearch,
       {
-        message: "Search catalog layers to apply",
+        message: "Search catalog plugins to apply",
         scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
-        listLayers: () => {
+        listPlugins: () => {
           callCount += 1;
-          return sampleLayers as unknown as Promise<typeof sampleLayers>;
+          return samplePlugins as unknown as Promise<typeof samplePlugins>;
         },
       },
       { clearPromptOnDone: true },
@@ -124,10 +124,10 @@ describe("interactive catalog search prompt", () => {
     const { answer, events } = await render(
       promptForInteractiveCatalogSearch,
       {
-        message: "Search catalog layers to apply",
+        message: "Search catalog plugins to apply",
         scopeLabel: "harnesstap-cloud",
         initialQuery: "fullstack",
-        listLayers: async () => sampleLayers,
+        listPlugins: async () => samplePlugins,
       },
       { clearPromptOnDone: true },
     );

@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import {
   buildCatalogListSources,
-  streamCatalogLayers,
+  streamCatalogPlugins,
   type CatalogListSource,
 } from "../../src/services/catalog-list-stream.js";
-import { listCatalogLayersPage } from "../../src/services/catalog-client.js";
+import { listCatalogPluginsPage } from "../../src/services/catalog-client.js";
 import type { CatalogScope, RegisteredCatalog } from "../../src/config/catalog.js";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 
@@ -20,10 +20,10 @@ function makeScope(overrides: Partial<CatalogScope> = {}): CatalogScope {
 
 async function collectStreamEvents(
   sources: CatalogListSource[],
-  opts: Parameters<typeof streamCatalogLayers>[1] = {},
+  opts: Parameters<typeof streamCatalogPlugins>[1] = {},
 ) {
   const events = [];
-  for await (const event of streamCatalogLayers(sources, opts)) {
+  for await (const event of streamCatalogPlugins(sources, opts)) {
     events.push(event);
   }
   return events;
@@ -112,7 +112,7 @@ describe("buildCatalogListSources", () => {
   });
 });
 
-describe("listCatalogLayersPage", () => {
+describe("listCatalogPluginsPage", () => {
   let restoreFetch: (() => void) | undefined;
 
   afterEach(() => {
@@ -120,25 +120,25 @@ describe("listCatalogLayersPage", () => {
     restoreFetch = undefined;
   });
 
-  it("returns paginated layers with nextCursor", async () => {
+  it("returns paginated plugins with nextCursor", async () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
-      layers: [
+      plugins: [
         { orgSlug: "harnesstap-cloud", slug: "alpha", name: "Alpha" },
         { orgSlug: "harnesstap-cloud", slug: "beta", name: "Beta" },
         { orgSlug: "harnesstap-cloud", slug: "gamma", name: "Gamma" },
       ],
     });
 
-    const first = await listCatalogLayersPage(
+    const first = await listCatalogPluginsPage(
       { orgs: ["harnesstap-cloud"], limit: 1 },
       { baseUrl: "https://mock" },
     );
-    expect(first.layers).toHaveLength(1);
-    expect(first.layers[0]?.slug).toBe("alpha");
+    expect(first.plugins).toHaveLength(1);
+    expect(first.plugins[0]?.slug).toBe("alpha");
     expect(first.nextCursor).not.toBeNull();
 
-    const second = await listCatalogLayersPage(
+    const second = await listCatalogPluginsPage(
       {
         orgs: ["harnesstap-cloud"],
         limit: 1,
@@ -146,11 +146,11 @@ describe("listCatalogLayersPage", () => {
       },
       { baseUrl: "https://mock" },
     );
-    expect(second.layers).toHaveLength(1);
-    expect(second.layers[0]?.slug).toBe("beta");
+    expect(second.plugins).toHaveLength(1);
+    expect(second.plugins[0]?.slug).toBe("beta");
     expect(second.nextCursor).not.toBeNull();
 
-    const third = await listCatalogLayersPage(
+    const third = await listCatalogPluginsPage(
       {
         orgs: ["harnesstap-cloud"],
         limit: 1,
@@ -158,13 +158,13 @@ describe("listCatalogLayersPage", () => {
       },
       { baseUrl: "https://mock" },
     );
-    expect(third.layers).toHaveLength(1);
-    expect(third.layers[0]?.slug).toBe("gamma");
+    expect(third.plugins).toHaveLength(1);
+    expect(third.plugins[0]?.slug).toBe("gamma");
     expect(third.nextCursor).toBeNull();
   });
 });
 
-describe("streamCatalogLayers", () => {
+describe("streamCatalogPlugins", () => {
   let restoreFetch: (() => void) | undefined;
 
   afterEach(() => {
@@ -175,10 +175,10 @@ describe("streamCatalogLayers", () => {
   it("streams paginated chunks per source", async () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
-      layers: Array.from({ length: 55 }, (_, index) => ({
+      plugins: Array.from({ length: 55 }, (_, index) => ({
         orgSlug: "harnesstap-cloud",
-        slug: `layer-${index}`,
-        name: `Layer ${index}`,
+        slug: `plugin-${index}`,
+        name: `Plugin ${index}`,
       })),
     });
 
@@ -205,8 +205,8 @@ describe("streamCatalogLayers", () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
       failOrgFilters: ["acme"],
-      layers: [
-        { orgSlug: "harnesstap-cloud", slug: "team", name: "Team Layer" },
+      plugins: [
+        { orgSlug: "harnesstap-cloud", slug: "team", name: "Team Plugin" },
         { orgSlug: "acme", catalogSlug: "internal", slug: "secret", name: "Secret" },
       ],
     });
@@ -233,7 +233,7 @@ describe("streamCatalogLayers", () => {
     expect(events.some((event) =>
       event.type === "chunk"
       && event.chunk.sourceLabel === "harnesstap-cloud"
-      && event.chunk.layers.some((layer) => layer.slug === "team"),
+      && event.chunk.plugins.some((plugin) => plugin.slug === "team"),
     )).toBe(true);
     expect(events.at(-1)).toEqual({ type: "done", timedOut: false });
   });
@@ -242,10 +242,10 @@ describe("streamCatalogLayers", () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://mock",
       pageDelayMs: 5,
-      layers: Array.from({ length: 100 }, (_, index) => ({
+      plugins: Array.from({ length: 100 }, (_, index) => ({
         orgSlug: "harnesstap-cloud",
-        slug: `layer-${index}`,
-        name: `Layer ${index}`,
+        slug: `plugin-${index}`,
+        name: `Plugin ${index}`,
       })),
     });
 

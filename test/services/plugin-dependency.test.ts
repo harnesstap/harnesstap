@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { createLayer } from "../../src/models/plugin-model.ts";
+import { createPlugin } from "../../src/models/plugin-model.ts";
 import {
   addDependency,
   listDependencies,
@@ -69,7 +69,7 @@ describe("parseDependencyRef", () => {
 
 describe("dependency attachment", () => {
   it("adds, lists, and removes a dependency with its constraint and source", () => {
-    const root = createLayer({ name: "root" });
+    const root = createPlugin({ name: "root" });
     addDependency(root.id, "web-search@anthropics", { versionConstraint: "^1.2.0" });
     addDependency(root.id, "base", { versionConstraint: "^2.0.0" });
 
@@ -91,7 +91,7 @@ describe("dependency attachment", () => {
   });
 
   it("preserves declaration order", () => {
-    const root = createLayer({ name: "root" });
+    const root = createPlugin({ name: "root" });
     addDependency(root.id, "a");
     addDependency(root.id, "b");
     addDependency(root.id, "c");

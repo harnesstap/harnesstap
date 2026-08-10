@@ -9,18 +9,18 @@ import {
 } from "../../src/services/migrate-scope.ts";
 import { formatResourceExportToml } from "../../src/services/transport/resource.ts";
 import {
-  makeSingleLayerExport,
-  writeLayerExportToml,
+  makeSinglePluginExport,
+  writePluginExportToml,
 } from "../helpers/transport-fixtures.ts";
 
 describe("migrate-scope", () => {
-  it("resolves layer export scope from --layer flag", () => {
+  it("resolves plugin export scope from --plugin flag", () => {
     expect(
       resolveExportScope({
-        layer: "my-layer",
+        plugin: "my-plugin",
         file: "./out.harnesstap.toml",
       }).scope,
-    ).toBe("layer");
+    ).toBe("plugin");
   });
 
   it("resolves workspace export scope from archive extension", () => {
@@ -29,11 +29,11 @@ describe("migrate-scope", () => {
     ).toBe("workspace");
   });
 
-  it("detects layer import from TOML schema", () => {
+  it("detects plugin import from TOML schema", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-scope-"));
-    const path = join(dir, "layer.harnesstap.toml");
-    writeLayerExportToml(path, makeSingleLayerExport({ name: "x" }));
-    expect(detectImportScopeFromFile(path)).toBe("layer");
+    const path = join(dir, "plugin.harnesstap.toml");
+    writePluginExportToml(path, makeSinglePluginExport({ name: "x" }));
+    expect(detectImportScopeFromFile(path)).toBe("plugin");
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -63,11 +63,11 @@ describe("migrate-scope", () => {
 
   it("rejects forced import scope that mismatches file format", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-scope-mismatch-"));
-    const path = join(dir, "layer.harnesstap.toml");
-    writeLayerExportToml(path, makeSingleLayerExport({ name: "x" }));
+    const path = join(dir, "plugin.harnesstap.toml");
+    writePluginExportToml(path, makeSinglePluginExport({ name: "x" }));
     expect(() =>
       resolveImportScope({ file: path, workspace: true }),
-    ).toThrow(/looks like layer data but --workspace/);
+    ).toThrow(/looks like plugin data but --workspace/);
     rmSync(dir, { recursive: true, force: true });
   });
 });

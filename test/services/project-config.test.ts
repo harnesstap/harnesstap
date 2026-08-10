@@ -28,7 +28,7 @@ selector = "acme/platform/frontend@1.0.0"
 [[profiles]]
 name = "custom"
 source = "inline"
-layer = "embedded-layer"
+plugin = "embedded-plugin"
 
 [[profiles]]
 name = "local-fallback"
@@ -56,9 +56,9 @@ REGION = "eu"
 provider = "env"
 ref = "PD_TOKEN"
 
-[[layers]]
-name = "embedded-layer"
-description = "inline layer for custom profile"
+[[plugins]]
+name = "embedded-plugin"
+description = "inline plugin for custom profile"
 `;
 
 describe("project-config", () => {
@@ -75,7 +75,7 @@ default_profile = "app"
 [[profiles]]
 name = "app"
 source = "local"
-selector = "app-layer"
+selector = "app-plugin"
 `,
       );
 
@@ -115,7 +115,7 @@ selector = "app-layer"
         {
           name: "custom",
           source: "inline",
-          layer: "embedded-layer",
+          plugin: "embedded-plugin",
         },
         {
           name: "local-fallback",
@@ -145,10 +145,10 @@ selector = "app-layer"
           },
         },
       ]);
-      expect(config.layers).toEqual([
+      expect(config.plugins).toEqual([
         expect.objectContaining({
-          name: "embedded-layer",
-          description: "inline layer for custom profile",
+          name: "embedded-plugin",
+          description: "inline plugin for custom profile",
         }),
       ]);
     } finally {
@@ -156,8 +156,8 @@ selector = "app-layer"
     }
   });
 
-  it("rejects layer v1 schema at config path", () => {
-    const root = createTempDir("project-config-layer-collision");
+  it("rejects plugin v1 schema at config path", () => {
+    const root = createTempDir("project-config-plugin-collision");
     try {
       const configPath = join(root, ".harnesstap", "config.toml");
       writeTextFile(
@@ -165,14 +165,14 @@ selector = "app-layer"
         `schema = "urn:harnesstap:layer:v1"
 version = 1
 
-[[layers]]
+[[plugins]]
 name = "team-stack"
 version = "1.0.0"
-description = "layer bundle misplaced in project config"
+description = "plugin bundle misplaced in project config"
 `,
       );
 
-      expect(() => parseProjectConfigFile(configPath)).toThrow(/layer bundle schema/);
+      expect(() => parseProjectConfigFile(configPath)).toThrow(/plugin bundle schema/);
     } finally {
       cleanupDir(root);
     }
@@ -282,7 +282,7 @@ selector = "team-stack"
     }
   });
 
-  it("validateProjectConfig accepts valid inline layer references", () => {
+  it("validateProjectConfig accepts valid inline plugin references", () => {
     const root = createTempDir("project-config-validate-valid");
     try {
       const configPath = join(root, ".harnesstap", "config.toml");
@@ -295,7 +295,7 @@ selector = "team-stack"
     }
   });
 
-  it("validateProjectConfig rejects unknown inline layer references", () => {
+  it("validateProjectConfig rejects unknown inline plugin references", () => {
     const root = createTempDir("project-config-validate-inline");
     try {
       const configPath = join(root, ".harnesstap", "config.toml");
@@ -307,7 +307,7 @@ version = 1
 [[profiles]]
 name = "custom"
 source = "inline"
-layer = "missing-layer"
+plugin = "missing-plugin"
 `,
       );
       const config = parseProjectConfigFile(configPath);
@@ -315,7 +315,7 @@ layer = "missing-layer"
       expect(validateProjectConfig(config)).toEqual({
         valid: false,
         errors: [
-          "Profile custom with inline source references unknown layer: missing-layer",
+          "Profile custom with inline source references unknown plugin: missing-plugin",
         ],
       });
     } finally {

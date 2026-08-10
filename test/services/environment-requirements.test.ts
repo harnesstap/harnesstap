@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
 import {
-  addResourceToLayer,
-  createLayer,
-  createLayerFromSources,
+  addResourceToPlugin,
+  createPlugin,
+  createPluginFromSources,
 } from "../../src/models/plugin-model.ts";
 import {
   addSecretRefToEnvironment,
@@ -33,7 +33,7 @@ describe("environment requirements service", () => {
     const context = await createInitializedTestContext("env-req-plugins");
 
     try {
-      const plugin = createLayer({
+      const plugin = createPlugin({
         name: "req-test-plugin",
         needs: ["NEED_KEY", "SECRET_TOKEN"],
       });
@@ -59,8 +59,8 @@ describe("environment requirements service", () => {
         metadata: { model: "gpt-5" },
         source: "manual",
       });
-      addResourceToLayer(plugin.id, mcpServer.id);
-      addResourceToLayer(plugin.id, agent.id);
+      addResourceToPlugin(plugin.id, mcpServer.id);
+      addResourceToPlugin(plugin.id, agent.id);
 
       const requirementsService = await import(
         "../../src/services/environment-requirements.ts"
@@ -68,7 +68,7 @@ describe("environment requirements service", () => {
       const result = requirementsService.collectRequirementsFromPlugins([plugin.id]);
 
       expect(result.plugin_ids).toEqual([plugin.id]);
-      expect(result.configured_layer_ids).toEqual([]);
+      expect(result.configured_plugin_ids).toEqual([]);
       expect(result.required_keys).toEqual(["MCP_KEY", "NEED_KEY", "SECRET_TOKEN"]);
       expect(result.key_sources.NEED_KEY).toEqual(["plugin_needs"]);
       expect(result.key_sources.MCP_KEY).toEqual(["mcp_env"]);
@@ -82,7 +82,7 @@ describe("environment requirements service", () => {
     const context = await createInitializedTestContext("env-req-mcp-headers");
 
     try {
-      const plugin = createLayer({ name: "header-req-plugin" });
+      const plugin = createPlugin({ name: "header-req-plugin" });
       const mcpServer = createResource({
         type: "mcp_server",
         name: "remote-api",
@@ -98,7 +98,7 @@ describe("environment requirements service", () => {
         },
         source: "manual",
       });
-      addResourceToLayer(plugin.id, mcpServer.id);
+      addResourceToPlugin(plugin.id, mcpServer.id);
 
       const requirementsService = await import(
         "../../src/services/environment-requirements.ts"
@@ -113,43 +113,43 @@ describe("environment requirements service", () => {
     }
   });
 
-  it("collectLayerRequirements resolves selectors and sets configured_layer_ids", async () => {
-    const context = await createInitializedTestContext("env-req-layers");
+  it("collectPluginRequirements resolves selectors and sets configured_plugin_ids", async () => {
+    const context = await createInitializedTestContext("env-req-plugins");
 
     try {
-      const plugin = createLayer({
-        name: "layer-req-plugin",
-        needs: ["LAYER_KEY"],
+      const plugin = createPlugin({
+        name: "plugin-req-plugin",
+        needs: ["PLUGIN_KEY"],
       });
-      const configuredLayer = createLayerFromSources({
-        name: "layer-req-configured",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = createPluginFromSources({
+        name: "plugin-req-configured",
+        sourcePluginIds: [plugin.id],
       });
 
       const requirementsService = await import(
         "../../src/services/environment-requirements.ts"
       );
-      const result = requirementsService.collectLayerRequirements([configuredLayer.id]);
+      const result = requirementsService.collectPluginRequirements([configuredPlugin.id]);
 
-      expect(result.configured_layer_ids).toEqual([configuredLayer.id]);
-      expect(result.plugin_ids).toEqual([configuredLayer.id]);
-      expect(result.required_keys).toEqual(["LAYER_KEY"]);
-      expect(result.key_sources.LAYER_KEY).toEqual(["plugin_needs"]);
+      expect(result.configured_plugin_ids).toEqual([configuredPlugin.id]);
+      expect(result.plugin_ids).toEqual([configuredPlugin.id]);
+      expect(result.required_keys).toEqual(["PLUGIN_KEY"]);
+      expect(result.key_sources.PLUGIN_KEY).toEqual(["plugin_needs"]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("collectLayerRequirements throws when selector is not found", async () => {
-    const context = await createInitializedTestContext("env-req-missing-layer");
+  it("collectPluginRequirements throws when selector is not found", async () => {
+    const context = await createInitializedTestContext("env-req-missing-plugin");
 
     try {
       const requirementsService = await import(
         "../../src/services/environment-requirements.ts"
       );
       expect(() =>
-        requirementsService.collectLayerRequirements(["missing-layer-id"]),
-      ).toThrow(/Configured layer not found/);
+        requirementsService.collectPluginRequirements(["missing-plugin-id"]),
+      ).toThrow(/Configured plugin not found/);
     } finally {
       await context.cleanup();
     }
@@ -159,13 +159,13 @@ describe("environment requirements service", () => {
     const context = await createInitializedTestContext("env-req-gaps");
 
     try {
-      const plugin = createLayer({
+      const plugin = createPlugin({
         name: "gap-plugin",
         needs: ["SATISFIED_VAR", "SATISFIED_SECRET", "MISSING_VAR"],
       });
-      const configuredLayer = createLayerFromSources({
-        name: "gap-layer",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = createPluginFromSources({
+        name: "gap-plugin",
+        sourcePluginIds: [plugin.id],
       });
       const environment = createEnvironment({
         name: "gap-env",
@@ -179,7 +179,7 @@ describe("environment requirements service", () => {
       );
       const gaps = requirementsService.analyzeEnvironmentGaps(
         environment.id,
-        configuredLayer.id,
+        configuredPlugin.id,
       );
 
       expect(gaps).toEqual([
