@@ -18,6 +18,7 @@ import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./layer-composition.js";
+import { assertSyncable } from "./layer-origin.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
@@ -101,10 +102,25 @@ function resolveConflictPolicy(
   return "fail";
 }
 
+function layerIdsForResource(resourceId: string): string[] {
+  const db = getDb();
+  return (
+    db
+      .prepare(
+        "SELECT layer_id AS id FROM layer_resources WHERE resource_id = ?",
+      )
+      .all(resourceId) as Array<{ id: string }>
+  ).map((row) => row.id);
+}
+
 export async function syncPluginResource(
   pluginResource: Resource,
   options: SyncLinkedResourcesOptions = {},
 ): Promise<SyncLinkedResourcesResult> {
+  for (const layerId of layerIdsForResource(pluginResource.id)) {
+    assertSyncable(layerId);
+  }
+
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const claudePluginsRoot =
     options.claudePluginsRoot ?? defaultClaudePluginsRoot(homeRoot);

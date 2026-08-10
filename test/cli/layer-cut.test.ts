@@ -118,7 +118,7 @@ describe("CLI layer cut", () => {
       ]);
 
       const listResult = await runCli(["layer", "list", "--local-only"]);
-      expect(listResult.stdout).toMatch(/alpha\s+\|\s+1\.0\.0\*/);
+      expect(listResult.stdout).toMatch(/alpha\s+\|\s+authored\s+\|\s+1\.0\.0\*/);
     } finally {
       await context.cleanup();
     }

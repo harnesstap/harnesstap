@@ -107,6 +107,10 @@ import { resolvePluginInstallScope, type InstallPluginPinResult } from "../../se
 import { resolveClaudeEnabledPluginRef } from "../../plugins/claude-plugin-ref.js";
 import { diffLayers } from "../../services/layer-diff.js";
 import {
+  assertAuthored,
+  LayerProvenanceError,
+} from "../../services/layer-origin.js";
+import {
   cutLayerVersion,
   LayerVersionError,
 } from "../../services/layer-versioning.js";
@@ -1035,6 +1039,8 @@ async function handleLayerEditCommand(
     return;
   }
 
+  assertAuthored(layer.id, "edit");
+
   const candidates = buildLayerEditCandidates(layer);
 
   if (scripting) {
@@ -1216,6 +1222,7 @@ async function handleLayerEditorCommand(
   }
 
   try {
+    assertAuthored(layer.id, "edit");
     const definitionPath = exportLayerDefinition(layer);
     if (format === "json") {
       printJson({
@@ -1232,6 +1239,10 @@ async function handleLayerEditorCommand(
     );
   } catch (error) {
     process.exitCode = 1;
+    if (error instanceof LayerProvenanceError) {
+      ui.danger(error.message, { hints: error.hints });
+      return;
+    }
     ui.danger(error instanceof Error ? error.message : String(error));
   }
 }
@@ -1303,6 +1314,7 @@ function handleLayerCutCommand(
   }
 
   try {
+    assertAuthored(layer.id, "cut");
     const cut = cutLayerVersion({ layerId: layer.id, newVersion: opts.version });
     if (format === "json") {
       printJson(cut);
@@ -1311,6 +1323,10 @@ function handleLayerCutCommand(
     ui.success(`Cut layer ${ui.theme.accent(formatLayerLabel(cut))}`);
   } catch (err) {
     process.exitCode = 1;
+    if (err instanceof LayerProvenanceError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
     if (err instanceof LayerVersionError) {
       ui.danger(err.message);
       return;
@@ -2047,7 +2063,10 @@ layerCmd
       await handleLayerEditCommand(name, opts);
     } catch (error) {
       process.exitCode = 1;
-      if (error instanceof LayerAttachmentHintError) {
+      if (
+        error instanceof LayerAttachmentHintError
+        || error instanceof LayerProvenanceError
+      ) {
         ui.danger(error.message, { hints: error.hints });
         return;
       }

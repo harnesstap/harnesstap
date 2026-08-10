@@ -3,6 +3,7 @@ import { initializeSchema } from "../db/schema.js";
 import { getDb } from "../db/connection.js";
 import { listProfileLayersCommand } from "../services/profile-commands.js";
 import { CliUsageError } from "../services/cli-errors.js";
+import { LayerProvenanceError } from "../services/layer-origin.js";
 import { isPromptCancellationError } from "../services/wizards/shared.js";
 import { takeSelectorDeprecations } from "../services/resource-selector.js";
 import { ui } from "../ui/index.js";
@@ -44,6 +45,12 @@ export function renderCliError(error: unknown, argv: string[] = process.argv): v
       return;
     }
     console.error(String(error));
+    return;
+  }
+
+  if (error instanceof LayerProvenanceError) {
+    ui.danger(error.message, { hints: error.hints });
+    process.exitCode = 1;
     return;
   }
 

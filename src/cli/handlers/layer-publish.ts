@@ -12,6 +12,10 @@ import {
 } from "../../services/layer-publish.js";
 import { formatPublishedSelector } from "../../services/layer-selector.js";
 import {
+  assertAuthored,
+  LayerProvenanceError,
+} from "../../services/layer-origin.js";
+import {
   assertLayersCleanForShare,
   cutLayerVersion,
   LayerVersionError,
@@ -44,6 +48,7 @@ export async function handleLayerPublishCommand(
   }
 
   try {
+    assertAuthored(layer.id, "publish");
     if (opts.version) {
       layer = cutLayerVersion({ layerId: layer.id, newVersion: opts.version });
     } else if (layer.dirty) {
@@ -95,6 +100,10 @@ export async function handleLayerPublishCommand(
     }
   } catch (err) {
     process.exitCode = 1;
+    if (err instanceof LayerProvenanceError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
     if (err instanceof LayerVersionError) {
       ui.danger(err.message);
       return;
@@ -117,6 +126,7 @@ export async function handleLayerPublishPlanCommand(
   }
 
   try {
+    assertAuthored(layer.id, "publish");
     const targets = resolvePublishTargetsForLayer(layer.id);
     const plans = await planLayerPublish(layer, targets, { account: opts.account });
     const format = parseOutputFormat(opts.format);
@@ -144,6 +154,10 @@ export async function handleLayerPublishPlanCommand(
     }
   } catch (err) {
     process.exitCode = 1;
+    if (err instanceof LayerProvenanceError) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }
