@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from "../utils/fetch-with-timeout.js";
+import { cloudFetch } from "./cloud-api-version.js";
 import { parseApEnvelope } from "./agent-plugins/envelope.js";
 import { parseApPackageFiles } from "./agent-plugins/import.js";
 
@@ -105,7 +105,7 @@ export async function refreshCloudAccessToken(
   baseUrl: string,
   refreshToken: string,
 ): Promise<CloudTokenRefreshResult> {
-  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/token/refresh"), {
+  const response = await cloudFetch(apiUrl(baseUrl, "/cli/token/refresh"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -202,7 +202,7 @@ export async function requestDeviceCode(
   baseUrl: string,
   opts?: { scopes?: Array<"read" | "publish" | "admin"> },
 ): Promise<DeviceCodeResponse> {
-  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/code"), {
+  const response = await cloudFetch(apiUrl(baseUrl, "/cli/device/code"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ scopes: opts?.scopes ?? [...DEFAULT_DEVICE_SCOPES] }),
@@ -250,7 +250,7 @@ export async function pollDeviceTokenOnce(
   opts?: { intervalMs?: number },
 ): Promise<DeviceTokenPollOnceResult> {
   const pollIntervalMs = opts?.intervalMs ?? 5000;
-  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/token"), {
+  const response = await cloudFetch(apiUrl(baseUrl, "/cli/device/token"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ device_code: deviceCode }),
@@ -354,7 +354,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     const headers = new Headers(init?.headers);
     if (!state.token) throw new Error("Missing auth token");
     headers.set("Authorization", `Bearer ${state.token.access_token}`);
-    return fetchWithTimeout(input, { ...init, headers });
+    return cloudFetch(input, { ...init, headers });
   }
 
   async function listPublishedPlugins(orgId: string): Promise<PublishedPluginRecord[]> {
