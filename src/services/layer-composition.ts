@@ -206,7 +206,7 @@ export function attachCompositionResource(
 }
 
 function normalizeCompositionType(type: string): ResourceType | undefined {
-  if (type === "plugin" || type === "plugin") {
+  if (type === "plugin" || type === "plugin_pin" || type === "layer") {
     return "plugin";
   }
   if ((RESOURCE_TYPES as readonly string[]).includes(type)) {
@@ -274,7 +274,7 @@ export function validateLayerAttachmentType(type: string | undefined): string | 
   if (!type) {
     return undefined;
   }
-  if (type === "plugin") {
+  if (type === "plugin" || type === "plugin_pin" || type === "layer") {
     return "plugin";
   }
   if (!(LAYER_ATTACHMENT_TYPES as readonly string[]).includes(type)) {
@@ -331,7 +331,7 @@ function normalizeAttachmentSelector(selector: string, explicitType?: string): s
     return selector;
   }
   const type = explicitType;
-  if (type === "plugin" || type === "plugin") {
+  if (type === "plugin" || type === "plugin_pin" || type === "layer") {
     return `plugin:${selector}`;
   }
   if (

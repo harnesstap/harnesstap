@@ -77,12 +77,12 @@ describe("layer-edit", () => {
 
       const rows = buildLayerEditCandidates(layer);
       const helper = rows.find((row) => row.id === skill.id);
-      const baseline = rows.find((row) => row.type === "layer" && row.name === "baseline");
+      const baseline = rows.find((row) => row.type === "plugin" && row.name === "baseline");
 
       expect(helper?.checked).toBe(true);
       expect(baseline).toBeDefined();
       expect(baseline?.checked).toBe(false);
-      expect(rows.some((row) => row.name === "stack" && row.type === "layer")).toBe(false);
+      expect(rows.some((row) => row.name === "stack" && row.type === "plugin")).toBe(false);
     } finally {
       await context.cleanup();
     }
@@ -172,7 +172,7 @@ describe("layer-edit", () => {
     const rows: LayerEditRow[] = [
       {
         id: `layer-candidate:${layer.id}`,
-        type: "layer",
+        type: "plugin",
         name: "stack",
         namespace: "1.0.0",
         checked: true,

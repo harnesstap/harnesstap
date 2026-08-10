@@ -63,7 +63,7 @@ describe("profile-create service", () => {
           name,
         })),
       ).toEqual([
-        { type: "layer", name: "engineering" },
+        { type: "plugin", name: "engineering" },
         { type: "skill", name: "review" },
       ]);
     } finally {
