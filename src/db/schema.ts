@@ -457,7 +457,14 @@ export function initializeSchema(
 ): void {
   const currentVersion = getSchemaVersion(db);
 
-  if (currentVersion >= SCHEMA_VERSION) return;
+  if (currentVersion > SCHEMA_VERSION) {
+    throw new Error(
+      `Database schema v${currentVersion} is newer than this binary (v${SCHEMA_VERSION}). ` +
+        "Use a matching HarnessTap build, or point HARNESSTAP_HOME at a compatible database.",
+    );
+  }
+
+  if (currentVersion === SCHEMA_VERSION) return;
 
   if (currentVersion > 0 && currentVersion < 22) {
     if (options.allowLegacyRead) {

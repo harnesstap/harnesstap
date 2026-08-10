@@ -23,12 +23,25 @@ import {
   exportMigrationState,
   importMigrationState,
 } from "../../src/services/migrate.ts";
+import { assertArchiveMembersContained } from "../../src/utils/path-containment.ts";
 
 describe("migrate archive containment", () => {
-  it("refuses an archive containing a path traversal", () => {
-    // Host tar (bsdtar) refuses to create/extract `../` members, so build a
-    // symlink escape instead — listContainedFiles still rejects it with the
-    // same PathEscapeError surface.
+  it("rejects path-traversal members listed in the archive before extract", () => {
+    // Host tar (bsdtar) often refuses to *create* `../` members, so assert the
+    // pre-extract member check directly — that is the hardening that closes the
+    // hole a post-walk cannot see.
+    const dest = mkdtempSync(join(tmpdir(), "migrate-dest-"));
+    try {
+      expect(() =>
+        assertArchiveMembersContained(dest, ["manifest.json", "../escape.txt"]),
+      ).toThrow(/escapes the package root/);
+    } finally {
+      rmSync(dest, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses an archive containing a symlink that escapes the destination", () => {
+    // Post-extract walk still catches in-tree symlink escapes.
     const parent = mkdtempSync(join(tmpdir(), "evil-parent-"));
     const staging = join(parent, "pkg");
     const outside = mkdtempSync(join(tmpdir(), "outside-"));

@@ -11,16 +11,34 @@ export class PathEscapeError extends Error {
   }
 }
 
+/** True when `rel` is outside the root (`..` or `../…`), not names that merely start with dots. */
+function isOutsideRelative(rel: string): boolean {
+  return rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+}
+
 export function isContainedPath(root: string, entry: string): boolean {
   if (isAbsolute(entry)) return false;
   const resolvedRoot = resolve(root);
   const rel = relative(resolvedRoot, resolve(resolvedRoot, entry));
-  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+  return rel !== "" && !isOutsideRelative(rel);
 }
 
 export function assertContainedPath(root: string, entry: string): void {
   if (!isContainedPath(root, entry)) {
     throw new PathEscapeError(entry, root);
+  }
+}
+
+/**
+ * Validate archive member paths before extraction. Directory markers and `.`
+ * are skipped; leading `./` is stripped.
+ */
+export function assertArchiveMembersContained(root: string, members: string[]): void {
+  for (const member of members) {
+    const trimmed = member.replace(/\/+$/, "");
+    if (!trimmed || trimmed === ".") continue;
+    const normalized = trimmed.replace(/^\.\//, "");
+    assertContainedPath(root, normalized);
   }
 }
 
@@ -44,7 +62,7 @@ export function listContainedFiles(root: string): string[] {
       const absolute = join(dir, entry.name);
       const real = realpathSync(absolute);
       const rel = relative(resolvedRoot, real);
-      if (rel.startsWith("..") || isAbsolute(rel)) {
+      if (isOutsideRelative(rel)) {
         throw new PathEscapeError(relative(resolvedRoot, absolute), resolvedRoot);
       }
       if (statSync(real).isDirectory()) {

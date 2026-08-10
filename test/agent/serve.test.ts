@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, it } from "bun:test";
 import {
   isAuthorizedAgentRequest,
@@ -15,7 +15,7 @@ import {
   AGENT_TOKEN_FILENAME,
   getAgentTokenPath,
 } from "../../src/agent/token.ts";
-import { getDbPath } from "../../src/db/connection.ts";
+import { closeDb, getDbPath } from "../../src/db/connection.ts";
 
 describe("agent auth", () => {
   it("parses bearer tokens", () => {
@@ -51,6 +51,7 @@ describe("agent serve", () => {
     for (const server of servers.splice(0)) {
       server.stop();
     }
+    closeDb();
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -87,6 +88,22 @@ describe("agent serve", () => {
     const tokenPath = join(home, AGENT_TOKEN_FILENAME);
     expect(tokenPath).toBe(getAgentTokenPath());
     expect(readFileSync(tokenPath, "utf8").trim()).toBe(server.token);
+  });
+
+  it("fails fast when the database schema is newer than this binary", () => {
+    withIsolatedHome();
+    mkdirSync(process.env.HARNESSTAP_HOME!, { recursive: true });
+    const raw = new Database(getDbPath());
+    raw.exec(`
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (99);
+    `);
+    raw.close();
+    closeDb();
+
+    expect(() => startAgentServer({ port: 0 })).toThrow(
+      /newer than this binary|schema v99/,
+    );
   });
 
   it("uses the default port when available", () => {

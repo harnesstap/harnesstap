@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   PathEscapeError,
+  assertArchiveMembersContained,
   assertContainedPath,
   isContainedPath,
   listContainedFiles,
@@ -22,6 +23,12 @@ afterEach(() => {
 describe("assertContainedPath", () => {
   it("accepts a plain relative path", () => {
     expect(() => assertContainedPath(root, "skills/deploy/SKILL.md")).not.toThrow();
+  });
+
+  it("accepts names that begin with dots but are not parent traversal", () => {
+    expect(() => assertContainedPath(root, "..foo")).not.toThrow();
+    expect(() => assertContainedPath(root, "...")).not.toThrow();
+    expect(() => assertContainedPath(root, "skills/..foo/SKILL.md")).not.toThrow();
   });
 
   it("rejects a parent traversal", () => {
@@ -79,11 +86,42 @@ describe("listContainedFiles", () => {
     symlinkSync(root, join(root, "a", "loop"));
     expect(() => listContainedFiles(root)).not.toThrow();
   });
+
+  it("allows file names that begin with dots but are not parent traversal", () => {
+    writeFileSync(join(root, "..foo"), "x");
+    writeFileSync(join(root, "..."), "y");
+    expect(listContainedFiles(root).sort()).toEqual(["...", "..foo"]);
+  });
 });
 
 describe("isContainedPath", () => {
   it("returns a boolean rather than throwing", () => {
     expect(isContainedPath(root, "a/b")).toBe(true);
     expect(isContainedPath(root, "../b")).toBe(false);
+  });
+
+  it("does not treat ..foo or ... as escapes", () => {
+    expect(isContainedPath(root, "..foo")).toBe(true);
+    expect(isContainedPath(root, "...")).toBe(true);
+  });
+});
+
+describe("assertArchiveMembersContained", () => {
+  it("rejects parent and absolute members before extract", () => {
+    expect(() => assertArchiveMembersContained(root, ["../escape.md"])).toThrow(PathEscapeError);
+    expect(() => assertArchiveMembersContained(root, ["foo/../../escape.md"])).toThrow(
+      PathEscapeError,
+    );
+    expect(() => assertArchiveMembersContained(root, ["/etc/passwd"])).toThrow(PathEscapeError);
+  });
+
+  it("allows contained members and directory markers", () => {
+    expect(() =>
+      assertArchiveMembersContained(root, [".", "./plugin.json", "skills/", "skills/plan/SKILL.md"]),
+    ).not.toThrow();
+  });
+
+  it("allows ..foo member names", () => {
+    expect(() => assertArchiveMembersContained(root, ["..foo", ".../x"])).not.toThrow();
   });
 });

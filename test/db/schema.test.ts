@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
+import type { SqliteDatabase } from "../../src/db/types.ts";
 import { hashResourceBody } from "../../src/services/resource-hash.ts";
 
 describe("initializeSchema", () => {
@@ -370,221 +371,236 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v22 databases in place to v26 with dirty/frozen_at/snapshots/overrides/origin", async () => {
-    const context = await createTestContext("schema-v24-upgrade");
-    try {
-      const db = context.connection.getDb();
-      // Simulate a v22 DB: create minimal v22 layers table then stamp version 22
-      db.exec(`
-        CREATE TABLE schema_version (version INTEGER NOT NULL);
-        INSERT INTO schema_version (version) VALUES (22);
-        CREATE TABLE layers (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          version TEXT NOT NULL DEFAULT '1.0.0',
-          org_slug TEXT NOT NULL DEFAULT '',
-          catalog_slug TEXT NOT NULL DEFAULT '',
-          description TEXT NOT NULL DEFAULT '',
-          tags TEXT NOT NULL DEFAULT '[]',
-          claude_config TEXT NOT NULL DEFAULT '{}',
-          needs_config TEXT NOT NULL DEFAULT '[]',
-          default_environment_id TEXT,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE(org_slug, catalog_slug, name, version)
-        );
-        CREATE TABLE global_apply_snapshots (
-          id TEXT PRIMARY KEY,
-          profile_name TEXT NOT NULL,
-          layer_ids TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-      `);
+  it("upgrades intermediate schemas in place to current with expected columns", async () => {
+    const now = new Date().toISOString();
+    const fixtures: Array<{
+      label: string;
+      setup: string;
+      seed?: (db: SqliteDatabase) => void;
+      assert: (db: SqliteDatabase) => void;
+    }> = [
+      {
+        label: "v22",
+        setup: `
+          CREATE TABLE schema_version (version INTEGER NOT NULL);
+          INSERT INTO schema_version (version) VALUES (22);
+          CREATE TABLE layers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            version TEXT NOT NULL DEFAULT '1.0.0',
+            org_slug TEXT NOT NULL DEFAULT '',
+            catalog_slug TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            tags TEXT NOT NULL DEFAULT '[]',
+            claude_config TEXT NOT NULL DEFAULT '{}',
+            needs_config TEXT NOT NULL DEFAULT '[]',
+            default_environment_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(org_slug, catalog_slug, name, version)
+          );
+          CREATE TABLE global_apply_snapshots (
+            id TEXT PRIMARY KEY,
+            profile_name TEXT NOT NULL,
+            layer_ids TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          );
+        `,
+        assert: (db) => {
+          const cols = db
+            .prepare("PRAGMA table_info(plugins)")
+            .all() as Array<{ name: string }>;
+          expect(cols.map((c) => c.name)).toEqual(
+            expect.arrayContaining([
+              "dirty",
+              "frozen_at",
+              "overrides",
+              "origin",
+            ]),
+          );
+          expect(
+            db
+              .prepare(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='plugin_working_snapshots'",
+              )
+              .get(),
+          ).toBeTruthy();
+          const globalCols = db
+            .prepare("PRAGMA table_info(global_apply_snapshots)")
+            .all() as Array<{ name: string }>;
+          expect(globalCols.map((c) => c.name)).toContain("resolved_set");
+        },
+      },
+      {
+        label: "v23",
+        setup: `
+          CREATE TABLE schema_version (version INTEGER NOT NULL);
+          INSERT INTO schema_version (version) VALUES (23);
+          CREATE TABLE layers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            version TEXT NOT NULL DEFAULT '1.0.0',
+            org_slug TEXT NOT NULL DEFAULT '',
+            catalog_slug TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            tags TEXT NOT NULL DEFAULT '[]',
+            claude_config TEXT NOT NULL DEFAULT '{}',
+            needs_config TEXT NOT NULL DEFAULT '[]',
+            default_environment_id TEXT,
+            dirty INTEGER NOT NULL DEFAULT 0,
+            frozen_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(org_slug, catalog_slug, name, version)
+          );
+          CREATE TABLE layer_working_snapshots (
+            layer_id TEXT PRIMARY KEY REFERENCES layers(id) ON DELETE CASCADE,
+            source_version TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          );
+          CREATE TABLE global_apply_snapshots (
+            id TEXT PRIMARY KEY,
+            profile_name TEXT NOT NULL,
+            layer_ids TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          );
+        `,
+        assert: (db) => {
+          const pluginCols = db
+            .prepare("PRAGMA table_info(plugins)")
+            .all() as Array<{ name: string; dflt_value: string | null }>;
+          expect(
+            pluginCols.find((c) => c.name === "overrides")?.dflt_value,
+          ).toBe("'{}'");
+          expect(pluginCols.find((c) => c.name === "origin")?.dflt_value).toBe(
+            "'authored'",
+          );
+          const globalCols = db
+            .prepare("PRAGMA table_info(global_apply_snapshots)")
+            .all() as Array<{ name: string; dflt_value: string | null }>;
+          expect(
+            globalCols.find((c) => c.name === "resolved_set")?.dflt_value,
+          ).toBe("'[]'");
+        },
+      },
+      {
+        label: "v24",
+        setup: `
+          CREATE TABLE schema_version (version INTEGER NOT NULL);
+          INSERT INTO schema_version (version) VALUES (24);
+          CREATE TABLE layers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            version TEXT NOT NULL DEFAULT '1.0.0',
+            org_slug TEXT NOT NULL DEFAULT '',
+            catalog_slug TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            tags TEXT NOT NULL DEFAULT '[]',
+            claude_config TEXT NOT NULL DEFAULT '{}',
+            needs_config TEXT NOT NULL DEFAULT '[]',
+            default_environment_id TEXT,
+            dirty INTEGER NOT NULL DEFAULT 0,
+            frozen_at TEXT,
+            overrides TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(org_slug, catalog_slug, name, version)
+          );
+        `,
+        seed: (db) => {
+          db.prepare(
+            `INSERT INTO layers (
+              id, name, version, org_slug, catalog_slug, description, tags,
+              claude_config, needs_config, created_at, updated_at
+            ) VALUES ('local', 'mine', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
+          ).run(now, now);
+          db.prepare(
+            `INSERT INTO layers (
+              id, name, version, org_slug, catalog_slug, description, tags,
+              claude_config, needs_config, created_at, updated_at
+            ) VALUES ('catalog', 'acme-base', '1.0.0', 'acme', 'team', '', '[]', '{}', '[]', ?, ?)`,
+          ).run(now, now);
+        },
+        assert: (db) => {
+          expect(
+            (
+              db
+                .prepare("SELECT origin FROM plugins WHERE id = 'local'")
+                .get() as { origin: string }
+            ).origin,
+          ).toBe("authored");
+          expect(
+            (
+              db
+                .prepare("SELECT origin FROM plugins WHERE id = 'catalog'")
+                .get() as { origin: string }
+            ).origin,
+          ).toBe("catalog");
+        },
+      },
+    ];
 
-      context.schema.initializeSchema(db);
-
-      const version = (
-        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
-          version: number;
-        }
-      ).version;
-      expect(version).toBe(28);
-
-      const cols = db
-        .prepare("PRAGMA table_info(plugins)")
-        .all() as Array<{ name: string }>;
-      expect(cols.map((c) => c.name)).toEqual(
-        expect.arrayContaining(["dirty", "frozen_at", "overrides", "origin"]),
+    for (const fixture of fixtures) {
+      const context = await createTestContext(
+        `schema-upgrade-from-${fixture.label}`,
       );
+      try {
+        const db = context.connection.getDb();
+        db.exec(fixture.setup);
+        fixture.seed?.(db);
+        context.schema.initializeSchema(db);
 
-      const snap = db
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='plugin_working_snapshots'",
-        )
-        .get();
-      expect(snap).toBeTruthy();
-
-      const globalCols = db
-        .prepare("PRAGMA table_info(global_apply_snapshots)")
-        .all() as Array<{ name: string }>;
-      expect(globalCols.map((c) => c.name)).toContain("resolved_set");
-    } finally {
-      await context.cleanup();
+        const version = (
+          db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+            version: number;
+          }
+        ).version;
+        expect(version).toBe(28);
+        fixture.assert(db);
+      } finally {
+        await context.cleanup();
+      }
     }
   });
 
-  it("upgrades v23 databases in place to v26 with overrides, resolved_set, and origin", async () => {
-    const context = await createTestContext("schema-v23-to-v24-upgrade");
-    try {
-      const db = context.connection.getDb();
-      db.exec(`
-        CREATE TABLE schema_version (version INTEGER NOT NULL);
-        INSERT INTO schema_version (version) VALUES (23);
-        CREATE TABLE layers (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          version TEXT NOT NULL DEFAULT '1.0.0',
-          org_slug TEXT NOT NULL DEFAULT '',
-          catalog_slug TEXT NOT NULL DEFAULT '',
-          description TEXT NOT NULL DEFAULT '',
-          tags TEXT NOT NULL DEFAULT '[]',
-          claude_config TEXT NOT NULL DEFAULT '{}',
-          needs_config TEXT NOT NULL DEFAULT '[]',
-          default_environment_id TEXT,
-          dirty INTEGER NOT NULL DEFAULT 0,
-          frozen_at TEXT,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE(org_slug, catalog_slug, name, version)
-        );
-        CREATE TABLE layer_working_snapshots (
-          layer_id TEXT PRIMARY KEY REFERENCES layers(id) ON DELETE CASCADE,
-          source_version TEXT NOT NULL,
-          payload TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-        CREATE TABLE global_apply_snapshots (
-          id TEXT PRIMARY KEY,
-          profile_name TEXT NOT NULL,
-          layer_ids TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-      `);
+  it("rejects incompatible schema versions (legacy and newer)", async () => {
+    const cases = [
+      {
+        label: "legacy",
+        version: 18,
+        pattern: /cannot be upgraded in place/,
+      },
+      {
+        label: "newer",
+        version: 99,
+        pattern: /newer than this binary|schema v99/,
+      },
+    ] as const;
 
-      context.schema.initializeSchema(db);
-
-      const version = (
-        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
-          version: number;
-        }
-      ).version;
-      expect(version).toBe(28);
-
-      const pluginCols = db
-        .prepare("PRAGMA table_info(plugins)")
-        .all() as Array<{ name: string; dflt_value: string | null }>;
-      const overridesCol = pluginCols.find((c) => c.name === "overrides");
-      expect(overridesCol?.dflt_value).toBe("'{}'");
-      const originCol = pluginCols.find((c) => c.name === "origin");
-      expect(originCol?.dflt_value).toBe("'authored'");
-
-      const globalCols = db
-        .prepare("PRAGMA table_info(global_apply_snapshots)")
-        .all() as Array<{ name: string; dflt_value: string | null }>;
-      const resolvedSetCol = globalCols.find((c) => c.name === "resolved_set");
-      expect(resolvedSetCol?.dflt_value).toBe("'[]'");
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("upgrades v24 databases in place to v26 and backfills catalog origin", async () => {
-    const context = await createTestContext("schema-v24-to-v25-upgrade");
-    try {
-      const db = context.connection.getDb();
-      const now = new Date().toISOString();
-      db.exec(`
-        CREATE TABLE schema_version (version INTEGER NOT NULL);
-        INSERT INTO schema_version (version) VALUES (24);
-        CREATE TABLE layers (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          version TEXT NOT NULL DEFAULT '1.0.0',
-          org_slug TEXT NOT NULL DEFAULT '',
-          catalog_slug TEXT NOT NULL DEFAULT '',
-          description TEXT NOT NULL DEFAULT '',
-          tags TEXT NOT NULL DEFAULT '[]',
-          claude_config TEXT NOT NULL DEFAULT '{}',
-          needs_config TEXT NOT NULL DEFAULT '[]',
-          default_environment_id TEXT,
-          dirty INTEGER NOT NULL DEFAULT 0,
-          frozen_at TEXT,
-          overrides TEXT NOT NULL DEFAULT '{}',
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE(org_slug, catalog_slug, name, version)
-        );
-      `);
-      db.prepare(
-        `INSERT INTO layers (
-          id, name, version, org_slug, catalog_slug, description, tags,
-          claude_config, needs_config, created_at, updated_at
-        ) VALUES ('local', 'mine', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
-      ).run(now, now);
-      db.prepare(
-        `INSERT INTO layers (
-          id, name, version, org_slug, catalog_slug, description, tags,
-          claude_config, needs_config, created_at, updated_at
-        ) VALUES ('catalog', 'acme-base', '1.0.0', 'acme', 'team', '', '[]', '{}', '[]', ?, ?)`,
-      ).run(now, now);
-
-      context.schema.initializeSchema(db);
-
-      const version = (
-        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
-          version: number;
-        }
-      ).version;
-      expect(version).toBe(28);
-
-      const localOrigin = (
-        db.prepare("SELECT origin FROM plugins WHERE id = 'local'").get() as {
-          origin: string;
-        }
-      ).origin;
-      expect(localOrigin).toBe("authored");
-
-      const catalogOrigin = (
-        db.prepare("SELECT origin FROM plugins WHERE id = 'catalog'").get() as {
-          origin: string;
-        }
-      ).origin;
-      expect(catalogOrigin).toBe("catalog");
-    } finally {
-      await context.cleanup();
-    }
-  });
-
-  it("rejects in-place upgrade from legacy schema versions", async () => {
-    const context = await createTestContext("schema-legacy-upgrade-rejected");
-
-    try {
-      const db = context.connection.getDb();
-      db.exec(`
-        CREATE TABLE schema_version (version INTEGER NOT NULL);
-        INSERT INTO schema_version (version) VALUES (18);
-      `);
-
-      expect(() => context.schema.initializeSchema(db)).toThrow(
-        /cannot be upgraded in place/,
+    for (const testCase of cases) {
+      const context = await createTestContext(
+        `schema-incompatible-${testCase.label}`,
       );
+      try {
+        const db = context.connection.getDb();
+        db.exec(`
+          CREATE TABLE schema_version (version INTEGER NOT NULL);
+          INSERT INTO schema_version (version) VALUES (${testCase.version});
+        `);
 
-      const versionRow = db
-        .prepare("SELECT version FROM schema_version LIMIT 1")
-        .get() as { version: number };
-      expect(versionRow.version).toBe(18);
-    } finally {
-      await context.cleanup();
+        expect(() => context.schema.initializeSchema(db)).toThrow(
+          testCase.pattern,
+        );
+
+        const versionRow = db
+          .prepare("SELECT version FROM schema_version LIMIT 1")
+          .get() as { version: number };
+        expect(versionRow.version).toBe(testCase.version);
+      } finally {
+        await context.cleanup();
+      }
     }
   });
+
 });

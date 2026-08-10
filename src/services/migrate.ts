@@ -23,7 +23,7 @@ import {
   importEnvironmentToml,
   listEnvironmentDocuments,
 } from "./environment-import-export.js";
-import { listContainedFiles } from "../utils/path-containment.js";
+import { listContainedFiles, assertArchiveMembersContained } from "../utils/path-containment.js";
 import {
   buildApPackageFiles,
   writeApPackageFiles,
@@ -74,6 +74,17 @@ function writeJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data, null, 2), "utf-8");
 }
 
+function listArchiveMembers(archivePath: string): string[] {
+  const listing = execSync(`tar -tzf "${archivePath}"`, {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return listing
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
 function extractArchive(archivePath: string, destDir: string): void {
   const resolved = resolve(archivePath);
   if (resolved.endsWith(".json") && !resolved.endsWith(".ap.json")) {
@@ -81,7 +92,10 @@ function extractArchive(archivePath: string, destDir: string): void {
     cpSync(resolved, join(destDir, "state", "migrate.json"));
     return;
   }
+  // Reject path-traversal members before write; post-walk only sees files under destDir.
+  assertArchiveMembersContained(destDir, listArchiveMembers(resolved));
   execSync(`tar -xzf "${resolved}" -C "${destDir}"`, { stdio: "pipe" });
+  // Catch in-tree symlink escapes that resolve outside the destination.
   listContainedFiles(destDir);
 }
 
