@@ -243,10 +243,18 @@ function renderViewportOverflowHints(
 type LocalTableRow = {
   id?: string;
   name: string;
+  origin: string;
   version: string;
   active?: string;
   description: string;
 };
+
+function formatOriginCell(origin: string): string {
+  if (origin === "upstream" || origin === "catalog") {
+    return theme.muted(origin);
+  }
+  return origin || "authored";
+}
 
 function makeLocalColumns(showId: boolean, profileMode: boolean): Column[] {
   const columns: Column[] = [];
@@ -264,6 +272,12 @@ function makeLocalColumns(showId: boolean, profileMode: boolean): Column[] {
       header: "NAME",
       width: 26,
       style: (value) => (value.startsWith(">") ? theme.accent(value) : value),
+    },
+    {
+      key: "origin",
+      header: "ORIGIN",
+      width: 12,
+      style: (value) => formatOriginCell(String(value)),
     },
     { key: "version", header: "VERSION", width: 12 },
   );
@@ -369,6 +383,7 @@ function renderLocalSectionTable(
     name: formatLocalLayerListName(row.layer, {
       selected: row.layer.id === activeLayerId,
     }),
+    origin: row.layer.origin || "authored",
     version: formatLayerVersionLabel(row.layer.version, row.layer.dirty),
     ...(opts.profileMode
       ? {

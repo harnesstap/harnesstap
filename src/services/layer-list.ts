@@ -136,6 +136,13 @@ export function filterLocalLayers(layers: Layer[], search?: string): Layer[] {
   });
 }
 
+function formatOriginCell(origin: string): string {
+  if (origin === "upstream" || origin === "catalog") {
+    return ui.theme.muted(origin);
+  }
+  return origin || "authored";
+}
+
 export function renderLocalLayerListTable(
   layers: Layer[],
   opts: { showId: boolean },
@@ -144,6 +151,12 @@ export function renderLocalLayerListTable(
     columns: [
       ...makeIdColumn(opts.showId),
       { key: "name", header: "NAME", width: 26 },
+      {
+        key: "origin",
+        header: "ORIGIN",
+        width: 12,
+        style: (value) => formatOriginCell(String(value)),
+      },
       { key: "version", header: "VERSION", width: 12 },
       {
         key: "description",
@@ -155,6 +168,7 @@ export function renderLocalLayerListTable(
     rows: layers.map((layer) => ({
       ...(opts.showId ? { id: layer.id } : {}),
       name: formatLocalLayerListName(layer, { static: true }),
+      origin: layer.origin || "authored",
       version: formatLayerVersionLabel(layer.version, layer.dirty),
       description: layer.description ?? "",
     })),

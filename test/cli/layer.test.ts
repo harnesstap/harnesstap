@@ -33,12 +33,13 @@ describe("CLI layer", () => {
 
       const listResult = await runCli(["layer", "list"]);
       expect(listResult.stdout).toContain("NAME");
+      expect(listResult.stdout).toContain("ORIGIN");
       expect(listResult.stdout).toContain("VERSION");
       expect(listResult.stdout).toContain("DESCRIPTION");
       expect(listResult.stdout).not.toContain("team-stack@1.0.0");
       expect(listResult.stdout).not.toContain("team-stack@2.0.0");
-      expect(listResult.stdout).toMatch(/team-stack\s+\|\s+1\.0\.0/);
-      expect(listResult.stdout).toMatch(/team-stack\s+\|\s+2\.0\.0/);
+      expect(listResult.stdout).toMatch(/team-stack\s+\|\s+authored\s+\|\s+1\.0\.0/);
+      expect(listResult.stdout).toMatch(/team-stack\s+\|\s+authored\s+\|\s+2\.0\.0/);
     } finally {
       await context.cleanup();
     }

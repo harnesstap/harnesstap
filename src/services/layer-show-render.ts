@@ -1,20 +1,17 @@
 import { getEnvironment } from "../models/environment.js";
 import {
-  getLayer,
   getLayerById,
   getLayerResources,
-  listLayerDependencies,
-  parseLayerSelectorString,
   resolveLayerSelector,
 } from "../models/layer-model.js";
-import { listAttachedPluginPins } from "./layer-composition.js";
+import { listDependencies } from "./plugin-dependency.js";
 import { formatLayerVersionLabel } from "./layer-versioning.js";
 import { formatRelativeTimeWithAbsolute, shortenId } from "../ui/format.js";
 import { renderPanel } from "../ui/panel.js";
 import { renderSubheader } from "../ui/section.js";
 import { renderTable, type Column } from "../ui/table.js";
 import { theme } from "../ui/theme.js";
-import type { Layer, PluginPinMetadata, Resource, ResourceType } from "../types.js";
+import type { Layer, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 
 export type LayerShowRenderOptions = {
@@ -45,31 +42,12 @@ function formatLayerLabel(layer: Pick<Layer, "name" | "version" | "dirty">): str
   return `${layer.name}@${formatLayerVersionLabel(layer.version, layer.dirty)}`;
 }
 
-function dependencyLayerName(dependencyName: string): string {
-  const parsed = parseLayerSelectorString(dependencyName);
-  if (parsed.kind === "id") {
-    return dependencyName;
-  }
-  return parsed.name;
+function formatDependencyConstraint(versionConstraint: string): string {
+  return versionConstraint.trim() || "*";
 }
 
-function resolveDependencyLayerVersion(
-  dependencyName: string,
-  versionConstraint: string,
-): string {
-  const name = dependencyLayerName(dependencyName);
-  const resolved = getLayer(`${name}@${versionConstraint}`);
-  return resolved?.version ?? "—";
-}
-
-function formatLayerDependencyRows(
-  dependencies: Array<{ dependency_name: string; version_constraint: string }>,
-): Array<{ name: string; version: string; constraint: string }> {
-  return dependencies.map((dep) => ({
-    name: dependencyLayerName(dep.dependency_name),
-    version: resolveDependencyLayerVersion(dep.dependency_name, dep.version_constraint),
-    constraint: dep.version_constraint,
-  }));
+function formatOriginLabel(origin: Layer["origin"] | undefined): string {
+  return origin || "authored";
 }
 
 function makeIdColumn(showId: boolean, width = 12): Column[] {
@@ -112,8 +90,7 @@ export function renderLayerShow(
   const resources = allResources.filter(
     (resource) => resource.type !== "plugin",
   );
-  const pluginPins = listAttachedPluginPins(layer.id);
-  const dependencies = listLayerDependencies(layer.id);
+  const dependencies = listDependencies(layer.id);
   const configuredLayer = resolveConfiguredLayer(selector, layer);
   const configuredLayerDefaultEnvironment = configuredLayer?.default_environment_id
     ? getEnvironment(configuredLayer.default_environment_id)
@@ -126,11 +103,15 @@ export function renderLayerShow(
       rows: [
         ["Description", layer.description || "—"],
         ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+        ["Origin", formatOriginLabel(layer.origin)],
         ...(opts?.profileExtras
           ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
           : []),
         ["Resources", `${resources.length} (${summarizeResourceTypes(resources) || "none"})`],
-        ["Plugin pins", pluginPins.length === 0 ? "(none pinned)" : `${pluginPins.length}`],
+        [
+          "Dependencies",
+          dependencies.length === 0 ? "(none)" : `${dependencies.length}`,
+        ],
         ...(configuredLayer
           ? [[
               "Default environment",
@@ -156,37 +137,18 @@ export function renderLayerShow(
 
   if (dependencies.length > 0) {
     sections.push(
-      renderSubheader("LAYER DEPENDENCIES"),
+      renderSubheader("DEPENDENCIES"),
       renderTable({
         columns: [
           { key: "name", header: "NAME", width: 22 },
-          { key: "version", header: "VERSION", width: 12 },
-          { key: "constraint", header: "CONSTRAINT", width: 20 },
+          { key: "constraint", header: "CONSTRAINT", width: 12 },
+          { key: "source", header: "SOURCE", width: 14 },
         ],
-        rows: formatLayerDependencyRows(dependencies),
-      }),
-    );
-  }
-
-  if (pluginPins.length > 0) {
-    sections.push(
-      renderSubheader("PLUGIN PINS"),
-      renderTable({
-        columns: [
-          { key: "ref", header: "REF", width: 28 },
-          { key: "version", header: "VERSION", width: 12 },
-          { key: "constraint", header: "CONSTRAINT", width: 20 },
-          { key: "sync", header: "SYNC", width: 14 },
-        ],
-        rows: pluginPins.map((pin) => {
-          const metadata = pin.resource.metadata as PluginPinMetadata;
-          return {
-            ref: pin.ref,
-            version: metadata.resolved_version ?? "—",
-            constraint: pin.version_constraint || "latest",
-            sync: metadata.sync_status ?? "never_synced",
-          };
-        }),
+        rows: dependencies.map((dependency) => ({
+          name: dependency.name,
+          constraint: formatDependencyConstraint(dependency.version_constraint),
+          source: dependency.source_kind,
+        })),
       }),
     );
   }
@@ -203,6 +165,7 @@ export function renderLayerListShow(
     rows: [
       ["Description", layer.description || "—"],
       ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+      ["Origin", formatOriginLabel(layer.origin)],
       ...(opts?.profileExtras
         ? [["Active", opts.profileExtras.active ? "yes" : "no"]] as [string, string][]
         : []),
