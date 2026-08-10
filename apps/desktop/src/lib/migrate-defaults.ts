@@ -4,7 +4,6 @@ export function defaultMigrateExportFilename(input: {
   scope: MigrateScope;
   plugin?: string;
   resource?: string;
-  environment?: string;
 }): string {
   switch (input.scope) {
     case "workspace":
@@ -21,8 +20,6 @@ export function defaultMigrateExportFilename(input: {
       const name = rest.split("@")[0] || "export";
       return `${type}-${name}.ap.json`;
     }
-    case "environment":
-      return `${(input.environment ?? "environment").trim() || "environment"}.environment.toml`;
     default: {
       const neverScope: never = input.scope;
       throw new Error(`Unsupported migrate scope: ${String(neverScope)}`);

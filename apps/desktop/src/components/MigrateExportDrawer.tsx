@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import {
-  fetchEnvironments,
   fetchLibraryPlugins,
   fetchLibraryResources,
   migrateExport,
@@ -16,7 +15,6 @@ import {
 } from "../lib/migrate-defaults";
 import { filterLibraryResourcesBySearch } from "../lib/resource-search";
 import type {
-  LibraryEnvironment,
   LibraryPlugin,
   LibraryResource,
   MigrateExportResult,
@@ -48,8 +46,6 @@ function scopeLabel(scope: MigrateScope): string {
       return "Plugin";
     case "resource":
       return "Resource";
-    case "environment":
-      return "Environment";
     default: {
       const neverScope: never = scope;
       return neverScope;
@@ -139,15 +135,11 @@ export function MigrateExportDrawer({
   const [scope, setScope] = useState<MigrateScope>("workspace");
   const [selectedPlugin, setSelectedPlugin] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
-  const [selectedEnvironment, setSelectedEnvironment] = useState<string | null>(
-    null,
-  );
   const [includePlugins, setIncludePlugins] = useState(false);
   const [exportPath, setExportPath] = useState<string | null>(null);
   const [targetFilter, setTargetFilter] = useState("");
   const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
   const [resources, setResources] = useState<LibraryResource[]>([]);
-  const [environments, setEnvironments] = useState<LibraryEnvironment[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -161,7 +153,6 @@ export function MigrateExportDrawer({
     setScope("workspace");
     setSelectedPlugin(null);
     setSelectedResource(null);
-    setSelectedEnvironment(null);
     setIncludePlugins(false);
     setExportPath(null);
     setTargetFilter("");
@@ -179,13 +170,11 @@ export function MigrateExportDrawer({
     void Promise.all([
       fetchLibraryPlugins(baseUrl, token),
       fetchLibraryResources(baseUrl, token),
-      fetchEnvironments(baseUrl, token),
     ])
-      .then(([nextPlugins, nextResources, nextEnvironments]) => {
+      .then(([nextPlugins, nextResources]) => {
         if (!cancelled) {
           setPlugins(nextPlugins);
           setResources(nextResources);
-          setEnvironments(nextEnvironments.environments);
         }
       })
       .catch((loadError: unknown) => {
@@ -239,25 +228,12 @@ export function MigrateExportDrawer({
     [exportableResources, targetFilter],
   );
 
-  const filteredEnvironments = useMemo(() => {
-    const query = targetFilter.trim().toLowerCase();
-    if (!query) {
-      return environments;
-    }
-    return environments.filter((environment) =>
-      environment.name.toLowerCase().includes(query)
-      || (environment.description ?? "").toLowerCase().includes(query),
-    );
-  }, [environments, targetFilter]);
-
   const targetSelected = useMemo(() => {
     switch (scope) {
       case "plugin":
         return selectedPlugin !== null;
       case "resource":
         return selectedResource !== null;
-      case "environment":
-        return selectedEnvironment !== null;
       case "workspace":
         return true;
       default: {
@@ -265,7 +241,7 @@ export function MigrateExportDrawer({
         return neverScope;
       }
     }
-  }, [scope, selectedEnvironment, selectedPlugin, selectedResource]);
+  }, [scope, selectedPlugin, selectedResource]);
 
   const canGoNext = useMemo(() => {
     switch (step) {
@@ -292,9 +268,8 @@ export function MigrateExportDrawer({
         scope,
         plugin: selectedPlugin ?? undefined,
         resource: selectedResource ?? undefined,
-        environment: selectedEnvironment ?? undefined,
       }),
-    [scope, selectedEnvironment, selectedPlugin, selectedResource],
+    [scope, selectedPlugin, selectedResource],
   );
 
   const pickExportPath = async () => {
@@ -304,7 +279,7 @@ export function MigrateExportDrawer({
             { name: "Archive", extensions: ["tar.gz", "gz", "tar"] },
             { name: "JSON", extensions: ["json"] },
           ]
-        : [{ name: "TOML", extensions: ["toml"] }];
+        : [{ name: "Agent Plugins", extensions: ["ap.json", "json"] }];
     const path = await save({
       defaultPath: defaultFilename,
       filters,
@@ -330,11 +305,11 @@ export function MigrateExportDrawer({
         ...(scope === "resource" && selectedResource
           ? { resource: selectedResource }
           : {}),
-        ...(scope === "environment" && selectedEnvironment
-          ? { environment: selectedEnvironment }
-          : {}),
         ...((scope === "workspace" || scope === "plugin") && includePlugins
           ? { include_plugins: true }
+          : {}),
+        ...(scope === "plugin" || scope === "resource"
+          ? { single_file: true }
           : {}),
       });
       onExported?.(result);
@@ -362,12 +337,7 @@ export function MigrateExportDrawer({
       return <div className="banner error">{libraryError}</div>;
     }
 
-    const listboxLabel =
-      scope === "plugin"
-        ? "Plugins"
-        : scope === "resource"
-          ? "Resources"
-          : "Environments";
+    const listboxLabel = scope === "plugin" ? "Plugins" : "Resources";
 
     return (
       <>
@@ -449,34 +419,6 @@ export function MigrateExportDrawer({
               })
             )
           ) : null}
-          {scope === "environment" ? (
-            filteredEnvironments.length === 0 ? (
-              <p className="muted cloud-list-message">No environments found.</p>
-            ) : (
-              filteredEnvironments.map((environment) => (
-                <button
-                  key={environment.id}
-                  className={`cloud-result${
-                    selectedEnvironment === environment.name ? " selected" : ""
-                  }`}
-                  type="button"
-                  role="option"
-                  aria-selected={selectedEnvironment === environment.name}
-                  onClick={() => {
-                    setSelectedEnvironment(environment.name);
-                    setExportPath(null);
-                    setError(null);
-                  }}
-                  disabled={controlsDisabled}
-                >
-                  <strong>{environment.name}</strong>
-                  <small>
-                    {environment.description?.trim() || "No description provided."}
-                  </small>
-                </button>
-              ))
-            )
-          ) : null}
         </div>
       </>
     );
@@ -488,8 +430,6 @@ export function MigrateExportDrawer({
         return selectedPlugin ?? "—";
       case "resource":
         return selectedResource ?? "—";
-      case "environment":
-        return selectedEnvironment ?? "—";
       case "workspace":
         return "Entire local library";
       default: {
@@ -541,7 +481,6 @@ export function MigrateExportDrawer({
                 setScope(nextScope);
                 setSelectedPlugin(null);
                 setSelectedResource(null);
-                setSelectedEnvironment(null);
                 setExportPath(null);
                 setError(null);
               }}
@@ -556,22 +495,13 @@ export function MigrateExportDrawer({
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="plugin" id="migrate-scope-plugin" />
                 <Label htmlFor="migrate-scope-plugin" className="font-normal">
-                  Plugin bundle
+                  Plugin package (.ap.json)
                 </Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="resource" id="migrate-scope-resource" />
                 <Label htmlFor="migrate-scope-resource" className="font-normal">
-                  Single resource
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem
-                  value="environment"
-                  id="migrate-scope-environment"
-                />
-                <Label htmlFor="migrate-scope-environment" className="font-normal">
-                  Environment
+                  Single resource (.ap.json)
                 </Label>
               </div>
             </RadioGroup>

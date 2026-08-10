@@ -36,8 +36,6 @@ function scopeLabel(scope: MigrateScope): string {
       return "Plugin";
     case "resource":
       return "Resource";
-    case "environment":
-      return "Environment";
     default: {
       const neverScope: never = scope;
       return neverScope;
@@ -135,7 +133,10 @@ export function MigrateImportDrawer({
     const selected = await openFileDialog({
       multiple: false,
       filters: [
-        { name: "HarnessTap migrate", extensions: ["gz", "tar", "json", "toml"] },
+        {
+          name: "HarnessTap migrate",
+          extensions: ["gz", "tar", "ap.json", "json"],
+        },
       ],
     });
     if (typeof selected === "string") {
@@ -282,7 +283,7 @@ export function MigrateImportDrawer({
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="plugin" id="migrate-import-scope-plugin" />
                   <Label htmlFor="migrate-import-scope-plugin" className="font-normal">
-                    Plugin bundle
+                    Plugin package
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -295,18 +296,6 @@ export function MigrateImportDrawer({
                     className="font-normal"
                   >
                     Single resource
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem
-                    value="environment"
-                    id="migrate-import-scope-environment"
-                  />
-                  <Label
-                    htmlFor="migrate-import-scope-environment"
-                    className="font-normal"
-                  >
-                    Environment
                   </Label>
                 </div>
               </RadioGroup>
@@ -326,8 +315,8 @@ export function MigrateImportDrawer({
                 </div>
               </dl>
               <p className="muted m-0 text-[11px]">
-                Importing may update existing matching plugins, resources,
-                environments, or workspace data.
+                Importing may update existing matching plugins, resources, or
+                workspace data.
               </p>
             </>
           ) : null}

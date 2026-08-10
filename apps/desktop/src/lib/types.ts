@@ -585,7 +585,7 @@ export interface ProfilePluginAddResult {
   marketplaceCopied: boolean;
 }
 
-export type MigrateScope = "workspace" | "plugin" | "resource" | "environment";
+export type MigrateScope = "workspace" | "plugin" | "resource";
 
 export interface LibraryEnvironment {
   id: string;
@@ -606,8 +606,9 @@ export interface MigrateExportInput {
   path: string;
   plugin?: string;
   resource?: string;
-  environment?: string;
   include_plugins?: boolean;
+  /** Write a single-file `.ap.json` envelope instead of a package directory. */
+  single_file?: boolean;
 }
 
 /** Workspace export matches CLI JSON: flattened manifest fields + output + scope. */
@@ -622,9 +623,8 @@ export type MigrateExportResult =
       include_plugins: boolean;
       includes_active_profile: boolean;
     }
-  | { scope: "plugin"; output: string; plugins: string[] }
-  | { scope: "resource"; output: string; resource: string }
-  | { scope: "environment"; output: string; environment: string };
+  | { scope: "plugin"; output: string; plugins: string[]; files?: string[] }
+  | { scope: "resource"; output: string; resource: string; files?: string[] };
 
 export interface MigrateImportInput {
   path: string;
@@ -648,12 +648,6 @@ export type MigrateImportResult =
       scope: "resource";
       resource: string;
       action: "created" | "updated" | "unchanged";
-    }
-  | {
-      scope: "environment";
-      environment: string;
-      imported_keys: string[];
-      imported_secret_refs: string[];
     };
 
 export const SWITCH_STEP_LABELS: Record<ProfileSwitchStep, string> = {

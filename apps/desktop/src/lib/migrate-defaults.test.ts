@@ -22,10 +22,4 @@ describe("defaultMigrateExportFilename", () => {
       }),
     ).toBe("instruction-hello.ap.json");
   });
-
-  it("returns environment toml name", () => {
-    expect(
-      defaultMigrateExportFilename({ scope: "environment", environment: "prod" }),
-    ).toBe("prod.environment.toml");
-  });
 });
