@@ -116,6 +116,7 @@ import {
   SingletonConflictError,
   UnsatisfiableConstraintError,
 } from "../../services/resolve/types.js";
+import { offerConflictScaffold } from "../../services/resolve-conflict-scaffold.js";
 import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
 import {
   lockedVersionsFrom,
@@ -396,6 +397,21 @@ async function handleApplyCommand(
       err instanceof SingletonConflictError
     ) {
       ui.danger(err.message, { hints: err.hints });
+      const scaffolded = await offerConflictScaffold({
+        error: err,
+        attemptedSelectors: resolvedLayerNames as string[],
+        ...(opts.interactive !== undefined ? { interactive: opts.interactive } : {}),
+        ...(opts.noInteractive !== undefined
+          ? { noInteractive: opts.noInteractive }
+          : {}),
+        format: outputFormat,
+      });
+      if (scaffolded) {
+        process.exitCode = 0;
+        ui.success(`Created composition layer ${scaffolded}. Re-applying…`);
+        await handleApplyCommand([scaffolded], opts);
+        return;
+      }
       return;
     }
     if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
