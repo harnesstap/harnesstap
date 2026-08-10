@@ -197,7 +197,7 @@ describe("VHS scenario manifest", () => {
     expect(readme).toContain("ht plugin doctor");
     expect(readme).toContain("ht plugin edit my-setup --add research-helper --type skill");
     expect(readme).toContain(
-      "ht plugin edit my-setup --add plugin_pin:formatter@my-marketplace --version",
+      "ht plugin edit my-setup --add plugin:formatter@my-marketplace --version",
     );
     expect(readme).not.toContain("ht platform list");
     expect(readme).not.toContain("ht plugin validate");

@@ -70,7 +70,7 @@ harnesstap plugin list --search <query> --remote-only [--account <name>] [--form
 
 ### Pull a shared plugin locally
 
-Download a published `urn:harnesstap:layer:v1` export (schema id still says `layer`) from your organization and import it into the local HarnessTap database under the original or aliased name.
+Download a published Agent Plugins package from your organization and import it into the local HarnessTap database under the original or aliased name.
 
 ```bash
 harnesstap plugin pull <org>/<plugin>[@version] [--as <name>] [--account <name>]
@@ -90,7 +90,7 @@ Use `plugin pull` when you want the bundle cached locally before working offline
 
 ### Publish a local plugin
 
-Export a local plugin as plugin v1 and upload it to your organization's catalog.
+Export a local plugin as an Agent Plugins package and upload it to your organization's catalog.
 
 ```bash
 harnesstap plugin catalog register <org>/<catalog>

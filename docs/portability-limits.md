@@ -12,6 +12,24 @@ harness-specific surfaces are handled during mirror, and practical workarounds.
 It was informed by stress-testing against multi-harness plugin repos that mix
 `.claude-plugin/` (and similar) layouts with per-harness project files.
 
+## Agent Plugins round-trip (non-HarnessTap clients)
+
+Portable plugins are Agent Plugins 1.0 packages (directory or `.ap.json` envelope).
+A non-HarnessTap AP client loads only the standard surface and ignores the
+HarnessTap namespace:
+
+| Package content | Survives in other AP clients? | Notes |
+| ---- | ---- | ---- |
+| **Skills** (`skills/…/SKILL.md`) | Yes | Standard AP surface |
+| **MCP servers** (`mcp.json`) | Yes | Standard AP surface |
+| **Rules, hooks, agents, commands, instructions** | No (ignored) | Live under `com.harnesstap/` and `extensions["com.harnesstap"]` |
+| **Dependencies, overrides, profile, needs** | No (ignored) | HarnessTap extension fields only |
+| **Environment secret values** | Never packaged | `env.toml` holds keys and `${VAR}` references only |
+
+HarnessTap re-imports the full package (standard files plus the namespace). There
+is no second portable format — legacy `*.harnesstap.toml` transport files are
+rejected.
+
 ## Fully bridgeable
 
 These resource types scan, compose in plugins, and serialize to native on-disk
@@ -78,7 +96,8 @@ Skill `scripts/` and `reference(s)/` directories are listed during scan and
 emitted on `apply` when HarnessTap can still read the original tree
 (typically `origin_ref` from `scan` or `plugin from-project`). Plugin
 export to another machine without embedded plugin trees still drops auxiliary
-files unless you use `ht add` (full tree install) or `--embed-plugins` on export.
+files unless you use `ht add` (full tree install) or `--embed-plugins` on
+Agent Plugins package export.
 
 ### SKILL.md in-body harness paths
 

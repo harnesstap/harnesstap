@@ -213,19 +213,52 @@ ht plugin catalog register acme/default
 ht plugin publish my-setup
 ```
 
-## Offline sharing
+## Portable format
 
-Plugins move between machines as **plugin v1** TOML bundles (`urn:harnesstap:layer:v1`; schema id deliberately keeps `layer`):
+Plugins travel as **Agent Plugins 1.0 packages** — the only portable format. There is no second transport.
 
-```bash
-ht migrate export ./my-setup.harnesstap.toml --plugin my-setup
-ht migrate import ./my-setup.harnesstap.toml
-ht migrate export ./team.harnesstap.toml --plugin my-setup --embed-plugins
+```text
+my-plugin/
+├── plugin.json               # AP manifest: core fields + extensions
+├── skills/
+│   └── deploy/
+│       ├── SKILL.md
+│       ├── scripts/run.sh
+│       └── reference/notes.md
+├── mcp.json                  # optional, AP standard
+└── com.harnesstap/           # everything AP 1.0 does not model
+    ├── instructions/<name>.md
+    ├── rules/<name>.md
+    ├── agents/<name>.md
+    ├── commands/<name>.md
+    ├── hooks.toml
+    ├── permissions.toml
+    ├── env.toml              # keys and references only, never secret values
+    ├── model.toml
+    ├── claude.toml
+    └── embedded/<name>/      # nested AP package per embed-on-export dependency
 ```
 
-Default export path: `<name>.harnesstap.toml`. Bundles include one or more `[[plugins]]` entries, optional plugin dependencies, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a plugin declares versioned semver constraints.
+`plugin.json` carries only Agent Plugins core fields at the top level (`$schema`, `name`, `version`, …). HarnessTap-specific data — dependencies, overrides, profile flag, needs, and pointers into `com.harnesstap/` — lives under `extensions["com.harnesstap"]`. Non-HarnessTap clients load `skills/` and `mcp.json` and ignore the namespace.
 
-For a full workspace handoff (plugins, environments, harness preferences, config), use `ht migrate export` with a `.tar.gz` archive — see [Scenario 28](../../scenarios/details/28-machine-migration.md).
+Two shapes, same content:
+
+| Shape | When to use |
+| --- | --- |
+| **Package directory** | Repos, review, and any place you want a normal file tree |
+| **`.ap.json` envelope** | Pasting into a message or shipping one file (`--single-file`) |
+
+```bash
+ht migrate export ./my-setup --plugin my-setup
+ht migrate export ./my-setup.ap.json --plugin my-setup --single-file
+ht migrate import ./my-setup
+ht migrate import ./my-setup.ap.json
+ht migrate export ./team --plugin my-setup --embed-plugins
+```
+
+Default export is a directory named after the plugin. Pass `--single-file` for a `plugin.ap.json` envelope (`urn:harnesstap:ap-package:v1`) whose `files` map matches the directory. `--embed-plugins` inlines dependency trees under `com.harnesstap/embedded/`.
+
+For a full workspace handoff (plugins, environments, harness preferences, config), use `ht migrate export --workspace` with a `.tar.gz` archive — see [Scenario 28](../../scenarios/details/28-machine-migration.md). Environments are machine-local and are not independently exportable.
 
 For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTap Cloud. See [Cloud connection](../cloud.md).
 
@@ -248,7 +281,7 @@ For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTa
 | Apply to a project | `apply` / `apply --update` |
 | Check lock drift | `status --check` |
 | Apply to home harness | `profile use` (profile-tagged plugins) |
-| Export / import TOML | `migrate export --plugin` / `migrate import` |
+| Export / import AP package | `migrate export --plugin` / `migrate import` |
 | Publish / pull cloud | `plugin publish` / `plugin pull` |
 
 ## Related

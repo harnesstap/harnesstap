@@ -63,10 +63,10 @@ Scan existing setup → store canonical resources → compose **plugins** → sh
 | **Canonical library** | Store imported configuration as resources in local SQLite |
 | **Plugins** | Group resources into versioned **plugins** with dependencies, host **plugin pins**, and bound **environments** |
 | **Multi-harness apply** | Materialize plugins to one or more harnesses with environment cascade (home → plugin default) |
-| **Offline sharing** | Move the full local workspace with `migrate export` / `import`, or share individual plugins as TOML bundles |
+| **Offline sharing** | Move the full local workspace with `migrate export` / `import`, or share individual plugins as Agent Plugins packages |
 | **Plugin tooling** | Create plugins from scanned projects, diff plugins, run `plugin doctor` before apply |
-| **Dependencies & pins** | Record plugin dependencies and Claude plugin version pins in portable bundles |
-| **Plugin exports** | Export or import plugins as TOML (`urn:harnesstap:layer:v1`; schema id still says `layer`) |
+| **Dependencies & pins** | Record plugin dependencies and Claude plugin version pins in portable packages |
+| **Plugin exports** | Export or import plugins as Agent Plugins packages (directory or `.ap.json` envelope) |
 | **Snapshots & drift** | Snapshot tracked projects before apply, detect drift later, revert when needed |
 | **Cloud catalog** | Search, add, and publish shared plugins through HarnessTap Cloud |
 | **Machine transfer** | Export local plugin library, harness preferences, and config for another machine |
@@ -226,7 +226,7 @@ flowchart TB
     Plugins[Plugins — the what]
     Envs[Environments — the how]
     Plugins[Configured plugins]
-    Bundles[Plugin v1 TOML]
+    Packages[Agent Plugins packages]
   end
 
   subgraph Targets[Materialized harnesses]
@@ -243,7 +243,7 @@ flowchart TB
   Resources --> Plugins
   Plugins --> Plugins
   Envs --> Plugins
-  Plugins --> Bundles
+  Plugins --> Packages
   Plugins --> Claude
   Plugins --> Codex
   Plugins --> Cursor
@@ -320,22 +320,23 @@ Compare, diagnose, or derive plugin bundles beyond the basic create/edit/apply l
 ```bash
 ht plugin edit team-stack --add plugin:shared-baseline --version "^1.2.0"
 ht plugin doctor team-stack
-ht plugin diff team-stack ./team-stack.harnesstap.toml
+ht plugin diff team-stack ./team-stack.ap.json
 ht plugin from-project inferred-stack --project .
 ```
 
-Plugin dependencies are stored with semver constraints and round-trip through bundle export/import. `plugin doctor` checks for duplicate resources, empty content, or invalid plugin metadata; `plugin diff` compares plugin metadata and contents; `plugin from-project` scans a repository and turns imported resources into a new plugin.
+Plugin dependencies are stored with semver constraints and round-trip through Agent Plugins package export/import. `plugin doctor` checks for duplicate resources, empty content, or invalid plugin metadata; `plugin diff` compares plugin metadata and contents; `plugin from-project` scans a repository and turns imported resources into a new plugin.
 
 ---
 
 ## Import and export
 
-**Plugin v1** — plugins move between machines as TOML files via `ht migrate export --plugin` / `ht migrate import`. Default path: `<name>.harnesstap.toml`. For a full workspace handoff, use `ht migrate export` with a `.tar.gz` archive (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
+**Agent Plugins packages** — plugins move between machines as a package directory or a single `.ap.json` envelope via `ht migrate export --plugin` / `ht migrate import`. Default export is a directory; pass `--single-file` for one file. For a full workspace handoff, use `ht migrate export --workspace` with a `.tar.gz` archive (see [Scenario 28](docs/scenarios/details/28-machine-migration.md)).
 
 ```bash
-ht migrate export ./my-setup.harnesstap.toml --plugin my-setup
-ht migrate import ./my-setup.harnesstap.toml
-ht migrate export ./team.harnesstap.toml --plugin my-setup --embed-plugins
+ht migrate export ./my-setup --plugin my-setup
+ht migrate import ./my-setup
+ht migrate export ./my-setup.ap.json --plugin my-setup --single-file
+ht migrate export ./team --plugin my-setup --embed-plugins
 ```
 
 ---
@@ -345,12 +346,12 @@ ht migrate export ./team.harnesstap.toml --plugin my-setup --embed-plugins
 Plugin references are `plugin` resources attached to a plugin like any other composition item.
 
 ```bash
-ht plugin edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
-ht plugin edit my-setup --add plugin_pin:formatter@my-marketplace --sync   # eager sync after add
-ht resource sync plugin_pin:formatter@my-marketplace
-ht resource show plugin_pin:formatter@my-marketplace
-ht plugin edit my-setup --remove plugin_pin:formatter@my-marketplace --type plugin_pin
-ht migrate export ./team.harnesstap.toml --plugin my-setup --embed-plugins
+ht plugin edit my-setup --add plugin:formatter@my-marketplace --version "^2.1.0"
+ht plugin edit my-setup --add plugin:formatter@my-marketplace --sync   # eager sync after add
+ht resource sync plugin:formatter@my-marketplace
+ht resource show plugin:formatter@my-marketplace
+ht plugin edit my-setup --remove plugin:formatter@my-marketplace --type plugin
+ht migrate export ./team --plugin my-setup --embed-plugins
 ht apply my-setup --project . --strict-plugin-versions
 ```
 
@@ -358,7 +359,7 @@ On `ht apply`, harnesstap compares plugin pins to library `resolved_version` val
 
 Use `ht -V`, `harnesstap -V`, or `--harnesstap-version` for the CLI version. `--version` on `plugin edit --add` is the **plugin semver pin or range**, not the global version flag.
 
-Plugin export bundles use schema `urn:harnesstap:layer:v1` (deliberate: schema id still says `layer`) with one or more `[[plugins]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a plugin declares versioned dependencies. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
+Portable plugins are Agent Plugins packages exclusively — `plugin.json` plus optional `skills/`, `mcp.json`, and HarnessTap-only material under `extensions["com.harnesstap"]` / `com.harnesstap/`. See [Transport formats](SPEC.md#transport-formats) in SPEC.md.
 
 Refresh policy for marketplace metadata is configured in `~/.harnesstap/config.jsonc`:
 
@@ -451,7 +452,7 @@ ht migrate import backup.tar
 
 `migrate export` opens legacy v18 databases read-only so you can export after upgrading the CLI. Other commands require a v19 database.
 
-**Note:** `migrate export` archives plugins (as TOML), environments (secret refs only), harness preferences, and config — not tracked projects or snapshots. Back those up separately if you need them.
+**Note:** `migrate export` archives plugins (as Agent Plugins packages), environments (secret refs only), harness preferences, and config — not tracked projects or snapshots. Back those up separately if you need them.
 
 ---
 

@@ -197,12 +197,12 @@ describe("agent migrate routes", () => {
     expect(readFileSync(outputPath, "utf-8")).toContain("solo");
   });
 
-  it("POST /v1/migrate/export exports an environment document", async () => {
+  it("POST /v1/migrate/export rejects standalone environment export", async () => {
     const server = withServer();
     const environment = createEnvironment({ name: "staging" });
     upsertEnvironmentEnvVar(environment.id, "API_KEY", "secret");
 
-    const outputPath = join(tempDirs.at(-1)!, "staging.environment.toml");
+    const outputPath = join(tempDirs.at(-1)!, "staging.ap.json");
     const response = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
       headers: {
@@ -216,13 +216,9 @@ describe("agent migrate routes", () => {
       }),
     });
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.scope).toBe("environment");
-    expect(body.output).toBe(outputPath);
-    expect(body.environment).toBe("staging");
-    expect(existsSync(outputPath)).toBe(true);
-    expect(readFileSync(outputPath, "utf-8")).toContain("staging");
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error?: string; message?: string };
+    expect(body.message ?? body.error ?? "").toMatch(/workspace/i);
   });
 
   it("POST /v1/migrate/import imports a plugin bundle with detected scope", async () => {

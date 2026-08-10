@@ -741,24 +741,25 @@ Orphans are removed only with `--prune`.
 
 ## Transport formats
 
-All portable transport uses **TOML** (`smol-toml`). JSON and JSONC transport files are rejected. Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. Project profile config (`.harnesstap/config.toml`) is TOML with schema `urn:harnesstap:project:v1`.
+Every portable artifact is an Agent Plugins package: a directory with a root `plugin.json`, or a single `.ap.json` envelope of the same content. TOML is for local files only — `.harnesstap/lock.toml`, project config, and environment documents. There is no second transport format.
 
-### Plugin v1
+Toolkit config (`~/.harnesstap/config.jsonc`) remains JSONC. Project config (`.harnesstap/config.toml`) is TOML with schema `urn:harnesstap:project:v1`. Lockfiles use `.harnesstap/lock.toml` (`urn:harnesstap:lock:v1`).
 
-`urn:harnesstap:plugin:v1` in `*.harnesstap.toml`. Each file contains one or more `[[plugins]]` rows with nested `[[plugins.resources]]`, optional `plugin_pins` (or `[[plugins.plugin_pins]]` tables), optional root `embedded_plugins`, and optional `claude` configuration. Multiline resource and host-plugin file bodies use TOML `"""` strings.
+### Agent Plugins package
 
-Default export path: `<name>.harnesstap.toml`. Dirty heads cannot be exported — cut first.
+`migrate export --plugin` writes an Agent Plugins 1.0 package directory by default (`plugin.json`, optional `skills/` and `mcp.json`, plus `com.harnesstap/` for HarnessTap-only material). Pass `--single-file` for a `plugin.ap.json` envelope (`schema = urn:harnesstap:ap-package:v1`) whose `files` map is the same content. Dirty heads cannot be exported — cut first.
 
-### Resource and environment TOML
+HarnessTap-specific composition (dependencies, overrides, profile flag, needs, non-AP component pointers) lives under `extensions["com.harnesstap"]` and the `com.harnesstap/` directory — never as invented top-level `plugin.json` fields. Non-HarnessTap clients load skills and MCP servers and ignore the namespace.
 
-- `urn:harnesstap:resource:v1` — single-resource export via `migrate export --resource`.
-- Environment export via `migrate export --environment` (secret refs only; never secret values).
+`migrate export --resource` wraps one resource in a single-resource package. Standalone `migrate export --environment` is removed — environments are machine-local secret references and travel only inside a workspace archive.
+
+Legacy `*.harnesstap.toml` / `*.environment.toml` transport files are rejected with a message naming the package form.
 
 ### Machine transfer archives
 
-`migrate export --workspace` writes plugin bundles and environment definitions inside a tar.gz archive with JSON metadata. `migrate import` restores them into the local workspace. Archives include harness preferences, config, and `active-profile.json` when present. Environment secret refs are preserved; secret values are not embedded. They do not include tracked project records, project snapshots, or cloud accounts.
+`migrate export --workspace` writes Agent Plugins packages and environment definitions inside a tar.gz archive with JSON metadata. `migrate import` restores them into the local workspace. Archives include harness preferences, config, and `active-profile.json` when present. Environment secret refs are preserved; secret values are not embedded. They do not include tracked project records, project snapshots, or cloud accounts.
 
-Use `migrate export` / `import` for workspace, plugin, resource, or environment sharing.
+Use `migrate export` / `import` for workspace, plugin, or resource sharing.
 
 ## HarnessTap Cloud
 

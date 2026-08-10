@@ -31,9 +31,10 @@ What this gives you:
 - `profile use` auto-pulls missing published `plugin` dependencies before
   global apply (pass `--no-pull` to require local copies)
 
-Profile plugins export as `urn:harnesstap:layer:v1` (schema id still says `layer`) with `tags` including
-`profile`. Share across machines with `migrate export` / `migrate import`
-(active profile pointer included) or pull from the catalog after publish.
+Profile plugins export as Agent Plugins packages with `extensions["com.harnesstap"].profile`
+set (and tags including `profile` where applicable). Share across machines with
+`migrate export` / `migrate import` (active profile pointer included in workspace
+archives) or pull from the catalog after publish.
 
 For project baselines without the profile tag, use `plugin publish` and
 `plugin pull` directly ([Scenario 11](./11-builtin-plugin.md)).

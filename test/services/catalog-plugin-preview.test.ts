@@ -42,7 +42,7 @@ describe("renderCatalogPluginPreviewShow", () => {
       expect(output).toContain("harnesstap-cloud/default/remote-team@1.0.0");
       expect(output).toContain("from cloud");
       expect(output).toContain("RESOURCES");
-      expect(output).toContain("instruction");
+      expect(output).toContain("skill");
       expect(listPlugins()).toHaveLength(beforeCount);
       expect(listPlugins().every((plugin) => !plugin.name.startsWith("__hd-preview-"))).toBe(true);
     } finally {

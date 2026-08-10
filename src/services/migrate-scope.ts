@@ -20,6 +20,7 @@ import {
 } from "./legacy-toml-transport.js";
 import type { AnyMigrateManifest, MigrateManifest } from "./migrate.js";
 import { exportMigrationState, importMigrationState } from "./migrate.js";
+import { assertPluginsCleanForShare } from "./plugin-versioning.js";
 import {
   exportResourceToFile,
   formatResourceSelector,
@@ -154,14 +155,16 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
   rejectEnvironmentScope(opts);
   assertExclusiveScopeFlags(opts);
   const outputPath = opts.outputFile ?? opts.file;
-  const singleFile = opts.singleFile === true;
+  const resolvedExplicit =
+    outputPath && outputPath.length > 0 ? resolve(outputPath) : undefined;
+  const singleFile =
+    opts.singleFile === true
+    || (resolvedExplicit != null && isApEnvelopePath(resolvedExplicit));
 
   if (opts.plugin) {
     const firstPlugin = opts.plugin.split(",")[0]?.trim() ?? "plugin";
     const apName = slugifyApName(firstPlugin);
-    const path = outputPath && outputPath.length > 0
-      ? resolve(outputPath)
-      : resolve(singleFile ? `${apName}.ap.json` : apName);
+    const path = resolvedExplicit ?? resolve(singleFile ? `${apName}.ap.json` : apName);
     return {
       scope: "plugin",
       outputPath: path,
@@ -174,9 +177,7 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     const colon = opts.resource.indexOf(":");
     const rest = colon === -1 ? opts.resource : opts.resource.slice(colon + 1);
     const name = slugifyApName(rest.split("@")[0] ?? "export");
-    const path = outputPath && outputPath.length > 0
-      ? resolve(outputPath)
-      : resolve(singleFile ? `${name}.ap.json` : name);
+    const path = resolvedExplicit ?? resolve(singleFile ? `${name}.ap.json` : name);
     return {
       scope: "resource",
       outputPath: path,
@@ -287,10 +288,15 @@ export function exportScopedMigration(
         throw new Error("Plugin selector is required for plugin export.");
       }
       const plugin = resolvePluginOrThrow(resolved.pluginSelector);
+      assertPluginsCleanForShare([plugin]);
       const files = buildApPackageFiles(plugin.id);
-      const written = resolved.singleFile
-        ? (writeApEnvelope(files, resolved.outputPath), Object.keys(files).sort())
-        : writeApPackageFiles(files, resolved.outputPath);
+      let written: string[];
+      if (resolved.singleFile) {
+        writeApEnvelope(files, resolved.outputPath);
+        written = Object.keys(files).sort();
+      } else {
+        written = writeApPackageFiles(files, resolved.outputPath);
+      }
       return {
         scope: "plugin",
         output: resolved.outputPath,

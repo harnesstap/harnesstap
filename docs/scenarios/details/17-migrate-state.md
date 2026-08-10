@@ -13,13 +13,13 @@ Manual workflow with current commands:
 # On the old machine
 mkdir -p ./bundles
 for p in $(harnesstap plugin list --format json | jq -r '.[].name'); do
-  harnesstap migrate export "./bundles/$p.harnesstap.toml" --plugin "$p" --embed-plugins
+  harnesstap migrate export "./bundles/$p" --plugin "$p" --embed-plugins
 done
 
 # Copy ./bundles/ to the new machine, then:
 harnesstap init
-for f in ./bundles/*.harnesstap.toml; do
-  harnesstap migrate import "$f"
+for d in ./bundles/*/; do
+  harnesstap migrate import "$d"
 done
 harnesstap harness set --main claude-code --aliases cursor,codex   # restore selection
 ```

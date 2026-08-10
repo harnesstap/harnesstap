@@ -442,23 +442,25 @@ For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTa
 
 ### Commands
 
-- `migrate export [file]` — export workspace, plugin, environment, or resource (interactive when `[file]` omitted on a TTY)
-- `migrate import [file]` — import from archive or TOML (auto-detects scope from file format)
+- `migrate export [file]` — export workspace, plugin, or resource as an Agent Plugins package (or workspace archive); interactive when `[file]` omitted on a TTY
+- `migrate import [file]` — import a package directory, `.ap.json` envelope, or `.tar.gz` workspace archive (auto-detects scope)
 - `migrate resolve-order` — convert apply-order dependence into explicit resource overrides so previously applied results reproduce under graph resolution
 
 ### Important options
 
-- `migrate export --workspace` — full workspace archive (`.tar.gz` or `.json`)
-- `migrate export --plugin <name>` — plugin bundle TOML (`urn:harnesstap:layer:v1`; schema id still says `layer`); comma-separated for multi-plugin
-- `migrate export --resource <selector>` — single resource TOML (`urn:harnesstap:resource:v1`)
-- `migrate export --environment <name>` — single environment TOML
+- `migrate export --workspace` — full workspace archive (`.tar.gz`)
+- `migrate export --plugin <name>` — Agent Plugins package directory (comma-separated for multi-plugin)
+- `migrate export --resource <selector>` — single-resource package (wraps the resource in a one-resource plugin)
+- `migrate export --single-file` — write a `.ap.json` envelope instead of a package directory
 - `migrate export -o, --file <path>` — output path (overrides positional)
 - `migrate export --include-plugins` / `--embed-plugins` — embed plugin trees (workspace and plugin scope)
-- `migrate import --workspace` / `--plugin` / `--resource` / `--environment` — force import scope
-- `migrate export --format json` / `migrate import --format json` — machine-readable summary
+- `migrate import --workspace` / `--plugin` / `--resource` — force import scope
+- `migrate export --format json` / `migrate import --format json` — machine-readable summary (CLI output format, not transport)
 - `migrate resolve-order --dry-run` — report planned override writes without changing plugins
 - `migrate resolve-order --format json`
 
-Workspace archives include plugin bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
+`--environment` is removed on both export and import — environments are machine-local secret references. Include them in a `--workspace` archive instead.
+
+Workspace archives include Agent Plugins packages, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
 
 See [Scenario 28](../scenarios/details/28-machine-migration.md) and [Scenario 17](../scenarios/details/17-migrate-state.md).

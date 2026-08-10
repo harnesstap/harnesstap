@@ -373,21 +373,14 @@ describe("CLI environment", () => {
     }
   });
 
-  it("supports environment export/import roundtrip through migrate", async () => {
+  it("rejects standalone environment export via migrate", async () => {
     const context = await createTestContext("cli-environment-export-import");
     try {
       await runCli(["init"]);
       await runCli(["environment", "create", "portable"]);
       await runCli(["environment", "edit", "portable", "--var", "PD_REGION=eu"]);
-      await runCli([
-        "environment",
-        "edit",
-        "portable",
-        "--secret",
-        "PD_TOKEN:env:PD_TOKEN",
-      ]);
 
-      const filePath = join(context.projectDir, "portable-environment.toml");
+      const filePath = join(context.projectDir, "portable.ap.json");
       const exported = await runCli([
         "migrate",
         "export",
@@ -397,42 +390,8 @@ describe("CLI environment", () => {
         "--format",
         "json",
       ]);
-      expect(JSON.parse(exported.stdout)).toEqual(
-        expect.objectContaining({
-          output: filePath,
-          environment: "portable",
-          scope: "environment",
-        }),
-      );
-
-      await runCli(["environment", "delete", "portable"]);
-      const imported = await runCli([
-        "migrate",
-        "import",
-        filePath,
-        "--environment",
-        "--format",
-        "json",
-      ]);
-      expect(JSON.parse(imported.stdout)).toEqual(
-        expect.objectContaining({
-          environment: "portable",
-          imported_keys: ["PD_REGION"],
-          imported_secret_refs: ["PD_TOKEN"],
-        }),
-      );
-
-      const shown = await runCli(["environment", "show", "portable", "--format", "json"]);
-      expect(JSON.parse(shown.stdout)).toEqual(
-        expect.objectContaining({
-          values: expect.objectContaining({
-            env_vars: expect.objectContaining({ PD_REGION: "eu" }),
-          }),
-          secret_refs: expect.objectContaining({
-            PD_TOKEN: { provider: "env", ref: "PD_TOKEN" },
-          }),
-        }),
-      );
+      expect(exported.exitCode).toBe(1);
+      expect(exported.stderr).toMatch(/--workspace/i);
     } finally {
       await context.cleanup();
     }

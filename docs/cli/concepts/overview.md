@@ -24,7 +24,7 @@ flowchart TB
     Plugins[Plugins — the what]
     Envs[Environments — the how]
     Plugins[Configured plugins]
-    Bundles[Plugin v1 TOML]
+    Packages[Agent Plugins packages]
   end
 
   subgraph Targets[Materialized harnesses]
@@ -41,7 +41,7 @@ flowchart TB
   Resources --> Plugins
   Plugins --> Plugins
   Envs --> Plugins
-  Plugins --> Bundles
+  Plugins --> Packages
   Plugins --> Claude
   Plugins --> Codex
   Plugins --> Cursor
