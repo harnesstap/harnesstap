@@ -140,3 +140,40 @@ export function lockfileMatchesResolution(
 export function lockIsUsable(lock: Lockfile, rootName: string): boolean {
   return lock.root === rootName && lock.plugins.every((entry) => entry.version !== "");
 }
+
+export interface LockDrift {
+  drift: boolean;
+  root: string;
+  changes: Array<{ name: string; locked: string; resolved: string }>;
+  added: string[];
+  removed: string[];
+}
+
+export function compareLockToResolution(
+  lock: Lockfile,
+  result: ResolutionResult,
+): LockDrift {
+  const lockedByName = new Map(lock.plugins.map((entry) => [entry.name, entry.version]));
+  const resolvedByName = new Map(
+    result.selected.filter((p) => p.depth > 0).map((p) => [p.name, p.version]),
+  );
+
+  const changes: LockDrift["changes"] = [];
+  for (const [name, locked] of lockedByName) {
+    const resolved = resolvedByName.get(name);
+    if (resolved !== undefined && resolved !== locked) {
+      changes.push({ name, locked, resolved });
+    }
+  }
+  const added = [...resolvedByName.keys()].filter((name) => !lockedByName.has(name));
+  const removed = [...lockedByName.keys()].filter((name) => !resolvedByName.has(name));
+  const resourceDrift = lock.resource_map_hash !== resourceMapHash(result.resources);
+
+  return {
+    drift: changes.length > 0 || added.length > 0 || removed.length > 0 || resourceDrift,
+    root: lock.root,
+    changes,
+    added,
+    removed,
+  };
+}

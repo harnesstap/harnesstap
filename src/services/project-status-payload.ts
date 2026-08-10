@@ -8,6 +8,8 @@ import { listAttachedPluginPins } from "./layer-composition.js";
 import { getLayerById, getLayerResources, resolveLayerSelector } from "../models/layer-model.js";
 import { getProjectByLocalPath, getProjectByOrigin, getProjectConfiguredLayers } from "../models/project.js";
 import { detectProjectDriftFromLatest, type ProjectDriftReport } from "./project-drift.js";
+import { compareLockToResolution, readLockfile, type LockDrift } from "./lockfile.js";
+import { resolveComposition } from "./resolve/index.js";
 import { detectPlatforms } from "./scanner.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import { isProfileLayer } from "../constants/profile.js";
@@ -55,6 +57,7 @@ export interface ProjectStatusPayload {
     environment_secrets: number;
   };
   project_resources: ProjectScanStatus;
+  lock?: LockDrift;
 }
 
 function materialResources(resources: Resource[]): Resource[] {
@@ -248,6 +251,27 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
   const resolved = buildResolvedSection(configuredLayerIds);
   const projectResources = await assessProjectScanStatus(resolvedRoot);
 
+  const lock = readLockfile(resolvedRoot);
+  const lockSection = lock
+    ? (() => {
+        try {
+          return compareLockToResolution(
+            lock,
+            resolveComposition({ rootSelectors: [lock.root] }),
+          );
+        } catch {
+          // A lock whose root no longer resolves is itself drift.
+          return {
+            drift: true,
+            root: lock.root,
+            changes: [],
+            added: [],
+            removed: lock.plugins.map((entry) => entry.name),
+          };
+        }
+      })()
+    : undefined;
+
   return {
     project_root: resolvedRoot,
     git_origin: gitOrigin,
@@ -261,5 +285,6 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
     applied_layers: appliedLayers,
     resolved,
     project_resources: projectResources,
+    ...(lockSection ? { lock: lockSection } : {}),
   };
 }

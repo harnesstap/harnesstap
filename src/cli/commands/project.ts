@@ -494,24 +494,40 @@ async function handleProjectStatusCommand(
     if (!report) {
       return;
     }
+
+    const statusPayload = await buildProjectStatusPayload(projectRoot);
+    const lockDrift = statusPayload.lock?.drift === true;
+    const hasDrift = report.has_drift || lockDrift;
+
     if (format === "json") {
-      printJson(report);
-      if (report.has_drift) {
+      printJson({
+        ...report,
+        has_drift: hasDrift,
+        ...(statusPayload.lock ? { lock: statusPayload.lock } : {}),
+      });
+      if (hasDrift) {
         process.exitCode = 1;
       }
       return;
     }
-    if (!report.snapshot_id) {
+    if (!report.snapshot_id && !lockDrift) {
       ui.dim("No snapshots found. Drift detection requires a prior apply or mirror.");
       return;
     }
-    if (!report.has_drift) {
+    if (!hasDrift) {
       ui.success("No drift detected since last snapshot.");
       return;
     }
-    ui.danger(
-      `Drift detected: ${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
-    );
+    if (report.has_drift) {
+      ui.danger(
+        `Drift detected: ${report.changes.length} change(s) since snapshot ${report.snapshot_id}`,
+      );
+    }
+    if (lockDrift && statusPayload.lock) {
+      ui.danger(
+        `Lock drift detected for root ${statusPayload.lock.root} (${statusPayload.lock.changes.length} version change(s)).`,
+      );
+    }
     process.exitCode = 1;
     return;
   }
@@ -675,7 +691,7 @@ export function registerProjectCommandsAfterConfig(root: Command): void {
     .command("status")
     .argument("[path]", "Project directory", ".")
     .option("--format <mode>", "Output format: human or json", "human")
-    .option("--check", "Exit with code 1 when drift exists since the last snapshot")
+    .option("--check", "Exit with code 1 when snapshot or lock drift exists")
     .description("Show current project status and drift summary")
     .action(async (path: string, opts: { format?: string; check?: boolean }) => {
       await handleProjectStatusCommand(path, opts);

@@ -166,6 +166,20 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
       })),
     });
   }
+
+  if (payload.lock?.drift) {
+    subheader("LOCKFILE");
+    for (const change of payload.lock.changes) {
+      console.log(`  ${change.name}  ${change.locked} → ${change.resolved}`);
+    }
+    for (const name of payload.lock.added) {
+      console.log(`  ${name}  (added)`);
+    }
+    for (const name of payload.lock.removed) {
+      console.log(`  ${name}  (removed)`);
+    }
+    status.dim(`  hint: ht layer apply ${payload.lock.root} --update`);
+  }
 }
 
 export function projectStatusPayloadToJson(payload: ProjectStatusPayload): Record<string, unknown> {
@@ -196,6 +210,7 @@ export function projectStatusPayloadToJson(payload: ProjectStatusPayload): Recor
       environment_secrets: payload.resolved.environment_secrets,
     },
     project_resources: payload.project_resources,
+    ...(payload.lock ? { lock: payload.lock } : {}),
     ...(payload.project
       ? {
           applied_layers_count: payload.applied_layers.length,
