@@ -158,6 +158,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer delete [name]`
 - `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`); resolves the dependency graph and records `.harnesstap/lock.toml`
 - `layer cut <layer> --version <semver>` — cut a new local version from the working head
+- `layer fork <layer>` — copy an upstream or catalog plugin into an editable authored layer (default name `<layer>-fork`)
 - `layer pull <selector>` — download a remote layer bundle and import it
 - `layer catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
 - `layer catalog` — interactive publish-binding wizard (layer picker → catalog checkboxes)
@@ -206,12 +207,12 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `layer edit --all` — show every resource per type (default caps at 10)
 - `layer edit --dry-run` — preview membership changes without writing
 - `layer edit --format json --no-interactive` — read-only membership snapshot
-- `layer edit --add <selector>` — add attachment (repeatable; use `--type` when selector omits prefix)
+- `layer edit --add <selector>` — add attachment (repeatable; use `--type` when selector omits prefix). Plugin dependencies use `plugin:ref@source` (marketplace, local path, git URL, or `org/catalog/name`); legacy `plugin_pin:` / `layer:` still resolve with a notice
 - `layer edit --remove <selector>` — remove attachment (repeatable)
 - `layer edit --apply <file.json>` — apply membership from JSON spec
-- `layer edit --version <constraint>` — plugin or layer references only (scripting adds)
-- `layer edit --sync` — sync a plugin resource immediately after add (default: lazy)
-- `layer edit --embed` — mark plugin pin as embed-on-export when adding
+- `layer edit --version <constraint>` — plugin dependencies only (scripting adds)
+- `layer edit --sync` — sync an upstream plugin immediately after add (default: lazy)
+- `layer edit --embed` — mark plugin dependency as embed-on-export when adding
 - `layer edit --environment <name>` — bind a default environment to the configured layer that `layer apply` resolves
 - `layer edit --clear-environment` — clear the configured layer default environment
 - `layer apply --project <path>` — target project directory (default `.`)
@@ -225,6 +226,8 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `layer why --format json`
 - `layer cut --version <semver>` — required new version (must differ from the current head)
 - `layer cut --format json`
+- `layer fork --as <name>` — name for the authored fork (default `<layer>-fork`)
+- `layer fork --format json`
 - `layer diff --format json`
 - `layer doctor --check <name>` — run one check (repeatable)
 - `layer doctor --list-checks` — list available checks
@@ -345,7 +348,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource list` shows material resources plus `plugin` resources; `layer` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
 - `layer edit` selectors accept `type:name@namespace` for compose-safe resolution
-- There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, and `layer apply --strict-plugin-versions` for plugin workflows
+- There is no top-level `plugin` command group; use `resource sync`, `layer show`, `layer doctor`, `layer fork`, and `layer apply --strict-plugin-versions` for plugin workflows
 
 ## environment (`e`)
 

@@ -4,28 +4,67 @@ description: Versioned context packages you create, diff, export, publish, and a
 
 # Layers
 
-A **layer** is HarnessTap's versioned context package: the unit you create, diff, export, publish, and apply. Layers compose plugins, plugin pins, nested layer dependencies, and an optional default environment.
+A **layer** is HarnessTap's versioned context package: the unit you create, diff, export, publish, and apply. Layers compose resources, **plugin dependencies** (marketplace, local, git, or catalog), and an optional default environment.
 
 ## Layers and plugins
 
 | Piece | Role |
 | --- | --- |
-| **Plugin** | Groups *what* resources (skills, rules, MCP, hooks, …) plus host-specific config |
-| **Layer** | One or more plugins (and attachments) with an optional default environment |
-| **Plugin pin** | Lazy link to a host marketplace plugin (`plugin_pin:name@marketplace`); resolved at sync or apply |
-| **Layer ref** | Nested layer dependency; apply resolves the whole dependency graph |
+| **Resource** | Smallest unit: skill, rule, MCP server, hook, agent, command, … |
+| **Layer** | Versioned package of resources plus dependencies, with an optional default environment |
+| **Plugin dependency** | Another layer this one requires — `plugin:ref@source` with a version constraint |
 
 Create and edit layers locally:
 
 ```bash
 ht layer create my-setup --description "Shared project assistant setup"
 ht layer edit my-setup --add research-helper --type skill
-ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
-ht layer edit team-stack --add layer:shared-baseline --version "^1.2.0"
+ht layer edit my-setup --add plugin:formatter@my-marketplace --version "^2.1.0"
+ht layer edit team-stack --add plugin:shared-baseline --version "^1.2.0"
 ht layer show my-setup
 ```
 
 `layer doctor` checks for duplicate resources, empty content, or invalid plugin metadata. `layer diff` compares layer metadata and contents against another layer or a TOML bundle. `layer from-project` scans a repository and turns imported resources into a new layer.
+
+## Provenance (origin)
+
+Every local layer row has an **origin**. Capabilities vary by origin; `ht layer list` shows an Origin column (JSON includes `origin`), and refusal errors name the fix instead of only failing.
+
+| Origin | How it gets there | edit / cut / publish / add needs | sync |
+| --- | --- | --- | --- |
+| `authored` | `layer create`, `layer from-project`, `layer fork`, conflict scaffolding | Yes | No |
+| `upstream` | Materialized from a marketplace, local path, or git plugin install tree | No — error names `fork` | Yes |
+| `catalog` | `layer pull` from an org catalog | No — error names `fork` | Yes |
+
+Upstream and catalog plugins are read-only graph nodes until you fork them:
+
+```bash
+ht layer fork web-search
+ht layer fork web-search --as my-web-search
+ht layer edit my-web-search
+```
+
+`layer fork` copies an upstream or catalog layer into a new **authored** layer (default name `<name>-fork`). The source row is left untouched; resource rows are shared until you attach or detach differently.
+
+## Plugin dependencies
+
+Plugin pins and nested layer refs are one type: a **plugin** attachment with provenance metadata. Add dependencies with `plugin:ref@source` (or a bare local name):
+
+| `source_kind` | Ref shape | Resolves to |
+| --- | --- | --- |
+| `local` | `base`, `./relative/path` | A layer row in the local library |
+| `marketplace` | `web-search@anthropics` | An `upstream` layer materialized from the install tree |
+| `git` | `https://…`, `git@…` | An `upstream` layer materialized from the clone |
+| `catalog` | `acme/default/base` | A `catalog` layer pulled from the cloud |
+
+```bash
+ht layer edit my-setup --add plugin:formatter@my-marketplace --version "^2.1.0"
+ht layer edit my-setup --add plugin:shared-baseline --version "^1.2.0"
+ht layer edit my-setup --add plugin:https://github.com/acme/plugin.git --version "^1.0.0"
+ht layer edit my-setup --add plugin:acme/default/base --version "^2.0.0"
+```
+
+Legacy selectors `plugin_pin:…` and `layer:…` still resolve and print a notice naming the new `plugin:` spelling.
 
 ## Composition and resolution
 
@@ -71,23 +110,23 @@ ht layer why skill:deploy
 
 `--explain` prints the resolution trail: selected versions with the constraints that produced them, and every contested resource with winner, loser, and reason. `layer why` answers the same questions against the lockfile (or `--root` when you want a fresh resolve).
 
-## Plugin pins and version policy
+## Plugin dependencies and version policy
 
-Plugin pins attach to a layer like any other composition item:
+Marketplace and other upstream dependencies attach like any other composition item. Sync refreshes **upstream** or **catalog** plugins only — authored layers have nothing to sync from.
 
 ```bash
-ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
-ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --sync   # eager sync after add
-ht resource sync plugin_pin:formatter@my-marketplace
+ht layer edit my-setup --add plugin:formatter@my-marketplace --version "^2.1.0"
+ht layer edit my-setup --add plugin:formatter@my-marketplace --sync   # eager sync after add
+ht resource sync plugin:formatter@my-marketplace
 ht layer apply my-setup --project . --strict-plugin-versions
 ```
 
-On `layer apply`, HarnessTap compares layer plugin pins to library `resolved_version` values:
+On `layer apply`, HarnessTap compares dependency version constraints to library `resolved_version` values:
 
 - **Default** — warn on mismatch
 - `--strict-plugin-versions` — fail with exit code 2
 - `--ignore-plugin-versions` — skip validation
-- `--sync-plugins` — refresh plugin resources before materialize
+- `--sync-plugins` — refresh upstream plugin resources before materialize
 
 Plugin install and sync providers exist for **Claude Code** and **Cursor**. Plugin-source scan covers `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and `.github/plugin/` layouts.
 
@@ -123,7 +162,7 @@ HarnessTap keeps at most `layerVersionHistoryLimit` versions per layer name (hea
 }
 ```
 
-**Sharing rules:** export, `migrate export --layer`, and `layer publish` refuse dirty heads so bundles and catalog uploads always reflect a cut version. Cut first, or pass `--version <semver>` on `layer publish` to cut and publish in one step:
+**Sharing rules:** export, `migrate export --layer`, and `layer publish` refuse dirty heads so bundles and catalog uploads always reflect a cut version. `edit`, `cut`, `publish`, and adding `needs` also require an **authored** origin — fork upstream or catalog plugins first. Cut first, or pass `--version <semver>` on `layer publish` to cut and publish in one step:
 
 ```bash
 ht layer publish my-setup --version 1.3.0 --account acme
@@ -184,7 +223,7 @@ ht migrate import ./my-setup.harnesstap.toml
 ht migrate export ./team.harnesstap.toml --layer my-setup --embed-plugins
 ```
 
-Default export path: `<name>.harnesstap.toml`. Bundles include one or more `[[layers]]` entries, optional `plugin_pins`, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned semver constraints.
+Default export path: `<name>.harnesstap.toml`. Bundles include one or more `[[layers]]` entries, optional plugin dependencies, and optional root `embedded_plugins` when plugin trees are inlined. `dependencies` is included when a layer declares versioned semver constraints.
 
 For a full workspace handoff (layers, environments, harness preferences, config), use `ht migrate export` with a `.tar.gz` archive — see [Scenario 28](../../scenarios/details/28-machine-migration.md).
 
@@ -196,6 +235,7 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessTap 
 | --- | --- |
 | Create from scratch | `layer create` |
 | Add resources or deps | `layer edit --add` / `--remove` |
+| Fork upstream / catalog | `layer fork` |
 | Diagnose before apply | `layer doctor` |
 | Explain a resolve decision | `layer why` / `layer apply --explain` |
 | Compare versions | `layer diff` |
