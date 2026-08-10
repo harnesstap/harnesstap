@@ -109,7 +109,20 @@ import {
   LayerVersionError,
 } from "../../services/layer-versioning.js";
 import { listLayerDoctorChecks, runLayerDoctor } from "../../services/layer-doctor.js";
-import { mergeLayersForApply } from "../../services/layer-apply-merge.js";
+import { resolveComposition } from "../../services/resolve/index.js";
+import type { ResolutionResult } from "../../services/resolve/types.js";
+import {
+  SingletonConflictError,
+  UnsatisfiableConstraintError,
+} from "../../services/resolve/types.js";
+import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
+import {
+  lockedVersionsFrom,
+  lockfileFromResolution,
+  lockIsUsable,
+  readLockfile,
+  writeLockfile,
+} from "../../services/lockfile.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
 import { substituteResourcesForApply } from "../../services/environment-var-substitution.js";
 import { setLayerEnvironmentCommand, unsetLayerEnvironmentCommand } from "../../services/environment-commands.js";
@@ -175,6 +188,7 @@ async function resolveApplyLayers(
   projectRoot: string,
   options: ResolveApplyLayerSourceOptions & {
     onFetched?: (sourceLabel: string) => void;
+    lockedVersions?: Map<string, string>;
   } = {},
 ): Promise<{
   layers: ReturnType<typeof getLayer>[];
@@ -182,81 +196,87 @@ async function resolveApplyLayers(
   claude?: ClaudeLayerConfig;
   configuredLayerIds: string[];
   primaryConfiguredLayerId: string;
+  resolution: ResolutionResult;
 }> {
-  function importedBundleToApplyResult(imported: ReturnType<typeof importFromFile>) {
-    const layers = imported.layers.map((entry) => entry.layer);
-    const primaryLayer = layers[layers.length - 1];
-    if (!primaryLayer) {
-      throw new Error("Bundle contains no layers.");
-    }
-    const merged = mergeLayersById(layers.map((layer) => layer.id));
-    const layer = getLayerById(primaryLayer.id);
-    if (!layer) throw new Error(`Layer not found: ${primaryLayer.id}`);
-    return {
-      layers: merged.layers,
-      resources: merged.resources,
-      claude: merged.claude,
-      configuredLayerIds: [layer.id],
-      primaryConfiguredLayerId: layer.id,
-    };
-  }
-
   const resolvedSources = await Promise.all(
-    layerNames.map((selector) =>
-      resolveApplyLayerSource(selector, options),
-    ),
+    layerNames.map((selector) => resolveApplyLayerSource(selector, options)),
   );
 
-  if (
-    resolvedSources.length === 1
-    && resolvedSources[0]?.kind === "layer-export"
-  ) {
-    const layerExportPath = resolvedSources[0].path;
-    const summary = inspectLayerExportFile(layerExportPath);
-    const primarySummary = summary.layers[summary.layers.length - 1];
-    if (primarySummary) {
-      const selector = primarySummary.version
-        ? `${primarySummary.name}@${primarySummary.version}`
-        : primarySummary.name;
-      const existingLayer = resolveLayerSelector(selector);
-      if (existingLayer) {
-        const layer = getLayerById(existingLayer.id);
-        if (!layer) throw new Error(`Layer not found: ${existingLayer.id}`);
-        const merged = mergeLayersForApply([layer.id]);
-        return {
-          layers: merged.layers,
-          resources: merged.resources,
-          claude: merged.claude,
-          configuredLayerIds: [layer.id],
-          primaryConfiguredLayerId: layer.id,
-        };
-      }
-    }
-
-    return importedBundleToApplyResult(
-      importFromFile(layerExportPath, {
-        embeddedTargetDir: projectRoot,
-      }),
-    );
-  }
-
-  const configuredLayerIds = resolvedSources.map((source) => {
+  const selectors: string[] = [];
+  for (const source of resolvedSources) {
     if (source.kind === "layer-export") {
-      throw new Error("Layer export paths and URLs cannot be mixed with layer selectors.");
+      if (resolvedSources.length > 1) {
+        throw new Error(
+          "Layer export paths and URLs cannot be mixed with layer selectors.",
+        );
+      }
+      const summary = inspectLayerExportFile(source.path);
+      const primary = summary.layers[summary.layers.length - 1];
+      const existing = primary
+        ? resolveLayerSelector(
+            primary.version ? `${primary.name}@${primary.version}` : primary.name,
+          )
+        : undefined;
+      if (existing) {
+        selectors.push(`${existing.name}@${existing.version}`);
+      } else {
+        const imported = importFromFile(source.path, {
+          embeddedTargetDir: projectRoot,
+        });
+        const last = imported.layers[imported.layers.length - 1];
+        if (!last) throw new Error("Bundle contains no layers.");
+        selectors.push(`${last.layer.name}@${last.layer.version}`);
+      }
+      continue;
     }
     const layer = getLayerById(source.layerId);
     if (!layer) throw new Error(`Layer not found: ${source.layerId}`);
-    return layer.id;
+    selectors.push(`${layer.name}@${layer.version}`);
+  }
+
+  const resolution = resolveComposition({
+    rootSelectors: selectors,
+    ...(options.lockedVersions ? { lockedVersions: options.lockedVersions } : {}),
   });
-  const merged = mergeLayersForApply(configuredLayerIds);
+
+  const layers = resolution.selected
+    .filter((plugin) => !(plugin.depth === 0 && resolution.root.ephemeral))
+    .map((plugin) => getLayerById(plugin.layerId))
+    .filter((layer): layer is NonNullable<typeof layer> => layer != null);
+
+  const claude = mergeClaudeConfigsForResolution(resolution);
+  const configuredLayerIds = layers.map((layer) => layer.id);
+
   return {
-    layers: merged.layers,
-    resources: merged.resources,
-    claude: merged.claude,
+    layers,
+    resources: resolution.resources,
+    ...(claude ? { claude } : {}),
     configuredLayerIds,
-    primaryConfiguredLayerId:
-      configuredLayerIds[configuredLayerIds.length - 1] ?? "",
+    // Nearest-to-root already gives the root precedence; the "primary" is the
+    // root itself, or the last argv selector when the root is ephemeral.
+    primaryConfiguredLayerId: resolution.root.ephemeral
+      ? (configuredLayerIds[configuredLayerIds.length - 1] ?? "")
+      : resolution.root.layerId,
+    resolution,
   };
+}
+
+/**
+ * Claude marketplace/plugin config still merges the old way. Resolution
+ * decides which layers participate; within that set, deeper layers are folded
+ * in first so nearer ones win, matching Pass 2.
+ */
+function mergeClaudeConfigsForResolution(
+  resolution: ResolutionResult,
+): ClaudeLayerConfig | undefined {
+  const ordered = [...resolution.selected].sort(
+    (a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex,
+  );
+  const layerIds = ordered
+    .map((plugin) => getLayerById(plugin.layerId))
+    .filter((layer): layer is NonNullable<typeof layer> => layer != null)
+    .map((layer) => layer.id);
+  return mergeLayersById(layerIds).claude;
 }
 
 function formatPluginInstallLine(install: InstallPluginPinResult): string {
@@ -343,6 +363,11 @@ async function handleApplyCommand(
   let applyBundle: Awaited<ReturnType<typeof resolveApplyLayers>>;
   const layerLabel = resolvedLayerNames.join(" + ");
   const resolveSpin = createProgress(`Resolving ${layerLabel}…`);
+  const existingLock = opts.update ? undefined : readLockfile(projectRoot);
+  const lockedVersions =
+    existingLock && lockIsUsable(existingLock, resolvedLayerNames[0] ?? "")
+      ? lockedVersionsFrom(existingLock)
+      : undefined;
   try {
     applyBundle = await resolveApplyLayers(
       resolvedLayerNames as [string, ...string[]],
@@ -353,6 +378,7 @@ async function handleApplyCommand(
         interactive: opts.interactive,
         noInteractive: opts.noInteractive,
         format: outputFormat,
+        ...(lockedVersions ? { lockedVersions } : {}),
         onFetched:
           outputFormat === "human"
             ? (sourceLabel) => {
@@ -364,6 +390,13 @@ async function handleApplyCommand(
   } catch (err) {
     resolveSpin.stop();
     process.exitCode = 1;
+    if (
+      err instanceof UnsatisfiableConstraintError ||
+      err instanceof SingletonConflictError
+    ) {
+      ui.danger(err.message, { hints: err.hints });
+      return;
+    }
     if (err instanceof LayerResolveError || err instanceof LayerAmbiguityError) {
       ui.danger(err.message, { hints: err.hints });
       return;
@@ -373,7 +406,14 @@ async function handleApplyCommand(
   }
   resolveSpin.stop();
 
-  const primaryLayer = applyBundle.layers[applyBundle.layers.length - 1];
+  for (const warning of applyBundle.resolution.warnings) {
+    ui.warn(warning);
+  }
+
+  const primaryLayer =
+    applyBundle.layers.find(
+      (layer) => layer?.id === applyBundle.primaryConfiguredLayerId,
+    ) ?? applyBundle.layers[0];
   if (!primaryLayer) {
     process.exitCode = 1;
     ui.danger("No layer resolved for apply");
@@ -398,6 +438,15 @@ async function handleApplyCommand(
       "No harness targets configured. Run harnesstap harness set or pass --harness <slugs>.",
     );
     return;
+  }
+
+  if (opts.explain) {
+    if (outputFormat === "json") {
+      printJson(explainPayload(applyBundle.resolution));
+    } else {
+      console.log(renderExplain(applyBundle.resolution));
+      console.log("");
+    }
   }
 
   const { resources, claude } = applyBundle;
@@ -551,6 +600,10 @@ async function handleApplyCommand(
       process.exitCode = 2;
       return;
     }
+  }
+
+  if (!opts.dryRun) {
+    writeLockfile(projectRoot, lockfileFromResolution(applyBundle.resolution));
   }
 
   const gitOrigin = getGitOrigin(projectRoot);

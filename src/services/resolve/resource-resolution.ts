@@ -57,6 +57,12 @@ export function resolveResources(input: {
   selected: SelectedPlugin[];
   overrides: LayerOverrides;
   rootName: string;
+  /**
+   * Ephemeral argv sugar (`ht layer apply a b`): equal-depth singleton ties
+   * use declaration order (last wins) instead of erroring. Durable roots still
+   * error so diamond conflicts stay explicit.
+   */
+  declarationOrderSingletons?: boolean;
 }): ResolveResourcesResult {
   const candidates = new Map<string, Candidate[]>();
   const keyOrder: string[] = [];
@@ -172,7 +178,10 @@ export function resolveResources(input: {
     const firstResource = shallowest[0]?.resource;
     if (!firstResource || !isMaterial(firstResource.type)) continue;
 
-    if (resourceClass(firstResource.type) === "singleton") {
+    if (
+      resourceClass(firstResource.type) === "singleton" &&
+      !input.declarationOrderSingletons
+    ) {
       throw new SingletonConflictError({
         key,
         sides: shallowest.map((c) => c.side),
@@ -180,7 +189,7 @@ export function resolveResources(input: {
       });
     }
 
-    // Set-like, equal depth, differing content: declaration order decides.
+    // Equal depth, differing content: declaration order decides.
     // Last declared wins, which is what `ht layer apply a b` has always meant.
     const sorted = [...shallowest].sort(
       (a, b) =>

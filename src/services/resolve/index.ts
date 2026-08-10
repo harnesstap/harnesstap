@@ -81,6 +81,7 @@ export function resolveComposition(input: ResolveCompositionInput): ResolutionRe
       selected: walk.selected,
       overrides,
       rootName: root.name,
+      ...(ephemeral ? { declarationOrderSingletons: true } : {}),
     });
 
     return {
