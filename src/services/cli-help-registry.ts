@@ -279,6 +279,18 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "layer why base --format json",
     ],
   },
+  "layer.fork": {
+    description:
+      "Create an editable authored copy of an upstream or catalog plugin",
+    details:
+      "Upstream and catalog plugins cannot be edited in place. A fork is an "
+      + "authored plugin that starts with the same resources and dependencies.",
+    examples: [
+      "layer fork web-search",
+      "layer fork web-search --as my-search",
+      "layer fork web-search --format json",
+    ],
+  },
   "layer.from-project": {
     description: "Scan current folder and create a layer from its resources",
     examples: [

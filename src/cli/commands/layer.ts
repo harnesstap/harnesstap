@@ -7,6 +7,7 @@ import {
 } from "../../services/cli-errors.js";
 import { formatCount, formatLayerLabel } from "../formatting.js";
 import { parseCommaSeparatedList } from "../handlers/parse-flags.js";
+import { handleLayerForkCommand } from "../handlers/layer-fork.js";
 import { handleLayerInstallCommand } from "../handlers/layer-install.js";
 import {
   handleLayerPublishCommand,
@@ -2420,6 +2421,16 @@ layerCmd
   .description("Explain why a version was selected or which layer won a resource")
   .action((target: string, opts: { project?: string; root?: string; format?: string }) => {
     handleLayerWhyCommand(target, opts);
+  });
+
+layerCmd
+  .command("fork")
+  .argument("<layer>", "Upstream or catalog plugin to fork")
+  .option("--as <name>", "Name for the fork (default: <name>-fork)")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Create an editable authored copy of an upstream or catalog plugin")
+  .action((selector: string, opts: { as?: string; format?: string }) => {
+    handleLayerForkCommand(selector, opts);
   });
 
 layerCmd

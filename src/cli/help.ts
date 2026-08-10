@@ -18,6 +18,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "diff",
   "doctor",
   "why",
+  "fork",
   "from-project",
 ]);
 
