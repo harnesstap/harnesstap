@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 26;
+const SCHEMA_VERSION = 27;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -215,6 +215,7 @@ const MIGRATIONS: Record<number, Migration> = {
       WHERE org_slug != '' AND catalog_slug != '';
   `,
   26: migrateResourcesToPluginDependencyType,
+  27: migrateLayerTablesToPluginTables,
 };
 
 function tableExists(db: SqliteDatabase, name: string): boolean {
@@ -224,6 +225,89 @@ function tableExists(db: SqliteDatabase, name: string): boolean {
     )
     .get(name) as { ok: number } | undefined;
   return row !== undefined;
+}
+
+/**
+ * Rename layer storage tables/columns to plugin, rebuilding FK-bearing tables
+ * so references point at plugins(id). SQLite ALTER TABLE RENAME leaves child
+ * FK definitions pointing at the old parent name.
+ *
+ * Adaptation: FK pragma must be toggled outside the migration transaction
+ * (same as v26); initializeSchema disables FKs for upgrades through v27.
+ */
+function migrateLayerTablesToPluginTables(db: SqliteDatabase): void {
+  if (tableExists(db, "layers")) {
+    db.exec(`ALTER TABLE layers RENAME TO plugins`);
+  }
+
+  if (tableExists(db, "layer_resources")) {
+    db.exec(`
+      CREATE TABLE plugin_resources (
+        plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+        resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (plugin_id, resource_id)
+      );
+      INSERT INTO plugin_resources (plugin_id, resource_id, "order")
+        SELECT layer_id, resource_id, "order" FROM layer_resources;
+      DROP TABLE layer_resources;
+    `);
+  }
+
+  if (tableExists(db, "layer_working_snapshots")) {
+    db.exec(`
+      CREATE TABLE plugin_working_snapshots (
+        plugin_id TEXT PRIMARY KEY REFERENCES plugins(id) ON DELETE CASCADE,
+        source_version TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      INSERT INTO plugin_working_snapshots (plugin_id, source_version, payload, created_at)
+        SELECT layer_id, source_version, payload, created_at FROM layer_working_snapshots;
+      DROP TABLE layer_working_snapshots;
+    `);
+  }
+
+  if (tableExists(db, "layer_publish_targets")) {
+    db.exec(`
+      CREATE TABLE plugin_publish_targets (
+        plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+        org_slug TEXT NOT NULL,
+        catalog_slug TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (plugin_id, org_slug, catalog_slug)
+      );
+      INSERT INTO plugin_publish_targets (plugin_id, org_slug, catalog_slug, created_at)
+        SELECT layer_id, org_slug, catalog_slug, created_at FROM layer_publish_targets;
+      DROP TABLE layer_publish_targets;
+    `);
+  }
+
+  if (tableExists(db, "project_layers")) {
+    db.exec(`
+      CREATE TABLE project_plugins (
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        plugin_id TEXT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+        platforms TEXT NOT NULL DEFAULT '[]',
+        applied_at TEXT NOT NULL,
+        PRIMARY KEY (project_id, plugin_id)
+      );
+      INSERT INTO project_plugins (project_id, plugin_id, platforms, applied_at)
+        SELECT project_id, layer_id, platforms, applied_at FROM project_layers;
+      DROP TABLE project_layers;
+    `);
+  }
+
+  if (tableExists(db, "global_apply_snapshots")) {
+    const columns = db
+      .prepare("PRAGMA table_info(global_apply_snapshots)")
+      .all() as Array<{ name: string }>;
+    if (columns.some((column) => column.name === "layer_ids")) {
+      db.exec(
+        `ALTER TABLE global_apply_snapshots RENAME COLUMN layer_ids TO plugin_ids`,
+      );
+    }
+  }
 }
 
 /**
@@ -383,8 +467,9 @@ export function initializeSchema(
     );
   }
 
-  // Table rebuilds (v26) need FKs off; SQLite ignores FK pragma changes inside a transaction.
-  const needsFkOff = currentVersion < 26 && SCHEMA_VERSION >= 26;
+  // Table rebuilds (v26) and renames (v27) need FKs off; SQLite ignores FK
+  // pragma changes inside a transaction.
+  const needsFkOff = currentVersion < 27 && SCHEMA_VERSION >= 27;
   if (needsFkOff) {
     db.exec("PRAGMA foreign_keys = OFF");
   }

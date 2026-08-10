@@ -25,13 +25,13 @@ describe("initializeSchema", () => {
           "environment_secret_refs",
           "environments",
           "project_harnesses",
-          "layer_resources",
-          "layer_publish_targets",
-          "layers",
-          "project_layers",
+          "plugin_resources",
+          "plugin_publish_targets",
+          "plugins",
+          "project_plugins",
           "projects",
           "resources",
-          "layer_working_snapshots",
+          "plugin_working_snapshots",
           "schema_version",
           "snapshots",
         ]),
@@ -42,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(26);
+      expect(versionRow.version).toBe(27);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -54,7 +54,7 @@ describe("initializeSchema", () => {
 
       const layerColumns = context.connection
         .getDb()
-        .prepare("PRAGMA table_info(layers)")
+        .prepare("PRAGMA table_info(plugins)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       expect(layerColumns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
@@ -147,7 +147,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 26 }]);
+      expect(versionRows).toEqual([{ version: 27 }]);
     } finally {
       await context.cleanup();
     }
@@ -407,7 +407,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(26);
+      expect(version).toBe(27);
 
       const cols = db
         .prepare("PRAGMA table_info(layers)")
@@ -477,7 +477,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(26);
+      expect(version).toBe(27);
 
       const layerCols = db
         .prepare("PRAGMA table_info(layers)")
@@ -544,7 +544,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(26);
+      expect(version).toBe(27);
 
       const localOrigin = (
         db.prepare("SELECT origin FROM layers WHERE id = 'local'").get() as {
