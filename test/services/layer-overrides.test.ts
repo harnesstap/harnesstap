@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { createLayer, listLayerVersions } from "../../src/models/layer-model.ts";
+import {
+  createLayer,
+  getLayerById,
+  listLayerVersions,
+} from "../../src/models/layer-model.ts";
 import {
   getLayerOverrides,
   setLayerVersionOverride,
@@ -31,6 +35,15 @@ describe("layer overrides", () => {
     expect(getLayerOverrides(layer.id)).toEqual({
       versions: { base: "2.1.0" },
       resources: { "instruction:context": "team-standards" },
+    });
+  });
+
+  it("exposes overrides on the layer model via getLayerById", () => {
+    const layer = createLayer({ name: "root" });
+    setLayerVersionOverride(layer.id, "base", "2.1.0");
+    expect(getLayerById(layer.id)?.overrides).toEqual({
+      versions: { base: "2.1.0" },
+      resources: {},
     });
   });
 });

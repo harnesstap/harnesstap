@@ -66,6 +66,14 @@ describe("initializeSchema", () => {
         ]),
       );
 
+      const globalApplySnapshotColumns = context.connection
+        .getDb()
+        .prepare("PRAGMA table_info(global_apply_snapshots)")
+        .all() as Array<{ name: string }>;
+      expect(globalApplySnapshotColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining(["resolved_set"]),
+      );
+
       const projectColumns = context.connection
         .getDb()
         .prepare("PRAGMA table_info(projects)")
