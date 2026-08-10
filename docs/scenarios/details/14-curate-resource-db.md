@@ -15,13 +15,13 @@ harnesstap resource list --type instruction --search legacy
 harnesstap resource list --type plugin_pin_pin
 harnesstap resource show skill:legacy-helper
 harnesstap resource delete legacy-helper
-harnesstap layer delete <stale-layer-name>
+harnesstap plugin delete <stale-plugin-name>
 ```
 
 Valid `--type` values for material resources: `instruction`, `skill`, `rule`,
 `mcp_server`, `permission`, `hook`, `agent`, `command`, `env_var`,
-`model_config`. `resource list` also shows `plugin` resources; `layer`
-composition refs stay hidden unless you inspect a layer directly.
+`model_config`. `resource list` also shows `plugin` resources; `plugin`
+composition refs stay hidden unless you inspect a plugin directly.
 
 Selectors for `resource show` accept `name`, `type:name`, or
 `type:name@namespace` when names collide.

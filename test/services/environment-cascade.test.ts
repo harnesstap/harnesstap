@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { createPluginFromSources } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import {
   buildEnvironmentCascadeInput,
@@ -14,10 +14,10 @@ import {
 } from "../../src/services/environment-cascade.ts";
 
 describe("environment cascade", () => {
-  it("last wins: home < layer default", () => {
+  it("last wins: home < plugin default", () => {
     const resolved = resolveEnvironmentCascade({
       home: { vars: { PD_REGION: "us" }, secretRefs: {} },
-      layerDefaults: [{ vars: { PD_REGION: "eu" }, secretRefs: {} }],
+      pluginDefaults: [{ vars: { PD_REGION: "eu" }, secretRefs: {} }],
     });
     expect(resolved.vars.PD_REGION).toBe("eu");
   });
@@ -28,16 +28,16 @@ describe("environment cascade", () => {
         vars: {},
         secretRefs: { PD_TOKEN: { provider: "env", ref: "HOME_TOKEN" } },
       },
-      layerDefaults: [
+      pluginDefaults: [
         {
           vars: {},
-          secretRefs: { PD_TOKEN: { provider: "keychain", ref: "layer-token" } },
+          secretRefs: { PD_TOKEN: { provider: "keychain", ref: "plugin-token" } },
         },
       ],
     });
     expect(resolved.secretRefs.PD_TOKEN).toEqual({
       provider: "keychain",
-      ref: "layer-token",
+      ref: "plugin-token",
     });
   });
 
@@ -63,7 +63,7 @@ describe("environment cascade", () => {
       expect(home?.vars.PD_REGION).toBe("us");
 
       const resolved = resolveEnvironmentCascadeForApply({
-        configuredLayerIds: [],
+        configuredPluginIds: [],
       });
       expect(resolved.vars.PD_REGION).toBe("us");
     } finally {
@@ -71,8 +71,8 @@ describe("environment cascade", () => {
     }
   });
 
-  it("prefers layer default environment over home when both are set", async () => {
-    const context = await createInitializedTestContext("env-cascade-layer-default");
+  it("prefers plugin default environment over home when both are set", async () => {
+    const context = await createInitializedTestContext("env-cascade-plugin-default");
 
     try {
       const home = createEnvironment({ name: "home-env" });
@@ -102,9 +102,9 @@ describe("environment cascade", () => {
         }),
       );
 
-      const layer = createLayerFromSources({
+      const plugin = createPluginFromSources({
         name: "backend",
-        sourceLayerIds: [],
+        sourcePluginIds: [],
         environmentId: prod.id,
       });
 
@@ -116,7 +116,7 @@ describe("environment cascade", () => {
       );
 
       const cascadeInput = buildEnvironmentCascadeInput({
-        configuredLayerIds: [layer.id],
+        configuredPluginIds: [plugin.id],
       });
       const resolved = resolveEnvironmentCascade(cascadeInput);
       expect(resolved.vars.PD_REGION).toBe("prod");
@@ -155,7 +155,7 @@ describe("environment cascade", () => {
       );
 
       const resolved = resolveEnvironmentCascadeForApply({
-        configuredLayerIds: [],
+        configuredPluginIds: [],
       });
       expect(resolved.vars.PD_TOKEN).toBe("plain-token");
     } finally {
@@ -177,7 +177,7 @@ describe("environment cascade", () => {
           name: "PD_REGION",
           description: "",
           content: "",
-          metadata: { key: "PD_REGION", value: "layer-default" },
+          metadata: { key: "PD_REGION", value: "plugin-default" },
           source: "manual",
           created_at: "now",
           updated_at: "now",

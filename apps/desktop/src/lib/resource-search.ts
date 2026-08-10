@@ -13,7 +13,7 @@ const RESOURCE_TYPE_PREFIXES = new Set([
   "env_var",
   "model_config",
   "plugin_pin",
-  "layer",
+  "plugin",
 ]);
 
 export type ListSearchQuery = {

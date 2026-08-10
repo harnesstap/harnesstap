@@ -19,7 +19,7 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 
 ## Architecture
 
-- **Resources** are imported into a local library, composed into **layers**, then **applied** to harness-specific on-disk files.
+- **Resources** are imported into a local library, composed into **plugins**, then **applied** to harness-specific on-disk files.
 - Platform serializers live under `src/platforms/`; shared orchestration under `src/services/`.
 - Authoritative product spec: `SPEC.md`. Contributing workflow: `CONTRIBUTING.md`.
 

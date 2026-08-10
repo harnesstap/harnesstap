@@ -1,6 +1,6 @@
-import { getLayerByName, getLayerById, resolveLayerSelector } from "../models/layer-model.js";
+import { getPluginByName, getPluginById, resolvePluginSelector } from "../models/plugin-model.js";
 import { getEnvironment, resolveEnvironmentSelector } from "../models/environment.js";
-import type { Layer, Environment } from "../types.js";
+import type { Plugin, Environment } from "../types.js";
 
 function isUlid(value: string): boolean {
   return /^[0-9A-Z]{26}$/.test(value);
@@ -23,21 +23,21 @@ export function maybeResolveEnvironment(selector: string): Environment | undefin
   return result.status === "found" ? result.environment : undefined;
 }
 
-export function resolveConfiguredLayerOrThrow(selector: string): Layer {
-  const layer = resolveLayerSelector(selector);
-  if (!layer) {
-    throw new Error(`Configured layer not found: ${selector}`);
+export function resolveConfiguredPluginOrThrow(selector: string): Plugin {
+  const plugin = resolvePluginSelector(selector);
+  if (!plugin) {
+    throw new Error(`Configured plugin not found: ${selector}`);
   }
-  return layer;
+  return plugin;
 }
 
-export function resolveConfiguredLayerByNameOrId(
+export function resolveConfiguredPluginByNameOrId(
   selector: string,
-): Layer | undefined {
+): Plugin | undefined {
   if (isUlid(selector)) {
-    return getLayerById(selector);
+    return getPluginById(selector);
   }
-  return getLayerByName(selector);
+  return getPluginByName(selector);
 }
 
 export function resolveEnvironmentByIdOrThrow(environmentId: string): Environment {

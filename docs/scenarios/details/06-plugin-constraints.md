@@ -1,18 +1,18 @@
-# Scenario 6: Add plugin constraints to a layer
+# Scenario 6: Add plugin constraints to a plugin
 
 **Frequency: Rare** · **Status: Shipped**
 
 [← Back to scenarios index](../scenarios.md)
 
 Use this when your environment depends on Claude plugins and you want the
-layer to describe not just files, but also expected plugin versions.
+plugin to describe not just files, but also expected plugin versions.
 
 Typical commands:
 
 ```bash
-harnesstap layer edit my-setup --add formatter@team-marketplace --type plugin_pin --version "^2.1.0"
-harnesstap layer edit my-setup --remove formatter@team-marketplace --type plugin_pin
-harnesstap layer show my-setup
+harnesstap plugin edit my-setup --add formatter@team-marketplace --type plugin_pin --version "^2.1.0"
+harnesstap plugin edit my-setup --remove formatter@team-marketplace --type plugin_pin
+harnesstap plugin show my-setup
 ```
 
 This is especially useful for team-wide setups where the harness environment

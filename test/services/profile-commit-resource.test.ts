@@ -1,9 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { createLayer, addResourceToLayer, setLayerTags, getLayerById } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags, getPluginById } from "../../src/models/plugin-model.ts";
 import { createResource, getResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import {
   commitManagedPathFromLive,
   commitManagedResourceFromLive,
@@ -33,8 +33,8 @@ describe("profile-commit-resource", () => {
   it("commits modified managed skill content from live disk into the library", async () => {
     const context = await createInitializedTestContext("profile-commit-managed");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const skill = createResource({
         type: "skill",
         name: "manual-skill",
@@ -43,9 +43,9 @@ describe("profile-commit-resource", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(profile.id, skill.id);
+      addResourceToPlugin(profile.id, skill.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -75,7 +75,7 @@ describe("profile-commit-resource", () => {
       expect(committed.name).toBe("manual-skill");
       const library = getResource(skill.id);
       expect(library?.content).toContain("# updated live");
-      expect(getLayerById(profile.id)?.dirty).toBe(true);
+      expect(getPluginById(profile.id)?.dirty).toBe(true);
     } finally {
       await context.cleanup();
     }
@@ -84,8 +84,8 @@ describe("profile-commit-resource", () => {
   it("commits live mcp.json into profile mcp_server resources", async () => {
     const context = await createInitializedTestContext("profile-commit-mcp");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const mcp = createResource({
         type: "mcp_server",
         name: "alpha",
@@ -94,9 +94,9 @@ describe("profile-commit-resource", () => {
         metadata: { transport: "http", url: "https://example.com/old" },
         source: "~/.cursor/mcp.json",
       });
-      addResourceToLayer(profile.id, mcp.id);
+      addResourceToPlugin(profile.id, mcp.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "cursor",
         conflictPolicy: "replace",
       });
@@ -148,8 +148,8 @@ describe("profile-commit-resource", () => {
   it("commits live .copilot/mcp-config.json into profile mcp_server resources", async () => {
     const context = await createInitializedTestContext("profile-commit-copilot-mcp");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const cursorMcp = createResource({
         type: "mcp_server",
         name: "cursor-only",
@@ -166,10 +166,10 @@ describe("profile-commit-resource", () => {
         metadata: { transport: "http", url: "https://example.com/old" },
         source: "~/.copilot/mcp-config.json",
       });
-      addResourceToLayer(profile.id, cursorMcp.id);
-      addResourceToLayer(profile.id, mcp.id);
+      addResourceToPlugin(profile.id, cursorMcp.id);
+      addResourceToPlugin(profile.id, mcp.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "copilot-cli",
         conflictPolicy: "replace",
       });

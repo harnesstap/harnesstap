@@ -9,19 +9,22 @@ import {
   forceRefreshCloudAccountAccess,
 } from "./cloud-account-auth.js";
 import {
-  normalizeCatalogLayer,
-  type CatalogLayer,
+  normalizeCatalogPlugin,
+  type CatalogPlugin,
   type CatalogListOptions,
   type CatalogListResult,
 } from "./catalog-types.js";
 import {
   formatCanonicalPublishedSelector,
   formatPublishedSelector,
-  parseLayerSelector,
-} from "./layer-selector.js";
+  parsePluginSelector,
+} from "./plugin-selector.js";
+import { parseApEnvelope } from "./agent-plugins/envelope.js";
+import type { ApPackageFiles } from "./agent-plugins/files.js";
+import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
-import { fetchWithTimeout, formatCatalogRequestError } from "./transport/fetch-with-timeout.js";
+import { fetchWithTimeout, formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
 
 function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): CatalogListOptions {
   return {
@@ -31,28 +34,28 @@ function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): Cat
   };
 }
 
-function catalogLayerKey(layer: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">): string {
-  return `${layer.orgSlug}/${layer.catalogSlug}/${layer.slug}`;
+function catalogPluginKey(plugin: Pick<CatalogPlugin, "orgSlug" | "catalogSlug" | "slug">): string {
+  return `${plugin.orgSlug}/${plugin.catalogSlug}/${plugin.slug}`;
 }
 
-function dedupeCatalogLayers(layers: CatalogLayer[]): CatalogLayer[] {
-  const byKey = new Map<string, CatalogLayer>();
+function dedupeCatalogPlugins(plugins: CatalogPlugin[]): CatalogPlugin[] {
+  const byKey = new Map<string, CatalogPlugin>();
   const visibilityRank = { organization: 3, shared: 2, public: 1 } as const;
-  for (const layer of layers) {
-    const key = catalogLayerKey(layer);
+  for (const plugin of plugins) {
+    const key = catalogPluginKey(plugin);
     const existing = byKey.get(key);
-    if (!existing || visibilityRank[layer.visibility] > visibilityRank[existing.visibility]) {
-      byKey.set(key, layer);
+    if (!existing || visibilityRank[plugin.visibility] > visibilityRank[existing.visibility]) {
+      byKey.set(key, plugin);
     }
   }
   return [...byKey.values()];
 }
 
-function sortCatalogLayers(
-  layers: CatalogLayer[],
+function sortCatalogPlugins(
+  plugins: CatalogPlugin[],
   sort: "updated" | "name" = "updated",
-): CatalogLayer[] {
-  const sorted = [...layers];
+): CatalogPlugin[] {
+  const sorted = [...plugins];
   if (sort === "name") {
     sorted.sort((left, right) => {
       const byOrg = left.orgSlug.localeCompare(right.orgSlug);
@@ -80,7 +83,7 @@ function sortCatalogLayers(
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {
     ...result,
-    layers: result.layers.map((layer) => normalizeCatalogLayer(layer)),
+    plugins: result.plugins.map((plugin) => normalizeCatalogPlugin(plugin)),
   };
 }
 
@@ -88,7 +91,7 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
   const root = baseUrl.replace(/\/+$/, "");
 
   return {
-    async listLayers(options: CatalogListOptions = {}): Promise<CatalogListResult> {
+    async listPlugins(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = new URLSearchParams();
       if (options.q?.trim()) params.set("q", options.q.trim());
       if (options.tag?.trim()) params.set("tag", options.tag.trim());
@@ -100,7 +103,7 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
       for (const selector of options.selectors ?? []) params.append("selector", selector);
 
       const listOnce = async (token: string) => {
-        const response = await fetchWithTimeout(`${root}/api/catalog/layers?${params.toString()}`, {
+        const response = await fetchWithTimeout(`${root}/api/catalog/plugins?${params.toString()}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -116,7 +119,7 @@ async function createAuthenticatedCatalogClient(baseUrl: string, accessToken: st
         }
       }
       if (!response.ok) {
-        throw new Error(`Failed to list catalog layers: ${response.status}`);
+        throw new Error(`Failed to list catalog plugins: ${response.status}`);
       }
       const result = await response.json() as CatalogListResult;
       return normalizeListResult(result);
@@ -144,7 +147,7 @@ export async function resolveCatalogAccess(input?: {
   };
 }
 
-export async function listCatalogLayersPage(
+export async function listCatalogPluginsPage(
   options: CatalogListOptions = {},
   input?: { account?: string; baseUrl?: string },
 ): Promise<CatalogListResult> {
@@ -159,69 +162,69 @@ export async function listCatalogLayersPage(
           access.scope.cloudBaseUrl,
           ensured.accessToken,
         );
-        return await client.listLayers(scopedOptions);
+        return await client.listPlugins(scopedOptions);
       }
-      return await access.publicClient.listLayers(scopedOptions);
+      return await access.publicClient.listPlugins(scopedOptions);
     }
 
     if (access.authenticatedClient) {
-      return await access.authenticatedClient.listLayers(scopedOptions);
+      return await access.authenticatedClient.listPlugins(scopedOptions);
     }
 
-    return await access.publicClient.listLayers(scopedOptions);
+    return await access.publicClient.listPlugins(scopedOptions);
   } catch (error) {
     throw new Error(formatCatalogRequestError(error), { cause: error });
   }
 }
 
-export async function fetchCatalogLayer(
-  layer: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">,
+export async function fetchCatalogPlugin(
+  plugin: Pick<CatalogPlugin, "orgSlug" | "catalogSlug" | "slug">,
   input?: { account?: string; baseUrl?: string },
-): Promise<CatalogLayer> {
-  const key = catalogLayerKey(layer);
+): Promise<CatalogPlugin> {
+  const key = catalogPluginKey(plugin);
   const selector = formatCanonicalPublishedSelector({
-    org: layer.orgSlug,
-    catalog: layer.catalogSlug,
-    name: layer.slug,
+    org: plugin.orgSlug,
+    catalog: plugin.catalogSlug,
+    name: plugin.slug,
   });
 
   let cursor: string | null = null;
   do {
-    const result = await listCatalogLayersPage(
+    const result = await listCatalogPluginsPage(
       {
         selectors: [selector],
-        orgs: [layer.orgSlug],
-        catalog: layer.catalogSlug,
+        orgs: [plugin.orgSlug],
+        catalog: plugin.catalogSlug,
         limit: 50,
         cursor,
       },
       input,
     );
-    const found = result.layers.find((candidate) => catalogLayerKey(candidate) === key);
+    const found = result.plugins.find((candidate) => catalogPluginKey(candidate) === key);
     if (found) {
       return found;
     }
     cursor = result.nextCursor;
   } while (cursor);
 
-  throw new Error(`Catalog layer not found: ${key}`);
+  throw new Error(`Catalog plugin not found: ${key}`);
 }
 
-export async function listLayersInScope(
+export async function listPluginsInScope(
   options: CatalogListOptions = {},
   input?: { account?: string; baseUrl?: string },
-): Promise<CatalogLayer[]> {
+): Promise<CatalogPlugin[]> {
   const access = await resolveCatalogAccess(input);
   const scopedOptions = buildScopeParams(access.scope, options);
 
   if (access.authenticatedClient) {
-    const result = await access.authenticatedClient.listLayers(scopedOptions);
-    return result.layers;
+    const result = await access.authenticatedClient.listPlugins(scopedOptions);
+    return result.plugins;
   }
 
-  const orgScopedLayers: CatalogLayer[] = [];
+  const orgScopedPlugins: CatalogPlugin[] = [];
   const selectorsOnly = (scopedOptions.selectors ?? []).filter((selector) => {
-    const parsed = parseLayerSelector(selector);
+    const parsed = parsePluginSelector(selector);
     if (parsed.scope !== "published") {
       return true;
     }
@@ -229,40 +232,45 @@ export async function listLayersInScope(
   });
 
   if ((scopedOptions.orgs ?? []).length > 0) {
-    const result = await access.publicClient.listLayers({
+    const result = await access.publicClient.listPlugins({
       ...scopedOptions,
       selectors: [],
       limit: scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10),
     });
-    orgScopedLayers.push(...result.layers);
+    orgScopedPlugins.push(...result.plugins);
   }
 
   if (selectorsOnly.length > 0) {
-    const result = await access.publicClient.listLayers({
+    const result = await access.publicClient.listPlugins({
       ...scopedOptions,
       orgs: [],
       selectors: selectorsOnly,
       limit: scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10),
     });
-    orgScopedLayers.push(...result.layers);
+    orgScopedPlugins.push(...result.plugins);
   }
 
-  const deduped = dedupeCatalogLayers(orgScopedLayers);
+  const deduped = dedupeCatalogPlugins(orgScopedPlugins);
   const limit = scopedOptions.limit ?? (scopedOptions.q?.trim() ? 25 : 10);
   const ordered = scopedOptions.q?.trim()
     ? rankCatalogSearchResults(deduped, scopedOptions.q)
-    : sortCatalogLayers(deduped, scopedOptions.sort);
+    : sortCatalogPlugins(deduped, scopedOptions.sort);
   return ordered.slice(0, limit);
 }
 
-export async function downloadCatalogBundle(input: {
+export interface DownloadedPackage {
+  version: string;
+  files: ApPackageFiles;
+}
+
+export async function downloadCatalogPackage(input: {
   orgSlug: string;
   catalogSlug?: string;
-  layerSlug: string;
+  pluginSlug: string;
   version?: string;
   account?: string;
   baseUrl?: string;
-}): Promise<{ version: string; body: string }> {
+}): Promise<DownloadedPackage> {
   const catalogSlug = input.catalogSlug ?? "default";
   const access = await resolveCatalogAccess({
     account: input.account,
@@ -272,13 +280,13 @@ export async function downloadCatalogBundle(input: {
   const selector = formatPublishedSelector({
     org: input.orgSlug,
     catalog: catalogSlug,
-    name: input.layerSlug,
+    name: input.pluginSlug,
   });
   const inScope = isSelectorInCatalogScope(
     {
       orgSlug: input.orgSlug,
       catalogSlug,
-      layerSlug: input.layerSlug,
+      pluginSlug: input.pluginSlug,
     },
     access.scope,
   );
@@ -291,29 +299,34 @@ export async function downloadCatalogBundle(input: {
   const accessToken = ensured?.accessToken;
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
-    const url = catalogSlug === "default"
-      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`
-      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.layerSlug)}/versions/${encodedVersion}/layer-export`;
-    let response = await fetchWithTimeout(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const url =
+      `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}` +
+      `/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.pluginSlug)}` +
+      `/versions/${encodedVersion}/package`;
+    const downloadOnce = async (token: string) =>
+      cloudFetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: AP_PACKAGE_MEDIA_TYPE,
+        },
+      });
+    let response = await downloadOnce(accessToken);
     if (response.status === 401) {
       const refreshed = await forceRefreshCloudAccountAccess(input.account);
       if (refreshed) {
-        response = await fetchWithTimeout(url, {
-          headers: {
-            Authorization: `Bearer ${refreshed.accessToken}`,
-          },
-        });
+        response = await downloadOnce(refreshed.accessToken);
       }
     }
     if (response.ok) {
-      return { version, body: await response.text() };
+      return {
+        version,
+        files: parseApEnvelope(await response.text(), url),
+      };
     }
     if (response.status !== 404) {
-      throw new Error(`Failed to download catalog layer export: ${response.status}`);
+      throw new Error(
+        `Failed to download ${input.orgSlug}/${catalogSlug}/${input.pluginSlug}: ${response.status}`,
+      );
     }
   }
 
@@ -321,33 +334,33 @@ export async function downloadCatalogBundle(input: {
     throw new Error(formatOutOfScopeMessage(selector));
   }
 
-  return access.publicClient.downloadBundle(
+  return access.publicClient.downloadPackage(
     input.orgSlug,
-    input.layerSlug,
+    input.pluginSlug,
     version,
     catalogSlug,
   );
 }
 
-export async function validatePublicOrgHasLayers(orgSlug: string, baseUrl?: string): Promise<boolean> {
+export async function validatePublicOrgHasPlugins(orgSlug: string, baseUrl?: string): Promise<boolean> {
   const client = createPublicCatalogClient(resolveCatalogScope({ baseUrl }).cloudBaseUrl);
-  const result = await client.listLayers({ orgs: [orgSlug], limit: 1 });
-  return result.layers.length > 0;
+  const result = await client.listPlugins({ orgs: [orgSlug], limit: 1 });
+  return result.plugins.length > 0;
 }
 
-export async function validatePublicLayerExists(
+export async function validatePublicPluginExists(
   selector: string,
   baseUrl?: string,
 ): Promise<boolean> {
   const client = createPublicCatalogClient(resolveCatalogScope({ baseUrl }).cloudBaseUrl);
-  const result = await client.listLayers({ selectors: [selector], limit: 1 });
-  const parsed = parseLayerSelector(selector);
+  const result = await client.listPlugins({ selectors: [selector], limit: 1 });
+  const parsed = parsePluginSelector(selector);
   if (parsed.scope !== "published") {
     return false;
   }
-  return result.layers.some((layer) =>
-    layer.orgSlug === parsed.org
-    && layer.catalogSlug === parsed.catalog
-    && layer.slug === parsed.name,
+  return result.plugins.some((plugin) =>
+    plugin.orgSlug === parsed.org
+    && plugin.catalogSlug === parsed.catalog
+    && plugin.slug === parsed.name,
   );
 }

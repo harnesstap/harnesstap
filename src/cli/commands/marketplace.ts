@@ -259,7 +259,8 @@ export function registerMarketplaceCommands(root: Command): void {
   );
 
   marketplaceCmd
-    .command("add <url>")
+    .command("add")
+    .argument("<url>", "Marketplace git URL to register")
     .option("--name <id>", "Marketplace registry name")
     .option(
       "--platform <id>",
@@ -280,14 +281,16 @@ export function registerMarketplaceCommands(root: Command): void {
     .action(handleMarketplaceListCommand);
 
   marketplaceCmd
-    .command("remove <name>")
+    .command("remove")
     .alias("rm")
+    .argument("<name>", "Marketplace registry name to remove")
     .option("--format <mode>", "Output format: human or json", "human")
     .description("Remove a configured plugin marketplace")
     .action(handleMarketplaceRemoveCommand);
 
   marketplaceCmd
-    .command("show <name>")
+    .command("show")
+    .argument("<name>", "Marketplace registry name to browse")
     .option("--refresh", "Refresh the marketplace catalog before listing")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--no-interactive", "Disable interactive browse picker")

@@ -1,5 +1,5 @@
 import type { CompletionCandidate, CompletionContext } from "../types.js";
-import { completeCatalogLayers } from "./catalog-layer.js";
+import { completeCatalogPlugins } from "./catalog-plugin.js";
 import { completeCatalogOrgs } from "./catalog-org.js";
 
 export async function completeCatalogConnectValue(
@@ -9,8 +9,8 @@ export async function completeCatalogConnectValue(
   if (target === "org") {
     return completeCatalogOrgs(ctx);
   }
-  if (target === "layer") {
-    return completeCatalogLayers(ctx);
+  if (target === "plugin") {
+    return completeCatalogPlugins(ctx);
   }
   return [];
 }

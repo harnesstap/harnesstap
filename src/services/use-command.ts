@@ -45,7 +45,7 @@ function profileTarget(entry: ProjectProfileEntry): string {
     case "local":
       return entry.selector ?? "";
     case "inline":
-      return entry.layer ?? "";
+      return entry.plugin ?? "";
     default: {
       const unhandledSource: never = entry.source;
       throw new Error(`Unhandled profile source: ${unhandledSource}`);
@@ -71,7 +71,7 @@ function listProjectProfiles(config: ResolvedProjectConfig, format: "human" | "j
       rows.map((row) => ({
         profile: row.profile,
         source: row.source,
-        selector_or_layer: row.target,
+        selector_or_plugin: row.target,
         environment: row.environment || undefined,
         default: row.default === "*",
       })),
@@ -88,7 +88,7 @@ function listProjectProfiles(config: ResolvedProjectConfig, format: "human" | "j
     columns: [
       { key: "profile", header: "PROFILE", width: 16 },
       { key: "source", header: "SOURCE", width: 10 },
-      { key: "target", header: "SELECTOR/LAYER", width: 24 },
+      { key: "target", header: "SELECTOR/PLUGIN", width: 24 },
       { key: "environment", header: "ENVIRONMENT", width: 16 },
       { key: "default", header: "", width: 2 },
     ],
@@ -103,7 +103,7 @@ export function renderProjectUseHuman(result: ProjectUseResult): void {
       ? ` with environment ${ui.theme.accent(result.environment_name)}`
       : "";
     ui.info(
-      `Profile ${ui.theme.accent(result.profile_key)} (${result.layer_name}) is already active and in sync${environmentSuffix}.`,
+      `Profile ${ui.theme.accent(result.profile_key)} (${result.plugin_name}) is already active and in sync${environmentSuffix}.`,
     );
     return;
   }
@@ -121,10 +121,10 @@ export function renderProjectUseHuman(result: ProjectUseResult): void {
   if (result.environment_name) {
     ui.info(`Environment: ${ui.theme.accent(result.environment_name)}`);
   }
-  if ((result.pulled_layers?.length ?? 0) > 0) {
-    ui.info(`Pulled ${result.pulled_layers?.length ?? 0} missing layer dependencies:`);
-    for (const pulled of result.pulled_layers ?? []) {
-      console.log(`  - ${pulled.layer_name} (${pulled.source})`);
+  if ((result.pulled_plugins?.length ?? 0) > 0) {
+    ui.info(`Pulled ${result.pulled_plugins?.length ?? 0} missing plugin dependencies:`);
+    for (const pulled of result.pulled_plugins ?? []) {
+      console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
     }
   }
   ui.kvBlock([

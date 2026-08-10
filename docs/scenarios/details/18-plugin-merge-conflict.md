@@ -15,7 +15,7 @@ harnesstap scan . --harness claude-code --dry-run
 harnesstap scan . --harness claude-code
 harnesstap resource list --type plugin_pin_pin
 harnesstap resource show formatter@team-marketplace --all-fields
-harnesstap layer show my-setup
+harnesstap plugin show my-setup
 ```
 
 Start by re-scanning the project so HarnessTap captures the current committed
@@ -25,8 +25,8 @@ plugin declarations in the library. Then compare:
 - **Effective behavior** — what Claude loads after scope merge, often explained
   by a `~/.claude/settings.json` user-scope entry that overrides the project
 
-`layer show` reveals which plugin pins a layer expects at apply time.
-`layer apply --strict-plugin-versions` is the enforcement path when you want
+`plugin show` reveals which plugin pins a plugin expects at apply time.
+`apply --strict-plugin-versions` is the enforcement path when you want
 CI or automation to fail on a mismatch.
 
 When scope merge is the root cause, inspect `.claude/settings.json` in the

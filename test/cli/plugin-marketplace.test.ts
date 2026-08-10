@@ -19,7 +19,11 @@ function initLocalMarketplaceRepo(): string {
       ],
     }),
   );
-  spawnSync("git", ["init"], { cwd: repo });
+  const gitDir = `${repo}.git`;
+  spawnSync("git", ["--git-dir", gitDir, "--work-tree", repo, "-c", "init.templateDir=", "init"], {
+    cwd: repo,
+  });
+  writeFileSync(join(repo, ".git"), `gitdir: ${gitDir}\n`);
   spawnSync("git", ["add", "."], { cwd: repo });
   spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "init"], {
     cwd: repo,
@@ -73,20 +77,20 @@ describe("CLI plugin marketplace", () => {
     }
   });
 
-  it("adds a plugin pin to a layer without installing when profile is inactive", async () => {
+  it("adds a dependency to a plugin with plugin add --to", async () => {
     const context = await createTestContext("cli-plugin-add");
     try {
       await runCli(["init"]);
       await setupLocalMarketplace();
-      await runCli(["layer", "create", "pins-layer"]);
+      await runCli(["plugin", "create", "pins-plugin"]);
 
       const add = await runCli(
         [
           "plugin",
           "add",
           "alpha@local-market",
-          "--layer",
-          "pins-layer",
+          "--to",
+          "pins-plugin",
           "--format",
           "json",
         ],
@@ -94,36 +98,31 @@ describe("CLI plugin marketplace", () => {
       );
       expect(add.exitCode ?? 0).toBe(0);
       const added = JSON.parse(add.stdout) as {
-        status: string;
         ref: string;
-        layerName: string;
-        install?: unknown;
+        to: string;
       };
-      expect(added.status).toBe("attached");
       expect(added.ref).toBe("alpha@local-market");
-      expect(added.layerName).toBe("pins-layer");
-      expect(added.install).toBeUndefined();
+      expect(added.to).toBe("pins-plugin");
 
       const show = await runCli(
-        ["layer", "show", "pins-layer", "--format", "json"],
+        ["plugin", "show", "pins-plugin", "--format", "json"],
         { isTTY: false },
       );
-      const layer = JSON.parse(show.stdout.trim()) as {
-        plugin_pins: Array<{ ref: string }>;
+      const plugin = JSON.parse(show.stdout.trim()) as {
+        dependencies: Array<{ name: string }>;
       };
-      expect(layer.plugin_pins).toHaveLength(1);
-      expect(layer.plugin_pins[0]?.ref).toBe("alpha@local-market");
+      expect(plugin.dependencies.map((d) => d.dependency_name)).toContain("alpha@local-market");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("requires --layer for plugin add in non-interactive mode", async () => {
-    const context = await createTestContext("cli-plugin-add-missing-layer");
+  it("requires --to for plugin add in non-interactive mode", async () => {
+    const context = await createTestContext("cli-plugin-add-missing-plugin");
     try {
       await runCli(["init"]);
       await setupLocalMarketplace();
-      await runCli(["layer", "create", "pins-layer"]);
+      await runCli(["plugin", "create", "pins-plugin"]);
 
       const add = await runCli(
         ["plugin", "add", "alpha@local-market", "--format", "json"],
@@ -131,8 +130,8 @@ describe("CLI plugin marketplace", () => {
       );
 
       expect(add.exitCode).toBe(2);
-      expect(add.stderr).toContain("Layer is required");
-      expect(add.stderr).toContain("USAGE");
+      expect(add.stderr).toContain("Plugin is required");
+      expect(add.stderr).toContain("Pass --to");
     } finally {
       await context.cleanup();
     }

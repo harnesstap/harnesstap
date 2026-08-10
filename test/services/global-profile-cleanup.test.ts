@@ -2,10 +2,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.js";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import {
   collectOrphanSkillFilesOnDisk,
   expandStaleMcpConfigMirrors,
@@ -102,9 +102,9 @@ describe("global-profile-cleanup service", () => {
   it("leaves not-staged skill directories on disk when re-applying the same profile", async () => {
     const context = await createInitializedTestContext("global-profile-cleanup-reapply");
     try {
-      const profile = createLayer({ name: "default" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(
+      const profile = createPlugin({ name: "default" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
         profile.id,
         createResource({
           type: "skill",
@@ -116,7 +116,7 @@ describe("global-profile-cleanup service", () => {
         }).id,
       );
 
-      await applyProfileLayer("default", {
+      await applyProfilePlugin("default", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -124,19 +124,19 @@ describe("global-profile-cleanup service", () => {
 
       const notStagedPath = join(
         context.homeDir,
-        ".claude/skills/building-dbt-semantic-layer/SKILL.md",
+        ".claude/skills/building-dbt-semantic-plugin/SKILL.md",
       );
       mkdirSync(dirname(notStagedPath), { recursive: true });
-      writeFileSync(notStagedPath, "# dbt semantic layer", "utf-8");
+      writeFileSync(notStagedPath, "# dbt semantic plugin", "utf-8");
 
-      const reapplied = await applyProfileLayer("default", {
+      const reapplied = await applyProfilePlugin("default", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
 
       expect(existsSync(notStagedPath)).toBe(true);
       expect(reapplied.removed_files ?? []).not.toContain(
-        ".claude/skills/building-dbt-semantic-layer/SKILL.md",
+        ".claude/skills/building-dbt-semantic-plugin/SKILL.md",
       );
     } finally {
       await context.cleanup();
@@ -146,9 +146,9 @@ describe("global-profile-cleanup service", () => {
   it("removes managed skill A but leaves not-staged skill B when switching to an empty profile", async () => {
     const context = await createInitializedTestContext("global-profile-cleanup-a-b-switch");
     try {
-      const profile1 = createLayer({ name: "profile-1" });
-      setLayerTags(profile1.id, ["profile"]);
-      addResourceToLayer(
+      const profile1 = createPlugin({ name: "profile-1" });
+      setPluginTags(profile1.id, ["profile"]);
+      addResourceToPlugin(
         profile1.id,
         createResource({
           type: "skill",
@@ -160,10 +160,10 @@ describe("global-profile-cleanup service", () => {
         }).id,
       );
 
-      const profile2 = createLayer({ name: "profile-2" });
-      setLayerTags(profile2.id, ["profile"]);
+      const profile2 = createPlugin({ name: "profile-2" });
+      setPluginTags(profile2.id, ["profile"]);
 
-      await applyProfileLayer("profile-1", {
+      await applyProfilePlugin("profile-1", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -175,7 +175,7 @@ describe("global-profile-cleanup service", () => {
       mkdirSync(dirname(skillBPath), { recursive: true });
       writeFileSync(skillBPath, "# Skill B", "utf-8");
 
-      const switched = await applyProfileLayer("profile-2", {
+      const switched = await applyProfilePlugin("profile-2", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -195,9 +195,9 @@ describe("global-profile-cleanup service", () => {
   it("removes the shared hub copy when switching away from a profile that managed the skill", async () => {
     const context = await createInitializedTestContext("global-profile-cleanup-hub-mirror");
     try {
-      const profile1 = createLayer({ name: "with-skills" });
-      setLayerTags(profile1.id, ["profile"]);
-      addResourceToLayer(
+      const profile1 = createPlugin({ name: "with-skills" });
+      setPluginTags(profile1.id, ["profile"]);
+      addResourceToPlugin(
         profile1.id,
         createResource({
           type: "skill",
@@ -209,10 +209,10 @@ describe("global-profile-cleanup service", () => {
         }).id,
       );
 
-      const profile2 = createLayer({ name: "plugin-only" });
-      setLayerTags(profile2.id, ["profile"]);
+      const profile2 = createPlugin({ name: "plugin-only" });
+      setPluginTags(profile2.id, ["profile"]);
 
-      await applyProfileLayer("with-skills", {
+      await applyProfilePlugin("with-skills", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -230,7 +230,7 @@ describe("global-profile-cleanup service", () => {
       mkdirSync(dirname(notStagedHubPath), { recursive: true });
       writeFileSync(notStagedHubPath, "# not staged", "utf-8");
 
-      const switched = await applyProfileLayer("plugin-only", {
+      const switched = await applyProfilePlugin("plugin-only", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -251,9 +251,9 @@ describe("global-profile-cleanup service", () => {
   it("removes sibling harness MCP configs when switching away from a profile that managed MCP", async () => {
     const context = await createInitializedTestContext("global-profile-cleanup-mcp-mirror");
     try {
-      const profile1 = createLayer({ name: "with-mcp" });
-      setLayerTags(profile1.id, ["profile"]);
-      addResourceToLayer(
+      const profile1 = createPlugin({ name: "with-mcp" });
+      setPluginTags(profile1.id, ["profile"]);
+      addResourceToPlugin(
         profile1.id,
         createResource({
           type: "mcp_server",
@@ -268,10 +268,10 @@ describe("global-profile-cleanup service", () => {
         }).id,
       );
 
-      const profile2 = createLayer({ name: "plugin-only" });
-      setLayerTags(profile2.id, ["profile"]);
+      const profile2 = createPlugin({ name: "plugin-only" });
+      setPluginTags(profile2.id, ["profile"]);
 
-      await applyProfileLayer("with-mcp", {
+      await applyProfilePlugin("with-mcp", {
         harness: "cursor",
         conflictPolicy: "replace",
       });
@@ -291,7 +291,7 @@ describe("global-profile-cleanup service", () => {
         "utf-8",
       );
 
-      const switched = await applyProfileLayer("plugin-only", {
+      const switched = await applyProfilePlugin("plugin-only", {
         harness: "cursor,copilot-cli",
         conflictPolicy: "replace",
       });

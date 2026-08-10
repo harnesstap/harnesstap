@@ -33,7 +33,7 @@ export async function promptMaterializationConflict(
       ? conflict.owners
           .map((owner) => `${owner.plugin_name}@${owner.plugin_version ?? "?"}`)
           .join(", ")
-      : "another layer or manual edit";
+      : "another plugin or manual edit";
 
   ui.warn(`File already exists: ${conflict.path}`);
   ui.dim(`  Previously written by: ${ownerSummary}`);

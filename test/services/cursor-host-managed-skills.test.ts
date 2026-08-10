@@ -8,9 +8,9 @@ import {
   scanCursorHostManagedSkills,
 } from "../../src/services/cursor-host-managed-skills.ts";
 import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { scanHomeDefaults } from "../../src/services/scanner.ts";
 import { detectNotStagedProfileResources } from "../../src/services/profile-untracked-resources.ts";
@@ -109,8 +109,8 @@ describe("cursor host-managed skills", () => {
   it("does not treat host-managed skills as not-staged", async () => {
     const context = await createInitializedTestContext("cursor-host-not-staged");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -119,8 +119,8 @@ describe("cursor host-managed skills", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
-      await applyProfileLayer("work", {
+      addResourceToPlugin(plugin.id, resource.id);
+      await applyProfilePlugin("work", {
         harness: "cursor",
         conflictPolicy: "replace",
       });
@@ -152,8 +152,8 @@ describe("cursor host-managed skills", () => {
   it("attaches host_managed on full profile status and omits it on fast depth", async () => {
     const context = await createInitializedTestContext("cursor-host-status");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const skill = createResource({
         type: "skill",
         name: "create-skill",
@@ -162,8 +162,8 @@ describe("cursor host-managed skills", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, skill.id);
-      await applyProfileLayer("work", {
+      addResourceToPlugin(plugin.id, skill.id);
+      await applyProfilePlugin("work", {
         harness: "cursor",
         conflictPolicy: "replace",
       });

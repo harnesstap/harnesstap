@@ -19,7 +19,7 @@ describe("snapshot model", () => {
         project_id: project.id,
         label: "Before apply",
         state: {
-          layers: [],
+          plugins: [],
           resources: [],
           platform_files: {
             "claude-code": {
@@ -57,7 +57,7 @@ describe("snapshot model", () => {
         project_id: project.id,
         label: "Harness snapshot",
         state: {
-          layers: [],
+          plugins: [],
           resources: [],
           harness_files: {
             "claude-code": {
@@ -135,7 +135,7 @@ describe("snapshot model", () => {
       snapshotModel.createSnapshot({
         project_id: project.id,
         label: "First",
-        state: { layers: [], resources: [], platform_files: {} },
+        state: { plugins: [], resources: [], platform_files: {} },
       });
 
       await new Promise((r) => setTimeout(r, 10));
@@ -143,7 +143,7 @@ describe("snapshot model", () => {
       snapshotModel.createSnapshot({
         project_id: project.id,
         label: "Second",
-        state: { layers: [], resources: [], platform_files: {} },
+        state: { plugins: [], resources: [], platform_files: {} },
       });
 
       const snapshots = snapshotModel.listSnapshots(project.id);

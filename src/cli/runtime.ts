@@ -1,9 +1,11 @@
 import type { Command } from "commander";
 import { initializeSchema } from "../db/schema.js";
 import { getDb } from "../db/connection.js";
-import { listProfileLayersCommand } from "../services/profile-commands.js";
+import { listProfilePluginsCommand } from "../services/profile-commands.js";
 import { CliUsageError } from "../services/cli-errors.js";
+import { PluginProvenanceError } from "../services/plugin-origin.js";
 import { isPromptCancellationError } from "../services/wizards/shared.js";
+import { takeSelectorDeprecations } from "../services/resource-selector.js";
 import { ui } from "../ui/index.js";
 import { program } from "./program.js";
 import {
@@ -46,6 +48,12 @@ export function renderCliError(error: unknown, argv: string[] = process.argv): v
     return;
   }
 
+  if (error instanceof PluginProvenanceError) {
+    ui.danger(error.message, { hints: error.hints });
+    process.exitCode = 1;
+    return;
+  }
+
   if (error instanceof CliUsageError) {
     ui.danger(error.message, { hints: error.hints });
   } else {
@@ -85,7 +93,7 @@ function rewriteProfileShorthandArgv(argv: string[]): string[] {
     const db = getDb();
     initializeSchema(db);
     profileNames = new Set(
-      listProfileLayersCommand().map((profile) => profile.name),
+      listProfilePluginsCommand().map((profile) => profile.name),
     );
   } catch {
     return argv;
@@ -110,6 +118,9 @@ export async function runHarnesstapCli(
   const effectiveArgv = rewriteProfileShorthandArgv(argv);
   try {
     await program.parseAsync(effectiveArgv);
+    for (const notice of takeSelectorDeprecations()) {
+      ui.warn(notice);
+    }
   } catch (error) {
     if (isPromptCancellationError(error)) {
       return;

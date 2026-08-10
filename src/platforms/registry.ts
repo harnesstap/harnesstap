@@ -1,4 +1,8 @@
-import type { PlatformDefinition, PlatformFeature } from "../types.js";
+import type {
+  MaterialResourceType,
+  PlatformDefinition,
+  PlatformFeature,
+} from "../types.js";
 
 // ── Platform definitions ────────────────────────────────────────────────
 // Each platform declares what features it supports and where files live.
@@ -237,7 +241,7 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: "~/.kiro/skills/",
   }, "instruction-only"),
 
-  // Pi extensions install via `pi install git:...`, not layer apply.
+  // Pi extensions install via `pi install git:...`, not plugin apply.
   // HarnessTap can scan `.agents/skills/` but cannot materialize pi-extension/index.js.
   def("pi", "Pi", ["instructions", "skills"], {
     instructions: "AGENTS.md",
@@ -413,4 +417,29 @@ export function detectPlatforms(projectRoot: string): string[] {
   // Implemented in the scanner service.
   void projectRoot;
   return [];
+}
+
+// ── Resource conflict classes ───────────────────────────────────────────
+// Set-like types are keyed by distinct names; losing one side of an
+// equal-depth collision is recoverable, so it warns. Singleton types change
+// behavior or weaken a security posture when silently dropped, so an
+// equal-depth collision is an error.
+
+export type ResourceClass = "set" | "singleton";
+
+export const RESOURCE_CLASSES: Record<MaterialResourceType, ResourceClass> = {
+  skill: "set",
+  rule: "set",
+  agent: "set",
+  command: "set",
+  hook: "set",
+  mcp_server: "set",
+  instruction: "singleton",
+  model_config: "singleton",
+  permission: "singleton",
+  env_var: "singleton",
+};
+
+export function resourceClass(type: MaterialResourceType): ResourceClass {
+  return RESOURCE_CLASSES[type];
 }

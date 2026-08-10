@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
+import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
 import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
@@ -18,14 +18,14 @@ import {
   buildHarnessLiveStatusMap,
   type HarnessLiveStatus,
 } from "./global-profile-status-panel.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import {
-  applyProfileLayer,
+  applyProfilePlugin,
   clearGlobalProfileApply,
-  collectProfileLayerIds,
-  type ApplyProfileLayerResult,
+  collectProfilePluginIds,
+  type ApplyProfilePluginResult,
 } from "./profile-apply.js";
 import {
   buildProfileContents,
@@ -80,7 +80,7 @@ function readRootFile(rootPath: string, relativePath: string): string | null {
 }
 
 function declaredMcpNamesFromExpectedApply(
-  expectedApply: ApplyProfileLayerResult,
+  expectedApply: ApplyProfilePluginResult,
 ): Record<string, string[]> {
   const byHarness: Record<string, string[]> = {};
 
@@ -191,11 +191,11 @@ const CLAUDE_MERGED_CONTAINER_RESOURCE_TYPES = new Set([
   "hook",
 ]);
 
-function profileManagesClaudeSettings(layerIds: string[] | undefined): boolean {
-  if (!layerIds || layerIds.length === 0) {
+function profileManagesClaudeSettings(pluginIds: string[] | undefined): boolean {
+  if (!pluginIds || pluginIds.length === 0) {
     return false;
   }
-  const merged = mergeLayersForApply(layerIds);
+  const merged = mergePluginsForApply(pluginIds);
   return merged.resources.some((resource) =>
     CLAUDE_MERGED_CONTAINER_RESOURCE_TYPES.has(resource.type),
   );
@@ -276,7 +276,7 @@ function buildPreviewFileChanges(
   rootPath: string,
   expectedFiles: Array<{ path: string; content: string }>,
   removedFiles: string[] | undefined,
-  layerIds?: string[],
+  pluginIds?: string[],
 ): DriftFileChange[] {
   return withMappedResources(
     withUnmanagedMergedContainers(
@@ -291,13 +291,13 @@ function buildPreviewFileChanges(
         ),
         removedFiles,
       ),
-      profileManagesClaudeSettings(layerIds),
+      profileManagesClaudeSettings(pluginIds),
     ),
   );
 }
 
 function isMaterialResource(resource: Resource): boolean {
-  return resource.type !== "plugin_pin" && resource.type !== "layer";
+  return resource.type !== "plugin";
 }
 
 export interface CollectExpectedManagedFilesInput {
@@ -311,8 +311,8 @@ export interface CollectExpectedManagedFilesResult {
   rootPath: string;
   expectedFiles: Array<{ path: string; content: string }>;
   warning?: string;
-  expectedApply?: ApplyProfileLayerResult;
-  layerIds?: string[];
+  expectedApply?: ApplyProfilePluginResult;
+  pluginIds?: string[];
   removedFiles?: string[];
 }
 
@@ -345,25 +345,25 @@ async function collectHomeExpectedManagedFiles(
     }
   }
 
-  const layer = resolveLayerSelector(profile);
-  if (!layer) {
+  const plugin = resolvePluginSelector(profile);
+  if (!plugin) {
     return {
       rootPath: homeRoot,
       expectedFiles: [],
-      warning: `missing layer "${profile}"`,
+      warning: `missing plugin "${profile}"`,
     };
   }
-  if (!isProfileLayer(layer)) {
+  if (!isProfilePlugin(plugin)) {
     return {
       rootPath: homeRoot,
       expectedFiles: [],
-      warning: `layer "${layer.name}" is not tagged as a profile`,
+      warning: `plugin "${plugin.name}" is not tagged as a profile`,
     };
   }
 
-  const layerIds = collectProfileLayerIds(layer);
+  const pluginIds = collectProfilePluginIds(plugin);
   try {
-    const expectedApply = await applyProfileLayer(profile, {
+    const expectedApply = await applyProfilePlugin(profile, {
       dryRun: true,
       harness,
       conflictPolicy: "replace",
@@ -373,14 +373,14 @@ async function collectHomeExpectedManagedFiles(
       rootPath: homeRoot,
       expectedFiles: uniqueExpectedFiles(expectedApply.expected_files ?? []),
       expectedApply,
-      layerIds,
+      pluginIds,
       removedFiles: expectedApply.removed_files,
     };
   } catch (error) {
     return {
       rootPath: homeRoot,
       expectedFiles: [],
-      layerIds,
+      pluginIds,
       warning: error instanceof Error ? error.message : String(error),
     };
   }
@@ -415,19 +415,19 @@ async function collectProjectExpectedManagedFiles(
   }
 
   const resolvedRoot = resolve(projectPath);
-  const layer = resolveLayerSelector(profile);
-  if (!layer) {
+  const plugin = resolvePluginSelector(profile);
+  if (!plugin) {
     return {
       rootPath: resolvedRoot,
       expectedFiles: [],
-      warning: `missing layer "${profile}"`,
+      warning: `missing plugin "${profile}"`,
     };
   }
-  if (!isProfileLayer(layer) && !isEmptyBuiltinProfile(profile)) {
+  if (!isProfilePlugin(plugin) && !isEmptyBuiltinProfile(profile)) {
     return {
       rootPath: resolvedRoot,
       expectedFiles: [],
-      warning: `layer "${layer.name}" is not tagged as a profile`,
+      warning: `plugin "${plugin.name}" is not tagged as a profile`,
     };
   }
 
@@ -444,8 +444,8 @@ async function collectProjectExpectedManagedFiles(
     };
   }
 
-  const layerIds = collectProfileLayerIds(layer);
-  const merged = mergeLayersForApply(layerIds);
+  const pluginIds = collectProfilePluginIds(plugin);
+  const merged = mergePluginsForApply(pluginIds);
   const material = merged.resources.filter(isMaterialResource);
   try {
     const generated = await generateFiles(material, platformIds, resolvedRoot, {
@@ -463,14 +463,14 @@ async function collectProjectExpectedManagedFiles(
     return {
       rootPath: resolvedRoot,
       expectedFiles,
-      layerIds,
+      pluginIds,
       removedFiles,
     };
   } catch (error) {
     return {
       rootPath: resolvedRoot,
       expectedFiles: [],
-      layerIds,
+      pluginIds,
       warning: error instanceof Error ? error.message : String(error),
     };
   }
@@ -496,8 +496,8 @@ async function previewHomeApply(
   const collected = await collectHomeExpectedManagedFiles(profile, harness);
 
   if (collected.warning) {
-    if (collected.layerIds) {
-      const merged = mergeLayersForApply(collected.layerIds);
+    if (collected.pluginIds) {
+      const merged = mergePluginsForApply(collected.pluginIds);
       const declaredMcpByHarness = {
         "claude-code": merged.resources
           .filter((resource) => resource.type === "mcp_server")
@@ -545,15 +545,15 @@ async function previewHomeApply(
           collected.rootPath,
           collected.expectedFiles,
           collected.removedFiles,
-          collected.layerIds,
+          collected.pluginIds,
         ),
         root_path: collected.rootPath,
       },
     };
   }
 
-  const declaredPins = collected.layerIds
-    ? mergeLayersForApply(collected.layerIds).pluginPins
+  const declaredPins = collected.pluginIds
+    ? mergePluginsForApply(collected.pluginIds).pluginPins
     : [];
   return {
     harnesses: buildHarnessLiveStatusMap({
@@ -570,7 +570,7 @@ async function previewHomeApply(
         collected.rootPath,
         collected.expectedFiles,
         collected.removedFiles,
-        collected.layerIds,
+        collected.pluginIds,
       ),
       root_path: collected.rootPath,
     },
@@ -595,7 +595,7 @@ async function previewProjectApply(
         collected.rootPath,
         collected.expectedFiles,
         collected.removedFiles,
-        collected.layerIds,
+        collected.pluginIds,
       ),
       root_path: collected.rootPath,
     },

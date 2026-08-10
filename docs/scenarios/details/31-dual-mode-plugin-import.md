@@ -20,9 +20,9 @@ harnesstap scan . --dry-run
 # Scope to one harness
 harnesstap scan . --harness claude-code
 
-# Build a layer from the merged scan (layer from-project always merges both)
-harnesstap layer from-project my-layer --project .
-harnesstap layer show my-layer
+# Build a plugin from the merged scan (plugin from-project always merges both)
+harnesstap plugin from-project my-plugin --project .
+harnesstap plugin show my-plugin
 ```
 
 Dry-run output shows two sections when both sides contribute: harness platforms

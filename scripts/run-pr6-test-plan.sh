@@ -81,17 +81,17 @@ console.log("ok update summary", JSON.stringify(d.summary));
 ' || fail "plugin update --all"
 pass "plugin update --all runs (summary returned)"
 
-echo "=== 4. layer add-plugin + export/import round-trip ==="
-"${CLI[@]}" layer create team-setup >/dev/null
-"${CLI[@]}" layer add-plugin team-setup formatter@acme-marketplace --version ">=2.0.0 <3.0.0" >/dev/null
+echo "=== 4. plugin add + export/import round-trip ==="
+"${CLI[@]}" plugin create team-setup >/dev/null
+"${CLI[@]}" plugin edit team-setup --add formatter@acme-marketplace --type plugin --version ">=2.0.0 <3.0.0" --no-interactive >/dev/null
 BUNDLE="$WORKDIR/team.harnesstap.toml"
-"${CLI[@]}" migrate export "$BUNDLE" --layer team-setup >/dev/null
+"${CLI[@]}" migrate export "$BUNDLE" --plugin team-setup >/dev/null
 bun -e "
 const { parse } = await import('smol-toml');
 const raw = parse(await Bun.file(process.argv[1]).text());
-if (raw.version !== 1 || raw.schema !== 'urn:harnesstap:layer:v1') throw new Error('expected layer v1');
-const layer = raw.layers?.[0];
-const pin = (layer?.plugins ?? []).find((p) => p.ref === 'formatter@acme-marketplace');
+if (raw.version !== 1 || raw.schema !== 'urn:harnesstap:layer:v1') throw new Error('expected plugin v1 schema');
+const plugin = raw.plugins?.[0];
+const pin = (plugin?.plugin_pins ?? []).find((p) => p.ref === 'formatter@acme-marketplace');
 if (!pin || pin.version_constraint !== '>=2.0.0 <3.0.0') throw new Error('pin missing');
 console.log('ok bundle pin');
 " "$BUNDLE" || fail "export bundle"
@@ -100,9 +100,9 @@ HT_HOME2="$(mktemp -d "${TMPDIR:-/tmp}/ht-test-plan-import-XXXX")"
 HARNESSTAP_HOME="$HT_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" init >/dev/null
 IMPORT_OUT="$(HARNESSTAP_HOME="$HT_HOME2" HOME="$FIXTURE_HOME" "${CLI[@]}" migrate import "$BUNDLE" 2>&1)"
 echo "$IMPORT_OUT"
-echo "$IMPORT_OUT" | grep -q 'team-setup' || fail "import layer"
+echo "$IMPORT_OUT" | grep -q 'team-setup' || fail "import plugin"
 rm -rf "$HT_HOME2"
-pass "layer add-plugin + export/import round-trip"
+pass "plugin add + export/import round-trip"
 
 echo "=== 5. project apply warn vs --strict-plugin-versions ==="
 APPLY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ht-apply-XXXX")"
@@ -123,27 +123,27 @@ git commit -q -m "init"
 echo "# Ctx" >"$APPLY_DIR/CLAUDE.md"
 HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" init >/dev/null
 HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" scan "$APPLY_DIR" >/dev/null
-HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" layer create mismatch-layer >/dev/null
-HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" layer add-plugin mismatch-layer formatter@acme-marketplace --version ">=2.1.0 <3.0.0" >/dev/null
+HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" plugin create mismatch-plugin >/dev/null
+HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" plugin edit mismatch-plugin --add formatter@acme-marketplace --type plugin --version ">=2.1.0 <3.0.0" --no-interactive >/dev/null
 RESOURCE_ID="$(HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" resource list 2>/dev/null | grep "claude-instructions" | awk "{print \$2}")"
 [[ -n "$RESOURCE_ID" ]] || fail "claude-instructions resource id not found"
-HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" layer add mismatch-layer "$RESOURCE_ID" >/dev/null
+HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" plugin edit mismatch-plugin --add "$RESOURCE_ID" --no-interactive >/dev/null
 
-WARN_OUT="$(HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" project apply mismatch-layer --project "$APPLY_DIR" --platform claude-code 2>&1 || true)"
+WARN_OUT="$(HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" apply mismatch-plugin --project "$APPLY_DIR" 2>&1 || true)"
 echo "$WARN_OUT"
 echo "$WARN_OUT" | grep -q "Plugin version mismatch" || fail "apply warn stderr"
 echo "$WARN_OUT" | grep -qE "requires >=2\.1\.0|effective is" || fail "apply warn shows version detail"
-pass "project apply warns on mismatch (default)"
+pass "apply warns on mismatch (default)"
 
 set +e
-STRICT_OUT="$(HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" project apply mismatch-layer --project "$APPLY_DIR" --platform claude-code --strict-plugin-versions 2>&1)"
+STRICT_OUT="$(HARNESSTAP_HOME="$HT_HOME" HOME="$FIXTURE_HOME" "${CLI[@]}" apply mismatch-plugin --project "$APPLY_DIR" --strict-plugin-versions 2>&1)"
 STRICT_EXIT=$?
 set -e
 STRICT_OUT="${STRICT_OUT}"$'\n'"EXIT:${STRICT_EXIT}"
 echo "$STRICT_OUT"
 echo "$STRICT_OUT" | grep -q "Plugin version mismatch" || fail "strict stderr"
 echo "$STRICT_OUT" | grep -q "EXIT:2" || fail "strict should exit 2"
-pass "project apply --strict-plugin-versions exits 2"
+pass "apply --strict-plugin-versions exits 2"
 
 rm -rf "$APPLY_DIR"
 echo ""

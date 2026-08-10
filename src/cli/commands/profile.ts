@@ -1,13 +1,13 @@
 import type { Command } from "commander";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
-import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
-import { getLayer, resolveLayerSelector } from "../../models/layer-model.js";
-import { listAttachedLayerRefs } from "../../services/layer-composition.js";
+import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
+import { getPlugin, resolvePluginSelector } from "../../models/plugin-model.js";
+import { listAttachedPluginRefs } from "../../services/plugin-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
-import { createLayerFromSource } from "../../services/layer-from-source.js";
+import { createPluginFromSource } from "../../services/plugin-from-source.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
-import { handleLayerListCommand } from "../../services/layer-list.js";
+import { handlePluginListCommand } from "../../services/plugin-list.js";
 import {
   promptMaterializationConflict,
   resolveApplyConflictPolicy,
@@ -15,14 +15,14 @@ import {
 import {
   createProfileCommand,
   deleteProfileCommand,
-  listProfileLayersCommand,
+  listProfilePluginsCommand,
   showProfileCommand,
   tagProfileCommand,
   useProfileCommand,
 } from "../../services/profile-commands.js";
 import { detectGlobalProfileStatus } from "../../services/global-profile-drift.js";
 import { maybePromptProfileEnable } from "../../services/profile-enable-prompt.js";
-import { maybePromptProfileLayerDelete } from "../../services/profile-delete-prompt.js";
+import { maybePromptProfilePluginDelete } from "../../services/profile-delete-prompt.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "../../services/profile-switch-prompt.js";
 import {
   SwitchRestoreFailedError,
@@ -44,27 +44,27 @@ import {
 } from "../../services/use-command.js";
 import {
   resolveSkillPackageCheckout,
-  type LayerSourceConflictPolicy,
+  type PluginSourceConflictPolicy,
 } from "../../services/skill-package-resolve.js";
-import { runLayerCreateFromSourceWizard } from "../../services/wizards/layer-create-from-source.js";
+import { runPluginCreateFromSourceWizard } from "../../services/wizards/plugin-create-from-source.js";
 import {
   isPromptCancellationError,
   shouldUseWizard,
 } from "../../services/wizards/shared.js";
-import type { Layer } from "../../types.js";
+import type { Plugin } from "../../types.js";
 import { ui } from "../../ui/index.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
-import { formatCount, formatLayerLabel } from "../formatting.js";
+import { formatCount, formatPluginLabel } from "../formatting.js";
 import { configureCommandGroup } from "../help.js";
-import { handleLayerInstallCommand } from "../handlers/layer-install.js";
+import { handlePluginInstallCommand } from "../handlers/plugin-install.js";
 import { parseCommaSeparatedList } from "../handlers/parse-flags.js";
 import {
-  countMaterialLayerResources,
-  handleLayerPublishCommand,
-} from "../handlers/layer-publish.js";
-import { handleLayerShowCommand } from "../handlers/layer-show-command.js";
-import { resolveLayerMutationTarget } from "../handlers/resolve-layer-mutation-target.js";
+  countMaterialPluginResources,
+  handlePluginPublishCommand,
+} from "../handlers/plugin-publish.js";
+import { handlePluginShowCommand } from "../handlers/plugin-show-command.js";
+import { resolvePluginMutationTarget } from "../handlers/resolve-plugin-mutation-target.js";
 import { renderCliError } from "../runtime.js";
 import { collectRepeatedOption, formatCommand } from "../shared.js";
 
@@ -80,33 +80,33 @@ async function handleProfilePullCommand(
     format?: string;
   },
 ): Promise<void> {
-  const installed = await handleLayerInstallCommand(selector, opts);
+  const installed = await handlePluginInstallCommand(selector, opts);
   if (!installed || process.exitCode) {
     return;
   }
 
-  const installedLayer = getLayer(installed.layerName);
-  if (!installedLayer || isProfileLayer(installedLayer)) {
+  const installedPlugin = getPlugin(installed.pluginName);
+  if (!installedPlugin || isProfilePlugin(installedPlugin)) {
     return;
   }
 
   ui.warn(
-    `Installed layer ${ui.theme.accent(installed.layerName)} is not tagged as a profile.`,
+    `Installed plugin ${ui.theme.accent(installed.pluginName)} is not tagged as a profile.`,
   );
 }
 
-function warnProfilePublishValidation(layer: Layer): void {
-  const refs = listAttachedLayerRefs(layer.id);
-  const materialCount = countMaterialLayerResources(layer.id);
+function warnProfilePublishValidation(plugin: Plugin): void {
+  const refs = listAttachedPluginRefs(plugin.id);
+  const materialCount = countMaterialPluginResources(plugin.id);
   if (refs.length === 0 && materialCount === 0) {
     ui.warn(
-      `Profile ${ui.theme.accent(layer.name)} has no layer references and no material resources.`,
+      `Profile ${ui.theme.accent(plugin.name)} has no plugin references and no material resources.`,
     );
   }
 
   const unresolvedLocalRefs: string[] = [];
   for (const ref of refs) {
-    const local = resolveLayerSelector(
+    const local = resolvePluginSelector(
       ref.version_constraint
         ? `${ref.dependency_name}@${ref.version_constraint}`
         : ref.dependency_name,
@@ -121,33 +121,33 @@ function warnProfilePublishValidation(layer: Layer): void {
 
   if (unresolvedLocalRefs.length > 0) {
     ui.warn(
-      `Profile ${ui.theme.accent(layer.name)} references unpublished local layers: ${unresolvedLocalRefs.join(", ")}`,
+      `Profile ${ui.theme.accent(plugin.name)} references unpublished local plugins: ${unresolvedLocalRefs.join(", ")}`,
     );
   }
 }
 
 async function handleProfilePublishCommand(
-  layerName: string,
+  pluginName: string,
   opts: { org?: string; catalog?: string; account?: string; format?: string },
 ): Promise<void> {
   const db = getDb();
   initializeSchema(db);
-  const layer = getLayer(layerName);
-  if (!layer) {
+  const plugin = getPlugin(pluginName);
+  if (!plugin) {
     process.exitCode = 1;
-    ui.danger(`Layer not found: ${layerName}`);
+    ui.danger(`Plugin not found: ${pluginName}`);
     return;
   }
-  if (!isProfileLayer(layer)) {
-    ui.warn(`Layer "${layer.name}" is not tagged as a profile.`);
+  if (!isProfilePlugin(plugin)) {
+    ui.warn(`Plugin "${plugin.name}" is not tagged as a profile.`);
   }
-  warnProfilePublishValidation(layer);
-  await handleLayerPublishCommand(layerName, undefined, opts);
+  warnProfilePublishValidation(plugin);
+  await handlePluginPublishCommand(pluginName, undefined, opts);
 }
 
-function parseLayerSourceConflictPolicy(
+function parsePluginSourceConflictPolicy(
   value: string | undefined,
-): LayerSourceConflictPolicy | undefined {
+): PluginSourceConflictPolicy | undefined {
   if (!value) return undefined;
   if (value === "cancel" || value === "merge" || value === "overwrite") {
     return value;
@@ -191,7 +191,7 @@ async function handleProfileCreateCommand(
     const excludeCategories = [
       ...(opts.excludeCategory ?? []),
     ].flatMap((entry) => entry.split(",").map((part) => part.trim()).filter(Boolean));
-    const onConflictFlag = parseLayerSourceConflictPolicy(opts.onConflict);
+    const onConflictFlag = parsePluginSourceConflictPolicy(opts.onConflict);
     const harnesses = parseCommaSeparatedList(opts.harness);
     if (harnesses) {
       assertSupportedHarnessTargets(harnesses);
@@ -205,9 +205,9 @@ async function handleProfileCreateCommand(
       missingRequiredArgs: !opts.all && (!skillNames || skillNames.length === 0),
     });
 
-    const wizard = await runLayerCreateFromSourceWizard({
-      layerName: name,
-      layerVersion: version,
+    const wizard = await runPluginCreateFromSourceWizard({
+      pluginName: name,
+      pluginVersion: version,
       discovered: resolvedPackage.discovered,
       skillNames,
       all: opts.all,
@@ -221,12 +221,12 @@ async function handleProfileCreateCommand(
       return;
     }
 
-    const result = await createLayerFromSource({
+    const result = await createPluginFromSource({
       name,
       source: opts.from,
       version,
       description: opts.description,
-      tags: [PROFILE_LAYER_TAG],
+      tags: [PROFILE_PLUGIN_TAG],
       skillNames: wizard.skillNames,
       all: wizard.all,
       excludeCategories: excludeCategories.length > 0 ? excludeCategories : undefined,
@@ -236,14 +236,14 @@ async function handleProfileCreateCommand(
       harnesstapDir,
     });
 
-    if (!isProfileLayer(result.layer)) {
-      tagProfileCommand(result.layer.name);
+    if (!isProfilePlugin(result.plugin)) {
+      tagProfileCommand(result.plugin.name);
     }
 
     if (opts.dryRun && !opts.use) {
       if (format === "json") {
         printJson({
-          layer: result.layer,
+          plugin: result.plugin,
           created: true,
           promoted: true,
           namespace: result.namespace,
@@ -252,18 +252,18 @@ async function handleProfileCreateCommand(
         return;
       }
       ui.success(
-        `Dry run ${ui.icons.hint} would create profile ${ui.theme.accent(result.layer.name)} with ${formatCount(result.attachedSkills.length, "skill")} from ${result.namespace}`,
+        `Dry run ${ui.icons.hint} would create profile ${ui.theme.accent(result.plugin.name)} with ${formatCount(result.attachedSkills.length, "skill")} from ${result.namespace}`,
       );
       return;
     }
 
     if (format !== "json") {
       ui.success(
-        `Created profile ${ui.theme.accent(result.layer.name)} ${ui.icons.bullet} ${formatCount(result.attachedSkills.length, "skill")} attached from ${result.namespace}`,
+        `Created profile ${ui.theme.accent(result.plugin.name)} ${ui.icons.bullet} ${formatCount(result.attachedSkills.length, "skill")} attached from ${result.namespace}`,
       );
     } else if (!opts.use) {
       printJson({
-        layer: result.layer,
+        plugin: result.plugin,
         created: true,
         promoted: true,
         namespace: result.namespace,
@@ -284,11 +284,11 @@ async function handleProfileCreateCommand(
     }
 
     if (result.created) {
-      ui.success(`Created profile ${ui.theme.accent(result.layer.name)}`);
+      ui.success(`Created profile ${ui.theme.accent(result.plugin.name)}`);
     } else if (result.promoted) {
-      ui.success(`Tagged layer ${ui.theme.accent(result.layer.name)} as profile`);
+      ui.success(`Tagged plugin ${ui.theme.accent(result.plugin.name)} as profile`);
     } else {
-      ui.info(`Profile ${ui.theme.accent(result.layer.name)} already exists`);
+      ui.info(`Profile ${ui.theme.accent(result.plugin.name)} already exists`);
     }
   }
 
@@ -365,21 +365,21 @@ export function registerProfileCommands(root: Command): void {
   root
     .command("profile")
     .alias("p")
-    .description("Manage profile layers and global profile switching"),
+    .description("Manage profile plugins and global profile switching"),
 );
 
 profileCmd
   .command("list")
   .alias("ls")
   .option("-s, --search <query>", "Filter by name, description, or tags (local and remote)")
-  .option("--local-only", "List only local profile layers")
-  .option("--remote-only", "List only remote catalog profile layers")
+  .option("--local-only", "List only local profile plugins")
+  .option("--remote-only", "List only remote catalog profile plugins")
   .option("--account <name>", "Cloud account to use for remote listing")
   .option("--base-url <url>", "HarnessTap Cloud base URL")
   .option("--no-interactive", "Disable interactive wizards")
   .option("--interactive", "Enable interactive wizards")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("List local profile layers and remote catalog profiles")
+  .description("List local profile plugins and remote catalog profiles")
   .action(async (opts: {
     search?: string;
     localOnly?: boolean;
@@ -393,10 +393,10 @@ profileCmd
     const db = getDb();
     initializeSchema(db);
     try {
-      await handleLayerListCommand({
+      await handlePluginListCommand({
         profileMode: true,
-        localLayersProvider: listProfileLayersCommand,
-        tag: PROFILE_LAYER_TAG,
+        localPluginsProvider: listProfilePluginsCommand,
+        tag: PROFILE_PLUGIN_TAG,
         search: opts.search,
         localOnly: opts.localOnly,
         remoteOnly: opts.remoteOnly,
@@ -418,11 +418,11 @@ profileCmd
 
 profileCmd
   .command("show")
-  .argument("[name]", "Profile layer name or selector")
+  .argument("[name]", "Profile plugin name or selector")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--show-id", "Show IDs in list-oriented human tables")
   .option("--interactive", "Prompt instead of relying on explicit flags")
-  .description("Show profile layer details, resources, and dependencies")
+  .description("Show profile plugin details, resources, and dependencies")
   .action(async (
     name: string | undefined,
     opts: {
@@ -434,8 +434,8 @@ profileCmd
   ) => {
     const db = getDb();
     initializeSchema(db);
-    const resolvedName = name ?? await resolveLayerMutationTarget({
-      layerName: name,
+    const resolvedName = name ?? await resolvePluginMutationTarget({
+      pluginName: name,
       profileMode: true,
       interactive: opts.interactive,
       noInteractive: opts.noInteractive,
@@ -448,7 +448,7 @@ profileCmd
       return;
     }
     const payload = showProfileCommand(resolvedName);
-    handleLayerShowCommand(formatLayerLabel(payload.profile), opts, {
+    handlePluginShowCommand(formatPluginLabel(payload.profile), opts, {
       active: payload.active,
     });
   });
@@ -525,7 +525,7 @@ profileCmd
 
 profileCmd
   .command("use")
-  .argument("[name]", "Profile layer name or selector")
+  .argument("[name]", "Profile plugin name or selector")
   .option("--profile <name>", "Profile key from .harnesstap/config.toml")
   .option("--project <path>", "Project directory for config.toml discovery", ".")
   .option("--dry-run", "Show what would be written")
@@ -539,7 +539,7 @@ profileCmd
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
-  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--no-pull", "Do not auto-pull missing published plugin dependencies")
   .option("--force", "Apply even when the profile is already active and in sync")
   .option("--no-interactive", "Disable interactive prompts")
   .option("--interactive", "Enable interactive prompts")
@@ -576,7 +576,7 @@ profileCmd
         if (!selection) {
           process.exitCode = 1;
           ui.danger(
-            "Profile name is required. Pass a profile layer name, --profile <key> from project config, or run interactively.",
+            "Profile name is required. Pass a profile plugin name, --profile <key> from project config, or run interactively.",
           );
           return;
         }
@@ -591,7 +591,7 @@ profileCmd
           renderProjectUseHuman(result);
           return;
         }
-        name = selection.layerName;
+        name = selection.pluginName;
       } catch (err) {
         process.exitCode = 1;
         ui.danger(err instanceof Error ? err.message : String(err));
@@ -638,12 +638,12 @@ profileCmd
       if (payload.default_environment_name) {
         ui.info(`Default environment: ${payload.default_environment_name}`);
       }
-      if ((payload.pulled_layers?.length ?? 0) > 0) {
+      if ((payload.pulled_plugins?.length ?? 0) > 0) {
         ui.info(
-          `Pulled ${payload.pulled_layers?.length ?? 0} missing layer dependencies:`,
+          `Pulled ${payload.pulled_plugins?.length ?? 0} missing plugin dependencies:`,
         );
-        for (const pulled of payload.pulled_layers ?? []) {
-          console.log(`  - ${pulled.layer_name} (${pulled.source})`);
+        for (const pulled of payload.pulled_plugins ?? []) {
+          console.log(`  - ${pulled.plugin_name} (${pulled.source})`);
         }
       }
       ui.kvBlock([
@@ -751,7 +751,7 @@ stashCmd
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
-  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--no-pull", "Do not auto-pull missing published plugin dependencies")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Restore the most recent stashed profile and remove it from the stash")
   .action(async (opts: {
@@ -815,7 +815,7 @@ stashCmd
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
-  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--no-pull", "Do not auto-pull missing published plugin dependencies")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Restore the most recent stashed profile without removing it from the stash")
   .action(async (opts: {
@@ -868,7 +868,7 @@ stashCmd
 
 profileCmd
   .command("switch")
-  .argument("<name>", "Profile layer name or selector")
+  .argument("<name>", "Profile plugin name or selector")
   .option("--dry-run", "Show what would be written")
   .option(
     "--harness <slugs>",
@@ -880,7 +880,7 @@ profileCmd
   )
   .option("--account <name>", "Cloud account name for dependency pulls")
   .option("--base-url <url>", "Cloud base URL for dependency pulls")
-  .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+  .option("--no-pull", "Do not auto-pull missing published plugin dependencies")
   .option("--no-interactive", "Disable interactive prompts")
   .option("--interactive", "Enable interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
@@ -968,9 +968,9 @@ profileCmd
 
 profileCmd
   .command("create")
-  .argument("<name>", "Profile layer name")
+  .argument("<name>", "Profile plugin name")
   .option("-d, --description <text>", "Profile description")
-  .option("--version <semver>", "Layer version when creating from a source", "1.0.0")
+  .option("--version <semver>", "Plugin version when creating from a source", "1.0.0")
   .option(
     "--from <source>",
     "Skill package source (owner/repo, git URL, or local path)",
@@ -985,7 +985,7 @@ profileCmd
   )
   .option(
     "--on-conflict <policy>",
-    "When layer exists during --from: merge, overwrite, or cancel",
+    "When plugin exists during --from: merge, overwrite, or cancel",
   )
   .option("--use", "Apply globally and set as the active profile")
   .option("--dry-run", "Preview profile apply when used with --use")
@@ -1000,7 +1000,7 @@ profileCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt for skill selection when using --from")
   .option("-y, --yes", "Skip prompts when using --from")
-  .description("Create a profile layer, promote an existing layer, or import from a skill package")
+  .description("Create a profile plugin, promote an existing plugin, or import from a skill package")
   .action(async (name: string, opts: {
     description?: string;
     version?: string;
@@ -1033,13 +1033,13 @@ profileCmd
 
 profileCmd
   .command("delete")
-  .argument("<name>", "Profile layer name or selector")
-  .option("--layer", "Also delete the underlying layer without prompting")
-  .option("-y, --yes", "Skip the interactive layer delete prompt")
+  .argument("<name>", "Profile plugin name or selector")
+  .option("--plugin", "Also delete the underlying plugin without prompting")
+  .option("-y, --yes", "Skip the interactive plugin delete prompt")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Demote a profile layer and optionally delete the underlying layer")
+  .description("Demote a profile plugin and optionally delete the underlying plugin")
   .action(async (name: string, opts: {
-    layer?: boolean;
+    plugin?: boolean;
     yes?: boolean;
     format?: string;
   }) => {
@@ -1048,31 +1048,31 @@ profileCmd
     const format = parseOutputFormat(opts.format);
     try {
       const demoted = deleteProfileCommand(name);
-      let layerDeleted = false;
-      if (opts.layer || format === "human") {
-        layerDeleted = await maybePromptProfileLayerDelete({
-          layerName: demoted.layer_name,
-          layerId: demoted.layer_id,
+      let pluginDeleted = false;
+      if (opts.plugin || format === "human") {
+        pluginDeleted = await maybePromptProfilePluginDelete({
+          pluginName: demoted.plugin_name,
+          pluginId: demoted.plugin_id,
           format: opts.format,
           yes: opts.yes,
-          deleteLayerFlag: opts.layer,
+          deletePluginFlag: opts.plugin,
         });
       }
 
       if (format === "json") {
         printJson({
           ...demoted,
-          layer_deleted: layerDeleted,
+          plugin_deleted: pluginDeleted,
         });
         return;
       }
 
-      ui.success(`Demoted profile ${ui.theme.accent(demoted.layer_name)}`);
+      ui.success(`Demoted profile ${ui.theme.accent(demoted.plugin_name)}`);
       if (demoted.was_active) {
         ui.info("Cleared active profile pointer.");
       }
-      if (layerDeleted) {
-        ui.success(`Deleted layer ${ui.theme.accent(demoted.layer_name)}`);
+      if (pluginDeleted) {
+        ui.success(`Deleted plugin ${ui.theme.accent(demoted.plugin_name)}`);
       }
     } catch (err) {
       process.exitCode = 1;
@@ -1087,14 +1087,14 @@ profileCmd
 profileCmd
   .command("pull")
   .argument("<selector>", "Catalog profile selector")
-  .option("--as <name>", "Install as local layer name")
+  .option("--as <name>", "Install as local plugin name")
   .option("--org <slug>", "Organization slug helper for short selectors")
   .option("--catalog <slug>", "Catalog slug helper for short selectors")
-  .option("--version <version>", "Layer version helper for short selectors")
+  .option("--version <version>", "Plugin version helper for short selectors")
   .option("--account <name>", "Cloud account name")
   .option("--base-url <url>", "Cloud base URL")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Pull a profile layer from catalog")
+  .description("Pull a profile plugin from catalog")
   .action(async (selector: string, opts: {
     as?: string;
     org?: string;
@@ -1109,12 +1109,12 @@ profileCmd
 
 profileCmd
   .command("publish")
-  .argument("<name>", "Profile layer name")
+  .argument("<name>", "Profile plugin name")
   .option("--org <slug>", "Organization slug")
   .option("--catalog <slug>", "Catalog slug")
   .option("--account <name>", "Cloud account name")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Publish a profile layer with validation warnings")
+  .description("Publish a profile plugin with validation warnings")
   .action(async (name: string, opts: {
     org?: string;
     catalog?: string;

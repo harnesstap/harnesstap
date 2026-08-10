@@ -1,4 +1,4 @@
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -8,10 +8,10 @@ import {
   upsertEnvironmentPermission,
 } from "../models/environment.js";
 import { getHarnessPreference, getProjectHarnessConfig } from "../models/harness.js";
-import { getProjectByLocalPath, getProjectConfiguredLayers } from "../models/project.js";
+import { getProjectByLocalPath, getProjectConfiguredPlugins } from "../models/project.js";
 import { listResources } from "../models/resource.js";
 import { detectPlatforms, scanPlatform } from "./scanner.js";
-import { resolveLayerGraph } from "./layer-resolver.js";
+import { resolvePluginGraph } from "./plugin-resolver.js";
 import {
   collectRequirementsFromPlugins,
   type EnvironmentRequirementCollection,
@@ -42,7 +42,7 @@ export interface MissingEnvironmentKey {
 export interface EnvironmentCapturePreview {
   mode: "capture" | "refresh";
   environment_name: string;
-  configured_layer_ids: string[];
+  configured_plugin_ids: string[];
   main_harness: string;
   requirements: EnvironmentRequirementCollection;
   values: Record<string, string>;
@@ -78,40 +78,40 @@ function resolveMainHarness(projectRoot: string): string {
   throw new Error(`No harness detected for project: ${projectRoot}`);
 }
 
-function resolveScopedConfiguredLayerIds(
+function resolveScopedConfiguredPluginIds(
   projectRoot: string,
-  layerSelectors?: string[],
+  pluginSelectors?: string[],
 ): string[] {
-  if (layerSelectors && layerSelectors.length > 0) {
-    return layerSelectors.map((selector) => {
-      const configuredLayer = resolveLayerSelector(selector);
-      if (!configuredLayer) {
-        throw new Error(`Configured layer not found: ${selector}`);
+  if (pluginSelectors && pluginSelectors.length > 0) {
+    return pluginSelectors.map((selector) => {
+      const configuredPlugin = resolvePluginSelector(selector);
+      if (!configuredPlugin) {
+        throw new Error(`Configured plugin not found: ${selector}`);
       }
-      return configuredLayer.id;
+      return configuredPlugin.id;
     });
   }
 
   const project = getProjectByLocalPath(projectRoot);
   if (!project) {
     throw new Error(
-      `No tracked project found at ${projectRoot}; pass --layers explicitly`,
+      `No tracked project found at ${projectRoot}; pass --plugins explicitly`,
     );
   }
 
-  const applied = getProjectConfiguredLayers(project.id);
-  const configuredLayerIds = unique(applied.map((row) => row.layer_id));
-  if (configuredLayerIds.length === 0) {
+  const applied = getProjectConfiguredPlugins(project.id);
+  const configuredPluginIds = unique(applied.map((row) => row.plugin_id));
+  if (configuredPluginIds.length === 0) {
     throw new Error(
-      `Project ${projectRoot} has no applied configured layers; pass --layers explicitly`,
+      `Project ${projectRoot} has no applied configured plugins; pass --plugins explicitly`,
     );
   }
-  return configuredLayerIds;
+  return configuredPluginIds;
 }
 
-function resolveScopedPluginIds(configuredLayerIds: string[]): string[] {
-  const graph = resolveLayerGraph(configuredLayerIds);
-  return unique(graph.resolved.map((layer) => layer.id));
+function resolveScopedPluginIds(configuredPluginIds: string[]): string[] {
+  const graph = resolvePluginGraph(configuredPluginIds);
+  return unique(graph.resolved.map((plugin) => plugin.id));
 }
 
 function valueFromScannedResources(
@@ -183,17 +183,17 @@ export async function previewEnvironmentCapture(input: {
   mode: "capture" | "refresh";
   environmentName: string;
   projectRoot: string;
-  layerSelectors?: string[];
+  pluginSelectors?: string[];
   includePermissions?: boolean;
   strict?: boolean;
 }): Promise<EnvironmentCapturePreview> {
-  const configuredLayerIds = resolveScopedConfiguredLayerIds(
+  const configuredPluginIds = resolveScopedConfiguredPluginIds(
     input.projectRoot,
-    input.layerSelectors,
+    input.pluginSelectors,
   );
-  const pluginIds = resolveScopedPluginIds(configuredLayerIds);
+  const pluginIds = resolveScopedPluginIds(configuredPluginIds);
   const requirements = collectRequirementsFromPlugins(pluginIds);
-  requirements.configured_layer_ids = configuredLayerIds;
+  requirements.configured_plugin_ids = configuredPluginIds;
 
   const mainHarness = resolveMainHarness(input.projectRoot);
   const scanResult = await scanPlatform(mainHarness, input.projectRoot);
@@ -266,7 +266,7 @@ export async function previewEnvironmentCapture(input: {
   return {
     mode: input.mode,
     environment_name: input.environmentName,
-    configured_layer_ids: configuredLayerIds,
+    configured_plugin_ids: configuredPluginIds,
     main_harness: mainHarness,
     requirements,
     values,
@@ -301,7 +301,7 @@ export async function captureOrRefreshEnvironment(input: {
   mode: "capture" | "refresh";
   environmentName: string;
   projectRoot: string;
-  layerSelectors?: string[];
+  pluginSelectors?: string[];
   includePermissions?: boolean;
   strict?: boolean;
   dryRun?: boolean;

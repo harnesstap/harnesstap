@@ -1,7 +1,7 @@
-import { listLayers } from "../../models/layer-model.js";
-import { toLayerChoices } from "../completion/choices.js";
+import { listPlugins } from "../../models/plugin-model.js";
+import { toPluginChoices } from "../completion/choices.js";
 import {
-  collectLayerRequirements,
+  collectPluginRequirements,
   suggestProcessEnvKeys,
   type RequirementSource,
 } from "../environment-requirements.js";
@@ -12,12 +12,12 @@ import {
 import {
   runEnvironmentCreate,
   type EnvironmentCreateResult,
-  type EnvironmentFromLayerResolved,
+  type EnvironmentFromPluginResolved,
 } from "../environment-create.js";
 import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
 import {
   ENVIRONMENT_CREATE_SOURCE_CHOICES,
-  promptForProjectLayerScope,
+  promptForProjectPluginScope,
 } from "./environment-create-project-scope.js";
 import {
   isPromptBackError,
@@ -28,7 +28,7 @@ import {
   withPromptBack,
 } from "./shared.js";
 
-export type EnvironmentCreateSource = "from-project" | "from-layer" | "blank";
+export type EnvironmentCreateSource = "from-project" | "from-plugin" | "blank";
 
 export type EnvironmentCreateWizardOutcome = {
   status: "confirmed";
@@ -100,7 +100,7 @@ async function resolveSecretKeyPolicy(input: {
   key: string;
   value: string;
   sources: RequirementSource[];
-  resolved: EnvironmentFromLayerResolved;
+  resolved: EnvironmentFromPluginResolved;
 }): Promise<void> {
   if (!requiresSecretRef(input.key, input.sources)) {
     input.resolved.values[input.key] = input.value;
@@ -134,13 +134,13 @@ async function resolveSecretKeyPolicy(input: {
   };
 }
 
-async function collectFromLayerResolutions(input: {
-  layerSelector: string;
+async function collectFromPluginResolutions(input: {
+  pluginSelector: string;
   processEnv?: NodeJS.ProcessEnv;
-}): Promise<EnvironmentFromLayerResolved> {
+}): Promise<EnvironmentFromPluginResolved> {
   const processEnv = input.processEnv ?? process.env;
-  const requirements = collectLayerRequirements([input.layerSelector]);
-  const resolved: EnvironmentFromLayerResolved = {
+  const requirements = collectPluginRequirements([input.pluginSelector]);
+  const resolved: EnvironmentFromPluginResolved = {
     values: {},
     secret_refs: {},
   };
@@ -255,22 +255,22 @@ function printFromProjectPreviewSummary(
   console.log("");
   console.log(`Environment: ${preview.environment_name}`);
   console.log(`Project harness: ${preview.main_harness}`);
-  console.log(`Configured layers: ${preview.configured_layer_ids.length}`);
+  console.log(`Configured plugins: ${preview.configured_plugin_ids.length}`);
   console.log(`Imported values: ${Object.keys(preview.values).length}`);
   console.log(`Secret refs: ${Object.keys(preview.secret_refs).length}`);
   console.log(`Missing keys: ${preview.missing_keys.length}`);
   console.log("");
 }
 
-function printFromLayerPreviewSummary(input: {
+function printFromPluginPreviewSummary(input: {
   name: string;
-  layerSelector: string;
-  resolved: EnvironmentFromLayerResolved;
+  pluginSelector: string;
+  resolved: EnvironmentFromPluginResolved;
   bind: boolean;
 }): void {
   console.log("");
   console.log(`Environment: ${input.name}`);
-  console.log(`Layer: ${input.layerSelector}`);
+  console.log(`Plugin: ${input.pluginSelector}`);
   console.log(`Literal values: ${Object.keys(input.resolved.values).length}`);
   console.log(`Secret refs: ${Object.keys(input.resolved.secret_refs).length}`);
   console.log(`Bind as default: ${input.bind ? "yes" : "no"}`);
@@ -307,9 +307,9 @@ export async function runEnvironmentCreateWizard(input: {
     }
 
     if (source === "from-project") {
-      let scope: { projectRoot: string; layerSelectors: string[] } | undefined;
+      let scope: { projectRoot: string; pluginSelectors: string[] } | undefined;
       try {
-        scope = await promptForProjectLayerScope();
+        scope = await promptForProjectPluginScope();
       } catch (error) {
         if (isPromptBackError(error)) {
           continue;
@@ -320,13 +320,13 @@ export async function runEnvironmentCreateWizard(input: {
         continue;
       }
 
-      const { projectRoot, layerSelectors } = scope;
+      const { projectRoot, pluginSelectors } = scope;
 
       const preview = await previewEnvironmentCapture({
         mode: "capture",
         environmentName: input.name,
         projectRoot,
-        layerSelectors,
+        pluginSelectors,
       });
       printFromProjectPreviewSummary(preview);
 
@@ -341,38 +341,38 @@ export async function runEnvironmentCreateWizard(input: {
       const result = await runEnvironmentCreate({
         name: input.name,
         fromProject: projectRoot,
-        layers: layerSelectors,
+        plugins: pluginSelectors,
         description: input.description,
       });
       return { status: "confirmed", result };
     }
 
-    const layers = listLayers();
-    if (layers.length === 0) {
-      throw new Error("No configured layers found.");
+    const plugins = listPlugins();
+    if (plugins.length === 0) {
+      throw new Error("No configured plugins found.");
     }
 
-    let layerSelector: string | undefined;
-    let resolved: EnvironmentFromLayerResolved | undefined;
+    let pluginSelector: string | undefined;
+    let resolved: EnvironmentFromPluginResolved | undefined;
 
     while (true) {
       try {
-        layerSelector = await withPromptBack(() =>
+        pluginSelector = await withPromptBack(() =>
           promptForSearchableChoice({
-            message: "Layer whose requirements should seed this environment",
-            choices: toLayerChoices(),
+            message: "Plugin whose requirements should seed this environment",
+            choices: toPluginChoices(),
           }),
         );
       } catch (error) {
         if (isPromptBackError(error)) {
-          layerSelector = undefined;
+          pluginSelector = undefined;
           break;
         }
         throw error;
       }
 
       try {
-        resolved = await collectFromLayerResolutions({ layerSelector });
+        resolved = await collectFromPluginResolutions({ pluginSelector });
         break;
       } catch (error) {
         if (isPromptBackError(error)) {
@@ -382,17 +382,17 @@ export async function runEnvironmentCreateWizard(input: {
       }
     }
 
-    if (!layerSelector || !resolved) {
+    if (!pluginSelector || !resolved) {
       continue;
     }
     const bind = await promptForConfirmation({
-      message: "Set as default environment for this layer?",
+      message: "Set as default environment for this plugin?",
       default: true,
     });
 
-    printFromLayerPreviewSummary({
+    printFromPluginPreviewSummary({
       name: input.name,
-      layerSelector,
+      pluginSelector,
       resolved,
       bind,
     });
@@ -407,10 +407,10 @@ export async function runEnvironmentCreateWizard(input: {
 
     const result = await runEnvironmentCreate({
       name: input.name,
-      fromLayer: layerSelector,
+      fromPlugin: pluginSelector,
       bind,
       description: input.description,
-      fromLayerResolved: resolved,
+      fromPluginResolved: resolved,
     });
     return { status: "confirmed", result };
   }

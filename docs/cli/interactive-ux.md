@@ -46,8 +46,8 @@ Type `section:text` to scope search to a section or column family. Unknown prefi
 | `rule:api` | Resource list | Rules matching `api` |
 | `name:prod` | Environment list | Environment names |
 | `desc:staging` | Environment list | Environment descriptions |
-| `local:foo` | Layer / profile list | Locally installed layers |
-| `remote:full` | Layer / profile list | Remote catalog layers |
+| `local:foo` | Plugin / profile list | Locally installed plugins |
+| `remote:full` | Plugin / profile list | Remote catalog plugins |
 
 Free text (no prefix) matches across the default fields for that list.
 
@@ -78,7 +78,7 @@ Esc always exits with whatever is typed. An empty query means "no filter" and sh
 
 ### `pick-one` — pick one item
 
-Used by: `resource show`, `resource delete`, `layer show`, `layer delete`, `profile show`, `environment show`, `environment delete`.
+Used by: `resource show`, `resource delete`, `plugin show`, `plugin delete`, `profile show`, `environment show`, `environment delete`.
 
 | Key | Behavior |
 | --- | --- |
@@ -90,7 +90,7 @@ Help label: `esc cancel`.
 
 ### `pick-many` — multi-select with detail view
 
-Used by: `layer edit` interactive composition, catalog search apply (`layer list` apply mode).
+Used by: `plugin edit` interactive composition, catalog search apply (`plugin list` apply mode).
 
 | Key | Behavior |
 | --- | --- |
@@ -103,22 +103,22 @@ Used by: `layer edit` interactive composition, catalog search apply (`layer list
 
 When Enter opens a detail view, use **Ctrl+S** to save or apply. Help label: `esc cancel`.
 
-### `install` — layer / profile list browser
+### `install` — plugin / profile list browser
 
-Used by: `layer list`, `profile list` (interactive browse with local + remote sections).
+Used by: `plugin list`, `profile list` (interactive browse with local + remote sections).
 
 | Key | Behavior |
 | --- | --- |
 | Enter | Open detail view for the active row |
-| `ctrl+e` | Edit the active **local** layer, or a **manageable** remote catalog layer (returns to the list after edit) |
-| `ctrl+x` | Delete the active **local** layer, or a **manageable** remote catalog entry, after inline `[y/N]` confirm |
+| `ctrl+e` | Edit the active **local** plugin, or a **manageable** remote catalog plugin (returns to the list after edit) |
+| `ctrl+x` | Delete the active **local** plugin, or a **manageable** remote catalog entry, after inline `[y/N]` confirm |
 | Esc (browse) | **Cancel** the prompt |
 
 **Detail view (local):** `e` edit, `d` delete (with confirm), `esc` back to browse.
 
 **Detail view (remote):** `i` install, `a` apply to project or globally, `e` edit catalog (pull + composition edit + optional publish) and `d` delete catalog entry when manageable, `esc` back to browse.
 
-Remote edit/delete requires authentication with `publish` scope in the layer's owning organization. Deleting a catalog entry does not remove a local install.
+Remote edit/delete requires authentication with `publish` scope in the plugin's owning organization. Deleting a catalog entry does not remove a local install.
 
 Help label: `esc cancel`.
 
@@ -169,5 +169,5 @@ Prompts use consistent labels so Esc behavior is predictable.
 
 ## Related
 
-- [Command reference](./command-reference.md) — `layer list`, `resource list`, `environment list`, `layer edit`, and other commands that use these prompts
+- [Command reference](./command-reference.md) — `plugin list`, `resource list`, `environment list`, `plugin edit`, and other commands that use these prompts
 - [Getting started](./getting-started.md) — first-run workflow

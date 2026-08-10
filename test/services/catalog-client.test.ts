@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { fetchCatalogLayer } from "../../src/services/catalog-client.js";
+import { fetchCatalogPlugin } from "../../src/services/catalog-client.js";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 
-describe("fetchCatalogLayer", () => {
+describe("fetchCatalogPlugin", () => {
   let restoreFetch: (() => void) | undefined;
 
   afterEach(() => {
@@ -10,10 +10,10 @@ describe("fetchCatalogLayer", () => {
     restoreFetch = undefined;
   });
 
-  it("finds the requested layer when the API page returns broader org matches", async () => {
+  it("finds the requested plugin when the API page returns broader org matches", async () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://cloud.harnesstap.com",
-      layers: [
+      plugins: [
         {
           orgSlug: "harnesstap-cloud",
           slug: "agentic-ai-engineer",
@@ -31,7 +31,7 @@ describe("fetchCatalogLayer", () => {
       ],
     });
 
-    const layer = await fetchCatalogLayer(
+    const plugin = await fetchCatalogPlugin(
       {
         orgSlug: "harnesstap-cloud",
         catalogSlug: "default",
@@ -40,14 +40,14 @@ describe("fetchCatalogLayer", () => {
       { baseUrl: "https://cloud.harnesstap.com" },
     );
 
-    expect(layer.slug).toBe("data-engineer");
-    expect(layer.summary).toBe("Data engineering bundle");
+    expect(plugin.slug).toBe("data-engineer");
+    expect(plugin.summary).toBe("Data engineering bundle");
   });
 
-  it("throws when the layer is not present in catalog pages", async () => {
+  it("throws when the plugin is not present in catalog pages", async () => {
     restoreFetch = createCatalogFetchMock({
       baseUrl: "https://cloud.harnesstap.com",
-      layers: [
+      plugins: [
         {
           orgSlug: "harnesstap-cloud",
           slug: "agentic-ai-engineer",
@@ -59,7 +59,7 @@ describe("fetchCatalogLayer", () => {
     });
 
     await expect(
-      fetchCatalogLayer(
+      fetchCatalogPlugin(
         {
           orgSlug: "harnesstap-cloud",
           catalogSlug: "default",
@@ -67,6 +67,6 @@ describe("fetchCatalogLayer", () => {
         },
         { baseUrl: "https://cloud.harnesstap.com" },
       ),
-    ).rejects.toThrow("Catalog layer not found: harnesstap-cloud/default/data-engineer");
+    ).rejects.toThrow("Catalog plugin not found: harnesstap-cloud/default/data-engineer");
   });
 });

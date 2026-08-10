@@ -13,17 +13,17 @@ export const MATERIAL_RESOURCE_TYPES = [
   "model_config",
 ] as const;
 
-export const COMPOSITION_RESOURCE_TYPES = ["plugin_pin", "layer"] as const;
+export const COMPOSITION_RESOURCE_TYPES = ["plugin"] as const;
 
 export const RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
   ...COMPOSITION_RESOURCE_TYPES,
 ] as const;
 
-/** Resource types shown in default `ht resource list` (excludes layer composition refs). */
+/** Resource types shown in default `ht resource list`. */
 export const LISTABLE_RESOURCE_TYPES = [
   ...MATERIAL_RESOURCE_TYPES,
-  "plugin_pin",
+  "plugin",
 ] as const;
 
 export type MaterialResourceType = (typeof MATERIAL_RESOURCE_TYPES)[number];
@@ -103,8 +103,18 @@ export interface ModelConfigMetadata {
   provider?: string;
 }
 
-export interface PluginPinMetadata {
-  source_kind?: "marketplace" | "local" | "git";
+export const DEPENDENCY_SOURCE_KINDS = [
+  "local",
+  "marketplace",
+  "git",
+  "catalog",
+] as const;
+
+export type DependencySourceKind = (typeof DEPENDENCY_SOURCE_KINDS)[number];
+
+export interface PluginDependencyMetadata {
+  source_kind: DependencySourceKind;
+  /** Marketplace name, or `org/catalog` for catalog sources. */
   marketplace_name?: string;
   version_constraint?: string;
   resolved_version?: string;
@@ -116,11 +126,11 @@ export interface PluginPinMetadata {
   };
 }
 
-export interface LayerResourceMetadata {
-  version_constraint?: string;
-  resolved_version?: string;
-  resolved_layer_id?: string;
-}
+/** @deprecated Use PluginDependencyMetadata */
+export type PluginPinMetadata = PluginDependencyMetadata;
+
+/** @deprecated Use PluginDependencyMetadata */
+export type LayerResourceMetadata = PluginDependencyMetadata;
 
 export type ResourceMetadata =
   | RuleMetadata
@@ -131,11 +141,24 @@ export type ResourceMetadata =
   | AgentMetadata
   | EnvVarMetadata
   | ModelConfigMetadata
-  | PluginPinMetadata
-  | LayerResourceMetadata
+  | PluginDependencyMetadata
   | Record<string, unknown>;
 
 // ── Core entities ───────────────────────────────────────────────────────
+
+export const PLUGIN_ORIGINS = ["authored", "upstream", "catalog"] as const;
+export type PluginOrigin = (typeof PLUGIN_ORIGINS)[number];
+
+/**
+ * Absolute resolution decisions declared by a root plugin. Honored only when
+ * the declaring plugin is the root of the resolution, matching npm `overrides`.
+ */
+export interface PluginOverrides {
+  /** Plugin name → exact version that ends mediation for that name. */
+  versions: Record<string, string>;
+  /** `type:name` → plugin name whose copy of that resource wins. */
+  resources: Record<string, string>;
+}
 
 export interface Resource {
   id: string;
@@ -178,7 +201,7 @@ export interface ClaudeMarketplaceEntry {
   autoUpdate?: boolean;
 }
 
-/** Plugin reference in a layer (plugin-name@marketplace-name). */
+/** Plugin reference in a plugin (plugin-name@marketplace-name). */
 export interface ClaudePluginEntry {
   id: string;
   enabled?: boolean;
@@ -186,26 +209,30 @@ export interface ClaudePluginEntry {
   version?: string;
 }
 
-/** Claude Code plugin marketplace configuration carried by a layer. */
-export interface ClaudeLayerConfig {
+/** Claude Code plugin marketplace configuration carried by a plugin. */
+export interface ClaudePluginConfig {
   marketplaces?: Record<string, ClaudeMarketplaceEntry>;
   plugins?: ClaudePluginEntry[];
 }
 
-export interface Layer {
+export interface Plugin {
   id: string;
   name: string;
   version: string;
   org_slug: string;
   catalog_slug: string;
+  origin: PluginOrigin;
   description: string;
   tags: string[];
   dirty: boolean;
   frozen_at?: string;
-  claude?: ClaudeLayerConfig;
-  /** Config contract keys this layer requires from an environment. */
+  claude?: ClaudePluginConfig;
+  /** Config contract keys this plugin requires from an environment. */
   needs?: string[];
+  overrides?: PluginOverrides;
   default_environment_id?: string;
+  /** Stable Agent Plugins package name override; omitted when unset. */
+  ap_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -233,14 +260,15 @@ export interface EnvironmentSecretRef {
   ref: string;
 }
 
-export interface LayerResource {
-  layer_id: string;
+export interface PluginResource {
+  plugin_id: string;
   resource_id: string;
   order: number;
 }
 
-export interface LayerDependency {
-  layer_id: string;
+/** Composition dependency edge on a plugin (name + version constraint). */
+export interface PluginDependencyRef {
+  plugin_id: string;
   dependency_name: string;
   version_constraint: string;
   order: number;
@@ -254,9 +282,9 @@ export interface Project {
   created_at: string;
 }
 
-export interface ProjectLayer {
+export interface ProjectPlugin {
   project_id: string;
-  layer_id: string;
+  plugin_id: string;
   platforms: string[];
   applied_at: string;
 }
@@ -267,10 +295,7 @@ export const DECK_JSON_VERSION = 1 as const;
 export const PROJECT_SCHEMA = "urn:harnesstap:project:v1" as const;
 export const PROJECT_SCHEMA_VERSION = 1 as const;
 
-export const BUNDLE_SCHEMA = "urn:harnesstap:bundle:v1" as const;
-export const BUNDLE_SCHEMA_VERSION = 1 as const;
-
-export interface DeckJsonLayer {
+export interface DeckJsonPlugin {
   name: string;
   version: string;
   org?: string;
@@ -299,7 +324,7 @@ export interface DeckJson {
   $schema: typeof DECK_SCHEMA;
   version: typeof DECK_JSON_VERSION;
   name: string;
-  layers: DeckJsonLayer[];
+  plugins: DeckJsonPlugin[];
   environments: DeckJsonEnvironment[];
   active_environment?: string;
 }
@@ -323,7 +348,7 @@ export interface ProjectHarnessConfig extends HarnessSelection {
 }
 
 export interface SnapshotState {
-  layers: Layer[];
+  plugins: Plugin[];
   resources: Resource[];
   platform_files: Record<string, Record<string, string>>;
 }
@@ -371,7 +396,8 @@ export interface ImportedSnapshotInstall {
 export interface GlobalApplySnapshot {
   id: string;
   profile_name: string;
-  layer_ids: string[];
+  plugin_ids: string[];
+  resolved_set: Array<{ name: string; version: string }>;
   created_at: string;
 }
 
@@ -464,86 +490,22 @@ export interface PlatformDefinition {
   hostManagedPaths?: HostManagedPaths;
 }
 
-// ── Layer export format ─────────────────────────────────────────────────
-
-export const LAYER_SCHEMA = "urn:harnesstap:layer:v1" as const;
-export const LAYER_SCHEMA_VERSION = 1 as const;
-
-export type LayerExportLayer = Omit<
-  Layer,
-  | "id"
-  | "created_at"
-  | "updated_at"
-  | "org_slug"
-  | "catalog_slug"
-  | "default_environment_id"
-  | "dirty"
-  | "frozen_at"
->;
-
-export type LayerExportResource = Omit<
-  Resource,
-  "id" | "created_at" | "updated_at" | "source"
->;
-
-export type LayerExportDependency = Omit<LayerDependency, "layer_id">;
-
-export interface LayerExportEntry extends LayerExportLayer {
-  name: string;
-  version: string;
-  description: string;
-  tags: string[];
-  resources: LayerExportResource[];
-  /** Claude Code marketplace and plugin configuration for this layer. */
-  claude?: ClaudeLayerConfig;
-  /** Host plugin pins (marketplace refs, not inlined in the export file). */
-  plugin_pins: LayerExportPluginPin[];
-  /** Embedded plugin refs used by this layer; payload lives at export root. */
-  embedded_plugin_refs?: string[];
-  /** Layer composition dependencies (name + version constraint). */
-  dependencies?: LayerExportDependency[];
-}
-
-export interface MultiLayerExport {
-  $schema: typeof LAYER_SCHEMA;
-  version: typeof LAYER_SCHEMA_VERSION;
-  layers: LayerExportEntry[];
-  /** Plugin trees inlined in the export file and shared by exported layers. */
-  embedded_plugins: LayerExportEmbeddedPlugin[];
-}
-
-export type LayerExport = MultiLayerExport;
-
-// ── Resource export format ──────────────────────────────────────────────
-
-export const RESOURCE_SCHEMA = "urn:harnesstap:resource:v1" as const;
-export const RESOURCE_SCHEMA_VERSION = 1 as const;
-
-export type ResourceExportPayload = Omit<
-  Resource,
-  "id" | "created_at" | "updated_at" | "source"
->;
-
-export interface ResourceExport extends ResourceExportPayload {
-  $schema: typeof RESOURCE_SCHEMA;
-  version: typeof RESOURCE_SCHEMA_VERSION;
-}
-
-/** Plugin pin carried in layer exports (non-embedded). */
-export interface LayerExportPluginPin {
-  ref: string;
-  version_constraint: string;
-}
-
-/** Plugin tree inlined in layer exports. */
-export interface LayerExportEmbeddedPlugin {
-  ref: string;
-  version_constraint: string;
-  /** Logical directory key for imports that are not `./...` project-relative refs. */
-  root: string;
-  /** Paths relative to the plugin root, POSIX-style separators. */
-  files: Record<string, string>;
-}
+/** @deprecated Use PluginOrigin */
+export type LayerOrigin = PluginOrigin;
+/** @deprecated Use PLUGIN_ORIGINS */
+export const LAYER_ORIGINS = PLUGIN_ORIGINS;
+/** @deprecated Use PluginOverrides */
+export type LayerOverrides = PluginOverrides;
+/** @deprecated Use PluginDependencyRef */
+export type LayerDependency = PluginDependencyRef;
+/** @deprecated Use ClaudePluginConfig */
+export type ClaudeLayerConfig = ClaudePluginConfig;
+/** @deprecated Use PluginResource */
+export type LayerResource = PluginResource;
+/** @deprecated Use ProjectPlugin */
+export type ProjectLayer = ProjectPlugin;
+/** @deprecated Use DeckJsonPlugin */
+export type DeckJsonLayer = DeckJsonPlugin;
 
 // ── Serializer interface ────────────────────────────────────────────────
 

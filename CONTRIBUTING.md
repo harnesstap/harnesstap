@@ -52,7 +52,7 @@ To run the CLI commands during development without having to build it first, you
 bun run start -- status .
 
 # Option 2: Execute the TypeScript file directly
-bun src/index.ts layer apply <layer-name> --project .
+bun src/index.ts apply <plugin-name> --project .
 ```
 
 ### Installing the current checkout globally

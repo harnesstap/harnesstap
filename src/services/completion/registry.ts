@@ -1,20 +1,20 @@
-import { LAYER_ATTACHMENT_TYPES } from "../layer-composition.js";
+import { PLUGIN_ATTACHMENT_TYPES } from "../plugin-composition.js";
 import type { CompletionContext, CompletionProvider } from "./types.js";
 import { completeCatalogConnectValue } from "./providers/catalog-connect-value.js";
-import { completeCatalogLayers } from "./providers/catalog-layer.js";
+import { completeCatalogPlugins } from "./providers/catalog-plugin.js";
 import { completeCatalogProfiles } from "./providers/catalog-profile.js";
 import { completeCatalogOrgs } from "./providers/catalog-org.js";
 import { completeCloudAccounts } from "./providers/cloud-account.js";
 import {
   completeDirectoryPath,
   completeFilePath,
-  completeLayerImportPath,
+  completePluginImportPath,
 } from "./providers/file-path.js";
 import { completeHarnessSlugs } from "./providers/harness-slug.js";
-import { completeLayerEditAddAttachment, completeLayerEditRemoveAttachment } from "./providers/layer-attachment.js";
+import { completePluginEditAddAttachment, completePluginEditRemoveAttachment } from "./providers/plugin-attachment.js";
 import { completeLocalEnvironments } from "./providers/local-environment.js";
-import { completeLocalLayers } from "./providers/local-layer.js";
-import { completeProfileLayers } from "./providers/profile-layer.js";
+import { completeLocalPlugins } from "./providers/local-plugin.js";
+import { completeProfilePlugins } from "./providers/profile-plugin.js";
 import { completeProjectProfileKeys } from "./providers/project-profile.js";
 import { completeLocalResources } from "./providers/local-resource.js";
 import { completeResourceTypes } from "./providers/resource-type.js";
@@ -26,30 +26,30 @@ import { flagsMatch } from "./utils.js";
 type PositionalRegistry = Record<string, CompletionProvider[]>;
 type FlagRegistry = Record<string, CompletionProvider[]>;
 
-const LOCAL_LAYER_OR_FILE: CompletionProvider[] = [
-  completeLocalLayers,
+const LOCAL_PLUGIN_OR_FILE: CompletionProvider[] = [
+  completeLocalPlugins,
   completeFilePath,
 ];
 
 const POSITIONAL_PROVIDERS: PositionalRegistry = {
-  "layer show:0": [completeLocalLayers],
-  "layer edit:0": [completeLocalLayers],
-  "layer editor:0": [completeLocalLayers],
-  "layer delete:0": [completeLocalLayers],
-  "layer apply:0": [completeLocalLayers],
-  "layer diff:0": LOCAL_LAYER_OR_FILE,
-  "layer diff:1": LOCAL_LAYER_OR_FILE,
-  "layer pull:0": [completeCatalogLayers],
-  "layer publish:0": [completeLocalLayers],
-  "profile use:0": [completeProfileLayers],
+  "plugin show:0": [completeLocalPlugins],
+  "plugin edit:0": [completeLocalPlugins],
+  "plugin editor:0": [completeLocalPlugins],
+  "plugin delete:0": [completeLocalPlugins],
+  "apply:0": [completeLocalPlugins],
+  "plugin diff:0": LOCAL_PLUGIN_OR_FILE,
+  "plugin diff:1": LOCAL_PLUGIN_OR_FILE,
+  "plugin pull:0": [completeCatalogPlugins],
+  "plugin publish:0": [completeLocalPlugins],
+  "profile use:0": [completeProfilePlugins],
   "use:profile": [completeProjectProfileKeys],
   "profile use:profile": [completeProjectProfileKeys],
-  "profile show:0": [completeProfileLayers],
-  "profile delete:0": [completeProfileLayers],
+  "profile show:0": [completeProfilePlugins],
+  "profile delete:0": [completeProfilePlugins],
   "profile pull:0": [completeCatalogProfiles],
-  ":0": [completeProfileLayers],
-  "layer catalog connect:1": [completeCatalogConnectValue],
-  "layer catalog disconnect:1": [completeCatalogConnectValue],
+  ":0": [completeProfilePlugins],
+  "plugin catalog connect:1": [completeCatalogConnectValue],
+  "plugin catalog disconnect:1": [completeCatalogConnectValue],
   "resource show:0": [completeLocalResources],
   "resource delete:0": [completeLocalResources],
   "resource list:0": [completeResourceTypes],
@@ -61,7 +61,7 @@ const POSITIONAL_PROVIDERS: PositionalRegistry = {
   "migrate export:environment": [completeLocalEnvironments],
   "revert:0": [completeSnapshotIds],
   "migrate export:0": [completeFilePath],
-  "migrate import:0": [completeLayerImportPath, completeFilePath],
+  "migrate import:0": [completePluginImportPath, completeFilePath],
   "auth login:0": [completeCloudAccounts],
   "help scenario:0": [completeScenarioIds],
 };
@@ -73,15 +73,15 @@ const FLAG_PROVIDERS: FlagRegistry = {
   "harness set:aliases": [completeHarnessSlugs],
   "harness project set:main": [completeHarnessSlugs],
   "harness project set:aliases": [completeHarnessSlugs],
-  "migrate export:layer": [completeLocalLayers],
+  "migrate export:plugin": [completeLocalPlugins],
   "migrate export:resource": [completeLocalResources],
-  "layer edit:type": [staticEnumProvider(LAYER_ATTACHMENT_TYPES)],
-  "layer edit:add": [completeLayerEditAddAttachment],
-  "layer edit:remove": [completeLayerEditRemoveAttachment],
-  "layer edit:environment": [completeLocalEnvironments],
-  "layer publish:org": [completeCatalogOrgs],
-  "add:layer": [completeLocalLayers],
-  "add:create-layer": [completeLocalLayers],
+  "plugin edit:type": [staticEnumProvider(PLUGIN_ATTACHMENT_TYPES)],
+  "plugin edit:add": [completePluginEditAddAttachment],
+  "plugin edit:remove": [completePluginEditRemoveAttachment],
+  "plugin edit:environment": [completeLocalEnvironments],
+  "plugin publish:org": [completeCatalogOrgs],
+  "add:plugin": [completeLocalPlugins],
+  "add:create-plugin": [completeLocalPlugins],
   "add:harness": [completeHarnessSlugs],
   "add:project": [completeDirectoryPath],
   "auth status:account": [completeCloudAccounts],
@@ -97,7 +97,7 @@ const GLOBAL_FLAG_PROVIDERS: Record<string, CompletionProvider[]> = {
   account: [completeCloudAccounts],
 };
 
-const LAYER_ACCOUNT_FLAGS = new Set(["account"]);
+const PLUGIN_ACCOUNT_FLAGS = new Set(["account"]);
 
 function positionalKey(commandPath: string[], index: number): string {
   return `${commandPath.join(" ")}:${index}`;
@@ -107,15 +107,15 @@ function flagKey(commandPath: string[], flag: string): string {
   return `${commandPath.join(" ")}:${flag}`;
 }
 
-function resolveLayerWildcardProviders(
+function resolvePluginWildcardProviders(
   ctx: CompletionContext,
   slot: "flag-value" | "positional",
 ): CompletionProvider[] {
-  if (!ctx.commandPath[0] || ctx.commandPath[0] !== "layer") {
+  if (!ctx.commandPath[0] || ctx.commandPath[0] !== "plugin") {
     return [];
   }
 
-  if (slot === "flag-value" && ctx.flag && LAYER_ACCOUNT_FLAGS.has(ctx.flag)) {
+  if (slot === "flag-value" && ctx.flag && PLUGIN_ACCOUNT_FLAGS.has(ctx.flag)) {
     return [completeCloudAccounts];
   }
 
@@ -136,7 +136,7 @@ export function lookupProviders(ctx: CompletionContext): CompletionProvider[] {
       providers.push(...global);
     }
 
-    providers.push(...resolveLayerWildcardProviders(ctx, "flag-value"));
+    providers.push(...resolvePluginWildcardProviders(ctx, "flag-value"));
 
     if (flagsMatch(ctx.flag, "file")) {
       providers.push(completeFilePath);
@@ -154,7 +154,7 @@ export function lookupProviders(ctx: CompletionContext): CompletionProvider[] {
     if (specific) {
       providers.push(...specific);
     }
-    providers.push(...resolveLayerWildcardProviders(ctx, "positional"));
+    providers.push(...resolvePluginWildcardProviders(ctx, "positional"));
   }
 
   return providers;

@@ -12,7 +12,7 @@ HarnessTap separates what the model sees from how it runs.
 
 ### Context-side material resources
 
-These are scanned from project and home harness files, curated in layers, and written back during apply:
+These are scanned from project and home harness files, curated in plugins, and written back during apply:
 
 | Type | Examples on disk |
 | --- | --- |
@@ -25,18 +25,18 @@ These are scanned from project and home harness files, curated in layers, and wr
 | **agents** | Agent manifest files under harness `agents/` directories |
 | **commands** | Static command definitions (markdown, TOML, or manifest pointers) |
 
-### Layer composition attachments
+### Plugin composition attachments
 
-On top of material resources, layers can reference:
+On top of material resources, plugins can reference:
 
 | Attachment | Role |
 | --- | --- |
-| **plugin_pin** | Lazy link to a host marketplace or local plugin; materializes after `resource sync` or `layer apply --sync-plugins` |
-| **layer** | Nested layer reference expanded depth-first at apply time |
+| **plugin_pin** | Lazy link to a host marketplace or local plugin; materializes after `resource sync` or `apply --sync-plugins` |
+| **plugin** | Nested plugin reference expanded depth-first at apply time |
 
 ### Environment resources
 
-Environments carry *how* values that override matching layer resources during apply:
+Environments carry *how* values that override matching plugin resources during apply:
 
 | Type | Role |
 | --- | --- |
@@ -69,7 +69,7 @@ ht add owner/repo --skill my-skill
 
 ## Canonical SQLite library
 
-Imported resources live in `~/.harnesstap/harnesstap.db` alongside plugins, environments, layers, tracked projects, and snapshots. The database is the single source of truth for composition — on-disk harness files are **materialized views** produced by apply, mirror, or profile use.
+Imported resources live in `~/.harnesstap/harnesstap.db` alongside plugins, environments, plugins, tracked projects, and snapshots. The database is the single source of truth for composition — on-disk harness files are **materialized views** produced by apply, mirror, or profile use.
 
 Key resource commands:
 
@@ -82,25 +82,25 @@ ht resource delete <selector>
 
 Use `--format json` for scripting. Interactive `resource list` opens a filter overlay; see [Interactive UX](../interactive-ux.md). Human list tables show bare names in the NAME column and plugin or package paths in NAMESPACE; compose with `name@namespace` selectors as documented in the command reference.
 
-## From resources to layers
+## From resources to plugins
 
-Resources alone are not applied to projects. You group them into plugins and layers, then apply the layer:
+Resources alone are not applied to projects. You group them into plugins and plugins, then apply the plugin:
 
 ```bash
-ht layer create my-setup
-ht layer edit my-setup --add research-helper --type skill
-ht layer edit my-setup --add shared-rules --type rule
-ht layer apply my-setup --project . --harness claude-code,cursor
+ht plugin create my-setup
+ht plugin edit my-setup --add research-helper --type skill
+ht plugin edit my-setup --add shared-rules --type rule
+ht apply my-setup --project . --harness claude-code,cursor
 ```
 
-`layer from-project` is a shortcut that scans a repository and promotes imported resources into a new layer in one step.
+`plugin from-project` is a shortcut that scans a repository and promotes imported resources into a new plugin in one step.
 
 ## Plugin resources
 
 Marketplace plugins import as `plugin_pin` resources. Sync resolves the plugin tree into child resources:
 
 ```bash
-ht layer edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
+ht plugin edit my-setup --add plugin_pin:formatter@my-marketplace --version "^2.1.0"
 ht resource sync plugin_pin:formatter@my-marketplace
 ht resource show plugin_pin:formatter@my-marketplace
 ```
@@ -117,7 +117,7 @@ Before relying on cross-harness apply, review [Portability limits](../../portabi
 
 ## Related
 
-- [Layers](./layers.md) — composing resources into applyable packages
+- [Plugins](./plugins.md) — composing resources into applyable packages
 - [Projects](./projects.md) — scanning and applying in a repository
 - [Supported harnesses](../../supported-harnesses.md) — resource types per harness
 - [Portability limits](../../portability-limits.md) — fidelity caveats

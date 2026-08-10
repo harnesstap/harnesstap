@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { restoreManagedFile } from "../../src/services/profile-restore-file.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
@@ -11,8 +11,8 @@ describe("restoreManagedFile", () => {
   it("writes expected profile content back to a modified managed path", async () => {
     const context = await createInitializedTestContext("restore-managed-file");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const skill = createResource({
         type: "skill",
         name: "manual-skill",
@@ -21,8 +21,8 @@ describe("restoreManagedFile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(profile.id, skill.id);
-      await applyProfileLayer("work", {
+      addResourceToPlugin(profile.id, skill.id);
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });

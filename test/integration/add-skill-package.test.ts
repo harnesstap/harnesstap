@@ -37,8 +37,8 @@ describe("addSkillPackage integration", () => {
     }
   });
 
-  it("creates layer with skill refs when createLayer set", async () => {
-    const context = await createInitializedTestContext("add-create-layer");
+  it("creates plugin with skill refs when createPlugin set", async () => {
+    const context = await createInitializedTestContext("add-create-plugin");
     try {
       const { setHarnessPreference } = await import("../../src/models/harness.ts");
       setHarnessPreference({ main_harness: "codex", alias_harnesses: [] });
@@ -49,13 +49,13 @@ describe("addSkillPackage integration", () => {
         method: "symlink",
         homeRoot: context.homeDir,
         harnesstapDir: join(context.homeDir, ".harnesstap"),
-        createLayer: "mattpocock-skills",
+        createPlugin: "mattpocock-skills",
       });
-      const { getLayer, getLayerResources } = await import("../../src/models/layer-model.ts");
-      const layer = getLayer("mattpocock-skills");
-      expect(layer).toBeDefined();
-      if (!layer) throw new Error("Expected mattpocock-skills layer");
-      const attached = getLayerResources(layer.id);
+      const { getPlugin, getPluginResources } = await import("../../src/models/plugin-model.ts");
+      const plugin = getPlugin("mattpocock-skills");
+      expect(plugin).toBeDefined();
+      if (!plugin) throw new Error("Expected mattpocock-skills plugin");
+      const attached = getPluginResources(plugin.id);
       expect(attached.some((r) => r.type === "skill" && r.name === "caveman")).toBe(true);
     } finally {
       await context.cleanup();

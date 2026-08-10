@@ -9,7 +9,7 @@ export type ContentsDiffKind = "added" | "removed" | "unchanged";
 export interface ContentsDiffItem {
   key: string;
   kind: ContentsDiffKind;
-  category: "layer" | "resource" | "plugin_pin";
+  category: "plugin" | "resource" | "plugin_pin";
   /** Type key used for icons / summary counts. */
   iconType: string;
   label: string;
@@ -34,7 +34,7 @@ export interface InstallGapRow {
 }
 
 const TYPE_ORDER = [
-  "layer",
+  "plugin",
   "skill",
   "mcp_server",
   "instruction",
@@ -49,7 +49,7 @@ const TYPE_ORDER = [
 ] as const;
 
 export const TYPE_LABELS: Record<string, { one: string; other: string }> = {
-  layer: { one: "layer", other: "layers" },
+  plugin: { one: "plugin", other: "plugins" },
   skill: { one: "skill", other: "skills" },
   mcp_server: { one: "MCP", other: "MCP" },
   instruction: { one: "instruction", other: "instructions" },
@@ -71,8 +71,8 @@ function labelForType(type: string, count: number): string {
   return count === 1 ? type : `${type}s`;
 }
 
-function layerKey(layer: { id: string; name: string; version: string }): string {
-  return `layer:${layer.id}:${layer.name}@${layer.version}`;
+function pluginKey(plugin: { id: string; name: string; version: string }): string {
+  return `plugin:${plugin.id}:${plugin.name}@${plugin.version}`;
 }
 
 function resourceKey(resource: { type: string; name: string }): string {
@@ -89,15 +89,15 @@ function itemsFromContents(contents: ProfileContents | null | undefined): Map<st
     return items;
   }
 
-  for (const layer of contents.layers ?? []) {
-    const key = layerKey(layer);
+  for (const plugin of contents.plugins ?? []) {
+    const key = pluginKey(plugin);
     items.set(key, {
       key,
       kind: "unchanged",
-      category: "layer",
-      iconType: "layer",
-      label: layer.name,
-      detail: `@${layer.version}`,
+      category: "plugin",
+      iconType: "plugin",
+      label: plugin.name,
+      detail: `@${plugin.version}`,
     });
   }
 
@@ -204,11 +204,11 @@ export function fallbackTypeCounts(
   }
 
   const counts: Record<string, number> = {};
-  const layers = contents.layers ?? [];
+  const plugins = contents.plugins ?? [];
   const pluginPins = contents.plugin_pins ?? [];
   const mcpServers = contents.mcp_servers ?? [];
-  if (layers.length > 0) {
-    counts.layer = layers.length;
+  if (plugins.length > 0) {
+    counts.plugin = plugins.length;
   }
   for (const resource of contents.resources ?? []) {
     counts[resource.type] = (counts[resource.type] ?? 0) + 1;

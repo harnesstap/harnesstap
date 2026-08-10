@@ -1,5 +1,5 @@
-import { listProfileLayers } from "../constants/profile.js";
-import type { Layer } from "../types.js";
+import { listProfilePlugins } from "../constants/profile.js";
+import type { Plugin } from "../types.js";
 import {
   getActiveProfileName,
   setActiveProfileName,
@@ -7,29 +7,29 @@ import {
 import { createProfileCommand } from "./profile-commands.js";
 
 export interface EnsureDefaultProfileResult {
-  layer: Layer;
+  plugin: Plugin;
   created: boolean;
 }
 
 /**
- * When no profile layers exist, seed a `default` profile (same name as `ht init`)
+ * When no profile plugins exist, seed a `default` profile (same name as `ht init`)
  * and point the active-profile pointer at it if unset.
  */
-export function ensureDefaultProfileLayer(): EnsureDefaultProfileResult {
-  const existing = listProfileLayers();
+export function ensureDefaultProfilePlugin(): EnsureDefaultProfileResult {
+  const existing = listProfilePlugins();
   const [first] = existing;
   if (first) {
-    return { layer: first, created: false };
+    return { plugin: first, created: false };
   }
 
-  const { layer, created } = createProfileCommand({
+  const { plugin, created } = createProfileCommand({
     name: "default",
     description: "Default profile",
   });
 
   if (!getActiveProfileName()) {
-    setActiveProfileName(layer.name);
+    setActiveProfileName(plugin.name);
   }
 
-  return { layer, created };
+  return { plugin, created };
 }

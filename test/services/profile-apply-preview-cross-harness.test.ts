@@ -7,9 +7,9 @@ import {
   previewProfileApply,
   withManagedRemovals,
 } from "../../src/services/profile-apply-preview.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { DriftFileChange } from "../../src/services/project-drift.ts";
 
@@ -120,8 +120,8 @@ describe("previewProfileApply cross-harness adds", () => {
         "utf-8",
       );
 
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const skill = createResource({
         type: "skill",
         name: "pair-agent",
@@ -130,9 +130,9 @@ describe("previewProfileApply cross-harness adds", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(profile.id, skill.id);
+      addResourceToPlugin(profile.id, skill.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });

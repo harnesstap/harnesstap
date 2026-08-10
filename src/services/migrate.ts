@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,18 +14,28 @@ import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
-import { listLayers } from "../models/layer-model.js";
-import { exportToFile } from "./layer-export.js";
-import { importFromFile } from "./layer-import.js";
+import { listPlugins } from "../models/plugin-model.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnesstapSettings } from "../config/settings.js";
-import type { HarnessPreference, LayerExport } from "../types.js";
-import { formatLayerExportToml, parseLayerExportToml } from "./transport/layer.js";
+import type { HarnessPreference } from "../types.js";
 import {
   formatEnvironmentToml,
   importEnvironmentToml,
   listEnvironmentDocuments,
 } from "./environment-import-export.js";
+import { listContainedFiles, assertArchiveMembersContained } from "../utils/path-containment.js";
+import {
+  buildApPackageFiles,
+  writeApPackageFiles,
+  readApPackageFiles,
+} from "./agent-plugins/files.js";
+import { importApPackageFiles } from "./agent-plugins/import.js";
+import { slugifyApName } from "./agent-plugins/name.js";
+import {
+  envelopeFromFiles,
+  parseApEnvelope,
+} from "./agent-plugins/envelope.js";
+import { isLegacyPluginTomlPath } from "./legacy-toml-transport.js";
 
 export const MIGRATE_MANIFEST_VERSION_V1 = 1 as const;
 export const MIGRATE_MANIFEST_VERSION = 2 as const;
@@ -32,7 +43,7 @@ export const MIGRATE_MANIFEST_VERSION = 2 as const;
 export interface MigrateManifestV1 {
   version: typeof MIGRATE_MANIFEST_VERSION_V1;
   exported_at: string;
-  layer_count: number;
+  plugin_count: number;
   include_plugins: boolean;
   includes_active_profile: boolean;
 }
@@ -40,8 +51,10 @@ export interface MigrateManifestV1 {
 export interface MigrateManifest {
   version: typeof MIGRATE_MANIFEST_VERSION;
   exported_at: string;
-  layer_count: number;
+  plugin_count: number;
   environment_count: number;
+  /** Slugified plugin directory names packed under `plugins/`. */
+  plugins: string[];
   include_plugins: boolean;
   includes_active_profile: boolean;
 }
@@ -61,24 +74,50 @@ function writeJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data, null, 2), "utf-8");
 }
 
+function listArchiveMembers(archivePath: string): string[] {
+  const listing = execSync(`tar -tzf "${archivePath}"`, {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return listing
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
 function extractArchive(archivePath: string, destDir: string): void {
   const resolved = resolve(archivePath);
-  if (resolved.endsWith(".json")) {
+  if (resolved.endsWith(".json") && !resolved.endsWith(".ap.json")) {
     mkdirSync(join(destDir, "state"), { recursive: true });
     cpSync(resolved, join(destDir, "state", "migrate.json"));
     return;
   }
+  // Reject path-traversal members before write; post-walk only sees files under destDir.
+  assertArchiveMembersContained(destDir, listArchiveMembers(resolved));
   execSync(`tar -xzf "${resolved}" -C "${destDir}"`, { stdio: "pipe" });
+  // Catch in-tree symlink escapes that resolve outside the destination.
+  listContainedFiles(destDir);
 }
 
 function createArchive(sourceDir: string, outputPath: string): void {
   const resolved = resolve(outputPath);
-  if (resolved.endsWith(".json")) {
-    const manifest = readFileSync(
-      join(sourceDir, "manifest.json"),
-      "utf-8",
-    );
+  if (resolved.endsWith(".json") && !resolved.endsWith(".ap.json")) {
+    const manifest = readFileSync(join(sourceDir, "manifest.json"), "utf-8");
     const environmentsDir = join(sourceDir, "environments");
+    const pluginsDir = join(sourceDir, "plugins");
+    const plugins: unknown[] = [];
+    if (existsSync(pluginsDir)) {
+      for (const entry of readdirSync(pluginsDir)) {
+        const packageDir = join(pluginsDir, entry);
+        if (!statSync(packageDir).isDirectory()) continue;
+        if (!existsSync(join(packageDir, "plugin.json"))) {
+          throw new Error(
+            `Archive plugin directory ${entry} is missing plugin.json`,
+          );
+        }
+        plugins.push(envelopeFromFiles(readApPackageFiles(packageDir)));
+      }
+    }
     const state: Record<string, unknown> = {
       manifest: JSON.parse(manifest) as AnyMigrateManifest,
       harness: existsSync(join(sourceDir, "harness.json"))
@@ -90,13 +129,7 @@ function createArchive(sourceDir: string, outputPath: string): void {
       active_profile: existsSync(join(sourceDir, "active-profile.json"))
         ? JSON.parse(readFileSync(join(sourceDir, "active-profile.json"), "utf-8"))
         : null,
-      layers: readdirSync(join(sourceDir, "layers"))
-        .filter((f) => f.endsWith(".toml"))
-        .map((f) =>
-          parseLayerExportToml(
-            readFileSync(join(sourceDir, "layers", f), "utf-8"),
-          ),
-        ),
+      plugins,
     };
     if (existsSync(environmentsDir)) {
       state.environments = readdirSync(environmentsDir)
@@ -119,20 +152,22 @@ function isMigrateManifestV1(manifest: AnyMigrateManifest): manifest is MigrateM
 }
 
 /**
- * Export all layers, environments, harness preferences, and config into an archive.
+ * Export all plugins, environments, harness preferences, and config into an archive.
  */
 export function exportMigrationState(opts: MigrateExportOptions): MigrateManifest {
   const workDir = mkdtempSync(join(tmpdir(), "harnesstap-migrate-"));
-  const layersDir = join(workDir, "layers");
+  const pluginsDir = join(workDir, "plugins");
   const environmentsDir = join(workDir, "environments");
-  mkdirSync(layersDir, { recursive: true });
+  mkdirSync(pluginsDir, { recursive: true });
   mkdirSync(environmentsDir, { recursive: true });
 
-  const layers = listLayers();
-  for (const layer of layers) {
-    exportToFile(layer.name, join(layersDir, `${layer.name}.harnesstap.toml`), {
-      embedPlugins: opts.includePlugins ?? false,
-    });
+  const plugins = listPlugins();
+  const pluginNames: string[] = [];
+  for (const plugin of plugins) {
+    const slug = slugifyApName(plugin.name);
+    pluginNames.push(slug);
+    const packageDir = join(pluginsDir, slug);
+    writeApPackageFiles(buildApPackageFiles(plugin.id), packageDir);
   }
 
   const environments = listEnvironmentDocuments();
@@ -161,8 +196,9 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   const manifest: MigrateManifest = {
     version: MIGRATE_MANIFEST_VERSION,
     exported_at: new Date().toISOString(),
-    layer_count: layers.length,
+    plugin_count: plugins.length,
     environment_count: environments.length,
+    plugins: pluginNames,
     include_plugins: opts.includePlugins ?? false,
     includes_active_profile: includesActiveProfile,
   };
@@ -188,12 +224,39 @@ function importEnvironmentsFromDir(environmentsDir: string): number {
   return imported;
 }
 
+function importPluginsFromDir(pluginsDir: string): number {
+  if (!existsSync(pluginsDir)) {
+    return 0;
+  }
+  let imported = 0;
+  for (const entry of readdirSync(pluginsDir)) {
+    const packageDir = join(pluginsDir, entry);
+    if (!statSync(packageDir).isDirectory()) {
+      if (isLegacyPluginTomlPath(entry) || entry.endsWith(".toml")) {
+        throw new Error(
+          "This archive stores plugins as TOML, which is no longer supported. " +
+            "Re-export with a current CLI to produce Agent Plugins packages.",
+        );
+      }
+      continue;
+    }
+    if (!existsSync(join(packageDir, "plugin.json"))) {
+      throw new Error(
+        `Archive plugin directory ${entry} is missing plugin.json`,
+      );
+    }
+    importApPackageFiles(readApPackageFiles(packageDir));
+    imported++;
+  }
+  return imported;
+}
+
 /**
  * Import a migration archive produced by exportMigrationState.
  */
 export function importMigrationState(opts: MigrateImportOptions): {
   manifest: AnyMigrateManifest;
-  layers_imported: number;
+  plugins_imported: number;
   environments_imported: number;
 } {
   const workDir = mkdtempSync(join(tmpdir(), "harnesstap-migrate-import-"));
@@ -202,7 +265,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
     extractArchive(opts.archivePath, workDir);
 
     let manifest: AnyMigrateManifest;
-    let layersDir: string;
+    let pluginsDir: string;
     let environmentsDir: string;
     let harnessPath: string;
     let configPath: string;
@@ -215,20 +278,19 @@ export function importMigrationState(opts: MigrateImportOptions): {
         harness: HarnessPreference | null;
         config: HarnesstapSettings;
         active_profile: { name?: string } | null;
-        layers: unknown[];
+        plugins: unknown[];
         environments?: string[];
       };
       manifest = state.manifest;
-      layersDir = join(workDir, "import-layers");
+      pluginsDir = join(workDir, "import-plugins");
       environmentsDir = join(workDir, "import-environments");
-      mkdirSync(layersDir, { recursive: true });
+      mkdirSync(pluginsDir, { recursive: true });
       mkdirSync(environmentsDir, { recursive: true });
-      for (let i = 0; i < state.layers.length; i++) {
-        writeFileSync(
-          join(layersDir, `layer-${i}.harnesstap.toml`),
-          formatLayerExportToml(state.layers[i] as LayerExport),
-          "utf-8",
-        );
+      for (let i = 0; i < state.plugins.length; i++) {
+        const packageDir = join(pluginsDir, `plugin-${i}`);
+        const envelopeRaw = JSON.stringify(state.plugins[i]);
+        const files = parseApEnvelope(envelopeRaw, `archive plugin ${i}`);
+        writeApPackageFiles(files, packageDir);
       }
       if (state.environments) {
         for (let i = 0; i < state.environments.length; i++) {
@@ -252,33 +314,27 @@ export function importMigrationState(opts: MigrateImportOptions): {
       manifest = JSON.parse(
         readFileSync(join(workDir, "manifest.json"), "utf-8"),
       ) as AnyMigrateManifest;
-      layersDir = join(workDir, "layers");
+      pluginsDir = join(workDir, "plugins");
       environmentsDir = join(workDir, "environments");
       harnessPath = join(workDir, "harness.json");
       configPath = join(workDir, "config.json");
     }
     const activeProfilePath = join(workDir, "active-profile.json");
 
+    if (isMigrateManifestV1(manifest)) {
+      throw new Error(
+        "This archive uses manifest version 1, which stored plugins as TOML. " +
+          "Version 1 archives were never released and are not supported.",
+      );
+    }
+
     const manifestVersion = manifest.version;
-    if (
-      manifestVersion !== MIGRATE_MANIFEST_VERSION
-      && manifestVersion !== MIGRATE_MANIFEST_VERSION_V1
-    ) {
+    if (manifestVersion !== MIGRATE_MANIFEST_VERSION) {
       throw new Error(`Unsupported migration manifest version: ${manifestVersion}`);
     }
 
-    let layersImported = 0;
-    if (existsSync(layersDir)) {
-      for (const file of readdirSync(layersDir)) {
-        if (!file.endsWith(".toml")) continue;
-        importFromFile(join(layersDir, file));
-        layersImported++;
-      }
-    }
-
-    const environmentsImported = isMigrateManifestV1(manifest)
-      ? 0
-      : importEnvironmentsFromDir(environmentsDir);
+    const pluginsImported = importPluginsFromDir(pluginsDir);
+    const environmentsImported = importEnvironmentsFromDir(environmentsDir);
 
     if (existsSync(harnessPath)) {
       const harness = JSON.parse(
@@ -307,7 +363,11 @@ export function importMigrationState(opts: MigrateImportOptions): {
       writeJson(join(targetDir, "active-profile.json"), activeProfile);
     }
 
-    return { manifest, layers_imported: layersImported, environments_imported: environmentsImported };
+    return {
+      manifest,
+      plugins_imported: pluginsImported,
+      environments_imported: environmentsImported,
+    };
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }

@@ -33,12 +33,13 @@ describe("CLI harness", () => {
         "copilot-cli",
         "gemini-cli",
         "goose",
+        "grok-build",
       ]);
 
-      const layerList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
+      const pluginList = await runCli(["l", "ls", "--local-only", "--format", "json"], {
         commandName: "ht",
       });
-      expect(Array.isArray(JSON.parse(layerList.stdout))).toBe(true);
+      expect(Array.isArray(JSON.parse(pluginList.stdout))).toBe(true);
 
       const resourceList = await runCli(["r", "ls", "--format", "json"], {
         commandName: "ht",

@@ -11,10 +11,10 @@ import {
   installSkillsToProject,
 } from "./skill-install.js";
 import {
-  createLayer,
-  getLayer,
-} from "../models/layer-model.js";
-import { addLayerAttachment } from "./layer-composition.js";
+  createPlugin,
+  getPlugin,
+} from "../models/plugin-model.js";
+import { addPluginAttachment } from "./plugin-composition.js";
 import {
   resolveSelectedSkills,
   resolveSkillPackageCheckout,
@@ -30,8 +30,8 @@ export interface AddSkillPackageOptions {
   harnesses?: string[];
   homeRoot: string;
   harnesstapDir: string;
-  createLayer?: string;
-  layer?: string;
+  createPlugin?: string;
+  plugin?: string;
   dryRun?: boolean;
 }
 
@@ -40,7 +40,7 @@ export interface AddSkillPackageResult {
   importedSkills: string[];
   installedSkills: string[];
   snapshotId: string;
-  layer?: string;
+  plugin?: string;
 }
 
 function resolveHarnessTargets(options: AddSkillPackageOptions): string[] {
@@ -133,24 +133,24 @@ export async function addSkillPackage(
 
   updateSnapshotInstalledSkillNames(importResult.snapshot.id, installedSkills);
 
-  let attachedLayer: string | undefined;
-  const layerName = options.createLayer ?? options.layer;
-  if (layerName) {
-    const targetLayer = options.createLayer
-      ? createLayer({ name: options.createLayer })
-      : getLayer(layerName);
-    if (!targetLayer) {
-      throw new Error(`Layer not found: ${options.layer}`);
+  let attachedPlugin: string | undefined;
+  const pluginName = options.createPlugin ?? options.plugin;
+  if (pluginName) {
+    const targetPlugin = options.createPlugin
+      ? createPlugin({ name: options.createPlugin })
+      : getPlugin(pluginName);
+    if (!targetPlugin) {
+      throw new Error(`Plugin not found: ${options.plugin}`);
     }
 
     for (const skillName of installedSkills) {
-      await addLayerAttachment({
-        layer: targetLayer,
+      await addPluginAttachment({
+        plugin: targetPlugin,
         selector: `skill:${skillName}@${namespace}`,
         type: "skill",
       });
     }
-    attachedLayer = targetLayer.name;
+    attachedPlugin = targetPlugin.name;
   }
 
   return {
@@ -158,6 +158,6 @@ export async function addSkillPackage(
     importedSkills,
     installedSkills,
     snapshotId: importResult.snapshot.id,
-    ...(attachedLayer ? { layer: attachedLayer } : {}),
+    ...(attachedPlugin ? { plugin: attachedPlugin } : {}),
   };
 }

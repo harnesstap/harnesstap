@@ -1,10 +1,12 @@
 import {
-  normalizeCatalogLayer,
+  normalizeCatalogPlugin,
   type CatalogListOptions,
   type CatalogListResult,
 } from "./catalog-types.js";
-import { DEFAULT_CATALOG_SLUG } from "./layer-selector.js";
-import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
+import { parseApEnvelope } from "./agent-plugins/envelope.js";
+import type { ApPackageFiles } from "./agent-plugins/files.js";
+import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
+import { DEFAULT_CATALOG_SLUG } from "./plugin-selector.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
   const params = new URLSearchParams();
@@ -26,7 +28,7 @@ function buildSearchParams(options: CatalogListOptions): URLSearchParams {
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {
     ...result,
-    layers: result.layers.map((layer) => normalizeCatalogLayer(layer)),
+    plugins: result.plugins.map((plugin) => normalizeCatalogPlugin(plugin)),
   };
 }
 
@@ -34,33 +36,40 @@ export function createPublicCatalogClient(baseUrl: string) {
   const root = baseUrl.replace(/\/+$/, "");
 
   return {
-    async listLayers(options: CatalogListOptions = {}): Promise<CatalogListResult> {
+    async listPlugins(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = buildSearchParams(options);
-      const url = `${root}/api/public/layers?${params.toString()}`;
-      const response = await fetchWithTimeout(url);
+      const url = `${root}/api/public/plugins?${params.toString()}`;
+      const response = await cloudFetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to list public layers: ${response.status}`);
+        throw new Error(`Failed to list public plugins: ${response.status}`);
       }
       const result = await response.json() as CatalogListResult;
       return normalizeListResult(result);
     },
 
-    async downloadBundle(
+    async downloadPackage(
       orgSlug: string,
-      layerSlug: string,
+      pluginSlug: string,
       version = "latest",
       catalogSlug = DEFAULT_CATALOG_SLUG,
-    ): Promise<{ version: string; body: string }> {
+    ): Promise<{ version: string; files: ApPackageFiles }> {
       const encodedVersion = encodeURIComponent(version);
-      const url = catalogSlug === DEFAULT_CATALOG_SLUG
-        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`
-        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`;
-      const response = await fetchWithTimeout(url);
+      const url =
+        `${root}/api/public/${encodeURIComponent(orgSlug)}` +
+        `/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(pluginSlug)}` +
+        `/versions/${encodedVersion}/package`;
+      const response = await cloudFetch(url, {
+        headers: { Accept: AP_PACKAGE_MEDIA_TYPE },
+      });
       if (!response.ok) {
-        throw new Error(`Failed to download public layer export: ${response.status}`);
+        throw new Error(
+          `Failed to download ${orgSlug}/${catalogSlug}/${pluginSlug}: ${response.status}`,
+        );
       }
-      const body = await response.text();
-      return { version, body };
+      return {
+        version,
+        files: parseApEnvelope(await response.text(), url),
+      };
     },
   };
 }

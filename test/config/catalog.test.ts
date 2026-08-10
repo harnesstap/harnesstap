@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
-  connectCatalogLayer,
+  connectCatalogPlugin,
   connectCatalogOrg,
   DEFAULT_CATALOG_ORG_SLUG,
   disconnectCatalogOrg,
@@ -24,11 +24,11 @@ describe("catalog config", () => {
   it("persists connected orgs without storing the default org slug", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-catalog-"));
     connectCatalogOrg("acme", dir);
-    connectCatalogLayer("partner/default/design", dir);
+    connectCatalogPlugin("partner/default/design", dir);
 
     const settings = loadCatalogSettings(dir);
     expect(settings.connectedOrgs).toEqual(["acme"]);
-    expect(settings.connectedLayers).toEqual(["partner/default/design"]);
+    expect(settings.connectedPlugins).toEqual(["partner/default/design"]);
 
     const saved = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8")) as {
       catalog: { connectedOrgs: string[] };

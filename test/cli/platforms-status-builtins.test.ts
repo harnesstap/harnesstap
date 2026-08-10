@@ -5,31 +5,19 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
-import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
 
-const FOUNDATION_CATALOG_BUNDLE = formatLayerExportToml({
-  $schema: "urn:harnesstap:layer:v1",
-  version: 1,
-  layers: [
-    {
-      name: "engineering-foundation",
-      version: "1.0.0",
-      description: "Shared engineering baseline",
-      tags: ["foundation"],
-      resources: [],
-      plugin_pins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
-    },
-  ],
-  embedded_plugins: [],
+const FOUNDATION_CATALOG_BUNDLE = makeApEnvelope({
+  name: "engineering-foundation",
+  description: "Shared engineering baseline",
 });
 
 describe("CLI platforms, status, and catalog baselines", () => {
-  it("lists harnesses and applies catalog baseline layers", async () => {
+  it("lists harnesses and applies catalog baseline plugins", async () => {
     const context = await createTestContext("cli-builtins");
     const restoreFetch = createCatalogFetchMock({
-      baseUrl: "https://cloud.harnesstap.com",
       bundle: FOUNDATION_CATALOG_BUNDLE,
-      layers: [{
+      plugins: [{
         orgSlug: "harnesstap-cloud",
         slug: "engineering-foundation",
         name: "Engineering foundation",
@@ -46,7 +34,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
 
       const platforms = await runCli(["harness", "list"]);
       const applied = await runCli([
-        "layer", "apply",
+        "apply",
         "engineering-foundation",
         "--project",
         context.projectDir,
@@ -54,7 +42,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
         "claude-code",
         "--dry-run",
       ]);
-      const templates = await runCli(["layer", "list"]);
+      const templates = await runCli(["plugin", "list"]);
 
       expect(platforms.stdout).toContain("claude-code");
       expect(platforms.stdout).toContain("cursor");
@@ -75,16 +63,16 @@ describe("CLI platforms, status, and catalog baselines", () => {
     } satisfies Partial<CommanderError>);
   });
 
-  it("reports project status for tracked layers and snapshots", async () => {
+  it("reports project status for tracked plugins and snapshots", async () => {
     const context = await createTestContext("cli-status");
 
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-status.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
-      const layer = layerModel.createLayer({ name: "tracked" });
+      const plugin = pluginModel.createPlugin({ name: "tracked" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -92,10 +80,10 @@ describe("CLI platforms, status, and catalog baselines", () => {
           content: "# Tracked instructions",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       await runCli([
-        "layer", "apply",
+        "apply",
         "tracked",
         "--project",
         context.projectDir,
@@ -105,7 +93,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
 
       const status = await runCli(["status", context.projectDir]);
       expect(status.stdout).toContain("Platforms");
-      expect(status.stdout).toContain("APPLIED LAYERS");
+      expect(status.stdout).toContain("APPLIED PLUGINS");
       expect(status.stdout).toContain("tracked@");
       expect(status.stdout).toContain("RESOLVED");
     } finally {

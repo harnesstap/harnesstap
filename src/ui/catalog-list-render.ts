@@ -1,5 +1,5 @@
-import type { CatalogLayer } from "../services/catalog-types.js";
-import { formatPublishedSelector } from "../services/layer-selector.js";
+import type { CatalogPlugin } from "../services/catalog-types.js";
+import { formatPublishedSelector } from "../services/plugin-selector.js";
 import * as format from "./format.js";
 import { renderPanel } from "./panel.js";
 import {
@@ -13,7 +13,7 @@ import { renderSubheader } from "./section.js";
 import { renderTable, type Column } from "./table.js";
 import { terminalColumns, theme } from "./theme.js";
 
-export type CatalogListRow = CatalogLayer & {
+export type CatalogListRow = CatalogPlugin & {
   selector: string;
   list_display_name: string;
 };
@@ -27,11 +27,11 @@ export type CatalogSearchRow = CatalogListRow & {
 };
 
 export type CatalogSearchRenderOptions = {
-  activeLayerKey?: string;
+  activePluginKey?: string;
 };
 
-function toRows(layers: CatalogLayer[]): CatalogListRow[] {
-  return layers.map((library) => {
+function toRows(plugins: CatalogPlugin[]): CatalogListRow[] {
+  return plugins.map((library) => {
     const selector = formatPublishedSelector({
       org: library.orgSlug,
       catalog: library.catalogSlug,
@@ -50,7 +50,7 @@ function makeColumns(highlightSelection: boolean): Column[] {
   return [
     {
       key: "list_display_name",
-      header: "ORG/CATALOG/LAYER",
+      header: "ORG/CATALOG/PLUGIN",
       width: 40,
       style: highlightSelection
         ? (value) => (value.startsWith("> ") ? theme.accent(value) : value)
@@ -77,27 +77,27 @@ function makeColumns(highlightSelection: boolean): Column[] {
   ];
 }
 
-export function formatCatalogSelectionLabel(library: CatalogLayer): string {
+export function formatCatalogSelectionLabel(library: CatalogPlugin): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }
 
 export function formatCatalogScopePath(
-  library: Pick<CatalogLayer, "orgSlug" | "catalogSlug">,
+  library: Pick<CatalogPlugin, "orgSlug" | "catalogSlug">,
 ): string {
   return `${library.orgSlug}/${library.catalogSlug}`;
 }
 
-export function catalogLayerKey(library: Pick<CatalogLayer, "orgSlug" | "catalogSlug" | "slug">): string {
+export function catalogPluginKey(library: Pick<CatalogPlugin, "orgSlug" | "catalogSlug" | "slug">): string {
   return `${library.orgSlug}/${library.catalogSlug}/${library.slug}`;
 }
 
 export function toCatalogSearchRows(
-  layers: CatalogLayer[],
+  plugins: CatalogPlugin[],
   checkedKeys: ReadonlySet<string>,
 ): CatalogSearchRow[] {
-  return toRows(layers).map((row) => ({
+  return toRows(plugins).map((row) => ({
     ...row,
-    checked: checkedKeys.has(catalogLayerKey(row)),
+    checked: checkedKeys.has(catalogPluginKey(row)),
   }));
 }
 
@@ -107,7 +107,7 @@ function decorateCatalogSearchRows(
 ): CatalogSearchRow[] {
   return rows.map((row) => {
     const checkbox = row.checked ? "[x]" : "[ ]";
-    const cursor = catalogLayerKey(row) === opts.activeLayerKey ? ">" : " ";
+    const cursor = catalogPluginKey(row) === opts.activePluginKey ? ">" : " ";
     return {
       ...row,
       list_display_name: `${cursor}${checkbox} ${row.list_display_name}`,
@@ -115,21 +115,21 @@ function decorateCatalogSearchRows(
   });
 }
 
-function formatCatalogLayerShowLabel(layer: CatalogLayer): string {
-  const selector = catalogLayerKey(layer);
-  return layer.latestVersion ? `${selector}@${layer.latestVersion}` : selector;
+function formatCatalogPluginShowLabel(plugin: CatalogPlugin): string {
+  const selector = catalogPluginKey(plugin);
+  return plugin.latestVersion ? `${selector}@${plugin.latestVersion}` : selector;
 }
 
-export function renderCatalogLayerShow(layer: CatalogLayer): string {
+export function renderCatalogPluginShow(plugin: CatalogPlugin): string {
   return renderPanel({
-    title: ["LAYER", formatCatalogLayerShowLabel(layer)],
+    title: ["PLUGIN", formatCatalogPluginShowLabel(plugin)],
     rows: [
-      ["Description", layer.summary || "—"],
-      ["Tags", layer.tags.length > 0 ? layer.tags.join(", ") : "—"],
+      ["Description", plugin.summary || "—"],
+      ["Tags", plugin.tags.length > 0 ? plugin.tags.join(", ") : "—"],
       [
         "Updated",
-        layer.updatedAt
-          ? format.formatRelativeTimeWithAbsolute(layer.updatedAt)
+        plugin.updatedAt
+          ? format.formatRelativeTimeWithAbsolute(plugin.updatedAt)
           : "—",
       ],
     ],
@@ -138,10 +138,10 @@ export function renderCatalogLayerShow(layer: CatalogLayer): string {
 
 export function renderCatalogListChunk(chunk: {
   sourceLabel: string;
-  layers: CatalogLayer[];
+  plugins: CatalogPlugin[];
   pageIndex: number;
 }): string {
-  if (chunk.layers.length === 0) {
+  if (chunk.plugins.length === 0) {
     return "";
   }
 
@@ -151,7 +151,7 @@ export function renderCatalogListChunk(chunk: {
 
   return [
     renderSubheader(heading),
-    renderCatalogListTable(chunk.layers),
+    renderCatalogListTable(chunk.plugins),
   ].join("\n");
 }
 
@@ -206,12 +206,12 @@ function renderCatalogViewportOverflowHints(
 }
 
 export function renderCatalogListViewport(
-  layers: CatalogLayer[],
+  plugins: CatalogPlugin[],
   opts: CatalogListViewportOptions,
 ): string {
-  const rows = toRows(layers);
+  const rows = toRows(plugins);
   if (rows.length === 0) {
-    return theme.muted("No matching layers.");
+    return theme.muted("No matching plugins.");
   }
 
   const activeIndex = Math.max(0, Math.min(opts.activeIndex, rows.length - 1));
@@ -239,7 +239,7 @@ export function renderCatalogListViewport(
     renderTable({
       columns: makeColumns(true),
       rows: visibleRows,
-      summary: `${rows.length} layers`,
+      summary: `${rows.length} plugins`,
       ...catalogTableLayout(opts.maxWidth),
     }),
     hints,
@@ -247,17 +247,17 @@ export function renderCatalogListViewport(
 }
 
 export function renderCatalogSearchViewport(
-  layers: CatalogLayer[],
+  plugins: CatalogPlugin[],
   checkedKeys: ReadonlySet<string>,
   opts: CatalogSearchViewportOptions,
 ): string {
-  const baseRows = toCatalogSearchRows(layers, checkedKeys);
+  const baseRows = toCatalogSearchRows(plugins, checkedKeys);
   if (baseRows.length === 0) {
-    return theme.muted("No matching layers.");
+    return theme.muted("No matching plugins.");
   }
 
   const activeIndex = Math.max(0, Math.min(opts.activeIndex, baseRows.length - 1));
-  const activeKey = baseRows[activeIndex] ? catalogLayerKey(baseRows[activeIndex]) : undefined;
+  const activeKey = baseRows[activeIndex] ? catalogPluginKey(baseRows[activeIndex]) : undefined;
   const maxVisibleRows = computeMaxVisibleTableRows(
     opts.terminalRows,
     VIEWPORT_CHROME_LINES.catalogSearch,
@@ -265,7 +265,7 @@ export function renderCatalogSearchViewport(
   const viewport = resolveSectionViewport(baseRows.length, activeIndex, maxVisibleRows);
   const visibleRows = decorateCatalogSearchRows(
     baseRows.slice(viewport.start, viewport.end),
-    { activeLayerKey: activeKey },
+    { activePluginKey: activeKey },
   );
   const checkedCount = baseRows.filter((row) => row.checked).length;
   const hints = renderCatalogViewportOverflowHints(
@@ -278,7 +278,7 @@ export function renderCatalogSearchViewport(
     renderTable({
       columns: makeColumns(true),
       rows: visibleRows,
-      summary: `${checkedCount} selected • ${baseRows.length} layers`,
+      summary: `${checkedCount} selected • ${baseRows.length} plugins`,
       ...catalogTableLayout(opts.maxWidth),
     }),
     hints,
@@ -286,10 +286,10 @@ export function renderCatalogSearchViewport(
 }
 
 export function renderCatalogListTable(
-  layers: CatalogLayer[],
+  plugins: CatalogPlugin[],
   opts: CatalogListRenderOptions = {},
 ): string {
-  const rows = toRows(layers).map((row) => {
+  const rows = toRows(plugins).map((row) => {
     const isSelected = opts.selectedSelector === row.selector
       || opts.selectedSelector === row.list_display_name;
     return {
@@ -299,30 +299,30 @@ export function renderCatalogListTable(
   });
 
   if (rows.length === 0) {
-    return theme.muted("No matching layers.");
+    return theme.muted("No matching plugins.");
   }
 
   return renderTable({
     columns: makeColumns(Boolean(opts.selectedSelector)),
     rows,
-    summary: `${rows.length} layers`,
+    summary: `${rows.length} plugins`,
   });
 }
 
 export function renderCatalogSearchTable(
-  layers: CatalogLayer[],
+  plugins: CatalogPlugin[],
   checkedKeys: ReadonlySet<string>,
   opts: CatalogSearchRenderOptions = {},
 ): string {
-  const rows = decorateCatalogSearchRows(toCatalogSearchRows(layers, checkedKeys), opts);
+  const rows = decorateCatalogSearchRows(toCatalogSearchRows(plugins, checkedKeys), opts);
   if (rows.length === 0) {
-    return theme.muted("No matching layers.");
+    return theme.muted("No matching plugins.");
   }
 
   const checkedCount = rows.filter((row) => row.checked).length;
   return renderTable({
     columns: makeColumns(true),
     rows,
-    summary: `${checkedCount} selected • ${rows.length} layers`,
+    summary: `${checkedCount} selected • ${rows.length} plugins`,
   });
 }

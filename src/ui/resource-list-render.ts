@@ -37,12 +37,12 @@ export type ResourceListRenderOptions = {
   maxWidth?: number;
 };
 
-export type LayerEditTableRow = ResourceListRow & {
+export type PluginEditTableRow = ResourceListRow & {
   checked: boolean;
   version_constraint?: string;
 };
 
-export type LayerEditRenderOptions = ResourceListRenderOptions & {
+export type PluginEditRenderOptions = ResourceListRenderOptions & {
   activeRowId?: string;
 };
 
@@ -198,15 +198,15 @@ export function renderGroupedResourceListViewport(
     .join("\n");
 }
 
-export type LayerEditViewportOptions = LayerEditRenderOptions & {
+export type PluginEditViewportOptions = PluginEditRenderOptions & {
   activeIndex: number;
-  navigable: LayerEditTableRow[];
+  navigable: PluginEditTableRow[];
   terminalRows: number;
 };
 
-export function renderGroupedLayerEditViewport(
-  rows: LayerEditTableRow[],
-  opts: LayerEditViewportOptions,
+export function renderGroupedPluginEditViewport(
+  rows: PluginEditTableRow[],
+  opts: PluginEditViewportOptions,
 ): string {
   if (rows.length === 0) {
     return "No resources found.";
@@ -219,14 +219,14 @@ export function renderGroupedLayerEditViewport(
 
   const maxVisibleRows = computeMaxVisibleTableRows(
     opts.terminalRows,
-    VIEWPORT_CHROME_LINES.layerEdit,
+    VIEWPORT_CHROME_LINES.pluginEdit,
   );
   const viewport = resolveSectionViewport(
     ctx.sectionRows.length,
     ctx.indexInSection,
     maxVisibleRows,
   );
-  const visibleRows = ctx.sectionRows.slice(viewport.start, viewport.end) as LayerEditTableRow[];
+  const visibleRows = ctx.sectionRows.slice(viewport.start, viewport.end) as PluginEditTableRow[];
   const hasNamespace = hasListNamespace(visibleRows);
   const columns = makeResourceListColumns(opts.showId, false, hasNamespace, true);
   const checkedCount = rows.filter((row) => row.checked).length;
@@ -247,9 +247,9 @@ export function renderGroupedLayerEditViewport(
     .join("\n");
 }
 
-export function renderFlatLayerEditViewport(
-  rows: LayerEditTableRow[],
-  opts: LayerEditViewportOptions,
+export function renderFlatPluginEditViewport(
+  rows: PluginEditTableRow[],
+  opts: PluginEditViewportOptions,
 ): string {
   if (rows.length === 0) {
     return "No resources found.";
@@ -257,7 +257,7 @@ export function renderFlatLayerEditViewport(
 
   const maxVisibleRows = computeMaxVisibleTableRows(
     opts.terminalRows,
-    VIEWPORT_CHROME_LINES.layerEdit,
+    VIEWPORT_CHROME_LINES.pluginEdit,
   );
   const activeIndex = clampIndex(opts.activeIndex, opts.navigable.length);
   const viewport = resolveSectionViewport(
@@ -444,10 +444,10 @@ export function filterResourcesBySearch(
   });
 }
 
-export function filterLayerEditRowsBySearch(
-  rows: LayerEditTableRow[],
+export function filterPluginEditRowsBySearch(
+  rows: PluginEditTableRow[],
   search: string,
-): LayerEditTableRow[] {
+): PluginEditTableRow[] {
   const normalizedSearch = search.trim().toLowerCase();
   if (normalizedSearch.length === 0) {
     return rows;
@@ -460,7 +460,7 @@ export function filterLayerEditRowsBySearch(
   );
 }
 
-function sortLayerEditRowsForDisplay(rows: LayerEditTableRow[]): LayerEditTableRow[] {
+function sortPluginEditRowsForDisplay(rows: PluginEditTableRow[]): PluginEditTableRow[] {
   return [...rows].sort((left, right) => {
     if (left.checked !== right.checked) {
       return left.checked ? -1 : 1;
@@ -529,8 +529,8 @@ export function listNavigableResources(
 }
 
 function decorateRowsForCheckboxes(
-  rows: LayerEditTableRow[],
-  opts: LayerEditRenderOptions,
+  rows: PluginEditTableRow[],
+  opts: PluginEditRenderOptions,
 ): ResourceListDisplayRow[] {
   return rows.map((row) => {
     const checkbox = row.checked ? "[x]" : "[ ]";
@@ -547,20 +547,20 @@ function decorateRowsForCheckboxes(
   });
 }
 
-export function listNavigableLayerEditRows(
-  rows: LayerEditTableRow[],
+export function listNavigablePluginEditRows(
+  rows: PluginEditTableRow[],
   typeFilter?: ResourceType,
-): LayerEditTableRow[] {
+): PluginEditTableRow[] {
   if (typeFilter) {
-    return sortLayerEditRowsForDisplay(
+    return sortPluginEditRowsForDisplay(
       rows.filter((row) => row.type === typeFilter),
     );
   }
 
-  const ordered: LayerEditTableRow[] = [];
+  const ordered: PluginEditTableRow[] = [];
   for (const type of RESOURCE_TYPES) {
     ordered.push(
-      ...sortLayerEditRowsForDisplay(
+      ...sortPluginEditRowsForDisplay(
         rows.filter((row) => row.type === type),
       ),
     );
@@ -568,9 +568,9 @@ export function listNavigableLayerEditRows(
   return ordered;
 }
 
-export function renderGroupedLayerEditTables(
-  rows: LayerEditTableRow[],
-  opts: LayerEditRenderOptions,
+export function renderGroupedPluginEditTables(
+  rows: PluginEditTableRow[],
+  opts: PluginEditRenderOptions,
 ): string {
   if (rows.length === 0) {
     return "No resources found.";
@@ -583,7 +583,7 @@ export function renderGroupedLayerEditTables(
   let wroteSection = false;
 
   for (const type of RESOURCE_TYPES) {
-    const typeRows = sortLayerEditRowsForDisplay(
+    const typeRows = sortPluginEditRowsForDisplay(
       rows.filter((row) => row.type === type),
     );
     if (typeRows.length === 0) {
@@ -615,16 +615,16 @@ export function renderGroupedLayerEditTables(
   return lines.join("\n");
 }
 
-export function renderFlatLayerEditTable(
-  rows: LayerEditTableRow[],
-  opts: LayerEditRenderOptions,
+export function renderFlatPluginEditTable(
+  rows: PluginEditTableRow[],
+  opts: PluginEditRenderOptions,
 ): string {
   if (rows.length === 0) {
     return "No resources found.";
   }
 
   const hasNamespace = hasListNamespace(rows);
-  const sortedRows = sortLayerEditRowsForDisplay(rows);
+  const sortedRows = sortPluginEditRowsForDisplay(rows);
   const perTypeLimit = resolvePerTypeLimit(opts);
   const { visible, hiddenCount } = limitRows(
     sortedRows,

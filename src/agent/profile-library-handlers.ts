@@ -1,18 +1,18 @@
-import { listLayers } from "../models/layer-model.js";
+import { listPlugins } from "../models/plugin-model.js";
 import { listResources, resolveResource } from "../models/resource.js";
 import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
 import { jsonResponse } from "./http.js";
 
-export function handleLibraryLayers(): Response {
+export function handleLibraryPlugins(): Response {
   return jsonResponse({
-    layers: listLayers().map((layer) => ({
-      id: layer.id,
-      name: layer.name,
-      version: layer.version,
-      tags: layer.tags,
-      description: layer.description ?? null,
+    plugins: listPlugins().map((plugin) => ({
+      id: plugin.id,
+      name: plugin.name,
+      version: plugin.version,
+      tags: plugin.tags,
+      description: plugin.description ?? null,
     })),
   });
 }

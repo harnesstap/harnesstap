@@ -1,22 +1,22 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, spyOn } from "bun:test";
-import * as layerModel from "../../src/models/layer-model.ts";
+import * as pluginModel from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import {
   commitProfileCreate,
   previewProfileCreate,
 } from "../../src/services/profile-create.ts";
-import { isProfileLayer } from "../../src/constants/profile.ts";
+import { isProfilePlugin } from "../../src/constants/profile.ts";
 import { getActiveProfileName } from "../../src/services/active-profile.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("profile-create service", () => {
-  it("creates a composed profile from selected layers and resources", async () => {
+  it("creates a composed profile from selected plugins and resources", async () => {
     const context = await createInitializedTestContext("profile-create-compose");
     try {
-      const dependency = layerModel.createLayer({ name: "engineering" });
+      const dependency = pluginModel.createPlugin({ name: "engineering" });
       const resource = createResource({
         type: "skill",
         name: "review",
@@ -29,7 +29,7 @@ describe("profile-create service", () => {
       const preview = await previewProfileCreate({
         source: "compose",
         name: "work",
-        layerIds: [dependency.id],
+        pluginIds: [dependency.id],
         resourceIds: [resource.id],
       });
       expect(preview).toEqual({
@@ -44,7 +44,7 @@ describe("profile-create service", () => {
         source: "compose",
         name: "work",
         description: "Work profile",
-        layerIds: [dependency.id],
+        pluginIds: [dependency.id],
         resourceIds: [resource.id],
       });
 
@@ -58,12 +58,12 @@ describe("profile-create service", () => {
         used: false,
       });
       expect(
-        layerModel.getLayerResources(result.profile.id).map(({ type, name }) => ({
+        pluginModel.getPluginResources(result.profile.id).map(({ type, name }) => ({
           type,
           name,
         })),
       ).toEqual([
-        { type: "layer", name: "engineering" },
+        { type: "plugin", name: "engineering" },
         { type: "skill", name: "review" },
       ]);
     } finally {
@@ -82,7 +82,7 @@ describe("profile-create service", () => {
     }
   });
 
-  it("rejects a composed profile whose layer name already exists", async () => {
+  it("rejects a composed profile whose plugin name already exists", async () => {
     const context = await createInitializedTestContext("profile-create-duplicate");
     try {
       const resource = createResource({
@@ -93,7 +93,7 @@ describe("profile-create service", () => {
         metadata: {},
         source: "manual",
       });
-      layerModel.createLayer({ name: "duplicate" });
+      pluginModel.createPlugin({ name: "duplicate" });
 
       await expect(
         commitProfileCreate({
@@ -101,13 +101,13 @@ describe("profile-create service", () => {
           name: "duplicate",
           resourceIds: [resource.id],
         }),
-      ).rejects.toThrow("Layer already exists: duplicate");
+      ).rejects.toThrow("Plugin already exists: duplicate");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not promote a non-profile layer created during compose", async () => {
+  it("does not promote a non-profile plugin created during compose", async () => {
     const context = await createInitializedTestContext("profile-create-compose-race");
     const resource = createResource({
       type: "skill",
@@ -117,10 +117,10 @@ describe("profile-create service", () => {
       metadata: {},
       source: "manual",
     });
-    const createLayerDirect = layerModel.createLayer;
-    const createSpy = spyOn(layerModel, "createLayer").mockImplementation((input) => {
-      createLayerDirect({ name: input.name, description: "Raced layer" });
-      return createLayerDirect(input);
+    const createPluginDirect = pluginModel.createPlugin;
+    const createSpy = spyOn(pluginModel, "createPlugin").mockImplementation((input) => {
+      createPluginDirect({ name: input.name, description: "Raced plugin" });
+      return createPluginDirect(input);
     });
     try {
       await expect(
@@ -129,11 +129,11 @@ describe("profile-create service", () => {
           name: "raced-profile",
           resourceIds: [resource.id],
         }),
-      ).rejects.toThrow("Layer already exists: raced-profile");
-      const raced = layerModel.getLayerByName("raced-profile");
-      expect(raced?.description).toBe("Raced layer");
-      expect(raced ? isProfileLayer(raced) : true).toBe(false);
-      expect(layerModel.getLayerResources(raced?.id ?? "")).toHaveLength(0);
+      ).rejects.toThrow("Plugin already exists: raced-profile");
+      const raced = pluginModel.getPluginByName("raced-profile");
+      expect(raced?.description).toBe("Raced plugin");
+      expect(raced ? isProfilePlugin(raced) : true).toBe(false);
+      expect(pluginModel.getPluginResources(raced?.id ?? "")).toHaveLength(0);
     } finally {
       createSpy.mockRestore();
       await context.cleanup();
@@ -157,9 +157,9 @@ describe("profile-create service", () => {
       });
 
       expect(result.imported_count).toBeGreaterThan(0);
-      const profile = layerModel.getLayer(result.profile.id);
+      const profile = pluginModel.getPlugin(result.profile.id);
       expect(profile).toBeDefined();
-      expect(profile ? isProfileLayer(profile) : false).toBe(true);
+      expect(profile ? isProfilePlugin(profile) : false).toBe(true);
     } finally {
       await context.cleanup();
     }
@@ -168,7 +168,7 @@ describe("profile-create service", () => {
   it("rejects an existing project profile name even with overwrite conflicts", async () => {
     const context = await createInitializedTestContext("profile-create-project-duplicate");
     try {
-      const existing = layerModel.createLayer({ name: "project-profile" });
+      const existing = pluginModel.createPlugin({ name: "project-profile" });
       writeTextFile(
         join(context.projectDir, "CLAUDE.md"),
         "# Project instructions\n",
@@ -182,24 +182,24 @@ describe("profile-create service", () => {
           conflictPolicy: "overwrite",
           platform: "claude-code",
         }),
-      ).rejects.toThrow("Layer already exists: project-profile");
-      expect(layerModel.getLayerByName("project-profile")?.id).toBe(existing.id);
+      ).rejects.toThrow("Plugin already exists: project-profile");
+      expect(pluginModel.getPluginByName("project-profile")?.id).toBe(existing.id);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("does not delete a layer created during project import", async () => {
+  it("does not delete a plugin created during project import", async () => {
     const context = await createInitializedTestContext("profile-create-project-race");
-    const createLayerDirect = layerModel.createLayer;
-    let racedLayerId: string | undefined;
-    const createSpy = spyOn(layerModel, "createLayer").mockImplementation((input) => {
-      const raced = createLayerDirect({
+    const createPluginDirect = pluginModel.createPlugin;
+    let racedPluginId: string | undefined;
+    const createSpy = spyOn(pluginModel, "createPlugin").mockImplementation((input) => {
+      const raced = createPluginDirect({
         name: input.name,
-        description: "Raced project layer",
+        description: "Raced project plugin",
       });
-      racedLayerId = raced.id;
-      return createLayerDirect(input);
+      racedPluginId = raced.id;
+      return createPluginDirect(input);
     });
     try {
       writeTextFile(
@@ -215,11 +215,11 @@ describe("profile-create service", () => {
           conflictPolicy: "overwrite",
           platform: "claude-code",
         }),
-      ).rejects.toThrow("Layer already exists: project-profile");
-      const raced = layerModel.getLayerByName("project-profile");
-      expect(raced?.id).toBe(racedLayerId);
-      expect(raced?.description).toBe("Raced project layer");
-      expect(raced ? isProfileLayer(raced) : true).toBe(false);
+      ).rejects.toThrow("Plugin already exists: project-profile");
+      const raced = pluginModel.getPluginByName("project-profile");
+      expect(raced?.id).toBe(racedPluginId);
+      expect(raced?.description).toBe("Raced project plugin");
+      expect(raced ? isProfilePlugin(raced) : true).toBe(false);
     } finally {
       createSpy.mockRestore();
       await context.cleanup();

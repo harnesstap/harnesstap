@@ -1,27 +1,27 @@
 import {
   CLEARED_GLOBAL_PROFILE_NAME,
   isEmptyBuiltinProfile,
-  isProfileLayer,
+  isProfilePlugin,
 } from "../constants/profile.js";
 import {
-  addResourceToLayer,
-  getLayerById,
-  getLayerResources,
-  listLayerDependencies,
-  removeResourceFromLayer,
-  resolveLayerSelector,
-  setLayerTags,
-  updateLayerDescription,
-} from "../models/layer-model.js";
+  addResourceToPlugin,
+  getPluginById,
+  getPluginResources,
+  listPluginDependencies,
+  removeResourceFromPlugin,
+  resolvePluginSelector,
+  setPluginTags,
+  updatePluginDescription,
+} from "../models/plugin-model.js";
 import { getResource } from "../models/resource.js";
-import type { Layer, Resource } from "../types.js";
+import type { Plugin, Resource } from "../types.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
-  addLayerAttachment,
+  addPluginAttachment,
   formatPluginRef,
-  removeLayerAttachment,
-} from "./layer-composition.js";
-import { markLayerDirty } from "./layer-versioning.js";
+  removePluginAttachment,
+} from "./plugin-composition.js";
+import { markPluginDirty } from "./plugin-versioning.js";
 import { ProfileRenameError, ProfileReservedNameError } from "./profile-commands.js";
 import { toContentsResource } from "./profile-contents.js";
 
@@ -53,49 +53,57 @@ export interface ProfileDetail {
   resources: ProfileDetailResource[];
 }
 
-function resolveProfileLayer(selector: string): Layer {
+function resolveProfilePlugin(selector: string): Plugin {
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
-  const profile = resolveLayerSelector(selector);
+  const profile = resolvePluginSelector(selector);
   if (!profile) {
     throw new ProfileRenameError("not_found", `Profile not found: ${selector}`);
   }
-  if (!isProfileLayer(profile)) {
+  if (!isProfilePlugin(profile)) {
     throw new ProfileRenameError(
       "not_a_profile",
-      `Layer "${profile.name}" is not tagged as a profile`,
+      `Plugin "${profile.name}" is not tagged as a profile`,
     );
   }
   return profile;
 }
 
-/** Direct attachments shown in Edit (material resources + plugin pins; not nested layers). */
+/** Direct attachments shown in Edit (material resources + plugin pins; not nested plugins). */
 function editableDirectResources(resources: Resource[]): Resource[] {
-  return resources.filter((resource) => resource.type !== "layer");
+  return resources.filter((resource) => {
+    if (resource.type !== "plugin") {
+      return true;
+    }
+    const metadata = resource.metadata as { source_kind?: string };
+    return metadata.source_kind !== "local";
+  });
 }
 
-function layerRefResourceId(
-  layerId: string,
+function pluginRefResourceId(
+  pluginId: string,
   dependencyName: string,
 ): string | null {
-  const attached = getLayerResources(layerId).find(
+  const attached = getPluginResources(pluginId).find(
     (resource) =>
-      resource.type === "layer" && resource.name === dependencyName,
+      resource.type === "plugin" &&
+      resource.name === dependencyName &&
+      (resource.metadata as { source_kind?: string }).source_kind === "local",
   );
   return attached?.id ?? null;
 }
 
 export function getProfileDetail(selector: string): ProfileDetail {
-  const profile = resolveProfileLayer(selector);
+  const profile = resolveProfilePlugin(selector);
   const activeProfile = getActiveProfileName();
-  const dependencies = listLayerDependencies(profile.id).map((dep) => ({
+  const dependencies = listPluginDependencies(profile.id).map((dep) => ({
     dependency_name: dep.dependency_name,
     version_constraint: dep.version_constraint,
     order: dep.order,
-    resource_id: layerRefResourceId(profile.id, dep.dependency_name),
+    resource_id: pluginRefResourceId(profile.id, dep.dependency_name),
   }));
-  const resources = editableDirectResources(getLayerResources(profile.id)).map(
+  const resources = editableDirectResources(getPluginResources(profile.id)).map(
     (resource) => toContentsResource(resource),
   );
   return {
@@ -117,40 +125,40 @@ export function updateProfileMetadata(
   selector: string,
   input: { description?: string; tags?: string[] },
 ): ProfileDetail {
-  const profile = resolveProfileLayer(selector);
+  const profile = resolveProfilePlugin(selector);
   if (input.description !== undefined) {
-    updateLayerDescription(profile.id, input.description);
+    updatePluginDescription(profile.id, input.description);
   }
   if (input.tags !== undefined) {
     const nextTags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
     if (!nextTags.includes("profile")) {
       nextTags.push("profile");
     }
-    setLayerTags(profile.id, nextTags);
+    setPluginTags(profile.id, nextTags);
   }
   if (input.description !== undefined || input.tags !== undefined) {
-    markLayerDirty(profile.id);
+    markPluginDirty(profile.id);
   }
-  const refreshed = getLayerById(profile.id) ?? resolveProfileLayer(selector);
+  const refreshed = getPluginById(profile.id) ?? resolveProfilePlugin(selector);
   return getProfileDetail(refreshed.name);
 }
 
-export async function attachProfileLayer(
+export async function attachProfilePlugin(
   selector: string,
-  layerId: string,
+  pluginId: string,
 ): Promise<ProfileDetail> {
-  const profile = resolveProfileLayer(selector);
-  const layer = getLayerById(layerId);
-  if (!layer) {
-    throw new Error(`Layer not found: ${layerId}`);
+  const profile = resolveProfilePlugin(selector);
+  const plugin = getPluginById(pluginId);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${pluginId}`);
   }
-  if (layer.id === profile.id) {
+  if (plugin.id === profile.id) {
     throw new Error("A profile cannot depend on itself");
   }
-  await addLayerAttachment({
-    layer: profile,
-    selector: layer.name,
-    type: "layer",
+  await addPluginAttachment({
+    plugin: profile,
+    selector: plugin.name,
+    type: "plugin",
   });
   return getProfileDetail(profile.name);
 }
@@ -159,20 +167,20 @@ export function attachProfileResource(
   selector: string,
   resourceId: string,
 ): ProfileDetail {
-  const profile = resolveProfileLayer(selector);
+  const profile = resolveProfilePlugin(selector);
   const resource = getResource(resourceId);
   if (!resource) {
     throw new Error(`Resource not found: ${resourceId}`);
   }
-  if (resource.type === "layer") {
-    throw new Error("Use layer attachment for type \"layer\"");
+  if (resource.type === "plugin") {
+    throw new Error("Use plugin attachment for type \"plugin\"");
   }
-  const already = getLayerResources(profile.id).some(
+  const already = getPluginResources(profile.id).some(
     (entry) => entry.id === resource.id,
   );
   if (!already) {
-    addResourceToLayer(profile.id, resource.id);
-    markLayerDirty(profile.id);
+    addResourceToPlugin(profile.id, resource.id);
+    markPluginDirty(profile.id);
   }
   return getProfileDetail(profile.name);
 }
@@ -181,12 +189,12 @@ export function detachProfileAttachment(
   selector: string,
   input: { resourceId?: string; dependencyName?: string },
 ): ProfileDetail {
-  const profile = resolveProfileLayer(selector);
+  const profile = resolveProfilePlugin(selector);
   if (input.dependencyName && input.dependencyName.trim()) {
-    const result = removeLayerAttachment({
-      layer: profile,
+    const result = removePluginAttachment({
+      plugin: profile,
       selector: input.dependencyName.trim(),
-      type: "layer",
+      type: "plugin",
     });
     if (!result.removed) {
       throw new Error(result.message);
@@ -195,27 +203,21 @@ export function detachProfileAttachment(
   }
   if (input.resourceId && input.resourceId.trim()) {
     const resourceId = input.resourceId.trim();
-    const attached = getLayerResources(profile.id).find(
+    const attached = getPluginResources(profile.id).find(
       (entry) => entry.id === resourceId,
     );
     if (!attached) {
       throw new Error(`Attachment not found on profile: ${resourceId}`);
     }
-    if (attached.type === "layer") {
-      removeLayerAttachment({
-        layer: profile,
-        selector: attached.name,
-        type: "layer",
-      });
-    } else if (attached.type === "plugin_pin") {
-      removeLayerAttachment({
-        layer: profile,
+    if (attached.type === "plugin") {
+      removePluginAttachment({
+        plugin: profile,
         selector: formatPluginRef(attached),
-        type: "plugin_pin",
+        type: "plugin",
       });
     } else {
-      removeResourceFromLayer(profile.id, resourceId);
-      markLayerDirty(profile.id);
+      removeResourceFromPlugin(profile.id, resourceId);
+      markPluginDirty(profile.id);
     }
     return getProfileDetail(profile.name);
   }

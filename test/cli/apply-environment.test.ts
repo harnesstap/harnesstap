@@ -5,20 +5,20 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { createPluginFromSources } from "../../src/models/plugin-model.ts";
 
 describe("CLI apply with environment cascade", () => {
-  it("materializes the global active environment when the layer has no default", async () => {
+  it("materializes the global active environment when the plugin has no default", async () => {
     const context = await createTestContext("cli-apply-environment");
 
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-env.git");
       await runCli(["init"]);
 
-      const plugin = createLayer({ name: "env-demo" });
-      addResourceToLayer(
+      const plugin = createPlugin({ name: "env-demo" });
+      addResourceToPlugin(
         plugin.id,
         createResource({
           type: "instruction",
@@ -44,16 +44,16 @@ describe("CLI apply with environment cascade", () => {
         }),
       );
 
-      createLayerFromSources({
-        name: "env-layer",
-        sourceLayerIds: [plugin.id],
+      createPluginFromSources({
+        name: "env-plugin",
+        sourcePluginIds: [plugin.id],
       });
 
       await runCli(["environment", "use", "staging"]);
 
       const applyResult = await runCli([
-        "layer", "apply",
-        "env-layer",
+        "apply",
+        "env-plugin",
         "--project",
         context.projectDir,
         "--harness",
@@ -73,15 +73,15 @@ describe("CLI apply with environment cascade", () => {
     }
   });
 
-  it("lets layer default environments override the global active environment on apply", async () => {
-    const context = await createTestContext("cli-apply-layer-default-env");
+  it("lets plugin default environments override the global active environment on apply", async () => {
+    const context = await createTestContext("cli-apply-plugin-default-env");
 
     try {
-      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-layer-env.git");
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-plugin-env.git");
       await runCli(["init"]);
 
-      const plugin = createLayer({ name: "env-demo-layer-default" });
-      addResourceToLayer(
+      const plugin = createPlugin({ name: "env-demo-plugin-default" });
+      addResourceToPlugin(
         plugin.id,
         createResource({
           type: "instruction",
@@ -121,17 +121,17 @@ describe("CLI apply with environment cascade", () => {
         }),
       );
 
-      createLayerFromSources({
-        name: "env-layer-default",
-        sourceLayerIds: [plugin.id],
+      createPluginFromSources({
+        name: "env-plugin-default",
+        sourcePluginIds: [plugin.id],
         environmentId: prod.id,
       });
 
       await runCli(["environment", "use", "staging"]);
 
       const applyResult = await runCli([
-        "layer", "apply",
-        "env-layer-default",
+        "apply",
+        "env-plugin-default",
         "--project",
         context.projectDir,
         "--harness",

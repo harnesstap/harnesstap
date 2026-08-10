@@ -6,11 +6,11 @@ Type "ht init --main codex --aliases claude-code,cursor"
 Enter
 Sleep 1500ms
 
-Type "ht layer list --search foundation --remote-only"
+Type "ht plugin list --search foundation --remote-only"
 Enter
 Sleep 2500ms
 
-Type "ht layer apply engineering-foundation"
+Type "ht apply engineering-foundation"
 Enter
 Sleep 2500ms
 

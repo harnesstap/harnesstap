@@ -1898,18 +1898,18 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   text-align: right;
 }
 
-.enabled-layer {
+.enabled-plugin {
   border: 1px solid transparent;
   border-radius: 3px;
 }
 
-.enabled-layer[open] {
+.enabled-plugin[open] {
   border-color: var(--border);
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
   margin: 0.1rem 0;
 }
 
-.enabled-layer-summary {
+.enabled-plugin-summary {
   display: grid;
   grid-template-columns: 0.7rem 1.1rem minmax(0, 1fr) auto;
   gap: 0.35rem 0.4rem;
@@ -1921,11 +1921,11 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   text-align: left;
 }
 
-.enabled-layer-summary::-webkit-details-marker {
+.enabled-plugin-summary::-webkit-details-marker {
   display: none;
 }
 
-.enabled-layer-summary::before {
+.enabled-plugin-summary::before {
   content: "▸";
   color: var(--muted);
   font-size: 0.7rem;
@@ -1934,23 +1934,23 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   justify-self: center;
 }
 
-.enabled-layer[open] > .enabled-layer-summary::before {
+.enabled-plugin[open] > .enabled-plugin-summary::before {
   content: "▾";
 }
 
-.enabled-layer-summary .enabled-type {
+.enabled-plugin-summary .enabled-type {
   grid-column: 2;
 }
 
-.enabled-layer-summary .enabled-label {
+.enabled-plugin-summary .enabled-label {
   grid-column: 3;
 }
 
-.enabled-layer-summary .enabled-trailing {
+.enabled-plugin-summary .enabled-trailing {
   grid-column: 4;
 }
 
-.enabled-layer-body {
+.enabled-plugin-body {
   padding: 0 0.35rem 0.35rem 0.85rem;
   border-top: 1px solid var(--border);
 }
@@ -1959,7 +1959,7 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   padding-left: 0.15rem;
 }
 
-.enabled-layer-empty {
+.enabled-plugin-empty {
   padding: 0.3rem 0 0.1rem;
   font-size: 0.85rem;
 }
@@ -2039,11 +2039,11 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
     text-align: left;
   }
 
-  .enabled-layer-summary {
+  .enabled-plugin-summary {
     grid-template-columns: 0.7rem 1.1rem minmax(0, 1fr);
   }
 
-  .enabled-layer-summary .enabled-trailing {
+  .enabled-plugin-summary .enabled-trailing {
     grid-column: 3;
     justify-content: flex-start;
   }

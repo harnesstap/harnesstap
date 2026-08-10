@@ -42,7 +42,7 @@ describe("HarnessTap features SVG", () => {
     expect(svg).toContain("Export libraries, harness prefs, and config across machines.");
     expect(svg).toContain("Catalog baselines,");
     expect(svg).toContain("env cascade");
-    expect(svg).toContain("layer deps");
+    expect(svg).toContain("plugin deps");
 
     const requiredLabels = [
       "HarnessTap",

@@ -5,15 +5,15 @@ import {
   upsertResource,
 } from "../models/resource.js";
 import {
-  addResourceToLayer,
-  removeResourceFromLayer,
-  resolveLayerSelector,
-} from "../models/layer-model.js";
-import { isProfileLayer } from "../constants/profile.js";
+  addResourceToPlugin,
+  removeResourceFromPlugin,
+  resolvePluginSelector,
+} from "../models/plugin-model.js";
+import { isProfilePlugin } from "../constants/profile.js";
 import type { Resource, ResourceType } from "../types.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
-import { markLayerDirty } from "./layer-versioning.js";
-import { collectProfileLayerIds } from "./profile-apply.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import { markPluginDirty } from "./plugin-versioning.js";
+import { collectProfilePluginIds } from "./profile-apply.js";
 import {
   toContentsResource,
   type ProfileContentsResource,
@@ -36,11 +36,11 @@ function profileHasResource(
   resourceType: string,
   resourceName: string,
 ): Resource | null {
-  const profileLayer = resolveLayerSelector(profileSelector);
-  if (!profileLayer || !isProfileLayer(profileLayer)) {
+  const profilePlugin = resolvePluginSelector(profileSelector);
+  if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
     return null;
   }
-  const merged = mergeLayersForApply(collectProfileLayerIds(profileLayer));
+  const merged = mergePluginsForApply(collectProfilePluginIds(profilePlugin));
   return (
     merged.resources.find(
       (resource) =>
@@ -133,12 +133,12 @@ async function commitMcpConfigFromLive(input: {
   projectPath?: string;
   harness?: string;
 }): Promise<ProfileContentsResource[]> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
   const { originRef, scanned } = await scanForCommit(input);
@@ -162,14 +162,14 @@ async function commitMcpConfigFromLive(input: {
       originRef,
     });
 
-    markLayerDirty(profileLayer.id);
+    markPluginDirty(profilePlugin.id);
     for (const resource of persisted.resolved) {
       if (resource.type !== "mcp_server") {
         continue;
       }
       liveNames.add(resource.name);
       if (!profileHasResource(input.profileSelector, resource.type, resource.name)) {
-        addResourceToLayer(profileLayer.id, resource.id);
+        addResourceToPlugin(profilePlugin.id, resource.id);
       }
       committed.push(toContentsResource(resource));
     }
@@ -177,7 +177,7 @@ async function commitMcpConfigFromLive(input: {
 
   // Live file is source of truth for this path: drop profile MCP servers that
   // were bound to this path but are no longer on disk.
-  const merged = mergeLayersForApply(collectProfileLayerIds(profileLayer));
+  const merged = mergePluginsForApply(collectProfilePluginIds(profilePlugin));
   let removedAny = false;
   for (const resource of merged.resources) {
     if (resource.type !== "mcp_server") {
@@ -190,10 +190,10 @@ async function commitMcpConfigFromLive(input: {
       continue;
     }
     if (!removedAny) {
-      markLayerDirty(profileLayer.id);
+      markPluginDirty(profilePlugin.id);
       removedAny = true;
     }
-    removeResourceFromLayer(profileLayer.id, resource.id);
+    removeResourceFromPlugin(profilePlugin.id, resource.id);
   }
 
   if (matching.length === 0 && committed.length === 0) {
@@ -219,12 +219,12 @@ export async function commitManagedResourceFromLive(input: {
   harness?: string;
   path?: string;
 }): Promise<ProfileContentsResource> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
   let resourceType = input.resourceType;
@@ -271,7 +271,7 @@ export async function commitManagedResourceFromLive(input: {
         throw new Error(`Live file not found: ${input.path}`);
       }
       const content = readFileSync(fullPath, "utf-8");
-      markLayerDirty(profileLayer.id);
+      markPluginDirty(profilePlugin.id);
       const updated = upsertResource(
         {
           type: attached.type,
@@ -296,7 +296,7 @@ export async function commitManagedResourceFromLive(input: {
     );
   }
 
-  markLayerDirty(profileLayer.id);
+  markPluginDirty(profilePlugin.id);
   const persisted = persistScanResults(matching, {
     conflictPolicy: "overwrite",
     originRef,

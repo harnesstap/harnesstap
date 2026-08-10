@@ -3,7 +3,7 @@ import {
   ProfileReservedNameError,
 } from "../services/profile-commands.js";
 import {
-  attachProfileLayer,
+  attachProfilePlugin,
   attachProfileResource,
   detachProfileAttachment,
   getProfileDetail,
@@ -40,7 +40,7 @@ export function profileEditErrorResponse(error: unknown): Response {
           { status: 400 },
         );
       case "invalid_name":
-      case "layer_exists":
+      case "plugin_exists":
       case "reserved_name":
         return jsonResponse(
           { error: error.code, message: error.message },
@@ -158,20 +158,20 @@ export async function handleProfileAttach(
     return jsonResponse({ error: "invalid_body" }, { status: 400 });
   }
 
-  const layerId = body.layerId;
+  const pluginId = body.pluginId;
   const resourceId = body.resourceId;
-  if (typeof layerId === "string" && layerId.trim()) {
+  if (typeof pluginId === "string" && pluginId.trim()) {
     if (resourceId !== undefined) {
       return jsonResponse(
         {
           error: "invalid_body",
-          message: "Provide either layerId or resourceId, not both",
+          message: "Provide either pluginId or resourceId, not both",
         },
         { status: 400 },
       );
     }
     try {
-      return jsonResponse(await attachProfileLayer(name, layerId.trim()));
+      return jsonResponse(await attachProfilePlugin(name, pluginId.trim()));
     } catch (error) {
       return profileEditErrorResponse(error);
     }
@@ -188,7 +188,7 @@ export async function handleProfileAttach(
   return jsonResponse(
     {
       error: "invalid_body",
-      message: "layerId or resourceId is required",
+      message: "pluginId or resourceId is required",
     },
     { status: 400 },
   );

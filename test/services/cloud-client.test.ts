@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { PACKAGE_VERSION } from "../../src/version.ts";
 
 function jsonResponse(
   status: number,
@@ -186,5 +187,43 @@ describe("cloud client primitives", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const firstCallUrl = String((fetchMock.mock.calls[0] as unknown[])[0]);
     expect(firstCallUrl.endsWith("/api/me")).toBeTruthy();
+  });
+
+  it("sends the CLI and API version headers on every request", async () => {
+    const seen: Headers[] = [];
+    globalThis.fetch = mock(async (_url: string, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers));
+      return new Response(JSON.stringify({ orgs: [] }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { createCloudClient } = await import("../../src/services/cloud-client");
+    const client = createCloudClient({
+      baseUrl: "https://cloud.test",
+      token: { access_token: "t", expires_at: Date.now() / 1000 + 3600 },
+    });
+    await client.listOrgs();
+
+    expect(seen[0]?.get("x-harnesstap-cli-version")).toBe(PACKAGE_VERSION);
+    expect(seen[0]?.get("x-harnesstap-api-version")).toBe("1");
+  });
+
+  it("surfaces a 426 as an actionable upgrade error", async () => {
+    globalThis.fetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          error: "cli_too_old",
+          minimumVersion: "0.1.0",
+          fix: "npm install -g harnesstap@latest",
+        }),
+        { status: 426, headers: { "content-type": "application/json" } },
+      ),
+    ) as unknown as typeof fetch;
+
+    const { createCloudClient } = await import("../../src/services/cloud-client");
+    const client = createCloudClient({
+      baseUrl: "https://cloud.test",
+      token: { access_token: "t", expires_at: Date.now() / 1000 + 3600 },
+    });
+    await expect(client.listOrgs()).rejects.toThrow(/too old.*0\.1\.0/s);
   });
 });

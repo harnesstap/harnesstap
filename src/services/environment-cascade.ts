@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
-import { getLayerById } from "../models/layer-model.js";
+import { getPluginById } from "../models/plugin-model.js";
 import {
   getEnvironmentByName,
   getEnvironmentResources,
@@ -23,11 +23,11 @@ export interface EnvironmentFragment {
 
 export interface EnvironmentCascadeInput {
   home?: EnvironmentFragment;
-  layerDefaults?: EnvironmentFragment[];
+  pluginDefaults?: EnvironmentFragment[];
 }
 
 export interface ResolveEnvironmentCascadeForApplyInput {
-  configuredLayerIds: string[];
+  configuredPluginIds: string[];
 }
 
 const EMPTY_FRAGMENT: EnvironmentFragment = { vars: {}, secretRefs: {} };
@@ -41,7 +41,7 @@ function resourceKey(resource: Pick<Resource, "type" | "name">): string {
 }
 
 export function resolveEnvironmentCascade(
-  layers: EnvironmentCascadeInput,
+  plugins: EnvironmentCascadeInput,
 ): EnvironmentFragment {
   const merge = (
     base: EnvironmentFragment,
@@ -52,8 +52,8 @@ export function resolveEnvironmentCascade(
   });
 
   let acc: EnvironmentFragment = { vars: {}, secretRefs: {} };
-  acc = merge(acc, layers.home);
-  for (const fragment of layers.layerDefaults ?? []) {
+  acc = merge(acc, plugins.home);
+  for (const fragment of plugins.pluginDefaults ?? []) {
     acc = merge(acc, fragment);
   }
   return acc;
@@ -178,15 +178,15 @@ export function loadProjectActiveEnvironmentFragment(
   return loadActiveEnvironmentFragment(join(projectRoot, ".harnesstap"));
 }
 
-export function loadLayerDefaultFragments(
-  configuredLayerIds: string[],
+export function loadPluginDefaultFragments(
+  configuredPluginIds: string[],
 ): EnvironmentFragment[] {
-  return configuredLayerIds.flatMap((configuredLayerId) => {
-    const configuredLayer = getLayerById(configuredLayerId);
-    if (!configuredLayer?.default_environment_id) {
+  return configuredPluginIds.flatMap((configuredPluginId) => {
+    const configuredPlugin = getPluginById(configuredPluginId);
+    if (!configuredPlugin?.default_environment_id) {
       return [];
     }
-    return [fragmentFromEnvironmentId(configuredLayer.default_environment_id)];
+    return [fragmentFromEnvironmentId(configuredPlugin.default_environment_id)];
   });
 }
 
@@ -195,7 +195,7 @@ export function buildEnvironmentCascadeInput(
 ): EnvironmentCascadeInput {
   return {
     home: loadHomeEnvironmentFragment(),
-    layerDefaults: loadLayerDefaultFragments(input.configuredLayerIds),
+    pluginDefaults: loadPluginDefaultFragments(input.configuredPluginIds),
   };
 }
 
@@ -233,8 +233,8 @@ export function fragmentToEnvironmentResources(
 }
 
 /**
- * Strip environment resources from the merged layer set, then overlay the
- * resolved cascade (home ◂ layer default).
+ * Strip environment resources from the merged plugin set, then overlay the
+ * resolved cascade (home ◂ plugin default).
  */
 export function mergeResolvedEnvironmentIntoResources(
   resources: Resource[],

@@ -13,20 +13,27 @@ function buildProgram(): Command {
     .option("--no-interactive", "no interactive")
     .option("--format <mode>", "format");
 
-  const layer = program.command("layer").description("layer");
-  layer.command("show").argument("[name]", "name").description("show");
-  layer.command("delete").argument("[name]", "name").description("delete");
-  layer
+  const plugin = program.command("plugin").description("plugin");
+  plugin.command("show").argument("[name]", "name").description("show");
+  plugin.command("delete").argument("[name]", "name").description("delete");
+  plugin
     .command("apply")
-    .argument("[layers...]", "layers")
+    .argument("[plugins...]", "plugins")
     .option("--project <path>", "project")
     .option("--harness <slugs>", "harness")
     .description("apply");
-  layer
+  plugin
     .command("pull")
     .argument("[selector]", "selector")
     .option("--account <name>", "account")
     .description("pull");
+
+  program
+    .command("apply")
+    .argument("[plugins...]", "plugins")
+    .option("--project <path>", "project")
+    .option("--harness <slugs>", "harness")
+    .description("apply");
 
   const environment = program.command("environment").description("environment");
   environment.command("show").argument("[name]", "name").description("show");
@@ -44,19 +51,19 @@ describe("completion engine", () => {
   const program = buildProgram();
 
   it("resolves subcommand slot for partial top-level command", async () => {
-    const ctx = parseCompletionContext(program, "ht lay");
+    const ctx = parseCompletionContext(program, "ht plug");
     expect(ctx.slot).toBe("subcommand");
     expect(ctx.commandPath).toEqual([]);
-    expect(ctx.prefix).toBe("lay");
+    expect(ctx.prefix).toBe("plug");
 
     const candidates = await resolveCompletions(program, ctx);
-    expect(candidates.map((entry) => entry.value)).toContain("layer");
+    expect(candidates.map((entry) => entry.value)).toContain("plugin");
   });
 
-  it("resolves positional slot for layer show", async () => {
-    const ctx = parseCompletionContext(program, "ht layer show eng");
+  it("resolves positional slot for plugin show", async () => {
+    const ctx = parseCompletionContext(program, "ht plugin show eng");
     expect(ctx.slot).toBe("positional");
-    expect(ctx.commandPath).toEqual(["layer", "show"]);
+    expect(ctx.commandPath).toEqual(["plugin", "show"]);
     expect(ctx.positionalIndex).toBe(0);
     expect(ctx.prefix).toBe("eng");
   });
@@ -85,31 +92,31 @@ describe("completion engine", () => {
     expect(ctx.positionalIndex).toBe(0);
   });
 
-  it("resolves layer apply positional slot", async () => {
-    const ctx = parseCompletionContext(program, "ht layer apply eng");
+  it("resolves plugin apply positional slot", async () => {
+    const ctx = parseCompletionContext(program, "ht apply eng");
     expect(ctx.slot).toBe("positional");
-    expect(ctx.commandPath).toEqual(["layer", "apply"]);
+    expect(ctx.commandPath).toEqual(["apply"]);
     expect(ctx.positionalIndex).toBe(0);
   });
 
   it("resolves positional slot after inline --account=value", async () => {
-    const ctx = parseCompletionContext(program, "ht layer pull --account=work eng");
+    const ctx = parseCompletionContext(program, "ht plugin pull --account=work eng");
     expect(ctx.slot).toBe("positional");
-    expect(ctx.commandPath).toEqual(["layer", "pull"]);
+    expect(ctx.commandPath).toEqual(["plugin", "pull"]);
     expect(ctx.positionalIndex).toBe(0);
     expect(ctx.prefix).toBe("eng");
     expect(ctx.account).toBe("work");
   });
 
   it("resolves flag-value slot for inline --account=partial", async () => {
-    const ctx = parseCompletionContext(program, "ht layer pull --account=wo");
+    const ctx = parseCompletionContext(program, "ht plugin pull --account=wo");
     expect(ctx.slot).toBe("flag-value");
     expect(ctx.flag).toBe("account");
     expect(ctx.prefix).toBe("wo");
   });
 
   it("extracts --account from separate tokens", async () => {
-    const ctx = parseCompletionContext(program, "ht layer pull --account work eng");
+    const ctx = parseCompletionContext(program, "ht plugin pull --account work eng");
     expect(ctx.account).toBe("work");
     expect(ctx.slot).toBe("positional");
     expect(ctx.prefix).toBe("eng");

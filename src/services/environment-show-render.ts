@@ -1,12 +1,12 @@
-import { getLayerById } from "../models/layer-model.js";
+import { getPluginById } from "../models/plugin-model.js";
 import type { analyzeEnvironmentGaps } from "./environment-requirements.js";
 import type { EnvironmentShowPayload } from "./environment-commands.js";
 import { renderPanel } from "../ui/panel.js";
 import { renderSubheader } from "../ui/section.js";
 import { renderTable } from "../ui/table.js";
 
-function formatLayerLabel(layer: { name: string; version: string }): string {
-  return `${layer.name}@${layer.version}`;
+function formatPluginLabel(plugin: { name: string; version: string }): string {
+  return `${plugin.name}@${plugin.version}`;
 }
 
 export type EnvironmentShowRenderOptions = {
@@ -92,17 +92,17 @@ export function renderEnvironmentShow(
     );
   }
 
-  if (payload.references.layers.length > 0) {
+  if (payload.references.plugins.length > 0) {
     sections.push(
       renderSubheader("REFERENCES"),
       renderTable({
         columns: [
-          { key: "layer", header: "LAYER", width: 40 },
+          { key: "plugin", header: "PLUGIN", width: 40 },
         ],
-        rows: payload.references.layers.map((ref) => {
-          const layer = getLayerById(ref.id);
+        rows: payload.references.plugins.map((ref) => {
+          const plugin = getPluginById(ref.id);
           return {
-            layer: layer ? formatLayerLabel(layer) : ref.name,
+            plugin: plugin ? formatPluginLabel(plugin) : ref.name,
           };
         }),
       }),

@@ -17,9 +17,9 @@ import {
   recordImportedSnapshotInstall,
 } from "../models/imported-snapshot.js";
 import { getResourcesByIds } from "../models/resource.js";
-import { applyClaudeLayerExtensions } from "../platforms/claude-layer-extensions.js";
+import { applyClaudePluginExtensions } from "../platforms/claude-plugin-extensions.js";
 import type {
-  ClaudeLayerConfig,
+  ClaudePluginConfig,
   Resource,
   SerializedFile,
   SerializeOptions,
@@ -62,7 +62,7 @@ export interface MaterializeFilesOptions {
 }
 
 export interface GenerateFilesOptions extends SerializeOptions {
-  claudeConfig?: ClaudeLayerConfig;
+  claudeConfig?: ClaudePluginConfig;
   resolvedEnvironment?: EnvironmentFragment;
 }
 
@@ -190,7 +190,7 @@ function fileContentMatchesExisting(fullPath: string, expectedContent: string): 
 }
 
 function isGenerateFilesOptions(
-  value: ClaudeLayerConfig | GenerateFilesOptions | undefined,
+  value: ClaudePluginConfig | GenerateFilesOptions | undefined,
 ): value is GenerateFilesOptions {
   return Boolean(
     value &&
@@ -210,7 +210,7 @@ export async function generateFiles(
   resources: Resource[],
   platforms: string[],
   projectRoot: string,
-  claudeConfigOrOptions?: ClaudeLayerConfig | GenerateFilesOptions,
+  claudeConfigOrOptions?: ClaudePluginConfig | GenerateFilesOptions,
   maybeOptions?: GenerateFilesOptions,
 ): Promise<ApplyResult[]> {
   const options =
@@ -221,7 +221,7 @@ export async function generateFiles(
     maybeOptions?.claudeConfig ??
     (isGenerateFilesOptions(claudeConfigOrOptions)
       ? claudeConfigOrOptions.claudeConfig
-      : (claudeConfigOrOptions as ClaudeLayerConfig | undefined));
+      : (claudeConfigOrOptions as ClaudePluginConfig | undefined));
 
   const results: ApplyResult[] = [];
   const target = options.target ?? "project";
@@ -240,7 +240,7 @@ export async function generateFiles(
       skillSourceRoot,
     });
     if (pid === "claude-code" && claudeConfig) {
-      files = applyClaudeLayerExtensions(files, claudeConfig, projectRoot);
+      files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
     }
     results.push({ platformId: pid, files });
   }
@@ -421,7 +421,7 @@ export async function applyToProject(
   resources: Resource[],
   platforms: string[],
   projectRoot: string,
-  claudeConfig?: ClaudeLayerConfig,
+  claudeConfig?: ClaudePluginConfig,
   options: Pick<GenerateFilesOptions, "skillCursorMode"> = {},
 ): Promise<ApplyResult[]> {
   const results = await generateFiles(resources, platforms, projectRoot, claudeConfig, {

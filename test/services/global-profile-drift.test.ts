@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
-import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
+import { attachPluginPinToPlugin } from "../../src/services/plugin-composition.ts";
 import {
   buildHarnessPluginRows,
   computeGlobalProfilePanelStatus,
@@ -18,8 +18,8 @@ describe("global-profile-drift service", () => {
   it("reports pending apply when active profile was never applied globally", async () => {
     const context = await createInitializedTestContext("global-profile-drift-pending");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -28,7 +28,7 @@ describe("global-profile-drift service", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
       setActiveProfileName("work");
 
       const status = await detectGlobalProfileStatus({ harness: "claude-code" });
@@ -48,8 +48,8 @@ describe("global-profile-drift service", () => {
   it("reports in sync after profile use", async () => {
     const context = await createInitializedTestContext("global-profile-drift-synced");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -58,9 +58,9 @@ describe("global-profile-drift service", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -84,8 +84,8 @@ describe("global-profile-drift service", () => {
   it("marks fast depth as yellow with empty harness maps", async () => {
     const context = await createInitializedTestContext("global-profile-drift-fast");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -94,9 +94,9 @@ describe("global-profile-drift service", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -120,8 +120,8 @@ describe("global-profile-drift service", () => {
   it("reports red when declared plugin pins are missing", async () => {
     const context = await createInitializedTestContext("global-profile-drift-missing-plugin");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -130,13 +130,13 @@ describe("global-profile-drift service", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
-      attachPluginPinToLayer(layer.id, "demo@demo-market", "1.0.0");
+      attachPluginPinToPlugin(plugin.id, "demo@demo-market", "1.0.0");
       setActiveProfileName("work");
 
       const status = await detectGlobalProfileStatus({
@@ -204,8 +204,8 @@ describe("global-profile-drift service", () => {
   it("reports missing MCP servers for cursor harness", async () => {
     const context = await createInitializedTestContext("global-profile-drift-mcp");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -214,9 +214,9 @@ describe("global-profile-drift service", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "cursor",
         conflictPolicy: "replace",
       });
@@ -233,7 +233,7 @@ describe("global-profile-drift service", () => {
         },
         source: "manual",
       });
-      addResourceToLayer(layer.id, mcp.id);
+      addResourceToPlugin(plugin.id, mcp.id);
       setActiveProfileName("work");
 
       const status = await detectGlobalProfileStatus({

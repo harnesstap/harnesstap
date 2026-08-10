@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
-import { cutLayerVersion } from "../../src/services/layer-versioning.ts";
-import { createLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { cutPluginVersion } from "../../src/services/plugin-versioning.ts";
+import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { writeStarterProjectConfig } from "../../src/services/project-config-write.ts";
 
 describe("agent routes", () => {
@@ -88,9 +88,9 @@ describe("agent routes", () => {
   it("lists profile head semver version instead of lexicographic sort", async () => {
     const server = withServer();
 
-    const profile = createLayer({ name: "versioned", version: "1.9.0", tags: ["profile"] });
-    setLayerTags(profile.id, ["profile"]);
-    cutLayerVersion({ layerId: profile.id, newVersion: "1.10.0" });
+    const profile = createPlugin({ name: "versioned", version: "1.9.0", tags: ["profile"] });
+    setPluginTags(profile.id, ["profile"]);
+    cutPluginVersion({ pluginId: profile.id, newVersion: "1.10.0" });
 
     const response = await fetch(`${server.url}/v1/profiles`);
     expect(response.status).toBe(200);

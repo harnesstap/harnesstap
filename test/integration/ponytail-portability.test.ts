@@ -60,7 +60,7 @@ describe("ponytail portability", () => {
     );
   });
 
-  it("layer apply dry-run to claude-code + codex emits native skill paths", async () => {
+  it("plugin apply dry-run to claude-code + codex emits native skill paths", async () => {
     const context = await createInitializedTestContext("ponytail-apply-native");
 
     try {
@@ -87,7 +87,7 @@ describe("ponytail portability", () => {
     }
   });
 
-  it("layer apply dry-run to windsurf emits .windsurf/rules/ not .agents/skills/", async () => {
+  it("plugin apply dry-run to windsurf emits .windsurf/rules/ not .agents/skills/", async () => {
     const context = await createInitializedTestContext("ponytail-apply-windsurf");
 
     try {

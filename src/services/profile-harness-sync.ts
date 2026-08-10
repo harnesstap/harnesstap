@@ -1,20 +1,20 @@
 import {
-  addResourceToLayer,
-  getLayerResources,
-  removeResourceFromLayer,
-  resolveLayerSelector,
-  touchLayerUpdatedAt,
-} from "../models/layer-model.js";
+  addResourceToPlugin,
+  getPluginResources,
+  removeResourceFromPlugin,
+  resolvePluginSelector,
+  touchPluginUpdatedAt,
+} from "../models/plugin-model.js";
 import { getHarnessPreference } from "../models/harness.js";
-import { isProfileLayer } from "../constants/profile.js";
+import { isProfilePlugin } from "../constants/profile.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type MaterialResourceType,
   type Resource,
   type ResourceCreateInput,
 } from "../types.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
-import { collectProfileLayerIds } from "./profile-apply.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import { collectProfilePluginIds } from "./profile-apply.js";
 import {
   detectHomePlatforms,
   persistScanResults,
@@ -152,23 +152,23 @@ export async function detectProfileHarnessSyncStatus(input: {
   profileSelector: string;
   harness?: string;
 }): Promise<ProfileHarnessSyncStatus> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
   const mainHarness = resolveMainHarnessTarget(input.harness);
   let profileResources: Resource[];
   try {
-    profileResources = mergeLayersForApply(
-      collectProfileLayerIds(profileLayer),
+    profileResources = mergePluginsForApply(
+      collectProfilePluginIds(profilePlugin),
     ).resources;
   } catch (error) {
     return {
-      active_profile: profileLayer.name,
+      active_profile: profilePlugin.name,
       main_harness: mainHarness,
       in_sync: false,
       changes: [],
@@ -181,7 +181,7 @@ export async function detectProfileHarnessSyncStatus(input: {
   const changes = compareMaterialResources(profileResources, harnessResources);
 
   return {
-    active_profile: profileLayer.name,
+    active_profile: profilePlugin.name,
     main_harness: mainHarness,
     in_sync: changes.length === 0,
     changes,
@@ -192,16 +192,16 @@ export async function updateProfileFromMainHarness(input: {
   profileSelector: string;
   harness?: string;
 }): Promise<UpdateProfileFromHarnessResult> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
   const mainHarness = resolveMainHarnessTarget(input.harness);
-  const beforeSync = getLayerResources(profileLayer.id).filter(isMaterialResource);
+  const beforeSync = getPluginResources(profilePlugin.id).filter(isMaterialResource);
   const scanned = await scanHomeDefaults(mainHarness);
   const harnessResources = scanned.flatMap((result) => result.resources);
   const pendingChanges = compareMaterialResources(beforeSync, harnessResources);
@@ -216,7 +216,7 @@ export async function updateProfileFromMainHarness(input: {
   let removedResources = 0;
   for (const resource of beforeSync) {
     if (!scannedKeys.has(profileResourceKey(resource))) {
-      removeResourceFromLayer(profileLayer.id, resource.id);
+      removeResourceFromPlugin(profilePlugin.id, resource.id);
       removedResources += 1;
     }
   }
@@ -226,16 +226,16 @@ export async function updateProfileFromMainHarness(input: {
     const existingAttachment = beforeSync.some(
       (attached) => attached.id === resource.id,
     );
-    addResourceToLayer(profileLayer.id, resource.id);
+    addResourceToPlugin(profilePlugin.id, resource.id);
     if (!existingAttachment) {
       attachedResources += 1;
     }
   }
 
-  touchLayerUpdatedAt(profileLayer.id);
+  touchPluginUpdatedAt(profilePlugin.id);
 
   return {
-    profile_name: profileLayer.name,
+    profile_name: profilePlugin.name,
     main_harness: mainHarness,
     attached_resources: attachedResources,
     removed_resources: removedResources,

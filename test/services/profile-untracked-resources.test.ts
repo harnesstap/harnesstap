@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer, addResourceToLayer, setLayerTags, getLayerById } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags, getPluginById } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.js";
 import { createInitializedTestContext } from "../helpers/db.ts";
@@ -13,16 +13,16 @@ import {
   detectNotStagedProfileResources,
   detectUntrackedProfileResources,
 } from "../../src/services/profile-untracked-resources.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { listResources } from "../../src/models/resource.ts";
 
 describe("profile-untracked-resources service", () => {
   it("detects harness resources not attached to the profile", async () => {
     const context = await createInitializedTestContext("profile-untracked-detect");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
         profile.id,
         createResource({
           type: "skill",
@@ -56,11 +56,11 @@ describe("profile-untracked-resources service", () => {
     }
   });
 
-  it("adds an untracked resource to the profile layer", async () => {
+  it("adds an untracked resource to the profile plugin", async () => {
     const context = await createInitializedTestContext("profile-untracked-add");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       setActiveProfileName("work");
 
       mkdirSync(join(context.homeDir, ".claude", "skills", "manual-skill"), {
@@ -87,7 +87,7 @@ describe("profile-untracked-resources service", () => {
         harness: "claude-code",
       });
       expect(remaining.some((resource) => resource.name === "manual-skill")).toBe(false);
-      expect(getLayerById(profile.id)?.dirty).toBe(true);
+      expect(getPluginById(profile.id)?.dirty).toBe(true);
     } finally {
       await context.cleanup();
     }
@@ -96,9 +96,9 @@ describe("profile-untracked-resources service", () => {
   it("lists extra permissions from settings.json even when the profile owns that file", async () => {
     const context = await createInitializedTestContext("profile-not-staged-extra-perm");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
         profile.id,
         createResource({
           type: "permission",
@@ -110,7 +110,7 @@ describe("profile-untracked-resources service", () => {
         }).id,
       );
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -175,9 +175,9 @@ describe("profile-untracked-resources service", () => {
   it("does not treat profile-owned instruction files as not staged under synthetic names", async () => {
     const context = await createInitializedTestContext("profile-not-staged-instruction");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
-      addResourceToLayer(
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      addResourceToPlugin(
         profile.id,
         createResource({
           type: "instruction",
@@ -189,7 +189,7 @@ describe("profile-untracked-resources service", () => {
         }).id,
       );
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -213,9 +213,9 @@ describe("profile-untracked-resources service", () => {
   it("treats resources attached to another profile as staged (not listed)", async () => {
     const context = await createInitializedTestContext("profile-not-staged-other-profile");
     try {
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(
         profileA.id,
         createResource({
           type: "skill",
@@ -227,10 +227,10 @@ describe("profile-untracked-resources service", () => {
         }).id,
       );
 
-      const profileB = createLayer({ name: "profile-b" });
-      setLayerTags(profileB.id, ["profile"]);
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -252,8 +252,8 @@ describe("profile-untracked-resources service", () => {
   it("registers not-staged resources as live library refs without snapshotting content", async () => {
     const context = await createInitializedTestContext("profile-not-staged-live-ref");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
 
       mkdirSync(join(context.homeDir, ".claude", "skills", "manual-skill"), {
         recursive: true,
@@ -319,8 +319,8 @@ describe("agent profile add-resource routes", () => {
 
   it("returns untracked resources in apply preview", async () => {
     const server = withServer();
-    const profile = createLayer({ name: "work" });
-    setLayerTags(profile.id, ["profile"]);
+    const profile = createPlugin({ name: "work" });
+    setPluginTags(profile.id, ["profile"]);
 
     mkdirSync(join(server.home, ".claude", "skills", "manual-skill"), {
       recursive: true,
@@ -351,8 +351,8 @@ describe("agent profile add-resource routes", () => {
 
   it("adds a resource via POST /v1/profiles/:name/add-resource", async () => {
     const server = withServer();
-    const profile = createLayer({ name: "work" });
-    setLayerTags(profile.id, ["profile"]);
+    const profile = createPlugin({ name: "work" });
+    setPluginTags(profile.id, ["profile"]);
 
     mkdirSync(join(server.home, ".claude", "skills", "manual-skill"), {
       recursive: true,
@@ -384,9 +384,9 @@ describe("agent profile add-resource routes", () => {
 
   it("adds all untracked resources via POST /v1/profiles/:name/add-all-resources", async () => {
     const server = withServer();
-    const profile = createLayer({ name: "work" });
-    setLayerTags(profile.id, ["profile"]);
-    addResourceToLayer(
+    const profile = createPlugin({ name: "work" });
+    setPluginTags(profile.id, ["profile"]);
+    addResourceToPlugin(
       profile.id,
       createResource({
         type: "skill",

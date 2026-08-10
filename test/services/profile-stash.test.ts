@@ -2,23 +2,23 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
-  CLEARED_GLOBAL_PROFILE_LAYER_ID,
+  CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
   CLEARED_GLOBAL_PROFILE_NAME,
 } from "../../src/constants/profile.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setHarnessPreference } from "../../src/models/harness.js";
 import {
   getActiveProfileName,
   setActiveProfileName,
 } from "../../src/services/active-profile.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import {
   ProfileRenameError,
   ProfileReservedNameError,
   createProfileCommand,
   deleteProfileCommand,
-  listProfileLayersCommand,
+  listProfilePluginsCommand,
   renameProfileCommand,
 } from "../../src/services/profile-commands.ts";
 import {
@@ -55,7 +55,7 @@ describe("profile stash", () => {
     const context = await createInitializedTestContext("profile-stash-list");
     try {
       createProfileCommand({ name: "work" });
-      const names = listProfileLayersCommand().map((layer) => layer.name);
+      const names = listProfilePluginsCommand().map((plugin) => plugin.name);
       expect(names).not.toContain(CLEARED_GLOBAL_PROFILE_NAME);
       expect(names).toContain("work");
     } finally {
@@ -90,11 +90,11 @@ describe("profile stash", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -136,11 +136,11 @@ describe("profile stash", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -182,11 +182,11 @@ describe("profile stash", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -208,11 +208,11 @@ describe("profile stash", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -239,11 +239,11 @@ describe("profile stash", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -297,11 +297,11 @@ describe("profile stash", () => {
     try {
       setHarnessPreference({ main_harness: "claude-code", alias_harnesses: [] });
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(profileA.id, createSkill("skill-a", "# Skill A").id);
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(profileA.id, createSkill("skill-a", "# Skill A").id);
 
-      await applyProfileLayer("profile-a", {
+      await applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -332,7 +332,7 @@ describe("profile stash", () => {
       expect(result.stashed).toBe(true);
       expect(result.profile_key).toBe("profile-a");
       expect(result.profile_name).toBe(CLEARED_GLOBAL_PROFILE_NAME);
-      expect(result.profile_layer_id).toBe(CLEARED_GLOBAL_PROFILE_LAYER_ID);
+      expect(result.profile_plugin_id).toBe(CLEARED_GLOBAL_PROFILE_PLUGIN_ID);
       expect(existsSync(skillAPath)).toBe(false);
       expect(getActiveProfileName()).toBeUndefined();
       expect(listProfileStashEntries()).toHaveLength(1);

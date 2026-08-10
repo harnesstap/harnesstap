@@ -12,49 +12,43 @@ Terms and meanings agreed during design discussions. Implementation details belo
 
 **Context-side** — Everything that shapes *what* the model sees: instructions, skills, rules, MCP definitions, hooks, agents, commands, and dependencies that bring those in. Replaces the older term *plugin-side*. Pairs with **environment-side** (*how* the agent runs: env vars, models, permissions, secrets).
 
-**Environment-side** — Runtime *how* configuration: env vars, model selection, permissions, secret references. Satisfies layer `needs[]` contracts; merged via the environment cascade on apply.
+**Environment-side** — Runtime *how* configuration: env vars, model selection, permissions, secret references. Satisfies plugin `needs[]` contracts; merged via the environment cascade on apply.
 
 ## Concepts
 
-**Layer** — A reusable, versioned recipe for agent configuration: context-side material resources plus optional dependencies (**plugin pins**, **layer references**) and an optional default **environment**. Publish to a catalog or share via export; edit membership and apply at project level with `layer apply`.
+**Plugin** — A reusable, versioned package of resources plus dependencies. The unit you author, apply, publish, and depend on. Dependencies may come from a marketplace, local path, git, or org catalog. Publish to a catalog or share via export; edit membership and apply with `ht apply` (project default) or `ht apply --global`.
 
-**Profile** — A layer tagged `profile`; presented as a switchable global preset. Not a separate storage type — profiles are layers with the reserved tag `profile`. Switch with `profile use` (or root shorthand `ht <name>`); applies to machine home harness paths only.
+**Profile** — A plugin tagged `profile`; presented as a switchable global preset. Not a separate storage type — profiles are plugins with the reserved tag `profile`. Switch with `profile use` (or root shorthand `ht <name>`); applies to machine home harness paths only.
 
-**Workspace** — The single implicit local library in `~/.harnesstap/harnesstap.db`: all layers, resources, and environments live here. Share offline with `migrate export` / `migrate import` (`--workspace`, `--layer`, or `--resource`).
+**Workspace** — The single implicit local library in `~/.harnesstap/harnesstap.db`: all plugins, resources, and environments live here. Share offline with `migrate export` / `migrate import` (`--workspace`, `--plugin`, or `--resource`).
 
-**Catalog** — Org-scoped published layers for multiplayer discovery, search, and install (`layer list --search`, `layer pull`). Users cherry-pick catalog layers into their local workspace or profile stack.
+**Catalog** — Org-scoped published plugins for multiplayer discovery, search, and install (`ht plugin search`, `ht plugin pull`). Users cherry-pick catalog plugins into their local workspace or profile stack.
 
-**Account** — Local HarnessTap Cloud login identity (tokens, org context) stored in `cloud-accounts.json`. Distinct from a **profile** layer (global agent preset).
+**Account** — Local HarnessTap Cloud login identity (tokens, org context) stored in `cloud-accounts.json`. Distinct from a **profile** plugin (global agent preset).
 
-**Resource** — A stored row in the canonical library. Two families:
-- **Material resources** (context-side or environment-side atoms): `skill`, `rule`, `instruction`, `mcp_server`, `hook`, `agent`, `command`, `env_var`, `model_config`, `permission`.
-- **Composition resources** (edges on a layer): `plugin_pin`, `layer`.
+**Resource** — A stored row in the canonical library. Material atoms on the context-side or environment-side: `skill`, `rule`, `instruction`, `mcp_server`, `hook`, `agent`, `command`, `env_var`, `model_config`, `permission`.
 
-**Host plugin** — An installable bundle in the host harness world (Claude marketplace plugin, Cursor plugin pack, Codex plugin, etc.): manifest metadata plus a tree of skills, rules, agents, and related files. *Not* a HarnessTap storage type by itself — it is the thing a **plugin pin** points at and `resource sync` materializes from.
+**Dependency** — A plugin required by another plugin, from a marketplace, local path, git, or catalog. Provenance is a first-class dimension (`authored`, `upstream`, `catalog`), not a separate storage type.
 
-**Plugin pin** — A layer dependency on a host plugin: selector `plugin_pin:ref@marketplace`, version constraint, sync status. Analogous to a dependency entry in `package.json`. After sync, the host plugin's tree appears as namespaced **material resources** in the library. There is no separate stored "plugin" aggregate row — only the pin plus exploded children (pin + exploded resources model).
-
-**Layer reference** — A layer dependency on another HarnessTap layer (`layer:name@^1.0`). Used for catalog/local registry deps (org/catalog/name@version). Analogous to depending on another published package.
+**Marketplace** — Third-party source of plugins (Claude marketplace, Cursor packs, etc.).
 
 ## Naming rules (agreed)
 
 | Term | Use for | Do not use for |
 | --- | --- | --- |
-| **plugin** | Host plugin (manifest + tree on disk / in marketplace) | A HarnessTap storage row or layer attachment |
-| **plugin_pin** | Composition reference attached to a layer | The host plugin bundle itself |
-| **layer** | HarnessTap versioned context package; catalog publish unit | Global preset (that's a **profile**) |
-| **profile** | Tagged layer (`tags` includes `profile`); global switch UX | Cloud login identity (that's an **account**) |
+| **plugin** | HarnessTap versioned package of resources + deps; catalog publish unit | Global preset alone (that's a **profile**) |
+| **dependency** | A required plugin from marketplace, path, git, or catalog | The resources inside a plugin |
+| **profile** | Tagged plugin (`tags` includes `profile`); global switch UX | Cloud login identity (that's an **account**) |
 | **workspace** | Single local SQLite library (`~/.harnesstap`); offline share via `migrate` | Org-published multiplayer baseline (that's **catalog**) |
-| **catalog** | Org-scoped published layers; browse/search/pull | Personal layer collection (that's the **workspace**) |
-| **account** | HarnessTap Cloud auth identity (`cloud-accounts.json`, `--account`) | Profile layer or `active-profile.json` pointer |
+| **catalog** | Org-scoped published plugins; browse/search/pull | Personal plugin collection (that's the **workspace**) |
+| **account** | HarnessTap Cloud auth identity (`cloud-accounts.json`, `--account`) | Profile plugin or `active-profile.json` pointer |
 | **context-side** | The *what* axis (skills, rules, …) | Runtime secrets/env (that's **environment-side**) |
 
-No backward-compatibility requirement pre-release: rename `type=plugin` → `plugin_pin` and `plugin-side` → `context-side` throughout spec, CLI, and storage.
+`layer` and `plugin_pin` leave the vocabulary; everything composable is a **plugin**. `ht layer …` remains a hidden alias for one release.
 
-## Consolidated modules (2026-06)
+## Consolidated modules (2026-08)
 
-- `layer-composition` — composition resources (plugin_pin, layer refs) and attachments
-- `layer-model` — layer CRUD
-- `plugin-pin-apply` — apply-time pin install, sync, expand, validate
-- `layer-export`, `layer-import` — transport round-trips (replaces monolithic exporter)
-- Schema v19 — fresh DDL only; upgrade via `ht migrate export` / `import`
+- `plugin-model` — plugin CRUD and resource attachments
+- `plugin-resolver` — dependency graph resolution and lockfile
+- `plugin-export`, `plugin-import` — transport round-trips
+- Schema v27 — `plugins` / `plugin_resources` tables (migrated from `layers` / `layer_resources`)

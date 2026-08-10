@@ -506,8 +506,8 @@ export function updateResource(
   return getResource(resource.id);
 }
 
-/** Rewrite type=layer resources that point at a renamed layer. */
-export function renameLayerTypedResources(
+/** Rewrite type=plugin resources that point at a renamed plugin. */
+export function renamePluginTypedResources(
   oldName: string,
   newName: string,
 ): number {
@@ -515,13 +515,13 @@ export function renameLayerTypedResources(
   const now = new Date().toISOString();
   const rows = db
     .prepare(
-      `SELECT id, namespace, origin_ref FROM resources WHERE type = 'layer' AND name = ?`,
+      `SELECT id, namespace, origin_ref FROM resources WHERE type = 'plugin' AND name = ?`,
     )
     .all(oldName) as Array<{ id: string; namespace: string; origin_ref: string }>;
 
   let updated = 0;
   for (const row of rows) {
-    if (findResourceByKey("layer", newName, row.namespace)) {
+    if (findResourceByKey("plugin", newName, row.namespace)) {
       continue;
     }
     const originRef = row.origin_ref === oldName ? newName : row.origin_ref;
@@ -532,6 +532,9 @@ export function renameLayerTypedResources(
   }
   return updated;
 }
+
+/** @deprecated Use renamePluginTypedResources */
+export const renameLayerTypedResources = renamePluginTypedResources;
 
 export function listResourcesByOriginRef(
   originRef: string,

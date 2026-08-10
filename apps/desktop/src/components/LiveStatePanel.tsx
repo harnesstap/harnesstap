@@ -44,7 +44,7 @@ import type {
   HarnessLiveStatus,
   ProfileApplyPreview,
   ProfileContents,
-  ProfileContentsLayer,
+  ProfileContentsPlugin,
   ProfileContentsResource,
   ViewScope,
 } from "../lib/types";
@@ -118,7 +118,7 @@ function ListTruncationControls({
 
 function TypeIcon({ type }: { type: string }): ReactNode {
   switch (type) {
-    case "layer":
+    case "plugin":
       return <Layers size={ICON_SIZE} aria-hidden />;
     case "skill":
       return <Sparkles size={ICON_SIZE} aria-hidden />;
@@ -180,20 +180,20 @@ function ResourceNameButton({
 
 function ProfileResourceActions({
   resource,
-  layerId,
+  pluginId,
   profileName,
   removing,
   onOpenInEditor,
   onRemoveFromProfile,
 }: {
   resource: ProfileContentsResource;
-  layerId?: string;
+  pluginId?: string;
   profileName: string | null;
   removing: boolean;
   onOpenInEditor?: (resource: ProfileContentsResource) => void;
   onRemoveFromProfile?: (
     resource: ProfileContentsResource,
-    layerId?: string,
+    pluginId?: string,
   ) => void;
 }) {
   const canOpen = Boolean(onOpenInEditor);
@@ -229,7 +229,7 @@ function ProfileResourceActions({
           title="Remove from profile"
           disabled={removing}
           aria-busy={removing}
-          onClick={() => onRemoveFromProfile(resource, layerId)}
+          onClick={() => onRemoveFromProfile(resource, pluginId)}
         >
           {removing ? (
             <ButtonSpinner size={ICON_SIZE} />
@@ -259,7 +259,7 @@ function ProfileStackEmptyState({
         <Layers size={ICON_SIZE} className="profile-stack-empty-icon" aria-hidden />
         <h2>No resources yet</h2>
       </div>
-      <p className="muted">Add layers or resources by editing this profile.</p>
+      <p className="muted">Add plugins or resources by editing this profile.</p>
       <button
         className="btn primary"
         type="button"
@@ -512,49 +512,49 @@ function EnabledResourceRow({
   );
 }
 
-function EnabledLayerGroup({
-  layer,
+function EnabledPluginGroup({
+  plugin,
   profileName,
   removingResourceKey,
   onOpenResource,
   onOpenInEditor,
   onRemoveFromProfile,
 }: {
-  layer: ProfileContentsLayer;
+  plugin: ProfileContentsPlugin;
   profileName: string | null;
   removingResourceKey: string | null;
   onOpenResource: (target: ResourceDetailTarget) => void;
   onOpenInEditor?: (resource: ProfileContentsResource) => void;
   onRemoveFromProfile?: (
     resource: ProfileContentsResource,
-    layerId?: string,
+    pluginId?: string,
   ) => void;
 }) {
-  const resourceCount = layer.resources?.length ?? 0;
+  const resourceCount = plugin.resources?.length ?? 0;
   return (
-    <details className="enabled-layer">
-      <summary className="enabled-layer-summary">
+    <details className="enabled-plugin">
+      <summary className="enabled-plugin-summary">
         <span className="enabled-type">
-          <TypeIcon type="layer" />
+          <TypeIcon type="plugin" />
         </span>
-        <span className="enabled-label">{layer.name}</span>
+        <span className="enabled-label">{plugin.name}</span>
         <span className="enabled-trailing">
           <RelatedHarnessIcons
-            harnessIds={relatedHarnessesForResourceType("layer")}
+            harnessIds={relatedHarnessesForResourceType("plugin")}
           />
           <span className="enabled-detail muted">
-            @{layer.version}
+            @{plugin.version}
             {resourceCount > 0
               ? ` · ${resourceCount} resource${resourceCount === 1 ? "" : "s"}`
               : ""}
           </span>
         </span>
       </summary>
-      <div className="enabled-layer-body">
+      <div className="enabled-plugin-body">
         {resourceCount === 0 ? (
-          <div className="muted enabled-layer-empty">No resources in this layer</div>
+          <div className="muted enabled-plugin-empty">No resources in this plugin</div>
         ) : (
-          (layer.resources ?? []).map((resource) => {
+          (plugin.resources ?? []).map((resource) => {
             const resourceKey = `${resource.type}:${resource.name}`;
             return (
               <div
@@ -576,7 +576,7 @@ function EnabledLayerGroup({
                   />
                   <ProfileResourceActions
                     resource={resource}
-                    layerId={layer.id}
+                    pluginId={plugin.id}
                     profileName={profileName}
                     removing={removingResourceKey === resourceKey}
                     onOpenInEditor={onOpenInEditor}
@@ -595,12 +595,12 @@ function EnabledLayerGroup({
   );
 }
 
-function layerIdentityKey(layer: {
+function pluginIdentityKey(plugin: {
   id: string;
   name: string;
   version: string;
 }): string {
-  return `layer:${layer.id}:${layer.name}@${layer.version}`;
+  return `plugin:${plugin.id}:${plugin.name}@${plugin.version}`;
 }
 
 function pinIdentityKey(pin: { ref: string }): string {
@@ -623,8 +623,8 @@ function dedupeContentsResources(
   return deduped;
 }
 
-function matchesLayerSearch(
-  layer: ProfileContentsLayer,
+function matchesPluginSearch(
+  plugin: ProfileContentsPlugin,
   search: string,
 ): boolean {
   if (!search.trim()) {
@@ -633,10 +633,10 @@ function matchesLayerSearch(
   return filterContentsResourcesBySearch(
     [
       {
-        id: layer.id,
-        type: "layer",
-        name: layer.name,
-        source: layer.id,
+        id: plugin.id,
+        type: "plugin",
+        name: plugin.name,
+        source: plugin.id,
       },
     ],
     search,
@@ -937,7 +937,7 @@ export interface LiveStatePanelProps {
   onOpenResourceInEditor?: (resource: ProfileContentsResource) => Promise<void>;
   onRemoveResourceFromProfile?: (
     resource: ProfileContentsResource,
-    layerId?: string,
+    pluginId?: string,
   ) => Promise<void>;
   removingResourceKey?: string | null;
   onOpenFileChange?: (change: DriftFileChange, absolutePath: string) => Promise<void>;
@@ -1029,13 +1029,13 @@ export function LiveStatePanel({
 
   const enabledKeys = new Set(enabledItems.map((item) => item.key));
   const enabledSourceContents = useLiveEnabledStack ? liveContents : targetContents;
-  const enabledLayers = (enabledSourceContents?.layers ?? []).filter((layer) =>
-    enabledKeys.has(layerIdentityKey(layer)),
+  const enabledPlugins = (enabledSourceContents?.plugins ?? []).filter((plugin) =>
+    enabledKeys.has(pluginIdentityKey(plugin)),
   );
   const enabledPins = (enabledSourceContents?.plugin_pins ?? []).filter((pin) =>
     enabledKeys.has(pinIdentityKey(pin)),
   );
-  const hasEnabledList = enabledLayers.length > 0 || enabledPins.length > 0;
+  const hasEnabledList = enabledPlugins.length > 0 || enabledPins.length > 0;
   const profileStackEmpty =
     previewMatchesSelection && (enabledItems.length === 0 || !hasEnabledList);
 
@@ -1149,7 +1149,7 @@ export function LiveStatePanel({
               onEditProfile ? (
                 <ProfileStackEmptyState onEditProfile={onEditProfile} />
               ) : (
-                <p className="muted">Add layers or resources from your library.</p>
+                <p className="muted">Add plugins or resources from your library.</p>
               )
             ) : (
               <>
@@ -1172,61 +1172,61 @@ export function LiveStatePanel({
                 />
                 <div className="enabled-list">
                   {(() => {
-                    const filteredLayers = enabledLayers
-                      .map((layer) => ({
-                        ...layer,
+                    const filteredPlugins = enabledPlugins
+                      .map((plugin) => ({
+                        ...plugin,
                         resources: dedupeContentsResources(
                           filterContentsResourcesBySearch(
-                            layer.resources,
+                            plugin.resources,
                             profileResourceSearch,
                           ),
                         ),
                       }))
                       .filter(
-                        (layer) =>
-                          layer.resources.length > 0
-                          || matchesLayerSearch(layer, profileResourceSearch),
+                        (plugin) =>
+                          plugin.resources.length > 0
+                          || matchesPluginSearch(plugin, profileResourceSearch),
                       );
                     const filteredPins = enabledPins.filter((pin) =>
                       matchesPinSearch(pin, profileResourceSearch),
                     );
-                    const totalResourceRows = filteredLayers.reduce(
-                      (sum, layer) => sum + layer.resources.length,
+                    const totalResourceRows = filteredPlugins.reduce(
+                      (sum, plugin) => sum + plugin.resources.length,
                       0,
                     ) + filteredPins.length;
 
                     let remaining = profileResourceVisible;
-                    const truncatedLayers: ProfileContentsLayer[] = [];
-                    for (const layer of filteredLayers) {
+                    const truncatedPlugins: ProfileContentsPlugin[] = [];
+                    for (const plugin of filteredPlugins) {
                       if (remaining <= 0) {
                         break;
                       }
-                      if (layer.resources.length === 0) {
-                        truncatedLayers.push(layer);
+                      if (plugin.resources.length === 0) {
+                        truncatedPlugins.push(plugin);
                         remaining -= 1;
                         continue;
                       }
-                      const take = layer.resources.slice(0, remaining);
+                      const take = plugin.resources.slice(0, remaining);
                       remaining -= take.length;
-                      truncatedLayers.push({ ...layer, resources: take });
+                      truncatedPlugins.push({ ...plugin, resources: take });
                     }
                     const pinSlice =
                       remaining > 0
                         ? filteredPins.slice(0, remaining)
                         : [];
                     const visibleResourceRows =
-                      truncatedLayers.reduce(
-                        (sum, layer) =>
-                          sum + Math.max(layer.resources.length, layer.resources.length === 0 ? 1 : 0),
+                      truncatedPlugins.reduce(
+                        (sum, plugin) =>
+                          sum + Math.max(plugin.resources.length, plugin.resources.length === 0 ? 1 : 0),
                         0,
                       ) + pinSlice.length;
 
                     return (
                       <>
-                        {truncatedLayers.map((layer) => (
-                          <EnabledLayerGroup
-                            key={layer.id}
-                            layer={layer}
+                        {truncatedPlugins.map((plugin) => (
+                          <EnabledPluginGroup
+                            key={plugin.id}
+                            plugin={plugin}
                             profileName={profileNameForActions}
                             removingResourceKey={removingResourceKey}
                             onOpenResource={openResource}
@@ -1239,10 +1239,10 @@ export function LiveStatePanel({
                             }
                             onRemoveFromProfile={
                               onRemoveResourceFromProfile
-                                ? (resource, layerId) => {
+                                ? (resource, pluginId) => {
                                     void onRemoveResourceFromProfile(
                                       resource,
-                                      layerId,
+                                      pluginId,
                                     );
                                   }
                                 : undefined

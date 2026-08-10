@@ -2,7 +2,7 @@ import { existsSync, closeSync, openSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { addResourceToLayer, createLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { addResourceToPlugin, createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import * as profileApply from "../../src/services/profile-apply.ts";
 import {
@@ -32,10 +32,10 @@ function createSkill(name: string, content: string) {
 }
 
 function createProfile(name: string, skillName: string) {
-  const layer = createLayer({ name });
-  setLayerTags(layer.id, ["profile"]);
-  addResourceToLayer(layer.id, createSkill(skillName, `# ${skillName}`).id);
-  return layer;
+  const plugin = createPlugin({ name });
+  setPluginTags(plugin.id, ["profile"]);
+  addResourceToPlugin(plugin.id, createSkill(skillName, `# ${skillName}`).id);
+  return plugin;
 }
 
 describe("profile-switch service", () => {
@@ -45,7 +45,7 @@ describe("profile-switch service", () => {
       createProfile("profile-a", "skill-a");
       createProfile("profile-b", "skill-b");
 
-      await profileApply.applyProfileLayer("profile-a", {
+      await profileApply.applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -106,7 +106,7 @@ describe("profile-switch service", () => {
       createProfile("profile-a", "skill-a");
       createProfile("profile-b", "skill-b");
 
-      await profileApply.applyProfileLayer("profile-a", {
+      await profileApply.applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -143,7 +143,7 @@ describe("profile-switch service", () => {
       createProfile("profile-a", "skill-a");
       createProfile("profile-b", "skill-b");
 
-      await profileApply.applyProfileLayer("profile-a", {
+      await profileApply.applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -177,7 +177,7 @@ describe("profile-switch service", () => {
       createProfile("profile-a", "skill-a");
       createProfile("profile-b", "skill-b");
 
-      await profileApply.applyProfileLayer("profile-a", {
+      await profileApply.applyProfilePlugin("profile-a", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });

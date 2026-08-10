@@ -9,7 +9,7 @@ import {
   type ProfileConflictPolicy,
   type ProfileCreateInput,
   type ProfileCreateSource,
-  ProfileLayerExistsError,
+  ProfilePluginExistsError,
   previewProfileCreate,
 } from "../services/profile-create.js";
 import { requireAgentBearerAuth } from "./auth.js";
@@ -111,9 +111,9 @@ function parseProfileCreateInput(body: unknown): ProfileCreateInput | Response {
 
   switch (source) {
     case "compose": {
-      const layerIds = parseOptionalStringArray(body, "layerIds");
-      if (layerIds instanceof Response) {
-        return layerIds;
+      const pluginIds = parseOptionalStringArray(body, "pluginIds");
+      if (pluginIds instanceof Response) {
+        return pluginIds;
       }
       const resourceIds = parseOptionalStringArray(body, "resourceIds");
       if (resourceIds instanceof Response) {
@@ -123,7 +123,7 @@ function parseProfileCreateInput(body: unknown): ProfileCreateInput | Response {
         source,
         name,
         ...(description !== undefined ? { description } : {}),
-        ...(layerIds !== undefined ? { layerIds } : {}),
+        ...(pluginIds !== undefined ? { pluginIds } : {}),
         ...(resourceIds !== undefined ? { resourceIds } : {}),
         ...(use !== undefined ? { use } : {}),
       };
@@ -251,10 +251,10 @@ export async function handleProfileCreate(
       );
     }
     if (
-      error instanceof ProfileLayerExistsError
-      || errorMessage(error).startsWith("Layer already exists:")
+      error instanceof ProfilePluginExistsError
+      || errorMessage(error).startsWith("Plugin already exists:")
     ) {
-      return jsonResponse({ error: "layer_exists" }, { status: 409 });
+      return jsonResponse({ error: "plugin_exists" }, { status: 409 });
     }
     return jsonResponse(
       { error: "create_failed", message: errorMessage(error) },
@@ -317,8 +317,8 @@ export async function handleProfileRename(
             { error: "not_found", message: error.message },
             { status: 404 },
           );
-        case "layer_exists":
-          return jsonResponse({ error: "layer_exists" }, { status: 409 });
+        case "plugin_exists":
+          return jsonResponse({ error: "plugin_exists" }, { status: 409 });
         case "not_a_profile":
           return jsonResponse(
             { error: "not_a_profile", message: error.message },

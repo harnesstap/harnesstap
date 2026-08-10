@@ -1,8 +1,8 @@
-import { listLayers } from "../models/layer-model.js";
+import { listPlugins } from "../models/plugin-model.js";
 import { formatCatalogScopeLabel, resolveCatalogScope } from "../config/catalog.js";
-import { listLayersInScope } from "./catalog-client.js";
-import { installLayerFromCatalog } from "./layer-catalog-install.js";
-import { resolvedRemoteLayerFromCatalog } from "./layer-selector.js";
+import { listPluginsInScope } from "./catalog-client.js";
+import { installPluginFromCatalog } from "./plugin-catalog-install.js";
+import { resolvedRemotePluginFromCatalog } from "./plugin-selector.js";
 import { runInteractiveCatalogBrowser } from "./wizards/interactive-catalog-browser.js";
 import { promptForChoice } from "./wizards/shared.js";
 import { ui } from "../ui/index.js";
@@ -15,15 +15,15 @@ export async function maybePromptInitCatalogInstall(input: {
   if (input.format !== "human" || !input.interactive) {
     return;
   }
-  if (listLayers().length > 0) {
+  if (listPlugins().length > 0) {
     return;
   }
 
   const choice = await promptForChoice({
-    message: "Browse public catalog layers now?",
+    message: "Browse public catalog plugins now?",
     choices: [
-      { name: "Yes — install a layer into the local library", value: "yes" as const },
-      { name: "No — I'll use layer list / layer apply later", value: "no" as const },
+      { name: "Yes — install a plugin into the local library", value: "yes" as const },
+      { name: "No — I'll use plugin list / apply later", value: "no" as const },
     ],
   });
 
@@ -33,21 +33,21 @@ export async function maybePromptInitCatalogInstall(input: {
 
   const scope = resolveCatalogScope();
   const selected = await runInteractiveCatalogBrowser({
-    message: "Select a catalog layer to install",
+    message: "Select a catalog plugin to install",
     scopeLabel: formatCatalogScopeLabel(scope),
-    listLayers: ({ q, limit }) => listLayersInScope({ q, limit, sort: "updated" }),
+    listPlugins: ({ q, limit }) => listPluginsInScope({ q, limit, sort: "updated" }),
   });
 
-  const parsed = resolvedRemoteLayerFromCatalog({
+  const parsed = resolvedRemotePluginFromCatalog({
     org: selected.orgSlug,
     catalog: selected.catalogSlug,
     name: selected.slug,
     version: selected.version,
   });
-  const installed = await installLayerFromCatalog(parsed, {});
+  const installed = await installPluginFromCatalog(parsed, {});
 
   ui.success(
-    `Installed layer ${ui.theme.accent(installed.layerName)} from catalog (${installed.sourceLabel})`,
+    `Installed plugin ${ui.theme.accent(installed.pluginName)} from catalog (${installed.sourceLabel})`,
   );
-  ui.hint(`Apply it with: ht layer apply ${installed.layerName}`);
+  ui.hint(`Apply it with: ht apply ${installed.pluginName}`);
 }

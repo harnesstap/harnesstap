@@ -20,5 +20,5 @@ resources, re-importing from install paths under `~/.claude/plugins`,
 `~/.cursor/plugins`, and similar locations. Rows marked stale usually mean the
 plugin is not installed locally yet.
 
-For layer-level validation of plugin refs and version constraints, use
-`harnesstap layer doctor my-setup --check plugin-metadata`.
+For plugin-level validation of plugin refs and version constraints, use
+`harnesstap plugin doctor my-setup --check plugin-metadata`.

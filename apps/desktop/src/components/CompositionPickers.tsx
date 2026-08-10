@@ -47,12 +47,12 @@ export function SelectionList({
         id: row.id,
         name: row.name,
         description: row.description,
-        testId: `create-layer-${row.name}`,
+        testId: `create-plugin-${row.name}`,
       }))}
       selectedIds={selectedIds}
       disabled={disabled}
       onToggle={onToggle}
-      idPrefix={`layers-${title}`}
+      idPrefix={`plugins-${title}`}
     />
   );
 }

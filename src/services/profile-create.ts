@@ -1,23 +1,23 @@
 import {
-  addResourceToLayer,
-  createLayer,
-  getLayerByName,
-  listLayers,
-} from "../models/layer-model.js";
-import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
+  addResourceToPlugin,
+  createPlugin,
+  getPluginByName,
+  listPlugins,
+} from "../models/plugin-model.js";
+import { PROFILE_PLUGIN_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listResources } from "../models/resource.js";
-import type { Layer } from "../types.js";
-import { addLayerAttachment } from "./layer-composition.js";
-import { previewLayerFromProject } from "./layer-from-project.js";
+import type { Plugin } from "../types.js";
+import { addPluginAttachment } from "./plugin-composition.js";
+import { previewPluginFromProject } from "./plugin-from-project.js";
 import {
   createProfileFromHome,
   previewProfileFromHome,
-  ProfileLayerExistsError,
+  ProfilePluginExistsError,
 } from "./profile-from-home.js";
 import { ProfileReservedNameError } from "./profile-commands.js";
 import { persistMergedProjectScan } from "./scanner.js";
 
-export { ProfileLayerExistsError };
+export { ProfilePluginExistsError };
 
 export type ProfileCreateSource = "compose" | "home" | "project";
 export type ProfileConflictPolicy = "skip" | "overwrite";
@@ -26,7 +26,7 @@ export interface ProfileCreateComposeInput {
   source: "compose";
   name: string;
   description?: string;
-  layerIds?: string[];
+  pluginIds?: string[];
   resourceIds?: string[];
   use?: boolean;
 }
@@ -64,7 +64,7 @@ export interface ProfileCreatePreview {
 }
 
 interface ComposeSelections {
-  layers: ReturnType<typeof listLayers>;
+  plugins: ReturnType<typeof listPlugins>;
   resourceIds: string[];
 }
 
@@ -72,26 +72,26 @@ function assertProfileNameAvailable(name: string): void {
   if (isEmptyBuiltinProfile(name)) {
     throw new ProfileReservedNameError(name);
   }
-  if (getLayerByName(name)) {
-    throw new ProfileLayerExistsError(name);
+  if (getPluginByName(name)) {
+    throw new ProfilePluginExistsError(name);
   }
 }
 
-function createNewProfileLayer(input: {
+function createNewProfilePlugin(input: {
   name: string;
   description?: string;
-}): Layer {
+}): Plugin {
   try {
-    return createLayer({
+    return createPlugin({
       name: input.name,
       ...(input.description !== undefined
         ? { description: input.description }
         : {}),
-      tags: [PROFILE_LAYER_TAG],
+      tags: [PROFILE_PLUGIN_TAG],
     });
   } catch (error) {
-    if (getLayerByName(input.name)) {
-      throw new ProfileLayerExistsError(input.name);
+    if (getPluginByName(input.name)) {
+      throw new ProfilePluginExistsError(input.name);
     }
     throw error;
   }
@@ -100,29 +100,29 @@ function createNewProfileLayer(input: {
 function resolveComposeSelections(
   input: ProfileCreateComposeInput,
 ): ComposeSelections {
-  const layerIds = [...new Set(input.layerIds ?? [])];
+  const pluginIds = [...new Set(input.pluginIds ?? [])];
   const resourceIds = [...new Set(input.resourceIds ?? [])];
-  if (layerIds.length + resourceIds.length === 0) {
-    throw new Error("A composed profile requires at least one layer or resource selection");
+  if (pluginIds.length + resourceIds.length === 0) {
+    throw new Error("A composed profile requires at least one plugin or resource selection");
   }
 
-  const layersById = new Map(listLayers().map((layer) => [layer.id, layer]));
+  const pluginsById = new Map(listPlugins().map((plugin) => [plugin.id, plugin]));
   const resourcesById = new Map(
     listResources().map((resource) => [resource.id, resource]),
   );
-  const layers = layerIds.map((id) => {
-    const layer = layersById.get(id);
-    if (!layer) {
-      throw new Error(`Layer not found: ${id}`);
+  const plugins = pluginIds.map((id) => {
+    const plugin = pluginsById.get(id);
+    if (!plugin) {
+      throw new Error(`Plugin not found: ${id}`);
     }
-    return layer;
+    return plugin;
   });
   for (const id of resourceIds) {
     if (!resourcesById.has(id)) {
       throw new Error(`Resource not found: ${id}`);
     }
   }
-  return { layers, resourceIds };
+  return { plugins, resourceIds };
 }
 
 function assertProjectPath(projectPath: string): void {
@@ -145,7 +145,7 @@ export async function previewProfileCreate(
       return {
         source: input.source,
         name: input.name,
-        totalImports: selections.layers.length + selections.resourceIds.length,
+        totalImports: selections.plugins.length + selections.resourceIds.length,
         conflicts: [],
         warnings: [],
       };
@@ -164,7 +164,7 @@ export async function previewProfileCreate(
     }
     case "project": {
       assertProjectPath(input.projectPath);
-      const preview = await previewLayerFromProject({
+      const preview = await previewPluginFromProject({
         name: input.name,
         projectRoot: input.projectPath,
         ...(input.platform ? { platform: input.platform } : {}),
@@ -191,29 +191,29 @@ export async function commitProfileCreate(input: ProfileCreateInput): Promise<{
     case "compose": {
       assertProfileNameAvailable(input.name);
       const selections = resolveComposeSelections(input);
-      const layer = createNewProfileLayer({
+      const plugin = createNewProfilePlugin({
         name: input.name,
         ...(input.description !== undefined
           ? { description: input.description }
           : {}),
       });
-      for (const dependency of selections.layers) {
-        await addLayerAttachment({
-          layer,
+      for (const dependency of selections.plugins) {
+        await addPluginAttachment({
+          plugin,
           selector: dependency.name,
-          type: "layer",
+          type: "plugin",
         });
       }
       for (const resourceId of selections.resourceIds) {
-        addResourceToLayer(layer.id, resourceId);
+        addResourceToPlugin(plugin.id, resourceId);
       }
       return {
         profile: {
-          name: layer.name,
-          id: layer.id,
-          version: layer.version,
+          name: plugin.name,
+          id: plugin.id,
+          version: plugin.version,
         },
-        imported_count: selections.layers.length + selections.resourceIds.length,
+        imported_count: selections.plugins.length + selections.resourceIds.length,
         used: false,
       };
     }
@@ -229,9 +229,9 @@ export async function commitProfileCreate(input: ProfileCreateInput): Promise<{
       });
       return {
         profile: {
-          name: result.layer.name,
-          id: result.layer.id,
-          version: result.layer.version,
+          name: result.plugin.name,
+          id: result.plugin.id,
+          version: result.plugin.version,
         },
         imported_count: result.imported_count,
         used: false,
@@ -249,20 +249,20 @@ export async function commitProfileCreate(input: ProfileCreateInput): Promise<{
           namespace: input.name,
         },
       );
-      const layer = createNewProfileLayer({
+      const plugin = createNewProfilePlugin({
         name: input.name,
         ...(input.description !== undefined
           ? { description: input.description }
           : { description: `Inferred from ${input.projectPath}` }),
       });
       for (const resource of persisted.resources) {
-        addResourceToLayer(layer.id, resource.id);
+        addResourceToPlugin(plugin.id, resource.id);
       }
       return {
         profile: {
-          name: layer.name,
-          id: layer.id,
-          version: layer.version,
+          name: plugin.name,
+          id: plugin.id,
+          version: plugin.version,
         },
         imported_count: persisted.resources.length,
         used: false,

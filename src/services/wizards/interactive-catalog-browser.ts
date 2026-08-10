@@ -9,8 +9,8 @@ export type InteractiveCatalogBrowserResult = RemoteCatalogListInstallResult;
 type PromptConfig = {
   message: string;
   scopeLabel: string;
-  listLayers: (input: { q: string; limit: number }) => Promise<
-    import("../catalog-types.js").CatalogLayer[]
+  listPlugins: (input: { q: string; limit: number }) => Promise<
+    import("../catalog-types.js").CatalogPlugin[]
   >;
 };
 
@@ -26,7 +26,7 @@ export const promptForInteractiveCatalogBrowser: (
 export async function runInteractiveCatalogBrowser(input: {
   message: string;
   scopeLabel: string;
-  listLayers: PromptConfig["listLayers"];
+  listPlugins: PromptConfig["listPlugins"];
 }): Promise<InteractiveCatalogBrowserResult> {
   return promptForInteractiveCatalogBrowser(input);
 }

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import {
-  createLayer,
-  getLayerById,
-  getLayerByName,
-} from "../../src/models/layer-model.ts";
+  createPlugin,
+  getPluginById,
+  getPluginByName,
+} from "../../src/models/plugin-model.ts";
 import {
   createGlobalApplySnapshot,
   getLatestGlobalApplySnapshotForProfile,
 } from "../../src/models/global-apply-snapshot.ts";
 import { findResourceByKey } from "../../src/models/resource.ts";
-import { ensureLayerResource } from "../../src/services/layer-composition.ts";
+import { ensurePluginResource } from "../../src/services/plugin-composition.ts";
 import {
   ProfileRenameError,
   createProfileCommand,
@@ -22,35 +22,35 @@ import {
 } from "../../src/services/active-profile.ts";
 
 describe("renameProfileCommand", () => {
-  it("renames a profile layer and updates active pointer + snapshots", async () => {
+  it("renames a profile plugin and updates active pointer + snapshots", async () => {
     const context = await createInitializedTestContext("profile-rename-active");
     try {
       const created = createProfileCommand({ name: "work" });
       setActiveProfileName("work");
       createGlobalApplySnapshot({
         profile_name: "work",
-        layer_ids: [created.layer.id],
+        plugin_ids: [created.plugin.id],
       });
-      ensureLayerResource("work");
+      ensurePluginResource("work");
 
       const result = renameProfileCommand("work", "focus");
 
       expect(result).toEqual({
         old_name: "work",
         name: "focus",
-        layer_id: created.layer.id,
+        plugin_id: created.plugin.id,
         was_active: true,
       });
-      expect(getLayerByName("work")).toBeUndefined();
-      expect(getLayerByName("focus")?.id).toBe(created.layer.id);
-      expect(getLayerById(created.layer.id)?.name).toBe("focus");
+      expect(getPluginByName("work")).toBeUndefined();
+      expect(getPluginByName("focus")?.id).toBe(created.plugin.id);
+      expect(getPluginById(created.plugin.id)?.name).toBe("focus");
       expect(getActiveProfileName()).toBe("focus");
       expect(getLatestGlobalApplySnapshotForProfile("work")).toBeUndefined();
-      expect(getLatestGlobalApplySnapshotForProfile("focus")?.layer_ids).toEqual([
-        created.layer.id,
+      expect(getLatestGlobalApplySnapshotForProfile("focus")?.plugin_ids).toEqual([
+        created.plugin.id,
       ]);
-      expect(findResourceByKey("layer", "work", "")).toBeUndefined();
-      expect(findResourceByKey("layer", "focus", "")?.name).toBe("focus");
+      expect(findResourceByKey("plugin", "work", "")).toBeUndefined();
+      expect(findResourceByKey("plugin", "focus", "")?.name).toBe("focus");
     } finally {
       await context.cleanup();
     }
@@ -65,10 +65,10 @@ describe("renameProfileCommand", () => {
       expect(() => renameProfileCommand("alpha", "   ")).toThrow(ProfileRenameError);
       try {
         renameProfileCommand("alpha", "beta");
-        expect.unreachable("expected layer_exists");
+        expect.unreachable("expected plugin_exists");
       } catch (error) {
         expect(error).toBeInstanceOf(ProfileRenameError);
-        expect((error as ProfileRenameError).code).toBe("layer_exists");
+        expect((error as ProfileRenameError).code).toBe("plugin_exists");
       }
       try {
         renameProfileCommand("alpha", "empty");
@@ -82,10 +82,10 @@ describe("renameProfileCommand", () => {
     }
   });
 
-  it("rejects non-profile layers", async () => {
+  it("rejects non-profile plugins", async () => {
     const context = await createInitializedTestContext("profile-rename-not-profile");
     try {
-      createLayer({ name: "plain" });
+      createPlugin({ name: "plain" });
       try {
         renameProfileCommand("plain", "renamed");
         expect.unreachable("expected not_a_profile");

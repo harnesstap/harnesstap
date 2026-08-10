@@ -9,25 +9,25 @@ import {
 
 describe("computeRemoteListFetchLimit", () => {
   it("scales fetch limit with terminal height", () => {
-    const short = computeRemoteListFetchLimit(12, VIEWPORT_CHROME_LINES.layerListBrowse);
-    const tall = computeRemoteListFetchLimit(40, VIEWPORT_CHROME_LINES.layerListBrowse);
+    const short = computeRemoteListFetchLimit(12, VIEWPORT_CHROME_LINES.pluginListBrowse);
+    const tall = computeRemoteListFetchLimit(40, VIEWPORT_CHROME_LINES.pluginListBrowse);
     expect(tall).toBeGreaterThan(short);
   });
 
   it("requests at least the browse minimum", () => {
     expect(
-      computeRemoteListFetchLimit(12, VIEWPORT_CHROME_LINES.layerListBrowse),
+      computeRemoteListFetchLimit(12, VIEWPORT_CHROME_LINES.pluginListBrowse),
     ).toBeGreaterThanOrEqual(10);
   });
 
   it("requests more rows when searching", () => {
     const browse = computeRemoteListFetchLimit(
       24,
-      VIEWPORT_CHROME_LINES.layerListBrowse,
+      VIEWPORT_CHROME_LINES.pluginListBrowse,
     );
     const search = computeRemoteListFetchLimit(
       24,
-      VIEWPORT_CHROME_LINES.layerListBrowse,
+      VIEWPORT_CHROME_LINES.pluginListBrowse,
       { search: true },
     );
     expect(search).toBeGreaterThanOrEqual(browse);
@@ -37,15 +37,15 @@ describe("computeRemoteListFetchLimit", () => {
 
 describe("computeMaxVisibleTableRows", () => {
   it("shows fewer rows than flat row budget on the same terminal", () => {
-    const flat = computeMaxVisibleRows(24, VIEWPORT_CHROME_LINES.layerListBrowse);
-    const table = computeMaxVisibleTableRows(24, VIEWPORT_CHROME_LINES.layerListBrowse);
+    const flat = computeMaxVisibleRows(24, VIEWPORT_CHROME_LINES.pluginListBrowse);
+    const table = computeMaxVisibleTableRows(24, VIEWPORT_CHROME_LINES.pluginListBrowse);
     expect(table).toBeLessThan(flat);
   });
 
   it("caps a 13-row section on a typical laptop terminal", () => {
     const visible = computeMaxVisibleTableRows(
       36,
-      VIEWPORT_CHROME_LINES.layerListBrowse,
+      VIEWPORT_CHROME_LINES.pluginListBrowse,
       { sectionOverhead: 6 },
     );
     expect(visible).toBeLessThan(13);
@@ -85,18 +85,18 @@ describe("renderFoldedHintLine", () => {
   });
 });
 
-describe("layer list browse chrome budget", () => {
+describe("plugin list browse chrome budget", () => {
   it("reserves extra chrome for the unified browse prompt", () => {
-    expect(VIEWPORT_CHROME_LINES.layerListBrowse).toBeGreaterThan(
+    expect(VIEWPORT_CHROME_LINES.pluginListBrowse).toBeGreaterThan(
       VIEWPORT_CHROME_LINES.resourceList,
     );
   });
 
   it("yields fewer visible rows on short terminals", () => {
     expect(
-      computeMaxVisibleTableRows(12, VIEWPORT_CHROME_LINES.layerListBrowse),
+      computeMaxVisibleTableRows(12, VIEWPORT_CHROME_LINES.pluginListBrowse),
     ).toBeLessThan(
-      computeMaxVisibleTableRows(40, VIEWPORT_CHROME_LINES.layerListBrowse),
+      computeMaxVisibleTableRows(40, VIEWPORT_CHROME_LINES.pluginListBrowse),
     );
   });
 });

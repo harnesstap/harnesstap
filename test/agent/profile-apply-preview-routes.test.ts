@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 
@@ -46,8 +46,8 @@ describe("agent profile apply-preview routes", () => {
 
   it("returns home apply preview for a selected profile", async () => {
     const server = withServer();
-    const layer = createLayer({ name: "work" });
-    setLayerTags(layer.id, ["profile"]);
+    const plugin = createPlugin({ name: "work" });
+    setPluginTags(plugin.id, ["profile"]);
     const resource = createResource({
       type: "instruction",
       name: "guide",
@@ -56,7 +56,7 @@ describe("agent profile apply-preview routes", () => {
       metadata: {},
       source: "manual",
     });
-    addResourceToLayer(layer.id, resource.id);
+    addResourceToPlugin(plugin.id, resource.id);
     setActiveProfileName("work");
 
     const response = await fetch(`${server.url}/v1/profiles/apply-preview`, {

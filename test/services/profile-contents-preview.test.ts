@@ -1,20 +1,20 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
-import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
+import { attachPluginPinToPlugin } from "../../src/services/plugin-composition.ts";
 import { buildProfileContents } from "../../src/services/profile-contents.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
 
 describe("profile contents and apply preview", () => {
-  it("summarizes layers, resources, pins, and mcp for a profile", async () => {
+  it("summarizes plugins, resources, pins, and mcp for a profile", async () => {
     const context = await createInitializedTestContext("profile-contents-summary");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const instruction = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -31,21 +31,20 @@ describe("profile contents and apply preview", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, instruction.id);
-      addResourceToLayer(layer.id, mcp.id);
-      attachPluginPinToLayer(layer.id, "demo@demo-market", "1.0.0");
+      addResourceToPlugin(plugin.id, instruction.id);
+      addResourceToPlugin(plugin.id, mcp.id);
+      attachPluginPinToPlugin(plugin.id, "demo@demo-market", "1.0.0");
 
       const contents = buildProfileContents("work");
       expect(contents).not.toBeNull();
-      expect(contents?.layers.map((entry) => entry.name)).toContain("work");
+      expect(contents?.plugins.map((entry) => entry.name)).toContain("work");
       expect(contents?.stack_resource_count).toBe(2);
       expect(contents?.stack_summary).toContain("instruction");
       expect(contents?.stack_summary).toContain("mcp_server");
       expect(contents?.type_counts.instruction).toBe(1);
       expect(contents?.type_counts.mcp_server).toBe(1);
-      expect(contents?.type_counts.layer).toBeGreaterThanOrEqual(1);
-      expect(contents?.type_counts.plugin_pin).toBe(1);
-      expect(contents?.resources).toEqual(
+      expect(contents?.type_counts.plugin).toBeGreaterThanOrEqual(1);
+            expect(contents?.resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             id: instruction.id,
@@ -61,8 +60,8 @@ describe("profile contents and apply preview", () => {
           }),
         ]),
       );
-      const workLayer = contents?.layers.find((entry) => entry.name === "work");
-      expect(workLayer?.resources).toEqual(
+      const workPlugin = contents?.plugins.find((entry) => entry.name === "work");
+      expect(workPlugin?.resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             id: instruction.id,
@@ -90,8 +89,8 @@ describe("profile contents and apply preview", () => {
   it("includes contents on global status", async () => {
     const context = await createInitializedTestContext("profile-contents-status");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "skill",
         name: "ship",
@@ -100,12 +99,12 @@ describe("profile contents and apply preview", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
       setActiveProfileName("work");
 
       const status = await detectGlobalProfileStatus({ depth: "full" });
       expect(status.contents?.stack_summary).toContain("skill");
-      expect(status.contents?.layers[0]?.name).toBe("work");
+      expect(status.contents?.plugins[0]?.name).toBe("work");
     } finally {
       await context.cleanup();
     }
@@ -114,8 +113,8 @@ describe("profile contents and apply preview", () => {
   it("previews home apply against live files and harnesses", async () => {
     const context = await createInitializedTestContext("profile-apply-preview-home");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "profile-guide",
@@ -124,7 +123,7 @@ describe("profile contents and apply preview", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
       setActiveProfileName("work");
 
       const beforeApply = await previewProfileApply({
@@ -137,7 +136,7 @@ describe("profile contents and apply preview", () => {
       expect(beforeApply.files.expected_count).toBeGreaterThan(0);
       expect(beforeApply.files.changes.some((change) => change.type === "deleted")).toBe(true);
 
-      await applyProfileLayer("work", {
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -157,8 +156,8 @@ describe("profile contents and apply preview", () => {
   it("requires projectPath for project-scope preview", async () => {
     const context = await createInitializedTestContext("profile-apply-preview-project");
     try {
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       setActiveProfileName("work");
 
       const preview = await previewProfileApply({

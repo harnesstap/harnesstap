@@ -14,7 +14,7 @@ export interface HarnesstapSettings {
     refreshMaxAgeHours: number;
     marketplaces: PluginMarketplaceEntry[];
   };
-  layerVersionHistoryLimit: number;
+  pluginVersionHistoryLimit: number;
 }
 
 const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
@@ -25,7 +25,7 @@ const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
 
 const DEFAULTS: HarnesstapSettings = {
   plugins: { refreshMaxAgeHours: 24, marketplaces: [] },
-  layerVersionHistoryLimit: 10,
+  pluginVersionHistoryLimit: 10,
 };
 
 function isPluginMarketplacePlatform(
@@ -196,7 +196,7 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
   try {
     const raw = parseJsonc(readFileSync(path, "utf-8")) as Partial<HarnesstapSettings>;
     const hours = raw.plugins?.refreshMaxAgeHours;
-    const limit = raw.layerVersionHistoryLimit;
+    const limit = raw.pluginVersionHistoryLimit;
     return {
       plugins: {
         refreshMaxAgeHours:
@@ -205,10 +205,10 @@ export function loadSettings(harnesstapDir: string): HarnesstapSettings {
             : DEFAULTS.plugins.refreshMaxAgeHours,
         marketplaces: parseMarketplaces(raw.plugins?.marketplaces),
       },
-      layerVersionHistoryLimit:
+      pluginVersionHistoryLimit:
         typeof limit === "number" && Number.isInteger(limit) && limit >= 1
           ? limit
-          : DEFAULTS.layerVersionHistoryLimit,
+          : DEFAULTS.pluginVersionHistoryLimit,
     };
   } catch {
     return DEFAULTS;

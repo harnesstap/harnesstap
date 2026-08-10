@@ -38,7 +38,7 @@ export function registerConfigCommands(root: Command): void {
     .option("--force", "Overwrite an existing .harnesstap/config.toml")
     .option(
       "--profile <name>",
-      "Profile layer to include (repeatable; defaults to all local profile layers)",
+      "Profile plugin to include (repeatable; defaults to all local profile plugins)",
       collectRepeatedOption,
       [],
     )
@@ -46,7 +46,7 @@ export function registerConfigCommands(root: Command): void {
     .option("--no-interactive", "Disable interactive prompts")
     .option("--interactive", "Enable interactive prompts")
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Create a starter .harnesstap/config.toml from local profile layers")
+    .description("Create a starter .harnesstap/config.toml from local profile plugins")
     .action(async (opts: {
       project?: string;
       force?: boolean;

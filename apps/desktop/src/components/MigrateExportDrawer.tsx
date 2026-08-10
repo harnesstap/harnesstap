@@ -5,8 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import {
-  fetchEnvironments,
-  fetchLibraryLayers,
+  fetchLibraryPlugins,
   fetchLibraryResources,
   migrateExport,
 } from "../lib/agent-client";
@@ -16,8 +15,7 @@ import {
 } from "../lib/migrate-defaults";
 import { filterLibraryResourcesBySearch } from "../lib/resource-search";
 import type {
-  LibraryEnvironment,
-  LibraryLayer,
+  LibraryPlugin,
   LibraryResource,
   MigrateExportResult,
   MigrateScope,
@@ -44,12 +42,10 @@ function scopeLabel(scope: MigrateScope): string {
   switch (scope) {
     case "workspace":
       return "Full workspace";
-    case "layer":
-      return "Layer";
+    case "plugin":
+      return "Plugin";
     case "resource":
       return "Resource";
-    case "environment":
-      return "Environment";
     default: {
       const neverScope: never = scope;
       return neverScope;
@@ -62,7 +58,7 @@ function stepAfterScope(scope: MigrateScope): ExportStep {
 }
 
 function stepAfterTarget(scope: MigrateScope): ExportStep {
-  return scope === "workspace" || scope === "layer" ? "options" : "path";
+  return scope === "workspace" || scope === "plugin" ? "options" : "path";
 }
 
 function previousStep(step: ExportStep, scope: MigrateScope): ExportStep | null {
@@ -74,7 +70,7 @@ function previousStep(step: ExportStep, scope: MigrateScope): ExportStep | null 
     case "options":
       return scope === "workspace" ? "scope" : "target";
     case "path":
-      return scope === "workspace" || scope === "layer" ? "options" : "target";
+      return scope === "workspace" || scope === "plugin" ? "options" : "target";
     case "confirm":
       return "path";
     default: {
@@ -123,7 +119,7 @@ function stepTitle(step: ExportStep): string {
 }
 
 function isExportableResource(resource: LibraryResource): boolean {
-  return resource.type !== "plugin_pin" && resource.type !== "layer";
+  return resource.type !== "plugin_pin" && resource.type !== "plugin";
 }
 
 export function MigrateExportDrawer({
@@ -137,17 +133,13 @@ export function MigrateExportDrawer({
 }: MigrateExportDrawerProps) {
   const [step, setStep] = useState<ExportStep>("scope");
   const [scope, setScope] = useState<MigrateScope>("workspace");
-  const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
+  const [selectedPlugin, setSelectedPlugin] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
-  const [selectedEnvironment, setSelectedEnvironment] = useState<string | null>(
-    null,
-  );
   const [includePlugins, setIncludePlugins] = useState(false);
   const [exportPath, setExportPath] = useState<string | null>(null);
   const [targetFilter, setTargetFilter] = useState("");
-  const [layers, setLayers] = useState<LibraryLayer[]>([]);
+  const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
   const [resources, setResources] = useState<LibraryResource[]>([]);
-  const [environments, setEnvironments] = useState<LibraryEnvironment[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -159,9 +151,8 @@ export function MigrateExportDrawer({
     }
     setStep("scope");
     setScope("workspace");
-    setSelectedLayer(null);
+    setSelectedPlugin(null);
     setSelectedResource(null);
-    setSelectedEnvironment(null);
     setIncludePlugins(false);
     setExportPath(null);
     setTargetFilter("");
@@ -177,15 +168,13 @@ export function MigrateExportDrawer({
     setLibraryLoading(true);
     setLibraryError(null);
     void Promise.all([
-      fetchLibraryLayers(baseUrl, token),
+      fetchLibraryPlugins(baseUrl, token),
       fetchLibraryResources(baseUrl, token),
-      fetchEnvironments(baseUrl, token),
     ])
-      .then(([nextLayers, nextResources, nextEnvironments]) => {
+      .then(([nextPlugins, nextResources]) => {
         if (!cancelled) {
-          setLayers(nextLayers);
+          setPlugins(nextPlugins);
           setResources(nextResources);
-          setEnvironments(nextEnvironments.environments);
         }
       })
       .catch((loadError: unknown) => {
@@ -223,41 +212,28 @@ export function MigrateExportDrawer({
     [resources],
   );
 
-  const filteredLayers = useMemo(() => {
+  const filteredPlugins = useMemo(() => {
     const query = targetFilter.trim().toLowerCase();
     if (!query) {
-      return layers;
+      return plugins;
     }
-    return layers.filter((layer) =>
-      layer.name.toLowerCase().includes(query)
-      || (layer.description ?? "").toLowerCase().includes(query),
+    return plugins.filter((plugin) =>
+      plugin.name.toLowerCase().includes(query)
+      || (plugin.description ?? "").toLowerCase().includes(query),
     );
-  }, [layers, targetFilter]);
+  }, [plugins, targetFilter]);
 
   const filteredResources = useMemo(
     () => filterLibraryResourcesBySearch(exportableResources, targetFilter),
     [exportableResources, targetFilter],
   );
 
-  const filteredEnvironments = useMemo(() => {
-    const query = targetFilter.trim().toLowerCase();
-    if (!query) {
-      return environments;
-    }
-    return environments.filter((environment) =>
-      environment.name.toLowerCase().includes(query)
-      || (environment.description ?? "").toLowerCase().includes(query),
-    );
-  }, [environments, targetFilter]);
-
   const targetSelected = useMemo(() => {
     switch (scope) {
-      case "layer":
-        return selectedLayer !== null;
+      case "plugin":
+        return selectedPlugin !== null;
       case "resource":
         return selectedResource !== null;
-      case "environment":
-        return selectedEnvironment !== null;
       case "workspace":
         return true;
       default: {
@@ -265,7 +241,7 @@ export function MigrateExportDrawer({
         return neverScope;
       }
     }
-  }, [scope, selectedEnvironment, selectedLayer, selectedResource]);
+  }, [scope, selectedPlugin, selectedResource]);
 
   const canGoNext = useMemo(() => {
     switch (step) {
@@ -290,11 +266,10 @@ export function MigrateExportDrawer({
     () =>
       defaultMigrateExportFilename({
         scope,
-        layer: selectedLayer ?? undefined,
+        plugin: selectedPlugin ?? undefined,
         resource: selectedResource ?? undefined,
-        environment: selectedEnvironment ?? undefined,
       }),
-    [scope, selectedEnvironment, selectedLayer, selectedResource],
+    [scope, selectedPlugin, selectedResource],
   );
 
   const pickExportPath = async () => {
@@ -304,7 +279,7 @@ export function MigrateExportDrawer({
             { name: "Archive", extensions: ["tar.gz", "gz", "tar"] },
             { name: "JSON", extensions: ["json"] },
           ]
-        : [{ name: "TOML", extensions: ["toml"] }];
+        : [{ name: "Agent Plugins", extensions: ["ap.json", "json"] }];
     const path = await save({
       defaultPath: defaultFilename,
       filters,
@@ -326,15 +301,15 @@ export function MigrateExportDrawer({
       const result = await migrateExport(baseUrl, token, {
         scope,
         path: exportPath,
-        ...(scope === "layer" && selectedLayer ? { layer: selectedLayer } : {}),
+        ...(scope === "plugin" && selectedPlugin ? { plugin: selectedPlugin } : {}),
         ...(scope === "resource" && selectedResource
           ? { resource: selectedResource }
           : {}),
-        ...(scope === "environment" && selectedEnvironment
-          ? { environment: selectedEnvironment }
-          : {}),
-        ...((scope === "workspace" || scope === "layer") && includePlugins
+        ...((scope === "workspace" || scope === "plugin") && includePlugins
           ? { include_plugins: true }
+          : {}),
+        ...(scope === "plugin" || scope === "resource"
+          ? { single_file: true }
           : {}),
       });
       onExported?.(result);
@@ -362,12 +337,7 @@ export function MigrateExportDrawer({
       return <div className="banner error">{libraryError}</div>;
     }
 
-    const listboxLabel =
-      scope === "layer"
-        ? "Layers"
-        : scope === "resource"
-          ? "Resources"
-          : "Environments";
+    const listboxLabel = scope === "plugin" ? "Plugins" : "Resources";
 
     return (
       <>
@@ -387,29 +357,29 @@ export function MigrateExportDrawer({
           role="listbox"
           aria-label={listboxLabel}
         >
-          {scope === "layer" ? (
-            filteredLayers.length === 0 ? (
-              <p className="muted cloud-list-message">No layers found.</p>
+          {scope === "plugin" ? (
+            filteredPlugins.length === 0 ? (
+              <p className="muted cloud-list-message">No plugins found.</p>
             ) : (
-              filteredLayers.map((layer) => (
+              filteredPlugins.map((plugin) => (
                 <button
-                  key={layer.id}
+                  key={plugin.id}
                   className={`cloud-result${
-                    selectedLayer === layer.name ? " selected" : ""
+                    selectedPlugin === plugin.name ? " selected" : ""
                   }`}
                   type="button"
                   role="option"
-                  aria-selected={selectedLayer === layer.name}
+                  aria-selected={selectedPlugin === plugin.name}
                   onClick={() => {
-                    setSelectedLayer(layer.name);
+                    setSelectedPlugin(plugin.name);
                     setExportPath(null);
                     setError(null);
                   }}
                   disabled={controlsDisabled}
                 >
-                  <strong>{layer.name}</strong>
+                  <strong>{plugin.name}</strong>
                   <small>
-                    {layer.description?.trim() || "No description provided."}
+                    {plugin.description?.trim() || "No description provided."}
                   </small>
                 </button>
               ))
@@ -449,34 +419,6 @@ export function MigrateExportDrawer({
               })
             )
           ) : null}
-          {scope === "environment" ? (
-            filteredEnvironments.length === 0 ? (
-              <p className="muted cloud-list-message">No environments found.</p>
-            ) : (
-              filteredEnvironments.map((environment) => (
-                <button
-                  key={environment.id}
-                  className={`cloud-result${
-                    selectedEnvironment === environment.name ? " selected" : ""
-                  }`}
-                  type="button"
-                  role="option"
-                  aria-selected={selectedEnvironment === environment.name}
-                  onClick={() => {
-                    setSelectedEnvironment(environment.name);
-                    setExportPath(null);
-                    setError(null);
-                  }}
-                  disabled={controlsDisabled}
-                >
-                  <strong>{environment.name}</strong>
-                  <small>
-                    {environment.description?.trim() || "No description provided."}
-                  </small>
-                </button>
-              ))
-            )
-          ) : null}
         </div>
       </>
     );
@@ -484,12 +426,10 @@ export function MigrateExportDrawer({
 
   const targetSummary = () => {
     switch (scope) {
-      case "layer":
-        return selectedLayer ?? "—";
+      case "plugin":
+        return selectedPlugin ?? "—";
       case "resource":
         return selectedResource ?? "—";
-      case "environment":
-        return selectedEnvironment ?? "—";
       case "workspace":
         return "Entire local library";
       default: {
@@ -539,9 +479,8 @@ export function MigrateExportDrawer({
               onValueChange={(value) => {
                 const nextScope = value as MigrateScope;
                 setScope(nextScope);
-                setSelectedLayer(null);
+                setSelectedPlugin(null);
                 setSelectedResource(null);
-                setSelectedEnvironment(null);
                 setExportPath(null);
                 setError(null);
               }}
@@ -554,24 +493,15 @@ export function MigrateExportDrawer({
                 </Label>
               </div>
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="layer" id="migrate-scope-layer" />
-                <Label htmlFor="migrate-scope-layer" className="font-normal">
-                  Layer bundle
+                <RadioGroupItem value="plugin" id="migrate-scope-plugin" />
+                <Label htmlFor="migrate-scope-plugin" className="font-normal">
+                  Plugin package (.ap.json)
                 </Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="resource" id="migrate-scope-resource" />
                 <Label htmlFor="migrate-scope-resource" className="font-normal">
-                  Single resource
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem
-                  value="environment"
-                  id="migrate-scope-environment"
-                />
-                <Label htmlFor="migrate-scope-environment" className="font-normal">
-                  Environment
+                  Single resource (.ap.json)
                 </Label>
               </div>
             </RadioGroup>
@@ -586,7 +516,7 @@ export function MigrateExportDrawer({
                   Embed plugin trees
                 </Label>
                 <p className="muted m-0 text-[11px]">
-                  Include plugin directory trees in layer exports.
+                  Include plugin directory trees in plugin exports.
                 </p>
               </div>
               <Switch
@@ -632,7 +562,7 @@ export function MigrateExportDrawer({
                   <dd className="m-0 text-right mono">{targetSummary()}</dd>
                 </div>
               ) : null}
-              {scope === "workspace" || scope === "layer" ? (
+              {scope === "workspace" || scope === "plugin" ? (
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Embed plugin trees</dt>
                   <dd className="m-0 text-right">

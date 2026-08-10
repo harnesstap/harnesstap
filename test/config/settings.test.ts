@@ -11,10 +11,10 @@ describe("loadSettings", () => {
     expect(settings.plugins.refreshMaxAgeHours).toBe(24);
   });
 
-  it("defaults layerVersionHistoryLimit to 10 when config missing", () => {
+  it("defaults pluginVersionHistoryLimit to 10 when config missing", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     const settings = loadSettings(dir);
-    expect(settings.layerVersionHistoryLimit).toBe(10);
+    expect(settings.pluginVersionHistoryLimit).toBe(10);
   });
 
   it("reads refreshMaxAgeHours from config.json", () => {
@@ -93,33 +93,33 @@ describe("loadSettings", () => {
     expect(loadSettings(dir).plugins.refreshMaxAgeHours).toBe(24);
   });
 
-  it("reads layerVersionHistoryLimit from config.jsonc", () => {
+  it("reads pluginVersionHistoryLimit from config.jsonc", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.jsonc"),
-      JSON.stringify({ layerVersionHistoryLimit: 25 }),
+      JSON.stringify({ pluginVersionHistoryLimit: 25 }),
     );
-    expect(loadSettings(dir).layerVersionHistoryLimit).toBe(25);
+    expect(loadSettings(dir).pluginVersionHistoryLimit).toBe(25);
   });
 
-  it("defaults layerVersionHistoryLimit to 10 when key missing", () => {
+  it("defaults pluginVersionHistoryLimit to 10 when key missing", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
     writeFileSync(
       join(dir, "config.jsonc"),
       JSON.stringify({ plugins: { refreshMaxAgeHours: 48 } }),
     );
-    expect(loadSettings(dir).layerVersionHistoryLimit).toBe(10);
+    expect(loadSettings(dir).pluginVersionHistoryLimit).toBe(10);
   });
 
   it.each([0, -1, 1.5, "5", null, {}])(
-    "falls back to default for invalid layerVersionHistoryLimit (%p)",
+    "falls back to default for invalid pluginVersionHistoryLimit (%p)",
     (invalidValue) => {
       const dir = mkdtempSync(join(tmpdir(), "ht-config-"));
       writeFileSync(
         join(dir, "config.jsonc"),
-        JSON.stringify({ layerVersionHistoryLimit: invalidValue }),
+        JSON.stringify({ pluginVersionHistoryLimit: invalidValue }),
       );
-      expect(loadSettings(dir).layerVersionHistoryLimit).toBe(10);
+      expect(loadSettings(dir).pluginVersionHistoryLimit).toBe(10);
     },
   );
 });
@@ -169,7 +169,7 @@ describe("plugins.marketplaces", () => {
           },
         ],
       },
-      layerVersionHistoryLimit: 10,
+      pluginVersionHistoryLimit: 10,
     });
     const raw = JSON.parse(readFileSync(join(dir, "config.json"), "utf-8"));
     expect(raw.plugins.marketplaces).toEqual([
@@ -203,7 +203,7 @@ describe("plugins.marketplaces", () => {
           },
         ],
       },
-      layerVersionHistoryLimit: 10,
+      pluginVersionHistoryLimit: 10,
     });
     const jsonc = JSON.parse(readFileSync(join(dir, "config.jsonc"), "utf-8"));
     expect(jsonc.plugins.marketplaces).toEqual([

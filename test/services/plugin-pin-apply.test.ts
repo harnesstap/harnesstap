@@ -1,14 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { createTestContext } from "../helpers/db.ts";
-import { findPluginResourceByPin } from "../../src/services/layer-composition.ts";
+import { findPluginResourceByPin } from "../../src/services/plugin-composition.ts";
 import {
   expandPluginPinMaterialResources,
   preparePluginPinsForApply,
   syncPluginPinsForApply,
 } from "../../src/services/plugin-pin-apply.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
-import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
+import { createPlugin, deletePlugin, getPluginByName } from "../../src/models/plugin-model.ts";
+import { attachPluginPinToPlugin } from "../../src/services/plugin-composition.ts";
+import { getPluginOrigin } from "../../src/services/plugin-origin.ts";
 import type { RunCommand } from "../../src/plugins/run-command.ts";
 
 const fixtureHome = join(import.meta.dirname, "../fixtures/claude-plugins-home");
@@ -18,8 +19,8 @@ describe("syncPluginPinsForApply", () => {
     const context = await createTestContext("plugin-apply-sync-installed");
     try {
       context.schema.initializeSchema(context.connection.getDb());
-      const layer = createLayer({ name: "sync-me" });
-      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      const plugin = createPlugin({ name: "sync-me" });
+      attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.2.3");
 
       const result = await syncPluginPinsForApply({
         pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
@@ -34,6 +35,41 @@ describe("syncPluginPinsForApply", () => {
       );
       expect(result.installs[0]?.status).toBe("already_installed");
       expect(result.unresolvedPins).toEqual([]);
+      const upstream = getPluginByName("formatter", "1.2.3");
+      expect(upstream).toBeDefined();
+      expect(getPluginOrigin(upstream!.id)).toBe("upstream");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rematerializes upstream plugins when the pin is already resolved", async () => {
+    const context = await createTestContext("plugin-apply-rematerialize");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const plugin = createPlugin({ name: "sync-me" });
+      attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.2.3");
+
+      await syncPluginPinsForApply({
+        pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
+        homeRoot: fixtureHome,
+        projectRoot: context.projectDir,
+        scope: "project",
+      });
+      const first = getPluginByName("formatter", "1.2.3");
+      expect(first).toBeDefined();
+      deletePlugin(first!.id);
+      expect(getPluginByName("formatter", "1.2.3")).toBeUndefined();
+
+      await syncPluginPinsForApply({
+        pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
+        homeRoot: fixtureHome,
+        projectRoot: context.projectDir,
+        scope: "project",
+      });
+      const rematerialized = getPluginByName("formatter", "1.2.3");
+      expect(rematerialized).toBeDefined();
+      expect(getPluginOrigin(rematerialized!.id)).toBe("upstream");
     } finally {
       await context.cleanup();
     }
@@ -43,8 +79,8 @@ describe("syncPluginPinsForApply", () => {
     const context = await createTestContext("plugin-apply-sync-missing");
     try {
       context.schema.initializeSchema(context.connection.getDb());
-      const layer = createLayer({ name: "catalog-layer" });
-      attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
+      const plugin = createPlugin({ name: "catalog-plugin" });
+      attachPluginPinToPlugin(plugin.id, "superpowers@obra", "5.1.0");
 
       const failingRun: RunCommand = () => ({
         stdout: "",
@@ -85,8 +121,8 @@ describe("syncPluginPinsForApply", () => {
     const context = await createTestContext("plugin-apply-sync-exact");
     try {
       context.schema.initializeSchema(context.connection.getDb());
-      const layer = createLayer({ name: "catalog-layer" });
-      attachPluginPinToLayer(layer.id, "superpowers@obra", "5.1.0");
+      const plugin = createPlugin({ name: "catalog-plugin" });
+      attachPluginPinToPlugin(plugin.id, "superpowers@obra", "5.1.0");
 
       const failingRun: RunCommand = () => ({
         stdout: "",
@@ -133,8 +169,8 @@ describe("expandPluginPinMaterialResources", () => {
     const context = await createTestContext("plugin-materialize-expand");
     try {
       context.schema.initializeSchema(context.connection.getDb());
-      const layer = createLayer({ name: "with-plugin-skills" });
-      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      const hostPlugin = createPlugin({ name: "with-plugin-skills" });
+      attachPluginPinToPlugin(hostPlugin.id, "formatter@acme-marketplace", "1.2.3");
 
       await syncPluginPinsForApply({
         pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
@@ -158,7 +194,7 @@ describe("expandPluginPinMaterialResources", () => {
     }
   });
 
-  it("preserves existing layer resources when no plugin children are linked", () => {
+  it("preserves existing plugin resources when no plugin children are linked", () => {
     const base = {
       id: "01TEST",
       type: "instruction" as const,
@@ -181,12 +217,12 @@ describe("expandPluginPinMaterialResources", () => {
 });
 
 describe("preparePluginPinsForApply", () => {
-  it("chains sync, material expansion, and validation", async () => {
+  it("chains sync, upstream materialization, and validation without splicing resources", async () => {
     const context = await createTestContext("plugin-pin-apply-prepare");
     try {
       context.schema.initializeSchema(context.connection.getDb());
-      const layer = createLayer({ name: "prepare-layer" });
-      attachPluginPinToLayer(layer.id, "formatter@acme-marketplace", "1.2.3");
+      const plugin = createPlugin({ name: "prepare-plugin" });
+      attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.2.3");
 
       const result = await preparePluginPinsForApply({
         pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],
@@ -199,11 +235,9 @@ describe("preparePluginPinsForApply", () => {
       expect(result.installs[0]?.status).toBe("already_installed");
       expect(result.unresolvedPins).toEqual([]);
       expect(result.validationIssues).toEqual([]);
-      expect(
-        result.applyResources.some(
-          (resource) => resource.type === "skill" && resource.name === "format-code",
-        ),
-      ).toBe(true);
+      expect(result.applyResources).toEqual([]);
+      expect(result.extraMaterialized).toBe(0);
+      expect(getPluginByName("formatter", "1.2.3")).toBeDefined();
     } finally {
       await context.cleanup();
     }

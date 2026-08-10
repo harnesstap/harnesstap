@@ -13,14 +13,14 @@ Typical commands:
 harnesstap init
 harnesstap init --main claude-code --aliases cursor,codex
 harnesstap harness list
-harnesstap layer list --search fullstack --remote-only
+harnesstap plugin list --search fullstack --remote-only
 ```
 
 What this gives you:
 
 - a local SQLite database under `~/.harnesstap/harnesstap.db`
 - an optional settings file at `~/.harnesstap/config.jsonc`
-- a `default` profile layer (tagged `profile`) and
+- a `default` profile plugin (tagged `profile`) and
   `~/.harnesstap/active-profile.json` unless you pass `--no-default-profile`
 - imported resources from supported home-directory harness folders when
   present (`~/.claude/`, `~/.codex/`, …)
@@ -31,8 +31,8 @@ What this gives you:
 to materialize home harness files.
 
 Catalog baselines are not seeded at init. Apply them to projects with
-`layer apply <name>` (see [Scenario 11](./11-builtin-layer.md)) or cache them
-first with `layer pull`.
+`apply <name>` (see [Scenario 11](./11-builtin-plugin.md)) or cache them
+first with `plugin pull`.
 
 If you skip harness selection during init or want to change it later, use
 [Scenario 2](./02-default-harness-aliases.md) to update the default main harness and alias set.

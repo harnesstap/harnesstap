@@ -52,5 +52,5 @@ export function isGroupedCommandFallbackError(error: unknown): error is {
   return candidate.code === "commander.excessArguments"
     && candidate.exitCode === 1
     && typeof candidate.message === "string"
-    && /too many arguments for '(layer|resource|plugin|auth|migrate|harness|environment|profile)'/i.test(candidate.message);
+    && /too many arguments for '(plugin|resource|plugin|auth|migrate|harness|environment|profile)'/i.test(candidate.message);
 }

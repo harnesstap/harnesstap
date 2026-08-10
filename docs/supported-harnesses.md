@@ -1,6 +1,6 @@
 # Supported harnesses
 
-HarnessTap registers **41 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in layers, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
+HarnessTap registers **41 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
 
 For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission, and mirror warnings), see [Portability limits](portability-limits.md).
 
@@ -10,7 +10,7 @@ HarnessTap separates **context-side** resources (what the model sees) from **env
 
 ### Context-side material resources
 
-These are the atomic resources you scan, curate, attach to layers, and re-emit during `layer apply`:
+These are the atomic resources you scan, curate, attach to plugins, and re-emit during `apply`:
 
 | Type | Description |
 | ---- | ----------- |
@@ -23,16 +23,16 @@ These are the atomic resources you scan, curate, attach to layers, and re-emit d
 | **agents** | Agent manifest files under harness `agents/` directories |
 | **commands** | Static command definitions (markdown, TOML, or manifest pointers) |
 
-**Layer composition** adds two attachment kinds on top of material resources:
+**Plugin composition** adds two attachment kinds on top of material resources:
 
 | Attachment | Role |
 | ---------- | ---- |
-| **plugin_pin** | Lazy link to a host marketplace or local plugin (`plugin_pin:name@marketplace`); materializes after `resource sync` or `layer apply --sync-plugins` |
-| **layer** | Nested layer reference expanded depth-first at apply time |
+| **plugin_pin** | Lazy link to a host marketplace or local plugin (`plugin_pin:name@marketplace`); materializes after `resource sync` or `apply --sync-plugins` |
+| **plugin** | Nested plugin reference expanded depth-first at apply time |
 
 ### Environment resources
 
-Environments carry **how** values that override matching layer resources during apply (home → layer default → deck active):
+Environments carry **how** values that override matching plugin resources during apply (home → plugin default → deck active):
 
 | Type | Description |
 | ---- | ----------- |
@@ -71,7 +71,7 @@ Scanning a repo with both harness files and a plugin manifest merges both source
 
 ### Plugin install and sync providers
 
-During `layer apply`, HarnessTap can **install** and **sync** plugins from host install trees for:
+During `apply`, HarnessTap can **install** and **sync** plugins from host install trees for:
 
 | Harness | Provider | Typical install location |
 | ------- | -------- | ------------------------ |
@@ -83,7 +83,7 @@ Claude Code **home scan** also imports installed marketplace plugins from `~/.cl
 
 Other harnesses still benefit from plugin-source **scan** and **resource sync** when you point at an install tree or plugin repo, but do not have an automated install provider yet.
 
-Claude **layer pins** and marketplace metadata (`layer show` → `claude` block) apply only when materializing to **claude-code**.
+Claude **plugin pins** and marketplace metadata (`plugin show` → `claude` block) apply only when materializing to **claude-code**.
 
 ## Serializers
 
@@ -125,7 +125,7 @@ Harnesses with a delegated **subagent** model normalize into a shared canonical 
 | **opencode**, **github-copilot**, **copilot-cli**, **grok-build** | `*/agents/*.md` | Markdown with optional frontmatter |
 | **generic** harnesses with `agents:` paths | `*.md` | Same as OpenCode/Copilot emission |
 
-Plugin import scans `agents/*.md` and `agents/*.toml` (Codex packs). Cross-harness layer apply re-emits valid native files per target harness.
+Plugin import scans `agents/*.md` and `agents/*.toml` (Codex packs). Cross-harness apply re-emits valid native files per target harness.
 
 ## Harness reference
 
@@ -212,10 +212,10 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 | **goosehints** (`.goosehints`, nested, global `~/.config/goose/.goosehints`) | Scanned and emitted as `instruction` resources |
 | **Agent skills** (`.agents/skills/`, legacy `.goose/skills/`) | Native `skill` resources |
 | **Open Plugins** (`plugin.json`, `.goose-plugin/`, `.agents/plugins/`) | Plugin-source import + `goose plugin install` sync |
-| **Hooks** (plugin `hooks/hooks.json`) | `hook` resources; layer apply emits `.agents/plugins/harnesstap-layer/` |
+| **Hooks** (plugin `hooks/hooks.json`) | `hook` resources; apply emits `.agents/plugins/harnesstap-plugin/` |
 | **MCP extensions** (`config.yaml` `extensions:`) | `mcp_server` resources via native serializer |
 | **Recipes** (`recipes/*.yaml`) | `command` resources |
-| **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only — not layer resources (see [portability limits](portability-limits.md)) |
+| **Subagents, plan mode, prompt templates, MOIM, memory extension** | Runtime-only — not plugin resources (see [portability limits](portability-limits.md)) |
 
 ### Antigravity notes
 
@@ -235,7 +235,7 @@ Grok Build’s native layout under `.grok/` maps as follows:
 | **Permissions** (`[permission]` allow/deny/ask or `rules`) | `permission` resources |
 | **Commands** (`.agents/commands/`, `~/.agents/commands/`) | `command` resources (skills also appear as slash commands at runtime) |
 | **Default model** (`[models] default` in `~/.grok/config.toml`) | `model_config` on **global** apply only — project `.grok/config.toml` cannot carry `[models]` |
-| **Personas / roles / plugins / sandbox.toml** | Runtime/config-only — not layer resources today |
+| **Personas / roles / plugins / sandbox.toml** | Runtime/config-only — not plugin resources today |
 
 ## Related commands
 

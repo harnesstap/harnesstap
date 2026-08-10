@@ -8,24 +8,18 @@ describe("defaultMigrateExportFilename", () => {
     );
   });
 
-  it("returns layer toml name", () => {
+  it("returns plugin package envelope name", () => {
     expect(
-      defaultMigrateExportFilename({ scope: "layer", layer: "my-setup" }),
-    ).toBe("my-setup.harnesstap.toml");
+      defaultMigrateExportFilename({ scope: "plugin", plugin: "my-setup" }),
+    ).toBe("my-setup.ap.json");
   });
 
-  it("returns resource toml name", () => {
+  it("returns resource package envelope name", () => {
     expect(
       defaultMigrateExportFilename({
         scope: "resource",
         resource: "instruction:hello@namespace",
       }),
-    ).toBe("instruction-hello.harnesstap.toml");
-  });
-
-  it("returns environment toml name", () => {
-    expect(
-      defaultMigrateExportFilename({ scope: "environment", environment: "prod" }),
-    ).toBe("prod.environment.toml");
+    ).toBe("instruction-hello.ap.json");
   });
 });

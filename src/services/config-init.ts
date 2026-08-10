@@ -1,6 +1,6 @@
-import { listProfileLayers } from "../constants/profile.js";
+import { listProfilePlugins } from "../constants/profile.js";
 import { getActiveProfileName } from "./active-profile.js";
-import { ensureDefaultProfileLayer } from "./ensure-default-profile.js";
+import { ensureDefaultProfilePlugin } from "./ensure-default-profile.js";
 import { writeStarterProjectConfig } from "./project-config-write.js";
 import { promptForChoice, shouldUseWizard } from "./wizards/shared.js";
 import { promptForSearchableMultiSelect } from "./wizards/searchable-multi-select.js";
@@ -21,7 +21,7 @@ export interface ConfigInitResult {
   profiles: string[];
 }
 
-function resolveProfileLayerNames(
+function resolveProfilePluginNames(
   availableNames: string[],
   overrideNames?: string[],
 ): string[] {
@@ -30,7 +30,7 @@ function resolveProfileLayerNames(
     for (const name of overrideNames) {
       if (!known.has(name)) {
         throw new Error(
-          `Unknown profile layer: ${name}. Create it with \`ht profile create ${name}\` first.`,
+          `Unknown profile plugin: ${name}. Create it with \`ht profile create ${name}\` first.`,
         );
       }
     }
@@ -57,7 +57,7 @@ function resolveDefaultProfileName(
 
   const [first] = profileNames;
   if (!first) {
-    throw new Error("No profile layers available.");
+    throw new Error("No profile plugins available.");
   }
   return first;
 }
@@ -77,7 +77,7 @@ async function promptProfileSelection(
   }
 
   return promptForSearchableMultiSelect({
-    message: "Which profile layers should be listed in project config?",
+    message: "Which profile plugins should be listed in project config?",
     choices: availableNames.map((name) => ({
       name: name === active ? `${name} (active)` : name,
       value: name,
@@ -111,10 +111,10 @@ export async function executeConfigInit(
   options: ConfigInitOptions = {},
 ): Promise<ConfigInitResult> {
   const projectPath = options.project ?? process.cwd();
-  ensureDefaultProfileLayer();
-  const availableNames = listProfileLayers().map((layer) => layer.name);
+  ensureDefaultProfilePlugin();
+  const availableNames = listProfilePlugins().map((plugin) => plugin.name);
   if (availableNames.length === 0) {
-    throw new Error("Failed to ensure a default profile layer.");
+    throw new Error("Failed to ensure a default profile plugin.");
   }
 
   const needsProfilePrompt = !options.profiles?.length;
@@ -126,13 +126,13 @@ export async function executeConfigInit(
     missingRequiredArgs: needsProfilePrompt || needsDefaultPrompt,
   });
 
-  let profileNames = resolveProfileLayerNames(availableNames, options.profiles);
+  let profileNames = resolveProfilePluginNames(availableNames, options.profiles);
   if (useWizard && needsProfilePrompt) {
     profileNames = await promptProfileSelection(availableNames);
   }
 
   if (profileNames.length === 0) {
-    throw new Error("Select at least one profile layer for project config.");
+    throw new Error("Select at least one profile plugin for project config.");
   }
 
   let defaultProfile = resolveDefaultProfileName(profileNames, options.defaultProfile);

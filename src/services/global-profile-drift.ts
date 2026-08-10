@@ -1,17 +1,17 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
+import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
-  applyProfileLayer,
+  applyProfilePlugin,
   clearGlobalProfileApply,
-  collectProfileLayerIds,
-  type ApplyProfileLayerResult,
+  collectProfilePluginIds,
+  type ApplyProfilePluginResult,
 } from "./profile-apply.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { parseMcpServersDocument } from "./mcp-config-bridge.js";
 import { fileContentsEquivalentForDrift } from "./file-contents-drift.js";
 import type { DriftFileChange } from "./project-drift.js";
@@ -73,15 +73,15 @@ function readGlobalFile(homeRoot: string, relativePath: string): string | null {
   }
 }
 
-function layerIdsMatch(left: string[], right: string[]): boolean {
+function pluginIdsMatch(left: string[], right: string[]): boolean {
   if (left.length !== right.length) {
     return false;
   }
-  return left.every((layerId, index) => layerId === right[index]);
+  return left.every((pluginId, index) => pluginId === right[index]);
 }
 
 function declaredMcpNamesFromExpectedApply(
-  expectedApply: ApplyProfileLayerResult,
+  expectedApply: ApplyProfilePluginResult,
 ): Record<string, string[]> {
   const byHarness: Record<string, string[]> = {};
 
@@ -113,8 +113,8 @@ function declaredMcpNamesFromExpectedApply(
   return byHarness;
 }
 
-function declaredMcpNamesFromMergedLayers(layerIds: string[]): Record<string, string[]> {
-  const merged = mergeLayersForApply(layerIds);
+function declaredMcpNamesFromMergedPlugins(pluginIds: string[]): Record<string, string[]> {
+  const merged = mergePluginsForApply(pluginIds);
   const names = merged.resources
     .filter((resource) => resource.type === "mcp_server")
     .map((resource) => resource.name);
@@ -136,8 +136,8 @@ function buildBaseStatusFields(input: {
   changes: DriftFileChange[];
   warning?: string;
   projectPath?: string;
-  expectedApply?: ApplyProfileLayerResult;
-  layerIds?: string[];
+  expectedApply?: ApplyProfilePluginResult;
+  pluginIds?: string[];
 }): GlobalProfileStatus {
   const asOf = new Date().toISOString();
   const homeRoot = resolveHomeRoot();
@@ -145,14 +145,14 @@ function buildBaseStatusFields(input: {
   const { owned, nonOwned } = classifyGlobalDriftChanges(input.changes, ownedFiles);
 
   const declaredPins =
-    input.layerIds && input.layerIds.length > 0
-      ? mergeLayersForApply(input.layerIds).pluginPins
+    input.pluginIds && input.pluginIds.length > 0
+      ? mergePluginsForApply(input.pluginIds).pluginPins
       : [];
   const declaredMcpByHarness =
     input.expectedApply
       ? declaredMcpNamesFromExpectedApply(input.expectedApply)
-      : input.layerIds
-        ? declaredMcpNamesFromMergedLayers(input.layerIds)
+      : input.pluginIds
+        ? declaredMcpNamesFromMergedPlugins(input.pluginIds)
         : { "claude-code": [], cursor: [] };
 
   const harnesses = buildHarnessLiveStatusMap({
@@ -278,11 +278,11 @@ export async function detectGlobalProfileStatus(input: {
     );
   }
 
-  const layer = resolveLayerSelector(activeProfile);
-  if (!layer) {
+  const plugin = resolvePluginSelector(activeProfile);
+  if (!plugin) {
     if (isEmptyBuiltinProfile(activeProfile)) {
       const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
-      let expectedApply: ApplyProfileLayerResult;
+      let expectedApply: ApplyProfilePluginResult;
       try {
         expectedApply = await clearGlobalProfileApply({
           dryRun: true,
@@ -303,12 +303,12 @@ export async function detectGlobalProfileStatus(input: {
           changes: [],
           warning: error instanceof Error ? error.message : String(error),
           projectPath: input.projectPath,
-          layerIds: [],
+          pluginIds: [],
         });
       }
 
       const stackInSync = latestSnapshot
-        ? layerIdsMatch(latestSnapshot.layer_ids, expectedApply.configured_layer_ids)
+        ? pluginIdsMatch(latestSnapshot.plugin_ids, expectedApply.configured_plugin_ids)
         : false;
       const applied = Boolean(latestSnapshot);
       const hasDrift = !applied || !stackInSync;
@@ -325,7 +325,7 @@ export async function detectGlobalProfileStatus(input: {
         changes: [],
         projectPath: input.projectPath,
         expectedApply,
-        layerIds: [],
+        pluginIds: [],
       });
     }
 
@@ -339,12 +339,12 @@ export async function detectGlobalProfileStatus(input: {
       stackInSync: false,
       hasDrift: true,
       changes: [],
-      warning: `missing layer "${activeProfile}"`,
+      warning: `missing plugin "${activeProfile}"`,
       projectPath: input.projectPath,
     });
   }
 
-  if (!isProfileLayer(layer)) {
+  if (!isProfilePlugin(plugin)) {
     return finalizeGlobalProfileStatus({
       depth,
       activeProfile,
@@ -355,17 +355,17 @@ export async function detectGlobalProfileStatus(input: {
       stackInSync: false,
       hasDrift: true,
       changes: [],
-      warning: `layer "${layer.name}" is not tagged as a profile`,
+      warning: `plugin "${plugin.name}" is not tagged as a profile`,
       projectPath: input.projectPath,
     });
   }
 
   const latestSnapshot = getLatestGlobalApplySnapshotForProfile(activeProfile);
   const homeRoot = resolveHomeRoot();
-  const layerIds = collectProfileLayerIds(layer);
-  let expectedApply: ApplyProfileLayerResult;
+  const pluginIds = collectProfilePluginIds(plugin);
+  let expectedApply: ApplyProfilePluginResult;
   try {
-    expectedApply = await applyProfileLayer(activeProfile, {
+    expectedApply = await applyProfilePlugin(activeProfile, {
       dryRun: true,
       harness: input.harness,
       conflictPolicy: "replace",
@@ -384,12 +384,12 @@ export async function detectGlobalProfileStatus(input: {
       changes: [],
       warning: error instanceof Error ? error.message : String(error),
       projectPath: input.projectPath,
-      layerIds,
+      pluginIds,
     });
   }
 
   const stackInSync = latestSnapshot
-    ? layerIdsMatch(latestSnapshot.layer_ids, expectedApply.configured_layer_ids)
+    ? pluginIdsMatch(latestSnapshot.plugin_ids, expectedApply.configured_plugin_ids)
     : false;
 
   const changes: DriftFileChange[] = [];
@@ -420,7 +420,7 @@ export async function detectGlobalProfileStatus(input: {
       changes,
       projectPath: input.projectPath,
       expectedApply,
-      layerIds,
+      pluginIds,
     },
     input.harness,
   );

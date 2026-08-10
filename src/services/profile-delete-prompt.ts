@@ -1,18 +1,18 @@
-import { deleteLayer } from "../models/layer-model.js";
+import { deletePlugin } from "../models/plugin-model.js";
 import { ui } from "../ui/index.js";
 import { promptForConfirmation } from "./wizards/shared.js";
 import { shouldPromptProfileEnable } from "./profile-enable-prompt.js";
 
-export async function maybePromptProfileLayerDelete(input: {
-  layerName: string;
-  layerId: string;
+export async function maybePromptProfilePluginDelete(input: {
+  pluginName: string;
+  pluginId: string;
   format?: string;
   yes?: boolean;
-  deleteLayerFlag?: boolean;
+  deletePluginFlag?: boolean;
 }): Promise<boolean> {
-  if (input.deleteLayerFlag) {
-    if (!deleteLayer(input.layerId)) {
-      throw new Error(`Failed to delete layer ${input.layerName}`);
+  if (input.deletePluginFlag) {
+    if (!deletePlugin(input.pluginId)) {
+      throw new Error(`Failed to delete plugin ${input.pluginName}`);
     }
     return true;
   }
@@ -24,25 +24,25 @@ export async function maybePromptProfileLayerDelete(input: {
 
   if (!shouldPromptProfileEnable({ yes: input.yes, format })) {
     ui.hint(
-      `Layer ${ui.theme.accent(input.layerName)} was kept. Delete with harnesstap layer delete ${input.layerName}`,
+      `Plugin ${ui.theme.accent(input.pluginName)} was kept. Delete with harnesstap plugin delete ${input.pluginName}`,
     );
     return false;
   }
 
   const confirmed = await promptForConfirmation({
-    message: `Also delete layer ${input.layerName}?`,
+    message: `Also delete plugin ${input.pluginName}?`,
     default: false,
   });
 
   if (!confirmed) {
     ui.hint(
-      `Layer ${ui.theme.accent(input.layerName)} was kept. Delete with harnesstap layer delete ${input.layerName}`,
+      `Plugin ${ui.theme.accent(input.pluginName)} was kept. Delete with harnesstap plugin delete ${input.pluginName}`,
     );
     return false;
   }
 
-  if (!deleteLayer(input.layerId)) {
-    throw new Error(`Failed to delete layer ${input.layerName}`);
+  if (!deletePlugin(input.pluginId)) {
+    throw new Error(`Failed to delete plugin ${input.pluginName}`);
   }
   return true;
 }

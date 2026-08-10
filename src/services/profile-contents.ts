@@ -1,14 +1,14 @@
-import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
+import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js";
 import {
-  getLayerById,
-  getLayerResources,
-  resolveLayerSelector,
-} from "../models/layer-model.js";
+  getPluginById,
+  getPluginResources,
+  resolvePluginSelector,
+} from "../models/plugin-model.js";
 import { getEnvironmentResources } from "../models/environment.js";
 import type { Resource } from "../types.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { formatResourceTypeSummary } from "./project-status-payload.js";
-import { collectProfileLayerIds } from "./profile-apply.js";
+import { collectProfilePluginIds } from "./profile-apply.js";
 
 export interface ProfileContentsResource {
   id: string;
@@ -18,7 +18,7 @@ export interface ProfileContentsResource {
   source: string;
 }
 
-export interface ProfileContentsLayer {
+export interface ProfileContentsPlugin {
   id: string;
   name: string;
   version: string;
@@ -31,10 +31,10 @@ export interface ProfileContentsPin {
 }
 
 export interface ProfileContents {
-  layers: ProfileContentsLayer[];
+  plugins: ProfileContentsPlugin[];
   stack_resource_count: number;
   stack_summary: string | null;
-  /** Counts by resource type, plus `layer` and `plugin_pin`. */
+  /** Counts by resource type, plus `plugin` and `plugin_pin`. */
   type_counts: Record<string, number>;
   resources: ProfileContentsResource[];
   plugin_pins: ProfileContentsPin[];
@@ -43,7 +43,7 @@ export interface ProfileContents {
 
 function materialResources(resources: Resource[]): Resource[] {
   return resources.filter(
-    (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+    (resource) => resource.type !== "plugin",
   );
 }
 
@@ -71,23 +71,23 @@ function toContentsResources(resources: Resource[]): ProfileContentsResource[] {
     .filter((entry): entry is ProfileContentsResource => entry !== undefined);
 }
 
-function resourcesForLayer(layerId: string): ProfileContentsResource[] {
-  const layer = getLayerById(layerId);
-  const attached = getLayerResources(layerId);
-  const fromEnv = layer?.default_environment_id
-    ? getEnvironmentResources(layer.default_environment_id)
+function resourcesForPlugin(pluginId: string): ProfileContentsResource[] {
+  const plugin = getPluginById(pluginId);
+  const attached = getPluginResources(pluginId);
+  const fromEnv = plugin?.default_environment_id
+    ? getEnvironmentResources(plugin.default_environment_id)
     : [];
   return toContentsResources([...attached, ...fromEnv]);
 }
 
 function buildTypeCounts(
-  layers: ProfileContentsLayer[],
+  plugins: ProfileContentsPlugin[],
   resources: ProfileContentsResource[],
   pluginPins: ProfileContentsPin[],
 ): Record<string, number> {
   const counts: Record<string, number> = {};
-  if (layers.length > 0) {
-    counts.layer = layers.length;
+  if (plugins.length > 0) {
+    counts.plugin = plugins.length;
   }
   for (const resource of resources) {
     counts[resource.type] = (counts[resource.type] ?? 0) + 1;
@@ -101,7 +101,7 @@ function buildTypeCounts(
 export function buildProfileContents(profileName: string): ProfileContents | null {
   if (isEmptyBuiltinProfile(profileName)) {
     return {
-      layers: [],
+      plugins: [],
       stack_resource_count: 0,
       stack_summary: null,
       type_counts: {},
@@ -111,20 +111,20 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
     };
   }
 
-  const layer = resolveLayerSelector(profileName);
-  if (!layer || !isProfileLayer(layer)) {
+  const plugin = resolvePluginSelector(profileName);
+  if (!plugin || !isProfilePlugin(plugin)) {
     return null;
   }
 
-  const layerIds = collectProfileLayerIds(layer);
-  const merged = mergeLayersForApply(layerIds);
+  const pluginIds = collectProfilePluginIds(plugin);
+  const merged = mergePluginsForApply(pluginIds);
   const resources = materialResources(merged.resources);
   const summary = formatResourceTypeSummary(resources);
-  const layers = merged.layers.map((entry) => ({
+  const plugins = merged.plugins.map((entry) => ({
     id: entry.id,
     name: entry.name,
     version: entry.version,
-    resources: resourcesForLayer(entry.id),
+    resources: resourcesForPlugin(entry.id),
   }));
   const pluginPins = merged.pluginPins.map((pin) => ({
     ref: pin.ref,
@@ -133,10 +133,10 @@ export function buildProfileContents(profileName: string): ProfileContents | nul
   const contentsResources = resources.map(toContentsResource);
 
   return {
-    layers,
+    plugins,
     stack_resource_count: resources.length,
     stack_summary: summary.length > 0 ? summary : null,
-    type_counts: buildTypeCounts(layers, contentsResources, pluginPins),
+    type_counts: buildTypeCounts(plugins, contentsResources, pluginPins),
     resources: contentsResources,
     plugin_pins: pluginPins,
     mcp_servers: resources

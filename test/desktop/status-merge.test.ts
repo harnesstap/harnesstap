@@ -27,7 +27,7 @@ function baseStatus(
       cursor: { plugins: [], mcp: [{ name: "search", state: "present" }] },
     },
     contents: {
-      layers: [
+      plugins: [
         {
           id: "l1",
           name: "work",
@@ -40,7 +40,7 @@ function baseStatus(
       ],
       stack_resource_count: 1,
       stack_summary: "1 instruction",
-      type_counts: { layer: 1, instruction: 1, mcp_server: 1 },
+      type_counts: { plugin: 1, instruction: 1, mcp_server: 1 },
       resources: [
         { type: "instruction", name: "guide" },
         { type: "mcp_server", name: "search" },
@@ -91,7 +91,7 @@ describe("desktop status merge", () => {
         cursor: { plugins: [], mcp: [] },
       },
       contents: {
-        layers: [],
+        plugins: [],
         stack_resource_count: 0,
         stack_summary: null,
         plugin_pins: [],

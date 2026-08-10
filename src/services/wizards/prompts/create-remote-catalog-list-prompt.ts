@@ -11,11 +11,11 @@ import {
   usePrefix,
   useState,
 } from "@inquirer/core";
-import type { CatalogLayer } from "../../catalog-types.js";
-import { formatCanonicalPublishedSelectorWithVersion } from "../../layer-selector.js";
+import type { CatalogPlugin } from "../../catalog-types.js";
+import { formatCanonicalPublishedSelectorWithVersion } from "../../plugin-selector.js";
 import {
-  catalogLayerKey,
-  renderCatalogLayerShow,
+  catalogPluginKey,
+  renderCatalogPluginShow,
   renderCatalogListViewport,
   renderCatalogSearchViewport,
 } from "../../../ui/catalog-list-render.js";
@@ -39,17 +39,17 @@ import type {
 
 type PromptView = "browse" | "show";
 
-function toSelection(layer: CatalogLayer): RemoteCatalogListSelection {
+function toSelection(plugin: CatalogPlugin): RemoteCatalogListSelection {
   return {
-    orgSlug: layer.orgSlug,
-    catalogSlug: layer.catalogSlug,
-    slug: layer.slug,
-    version: layer.latestVersion,
+    orgSlug: plugin.orgSlug,
+    catalogSlug: plugin.catalogSlug,
+    slug: plugin.slug,
+    version: plugin.latestVersion,
     selector: formatCanonicalPublishedSelectorWithVersion({
-      org: layer.orgSlug,
-      catalog: layer.catalogSlug,
-      name: layer.slug,
-      version: layer.latestVersion ?? undefined,
+      org: plugin.orgSlug,
+      catalog: plugin.catalogSlug,
+      name: plugin.slug,
+      version: plugin.latestVersion ?? undefined,
     }),
   };
 }
@@ -71,58 +71,58 @@ export const createRemoteCatalogListPrompt: (
   const prefix = usePrefix({ status: "idle", theme: promptTheme });
   const [query, setQuery] = useState(config.initialQuery ?? "");
   const [active, setActive] = useState(0);
-  const [checkedLayers, setCheckedLayers] = useState<Map<string, CatalogLayer>>(
+  const [checkedPlugins, setCheckedPlugins] = useState<Map<string, CatalogPlugin>>(
     () => new Map(),
   );
   const [view, setView] = useState<PromptView>("browse");
-  const [showingLayer, setShowingLayer] = useState<CatalogLayer | null>(null);
+  const [showingPlugin, setShowingPlugin] = useState<CatalogPlugin | null>(null);
   const [pendingExitMessage, setPendingExitMessage] = useState<string | null>(null);
   const { width: terminalWidth, height: terminalRows } = useTerminalSize();
-  const { items: layers, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
+  const { items: plugins, loading, error, scheduleSearch } = useDebouncedRemoteSearch({
     initialQuery: config.initialQuery,
     limitFor: (nextQuery) => (nextQuery.trim() ? 25 : 10),
-    searchFn: (nextQuery, limit) => config.listLayers({ q: nextQuery, limit }),
+    searchFn: (nextQuery, limit) => config.listPlugins({ q: nextQuery, limit }),
   });
 
-  const clampedActive = clampActiveIndex(active, layers.length);
-  const activeLayer = layers[clampedActive];
-  const activeLayerKey = activeLayer ? catalogLayerKey(activeLayer) : undefined;
+  const clampedActive = clampActiveIndex(active, plugins.length);
+  const activePlugin = plugins[clampedActive];
+  const activePluginKey = activePlugin ? catalogPluginKey(activePlugin) : undefined;
 
-  function toggleLayer(layer: CatalogLayer) {
-    const key = catalogLayerKey(layer);
-    const next = new Map(checkedLayers);
+  function togglePlugin(plugin: CatalogPlugin) {
+    const key = catalogPluginKey(plugin);
+    const next = new Map(checkedPlugins);
     if (next.has(key)) {
       next.delete(key);
     } else {
-      next.set(key, layer);
+      next.set(key, plugin);
     }
-    setCheckedLayers(next);
+    setCheckedPlugins(next);
   }
 
-  function selectVisibleLayers() {
-    const next = new Map(checkedLayers);
-    for (const layer of layers) {
-      next.set(catalogLayerKey(layer), layer);
+  function selectVisiblePlugins() {
+    const next = new Map(checkedPlugins);
+    for (const plugin of plugins) {
+      next.set(catalogPluginKey(plugin), plugin);
     }
-    setCheckedLayers(next);
+    setCheckedPlugins(next);
   }
 
-  function clearVisibleLayers() {
-    const next = new Map(checkedLayers);
-    for (const layer of layers) {
-      next.delete(catalogLayerKey(layer));
+  function clearVisiblePlugins() {
+    const next = new Map(checkedPlugins);
+    for (const plugin of plugins) {
+      next.delete(catalogPluginKey(plugin));
     }
-    setCheckedLayers(next);
+    setCheckedPlugins(next);
   }
 
-  function finishInstall(layer: CatalogLayer) {
-    const result: RemoteCatalogListInstallResult = toSelection(layer);
+  function finishInstall(plugin: CatalogPlugin) {
+    const result: RemoteCatalogListInstallResult = toSelection(plugin);
     done(result);
   }
 
   function finishApply() {
     const result: RemoteCatalogListApplyResult = {
-      selections: [...checkedLayers.values()].map(toSelection),
+      selections: [...checkedPlugins.values()].map(toSelection),
     };
     done(result);
   }
@@ -131,7 +131,7 @@ export const createRemoteCatalogListPrompt: (
     if (isApplyMode && view === "show") {
       if (isEscapeKey(key)) {
         setView("browse");
-        setShowingLayer(null);
+        setShowingPlugin(null);
       }
       return;
     }
@@ -144,43 +144,43 @@ export const createRemoteCatalogListPrompt: (
     }
 
     if (isApplyMode && key.ctrl && key.name === "s") {
-      if (checkedLayers.size > 0) {
+      if (checkedPlugins.size > 0) {
         finishApply();
       }
       return;
     }
 
     if (isEnterKey(key)) {
-      if (!activeLayer) {
+      if (!activePlugin) {
         return;
       }
       if (isApplyMode) {
-        setShowingLayer(activeLayer);
+        setShowingPlugin(activePlugin);
         setView("show");
       } else {
-        finishInstall(activeLayer);
+        finishInstall(activePlugin);
       }
       return;
     }
 
-    if (layers.length > 0 && (isUpKey(key) || isDownKey(key))) {
+    if (plugins.length > 0 && (isUpKey(key) || isDownKey(key))) {
       const direction = isUpKey(key) ? -1 : 1;
-      setActive(clampActiveIndex(clampedActive + direction, layers.length));
+      setActive(clampActiveIndex(clampedActive + direction, plugins.length));
       return;
     }
 
-    if (isApplyMode && layers.length > 0 && isSpaceKey(key) && activeLayer) {
-      toggleLayer(activeLayer);
+    if (isApplyMode && plugins.length > 0 && isSpaceKey(key) && activePlugin) {
+      togglePlugin(activePlugin);
       return;
     }
 
     if (isApplyMode && key.ctrl && key.name === "a") {
-      selectVisibleLayers();
+      selectVisiblePlugins();
       return;
     }
 
     if (isApplyMode && key.ctrl && key.name === "x") {
-      clearVisibleLayers();
+      clearVisiblePlugins();
       return;
     }
 
@@ -204,9 +204,9 @@ export const createRemoteCatalogListPrompt: (
     throw new ExitPromptError(pendingExitMessage);
   }
 
-  if (isApplyMode && view === "show" && showingLayer) {
+  if (isApplyMode && view === "show" && showingPlugin) {
     const helpLine = buildHelpLine([["esc", "back"]]);
-    return [renderCatalogLayerShow(showingLayer), "", helpLine].join("\n");
+    return [renderCatalogPluginShow(showingPlugin), "", helpLine].join("\n");
   }
 
   const helpLine = isApplyMode
@@ -232,13 +232,13 @@ export const createRemoteCatalogListPrompt: (
   const tableSection = error
     ? theme.danger(error)
     : isApplyMode
-      ? renderCatalogSearchViewport(layers, new Set(checkedLayers.keys()), {
-          activeLayerKey,
+      ? renderCatalogSearchViewport(plugins, new Set(checkedPlugins.keys()), {
+          activePluginKey,
           activeIndex: clampedActive,
           terminalRows,
           maxWidth: terminalWidth,
         })
-      : renderCatalogListViewport(layers, {
+      : renderCatalogListViewport(plugins, {
           activeIndex: clampedActive,
           terminalRows,
           maxWidth: terminalWidth,
@@ -251,8 +251,8 @@ export const createRemoteCatalogListPrompt: (
       ? [theme.muted("Apply writes harness files — choose project or global scope after selecting")]
       : []),
     `${theme.label("Search:")} ${query ? theme.entity(query) : theme.muted("(type to filter)")}`,
-    ...(isApplyMode ? [`Selected: ${checkedLayers.size} to apply`] : []),
-    ...(loading && layers.length === 0 ? [theme.muted("Loading layers…")] : []),
+    ...(isApplyMode ? [`Selected: ${checkedPlugins.size} to apply`] : []),
+    ...(loading && plugins.length === 0 ? [theme.muted("Loading plugins…")] : []),
     "",
     tableSection,
     "",

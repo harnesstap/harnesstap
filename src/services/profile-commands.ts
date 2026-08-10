@@ -1,38 +1,38 @@
-import { listLayerDependencies } from "../models/layer-model.js";
+import { listPluginDependencies } from "../models/plugin-model.js";
 import {
-  createLayer,
-  getLayerByName,
-  resolveLayerSelector,
-  setLayerTags,
-  updateLayerName,
-} from "../models/layer-model.js";
+  createPlugin,
+  getPluginByName,
+  resolvePluginSelector,
+  setPluginTags,
+  updatePluginName,
+} from "../models/plugin-model.js";
 import { renameGlobalApplySnapshotsProfile } from "../models/global-apply-snapshot.js";
-import { renameLayerTypedResources } from "../models/resource.js";
+import { renamePluginTypedResources } from "../models/resource.js";
 import {
   CLEARED_GLOBAL_PROFILE_NAME,
-  PROFILE_LAYER_TAG,
+  PROFILE_PLUGIN_TAG,
   isEmptyBuiltinProfile,
-  isProfileLayer,
+  isProfilePlugin,
   isReservedProfileName,
-  listProfileLayers,
+  listProfilePlugins,
 } from "../constants/profile.js";
-import type { Layer } from "../types.js";
+import type { Plugin } from "../types.js";
 import {
   clearActiveProfileName,
   getActiveProfileName,
   setActiveProfileName,
 } from "./active-profile.js";
-import { applyProfileLayer, type ApplyProfileLayerOptions } from "./profile-apply.js";
+import { applyProfilePlugin, type ApplyProfilePluginOptions } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
 
 export interface CreateProfileResult {
-  layer: Layer;
+  plugin: Plugin;
   created: boolean;
   promoted: boolean;
 }
 
 export class ProfileRenameError extends Error {
-  readonly code: "invalid_name" | "not_found" | "layer_exists" | "not_a_profile" | "reserved_name";
+  readonly code: "invalid_name" | "not_found" | "plugin_exists" | "not_a_profile" | "reserved_name";
 
   constructor(
     code: ProfileRenameError["code"],
@@ -59,43 +59,43 @@ function assertNotReservedProfileName(name: string): void {
   }
 }
 
-export function listProfileLayersCommand() {
+export function listProfilePluginsCommand() {
   const names = new Set<string>();
-  for (const layer of listProfileLayers()) {
-    names.add(layer.name);
+  for (const plugin of listProfilePlugins()) {
+    names.add(plugin.name);
   }
   return [...names]
-    .map((name) => getLayerByName(name))
-    .filter((layer): layer is Layer => layer !== undefined && isProfileLayer(layer));
+    .map((name) => getPluginByName(name))
+    .filter((plugin): plugin is Plugin => plugin !== undefined && isProfilePlugin(plugin));
 }
 
 export function showProfileCommand(selector: string): {
-  profile: Layer;
-  dependencies: ReturnType<typeof listLayerDependencies>;
+  profile: Plugin;
+  dependencies: ReturnType<typeof listPluginDependencies>;
   active: boolean;
 } {
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
 
-  const profile = resolveLayerSelector(selector);
+  const profile = resolvePluginSelector(selector);
   if (!profile) {
     throw new Error(`Profile not found: ${selector}`);
   }
-  if (!isProfileLayer(profile)) {
-    throw new Error(`Layer "${profile.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profile)) {
+    throw new Error(`Plugin "${profile.name}" is not tagged as a profile`);
   }
   const activeProfile = getActiveProfileName();
   return {
     profile,
-    dependencies: listLayerDependencies(profile.id),
+    dependencies: listPluginDependencies(profile.id),
     active: activeProfile === profile.name,
   };
 }
 
 export function getActiveProfilePayload(): {
   active_profile: string | null;
-  layer_id?: string;
+  plugin_id?: string;
   exists: boolean;
 } {
   const activeProfile = getActiveProfileName();
@@ -105,19 +105,19 @@ export function getActiveProfilePayload(): {
       exists: false,
     };
   }
-  const layer = resolveLayerSelector(activeProfile);
+  const plugin = resolvePluginSelector(activeProfile);
   return {
     active_profile: activeProfile,
-    ...(layer ? { layer_id: layer.id } : {}),
-    exists: Boolean(layer && isProfileLayer(layer)),
+    ...(plugin ? { plugin_id: plugin.id } : {}),
+    exists: Boolean(plugin && isProfilePlugin(plugin)),
   };
 }
 
 export async function useProfileCommandUnlocked(
   selector: string,
-  options: ApplyProfileLayerOptions,
+  options: ApplyProfilePluginOptions,
 ) {
-  const result = await applyProfileLayer(selector, options);
+  const result = await applyProfilePlugin(selector, options);
   if (!result.cancelled && !result.dry_run) {
     setActiveProfileName(result.profile_name);
   }
@@ -126,7 +126,7 @@ export async function useProfileCommandUnlocked(
 
 export async function useProfileCommand(
   selector: string,
-  options: ApplyProfileLayerOptions,
+  options: ApplyProfilePluginOptions,
 ) {
   return withProfileApplyLock(() => useProfileCommandUnlocked(selector, options));
 }
@@ -138,98 +138,98 @@ export function createProfileCommand(input: {
 }): CreateProfileResult {
   assertNotReservedProfileName(input.name);
   const version = input.version ?? "1.0.0";
-  const existing = getLayerByName(input.name, version);
+  const existing = getPluginByName(input.name, version);
   if (existing) {
-    if (isProfileLayer(existing)) {
+    if (isProfilePlugin(existing)) {
       return {
-        layer: existing,
+        plugin: existing,
         created: false,
         promoted: false,
       };
     }
-    const tags = [...new Set([...existing.tags, PROFILE_LAYER_TAG])];
-    setLayerTags(existing.id, tags);
-    const refreshed = resolveLayerSelector(existing.name);
+    const tags = [...new Set([...existing.tags, PROFILE_PLUGIN_TAG])];
+    setPluginTags(existing.id, tags);
+    const refreshed = resolvePluginSelector(existing.name);
     if (!refreshed) {
-      throw new Error(`Layer not found after tagging: ${input.name}`);
+      throw new Error(`Plugin not found after tagging: ${input.name}`);
     }
     return {
-      layer: refreshed,
+      plugin: refreshed,
       created: false,
       promoted: true,
     };
   }
 
-  const layer = createLayer({
+  const plugin = createPlugin({
     name: input.name,
     description: input.description,
     version,
-    tags: [PROFILE_LAYER_TAG],
+    tags: [PROFILE_PLUGIN_TAG],
   });
   return {
-    layer,
+    plugin,
     created: true,
     promoted: true,
   };
 }
 
 export function tagProfileCommand(selector: string): {
-  layer_id: string;
+  plugin_id: string;
   tags: string[];
 } {
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
-  const layer = resolveLayerSelector(selector);
-  if (!layer) {
-    throw new Error(`Layer not found: ${selector}`);
+  const plugin = resolvePluginSelector(selector);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${selector}`);
   }
-  const tags = [...new Set([...layer.tags, PROFILE_LAYER_TAG])];
-  setLayerTags(layer.id, tags);
-  return { layer_id: layer.id, tags };
+  const tags = [...new Set([...plugin.tags, PROFILE_PLUGIN_TAG])];
+  setPluginTags(plugin.id, tags);
+  return { plugin_id: plugin.id, tags };
 }
 
 export function untagProfileCommand(selector: string): {
-  layer_id: string;
+  plugin_id: string;
   tags: string[];
 } {
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
-  const layer = resolveLayerSelector(selector);
-  if (!layer) {
-    throw new Error(`Layer not found: ${selector}`);
+  const plugin = resolvePluginSelector(selector);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${selector}`);
   }
-  const tags = layer.tags.filter((tag) => tag !== PROFILE_LAYER_TAG);
-  setLayerTags(layer.id, tags);
+  const tags = plugin.tags.filter((tag) => tag !== PROFILE_PLUGIN_TAG);
+  setPluginTags(plugin.id, tags);
   const activeProfile = getActiveProfileName();
-  if (activeProfile === layer.name) {
+  if (activeProfile === plugin.name) {
     clearActiveProfileName();
   }
-  return { layer_id: layer.id, tags };
+  return { plugin_id: plugin.id, tags };
 }
 
 export function deleteProfileCommand(selector: string): {
-  layer_id: string;
-  layer_name: string;
+  plugin_id: string;
+  plugin_name: string;
   tags: string[];
   was_active: boolean;
 } {
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileReservedNameError(CLEARED_GLOBAL_PROFILE_NAME);
   }
-  const layer = resolveLayerSelector(selector);
-  if (!layer) {
+  const plugin = resolvePluginSelector(selector);
+  if (!plugin) {
     throw new Error(`Profile not found: ${selector}`);
   }
-  if (!isProfileLayer(layer)) {
-    throw new Error(`Layer "${layer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(plugin)) {
+    throw new Error(`Plugin "${plugin.name}" is not tagged as a profile`);
   }
-  const wasActive = getActiveProfileName() === layer.name;
+  const wasActive = getActiveProfileName() === plugin.name;
   const untagged = untagProfileCommand(selector);
   return {
-    layer_id: untagged.layer_id,
-    layer_name: layer.name,
+    plugin_id: untagged.plugin_id,
+    plugin_name: plugin.name,
     tags: untagged.tags,
     was_active: wasActive,
   };
@@ -241,7 +241,7 @@ export function renameProfileCommand(
 ): {
   old_name: string;
   name: string;
-  layer_id: string;
+  plugin_id: string;
   was_active: boolean;
 } {
   if (isEmptyBuiltinProfile(selector)) {
@@ -262,41 +262,41 @@ export function renameProfileCommand(
     );
   }
 
-  const layer = resolveLayerSelector(selector);
-  if (!layer) {
+  const plugin = resolvePluginSelector(selector);
+  if (!plugin) {
     throw new ProfileRenameError("not_found", `Profile not found: ${selector}`);
   }
-  if (!isProfileLayer(layer)) {
+  if (!isProfilePlugin(plugin)) {
     throw new ProfileRenameError(
       "not_a_profile",
-      `Layer "${layer.name}" is not tagged as a profile`,
+      `Plugin "${plugin.name}" is not tagged as a profile`,
     );
   }
 
-  const oldName = layer.name;
+  const oldName = plugin.name;
   if (nextName === oldName) {
     const wasActive = getActiveProfileName() === oldName;
     return {
       old_name: oldName,
       name: oldName,
-      layer_id: layer.id,
+      plugin_id: plugin.id,
       was_active: wasActive,
     };
   }
 
-  const conflicting = getLayerByName(nextName);
-  if (conflicting && conflicting.id !== layer.id) {
+  const conflicting = getPluginByName(nextName);
+  if (conflicting && conflicting.id !== plugin.id) {
     throw new ProfileRenameError(
-      "layer_exists",
-      `Layer already exists: ${nextName}`,
+      "plugin_exists",
+      `Plugin already exists: ${nextName}`,
     );
   }
 
-  if (!updateLayerName(layer.id, nextName)) {
+  if (!updatePluginName(plugin.id, nextName)) {
     throw new ProfileRenameError("not_found", `Profile not found: ${selector}`);
   }
 
-  renameLayerTypedResources(oldName, nextName);
+  renamePluginTypedResources(oldName, nextName);
   renameGlobalApplySnapshotsProfile(oldName, nextName);
 
   const wasActive = getActiveProfileName() === oldName;
@@ -307,7 +307,7 @@ export function renameProfileCommand(
   return {
     old_name: oldName,
     name: nextName,
-    layer_id: layer.id,
+    plugin_id: plugin.id,
     was_active: wasActive,
   };
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
@@ -12,8 +12,8 @@ describe("previewProfileApply files.root_path + resource", () => {
   it("includes root_path and maps modified skill paths to resource keys", async () => {
     const context = await createInitializedTestContext("preview-root-path");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const skill = createResource({
         type: "skill",
         name: "manual-skill",
@@ -22,8 +22,8 @@ describe("previewProfileApply files.root_path + resource", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(profile.id, skill.id);
-      await applyProfileLayer("work", {
+      addResourceToPlugin(profile.id, skill.id);
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });
@@ -55,8 +55,8 @@ describe("previewProfileApply files.root_path + resource", () => {
   it("does not list planned removals for paths that are already gone", async () => {
     const context = await createInitializedTestContext("preview-phantom-removal");
     try {
-      const full = createLayer({ name: "full" });
-      setLayerTags(full.id, ["profile"]);
+      const full = createPlugin({ name: "full" });
+      setPluginTags(full.id, ["profile"]);
       const pairAgent = createResource({
         type: "skill",
         name: "pair-agent",
@@ -65,10 +65,10 @@ describe("previewProfileApply files.root_path + resource", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(full.id, pairAgent.id);
+      addResourceToPlugin(full.id, pairAgent.id);
 
-      const slim = createLayer({ name: "superpowers-only" });
-      setLayerTags(slim.id, ["profile"]);
+      const slim = createPlugin({ name: "superpowers-only" });
+      setPluginTags(slim.id, ["profile"]);
       const kept = createResource({
         type: "skill",
         name: "kept-skill",
@@ -77,9 +77,9 @@ describe("previewProfileApply files.root_path + resource", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(slim.id, kept.id);
+      addResourceToPlugin(slim.id, kept.id);
 
-      await applyProfileLayer("full", {
+      await applyProfilePlugin("full", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });

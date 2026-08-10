@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title" aria-describedby="desc">
   <title id="title">HarnessTap feature map</title>
-  <desc id="desc">HarnessTap connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins and layers, portable decks, apply with environment cascade, sync and mirror, snapshots, drift detection, plugin pins, layer dependencies, catalog baselines, cloud catalogs, and machine migration.</desc>
+  <desc id="desc">HarnessTap connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins, portable decks, apply with environment cascade, sync and mirror, snapshots, drift detection, plugin pins, plugin dependencies, catalog baselines, cloud catalogs, and machine migration.</desc>
   <defs>
     <radialGradient id="bg" cx="50%" cy="28%" r="88%">
       <stop offset="0%" stop-color="#24316d"/>
@@ -72,7 +72,7 @@
   <g filter="url(#softShadow)">
     <rect class="panel" x="122" y="172" width="1356" height="160" rx="34"/>
     <text x="172" y="226" class="sectionTitle">Agent harnesses</text>
-    <text x="172" y="254" class="sectionCopy">Apply plugins, layers, and decks to every target without scattering configuration.</text>
+    <text x="172" y="254" class="sectionCopy">Apply plugins and decks to every target without scattering configuration.</text>
 
     <g>
       <rect x="172" y="274" width="168" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
@@ -109,7 +109,7 @@
     <circle cx="548" cy="445" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
     <path d="M532 445 H564 M548 429 V461" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
     <text x="606" y="438" class="hubTitle">HarnessTap</text>
-    <text x="606" y="468" class="hubCopy">scan · plugin · layer · deck · apply · sync · mirror</text>
+    <text x="606" y="468" class="hubCopy">scan · plugin · deck · apply · sync · mirror</text>
   </g>
 
   <g filter="url(#softShadow)">
@@ -139,7 +139,7 @@
       <path d="M38 40 h24 M38 49 h24 M38 58 h16" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
       <text x="84" y="52" class="label">Compose</text>
       <text x="24" y="96" class="small">Plugins, environments,</text>
-      <text x="24" y="118" class="small">layers, and decks.</text>
+      <text x="24" y="118" class="small">plugins, and decks.</text>
     </g>
 
     <g transform="translate(1163 548)">
@@ -179,7 +179,7 @@
       <path d="M38 56 h24 M38 48 h18 M38 40 h24" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
       <text x="84" y="52" class="label">Plugins</text>
       <text x="24" y="96" class="small">Marketplace sync,</text>
-      <text x="24" y="118" class="small">pins, and layer deps.</text>
+      <text x="24" y="118" class="small">pins, and plugin deps.</text>
     </g>
 
     <g transform="translate(1163 746)">
@@ -204,6 +204,6 @@
 
   <g transform="translate(350 518)">
     <rect width="900" height="32" rx="16" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="450" y="21" class="tiny" text-anchor="middle">layer v1 · deck v1 · env cascade · layer deps · doctor · diffs · from-project</text>
+    <text x="450" y="21" class="tiny" text-anchor="middle">Agent Plugins · env cascade · plugin deps · doctor · diffs · from-project</text>
   </g>
 </svg>

@@ -66,7 +66,7 @@ describe("agent profile plugin routes", () => {
     return repo;
   }
 
-  it("pins a marketplace plugin onto a profile layer", async () => {
+  it("pins a marketplace plugin onto a profile plugin", async () => {
     const server = withServer();
     createProfileCommand({ name: "base" });
     await addMarketplace(server);
@@ -80,10 +80,10 @@ describe("agent profile plugin routes", () => {
       body: JSON.stringify({ ref: "demo-plugin@e2e-market" }),
     });
     expect(pin.status).toBe(200);
-    const body = (await pin.json()) as { status: string; ref: string; layerName: string };
+    const body = (await pin.json()) as { status: string; ref: string; pluginName: string };
     expect(body.status).toBe("attached");
     expect(body.ref).toBe("demo-plugin@e2e-market");
-    expect(body.layerName).toBe("base");
+    expect(body.pluginName).toBe("base");
   });
 
   it("returns 401 without bearer auth", async () => {

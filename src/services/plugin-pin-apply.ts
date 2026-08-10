@@ -2,8 +2,12 @@ import { getDb } from "../db/connection.js";
 import {
   ensurePluginResource,
   findPluginResourceByPin,
-} from "./layer-composition.js";
+} from "./plugin-composition.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import {
+  listDependencies,
+  parseDependencyRef,
+} from "./plugin-dependency.js";
 import {
   installPluginPins,
   type InstallPluginPinResult,
@@ -15,17 +19,47 @@ import {
   type PluginConstraintPin,
   type PluginValidationIssue,
 } from "./plugin-apply-validation.js";
+import { materializeUpstreamPlugin } from "./upstream-plugin.js";
 import { listResources } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
+import type { DependencySourceKind } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
 import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   ensureClaudeMarketplacesFromConfig,
 } from "./claude-marketplace-bootstrap.js";
-import type { ClaudeLayerConfig } from "../types.js";
+import type { ClaudePluginConfig } from "../types.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
+
+/** Dependency sources that need install/sync before composition can see them. */
+const PREPARE_BEFORE_RESOLVE_SOURCES = new Set<DependencySourceKind>([
+  "marketplace",
+  "git",
+]);
+
+/**
+ * Collect marketplace/git pins attached directly to the given plugins.
+ * Used to materialize upstream plugins before the first composition resolve.
+ */
+export function collectPluginPinsForPrepare(
+  pluginIds: string[],
+): PluginConstraintPin[] {
+  const pins = new Map<string, PluginConstraintPin>();
+  for (const pluginId of pluginIds) {
+    for (const dependency of listDependencies(pluginId)) {
+      if (!PREPARE_BEFORE_RESOLVE_SOURCES.has(dependency.source_kind)) {
+        continue;
+      }
+      pins.set(dependency.ref, {
+        ref: dependency.ref,
+        version_constraint: dependency.version_constraint,
+      });
+    }
+  }
+  return [...pins.values()];
+}
 
 export interface SyncPluginPinsForApplyProgress extends InstallPluginPinsProgress {
   onSyncStart?: (ref: string) => void;
@@ -55,7 +89,7 @@ export interface PreparePluginPinsForApplyOptions {
   pins: PluginConstraintPin[];
   baseResources: Resource[];
   projectRoot: string;
-  claudeConfig?: ClaudeLayerConfig;
+  claudeConfig?: ClaudePluginConfig;
   /** When true, skip install/sync and only expand resources + validate pins. */
   skipSync?: boolean;
   syncAll?: boolean;
@@ -111,13 +145,18 @@ export async function syncPluginPinsForApply(
   const scope = options.scope ?? "user";
   const pinsToInstall = options.pins.filter((pin) => pin.version_constraint);
 
-  const installs = await installPluginPins(pinsToInstall, {
-    homeRoot,
-    projectRoot: options.projectRoot,
-    scope,
-    installPlatformId: options.installPlatformId,
-    progress: options.progress,
-  });
+  // --ignore-plugin-versions stamps exact constraints locally; skip marketplace
+  // install attempts that can hang or fail without a real host install.
+  const installs =
+    options.ignoreMissingInstall && !options.syncAll
+      ? []
+      : await installPluginPins(pinsToInstall, {
+          homeRoot,
+          projectRoot: options.projectRoot,
+          scope,
+          installPlatformId: options.installPlatformId,
+          progress: options.progress,
+        });
 
   let syncedResourceCount = 0;
   const unresolvedPins: string[] = [];
@@ -140,7 +179,38 @@ export async function syncPluginPinsForApply(
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const needsSync = options.syncAll || !metadata.resolved_version;
     if (!needsSync) {
+      // Already resolved — still ensure the upstream plugin exists so the
+      // graph can treat the install as an ordinary node without a re-sync.
+      if (metadata.resolved_version) {
+        const parsed = parseDependencyRef(pin.ref);
+        materializeUpstreamPlugin({
+          ref: pin.ref,
+          name: parsed.name,
+          version: metadata.resolved_version,
+        });
+      }
       continue;
+    }
+
+    // --ignore-plugin-versions: stamp exact constraints into upstream stubs
+    // without contacting marketplaces (avoids hangs / missing installs).
+    if (options.ignoreMissingInstall && !options.syncAll) {
+      const stamped = stampResolvedVersionFromExactConstraint(
+        resource,
+        pin.version_constraint,
+      );
+      if (stamped) {
+        const stampedMetadata = (stamped.metadata ?? {}) as PluginPinMetadata;
+        const parsed = parseDependencyRef(pin.ref);
+        if (stampedMetadata.resolved_version) {
+          materializeUpstreamPlugin({
+            ref: pin.ref,
+            name: parsed.name,
+            version: stampedMetadata.resolved_version,
+          });
+        }
+        continue;
+      }
     }
 
     options.progress?.onSyncStart?.(pin.ref);
@@ -155,12 +225,31 @@ export async function syncPluginPinsForApply(
     resource =
       findPluginResourceByPin(pin.ref, pin.version_constraint) ?? resource;
     const syncedMetadata = (resource.metadata ?? {}) as PluginPinMetadata;
+    const parsed = parseDependencyRef(pin.ref);
     if (syncedMetadata.resolved_version) {
+      materializeUpstreamPlugin({
+        ref: pin.ref,
+        name: parsed.name,
+        version: syncedMetadata.resolved_version,
+      });
       continue;
     }
 
     if (options.ignoreMissingInstall) {
-      stampResolvedVersionFromExactConstraint(resource, pin.version_constraint);
+      const stamped = stampResolvedVersionFromExactConstraint(
+        resource,
+        pin.version_constraint,
+      );
+      if (stamped) {
+        const stampedMetadata = (stamped.metadata ?? {}) as PluginPinMetadata;
+        if (stampedMetadata.resolved_version) {
+          materializeUpstreamPlugin({
+            ref: pin.ref,
+            name: parsed.name,
+            version: stampedMetadata.resolved_version,
+          });
+        }
+      }
       continue;
     }
 
@@ -170,7 +259,13 @@ export async function syncPluginPinsForApply(
   return { installs, syncedResourceCount, unresolvedPins };
 }
 
-/** Collect marketplace-linked material resources imported from pinned plugin install trees. */
+/**
+ * Collect marketplace-linked material resources imported from pinned plugin
+ * install trees.
+ *
+ * @deprecated Resolution owns the resource set via upstream plugins. Prefer
+ * materializeUpstreamPlugin + resolveComposition. Remove in Stage 3.
+ */
 export function expandPluginPinMaterialResources(
   pins: PluginConstraintPin[],
   baseResources: Resource[] = [],
@@ -210,6 +305,9 @@ export function expandPluginPinMaterialResources(
     .filter((resource): resource is Resource => resource !== undefined);
 }
 
+/**
+ * @deprecated Resolution owns the resource set via upstream plugins. Remove in Stage 3.
+ */
 export function countPluginPinMaterialResources(
   pins: PluginConstraintPin[],
   baseResources: Resource[] = [],
@@ -247,20 +345,14 @@ export async function preparePluginPinsForApply(
     });
   }
 
-  const applyResources = expandPluginPinMaterialResources(
-    options.pins,
-    options.baseResources,
-  );
-  const extraMaterialized = countPluginPinMaterialResources(
-    options.pins,
-    options.baseResources,
-  );
+  // Resolution owns the resource set. Install/sync still materializes upstream
+  // plugins; expandPluginPinMaterialResources is no longer consulted here.
   const validationIssues = validatePluginPinsAgainstInventory(options.pins);
 
   return {
     ...syncResult,
-    applyResources,
-    extraMaterialized,
+    applyResources: options.baseResources,
+    extraMaterialized: 0,
     validationIssues,
   };
 }

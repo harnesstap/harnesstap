@@ -17,7 +17,7 @@ describe("listInstalledPluginPinCreateInputs", () => {
 
     const demo = pins.find((pin) => pin.origin_ref === "demo@demo-market");
     expect(demo).toMatchObject({
-      type: "plugin_pin",
+      type: "plugin",
       name: "demo",
       namespace: "demo-market",
       origin_kind: "marketplace_link",

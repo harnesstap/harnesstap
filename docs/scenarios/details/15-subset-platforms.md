@@ -1,4 +1,4 @@
-# Scenario 15: Apply a layer to a subset of target platforms
+# Scenario 15: Apply a plugin to a subset of target platforms
 
 **Frequency: Common** · **Status: Shipped**
 
@@ -10,8 +10,8 @@ backend repo that supports Claude Code and Codex but never used Cursor.
 Typical commands:
 
 ```bash
-harnesstap layer apply my-setup --project . --harness claude-code,codex --dry-run
-harnesstap layer apply my-setup --project . --harness claude-code,codex
+harnesstap apply my-setup --project . --harness claude-code,codex --dry-run
+harnesstap apply my-setup --project . --harness claude-code,codex
 ```
 
 The `--harness` flag also lets you migrate one harness at a time: apply only

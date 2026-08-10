@@ -1,18 +1,18 @@
 ---
-description: Machine-wide layers applied to home harness paths, not repository working trees.
+description: Machine-wide plugins applied to home harness paths, not repository working trees.
 ---
 
 # Profiles
 
-A **profile** is a layer tagged `profile` that defines your machine-wide agent harness setup. Profiles apply to **home harness paths** (`~/.claude/`, `~/.codex/`, `~/.cursor/`, …) — not to repository working trees. Use `layer apply` for project-scoped baselines.
+A **profile** is a plugin tagged `profile` that defines your machine-wide agent harness setup. Profiles apply to **home harness paths** (`~/.claude/`, `~/.codex/`, `~/.cursor/`, …) — not to repository working trees. Use `apply` for project-scoped baselines.
 
 ## Machine-wide home harness state
 
 When you run `ht init`, HarnessTap:
 
 1. Creates the local workspace at `~/.harnesstap`
-2. Seeds a `default` profile layer (tagged `profile`)
-3. Writes `~/.harnesstap/active-profile.json` pointing at that layer
+2. Seeds a `default` profile plugin (tagged `profile`)
+3. Writes `~/.harnesstap/active-profile.json` pointing at that plugin
 
 `init` sets the active profile pointer only — it does **not** run global apply. Materialize home harness files after bootstrap:
 
@@ -23,7 +23,7 @@ ht profile use default
 ht default
 ```
 
-Operational state (resources, layers, profiles, environments) lives in `~/.harnesstap/harnesstap.db`. Home environment fragments may live under `~/.harnesstap/environments/`.
+Operational state (resources, plugins, profiles, environments) lives in `~/.harnesstap/harnesstap.db`. Home environment fragments may live under `~/.harnesstap/environments/`.
 
 ## Profile commands
 
@@ -36,28 +36,28 @@ ht profile use work --dry-run
 ht profile delete old-profile
 ```
 
-`profile use` merges the profile layer and transitive `layer` refs, resolves the environment cascade, then writes global harness files.
+`profile use` merges the profile plugin and transitive `plugin` refs, resolves the environment cascade, then writes global harness files.
 
 | Command | Scope |
 | --- | --- |
 | `profile use` | Machine home harness paths |
-| `layer apply --project .` | Repository working tree |
+| `apply --project .` | Repository working tree |
 
-Root shorthand `ht <name>` works when `<name>` is a profile layer and not a reserved command (e.g. `ht work` ≡ `ht profile use work`).
+Root shorthand `ht <name>` works when `<name>` is a profile plugin and not a reserved command (e.g. `ht work` ≡ `ht profile use work`).
 
 ## Building a profile stack
 
-Profiles are layers. Compose them like any other layer before switching:
+Profiles are plugins. Compose them like any other plugin before switching:
 
 ```bash
-ht layer create work --description "Work context"
-ht layer edit work --add engineering-foundation --type layer
-ht layer edit work --add internal-style-guide --type skill
-ht profile create work    # promotes existing layer when name already exists
+ht plugin create work --description "Work context"
+ht plugin edit work --add engineering-foundation --type plugin
+ht plugin edit work --add internal-style-guide --type skill
+ht profile create work    # promotes existing plugin when name already exists
 ht profile use work
 ```
 
-Combine multiple context layers with `layer edit --add layer:…` refs. `profile use` expands nested layer dependencies depth-first.
+Combine multiple context plugins with `plugin edit --add plugin:…` refs. `profile use` expands nested plugin dependencies depth-first.
 
 ## Init defaults
 
@@ -65,7 +65,7 @@ Control bootstrap behavior with init flags:
 
 ```bash
 ht init --main claude-code --aliases cursor,codex
-ht init --no-default-profile    # skip default profile layer and active-profile.json
+ht init --no-default-profile    # skip default profile plugin and active-profile.json
 ht init --interactive           # prompt for harness selection
 ```
 
@@ -80,7 +80,7 @@ The **main** harness is the primary write target during profile apply. **Aliases
 
 ## Cloud-backed profiles
 
-Search, pull, and publish profile-tagged layers through HarnessTap Cloud:
+Search, pull, and publish profile-tagged plugins through HarnessTap Cloud:
 
 ```bash
 ht auth login
@@ -89,22 +89,22 @@ ht profile pull org/work-stack
 ht profile publish work --org acme --catalog default
 ```
 
-`profile pull` is an alias for `layer pull` with a warning when the remote layer is not profile-tagged. `profile publish` targets org catalogs for teammate discovery.
+`profile pull` is an alias for `plugin pull` with a warning when the remote plugin is not profile-tagged. `profile publish` targets org catalogs for teammate discovery.
 
 ## When to use profiles vs projects
 
 | Situation | Use |
 | --- | --- |
 | Separate work / personal / client setups on one machine | Profiles (`profile use`, `ht <name>`) |
-| Repo-specific team baseline | `layer apply --project .` |
-| Sync alias harness files from on-disk main without re-applying a layer | `mirror` |
+| Repo-specific team baseline | `apply --project .` |
+| Sync alias harness files from on-disk main without re-applying a plugin | `mirror` |
 | Detect manual edits after apply | `status --check` |
 
 Profiles answer "what runs on this machine by default?" Projects answer "what does this repository get?"
 
 ## Related
 
-- [Layers](./layers.md) — composition, plugin pins, catalog baselines
+- [Plugins](./plugins.md) — composition, plugin pins, catalog baselines
 - [Projects](./projects.md) — repo-scoped apply and mirror
 - [Getting started](../getting-started.md) — init and first apply
 - [Cloud connection](../cloud.md) — authenticate and publish

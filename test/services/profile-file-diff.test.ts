@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { getManagedFileDiff } from "../../src/services/profile-file-diff.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 
@@ -11,8 +11,8 @@ describe("getManagedFileDiff", () => {
   it("returns expected snapshot content and drifted live content", async () => {
     const context = await createInitializedTestContext("managed-file-diff");
     try {
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
       const skill = createResource({
         type: "skill",
         name: "manual-skill",
@@ -21,8 +21,8 @@ describe("getManagedFileDiff", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(profile.id, skill.id);
-      await applyProfileLayer("work", {
+      addResourceToPlugin(profile.id, skill.id);
+      await applyProfilePlugin("work", {
         harness: "claude-code",
         conflictPolicy: "replace",
       });

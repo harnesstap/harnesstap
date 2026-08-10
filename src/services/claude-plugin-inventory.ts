@@ -116,7 +116,7 @@ function buildInstall(
   };
 }
 
-/** Scopes whose settings files explicitly list this plugin ref (may include multiple layers). */
+/** Scopes whose settings files explicitly list this plugin ref (may include multiple plugins). */
 export function declaringScopesForClaudePlugin(
   ref: string,
   opts: ScanClaudePluginInventoryOptions,

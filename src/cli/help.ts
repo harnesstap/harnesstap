@@ -4,7 +4,7 @@ import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
 import { formatCommand, resolveInvocationName } from "./shared.js";
 
-const LAYER_HELP_LOCAL_COMMANDS = new Set([
+const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
   "create",
   "list",
   "show",
@@ -13,13 +13,16 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "delete",
   "export",
   "import",
-  "apply",
+  "add",
+  "cut",
   "diff",
   "doctor",
+  "why",
+  "fork",
   "from-project",
 ]);
 
-const LAYER_HELP_REMOTE_COMMANDS = new Set([
+const PLUGIN_HELP_REMOTE_COMMANDS = new Set([
   "search",
   "catalog",
   "pull",
@@ -139,12 +142,12 @@ function renderCommandSection(title: string, commands: Command[]): string {
   return lines.join("\n");
 }
 
-function renderLayerGroupedCommandHelp(cmd: Command): string {
+function renderPluginGroupedCommandHelp(cmd: Command): string {
   const local = cmd.commands.filter((command) =>
-    LAYER_HELP_LOCAL_COMMANDS.has(command.name()),
+    PLUGIN_HELP_LOCAL_COMMANDS.has(command.name()),
   );
   const remote = cmd.commands.filter((command) =>
-    LAYER_HELP_REMOTE_COMMANDS.has(command.name()),
+    PLUGIN_HELP_REMOTE_COMMANDS.has(command.name()),
   );
   return [
     renderCommandSection("LOCAL LIBRARY", local),
@@ -202,6 +205,11 @@ export function configureProgramHelp(program: Command): void {
             lines.push(description, "");
           }
 
+          const helpEntry = getCommandHelpEntry(cmd);
+          if (helpEntry?.details?.trim()) {
+            lines.push(helpEntry.details.trim(), "");
+          }
+
           const args = cmd.registeredArguments?.filter((arg) => arg.description) ?? [];
           if (args.length > 0) {
             lines.push(ui.theme.heading("ARGUMENTS"));
@@ -212,7 +220,6 @@ export function configureProgramHelp(program: Command): void {
             lines.push("");
           }
 
-          const helpEntry = getCommandHelpEntry(cmd);
           if (
             isLeafHelpCommand(cmd)
             && helpEntry?.examples
@@ -236,11 +243,11 @@ export function configureProgramHelp(program: Command): void {
             lines.push("");
           }
 
-          const subcommands = cmd.name() === "layer"
-            ? renderLayerGroupedCommandHelp(cmd)
+          const subcommands = cmd.name() === "plugin"
+            ? renderPluginGroupedCommandHelp(cmd)
             : renderGroupedCommandHelp(cmd);
           if (subcommands) {
-            if (cmd.name() !== "layer") {
+            if (cmd.name() !== "plugin") {
               lines.push(ui.theme.heading("COMMANDS"));
             }
             lines.push(subcommands);

@@ -202,7 +202,7 @@ export function renderEnvironmentListShow(row: EnvironmentListRow): string {
       ["Description", row.environment.description || "—"],
       ["Values", `${row.value_count}`],
       ["Secret refs", `${row.secret_ref_count}`],
-      ["Layer references", `${row.reference_count}`],
+      ["Plugin references", `${row.reference_count}`],
     ],
   });
 }

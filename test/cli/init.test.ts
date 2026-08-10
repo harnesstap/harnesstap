@@ -5,23 +5,23 @@ import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("CLI init", () => {
-  test("initializes the database and seeds default profile layer", async () => {
+  test("initializes the database and seeds default profile plugin", async () => {
     const context = await createTestContext("cli-init");
 
     try {
       const result = await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
 
       expect(result.stdout).toContain("HarnessTap initialized");
       expect(result.stdout).toContain("Database");
       expect(result.stdout).toContain("NEXT STEPS");
       expect(result.stdout).not.toContain("already exists");
-      expect(result.stdout).toContain("layer list --search foundation");
+      expect(result.stdout).toContain("plugin list --search foundation");
       expect(result.stdout).toContain("profile use default");
-      expect(result.stdout).toContain("layer apply engineering-foundation");
+      expect(result.stdout).toContain("apply engineering-foundation");
       expect(existsSync(context.connection.getDbPath())).toBe(true);
       expect(context.connection.getDbPath()).toContain(".harnesstap/harnesstap.db");
-      expect(layerModel.listLayers()).toEqual(
+      expect(pluginModel.listPlugins()).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             name: "default",
@@ -72,7 +72,7 @@ describe("CLI init", () => {
       expect(result.stdout).toContain("1 instruction, 1 skill");
       expect(result.stdout).toContain("Status");
       expect(result.stdout).toContain("2 new resources imported");
-      expect(result.stdout).not.toContain("Built-in Layers");
+      expect(result.stdout).not.toContain("Built-in Plugins");
       expect(result.stdout).not.toContain("claude-instructions");
       expect(result.stdout).not.toContain("skill          research");
       expect(homeResources()).toEqual(
@@ -88,18 +88,18 @@ describe("CLI init", () => {
         ]),
       );
 
-      const layerShow = await runCli(["layer", "show", "default"]);
-      expect(layerShow.stdout).toContain("instruction");
-      expect(layerShow.stdout).not.toContain("No resources in this layer.");
+      const pluginShow = await runCli(["plugin", "show", "default"]);
+      expect(pluginShow.stdout).toContain("instruction");
+      expect(pluginShow.stdout).not.toContain("No resources in this plugin.");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
-      const defaultLayer = layerModel.listLayers().find(
-        (layer) => layer.name === "default",
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const defaultPlugin = pluginModel.listPlugins().find(
+        (plugin) => plugin.name === "default",
       );
-      expect(defaultLayer).toBeDefined();
+      expect(defaultPlugin).toBeDefined();
       const db = context.connection.getDb();
-      db.prepare("DELETE FROM layer_resources WHERE layer_id = ?").run(
-        defaultLayer?.id,
+      db.prepare("DELETE FROM plugin_resources WHERE plugin_id = ?").run(
+        defaultPlugin?.id,
       );
 
       const rerun = await runCli(["init"]);
@@ -108,9 +108,9 @@ describe("CLI init", () => {
       expect(rerun.stdout).toContain("already tracked");
       expect(homeResources()).toHaveLength(2);
 
-      const backfilledShow = await runCli(["layer", "show", "default"]);
+      const backfilledShow = await runCli(["plugin", "show", "default"]);
       expect(backfilledShow.stdout).toContain("instruction");
-      expect(backfilledShow.stdout).not.toContain("No resources in this layer.");
+      expect(backfilledShow.stdout).not.toContain("No resources in this plugin.");
     } finally {
       await context.cleanup();
     }
@@ -165,7 +165,7 @@ describe("CLI init", () => {
       expect(rerun.stdout).toContain("main: claude-code");
       expect(rerun.stdout).toContain("aliases: cursor");
       expect(rerun.stdout).toContain("will be overwritten");
-      expect(rerun.stdout).not.toContain("Built-in Layers");
+      expect(rerun.stdout).not.toContain("Built-in Plugins");
       expect(rerun.stdout).not.toContain("already up to date");
     } finally {
       await context.cleanup();

@@ -5,7 +5,7 @@ import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "../../constants/onboarding.js";
-import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
+import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getDb, getDbPath, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
@@ -13,11 +13,11 @@ import {
   setHarnessPreference,
 } from "../../models/harness.js";
 import {
-  addResourceToLayer,
-  createLayer,
-  getLayerResources,
-  listLayers,
-} from "../../models/layer-model.js";
+  addResourceToPlugin,
+  createPlugin,
+  getPluginResources,
+  listPlugins,
+} from "../../models/plugin-model.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
 import { addSkillPackage } from "../../services/add-package.js";
 import { setActiveProfileName } from "../../services/active-profile.js";
@@ -87,10 +87,10 @@ function printQuickStartGuide(): void {
   console.log("");
   console.log(`  ${formatCommand("profile use default")}`);
   console.log(
-    `  ${formatCommand(`layer list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
+    `  ${formatCommand(`plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`)}`,
   );
   console.log(
-    `  ${formatCommand(`layer apply ${CANONICAL_CATALOG_BASELINE}`)}`,
+    `  ${formatCommand(`apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("help")}`);
   ui.dim(`Enable tab completion: ${formatCommand("completion zsh >> ~/.zshrc")}`);
@@ -105,8 +105,8 @@ async function handleAddCommand(
     global?: boolean;
     project?: boolean | string;
     method?: string;
-    layer?: string;
-    createLayer?: string;
+    plugin?: string;
+    createPlugin?: string;
     list?: boolean;
     dryRun?: boolean;
     yes?: boolean;
@@ -117,8 +117,8 @@ async function handleAddCommand(
   const harnesstapDir = getHarnesstapDir();
   const homeRoot = resolveHomeRoot();
 
-  if (opts.layer && opts.createLayer) {
-    throw new Error("Pass only one of --layer or --create-layer.");
+  if (opts.plugin && opts.createPlugin) {
+    throw new Error("Pass only one of --plugin or --create-plugin.");
   }
 
   const method = opts.method === "copy" ? "copy" : opts.method === "symlink" || !opts.method
@@ -186,8 +186,8 @@ async function handleAddCommand(
     projectRoot: scopeFromFlags?.projectRoot,
     method,
     harnesses,
-    createLayer: opts.createLayer,
-    layer: opts.layer,
+    createPlugin: opts.createPlugin,
+    plugin: opts.plugin,
     sourceLabel: namespace,
     shouldPrompt,
   });
@@ -207,8 +207,8 @@ async function handleAddCommand(
     harnesses: wizard.harnesses,
     homeRoot,
     harnesstapDir,
-    createLayer: wizard.createLayer,
-    layer: wizard.layer,
+    createPlugin: wizard.createPlugin,
+    plugin: wizard.plugin,
     dryRun: opts.dryRun,
   });
 
@@ -219,7 +219,7 @@ async function handleAddCommand(
     imported: result.importedSkills,
     installed: result.installedSkills,
     snapshot_id: result.snapshotId,
-    ...(result.layer ? { layer: result.layer } : {}),
+    ...(result.plugin ? { plugin: result.plugin } : {}),
   };
 
   if (format === "json") {
@@ -276,29 +276,29 @@ async function handleInitCommand(opts: {
   const homeDefaults = await scanAndPersistHomeDefaults();
   if (opts.defaultProfile !== false) {
     const homeProfileResources = homeDefaults.resolved.filter(
-      (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+      (resource) => resource.type !== "plugin",
     );
-    let defaultProfileLayer = listLayers().find(
-      (layer) => layer.name === "default" && isProfileLayer(layer),
+    let defaultProfilePlugin = listPlugins().find(
+      (plugin) => plugin.name === "default" && isProfilePlugin(plugin),
     );
     const shouldSeedDefaultProfile =
-      !defaultProfileLayer
-      || getLayerResources(defaultProfileLayer.id).filter(
-        (resource) => resource.type !== "plugin_pin" && resource.type !== "layer",
+      !defaultProfilePlugin
+      || getPluginResources(defaultProfilePlugin.id).filter(
+        (resource) => resource.type !== "plugin",
       ).length === 0;
 
-    if (!defaultProfileLayer) {
-      defaultProfileLayer = createLayer({
+    if (!defaultProfilePlugin) {
+      defaultProfilePlugin = createPlugin({
         name: "default",
         version: "1.0.0",
         description: "Bootstrap profile from init",
-        tags: [PROFILE_LAYER_TAG],
+        tags: [PROFILE_PLUGIN_TAG],
       });
     }
 
     if (shouldSeedDefaultProfile) {
       for (const resource of homeProfileResources) {
-        addResourceToLayer(defaultProfileLayer.id, resource.id);
+        addResourceToPlugin(defaultProfilePlugin.id, resource.id);
       }
     }
 
@@ -419,7 +419,7 @@ async function handleInitCommand(opts: {
     && Boolean(process.stdin.isTTY && process.stdout.isTTY)
     && !["1", "true", "yes"].includes(process.env.CI?.trim().toLowerCase() ?? "")
     && (opts.interactive === true || useWizard)
-    && listLayers().length === 0;
+    && listPlugins().length === 0;
 
   if (canPromptCatalog) {
     try {
@@ -443,7 +443,7 @@ export function registerInitCommands(root: Command): void {
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--main <slug>", "Default main harness slug")
     .option("--aliases <slugs>", "Comma-separated alias harness slugs")
-    .option("--no-default-profile", "Skip creating and activating the default profile layer")
+    .option("--no-default-profile", "Skip creating and activating the default profile plugin")
     .option(
       "--interactive",
       "Prompt for harness selection instead of relying on explicit flags",
@@ -467,8 +467,8 @@ export function registerInitCommands(root: Command): void {
     .option("--global", "Install to user home")
     .option("--project [path]", "Install to project directory")
     .option("--method <mode>", "symlink or copy", "symlink")
-    .option("--layer <name>", "Combine into existing layer")
-    .option("--create-layer <name>", "Create layer and attach skills")
+    .option("--plugin <name>", "Combine into existing plugin")
+    .option("--create-plugin <name>", "Create plugin and attach skills")
     .option("--list", "List discovered skills only")
     .option("--dry-run", "Show plan without writing")
     .option("-y, --yes", "Skip prompts")
@@ -481,8 +481,8 @@ export function registerInitCommands(root: Command): void {
       global?: boolean;
       project?: boolean | string;
       method?: string;
-      layer?: string;
-      createLayer?: string;
+      plugin?: string;
+      createPlugin?: string;
       list?: boolean;
       dryRun?: boolean;
       yes?: boolean;

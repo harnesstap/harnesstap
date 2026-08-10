@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { createLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { writeTextFile } from "../helpers/fs.ts";
@@ -19,7 +19,7 @@ selector = "team-stack"
 [[profiles]]
 name = "custom"
 source = "inline"
-layer = "embedded-layer"
+plugin = "embedded-plugin"
 
 [[environments]]
 name = "shared"
@@ -27,9 +27,9 @@ name = "shared"
 [environments.values]
 REGION = "us"
 
-[[layers]]
-name = "embedded-layer"
-description = "inline layer for custom profile"
+[[plugins]]
+name = "embedded-plugin"
+description = "inline plugin for custom profile"
 `;
 
 function writeProjectConfig(projectDir: string, toml = VALID_PROJECT_CONFIG) {
@@ -66,8 +66,8 @@ describe("CLI config", () => {
       const payload = JSON.parse(result.stdout);
       expect(payload.default_profile).toBe("dev");
       expect(payload.environment_count).toBe(1);
-      expect(payload.layer_count).toBe(1);
-      expect(payload.layers).toEqual([{ name: "embedded-layer" }]);
+      expect(payload.plugin_count).toBe(1);
+      expect(payload.plugins).toEqual([{ name: "embedded-plugin" }]);
     } finally {
       await context.cleanup();
     }
@@ -112,7 +112,7 @@ version = 1
 [[profiles]]
 name = "custom"
 source = "inline"
-layer = "missing-layer"
+plugin = "missing-plugin"
 `,
       );
       const result = await runCli(["config", "validate", "--format", "json"]);
@@ -121,22 +121,22 @@ layer = "missing-layer"
       const payload = JSON.parse(result.stdout);
       expect(payload.valid).toBe(false);
       expect(payload.errors).toEqual([
-        "Profile custom with inline source references unknown layer: missing-layer",
+        "Profile custom with inline source references unknown plugin: missing-plugin",
       ]);
     } finally {
       await context.cleanup();
     }
   });
 
-  it("creates project config from local profile layers", async () => {
+  it("creates project config from local profile plugins", async () => {
     const context = await createTestContext("cli-config-init");
 
     try {
       await runCli(["init", "--no-default-profile"]);
-      const work = createLayer({ name: "work" });
-      setLayerTags(work.id, ["profile"]);
-      const personal = createLayer({ name: "personal" });
-      setLayerTags(personal.id, ["profile"]);
+      const work = createPlugin({ name: "work" });
+      setPluginTags(work.id, ["profile"]);
+      const personal = createPlugin({ name: "personal" });
+      setPluginTags(personal.id, ["profile"]);
 
       const result = await runCli([
         "config",

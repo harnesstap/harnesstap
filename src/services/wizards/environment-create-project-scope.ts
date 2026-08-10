@@ -1,10 +1,10 @@
 import { resolve } from "node:path";
-import { getLayerById } from "../../models/layer-model.js";
+import { getPluginById } from "../../models/plugin-model.js";
 import {
   getProjectByLocalPath,
-  getProjectConfiguredLayers,
+  getProjectConfiguredPlugins,
 } from "../../models/project.js";
-import { toLayerChoices } from "../completion/choices.js";
+import { toPluginChoices } from "../completion/choices.js";
 import { promptForSearchableMultiSelect } from "./searchable-multi-select.js";
 import {
   isPromptBackError,
@@ -14,7 +14,7 @@ import {
   type PromptChoice,
 } from "./shared.js";
 
-export type ProjectLayerScopeInspection =
+export type ProjectPluginScopeInspection =
   | {
       kind: "applied";
       projectRoot: string;
@@ -22,33 +22,33 @@ export type ProjectLayerScopeInspection =
       labels: string[];
     }
   | { kind: "untracked"; projectRoot: string }
-  | { kind: "no_applied_layers"; projectRoot: string };
+  | { kind: "no_applied_plugins"; projectRoot: string };
 
-type PromptLayerSelection = string[] | "back";
+type PromptPluginSelection = string[] | "back";
 
-function formatLayerSelector(layerId: string): string | undefined {
-  const layer = getLayerById(layerId);
-  if (!layer) {
+function formatPluginSelector(pluginId: string): string | undefined {
+  const plugin = getPluginById(pluginId);
+  if (!plugin) {
     return undefined;
   }
-  return `${layer.name}@${layer.version}`;
+  return `${plugin.name}@${plugin.version}`;
 }
 
-export function inspectProjectLayerScope(
+export function inspectProjectPluginScope(
   projectRoot: string,
-): ProjectLayerScopeInspection {
+): ProjectPluginScopeInspection {
   const resolvedRoot = resolve(projectRoot);
   const project = getProjectByLocalPath(resolvedRoot);
   if (!project) {
     return { kind: "untracked", projectRoot: resolvedRoot };
   }
 
-  const applied = getProjectConfiguredLayers(project.id);
+  const applied = getProjectConfiguredPlugins(project.id);
   const selectors: string[] = [];
   const labels: string[] = [];
 
   for (const row of applied) {
-    const selector = formatLayerSelector(row.layer_id);
+    const selector = formatPluginSelector(row.plugin_id);
     if (!selector) {
       continue;
     }
@@ -57,7 +57,7 @@ export function inspectProjectLayerScope(
   }
 
   if (selectors.length === 0) {
-    return { kind: "no_applied_layers", projectRoot: resolvedRoot };
+    return { kind: "no_applied_plugins", projectRoot: resolvedRoot };
   }
 
   return {
@@ -68,27 +68,27 @@ export function inspectProjectLayerScope(
   };
 }
 
-function explainMissingProjectLayers(inspection: ProjectLayerScopeInspection): void {
+function explainMissingProjectPlugins(inspection: ProjectPluginScopeInspection): void {
   console.log("");
   if (inspection.kind === "untracked") {
     console.log(
       `No HarnessTap project is tracked at ${inspection.projectRoot}.`,
     );
     console.log(
-      "Run `ht layer apply` in that directory first, or pick layers from your library to define which env vars are required.",
+      "Run `ht plugin apply` in that directory first, or pick plugins from your library to define which env vars are required.",
     );
     return;
   }
 
   console.log(
-    `Project ${inspection.projectRoot} is tracked, but no layers have been applied yet.`,
+    `Project ${inspection.projectRoot} is tracked, but no plugins have been applied yet.`,
   );
   console.log(
-    "Run `ht layer apply` there, or pick layers from your library to define which env vars are required.",
+    "Run `ht plugin apply` there, or pick plugins from your library to define which env vars are required.",
   );
 }
 
-type MissingScopeAction = "pick_layers" | "change_directory" | "cancel";
+type MissingScopeAction = "pick_plugins" | "change_directory" | "cancel";
 
 async function promptMissingScopeAction(): Promise<MissingScopeAction> {
   return withPromptBack(() =>
@@ -96,14 +96,14 @@ async function promptMissingScopeAction(): Promise<MissingScopeAction> {
       message: "How do you want to continue?",
       choices: [
         {
-          name: "Pick layers from library",
-          value: "pick_layers",
-          description: "Choose which layers define required env vars",
+          name: "Pick plugins from library",
+          value: "pick_plugins",
+          description: "Choose which plugins define required env vars",
         },
         {
           name: "Try another project directory",
           value: "change_directory",
-          description: "Look for a tracked project with applied layers",
+          description: "Look for a tracked project with applied plugins",
         },
         {
           name: "Cancel",
@@ -111,24 +111,24 @@ async function promptMissingScopeAction(): Promise<MissingScopeAction> {
           description: "Abort environment create",
         },
       ],
-      default: "pick_layers",
+      default: "pick_plugins",
     }),
   );
 }
 
-async function promptLayerSelectorsFromLibrary(): Promise<PromptLayerSelection> {
-  const layerChoices = toLayerChoices();
-  if (layerChoices.length === 0) {
+async function promptPluginSelectorsFromLibrary(): Promise<PromptPluginSelection> {
+  const pluginChoices = toPluginChoices();
+  if (pluginChoices.length === 0) {
     console.log("");
-    console.log("No layers found in your HarnessTap library.");
-    console.log("Create a layer first with `ht layer create`, then retry.");
+    console.log("No plugins found in your HarnessTap library.");
+    console.log("Create a plugin first with `ht plugin create`, then retry.");
     return [];
   }
 
   try {
     const selected = await promptForSearchableMultiSelect({
-      message: "Layers that define required environment variables",
-      choices: layerChoices.map((choice) => ({
+      message: "Plugins that define required environment variables",
+      choices: pluginChoices.map((choice) => ({
         name: choice.name,
         value: choice.value,
         description: choice.description,
@@ -137,7 +137,7 @@ async function promptLayerSelectorsFromLibrary(): Promise<PromptLayerSelection> 
 
     if (selected.length === 0) {
       console.log("");
-      console.log("Select at least one layer to continue.");
+      console.log("Select at least one plugin to continue.");
       return [];
     }
 
@@ -150,25 +150,25 @@ async function promptLayerSelectorsFromLibrary(): Promise<PromptLayerSelection> 
   }
 }
 
-async function promptAppliedLayerSelectors(input: {
+async function promptAppliedPluginSelectors(input: {
   labels: string[];
   selectors: string[];
-}): Promise<PromptLayerSelection> {
+}): Promise<PromptPluginSelection> {
   if (input.selectors.length === 1) {
     console.log("");
-    console.log(`Using applied layer: ${input.labels[0]}`);
+    console.log(`Using applied plugin: ${input.labels[0]}`);
     return input.selectors;
   }
 
   console.log("");
-  console.log("Applied layers at this project:");
+  console.log("Applied plugins at this project:");
   for (const label of input.labels) {
     console.log(`  - ${label}`);
   }
 
   try {
     const selected = await promptForSearchableMultiSelect({
-      message: "Layers to derive required environment variables from",
+      message: "Plugins to derive required environment variables from",
       choices: input.selectors.map((selector, index) => ({
         name: input.labels[index] ?? selector,
         value: selector,
@@ -178,7 +178,7 @@ async function promptAppliedLayerSelectors(input: {
 
     if (selected.length === 0) {
       console.log("");
-      console.log("Select at least one layer to continue.");
+      console.log("Select at least one plugin to continue.");
       return [];
     }
 
@@ -202,9 +202,9 @@ async function promptProjectDirectory(defaultPath = "."): Promise<string> {
   );
 }
 
-export async function promptForProjectLayerScope(input?: {
+export async function promptForProjectPluginScope(input?: {
   initialProjectRoot?: string;
-}): Promise<{ projectRoot: string; layerSelectors: string[] } | undefined> {
+}): Promise<{ projectRoot: string; pluginSelectors: string[] } | undefined> {
   let projectRoot = input?.initialProjectRoot
     ? resolve(input.initialProjectRoot)
     : undefined;
@@ -222,27 +222,27 @@ export async function promptForProjectLayerScope(input?: {
     }
 
     while (true) {
-      const inspection = inspectProjectLayerScope(projectRoot);
+      const inspection = inspectProjectPluginScope(projectRoot);
 
       if (inspection.kind === "applied") {
-        const layerSelection = await promptAppliedLayerSelectors({
+        const pluginSelection = await promptAppliedPluginSelectors({
           labels: inspection.labels,
           selectors: inspection.selectors,
         });
-        if (layerSelection === "back") {
+        if (pluginSelection === "back") {
           projectRoot = undefined;
           break;
         }
-        if (layerSelection.length === 0) {
+        if (pluginSelection.length === 0) {
           continue;
         }
         return {
           projectRoot: inspection.projectRoot,
-          layerSelectors: layerSelection,
+          pluginSelectors: pluginSelection,
         };
       }
 
-      explainMissingProjectLayers(inspection);
+      explainMissingProjectPlugins(inspection);
 
       let action: MissingScopeAction;
       try {
@@ -264,34 +264,34 @@ export async function promptForProjectLayerScope(input?: {
         break;
       }
 
-      const layerSelection = await promptLayerSelectorsFromLibrary();
-      if (layerSelection === "back") {
+      const pluginSelection = await promptPluginSelectorsFromLibrary();
+      if (pluginSelection === "back") {
         continue;
       }
-      if (layerSelection.length === 0) {
+      if (pluginSelection.length === 0) {
         continue;
       }
 
       return {
         projectRoot: inspection.projectRoot,
-        layerSelectors: layerSelection,
+        pluginSelectors: pluginSelection,
       };
     }
   }
 }
 
 export const ENVIRONMENT_CREATE_SOURCE_CHOICES: PromptChoice<
-  "from-project" | "from-layer" | "blank"
+  "from-project" | "from-plugin" | "blank"
 >[] = [
   {
     name: "From project",
     value: "from-project",
-    description: "Scan harness files and import required env vars for applied layers",
+    description: "Scan harness files and import required env vars for applied plugins",
   },
   {
-    name: "From layer requirements",
-    value: "from-layer",
-    description: "Fill keys a layer needs without scanning a project directory",
+    name: "From plugin requirements",
+    value: "from-plugin",
+    description: "Fill keys a plugin needs without scanning a project directory",
   },
   {
     name: "Blank environment",

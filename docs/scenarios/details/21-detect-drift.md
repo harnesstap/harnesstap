@@ -1,4 +1,4 @@
-# Scenario 21: Detect drift between project files and the last applied layer
+# Scenario 21: Detect drift between project files and the last applied plugin
 
 **Frequency: Occasional** · **Status: Shipped**
 

@@ -1,39 +1,18 @@
 import { DEFAULT_CLOUD_BASE_URL } from "../../src/config/catalog.ts";
-import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+import { AP_PACKAGE_SCHEMA, type ApPackageFiles } from "../../src/services/agent-plugins/files.ts";
+import { makeApEnvelope } from "./ap-package-fixtures.ts";
 
-const DEFAULT_BUNDLE = formatLayerExportToml({
-  $schema: "urn:harnesstap:layer:v1",
-  version: 1,
-  layers: [
-    {
-      name: "remote-team",
-      version: "1.0.0",
-      description: "from cloud",
-      tags: [],
-      resources: [
-        {
-          type: "instruction",
-          name: "r",
-          description: "",
-          content: "#x",
-          metadata: {},
-          namespace: "",
-          origin_kind: "manual",
-          origin_ref: "",
-          content_hash: "",
-          content_blob_ref: "",
-        },
-      ],
-      plugin_pins: [],
-    },
-  ],
-  embedded_plugins: [],
-});
+const DEFAULT_BUNDLE = makeApEnvelope();
 
-function normalizeLayer(layer: Record<string, unknown>) {
+export type CatalogPackageFixture = {
+  schema: string;
+  files: ApPackageFiles;
+};
+
+function normalizePlugin(plugin: Record<string, unknown>) {
   return {
     catalogSlug: "default",
-    ...layer,
+    ...plugin,
   };
 }
 
@@ -51,24 +30,50 @@ function encodeCursor(offset: number): string {
   return Buffer.from(String(offset), "utf8").toString("base64url");
 }
 
+function packageBodyForUrl(
+  url: string,
+  packages: Record<string, CatalogPackageFixture | string> | undefined,
+  fallbackBundle: string,
+): string {
+  const match = url.match(
+    /\/(?:api\/(?:public|catalog))\/([^/]+)\/([^/]+)\/([^/]+)\/versions\/([^/]+)\/package(?:\?|$)/,
+  );
+  if (!match) {
+    return fallbackBundle;
+  }
+  const [, orgSlug, catalogSlug, pluginSlug, version] = match;
+  const key = `${orgSlug}/${catalogSlug}/${pluginSlug}@${decodeURIComponent(version ?? "")}`;
+  const entry = packages?.[key];
+  if (entry == null) {
+    return fallbackBundle;
+  }
+  if (typeof entry === "string") {
+    return entry;
+  }
+  return `${JSON.stringify({ schema: entry.schema, files: entry.files }, null, 2)}\n`;
+}
+
 export function createCatalogFetchMock(input?: {
-  layers?: Array<Record<string, unknown>>;
+  plugins?: Array<Record<string, unknown>>;
+  /** @deprecated Prefer `packages`. Kept for existing tests that pass a raw envelope string. */
   bundle?: string;
+  packages?: Record<string, CatalogPackageFixture | string>;
+  status?: number;
   baseUrl?: string;
   failOrgFilters?: string[];
   pageDelayMs?: number;
 }) {
   const baseUrl = (input?.baseUrl ?? DEFAULT_CLOUD_BASE_URL).replace(/\/+$/, "");
-  const layers = (input?.layers ?? [{
+  const plugins = (input?.plugins ?? [{
     orgSlug: "harnesstap-cloud",
     slug: "team",
-    name: "Team Layer",
-    summary: "Team layer",
+    name: "Team Plugin",
+    summary: "Team plugin",
     latestVersion: "1.0.0",
     updatedAt: new Date().toISOString(),
     tags: [],
     visibility: "public",
-  }]).map((layer) => normalizeLayer(layer));
+  }]).map((plugin) => normalizePlugin(plugin));
   const bundle = input?.bundle ?? DEFAULT_BUNDLE;
   const pageDelayMs = input?.pageDelayMs ?? 0;
   const originalFetch = globalThis.fetch;
@@ -81,7 +86,42 @@ export function createCatalogFetchMock(input?: {
         json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
       };
     }
-    if (url.startsWith(`${baseUrl}/api/public/layers`) || url.startsWith(`${baseUrl}/api/catalog/layers`)) {
+
+    if (input?.status === 426) {
+      return {
+        ok: false,
+        status: 426,
+        clone() {
+          return this;
+        },
+        json: async () => ({
+          error: "cli_too_old",
+          message: "This HarnessTap Cloud API requires CLI 0.1.0 or newer.",
+          minimumVersion: "0.1.0",
+          fix: "npm install -g harnesstap@latest",
+        }),
+        text: async () =>
+          JSON.stringify({
+            error: "cli_too_old",
+            minimumVersion: "0.1.0",
+            fix: "npm install -g harnesstap@latest",
+          }),
+      };
+    }
+
+    if (input?.status != null && input.status !== 200) {
+      return {
+        ok: false,
+        status: input.status,
+        json: async () => ({}),
+        text: async () => "",
+      };
+    }
+
+    const isPluginList =
+      url.startsWith(`${baseUrl}/api/public/plugins`)
+      || url.startsWith(`${baseUrl}/api/catalog/plugins`);
+    if (isPluginList) {
       const parsed = new URL(url);
       const orgFilters = parsed.searchParams.getAll("org");
       if (input?.failOrgFilters?.some((org) => orgFilters.includes(org))) {
@@ -91,24 +131,24 @@ export function createCatalogFetchMock(input?: {
       const tag = parsed.searchParams.get("tag")?.trim().toLowerCase();
       const catalog = parsed.searchParams.get("catalog")?.trim();
       let filtered = orgFilters.length === 0
-        ? layers
-        : layers.filter((layer) =>
-            orgFilters.includes(String(layer.orgSlug)),
+        ? plugins
+        : plugins.filter((plugin) =>
+            orgFilters.includes(String(plugin.orgSlug)),
           );
       if (catalog) {
-        filtered = filtered.filter((layer) => String(layer.catalogSlug ?? "default") === catalog);
+        filtered = filtered.filter((plugin) => String(plugin.catalogSlug ?? "default") === catalog);
       }
       if (query) {
-        filtered = filtered.filter((layer) => {
-          const slug = String(layer.slug ?? "").toLowerCase();
-          const name = String(layer.name ?? "").toLowerCase();
+        filtered = filtered.filter((plugin) => {
+          const slug = String(plugin.slug ?? "").toLowerCase();
+          const name = String(plugin.name ?? "").toLowerCase();
           return slug.includes(query) || name.includes(query);
         });
       }
       if (tag) {
-        filtered = filtered.filter((layer) => {
-          const layerTags = Array.isArray(layer.tags) ? layer.tags : [];
-          return layerTags.some((entry) => String(entry).toLowerCase() === tag);
+        filtered = filtered.filter((plugin) => {
+          const pluginTags = Array.isArray(plugin.tags) ? plugin.tags : [];
+          return pluginTags.some((entry) => String(entry).toLowerCase() === tag);
         });
       }
       const limit = Math.min(Number(parsed.searchParams.get("limit") ?? 10) || 10, 100);
@@ -122,14 +162,15 @@ export function createCatalogFetchMock(input?: {
       }
       return {
         ok: true,
-        json: async () => ({ layers: page, nextCursor }),
+        json: async () => ({ plugins: page, nextCursor }),
       };
     }
-    if (/\/api\/public\/.+\/versions\/.+\/layer-export/.test(url)) {
-      return { ok: true, text: async () => bundle };
-    }
-    if (/\/api\/catalog\/.+\/versions\/.+\/layer-export/.test(url)) {
-      return { ok: true, text: async () => bundle };
+    if (
+      /\/api\/public\/.+\/versions\/.+\/package/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/package/.test(url)
+    ) {
+      const body = packageBodyForUrl(url, input?.packages, bundle);
+      return { ok: true, status: 200, text: async () => body };
     }
     if (url.endsWith("/api/me/orgs")) {
       return {
@@ -144,3 +185,5 @@ export function createCatalogFetchMock(input?: {
     globalThis.fetch = originalFetch;
   };
 }
+
+export { AP_PACKAGE_SCHEMA };

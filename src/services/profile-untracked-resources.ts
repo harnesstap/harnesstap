@@ -1,20 +1,20 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
-  addResourceToLayer,
-  resolveLayerSelector,
-  touchLayerUpdatedAt,
-} from "../models/layer-model.js";
-import { isProfileLayer, listProfileLayers } from "../constants/profile.js";
+  addResourceToPlugin,
+  resolvePluginSelector,
+  touchPluginUpdatedAt,
+} from "../models/plugin-model.js";
+import { isProfilePlugin, listProfilePlugins } from "../constants/profile.js";
 import {
   MATERIAL_RESOURCE_TYPES,
   type MaterialResourceType,
   type Resource,
   type ResourceCreateInput,
 } from "../types.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
-import { markLayerDirty } from "./layer-versioning.js";
-import { collectProfileLayerIds } from "./profile-apply.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
+import { markPluginDirty } from "./plugin-versioning.js";
+import { collectProfilePluginIds } from "./profile-apply.js";
 import {
   type ProfileContents,
   type ProfileContentsResource,
@@ -48,14 +48,14 @@ function profileResourceKey(
   return `${resource.type}:${resource.name}`;
 }
 
-/** Keys attached to the given profile stack (including nested layers). */
+/** Keys attached to the given profile stack (including nested plugins). */
 function trackedResourceKeys(profileSelector: string): Set<string> {
-  const profileLayer = resolveLayerSelector(profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(profileSelector);
+  if (!profilePlugin) {
     return new Set();
   }
-  const profileResources = mergeLayersForApply(
-    collectProfileLayerIds(profileLayer),
+  const profileResources = mergePluginsForApply(
+    collectProfilePluginIds(profilePlugin),
   ).resources;
   return new Set(
     profileResources
@@ -67,9 +67,9 @@ function trackedResourceKeys(profileSelector: string): Set<string> {
 /** Keys attached to any profile — used for not-staged detection. */
 function resourceKeysAttachedToAnyProfile(): Set<string> {
   const keys = new Set<string>();
-  for (const profile of listProfileLayers()) {
-    const profileResources = mergeLayersForApply(
-      collectProfileLayerIds(profile),
+  for (const profile of listProfilePlugins()) {
+    const profileResources = mergePluginsForApply(
+      collectProfilePluginIds(profile),
     ).resources;
     for (const resource of profileResources) {
       if (isMaterialResource(resource)) {
@@ -123,11 +123,11 @@ async function profileOwnedPaths(
   platformIds: string[],
   target: "global" | "project",
 ): Promise<Set<string>> {
-  const profileLayer = resolveLayerSelector(profileSelector);
-  if (!profileLayer || !isProfileLayer(profileLayer) || platformIds.length === 0) {
+  const profilePlugin = resolvePluginSelector(profileSelector);
+  if (!profilePlugin || !isProfilePlugin(profilePlugin) || platformIds.length === 0) {
     return new Set();
   }
-  const merged = mergeLayersForApply(collectProfileLayerIds(profileLayer));
+  const merged = mergePluginsForApply(collectProfilePluginIds(profilePlugin));
   const material = merged.resources.filter(isMaterialResource);
   if (material.length === 0) {
     return new Set();
@@ -162,8 +162,8 @@ async function notStagedFromHomeScan(
   profileSelector: string,
   harness?: string,
 ): Promise<ProfileContentsResource[]> {
-  const profileLayer = resolveLayerSelector(profileSelector);
-  if (!profileLayer || !isProfileLayer(profileLayer)) {
+  const profilePlugin = resolvePluginSelector(profileSelector);
+  if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
     return [];
   }
 
@@ -215,8 +215,8 @@ async function notStagedFromProjectScan(
   profileSelector: string,
   projectPath: string,
 ): Promise<ProfileContentsResource[]> {
-  const profileLayer = resolveLayerSelector(profileSelector);
-  if (!profileLayer || !isProfileLayer(profileLayer)) {
+  const profilePlugin = resolvePluginSelector(profileSelector);
+  if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
     return [];
   }
 
@@ -320,12 +320,12 @@ export async function addResourceToProfile(input: {
   projectPath?: string;
   harness?: string;
 }): Promise<ProfileContentsResource> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
   if (!MATERIAL_RESOURCE_TYPE_SET.has(input.resourceType)) {
     throw new Error(`Unsupported resource type: ${input.resourceType}`);
@@ -363,9 +363,9 @@ export async function addResourceToProfile(input: {
     );
   }
 
-  markLayerDirty(profileLayer.id);
-  addResourceToLayer(profileLayer.id, resource.id);
-  touchLayerUpdatedAt(profileLayer.id);
+  markPluginDirty(profilePlugin.id);
+  addResourceToPlugin(profilePlugin.id, resource.id);
+  touchPluginUpdatedAt(profilePlugin.id);
 
   return toContentsResource(resource);
 }
@@ -376,8 +376,8 @@ async function resolveUntrackedScanResults(input: {
   projectPath?: string;
   harness?: string;
 }): Promise<{ originRef: string; scanResults: ScanResult[] }> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer || !isProfileLayer(profileLayer)) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
 
@@ -434,12 +434,12 @@ export async function addAllUntrackedResourcesToProfile(input: {
   projectPath?: string;
   harness?: string;
 }): Promise<{ resources: ProfileContentsResource[]; added_count: number }> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
   const { originRef, scanResults } = await resolveUntrackedScanResults(input);
@@ -456,11 +456,11 @@ export async function addAllUntrackedResourcesToProfile(input: {
     throw new Error("No untracked resources to add to profile.");
   }
 
-  markLayerDirty(profileLayer.id);
+  markPluginDirty(profilePlugin.id);
   for (const resource of materialResources) {
-    addResourceToLayer(profileLayer.id, resource.id);
+    addResourceToPlugin(profilePlugin.id, resource.id);
   }
-  touchLayerUpdatedAt(profileLayer.id);
+  touchPluginUpdatedAt(profilePlugin.id);
 
   const resources = materialResources.map((resource) => toContentsResource(resource));
   return {
@@ -535,7 +535,7 @@ export function buildContentsFromResources(
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([type, count]) => `${count} ${type}${count === 1 ? "" : "s"}`);
   return {
-    layers: [],
+    plugins: [],
     stack_resource_count: resources.length,
     stack_summary: summaryParts.join(", ") || null,
     type_counts: typeCounts,
@@ -549,8 +549,8 @@ export async function captureUntrackedResourcesForStash(input: {
   profileSelector: string;
   harness?: string;
 }): Promise<UntrackedStashCapture> {
-  const profileLayer = resolveLayerSelector(input.profileSelector);
-  if (!profileLayer || !isProfileLayer(profileLayer)) {
+  const profilePlugin = resolvePluginSelector(input.profileSelector);
+  if (!profilePlugin || !isProfilePlugin(profilePlugin)) {
     throw new Error(`Profile not found: ${input.profileSelector}`);
   }
 

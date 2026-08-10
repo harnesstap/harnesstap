@@ -9,7 +9,8 @@ import {
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
-import type { PluginPinMetadata, Resource } from "../types.js";
+import { getPluginByName } from "../models/plugin-model.js";
+import type { PluginDependencyMetadata, PluginPinMetadata, Resource } from "../types.js";
 import {
   readPluginVersionFromInstallRoot,
   scanPluginSource,
@@ -17,7 +18,9 @@ import {
 import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
-import { formatPluginRef } from "./layer-composition.js";
+import { formatPluginRef } from "./plugin-composition.js";
+import { assertSyncable } from "./plugin-origin.js";
+import { parseDependencyRef } from "./plugin-dependency.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
@@ -101,10 +104,35 @@ function resolveConflictPolicy(
   return "fail";
 }
 
+/**
+ * Sync is about refreshing an upstream/catalog install tree — not about
+ * consumer plugins that merely attach the dependency. Local composition deps
+ * gate on the named plugin's origin (authored → refuse).
+ */
+function assertPluginResourceSyncable(pluginResource: Resource): void {
+  const metadata = (pluginResource.metadata ?? {}) as PluginDependencyMetadata;
+  const sourceKind =
+    metadata.source_kind ??
+    parseDependencyRef(pluginResource.origin_ref || pluginResource.name).source_kind;
+  if (sourceKind !== "local") {
+    return;
+  }
+  const plugin =
+    getPluginByName(pluginResource.name) ??
+    (pluginResource.origin_ref
+      ? getPluginByName(pluginResource.origin_ref)
+      : undefined);
+  if (plugin) {
+    assertSyncable(plugin.id);
+  }
+}
+
 export async function syncPluginResource(
   pluginResource: Resource,
   options: SyncLinkedResourcesOptions = {},
 ): Promise<SyncLinkedResourcesResult> {
+  assertPluginResourceSyncable(pluginResource);
+
   const homeRoot = options.homeRoot ?? resolveHomeRoot();
   const claudePluginsRoot =
     options.claudePluginsRoot ?? defaultClaudePluginsRoot(homeRoot);
@@ -234,17 +262,17 @@ export async function syncLinkedResources(
 ): Promise<SyncLinkedResourcesResult> {
   if (options.selector) {
     const resolved = resolveResource(options.selector, { mode: "compose" });
-    if (resolved.status === "found" && resolved.resource.type === "plugin_pin") {
+    if (resolved.status === "found" && resolved.resource.type === "plugin") {
       return syncPluginResource(resolved.resource, options);
     }
   }
 
   const pluginTargets = options.selector
     ? []
-    : listResources({ type: "plugin_pin", includeComposition: true });
+    : listResources({ type: "plugin", includeComposition: true });
 
   const linkedTargets = listLinkedResources(options.selector).filter(
-    (resource) => resource.type !== "plugin_pin",
+    (resource) => resource.type !== "plugin",
   );
 
   const aggregated: SyncLinkedResourcesResult = {

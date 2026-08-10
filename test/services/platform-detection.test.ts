@@ -21,7 +21,7 @@ describe("detectPlatforms symlink AGENTS.md", () => {
 
     try {
       writeTextFile(join(projectDir, "AGENTS.md"), "# Codex agents");
-      expect(detectPlatforms(projectDir)).toEqual([]);
+      expect(detectPlatforms(projectDir)).toEqual(["grok-build"]);
     } finally {
       cleanupDir(projectDir);
     }

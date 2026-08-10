@@ -16,10 +16,13 @@ describe("scanner services", () => {
       const scanner = await import("../../src/services/scanner.ts");
       const results = await scanner.scanProject(context.projectDir);
 
-      expect(scanner.detectPlatforms(context.projectDir)).toEqual([]);
-      expect(results).toHaveLength(1);
-      expect(results[0]?.platformId).toBe("shared");
-      expect(results[0]?.resources).toEqual([
+      expect(scanner.detectPlatforms(context.projectDir)).toEqual(["grok-build"]);
+      expect(results.map((result) => result.platformId).sort()).toEqual([
+        "grok-build",
+        "shared",
+      ]);
+      const shared = results.find((result) => result.platformId === "shared");
+      expect(shared?.resources).toEqual([
         expect.objectContaining({
           type: "instruction",
           name: "agents-instructions",
@@ -253,7 +256,7 @@ describe("scanner services", () => {
       );
 
       expect(homeClaude?.resources.map((resource) => resource.type)).toEqual(
-        expect.arrayContaining(["instruction", "skill", "plugin_pin"]),
+        expect.arrayContaining(["instruction", "skill", "plugin"]),
       );
       expect(
         homeClaude?.resources.find((resource) => resource.type === "skill")
@@ -261,7 +264,7 @@ describe("scanner services", () => {
       ).toBe("~/.claude/skills/research/SKILL.md");
 
       const pin = homeClaude?.resources.find(
-        (resource) => resource.type === "plugin_pin",
+        (resource) => resource.type === "plugin",
       );
       expect(pin).toMatchObject({
         name: "demo",
@@ -275,7 +278,7 @@ describe("scanner services", () => {
         originRef: context.homeDir,
       });
       const savedPin = persisted.resolved.find(
-        (resource) => resource.type === "plugin_pin",
+        (resource) => resource.type === "plugin",
       );
       expect(savedPin).toMatchObject({
         name: "demo",

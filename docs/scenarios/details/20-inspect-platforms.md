@@ -5,7 +5,7 @@
 [← Back to scenarios index](../scenarios.md)
 
 Use this when planning which harnesses to use as main and aliases, or when
-an unfamiliar harness ID appears in someone else's layer.
+an unfamiliar harness ID appears in someone else's plugin.
 
 Typical commands:
 

@@ -47,11 +47,11 @@ Apply a public catalog baseline in a few minutes.
    ht init --main codex --aliases claude-code,cursor
    ```
 
-2. **Apply** a catalog layer by bare name (fetches from the public HarnessTap Cloud catalog when needed).
+2. **Apply** a catalog plugin by bare name (fetches from the public HarnessTap Cloud catalog when needed).
 
    ```bash
-   ht layer list --search foundation --remote-only
-   ht layer apply engineering-foundation
+   ht plugin list --search foundation --remote-only
+   ht apply engineering-foundation
    ```
 
 3. **Inspect** project state and next steps.
@@ -61,13 +61,13 @@ Apply a public catalog baseline in a few minutes.
    ht help
    ```
 
-When a repository has a git `origin`, `ht layer apply` stores a snapshot before writing files. Restore it later with `ht revert`.
+When a repository has a git `origin`, `ht apply` stores a snapshot before writing files. Restore it later with `ht revert`.
 
-Starter layers such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
+Starter plugins such as `engineering-foundation` live in the **public cloud catalog**, not inside the npm package. To opt out of anonymous public catalog lookups, set `catalog.publicCatalog: false` in `~/.harnesstap/config.jsonc` or export `HARNESSTAP_PUBLIC_CATALOG=0`.
 
 ## Follow-up: scan, compose, and publish
 
-After the baseline fits, build and share your own layers.
+After the baseline fits, build and share your own plugins.
 
 1. **Scan** the current repository and review imports.
 
@@ -76,21 +76,21 @@ After the baseline fits, build and share your own layers.
    ht resource list
    ```
 
-2. **Create** a reusable layer and add resources.
+2. **Create** a reusable plugin and add resources.
 
    ```bash
-   ht layer create my-setup --description "Shared project assistant setup"
-   ht layer edit my-setup --add research-helper --type skill
+   ht plugin create my-setup --description "Shared project assistant setup"
+   ht plugin edit my-setup --add research-helper --type skill
    ```
 
 3. **Apply**, mirror alias harnesses, or publish to the cloud catalog.
 
    ```bash
-   ht layer apply my-setup --project . --harness claude-code,cursor
+   ht apply my-setup --project . --harness claude-code,cursor
    ht mirror .
    ht auth login
-   ht layer catalog register acme/default
-   ht layer publish my-setup
+   ht plugin catalog register acme/default
+   ht plugin publish my-setup
    ```
 
 4. **Manage** harness preferences after init.
@@ -102,13 +102,13 @@ After the baseline fits, build and share your own layers.
 
 ## Where data lives
 
-Operational state lives in `~/.harnesstap/harnesstap.db` (resources, layers, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Override the base directory with `HARNESSTAP_HOME`.
+Operational state lives in `~/.harnesstap/harnesstap.db` (resources, plugins, environments, tracked projects, snapshots). Optional settings live in `~/.harnesstap/config.jsonc`. Override the base directory with `HARNESSTAP_HOME`.
 
-`init` seeds a `default` profile layer and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use default` to materialize home harness files. See [Profiles](./concepts/profiles.md).
+`init` seeds a `default` profile plugin and writes `active-profile.json`, but does **not** run global apply automatically. Run `ht profile use default` to materialize home harness files. See [Profiles](./concepts/profiles.md).
 
 ## Next steps
 
 - [Command reference](./command-reference.md) — grouped CLI surface and flags
 - [Concepts overview](./concepts/overview.md) — architecture and data model
-- [HarnessTap Cloud](./cloud.md) — authenticate and work with shared layers
+- [HarnessTap Cloud](./cloud.md) — authenticate and work with shared plugins
 - [Scenario guides](../scenarios/scenarios.md) — numbered playbooks (preview/apply, drift, mirror, migration, …)

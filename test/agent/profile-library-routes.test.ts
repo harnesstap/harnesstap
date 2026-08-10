@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createPlugin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 
 describe("agent library routes", () => {
@@ -34,9 +34,9 @@ describe("agent library routes", () => {
     return server;
   }
 
-  it("lists layers and resources with bearer auth", async () => {
+  it("lists plugins and resources with bearer auth", async () => {
     const server = withServer();
-    createLayer({ name: "eng", description: "Engineering" });
+    createPlugin({ name: "eng", description: "Engineering" });
     createResource({
       type: "skill",
       name: "ship",
@@ -46,15 +46,15 @@ describe("agent library routes", () => {
       source: "manual",
     });
 
-    const denied = await fetch(`${server.url}/v1/library/layers`);
+    const denied = await fetch(`${server.url}/v1/library/plugins`);
     expect(denied.status).toBe(401);
 
-    const layers = await fetch(`${server.url}/v1/library/layers`, {
+    const plugins = await fetch(`${server.url}/v1/library/plugins`, {
       headers: { authorization: `Bearer ${server.token}` },
     });
-    expect(layers.status).toBe(200);
-    const layerBody = await layers.json();
-    expect(layerBody.layers.some((l: { name: string }) => l.name === "eng")).toBe(true);
+    expect(plugins.status).toBe(200);
+    const pluginBody = await plugins.json();
+    expect(pluginBody.plugins.some((l: { name: string }) => l.name === "eng")).toBe(true);
 
     const resources = await fetch(`${server.url}/v1/library/resources`, {
       headers: { authorization: `Bearer ${server.token}` },

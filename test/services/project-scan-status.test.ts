@@ -127,8 +127,8 @@ describe("project status payload", () => {
         `${JSON.stringify({ name: "default" }, null, 2)}\n`,
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
-      const profileLayer = layerModel.createLayer({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const profilePlugin = pluginModel.createPlugin({
         name: "default",
         tags: ["profile"],
       });
@@ -141,7 +141,7 @@ describe("project status payload", () => {
         metadata: {},
         source: "test",
       });
-      layerModel.addResourceToLayer(profileLayer.id, instruction.id);
+      pluginModel.addResourceToPlugin(profilePlugin.id, instruction.id);
 
       const { buildProjectStatusPayload } = await import(
         "../../src/services/project-status-payload.ts"

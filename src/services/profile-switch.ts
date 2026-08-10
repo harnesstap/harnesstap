@@ -1,5 +1,5 @@
 import { getActiveProfileName } from "./active-profile.js";
-import type { ApplyProfileLayerOptions, ApplyProfileLayerResult } from "./profile-apply.js";
+import type { ApplyProfilePluginOptions, ApplyProfilePluginResult } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
 import { useProfileCommandUnlocked } from "./profile-commands.js";
 
@@ -22,7 +22,7 @@ export interface ProfileSwitchStepEvent {
 export type ProfileSwitchStepListener = (event: ProfileSwitchStepEvent) => void;
 
 export interface SwitchProfileOptions {
-  apply: ApplyProfileLayerOptions;
+  apply: ApplyProfilePluginOptions;
   onStep?: ProfileSwitchStepListener;
   isCancelled?: () => boolean;
   useProfile?: typeof useProfileCommandUnlocked;
@@ -32,7 +32,7 @@ export interface SwitchProfileSuccess {
   ok: true;
   cancelled: false;
   previous_profile: string | null;
-  apply: ApplyProfileLayerResult;
+  apply: ApplyProfilePluginResult;
   events: ProfileSwitchStepEvent[];
 }
 
@@ -48,7 +48,7 @@ export interface SwitchProfileFailed {
   cancelled: false;
   previous_profile: string | null;
   apply_error: string;
-  restored: ApplyProfileLayerResult;
+  restored: ApplyProfilePluginResult;
   events: ProfileSwitchStepEvent[];
 }
 

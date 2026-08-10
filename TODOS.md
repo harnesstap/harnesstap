@@ -52,7 +52,7 @@
 - **Status:** deferred
 
 ### T-ENG-2 — Expand file lock to all DB-mutating commands
-- **What:** Extend the profile-apply file lock (or a broader workspace lock) to cover other DB writers (`layer` edit/scan, `resource sync`, profile create/delete, etc.) while the Tauri sidecar holds a long-lived DB connection.
+- **What:** Extend the profile-apply file lock (or a broader workspace lock) to cover other DB writers (`plugin` edit/scan, `resource sync`, profile create/delete, etc.) while the Tauri sidecar holds a long-lived DB connection.
 - **Why:** Phase 1 only locks mutating profile applies + `busy_timeout`; concurrent CLI mutations can still race the sidecar (outside voice / D20 deferral).
 - **Pros:** Fewer SQLITE races and corrupt reads when terminal + desktop are both used.
 - **Cons:** Wide blast radius; risk of over-locking or deadlocks if applied naively.

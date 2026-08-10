@@ -5,8 +5,8 @@ import {
   upsertEnvironmentEnvVar,
   upsertEnvironmentModelConfig,
 } from "../models/environment.js";
-import { setLayerDefaultEnvironment } from "../models/layer-model.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { setPluginDefaultEnvironment } from "../models/plugin-model.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
 import {
   createEnvironmentCommand,
   showEnvironmentCommand,
@@ -19,20 +19,20 @@ import {
   type EnvironmentCapturePreview,
   type MissingEnvironmentKey,
 } from "./environment-capture.js";
-import { collectLayerRequirements } from "./environment-requirements.js";
+import { collectPluginRequirements } from "./environment-requirements.js";
 
-export type EnvironmentCreateMode = "blank" | "from-project" | "from-layer";
+export type EnvironmentCreateMode = "blank" | "from-project" | "from-plugin";
 
-export interface EnvironmentCreateFromLayerPreview {
-  mode: "from-layer";
+export interface EnvironmentCreateFromPluginPreview {
+  mode: "from-plugin";
   environment_name: string;
-  configured_layer_ids: string[];
+  configured_plugin_ids: string[];
   values: Record<string, string>;
   secret_refs: Record<string, { provider: "env"; ref: string }>;
   model_configs: Array<{ name: string; model: string }>;
   missing_keys: MissingEnvironmentKey[];
   strict_failed: boolean;
-  bound_layer_ids: string[];
+  bound_plugin_ids: string[];
 }
 
 export type EnvironmentCreateResult =
@@ -42,13 +42,13 @@ export type EnvironmentCreateResult =
       result: EnvironmentCapturePreview & { persisted: boolean; environment_id?: string };
     }
   | {
-      mode: "from-layer";
+      mode: "from-plugin";
       payload: EnvironmentShowPayload;
-      preview: EnvironmentCreateFromLayerPreview;
+      preview: EnvironmentCreateFromPluginPreview;
       persisted: boolean;
     };
 
-function normalizeLayerSelectors(selectors: string | string[]): string[] {
+function normalizePluginSelectors(selectors: string | string[]): string[] {
   const raw = Array.isArray(selectors) ? selectors : [selectors];
   return raw
     .flatMap((entry) => entry.split(","))
@@ -59,16 +59,16 @@ function normalizeLayerSelectors(selectors: string | string[]): string[] {
 function resolveCreateMode(input: {
   blank?: boolean;
   fromProject?: string;
-  fromLayer?: string | string[];
+  fromPlugin?: string | string[];
 }): EnvironmentCreateMode {
   const modes: EnvironmentCreateMode[] = [];
   if (input.blank) modes.push("blank");
   if (input.fromProject) modes.push("from-project");
-  if (input.fromLayer !== undefined) modes.push("from-layer");
+  if (input.fromPlugin !== undefined) modes.push("from-plugin");
 
   if (modes.length > 1) {
     throw new Error(
-      "Specify exactly one of --blank, --from-project, or --from-layer.",
+      "Specify exactly one of --blank, --from-project, or --from-plugin.",
     );
   }
   if (modes.length === 0) {
@@ -81,15 +81,15 @@ function resolveCreateMode(input: {
   return mode;
 }
 
-export interface EnvironmentFromLayerResolved {
+export interface EnvironmentFromPluginResolved {
   values: Record<string, string>;
   secret_refs: Record<string, { provider: "env"; ref: string }>;
 }
 
-function resolveFromLayerKeyMaterial(input: {
-  requirements: ReturnType<typeof collectLayerRequirements>;
+function resolveFromPluginKeyMaterial(input: {
+  requirements: ReturnType<typeof collectPluginRequirements>;
   strict?: boolean;
-  resolved?: EnvironmentFromLayerResolved;
+  resolved?: EnvironmentFromPluginResolved;
 }): {
   values: Record<string, string>;
   secretRefs: Record<string, { provider: "env"; ref: string }>;
@@ -133,22 +133,22 @@ function resolveFromLayerKeyMaterial(input: {
   return { values, secretRefs, missingKeys };
 }
 
-async function runFromLayerCreate(input: {
+async function runFromPluginCreate(input: {
   name: string;
-  fromLayer: string | string[];
+  fromPlugin: string | string[];
   bind?: boolean;
   strict?: boolean;
   dryRun?: boolean;
   description?: string;
-  resolved?: EnvironmentFromLayerResolved;
+  resolved?: EnvironmentFromPluginResolved;
 }): Promise<EnvironmentCreateResult> {
-  const layerSelectors = normalizeLayerSelectors(input.fromLayer);
-  if (layerSelectors.length === 0) {
-    throw new Error("--from-layer requires at least one configured layer selector.");
+  const pluginSelectors = normalizePluginSelectors(input.fromPlugin);
+  if (pluginSelectors.length === 0) {
+    throw new Error("--from-plugin requires at least one configured plugin selector.");
   }
 
-  const requirements = collectLayerRequirements(layerSelectors);
-  const { values, secretRefs, missingKeys } = resolveFromLayerKeyMaterial({
+  const requirements = collectPluginRequirements(pluginSelectors);
+  const { values, secretRefs, missingKeys } = resolveFromPluginKeyMaterial({
     requirements,
     strict: input.strict,
     resolved: input.resolved,
@@ -156,16 +156,16 @@ async function runFromLayerCreate(input: {
 
   const modelConfigs = collectModelConfigsFromRequirements(requirements);
   const strictFailed = Boolean(input.strict && missingKeys.length > 0);
-  const preview: EnvironmentCreateFromLayerPreview = {
-    mode: "from-layer",
+  const preview: EnvironmentCreateFromPluginPreview = {
+    mode: "from-plugin",
     environment_name: input.name,
-    configured_layer_ids: requirements.configured_layer_ids,
+    configured_plugin_ids: requirements.configured_plugin_ids,
     values,
     secret_refs: secretRefs,
     model_configs: modelConfigs,
     missing_keys: missingKeys,
     strict_failed: strictFailed,
-    bound_layer_ids: [],
+    bound_plugin_ids: [],
   };
 
   if (strictFailed || input.dryRun) {
@@ -182,10 +182,10 @@ async function runFromLayerCreate(input: {
           },
           values: { env_vars: {}, model_configs: [], permissions: [] },
           secret_refs: {},
-          references: { layers: [] },
+          references: { plugins: [] },
         };
     return {
-      mode: "from-layer",
+      mode: "from-plugin",
       payload,
       preview,
       persisted: false,
@@ -218,18 +218,18 @@ async function runFromLayerCreate(input: {
   }
 
   if (input.bind) {
-    for (const layerSelector of layerSelectors) {
-      const configuredLayer = resolveLayerSelector(layerSelector);
-      if (!configuredLayer) {
-        throw new Error(`Configured layer not found: ${layerSelector}`);
+    for (const pluginSelector of pluginSelectors) {
+      const configuredPlugin = resolvePluginSelector(pluginSelector);
+      if (!configuredPlugin) {
+        throw new Error(`Configured plugin not found: ${pluginSelector}`);
       }
-      setLayerDefaultEnvironment(configuredLayer.id, environment.id);
-      preview.bound_layer_ids.push(configuredLayer.id);
+      setPluginDefaultEnvironment(configuredPlugin.id, environment.id);
+      preview.bound_plugin_ids.push(configuredPlugin.id);
     }
   }
 
   return {
-    mode: "from-layer",
+    mode: "from-plugin",
     payload: showEnvironmentCommand(environment.id),
     preview,
     persisted: true,
@@ -239,16 +239,16 @@ async function runFromLayerCreate(input: {
 export async function runEnvironmentCreate(input: {
   name: string;
   fromProject?: string;
-  fromLayer?: string | string[];
+  fromPlugin?: string | string[];
   blank?: boolean;
   refresh?: boolean;
   bind?: boolean;
-  layers?: string[];
+  plugins?: string[];
   strict?: boolean;
   dryRun?: boolean;
   includePermissions?: boolean;
   description?: string;
-  fromLayerResolved?: EnvironmentFromLayerResolved;
+  fromPluginResolved?: EnvironmentFromPluginResolved;
 }): Promise<EnvironmentCreateResult> {
   const mode = resolveCreateMode(input);
 
@@ -272,7 +272,7 @@ export async function runEnvironmentCreate(input: {
       mode: captureMode,
       environmentName: input.name,
       projectRoot,
-      layerSelectors: input.layers,
+      pluginSelectors: input.plugins,
       includePermissions: input.includePermissions,
       dryRun: input.dryRun,
       strict: input.strict,
@@ -283,17 +283,17 @@ export async function runEnvironmentCreate(input: {
     };
   }
 
-  const fromLayer = input.fromLayer;
-  if (fromLayer === undefined) {
-    throw new Error("Missing --from-layer selector.");
+  const fromPlugin = input.fromPlugin;
+  if (fromPlugin === undefined) {
+    throw new Error("Missing --from-plugin selector.");
   }
-  return runFromLayerCreate({
+  return runFromPluginCreate({
     name: input.name,
-    fromLayer,
+    fromPlugin,
     bind: input.bind,
     strict: input.strict,
     dryRun: input.dryRun,
     description: input.description,
-    resolved: input.fromLayerResolved,
+    resolved: input.fromPluginResolved,
   });
 }

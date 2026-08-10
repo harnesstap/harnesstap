@@ -1,0 +1,3 @@
+kind: Features
+body: Resolve plugin apply as a dependency graph with version mediation and nearest-to-root resource precedence, record the resolved set in .harnesstap/lock.toml, and add --explain, --update, and `plugin why`
+time: 2026-08-09T20:00:00Z

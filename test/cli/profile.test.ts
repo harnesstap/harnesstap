@@ -7,14 +7,15 @@ import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { createCloudPublishFetchMock } from "../helpers/cloud-fetch.ts";
 import { createResource } from "../../src/models/resource.ts";
 import {
-  addResourceToLayer,
-  createLayer,
-  setLayerTags,
-} from "../../src/models/layer-model.ts";
-import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+  addResourceToPlugin,
+  createPlugin,
+  setPluginTags,
+} from "../../src/models/plugin-model.ts";
+import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
+
 
 describe("CLI profile", () => {
-  it("lists and creates profile layers", async () => {
+  it("lists and creates profile plugins", async () => {
     const context = await createTestContext("cli-profile-list-create");
     try {
       await runCli(["init"]);
@@ -34,14 +35,14 @@ describe("CLI profile", () => {
     }
   });
 
-  it("promotes an existing layer and suggests switching", async () => {
+  it("promotes an existing plugin and suggests switching", async () => {
     const context = await createTestContext("cli-profile-promote-existing");
     try {
       await runCli(["init"]);
-      createLayer({ name: "dbt-expert" });
+      createPlugin({ name: "dbt-expert" });
 
       const createResult = await runCli(["profile", "create", "dbt-expert"]);
-      expect(createResult.stdout).toContain("Tagged layer");
+      expect(createResult.stdout).toContain("Tagged plugin");
       expect(createResult.stdout).toContain("dbt-expert");
       expect(createResult.stdout).toContain("profile use dbt-expert");
     } finally {
@@ -53,7 +54,7 @@ describe("CLI profile", () => {
     const context = await createTestContext("cli-profile-promote-interactive");
     try {
       await runCli(["init", "--main", "claude-code"]);
-      const layer = createLayer({ name: "dbt-expert" });
+      const plugin = createPlugin({ name: "dbt-expert" });
       const resource = createResource({
         type: "instruction",
         name: "dbt-guide",
@@ -62,7 +63,7 @@ describe("CLI profile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
       const createResult = await runCli(
         ["profile", "create", "dbt-expert"],
@@ -71,7 +72,7 @@ describe("CLI profile", () => {
           promptResponses: [{ value: true }],
         },
       );
-      expect(createResult.stdout).toContain("Tagged layer");
+      expect(createResult.stdout).toContain("Tagged plugin");
       expect(createResult.stdout).toContain("Applied profile");
 
       const status = await runCli(["profile", "status"]);
@@ -88,8 +89,8 @@ describe("CLI profile", () => {
       const pending = await runCli(["profile", "status"]);
       expect(pending.stdout).toContain("has not been applied globally");
 
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "work-guide",
@@ -98,7 +99,7 @@ describe("CLI profile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
       await runCli(["profile", "use", "work", "--harness", "claude-code"]);
       const synced = await runCli(["profile", "status"]);
@@ -108,31 +109,31 @@ describe("CLI profile", () => {
     }
   });
 
-  it("demotes a profile and keeps the layer by default", async () => {
+  it("demotes a profile and keeps the plugin by default", async () => {
     const context = await createTestContext("cli-profile-delete-demote");
     try {
       await runCli(["init"]);
-      const layer = createLayer({ name: "dbt-expert" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "dbt-expert" });
+      setPluginTags(plugin.id, ["profile"]);
 
       const result = await runCli(["profile", "delete", "dbt-expert"]);
       expect(result.stdout).toContain("Demoted profile");
-      expect(result.stdout).toContain("layer delete dbt-expert");
+      expect(result.stdout).toContain("plugin delete dbt-expert");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
-      expect(layerModel.getLayer("dbt-expert")).toBeDefined();
-      expect(layerModel.getLayer("dbt-expert")?.tags).not.toContain("profile");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      expect(pluginModel.getPlugin("dbt-expert")).toBeDefined();
+      expect(pluginModel.getPlugin("dbt-expert")?.tags).not.toContain("profile");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("demotes a profile and deletes the layer when confirmed", async () => {
-    const context = await createTestContext("cli-profile-delete-layer");
+  it("demotes a profile and deletes the plugin when confirmed", async () => {
+    const context = await createTestContext("cli-profile-delete-plugin");
     try {
       await runCli(["init"]);
-      const layer = createLayer({ name: "dbt-expert" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "dbt-expert" });
+      setPluginTags(plugin.id, ["profile"]);
 
       const result = await runCli(
         ["profile", "delete", "dbt-expert"],
@@ -142,10 +143,10 @@ describe("CLI profile", () => {
         },
       );
       expect(result.stdout).toContain("Demoted profile");
-      expect(result.stdout).toContain("Deleted layer");
+      expect(result.stdout).toContain("Deleted plugin");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
-      expect(layerModel.getLayer("dbt-expert")).toBeUndefined();
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      expect(pluginModel.getPlugin("dbt-expert")).toBeUndefined();
     } finally {
       await context.cleanup();
     }
@@ -155,8 +156,8 @@ describe("CLI profile", () => {
     const context = await createTestContext("cli-profile-delete-active");
     try {
       await runCli(["init", "--main", "claude-code"]);
-      const layer = createLayer({ name: "dbt-expert" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "dbt-expert" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "dbt-guide",
@@ -165,10 +166,10 @@ describe("CLI profile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
       await runCli(["profile", "use", "dbt-expert", "--harness", "claude-code"]);
 
-      const result = await runCli(["profile", "delete", "dbt-expert", "--layer"]);
+      const result = await runCli(["profile", "delete", "dbt-expert", "--plugin"]);
       expect(result.stdout).toContain("Cleared active profile pointer");
 
       const status = await runCli(["profile", "status", "--format", "json"]);
@@ -185,7 +186,7 @@ describe("CLI profile", () => {
     const context = await createTestContext("cli-profile-use-active");
     try {
       await runCli(["init", "--main", "claude-code"]);
-      const baseLayer = createLayer({ name: "work-layer" });
+      const basePlugin = createPlugin({ name: "work-plugin" });
       const resource = createResource({
         type: "instruction",
         name: "profile-work",
@@ -194,15 +195,15 @@ describe("CLI profile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(baseLayer.id, resource.id);
+      addResourceToPlugin(basePlugin.id, resource.id);
 
-      const created = await runCli(["profile", "create", "work-layer", "--yes"]);
-      expect(created.stdout).toContain("Tagged layer");
+      const created = await runCli(["profile", "create", "work-plugin", "--yes"]);
+      expect(created.stdout).toContain("Tagged plugin");
 
       const dryRun = await runCli([
         "profile",
         "use",
-        "work-layer",
+        "work-plugin",
         "--dry-run",
         "--harness",
         "claude-code",
@@ -213,25 +214,25 @@ describe("CLI profile", () => {
       const apply = await runCli([
         "profile",
         "use",
-        "work-layer",
+        "work-plugin",
         "--harness",
         "claude-code",
       ]);
       expect(apply.stdout).toContain("Applied profile");
 
       const status = await runCli(["profile", "status"]);
-      expect(status.stdout).toContain("work-layer");
+      expect(status.stdout).toContain("work-plugin");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("profile show renders the same layer detail panel as layer show", async () => {
+  it("profile show renders the same plugin detail panel as plugin show", async () => {
     const context = await createTestContext("cli-profile-show-panel");
     try {
       await runCli(["init"]);
-      const layer = createLayer({ name: "dbt-expert" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "dbt-expert" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "dbt-guide",
@@ -240,17 +241,17 @@ describe("CLI profile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
-      const layerShow = await runCli(["layer", "show", "dbt-expert"]);
+      const pluginShow = await runCli(["plugin", "show", "dbt-expert"]);
       const profileShow = await runCli(["profile", "show", "dbt-expert"]);
 
-      for (const marker of ["LAYER", "Description", "RESOURCES", "dbt-guide"]) {
-        expect(layerShow.stdout).toContain(marker);
+      for (const marker of ["PLUGIN", "Description", "RESOURCES", "dbt-guide"]) {
+        expect(pluginShow.stdout).toContain(marker);
         expect(profileShow.stdout).toContain(marker);
       }
       expect(profileShow.stdout).toContain("Active");
-      expect(layerShow.stdout).not.toContain("Active");
+      expect(pluginShow.stdout).not.toContain("Active");
 
       const profileJson = JSON.parse(
         (await runCli(["profile", "show", "dbt-expert", "--format", "json"])).stdout,
@@ -294,12 +295,12 @@ describe("CLI profile", () => {
 
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        layers: [
+        plugins: [
           {
             orgSlug: "harnesstap-cloud",
             slug: "work-profile",
             name: "Work profile",
-            summary: "Profile layer",
+            summary: "Profile plugin",
             latestVersion: "1.0.0",
             updatedAt: new Date().toISOString(),
             tags: ["profile"],
@@ -309,7 +310,7 @@ describe("CLI profile", () => {
             orgSlug: "harnesstap-cloud",
             slug: "foundation",
             name: "Foundation",
-            summary: "Regular layer",
+            summary: "Regular plugin",
             latestVersion: "1.0.0",
             updatedAt: new Date().toISOString(),
             tags: ["baseline"],
@@ -341,7 +342,7 @@ describe("CLI profile", () => {
     }
   });
 
-  it("warns when profile pull installs a non-profile layer", async () => {
+  it("warns when profile pull installs a non-profile plugin", async () => {
     const context = await createTestContext("cli-profile-pull");
     try {
       await runCli(["init"]);
@@ -368,7 +369,7 @@ describe("CLI profile", () => {
         "https://mock",
       ]);
       const pullOutput = `${pull.stdout}\n${pull.stderr}`;
-      expect(pullOutput).toContain("Installed layer remote-team");
+      expect(pullOutput).toContain("Installed plugin remote-team");
       expect(pullOutput).toContain("is not tagged as a profile");
       restoreFetch();
     } finally {
@@ -391,17 +392,17 @@ describe("CLI profile", () => {
       await cloudAccounts.setDefaultCloudAccount("test");
 
       const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
-      const orphan = createLayer({ name: "orphan-profile" });
-      setLayerTags(orphan.id, ["profile"]);
+      const orphan = createPlugin({ name: "orphan-profile" });
+      setPluginTags(orphan.id, ["profile"]);
 
-      const _depTarget = createLayer({ name: "local-dep" });
-      const depProfile = createLayer({ name: "dep-profile" });
-      setLayerTags(depProfile.id, ["profile"]);
-      const composition = await import("../../src/services/layer-composition.ts");
-      const depResource = composition.ensureLayerResource("local-dep");
-      addResourceToLayer(depProfile.id, depResource.id);
+      const _depTarget = createPlugin({ name: "local-dep" });
+      const depProfile = createPlugin({ name: "dep-profile" });
+      setPluginTags(depProfile.id, ["profile"]);
+      const composition = await import("../../src/services/plugin-composition.ts");
+      const depResource = composition.ensurePluginResource("local-dep");
+      addResourceToPlugin(depProfile.id, depResource.id);
 
-      await runCli(["layer", "catalog", "register", "acme/default"]);
+      await runCli(["plugin", "catalog", "register", "acme/default"]);
 
       const result = await runCli([
         "profile",
@@ -411,7 +412,7 @@ describe("CLI profile", () => {
         "test",
       ]);
       const publishOutput = `${result.stdout}\n${result.stderr}`;
-      expect(publishOutput).toContain("unpublished local layers");
+      expect(publishOutput).toContain("unpublished local plugins");
       expect(publishOutput).toContain("Published dep-profile to acme/dep-profile");
 
       const emptyResult = await runCli([
@@ -424,7 +425,7 @@ describe("CLI profile", () => {
         "test",
       ]);
       const emptyPublishOutput = `${emptyResult.stdout}\n${emptyResult.stderr}`;
-      expect(emptyPublishOutput).toContain("no layer references and no material resources");
+      expect(emptyPublishOutput).toContain("no plugin references and no material resources");
       expect(emptyPublishOutput).toContain("Published orphan-profile to acme/orphan-profile");
 
       restorePublishFetch();
@@ -437,8 +438,8 @@ describe("CLI profile", () => {
     const context = await createTestContext("cli-profile-shorthand");
     try {
       await runCli(["init", "--main", "claude-code"]);
-      const layer = createLayer({ name: "work" });
-      setLayerTags(layer.id, ["profile"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
       const resource = createResource({
         type: "instruction",
         name: "work-guide",
@@ -447,7 +448,7 @@ describe("CLI profile", () => {
         metadata: {},
         source: "manual",
       });
-      addResourceToLayer(layer.id, resource.id);
+      addResourceToPlugin(plugin.id, resource.id);
 
       const shorthand = await runCli(["work", "--harness", "claude-code", "--dry-run"]);
       expect(shorthand.stdout).toContain("Applied profile");
@@ -475,41 +476,23 @@ describe("CLI profile", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const profile = createLayer({ name: "work" });
-      setLayerTags(profile.id, ["profile"]);
-      const composition = await import("../../src/services/layer-composition.ts");
-      const ref = composition.ensureLayerResource("harnesstap-cloud/default/remote-base", {
+      const profile = createPlugin({ name: "work" });
+      setPluginTags(profile.id, ["profile"]);
+      const composition = await import("../../src/services/plugin-composition.ts");
+      const ref = composition.ensurePluginResource("harnesstap-cloud/default/remote-base", {
         versionConstraint: "1.0.0",
       });
-      addResourceToLayer(profile.id, ref.id);
+      addResourceToPlugin(profile.id, ref.id);
 
-      const dependencyBundle = formatLayerExportToml({
-        $schema: "urn:harnesstap:layer:v1",
-        version: 1,
-        layers: [{
-          name: "remote-base",
-          version: "1.0.0",
-          description: "Remote base",
-          tags: [],
-          resources: [{
-            type: "instruction",
-            name: "remote-guide",
-            description: "",
-            content: "# remote",
-            metadata: {},
-            namespace: "",
-            origin_kind: "manual",
-            origin_ref: "",
-            content_hash: "",
-            content_blob_ref: "",
-          }],
-          plugin_pins: [],
-        }],
-        embedded_plugins: [],
+      const dependencyBundle = makeApEnvelope({
+        name: "remote-base",
+        description: "Remote base",
+        skillName: "remote-guide",
+        skillBody: "# remote",
       });
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",
-        layers: [{
+        plugins: [{
           orgSlug: "harnesstap-cloud",
           slug: "remote-base",
           name: "Remote Base",
@@ -546,7 +529,7 @@ describe("CLI profile", () => {
         "https://mock",
       ]);
       const applyOutput = `${apply.stdout}\n${apply.stderr}`;
-      expect(applyOutput).toContain("Pulled 1 missing layer dependencies");
+      expect(applyOutput).toContain("Pulled 1 missing plugin dependencies");
       expect(applyOutput).toContain("remote-base");
 
       restoreFetch();
@@ -560,10 +543,10 @@ describe("CLI profile", () => {
     try {
       await runCli(["init", "--main", "claude-code", "--no-default-profile"]);
 
-      const workLayer = createLayer({ name: "work" });
-      setLayerTags(workLayer.id, ["profile"]);
-      addResourceToLayer(
-        workLayer.id,
+      const workPlugin = createPlugin({ name: "work" });
+      setPluginTags(workPlugin.id, ["profile"]);
+      addResourceToPlugin(
+        workPlugin.id,
         createResource({
           type: "skill",
           name: "shared-skill",
@@ -574,10 +557,10 @@ describe("CLI profile", () => {
         }).id,
       );
 
-      const dbtLayer = createLayer({ name: "dbt-expert" });
-      setLayerTags(dbtLayer.id, ["profile"]);
-      addResourceToLayer(
-        dbtLayer.id,
+      const dbtPlugin = createPlugin({ name: "dbt-expert" });
+      setPluginTags(dbtPlugin.id, ["profile"]);
+      addResourceToPlugin(
+        dbtPlugin.id,
         createResource({
           type: "skill",
           name: "shared-skill",
@@ -587,8 +570,8 @@ describe("CLI profile", () => {
           source: "manual",
         }).id,
       );
-      addResourceToLayer(
-        dbtLayer.id,
+      addResourceToPlugin(
+        dbtPlugin.id,
         createResource({
           type: "skill",
           name: "dbt-only-skill",
@@ -641,9 +624,9 @@ describe("CLI profile", () => {
 
       await runCli(["init", "--main", "claude-code"]);
 
-      const profileA = createLayer({ name: "profile-a" });
-      setLayerTags(profileA.id, ["profile"]);
-      addResourceToLayer(
+      const profileA = createPlugin({ name: "profile-a" });
+      setPluginTags(profileA.id, ["profile"]);
+      addResourceToPlugin(
         profileA.id,
         createResource({
           type: "skill",
@@ -655,9 +638,9 @@ describe("CLI profile", () => {
         }).id,
       );
 
-      const profileB = createLayer({ name: "profile-b" });
-      setLayerTags(profileB.id, ["profile"]);
-      addResourceToLayer(
+      const profileB = createPlugin({ name: "profile-b" });
+      setPluginTags(profileB.id, ["profile"]);
+      addResourceToPlugin(
         profileB.id,
         createResource({
           type: "skill",

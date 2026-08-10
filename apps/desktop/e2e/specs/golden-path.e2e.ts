@@ -44,8 +44,8 @@ async function toggleCreateResource(name: string): Promise<void> {
   await row.$("label").click();
 }
 
-async function toggleCreateLayer(name: string): Promise<void> {
-  const row = await waitForTestId(`create-layer-${name}`);
+async function toggleCreatePlugin(name: string): Promise<void> {
+  const row = await waitForTestId(`create-plugin-${name}`);
   await row.$("label").click();
 }
 
@@ -180,7 +180,7 @@ describe("Golden path", () => {
     await expect(checked).toBeDisplayed();
   });
 
-  it("creates child profile inheriting base layer", async () => {
+  it("creates child profile inheriting base plugin", async () => {
     const doneBtn = await $("main.edit-profile-pane button[aria-label='Done editing']");
     if (await doneBtn.isExisting()) {
       await doneBtn.waitForDisplayed();
@@ -196,7 +196,7 @@ describe("Golden path", () => {
     await clickTestId("create-source-compose");
     await waitForLibraryLoaded();
 
-    await toggleCreateLayer(PROFILE_BASE);
+    await toggleCreatePlugin(PROFILE_BASE);
     await submitCreateProfile();
     await waitForTestId(`profile-rail-${PROFILE_CHILD}`);
   });

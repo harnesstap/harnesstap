@@ -36,7 +36,7 @@ const RELATED_BY_TYPE: Record<string, readonly DesktopHarnessId[]> = {
   env_var: ["claude-code"],
   model_config: ["claude-code"],
   plugin_pin: ["claude-code", "cursor"],
-  layer: ["claude-code", "cursor"],
+  plugin: ["claude-code", "cursor"],
 };
 
 export function harnessDisplayName(id: string): string {

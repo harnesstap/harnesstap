@@ -3,7 +3,7 @@ import {
   planMaterializationConflicts,
   type MaterializationConflict,
 } from "./applier.js";
-import { applyProfileLayer, type ApplyProfileLayerOptions } from "./profile-apply.js";
+import { applyProfilePlugin, type ApplyProfilePluginOptions } from "./profile-apply.js";
 
 export interface OwnedOverwriteConflictSummary {
   paths: string[];
@@ -38,9 +38,9 @@ function summarizeOwnedConflicts(
 
 export async function detectProfileOwnedOverwriteConflicts(
   selector: string,
-  options: Pick<ApplyProfileLayerOptions, "harness" | "pull"> = {},
+  options: Pick<ApplyProfilePluginOptions, "harness" | "pull"> = {},
 ): Promise<OwnedOverwriteConflictSummary> {
-  const preview = await applyProfileLayer(selector, {
+  const preview = await applyProfilePlugin(selector, {
     ...options,
     dryRun: true,
     conflictPolicy: "prompt",

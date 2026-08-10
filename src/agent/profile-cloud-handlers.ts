@@ -1,44 +1,44 @@
-import { isProfileLayer } from "../constants/profile.js";
-import { getLayerByName } from "../models/layer-model.js";
+import { isProfilePlugin } from "../constants/profile.js";
+import { getPluginByName } from "../models/plugin-model.js";
 import {
-  listCatalogLayersPage,
+  listCatalogPluginsPage,
   resolveCatalogAccess,
 } from "../services/catalog-client.js";
 import type {
-  CatalogLayer,
+  CatalogPlugin,
   CatalogListOptions,
   CatalogListResult,
 } from "../services/catalog-types.js";
 import {
   resolveInstallSelector,
   type ResolveInstallSelectorOptions,
-} from "../services/layer-bare-name-resolve.js";
+} from "../services/plugin-bare-name-resolve.js";
 import {
-  installLayerFromCatalog,
-  type InstallLayerFromCatalogOptions,
-  type InstallLayerFromCatalogResult,
-} from "../services/layer-catalog-install.js";
-import type { ResolvedRemoteLayerSelector } from "../services/layer-selector.js";
+  installPluginFromCatalog,
+  type InstallPluginFromCatalogOptions,
+  type InstallPluginFromCatalogResult,
+} from "../services/plugin-catalog-install.js";
+import type { ResolvedRemotePluginSelector } from "../services/plugin-selector.js";
 import { tagProfileCommand } from "../services/profile-commands.js";
-import type { Layer } from "../types.js";
+import type { Plugin } from "../types.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 import { isAgentSwitchInProgress } from "./switch-registry.js";
 
 export interface ProfileCloudDeps {
   resolveAccess(): Promise<{ isAuthenticated: boolean }>;
-  listLayers(options?: CatalogListOptions): Promise<CatalogListResult>;
+  listPlugins(options?: CatalogListOptions): Promise<CatalogListResult>;
   resolveSelector(
     selector: string,
     options?: ResolveInstallSelectorOptions,
-  ): Promise<ResolvedRemoteLayerSelector>;
-  installLayer(
-    selector: ResolvedRemoteLayerSelector,
-    options?: InstallLayerFromCatalogOptions,
-  ): Promise<InstallLayerFromCatalogResult>;
-  getLayerByName(name: string): Layer | undefined;
-  isProfileLayer(layer: Pick<Layer, "tags">): boolean;
-  tagProfile(name: string): { layer_id: string; tags: string[] };
+  ): Promise<ResolvedRemotePluginSelector>;
+  installPlugin(
+    selector: ResolvedRemotePluginSelector,
+    options?: InstallPluginFromCatalogOptions,
+  ): Promise<InstallPluginFromCatalogResult>;
+  getPluginByName(name: string): Plugin | undefined;
+  isProfilePlugin(plugin: Pick<Plugin, "tags">): boolean;
+  tagProfile(name: string): { plugin_id: string; tags: string[] };
   isSwitchInProgress(): boolean;
 }
 
@@ -56,11 +56,11 @@ interface ProfileCloudPullInput {
 function createDefaultProfileCloudDeps(): ProfileCloudDeps {
   return {
     resolveAccess: resolveCatalogAccess,
-    listLayers: listCatalogLayersPage,
+    listPlugins: listCatalogPluginsPage,
     resolveSelector: resolveInstallSelector,
-    installLayer: installLayerFromCatalog,
-    getLayerByName,
-    isProfileLayer,
+    installPlugin: installPluginFromCatalog,
+    getPluginByName,
+    isProfilePlugin,
     tagProfile: tagProfileCommand,
     isSwitchInProgress: isAgentSwitchInProgress,
   };
@@ -80,22 +80,22 @@ function authRequiredResponse(): Response {
   );
 }
 
-function formatCatalogSelector(layer: CatalogLayer): string {
-  const selector = `${layer.orgSlug}/${layer.catalogSlug}/${layer.slug}`;
-  return layer.latestVersion
-    ? `${selector}@${layer.latestVersion}`
+function formatCatalogSelector(plugin: CatalogPlugin): string {
+  const selector = `${plugin.orgSlug}/${plugin.catalogSlug}/${plugin.slug}`;
+  return plugin.latestVersion
+    ? `${selector}@${plugin.latestVersion}`
     : selector;
 }
 
-function profilePayload(layer: CatalogLayer) {
+function profilePayload(plugin: CatalogPlugin) {
   return {
-    selector: formatCatalogSelector(layer),
-    name: layer.name,
-    orgSlug: layer.orgSlug,
-    catalogSlug: layer.catalogSlug,
-    version: layer.latestVersion ?? "",
-    tags: layer.tags,
-    description: layer.summary,
+    selector: formatCatalogSelector(plugin),
+    name: plugin.name,
+    orgSlug: plugin.orgSlug,
+    catalogSlug: plugin.catalogSlug,
+    version: plugin.latestVersion ?? "",
+    tags: plugin.tags,
+    description: plugin.summary,
   };
 }
 
@@ -161,13 +161,13 @@ export function createProfileCloudHandlers(
           return cloudAuthError;
         }
         const query = new URL(request.url).searchParams.get("q")?.trim();
-        const result = await deps.listLayers({
+        const result = await deps.listPlugins({
           ...(query ? { q: query } : {}),
           limit: 50,
           sort: "name",
         });
         return jsonResponse({
-          profiles: result.layers.map(profilePayload),
+          profiles: result.plugins.map(profilePayload),
         });
       } catch (error) {
         return jsonResponse(
@@ -205,30 +205,30 @@ export function createProfileCloudHandlers(
           noInteractive: true,
           format: "json",
         });
-        if (!input.as && deps.getLayerByName(parsed.layer_slug)) {
+        if (!input.as && deps.getPluginByName(parsed.plugin_slug)) {
           return jsonResponse(
             {
               error: "name_collision",
-              message: `A local layer named "${parsed.layer_slug}" already exists; provide as to pull under a different name`,
+              message: `A local plugin named "${parsed.plugin_slug}" already exists; provide as to pull under a different name`,
             },
             { status: 409 },
           );
         }
 
-        const installed = await deps.installLayer(parsed, {
+        const installed = await deps.installPlugin(parsed, {
           ...(input.as ? { as: input.as } : {}),
         });
-        const layer = deps.getLayerByName(installed.layerName);
-        let tagged = Boolean(layer && deps.isProfileLayer(layer));
+        const plugin = deps.getPluginByName(installed.pluginName);
+        let tagged = Boolean(plugin && deps.isProfilePlugin(plugin));
         if (!tagged) {
-          deps.tagProfile(installed.layerName);
+          deps.tagProfile(installed.pluginName);
           tagged = true;
         }
 
         return jsonResponse({
           profile: {
-            name: installed.layerName,
-            id: installed.layerId,
+            name: installed.pluginName,
+            id: installed.pluginId,
           },
           tagged,
         });

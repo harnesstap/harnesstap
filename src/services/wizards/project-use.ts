@@ -9,13 +9,13 @@ import {
   type PromptChoice,
 } from "./shared.js";
 
-function formatProfileLayerHint(entry: ProjectProfileEntry): string {
+function formatProfilePluginHint(entry: ProjectProfileEntry): string {
   switch (entry.source) {
     case "catalog":
     case "local":
       return entry.selector ?? entry.name;
     case "inline":
-      return entry.layer ?? entry.name;
+      return entry.plugin ?? entry.name;
     default: {
       const unhandledSource: never = entry.source;
       throw new Error(`Unhandled profile source: ${unhandledSource}`);
@@ -27,7 +27,7 @@ function formatProjectProfileChoiceName(
   config: ResolvedProjectConfig,
   entry: ProjectProfileEntry,
 ): string {
-  const parts = [entry.name, entry.source, formatProfileLayerHint(entry)];
+  const parts = [entry.name, entry.source, formatProfilePluginHint(entry)];
   const environment = resolveProfileEnvironment(config, entry);
   if (environment) {
     parts.push(`env ${environment}`);

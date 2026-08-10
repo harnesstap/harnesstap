@@ -14,7 +14,7 @@ import type {
   PutHarnessSettingsInput,
   PutHarnessSettingsResult,
   EnvironmentsListResult,
-  LibraryLayer,
+  LibraryPlugin,
   LibraryResource,
   LibraryResourceDetail,
   MigrateDetectImportScopeResult,
@@ -266,16 +266,16 @@ export async function popProfileStash(
   return (await response.json()) as ProfileStashPopResult;
 }
 
-export async function fetchLibraryLayers(
+export async function fetchLibraryPlugins(
   baseUrl: string,
   token: string | null,
-): Promise<LibraryLayer[]> {
-  const response = await agentFetch(baseUrl, token, "/v1/library/layers");
+): Promise<LibraryPlugin[]> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/plugins");
   if (!response.ok) {
-    return throwAgentError(response, "Could not load library layers");
+    return throwAgentError(response, "Could not load library plugins");
   }
-  const body = (await response.json()) as { layers: LibraryLayer[] };
-  return body.layers;
+  const body = (await response.json()) as { plugins: LibraryPlugin[] };
+  return body.plugins;
 }
 
 export async function fetchLibraryResources(
@@ -787,7 +787,7 @@ export async function attachProfileComposition(
   baseUrl: string,
   token: string | null,
   name: string,
-  body: { layerId?: string; resourceId?: string },
+  body: { pluginId?: string; resourceId?: string },
 ): Promise<ProfileDetail> {
   const response = await agentFetch(
     baseUrl,

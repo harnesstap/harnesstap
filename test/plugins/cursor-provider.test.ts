@@ -9,7 +9,12 @@ const fixtureHome = join(
 
 describe("CursorPluginProvider", () => {
   it("lists cache, local, agent-plugin, and marketplace installs with enablement", async () => {
-    const provider = new CursorPluginProvider();
+    const provider = new CursorPluginProvider({
+      // Fixture homes do not read the real Cursor recently-used store.
+      collectEnablementSignals: () => ({
+        pluginNames: new Set(["active-plugin"]),
+      }),
+    });
     const installs = await provider.list({
       projectRoot: ".",
       homeRoot: fixtureHome,

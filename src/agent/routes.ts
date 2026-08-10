@@ -4,8 +4,8 @@ import {
   type GlobalProfileStatus,
 } from "../services/global-profile-drift.js";
 import type { GlobalProfileStatusDepth } from "../services/global-profile-status-panel.js";
-import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
-import { listProfileLayersCommand } from "../services/profile-commands.js";
+import { PROFILE_PLUGIN_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
+import { listProfilePluginsCommand } from "../services/profile-commands.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { findProjectConfig } from "../services/project-config.js";
 import { PACKAGE_VERSION } from "../version.js";
@@ -56,7 +56,7 @@ import {
   handleProfileStashPush,
 } from "./profile-stash-handlers.js";
 import {
-  handleLibraryLayers,
+  handleLibraryPlugins,
   handleLibraryResourceDetail,
   handleLibraryResources,
 } from "./profile-library-handlers.js";
@@ -94,7 +94,7 @@ export interface ProfileSummaryPayload {
 function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
   const byName = new Map<string, ProfileSummaryPayload>();
 
-  for (const profile of listProfileLayersCommand()) {
+  for (const profile of listProfilePluginsCommand()) {
     byName.set(profile.name, {
       name: profile.name,
       version: profile.version,
@@ -122,7 +122,7 @@ function listProfilesWithScopes(projectPath?: string): ProfileSummaryPayload[] {
         byName.set(entry.name, {
           name: entry.name,
           version: "",
-          tags: [PROFILE_LAYER_TAG],
+          tags: [PROFILE_PLUGIN_TAG],
           description: null,
           scopes: ["project"],
           dirty: false,
@@ -611,9 +611,9 @@ export function createAgentFetchHandler(
       response = await handleMigrateExport(request, token);
     } else if (method === "POST" && url.pathname === "/v1/migrate/import") {
       response = await handleMigrateImport(request, token);
-    } else if (method === "GET" && url.pathname === "/v1/library/layers") {
+    } else if (method === "GET" && url.pathname === "/v1/library/plugins") {
       const authError = requireAgentBearerAuth(request, token);
-      response = authError ?? handleLibraryLayers();
+      response = authError ?? handleLibraryPlugins();
     } else if (method === "GET" && url.pathname === "/v1/library/resources") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryResources();

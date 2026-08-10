@@ -116,41 +116,41 @@ describe("CLI environment", () => {
     }
   });
 
-  it("supports layer edit --environment/--clear-environment and shows default environment", async () => {
-    const context = await createTestContext("cli-layer-environment");
+  it("supports plugin edit --environment/--clear-environment and shows default environment", async () => {
+    const context = await createTestContext("cli-plugin-environment");
     try {
       await runCli(["init"]);
 
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
-      const plugin = pluginModel.createLayer({ name: "app-layer" });
-      const configuredLayer = configuredLayerModel.createLayerFromSources({
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredPluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({ name: "app-plugin" });
+      const configuredPlugin = configuredPluginModel.createPluginFromSources({
         name: plugin.name,
         version: plugin.version,
-        sourceLayerIds: [plugin.id],
+        sourcePluginIds: [plugin.id],
       });
 
       await runCli(["environment", "create", "staging"]);
-      await runCli(["layer", "edit", configuredLayer.id, "--environment", "staging"]);
+      await runCli(["plugin", "edit", configuredPlugin.id, "--environment", "staging"]);
 
-      const layerShowHuman = await runCli(["layer", "show", "app-layer"]);
-      expect(layerShowHuman.stdout).toContain("Default environment");
-      expect(layerShowHuman.stdout).toContain("staging");
+      const pluginShowHuman = await runCli(["plugin", "show", "app-plugin"]);
+      expect(pluginShowHuman.stdout).toContain("Default environment");
+      expect(pluginShowHuman.stdout).toContain("staging");
 
-      const layerShowJson = await runCli(["layer", "show", "app-layer", "--format", "json"]);
-      expect(JSON.parse(layerShowJson.stdout)).toEqual(
+      const pluginShowJson = await runCli(["plugin", "show", "app-plugin", "--format", "json"]);
+      expect(JSON.parse(pluginShowJson.stdout)).toEqual(
         expect.objectContaining({
-          configured_layer: expect.objectContaining({
+          configured_plugin: expect.objectContaining({
             default_environment: "staging",
           }),
         }),
       );
 
-      await runCli(["layer", "edit", configuredLayer.id, "--clear-environment"]);
-      const afterUnset = await runCli(["layer", "show", "app-layer", "--format", "json"]);
+      await runCli(["plugin", "edit", configuredPlugin.id, "--clear-environment"]);
+      const afterUnset = await runCli(["plugin", "show", "app-plugin", "--format", "json"]);
       expect(JSON.parse(afterUnset.stdout)).toEqual(
         expect.objectContaining({
-          configured_layer: expect.objectContaining({
+          configured_plugin: expect.objectContaining({
             default_environment: null,
           }),
         }),
@@ -174,15 +174,15 @@ describe("CLI environment", () => {
         "utf-8",
       );
 
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
-      const plugin = pluginModel.createLayer({
-        name: "capture-layer-plugin",
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredPluginModel = await import("../../src/models/plugin-model.ts");
+      const plugin = pluginModel.createPlugin({
+        name: "capture-plugin-plugin",
         needs: ["CAPTURE_KEY", "MISSING_KEY"],
       });
-      const configuredLayer = configuredLayerModel.createLayerFromSources({
-        name: "capture-layer",
-        sourceLayerIds: [plugin.id],
+      const configuredPlugin = configuredPluginModel.createPluginFromSources({
+        name: "capture-plugin",
+        sourcePluginIds: [plugin.id],
       });
 
       const createResult = await runCli([
@@ -191,8 +191,8 @@ describe("CLI environment", () => {
         "captured",
         "--from-project",
         context.projectDir,
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--dry-run",
         "--format",
         "json",
@@ -211,8 +211,8 @@ describe("CLI environment", () => {
         "captured",
         "--from-project",
         context.projectDir,
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--refresh",
         "--strict",
         "--format",
@@ -242,29 +242,29 @@ describe("CLI environment", () => {
       await runCli(["init"]);
 
       const projectModel = await import("../../src/models/project.ts");
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredPluginModel = await import("../../src/models/plugin-model.ts");
 
       const project = projectModel.createProject({
         git_origin: "git@github.com:acme/cascade.git",
         name: "acme/cascade",
         local_path: context.projectDir,
       });
-      const plugin = pluginModel.createLayer({ name: "cascade-layer" });
-      const configuredLayer = configuredLayerModel.createLayerFromSources({
+      const plugin = pluginModel.createPlugin({ name: "cascade-plugin" });
+      const configuredPlugin = configuredPluginModel.createPluginFromSources({
         name: plugin.name,
         version: plugin.version,
-        sourceLayerIds: [plugin.id],
+        sourcePluginIds: [plugin.id],
       });
-      projectModel.applyConfiguredLayerToProject({
+      projectModel.applyConfiguredPluginToProject({
         project_id: project.id,
-        configured_layer_id: configuredLayer.id,
+        configured_plugin_id: configuredPlugin.id,
         platforms: ["claude-code"],
       });
 
       await runCli(["environment", "create", "default-env"]);
-      await runCli(["environment", "edit", "default-env", "--var", "PD_REGION=layer"]);
-      await runCli(["layer", "edit", configuredLayer.id, "--environment", "default-env"]);
+      await runCli(["environment", "edit", "default-env", "--var", "PD_REGION=plugin"]);
+      await runCli(["plugin", "edit", configuredPlugin.id, "--environment", "default-env"]);
 
       const useResult = await runCli([
         "environment",
@@ -280,13 +280,13 @@ describe("CLI environment", () => {
         }),
       );
 
-      process.env.PD_REGION = "layer";
+      process.env.PD_REGION = "plugin";
 
       const status = await runCli([
         "environment",
         "status",
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--format",
         "json",
       ]);
@@ -295,7 +295,7 @@ describe("CLI environment", () => {
           effective_environment: "default-env",
           has_drift: false,
           resolved: expect.objectContaining({
-            vars: expect.objectContaining({ PD_REGION: "layer" }),
+            vars: expect.objectContaining({ PD_REGION: "plugin" }),
           }),
         }),
       );
@@ -305,8 +305,8 @@ describe("CLI environment", () => {
       const driftStatus = await runCli([
         "environment",
         "status",
-        "--layers",
-        configuredLayer.id,
+        "--plugins",
+        configuredPlugin.id,
         "--check",
         "--format",
         "json",
@@ -334,7 +334,7 @@ describe("CLI environment", () => {
         expect.objectContaining({
           environment_cascade: expect.objectContaining({
             resolved: expect.objectContaining({
-              vars: expect.objectContaining({ PD_REGION: "layer" }),
+              vars: expect.objectContaining({ PD_REGION: "plugin" }),
             }),
           }),
         }),
@@ -373,21 +373,14 @@ describe("CLI environment", () => {
     }
   });
 
-  it("supports environment export/import roundtrip through migrate", async () => {
+  it("rejects standalone environment export via migrate", async () => {
     const context = await createTestContext("cli-environment-export-import");
     try {
       await runCli(["init"]);
       await runCli(["environment", "create", "portable"]);
       await runCli(["environment", "edit", "portable", "--var", "PD_REGION=eu"]);
-      await runCli([
-        "environment",
-        "edit",
-        "portable",
-        "--secret",
-        "PD_TOKEN:env:PD_TOKEN",
-      ]);
 
-      const filePath = join(context.projectDir, "portable-environment.toml");
+      const filePath = join(context.projectDir, "portable.ap.json");
       const exported = await runCli([
         "migrate",
         "export",
@@ -397,42 +390,8 @@ describe("CLI environment", () => {
         "--format",
         "json",
       ]);
-      expect(JSON.parse(exported.stdout)).toEqual(
-        expect.objectContaining({
-          output: filePath,
-          environment: "portable",
-          scope: "environment",
-        }),
-      );
-
-      await runCli(["environment", "delete", "portable"]);
-      const imported = await runCli([
-        "migrate",
-        "import",
-        filePath,
-        "--environment",
-        "--format",
-        "json",
-      ]);
-      expect(JSON.parse(imported.stdout)).toEqual(
-        expect.objectContaining({
-          environment: "portable",
-          imported_keys: ["PD_REGION"],
-          imported_secret_refs: ["PD_TOKEN"],
-        }),
-      );
-
-      const shown = await runCli(["environment", "show", "portable", "--format", "json"]);
-      expect(JSON.parse(shown.stdout)).toEqual(
-        expect.objectContaining({
-          values: expect.objectContaining({
-            env_vars: expect.objectContaining({ PD_REGION: "eu" }),
-          }),
-          secret_refs: expect.objectContaining({
-            PD_TOKEN: { provider: "env", ref: "PD_TOKEN" },
-          }),
-        }),
-      );
+      expect(exported.exitCode).toBe(1);
+      expect(exported.stderr).toMatch(/--workspace/i);
     } finally {
       await context.cleanup();
     }

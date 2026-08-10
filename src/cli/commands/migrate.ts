@@ -9,6 +9,10 @@ import {
   type ScopedExportResult,
   type ScopedImportResult,
 } from "../../services/migrate-scope.js";
+import {
+  migrateOrderToOverrides,
+  type OrderMigrationReport,
+} from "../../services/order-to-override-migration.js";
 import { runMigrateExportWizard } from "../../services/wizards/migrate-export.js";
 import { runMigrateImportWizard } from "../../services/wizards/migrate-import.js";
 import { shouldUseWizard } from "../../services/wizards/shared.js";
@@ -21,22 +25,17 @@ function printMigrateExportHuman(result: ScopedExportResult): void {
   switch (result.scope) {
     case "workspace":
       ui.success(
-        `Exported migration archive ${ui.icons.hint} ${result.output} ${ui.icons.bullet} ${result.manifest.layer_count} layers, ${result.manifest.environment_count} environments`,
+        `Exported migration archive ${ui.icons.hint} ${result.output} ${ui.icons.bullet} ${result.manifest.plugin_count} plugins, ${result.manifest.environment_count} environments`,
       );
       return;
-    case "layer":
+    case "plugin":
       ui.success(
-        `Exported layer ${ui.theme.accent(result.layers.join(", "))} ${ui.icons.hint} ${result.output}`,
+        `Exported plugin ${ui.theme.accent(result.plugins.join(", "))} ${ui.icons.hint} ${result.output}`,
       );
       return;
     case "resource":
       ui.success(
         `Exported resource ${ui.theme.accent(result.resource)} ${ui.icons.hint} ${result.output}`,
-      );
-      return;
-    case "environment":
-      ui.success(
-        `Exported environment ${ui.theme.accent(result.environment)} ${ui.icons.hint} ${result.output}`,
       );
       return;
     default: {
@@ -50,22 +49,17 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
   switch (result.scope) {
     case "workspace":
       ui.success(
-        `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}, ${formatCount(result.environments_imported, "environment")}`,
+        `Imported migration archive ${ui.icons.bullet} ${formatCount(result.plugins_imported, "plugin")}, ${formatCount(result.environments_imported, "environment")}`,
       );
       return;
-    case "layer":
+    case "plugin":
       ui.success(
-        `Imported layer ${ui.theme.accent(result.layer)} ${ui.icons.bullet} ${formatCount(result.resources_imported, "resource")}`,
+        `Imported plugin ${ui.theme.accent(result.plugin)} ${ui.icons.bullet} ${formatCount(result.resources_imported, "resource")}`,
       );
       return;
     case "resource":
       ui.success(
         `Imported resource ${ui.theme.accent(result.resource)} ${ui.icons.bullet} ${result.action}`,
-      );
-      return;
-    case "environment":
-      ui.success(
-        `Imported environment ${ui.theme.accent(result.environment)} ${ui.icons.bullet} ${formatCount(result.imported_keys.length, "var")}`,
       );
       return;
     default: {
@@ -80,11 +74,12 @@ async function handleMigrateExportCommand(
   opts: {
     file?: string;
     workspace?: boolean;
-    layer?: string;
+    plugin?: string;
     resource?: string;
     environment?: string;
     includePlugins?: boolean;
     embedPlugins?: boolean;
+    singleFile?: boolean;
     format?: string;
     noInteractive?: boolean;
     interactive?: boolean;
@@ -105,7 +100,7 @@ async function handleMigrateExportCommand(
     format: opts.format,
     missingRequiredArgs:
       !exportOpts.file
-      && !exportOpts.layer
+      && !exportOpts.plugin
       && !exportOpts.resource
       && !exportOpts.environment
       && !exportOpts.workspace,
@@ -117,10 +112,10 @@ async function handleMigrateExportCommand(
       ...exportOpts,
       file: wizard.outputPath,
       workspace: wizard.scope === "workspace" ? true : undefined,
-      layer: wizard.layer,
+      plugin: wizard.plugin,
       resource: wizard.resource,
-      environment: wizard.environment,
       includePlugins: wizard.embedPlugins,
+      singleFile: wizard.singleFile,
     };
   }
 
@@ -146,7 +141,7 @@ async function handleMigrateImportCommand(
   file: string | undefined,
   opts: {
     workspace?: boolean;
-    layer?: boolean;
+    plugin?: boolean;
     resource?: boolean;
     environment?: boolean;
     format?: string;
@@ -194,36 +189,89 @@ async function handleMigrateImportCommand(
   }
 }
 
+function printMigrateResolveOrderHuman(
+  report: OrderMigrationReport,
+  dryRun: boolean,
+): void {
+  const overrideCount = formatCount(report.overridesWritten.length, "override");
+  const projectCount = formatCount(report.projectsWithSnapshot, "project");
+  const dryRunSuffix = dryRun ? ` ${ui.icons.bullet} dry-run` : "";
+  ui.success(
+    `Migrated ordering → overrides ${ui.icons.bullet} ${overrideCount} across ${projectCount}${dryRunSuffix}`,
+  );
+  for (const warning of report.warnings) {
+    ui.warn(warning);
+  }
+}
+
+function handleMigrateResolveOrderCommand(opts: {
+  dryRun?: boolean;
+  format?: string;
+}): void {
+  const db = getDb();
+  initializeSchema(db, { allowLegacyRead: true });
+  const format = parseOutputFormat(opts.format);
+  const dryRun = opts.dryRun === true;
+  const report = migrateOrderToOverrides({ dryRun });
+  if (format === "json") {
+    printJson(report);
+    return;
+  }
+  printMigrateResolveOrderHuman(report, dryRun);
+}
+
 export function registerMigrateCommands(root: Command): void {
   const migrateCmd = configureCommandGroup(
     root
       .command("migrate")
       .alias("m")
-      .description("Export or import workspace, layers, environments, or resources for offline sharing"),
+      .description("Export or import workspace, plugins, or resources for offline sharing"),
   );
 
   migrateCmd
     .command("export")
-    .argument("[file]", "Output path (.tar.gz, .json, or .harnesstap.toml)")
+    .argument(
+      "[file]",
+      "Output path (package directory, .ap.json envelope, or .tar.gz workspace archive)",
+    )
     .option("--workspace", "Export full workspace archive")
-    .option("--layer <name>", "Export layer(s); comma-separated names or IDs")
+    .option("--plugin <name>", "Export plugin(s); comma-separated names or IDs")
     .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")
-    .option("--environment <name>", "Export one environment as TOML")
+    .option(
+      "--environment <name>",
+      "Removed — environments are machine-local; use --workspace",
+    )
+    .option("--single-file", "Write a .ap.json envelope instead of a package directory")
     .option("-o, --file <path>", "Output path (overrides positional)")
-    .option("--include-plugins", "Embed plugin trees (workspace and layer scope)")
+    .option("--include-plugins", "Embed plugin trees (workspace scope)")
     .option("--embed-plugins", "Alias for --include-plugins")
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Export workspace, layer, or resource for offline sharing")
+    .description("Export workspace, plugin, or resource for offline sharing")
     .action(handleMigrateExportCommand);
 
   migrateCmd
     .command("import")
-    .argument("[file]", "Archive or TOML export file")
+    .argument(
+      "[file]",
+      "package directory, .ap.json envelope, or .tar.gz workspace archive",
+    )
     .option("--workspace", "Force workspace archive import")
-    .option("--layer", "Force layer bundle import")
-    .option("--resource", "Force resource document import")
-    .option("--environment", "Force environment document import")
+    .option("--plugin", "Force Agent Plugins package import")
+    .option("--resource", "Force single-resource package import")
+    .option(
+      "--environment",
+      "Removed — environments are machine-local; use --workspace",
+    )
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Import workspace, layer, or resource from file")
+    .description("Import workspace, plugin, or resource from file")
     .action(handleMigrateImportCommand);
+
+  migrateCmd
+    .command("resolve-order")
+    .option("--dry-run", "Report what would be written without writing")
+    .option("--format <mode>", "Output format: human or json", "human")
+    .description(
+      "Convert apply-order dependence into explicit overrides so previously applied results reproduce",
+    )
+    .action(handleMigrateResolveOrderCommand);
 }

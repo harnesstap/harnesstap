@@ -1,6 +1,6 @@
 # Connect HarnessTap CLI to HarnessTap Cloud
 
-Authenticate with your cloud account, switch organizations, search and install shared layer bundles, and publish your own layers to your team's organization. Remote catalog commands live on **`layer`**; use **`auth`** for authentication and org context.
+Authenticate with your cloud account, switch organizations, search and install shared plugin bundles, and publish your own plugins to your team's organization. Remote catalog commands live on **`plugin`**; use **`auth`** for authentication and org context.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ Sign in with an existing HarnessTap Cloud account or [create one](/signup) befor
 
 ### Organization access
 
-Join or create at least one organization so you can search, install, and publish shared layers beyond the public catalog.
+Join or create at least one organization so you can search, install, and publish shared plugins beyond the public catalog.
 
 ## Authenticate and switch organizations
 
@@ -34,7 +34,7 @@ Default account name: `default`. Default base URL: `https://harnesstap.com`.
 
 ### Confirm the active identity
 
-Check which user and organization the CLI will use before you install or publish layers.
+Check which user and organization the CLI will use before you install or publish plugins.
 
 ```bash
 harnesstap auth status [--account <name>] [--format human|json]
@@ -58,51 +58,51 @@ harnesstap auth logout [--account <name>]
 
 Cloud accounts are stored in `~/.harnesstap/cloud-accounts.json` (or under `HARNESSTAP_HOME` when set).
 
-## Search, install, and publish layers
+## Search, install, and publish plugins
 
 ### Search the cloud catalog
 
-Search the shared layer catalog in your active cloud organization to find reusable layers before you install them locally.
+Search the shared plugin catalog in your active cloud organization to find reusable plugins before you install them locally.
 
 ```bash
-harnesstap layer list --search <query> --remote-only [--account <name>] [--format human|json]
+harnesstap plugin list --search <query> --remote-only [--account <name>] [--format human|json]
 ```
 
-### Pull a shared layer locally
+### Pull a shared plugin locally
 
-Download a published `urn:harnesstap:layer:v1` export from your organization and import it into the local HarnessTap database under the original or aliased name.
+Download a published Agent Plugins package from your organization and import it into the local HarnessTap database under the original or aliased name.
 
 ```bash
-harnesstap layer pull <org>/<layer>[@version] [--as <name>] [--account <name>]
+harnesstap plugin pull <org>/<plugin>[@version] [--as <name>] [--account <name>]
 ```
 
-`layer pull` is distinct from `layer import` (local file). `layer pull` fails on local name conflict instead of overwriting.
+`plugin pull` is distinct from `plugin import` (local file). `plugin pull` fails on local name conflict instead of overwriting.
 
 ### Apply without a prior pull
 
 For public catalog baselines, you can apply by bare name and let the CLI fetch on demand:
 
 ```bash
-harnesstap layer apply engineering-foundation --project . --harness codex
+harnesstap apply engineering-foundation --project . --harness codex
 ```
 
-Use `layer pull` when you want the bundle cached locally before working offline.
+Use `plugin pull` when you want the bundle cached locally before working offline.
 
-### Publish a local layer
+### Publish a local plugin
 
-Export a local layer as layer v1 and upload it to your organization's catalog.
+Export a local plugin as an Agent Plugins package and upload it to your organization's catalog.
 
 ```bash
-harnesstap layer catalog register <org>/<catalog>
-harnesstap layer publish <layer> [<org>/<catalog>] [--account <name>]
-harnesstap layer publish plan <layer>
+harnesstap plugin catalog register <org>/<catalog>
+harnesstap plugin publish <plugin> [<org>/<catalog>] [--account <name>]
+harnesstap plugin publish plan <plugin>
 ```
 
-Publishes to all registered catalogs by default. Pass `org/catalog` or use `layer catalog bindings` to restrict targets.
+Publishes to all registered catalogs by default. Pass `org/catalog` or use `plugin catalog bindings` to restrict targets.
 
 ## Suggested team workflow
 
-Stay inside the implemented command set: authenticate, inspect or switch organizations, search layers, pull or apply shared layers, and publish local layers when they are ready for teammates.
+Stay inside the implemented command set: authenticate, inspect or switch organizations, search plugins, pull or apply shared plugins, and publish local plugins when they are ready for teammates.
 
 ### 1. Authenticate with Cloud
 
@@ -114,7 +114,7 @@ harnesstap auth login
 
 ### 2. Inspect your active identity
 
-Check the authenticated user and current organization before you work with shared layers.
+Check the authenticated user and current organization before you work with shared plugins.
 
 ```bash
 harnesstap auth status
@@ -128,29 +128,29 @@ List the organizations your account can reach and switch to the correct one befo
 harnesstap auth orgs --switch org-slug
 ```
 
-### 4. Search shared layers
+### 4. Search shared plugins
 
-Browse the layer catalog for stacks and workflows your team already maintains.
+Browse the plugin catalog for stacks and workflows your team already maintains.
 
 ```bash
-harnesstap layer list --search react --remote-only
+harnesstap plugin list --search react --remote-only
 ```
 
-### 5. Apply or pull a shared layer
+### 5. Apply or pull a shared plugin
 
 Apply directly by bare name or org/catalog selector, or pull into the local library first.
 
 ```bash
-harnesstap layer apply org/catalog/layer-name --project .
-harnesstap layer pull org/layer-name
+harnesstap apply org/catalog/plugin-name --project .
+harnesstap plugin pull org/plugin-name
 ```
 
-### 6. Publish a local layer
+### 6. Publish a local plugin
 
-Share a layer you maintain back to the active organization so teammates can discover it.
+Share a plugin you maintain back to the active organization so teammates can discover it.
 
 ```bash
-harnesstap layer publish local-layer
+harnesstap plugin publish local-plugin
 ```
 
 ## Troubleshooting
@@ -167,9 +167,9 @@ Use the device-code flow by running `harnesstap auth login` and following the br
 
 Check your active organization with `harnesstap auth status` and switch using `harnesstap auth orgs --switch org-slug`.
 
-### Layer install fails with version conflict
+### Plugin install fails with version conflict
 
-Use the `--as` flag to install the layer under a different local name to avoid conflicts.
+Use the `--as` flag to install the plugin under a different local name to avoid conflicts.
 
 ## Next steps
 

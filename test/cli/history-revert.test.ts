@@ -13,13 +13,13 @@ describe("CLI history and revert", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-history.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
       const git = await import("../../src/services/git.ts");
 
-      const layer = layerModel.createLayer({ name: "history-layer" });
+      const plugin = pluginModel.createPlugin({ name: "history-plugin" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -27,11 +27,11 @@ describe("CLI history and revert", () => {
           content: "# Original instructions",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
 
       await runCli([
-        "layer", "apply",
-        "history-layer",
+        "apply",
+        "history-plugin",
         "--project",
         context.projectDir,
         "--harness",
@@ -42,7 +42,7 @@ describe("CLI history and revert", () => {
 
       const history = await runCli(["history", context.projectDir,
       ]);
-      expect(history.stdout).toContain("Before applying: history-layer");
+      expect(history.stdout).toContain("Before applying: history-plugin");
       expect(history.stdout).toContain("WHEN");
       expect(history.stdout).not.toMatch(/\|\s+ID\s+\|/);
       expect(history.stdout).toContain("LABEL");
@@ -81,13 +81,13 @@ describe("CLI history and revert", () => {
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-history.git");
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
       const git = await import("../../src/services/git.ts");
 
-      const layer = layerModel.createLayer({ name: "history-layer" });
+      const plugin = pluginModel.createPlugin({ name: "history-plugin" });
       const resource = resourceModel.createResource(
         makeResourceInput({
           type: "instruction",
@@ -95,10 +95,10 @@ describe("CLI history and revert", () => {
           content: "# Original instructions",
         }),
       );
-      layerModel.addResourceToLayer(layer.id, resource.id);
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
       await runCli([
-        "layer", "apply",
-        "history-layer",
+        "apply",
+        "history-plugin",
         "--project",
         context.projectDir,
         "--harness",

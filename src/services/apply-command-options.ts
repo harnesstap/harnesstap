@@ -14,6 +14,8 @@ export interface ApplyCommandOpts {
   interactive?: boolean;
   noInteractive?: boolean;
   onConflict?: string;
+  explain?: boolean;
+  update?: boolean;
 }
 
 export function addApplyCommandOptions(command: Command): Command {
@@ -28,7 +30,7 @@ export function addApplyCommandOptions(command: Command): Command {
     .option("--interactive", "Prompt instead of relying on explicit flags")
     .option(
       "--ignore-plugin-versions",
-      "Skip validating layer Claude plugin pins against installed versions",
+      "Skip validating plugin Claude plugin pins against installed versions",
     )
     .option(
       "--strict-plugin-versions",
@@ -41,6 +43,14 @@ export function addApplyCommandOptions(command: Command): Command {
     .option(
       "--on-conflict <policy>",
       "When generated files already exist: replace, skip, or prompt (default: prompt on TTY, else replace)",
+    )
+    .option(
+      "--explain",
+      "Print the resolution trail: selected versions with their constraints, and every resource decision",
+    )
+    .option(
+      "--update",
+      "Ignore .harnesstap/lock.toml and re-resolve the dependency graph",
     )
     .option(
       "--strict",

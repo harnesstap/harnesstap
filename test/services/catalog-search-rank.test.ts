@@ -1,13 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import type { CatalogLayer } from "../../src/services/catalog-types.js";
+import type { CatalogPlugin } from "../../src/services/catalog-types.js";
 import {
   catalogSearchRank,
   rankCatalogSearchResults,
 } from "../../src/services/catalog-search-rank.js";
 
-function makeLayer(
-  overrides: Partial<CatalogLayer> & Pick<CatalogLayer, "slug">,
-): CatalogLayer {
+function makePlugin(
+  overrides: Partial<CatalogPlugin> & Pick<CatalogPlugin, "slug">,
+): CatalogPlugin {
   return {
     orgSlug: "harnesstap-cloud",
     catalogSlug: "default",
@@ -23,14 +23,14 @@ function makeLayer(
 
 describe("catalog search ranking", () => {
   it("ranks exact slug matches ahead of tag and summary matches", () => {
-    const layers = [
-      makeLayer({
+    const plugins = [
+      makePlugin({
         slug: "devops-engineer",
         summary: "fullstack DevOps coverage",
         tags: ["fullstack"],
         updatedAt: "2026-06-01T00:00:00.000Z",
       }),
-      makeLayer({
+      makePlugin({
         slug: "engineering-foundation",
         name: "Engineering foundation",
         summary: "Shared baseline",
@@ -38,35 +38,35 @@ describe("catalog search ranking", () => {
       }),
     ];
 
-    const ranked = rankCatalogSearchResults(layers, "engineering-foundation");
+    const ranked = rankCatalogSearchResults(plugins, "engineering-foundation");
     expect(ranked[0]?.slug).toBe("engineering-foundation");
   });
 
   it("ranks foundation search with engineering-foundation before partial tag hits", () => {
-    const layers = [
-      makeLayer({
+    const plugins = [
+      makePlugin({
         slug: "data-engineer",
         name: "Data engineer",
         tags: ["engineering"],
       }),
-      makeLayer({
+      makePlugin({
         slug: "engineering-foundation",
         name: "Engineering foundation",
       }),
-      makeLayer({
+      makePlugin({
         slug: "ml-engineer",
         name: "ML engineer",
         summary: "foundation models",
       }),
     ];
 
-    const ranked = rankCatalogSearchResults(layers, "foundation");
+    const ranked = rankCatalogSearchResults(plugins, "foundation");
     expect(ranked[0]?.slug).toBe("engineering-foundation");
   });
 
   it("assigns lower rank to exact slug than slug prefix", () => {
-    const exact = makeLayer({ slug: "team" });
-    const prefix = makeLayer({ slug: "team-stack" });
+    const exact = makePlugin({ slug: "team" });
+    const prefix = makePlugin({ slug: "team-stack" });
     expect(catalogSearchRank(exact, "team")).toBeLessThan(
       catalogSearchRank(prefix, "team"),
     );

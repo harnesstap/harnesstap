@@ -20,7 +20,7 @@ describe("ui format", () => {
   it("formats counts with singular and plural", () => {
     expect(formatCount(1, "item")).toBe("1 item");
     expect(formatCount(2, "item")).toBe("2 items");
-    expect(formatCount(0, "layer")).toBe("0 layers");
+    expect(formatCount(0, "plugin")).toBe("0 plugins");
   });
 
   it("formats relative time with absolute date and time in parentheses", () => {

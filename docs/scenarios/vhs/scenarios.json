@@ -10,11 +10,11 @@
   },
   {
     "id": 7,
-    "slug": "preview-apply-layer",
-    "title": "Preview and apply a layer",
-    "docPath": "docs/scenarios/vhs/walkthroughs/07-preview-apply-layer.md",
-    "tapePath": "docs/scenarios/vhs/tapes/07-preview-apply-layer.tape",
-    "outputPath": "docs/scenarios/vhs/output/07-preview-apply-layer.gif",
+    "slug": "preview-apply-plugin",
+    "title": "Preview and apply a plugin",
+    "docPath": "docs/scenarios/vhs/walkthroughs/07-preview-apply-plugin.md",
+    "tapePath": "docs/scenarios/vhs/tapes/07-preview-apply-plugin.tape",
+    "outputPath": "docs/scenarios/vhs/output/07-preview-apply-plugin.gif",
     "fixturePath": "docs/scenarios/vhs/fixtures/scan-project"
   },
   {

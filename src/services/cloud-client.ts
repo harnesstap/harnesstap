@@ -1,5 +1,5 @@
-import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
-import { parseLayerExportToml } from "./transport/index.js";
+import { cloudFetch } from "./cloud-api-version.js";
+import type { ApEnvelope } from "./agent-plugins/envelope.js";
 
 export interface DeviceCodeResponse {
   device_code: string;
@@ -44,7 +44,7 @@ export interface CloudTokenRefreshResult {
   scopes?: string[];
 }
 
-type PublishedLayerRecord = {
+type PublishedPluginRecord = {
   id: string;
   slug: string;
   catalogSlug: string;
@@ -104,7 +104,7 @@ export async function refreshCloudAccessToken(
   baseUrl: string,
   refreshToken: string,
 ): Promise<CloudTokenRefreshResult> {
-  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/token/refresh"), {
+  const response = await cloudFetch(apiUrl(baseUrl, "/cli/token/refresh"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -176,38 +176,26 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
 
 export { nextPublishVersion };
 
-function exportLayerExportToCloudPayload(layerExportToml: string): { layers: Array<Record<string, unknown>> } {
-  const parsed = parseLayerExportToml(layerExportToml);
-  return {
-    layers: parsed.layers.map((layer) => {
-      const pluginPins = layer.plugin_pins.map((pluginPin) => {
-        const ref = pluginPin.ref;
-        const at = ref.lastIndexOf("@");
-        const id = at >= 0 ? ref.slice(0, at) : ref;
-        const author = at >= 0 ? ref.slice(at + 1) : "";
-        return {
-          id,
-          author,
-          version: pluginPin.version_constraint,
-        };
-      });
-      return {
-        name: layer.name,
-        description: layer.description,
-        tags: layer.tags,
-        pluginPins,
-        resources: layer.resources,
-        ...(layer.claude ? { claude: layer.claude } : {}),
-      };
-    }),
-  };
+function summaryFromPackage(apPackage: ApEnvelope, pluginName: string): string {
+  const pluginJson = apPackage.files["plugin.json"];
+  if (pluginJson?.encoding === "utf8") {
+    try {
+      const manifest = JSON.parse(pluginJson.content) as { description?: unknown };
+      if (typeof manifest.description === "string" && manifest.description.trim()) {
+        return manifest.description.trim();
+      }
+    } catch {
+      // fall through to default summary
+    }
+  }
+  return `Published plugin ${pluginName}`;
 }
 
 export async function requestDeviceCode(
   baseUrl: string,
   opts?: { scopes?: Array<"read" | "publish" | "admin"> },
 ): Promise<DeviceCodeResponse> {
-  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/code"), {
+  const response = await cloudFetch(apiUrl(baseUrl, "/cli/device/code"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ scopes: opts?.scopes ?? [...DEFAULT_DEVICE_SCOPES] }),
@@ -255,7 +243,7 @@ export async function pollDeviceTokenOnce(
   opts?: { intervalMs?: number },
 ): Promise<DeviceTokenPollOnceResult> {
   const pollIntervalMs = opts?.intervalMs ?? 5000;
-  const response = await fetchWithTimeout(apiUrl(baseUrl, "/cli/device/token"), {
+  const response = await cloudFetch(apiUrl(baseUrl, "/cli/device/token"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ device_code: deviceCode }),
@@ -318,9 +306,9 @@ export async function pollDeviceToken(
 export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
-  planLayerPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
-  publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string): Promise<Record<string, unknown>>;
-  deletePublishedLayer(input: { orgId: string; layerId: string }): Promise<void>;
+  planPluginPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
+  publishPackage(metadata: Record<string, unknown>, apPackage: ApEnvelope): Promise<Record<string, unknown>>;
+  deletePublishedPlugin(input: { orgId: string; pluginId: string }): Promise<void>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
 }
@@ -359,27 +347,26 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     const headers = new Headers(init?.headers);
     if (!state.token) throw new Error("Missing auth token");
     headers.set("Authorization", `Bearer ${state.token.access_token}`);
-    return fetchWithTimeout(input, { ...init, headers });
+    return cloudFetch(input, { ...init, headers });
   }
 
-  async function listPublishedLayers(orgId: string): Promise<PublishedLayerRecord[]> {
-    const response = await authFetch(`${apiUrl(state.baseUrl, "/layers")}?orgId=${encodeURIComponent(orgId)}`);
+  async function listPublishedPlugins(orgId: string): Promise<PublishedPluginRecord[]> {
+    const response = await authFetch(`${apiUrl(state.baseUrl, "/plugins")}?orgId=${encodeURIComponent(orgId)}`);
     if (!response.ok) {
-      throw new Error(`list layers failed: ${response.status}`);
+      throw new Error(`list plugins failed: ${response.status}`);
     }
-    const data = await response.json() as { layers?: PublishedLayerRecord[] };
-    return data.layers ?? [];
+    const data = await response.json() as { plugins?: PublishedPluginRecord[] };
+    return data.plugins ?? [];
   }
 
-  async function createPublishedLayer(input: {
+  async function createPublishedPlugin(input: {
     orgId: string;
     name: string;
     slug: string;
     summary: string;
-    layerCount: number;
     catalogSlug: string;
-  }): Promise<PublishedLayerRecord> {
-    const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
+  }): Promise<PublishedPluginRecord> {
+    const response = await authFetch(apiUrl(state.baseUrl, "/plugins"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -387,35 +374,32 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         name: input.name,
         slug: input.slug,
         summary: input.summary,
-        layerCount: input.layerCount,
         catalogSlug: input.catalogSlug,
       }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(`create layer failed: ${response.status} ${parseApiError(body)}`);
+      throw new Error(`create plugin failed: ${response.status} ${parseApiError(body)}`);
     }
-    return (body as { layer: PublishedLayerRecord }).layer;
+    return (body as { plugin: PublishedPluginRecord }).plugin;
   }
 
   async function publishVersion(input: {
     orgId: string;
-    layerId: string;
+    pluginId: string;
     version: string;
     summary: string;
-    layerExport: { layers: Array<Record<string, unknown>> };
-    harnesstapLayerExportBody: string;
+    apPackage: ApEnvelope;
   }): Promise<{ version: { version: string } }> {
-    const response = await authFetch(apiUrl(state.baseUrl, "/layers"), {
+    const response = await authFetch(apiUrl(state.baseUrl, "/plugins"), {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         orgId: input.orgId,
-        layerId: input.layerId,
+        pluginId: input.pluginId,
         version: input.version,
         summary: input.summary,
-        layerExport: input.layerExport,
-        harnesstapLayerExportBody: input.harnesstapLayerExportBody,
+        package: input.apPackage,
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -439,12 +423,12 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       return data.orgs ?? [];
     },
 
-    async planLayerPublishVersion(metadata: Record<string, unknown>) {
+    async planPluginPublishVersion(metadata: Record<string, unknown>) {
       const orgSlug = String(metadata.org_slug ?? "");
       const catalogSlug = String(metadata.catalog_slug ?? "default");
-      const layerName = String(metadata.layer_name ?? "");
-      if (!orgSlug || !layerName) {
-        throw new Error("publish metadata must include org_slug and layer_name.");
+      const pluginName = String(metadata.plugin_name ?? "");
+      if (!orgSlug || !pluginName) {
+        throw new Error("publish metadata must include org_slug and plugin_name.");
       }
 
       const orgs = await this.listOrgs();
@@ -453,20 +437,20 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         throw new Error(`Organization not found: ${orgSlug}`);
       }
 
-      const slug = toSlug(layerName);
-      const publishedLayer = (await listPublishedLayers(org.id)).find(
+      const slug = toSlug(pluginName);
+      const publishedPlugin = (await listPublishedPlugins(org.id)).find(
         (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
       );
 
-      return { nextVersion: nextPublishVersion(publishedLayer?.latestVersion) };
+      return { nextVersion: nextPublishVersion(publishedPlugin?.latestVersion) };
     },
 
-    async publishLayerExport(metadata: Record<string, unknown>, layerExportToml: string) {
+    async publishPackage(metadata: Record<string, unknown>, apPackage: ApEnvelope) {
       const orgSlug = String(metadata.org_slug ?? "");
       const catalogSlug = String(metadata.catalog_slug ?? "default");
-      const layerName = String(metadata.layer_name ?? "");
-      if (!orgSlug || !layerName) {
-        throw new Error("publish metadata must include org_slug and layer_name.");
+      const pluginName = String(metadata.plugin_name ?? "");
+      if (!orgSlug || !pluginName) {
+        throw new Error("publish metadata must include org_slug and plugin_name.");
       }
 
       const orgs = await this.listOrgs();
@@ -475,26 +459,20 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         throw new Error(`Organization not found: ${orgSlug}`);
       }
 
-      const slug = toSlug(layerName);
-      const layerExportPayload = exportLayerExportToCloudPayload(layerExportToml);
-      const layerCount = layerExportPayload.layers.length;
-      const summary = String(
-        (layerExportPayload.layers[0] as { description?: string } | undefined)?.description
-          || `Published layer ${layerName}`,
-      );
+      const slug = toSlug(pluginName);
+      const summary = summaryFromPackage(apPackage, pluginName);
 
-      let publishedLayer = (await listPublishedLayers(org.id)).find(
+      let publishedPlugin = (await listPublishedPlugins(org.id)).find(
         (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
       );
 
-      if (!publishedLayer) {
+      if (!publishedPlugin) {
         try {
-          publishedLayer = await createPublishedLayer({
+          publishedPlugin = await createPublishedPlugin({
             orgId: org.id,
-            name: layerName,
+            name: pluginName,
             slug,
             summary,
-            layerCount,
             catalogSlug,
           });
         } catch (error) {
@@ -502,40 +480,39 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
           if (!message.includes("409")) {
             throw error;
           }
-          publishedLayer = (await listPublishedLayers(org.id)).find(
+          publishedPlugin = (await listPublishedPlugins(org.id)).find(
             (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
           );
-          if (!publishedLayer) {
+          if (!publishedPlugin) {
             throw error;
           }
         }
       }
 
-      const version = nextPublishVersion(publishedLayer.latestVersion);
+      const version = nextPublishVersion(publishedPlugin.latestVersion);
       const published = await publishVersion({
         orgId: org.id,
-        layerId: publishedLayer.id,
+        pluginId: publishedPlugin.id,
         version,
         summary,
-        layerExport: layerExportPayload,
-        harnesstapLayerExportBody: layerExportToml,
+        apPackage,
       });
 
       return {
-        id: publishedLayer.id,
+        id: publishedPlugin.id,
         version: published.version.version,
         url: `${state.baseUrl}/catalogs/${catalogSlug}/${slug}`,
       };
     },
 
-    async deletePublishedLayer(input: { orgId: string; layerId: string }) {
+    async deletePublishedPlugin(input: { orgId: string; pluginId: string }) {
       const response = await authFetch(
-        `${apiUrl(state.baseUrl, `/layers/${encodeURIComponent(input.layerId)}`)}?orgId=${encodeURIComponent(input.orgId)}`,
+        `${apiUrl(state.baseUrl, `/plugins/${encodeURIComponent(input.pluginId)}`)}?orgId=${encodeURIComponent(input.orgId)}`,
         { method: "DELETE" },
       );
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(`delete layer failed: ${response.status} ${parseApiError(body)}`);
+        throw new Error(`delete plugin failed: ${response.status} ${parseApiError(body)}`);
       }
     },
 

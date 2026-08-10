@@ -4,7 +4,7 @@ import { ulid } from "ulid";
 import { isEmptyBuiltinProfile } from "../constants/profile.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getActiveProfileName } from "./active-profile.js";
-import type { ApplyProfileLayerOptions } from "./profile-apply.js";
+import type { ApplyProfilePluginOptions } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
 import {
   buildProfileContents,
@@ -43,7 +43,7 @@ export class ProfileStashError extends Error {
 
 function emptyProfileContents(): ProfileContents {
   return {
-    layers: [],
+    plugins: [],
     stack_resource_count: 0,
     stack_summary: null,
     type_counts: {},
@@ -205,7 +205,7 @@ export interface StashProfileResult {
 }
 
 export async function stashProfileCommand(
-  options: ApplyProfileLayerOptions,
+  options: ApplyProfilePluginOptions,
 ): Promise<StashProfileResult> {
   return withProfileApplyLock(async () => {
     const profileName = resolveStashableActiveProfile();
@@ -280,7 +280,7 @@ export interface RestoreProfileStashResult {
 }
 
 export async function popProfileStashCommand(
-  options: ApplyProfileLayerOptions,
+  options: ApplyProfilePluginOptions,
 ): Promise<RestoreProfileStashResult> {
   return withProfileApplyLock(async () => {
     const entry = popProfileStashEntry();
@@ -307,7 +307,7 @@ export async function popProfileStashCommand(
 }
 
 export async function applyProfileStashCommand(
-  options: ApplyProfileLayerOptions,
+  options: ApplyProfilePluginOptions,
 ): Promise<RestoreProfileStashResult> {
   return withProfileApplyLock(async () => {
     const entry = peekProfileStashEntry();
