@@ -4,11 +4,15 @@ import {
   listLayerDependencies,
   listLayers,
 } from "../models/layer-model.js";
-import { getLatestSnapshot } from "../models/snapshot.js";
 import { listProjects } from "../models/project.js";
+import { getLatestSnapshot } from "../models/snapshot.js";
 import type { SnapshotState } from "../types.js";
 import { setLayerResourceOverride } from "./layer-overrides.js";
-import { resolveComposition, resolutionKey } from "./resolve/index.js";
+import {
+  type ResolutionResult,
+  resolutionKey,
+  resolveComposition,
+} from "./resolve/index.js";
 
 export interface OrderMigrationReport {
   projectsWithSnapshot: number;
@@ -52,7 +56,7 @@ export function migrateOrderToOverrides(
     }
     report.projectsWithSnapshot += 1;
 
-    let resolution;
+    let resolution: ResolutionResult;
     try {
       resolution = resolveComposition({ rootSelectors: [rootLayer.name] });
     } catch {
