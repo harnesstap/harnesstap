@@ -53,6 +53,8 @@ export interface MigrateManifest {
   exported_at: string;
   plugin_count: number;
   environment_count: number;
+  /** Slugified plugin directory names packed under `plugins/`. */
+  plugins: string[];
   include_plugins: boolean;
   includes_active_profile: boolean;
 }
@@ -146,8 +148,11 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   mkdirSync(environmentsDir, { recursive: true });
 
   const plugins = listPlugins();
+  const pluginNames: string[] = [];
   for (const plugin of plugins) {
-    const packageDir = join(pluginsDir, slugifyApName(plugin.name));
+    const slug = slugifyApName(plugin.name);
+    pluginNames.push(slug);
+    const packageDir = join(pluginsDir, slug);
     writeApPackageFiles(buildApPackageFiles(plugin.id), packageDir);
   }
 
@@ -179,6 +184,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
     exported_at: new Date().toISOString(),
     plugin_count: plugins.length,
     environment_count: environments.length,
+    plugins: pluginNames,
     include_plugins: opts.includePlugins ?? false,
     includes_active_profile: includesActiveProfile,
   };
