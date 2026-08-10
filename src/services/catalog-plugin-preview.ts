@@ -1,13 +1,12 @@
 import { ulid } from "ulid";
 import { deletePlugin } from "../models/plugin-model.js";
 import type { CatalogPlugin } from "./catalog-types.js";
-import { downloadCatalogBundle } from "./catalog-client.js";
-import { importFromFile } from "./plugin-import.js";
+import { downloadCatalogPackage } from "./catalog-client.js";
+import { importApPackageFiles } from "./agent-plugins/import.js";
 import { renderPluginShow } from "./plugin-show-render.js";
 import {
   formatCanonicalPublishedSelectorWithVersion,
 } from "./plugin-selector.js";
-import { writePluginExportToTempFile } from "./plugin-source.js";
 
 export type CatalogPluginPreviewOptions = {
   account?: string;
@@ -19,7 +18,7 @@ export async function renderCatalogPluginPreviewShow(
   catalogPlugin: CatalogPlugin,
   opts: CatalogPluginPreviewOptions = {},
 ): Promise<string> {
-  const downloaded = await downloadCatalogBundle({
+  const downloaded = await downloadCatalogPackage({
     orgSlug: catalogPlugin.orgSlug,
     catalogSlug: catalogPlugin.catalogSlug,
     pluginSlug: catalogPlugin.slug,
@@ -27,11 +26,10 @@ export async function renderCatalogPluginPreviewShow(
     account: opts.account,
     baseUrl: opts.baseUrl,
   });
-  const tempPath = writePluginExportToTempFile(downloaded.body);
   const previewPluginName = `__hd-preview-${ulid().toLowerCase()}__`;
-  const imported = importFromFile(tempPath, {
-    pluginNameOverride: previewPluginName,
-    resourceSource: "catalog-preview",
+  const imported = importApPackageFiles(downloaded.files, {
+    as: previewPluginName,
+    origin: "catalog",
   });
 
   try {
@@ -41,11 +39,11 @@ export async function renderCatalogPluginPreviewShow(
       name: catalogPlugin.slug,
       version: downloaded.version,
     });
-    return renderPluginShow(imported.plugin, pluginLabel, {
+    return renderPluginShow(imported, pluginLabel, {
       showId: opts.showId,
       pluginLabel,
     });
   } finally {
-    deletePlugin(imported.plugin.id);
+    deletePlugin(imported.id);
   }
 }

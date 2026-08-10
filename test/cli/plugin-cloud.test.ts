@@ -10,6 +10,8 @@ import { makeResourceInput } from "../helpers/resources.ts";
 import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
 import { buildApPackageFiles } from "../../src/services/agent-plugins/files.ts";
 import { envelopeFromFiles } from "../../src/services/agent-plugins/envelope.ts";
+import { connectCatalogOrg } from "../../src/config/catalog.ts";
+import { getPluginByName, getPluginResources } from "../../src/models/plugin-model.ts";
 
 describe("CLI cloud plugin workflows", () => {
   it("search, add (remote install), publish, apply cloud-installed plugin, and conflict handling", async () => {
@@ -1620,6 +1622,144 @@ describe("CLI cloud plugin workflows", () => {
         ]);
         const patch = bodies.find((body) => "package" in body);
         expect(patch?.package).toEqual(envelopeFromFiles(buildApPackageFiles(plugin.id)));
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  const PLANNER_PACKAGE = {
+    schema: "urn:harnesstap:ap-package:v1",
+    files: {
+      "plugin.json": {
+        encoding: "utf8" as const,
+        content: JSON.stringify({
+          $schema: "https://agentplugins.org/schema/v1/plugin.schema.json",
+          name: "planner",
+          version: "1.0.0",
+          extensions: {
+            "com.harnesstap": {
+              schema: "urn:harnesstap:ap-extension:v1",
+              sourceName: "planner",
+              profile: false,
+              dependencies: [],
+              overrides: { versions: {}, resources: {} },
+              needs: [],
+              components: {},
+            },
+          },
+        }),
+      },
+      "skills/plan/SKILL.md": {
+        encoding: "utf8" as const,
+        content: "---\nname: plan\ndescription: Planning\n---\n\n# Plan\n",
+      },
+    },
+  };
+
+  it("installs a plugin from a catalog package", async () => {
+    const context = await createTestContext("cli-plugin-pull-catalog-package");
+    try {
+      await runCli(["init"]);
+      connectCatalogOrg("acme", join(context.homeDir, ".harnesstap"));
+      const restore = createCatalogFetchMock({
+        packages: { "acme/main/planner@1.0.0": PLANNER_PACKAGE },
+      });
+      try {
+        const result = await runCli(["plugin", "pull", "acme/main/planner@1.0.0"]);
+        expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
+        const installed = getPluginByName("planner");
+        expect(installed).toBeDefined();
+        expect(getPluginResources(installed!.id).map((r) => r.name)).toContain("plan");
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("marks a pulled plugin as catalog origin", async () => {
+    const context = await createTestContext("cli-plugin-pull-catalog-origin");
+    try {
+      await runCli(["init"]);
+      connectCatalogOrg("acme", join(context.homeDir, ".harnesstap"));
+      const restore = createCatalogFetchMock({
+        packages: { "acme/main/planner@1.0.0": PLANNER_PACKAGE },
+      });
+      try {
+        await runCli(["plugin", "pull", "acme/main/planner@1.0.0"]);
+        expect(getPluginByName("planner")?.origin).toBe("catalog");
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("records the published identity so sync knows where it came from", async () => {
+    const context = await createTestContext("cli-plugin-pull-published-identity");
+    try {
+      await runCli(["init"]);
+      connectCatalogOrg("acme", join(context.homeDir, ".harnesstap"));
+      const restore = createCatalogFetchMock({
+        packages: { "acme/main/planner@1.0.0": PLANNER_PACKAGE },
+      });
+      try {
+        await runCli(["plugin", "pull", "acme/main/planner@1.0.0"]);
+        const installed = getPluginByName("planner");
+        expect(installed).toMatchObject({
+          org_slug: "acme",
+          catalog_slug: "main",
+          version: "1.0.0",
+        });
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("reports an upgrade requirement when the catalog rejects the CLI version", async () => {
+    const context = await createTestContext("cli-plugin-pull-cli-too-old");
+    try {
+      await runCli(["init"]);
+      connectCatalogOrg("acme", join(context.homeDir, ".harnesstap"));
+      const restore = createCatalogFetchMock({ status: 426 });
+      try {
+        const result = await runCli(["plugin", "pull", "acme/main/planner@1.0.0"]);
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr).toContain("too old");
+        expect(result.stderr).toContain("npm install -g harnesstap@latest");
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("fails clearly when the package is malformed", async () => {
+    const context = await createTestContext("cli-plugin-pull-malformed-package");
+    try {
+      await runCli(["init"]);
+      connectCatalogOrg("acme", join(context.homeDir, ".harnesstap"));
+      const restore = createCatalogFetchMock({
+        packages: {
+          "acme/main/planner@1.0.0": {
+            schema: "urn:harnesstap:ap-package:v1",
+            files: { "skills/plan/SKILL.md": { encoding: "utf8", content: "x" } },
+          },
+        },
+      });
+      try {
+        const result = await runCli(["plugin", "pull", "acme/main/planner@1.0.0"]);
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr).toContain("plugin.json");
       } finally {
         restore();
       }

@@ -3,8 +3,10 @@ import {
   type CatalogListOptions,
   type CatalogListResult,
 } from "./catalog-types.js";
+import { parseApEnvelope } from "./agent-plugins/envelope.js";
+import type { ApPackageFiles } from "./agent-plugins/files.js";
+import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
 import { DEFAULT_CATALOG_SLUG } from "./plugin-selector.js";
-import { fetchWithTimeout } from "../utils/fetch-with-timeout.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
   const params = new URLSearchParams();
@@ -37,7 +39,7 @@ export function createPublicCatalogClient(baseUrl: string) {
     async listPlugins(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = buildSearchParams(options);
       const url = `${root}/api/public/plugins?${params.toString()}`;
-      const response = await fetchWithTimeout(url);
+      const response = await cloudFetch(url);
       if (!response.ok) {
         throw new Error(`Failed to list public plugins: ${response.status}`);
       }
@@ -45,22 +47,29 @@ export function createPublicCatalogClient(baseUrl: string) {
       return normalizeListResult(result);
     },
 
-    async downloadBundle(
+    async downloadPackage(
       orgSlug: string,
       pluginSlug: string,
       version = "latest",
       catalogSlug = DEFAULT_CATALOG_SLUG,
-    ): Promise<{ version: string; body: string }> {
+    ): Promise<{ version: string; files: ApPackageFiles }> {
       const encodedVersion = encodeURIComponent(version);
-      const url = catalogSlug === DEFAULT_CATALOG_SLUG
-        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(pluginSlug)}/versions/${encodedVersion}/plugin-export`
-        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(pluginSlug)}/versions/${encodedVersion}/plugin-export`;
-      const response = await fetchWithTimeout(url);
+      const url =
+        `${root}/api/public/${encodeURIComponent(orgSlug)}` +
+        `/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(pluginSlug)}` +
+        `/versions/${encodedVersion}/package`;
+      const response = await cloudFetch(url, {
+        headers: { Accept: AP_PACKAGE_MEDIA_TYPE },
+      });
       if (!response.ok) {
-        throw new Error(`Failed to download public plugin export: ${response.status}`);
+        throw new Error(
+          `Failed to download ${orgSlug}/${catalogSlug}/${pluginSlug}: ${response.status}`,
+        );
       }
-      const body = await response.text();
-      return { version, body };
+      return {
+        version,
+        files: parseApEnvelope(await response.text(), url),
+      };
     },
   };
 }

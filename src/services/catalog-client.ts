@@ -19,6 +19,9 @@ import {
   formatPublishedSelector,
   parsePluginSelector,
 } from "./plugin-selector.js";
+import { parseApEnvelope } from "./agent-plugins/envelope.js";
+import type { ApPackageFiles } from "./agent-plugins/files.js";
+import { AP_PACKAGE_MEDIA_TYPE, cloudFetch } from "./cloud-api-version.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
 import { fetchWithTimeout, formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
@@ -255,14 +258,19 @@ export async function listPluginsInScope(
   return ordered.slice(0, limit);
 }
 
-export async function downloadCatalogBundle(input: {
+export interface DownloadedPackage {
+  version: string;
+  files: ApPackageFiles;
+}
+
+export async function downloadCatalogPackage(input: {
   orgSlug: string;
   catalogSlug?: string;
   pluginSlug: string;
   version?: string;
   account?: string;
   baseUrl?: string;
-}): Promise<{ version: string; body: string }> {
+}): Promise<DownloadedPackage> {
   const catalogSlug = input.catalogSlug ?? "default";
   const access = await resolveCatalogAccess({
     account: input.account,
@@ -291,29 +299,34 @@ export async function downloadCatalogBundle(input: {
   const accessToken = ensured?.accessToken;
   if (accessToken) {
     const encodedVersion = encodeURIComponent(version);
-    const url = catalogSlug === "default"
-      ? `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(input.pluginSlug)}/versions/${encodedVersion}/plugin-export`
-      : `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.pluginSlug)}/versions/${encodedVersion}/plugin-export`;
-    let response = await fetchWithTimeout(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const url =
+      `${access.scope.cloudBaseUrl}/api/catalog/${encodeURIComponent(input.orgSlug)}` +
+      `/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(input.pluginSlug)}` +
+      `/versions/${encodedVersion}/package`;
+    const downloadOnce = async (token: string) =>
+      cloudFetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: AP_PACKAGE_MEDIA_TYPE,
+        },
+      });
+    let response = await downloadOnce(accessToken);
     if (response.status === 401) {
       const refreshed = await forceRefreshCloudAccountAccess(input.account);
       if (refreshed) {
-        response = await fetchWithTimeout(url, {
-          headers: {
-            Authorization: `Bearer ${refreshed.accessToken}`,
-          },
-        });
+        response = await downloadOnce(refreshed.accessToken);
       }
     }
     if (response.ok) {
-      return { version, body: await response.text() };
+      return {
+        version,
+        files: parseApEnvelope(await response.text(), url),
+      };
     }
     if (response.status !== 404) {
-      throw new Error(`Failed to download catalog plugin export: ${response.status}`);
+      throw new Error(
+        `Failed to download ${input.orgSlug}/${catalogSlug}/${input.pluginSlug}: ${response.status}`,
+      );
     }
   }
 
@@ -321,7 +334,7 @@ export async function downloadCatalogBundle(input: {
     throw new Error(formatOutOfScopeMessage(selector));
   }
 
-  return access.publicClient.downloadBundle(
+  return access.publicClient.downloadPackage(
     input.orgSlug,
     input.pluginSlug,
     version,

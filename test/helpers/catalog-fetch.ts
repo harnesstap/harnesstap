@@ -1,7 +1,13 @@
 import { DEFAULT_CLOUD_BASE_URL } from "../../src/config/catalog.ts";
+import { AP_PACKAGE_SCHEMA, type ApPackageFiles } from "../../src/services/agent-plugins/files.ts";
 import { makeApEnvelope } from "./ap-package-fixtures.ts";
 
 const DEFAULT_BUNDLE = makeApEnvelope();
+
+export type CatalogPackageFixture = {
+  schema: string;
+  files: ApPackageFiles;
+};
 
 function normalizePlugin(plugin: Record<string, unknown>) {
   return {
@@ -24,9 +30,35 @@ function encodeCursor(offset: number): string {
   return Buffer.from(String(offset), "utf8").toString("base64url");
 }
 
+function packageBodyForUrl(
+  url: string,
+  packages: Record<string, CatalogPackageFixture | string> | undefined,
+  fallbackBundle: string,
+): string {
+  const match = url.match(
+    /\/(?:api\/(?:public|catalog))\/([^/]+)\/([^/]+)\/([^/]+)\/versions\/([^/]+)\/package(?:\?|$)/,
+  );
+  if (!match) {
+    return fallbackBundle;
+  }
+  const [, orgSlug, catalogSlug, pluginSlug, version] = match;
+  const key = `${orgSlug}/${catalogSlug}/${pluginSlug}@${decodeURIComponent(version ?? "")}`;
+  const entry = packages?.[key];
+  if (entry == null) {
+    return fallbackBundle;
+  }
+  if (typeof entry === "string") {
+    return entry;
+  }
+  return `${JSON.stringify({ schema: entry.schema, files: entry.files }, null, 2)}\n`;
+}
+
 export function createCatalogFetchMock(input?: {
   plugins?: Array<Record<string, unknown>>;
+  /** @deprecated Prefer `packages`. Kept for existing tests that pass a raw envelope string. */
   bundle?: string;
+  packages?: Record<string, CatalogPackageFixture | string>;
+  status?: number;
   baseUrl?: string;
   failOrgFilters?: string[];
   pageDelayMs?: number;
@@ -54,6 +86,38 @@ export function createCatalogFetchMock(input?: {
         json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
       };
     }
+
+    if (input?.status === 426) {
+      return {
+        ok: false,
+        status: 426,
+        clone() {
+          return this;
+        },
+        json: async () => ({
+          error: "cli_too_old",
+          message: "This HarnessTap Cloud API requires CLI 0.1.0 or newer.",
+          minimumVersion: "0.1.0",
+          fix: "npm install -g harnesstap@latest",
+        }),
+        text: async () =>
+          JSON.stringify({
+            error: "cli_too_old",
+            minimumVersion: "0.1.0",
+            fix: "npm install -g harnesstap@latest",
+          }),
+      };
+    }
+
+    if (input?.status != null && input.status !== 200) {
+      return {
+        ok: false,
+        status: input.status,
+        json: async () => ({}),
+        text: async () => "",
+      };
+    }
+
     const isPluginList =
       url.startsWith(`${baseUrl}/api/public/plugins`)
       || url.startsWith(`${baseUrl}/api/catalog/plugins`);
@@ -102,10 +166,11 @@ export function createCatalogFetchMock(input?: {
       };
     }
     if (
-      /\/api\/public\/.+\/versions\/.+\/plugin-export/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/plugin-export/.test(url)
+      /\/api\/public\/.+\/versions\/.+\/package/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/package/.test(url)
     ) {
-      return { ok: true, text: async () => bundle };
+      const body = packageBodyForUrl(url, input?.packages, bundle);
+      return { ok: true, status: 200, text: async () => body };
     }
     if (url.endsWith("/api/me/orgs")) {
       return {
@@ -120,3 +185,5 @@ export function createCatalogFetchMock(input?: {
     globalThis.fetch = originalFetch;
   };
 }
+
+export { AP_PACKAGE_SCHEMA };

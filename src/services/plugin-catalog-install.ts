@@ -1,5 +1,5 @@
-import { downloadCatalogBundle } from "./catalog-client.js";
-import { importFromFile } from "./plugin-import.js";
+import { downloadCatalogPackage } from "./catalog-client.js";
+import { importApPackageFiles } from "./agent-plugins/import.js";
 import {
   getPluginByCatalogVersion,
   getPluginByPublishedIdentity,
@@ -9,7 +9,6 @@ import {
   formatPublishedSelectorWithVersion,
   type ResolvedRemotePluginSelector,
 } from "./plugin-selector.js";
-import { writePluginExportToTempFile } from "./plugin-source.js";
 import { assertInstallPluginNameAvailable } from "./plugin-install-conflicts.js";
 
 export interface InstallPluginFromCatalogOptions {
@@ -31,7 +30,7 @@ export async function installPluginFromCatalog(
 ): Promise<InstallPluginFromCatalogResult> {
   assertInstallPluginNameAvailable(parsed, opts);
 
-  const downloaded = await downloadCatalogBundle({
+  const downloaded = await downloadCatalogPackage({
     orgSlug: parsed.org_slug,
     catalogSlug: parsed.catalog_slug,
     pluginSlug: parsed.plugin_slug,
@@ -65,17 +64,19 @@ export async function installPluginFromCatalog(
     };
   }
 
-  const tempPath = writePluginExportToTempFile(downloaded.body);
-  const imported = importFromFile(tempPath, { pluginNameOverride: opts.as });
-  updatePluginPublishedIdentity(imported.plugin.id, {
+  const imported = importApPackageFiles(downloaded.files, {
+    as: opts.as,
+    origin: "catalog",
+  });
+  updatePluginPublishedIdentity(imported.id, {
     org_slug: parsed.org_slug,
     catalog_slug: parsed.catalog_slug,
     version: downloaded.version,
   });
 
   return {
-    pluginId: imported.plugin.id,
-    pluginName: imported.plugin.name,
+    pluginId: imported.id,
+    pluginName: imported.name,
     version: downloaded.version,
     sourceLabel,
   };
