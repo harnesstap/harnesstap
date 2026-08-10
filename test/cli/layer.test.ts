@@ -528,9 +528,26 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
       const layerModel = await import("../../src/models/layer-model.ts");
-      const pluginPins = await import("../../src/services/layer-composition.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "bad-plugin-meta" });
-      pluginPins.attachPluginPinToLayer(layer.id, "formatter", "not-semver");
+      // Bypass addDependency validation so doctor can see invalid stored metadata.
+      const bad = resourceModel.createResource({
+        type: "plugin",
+        name: "formatter",
+        description: "Dependency: formatter",
+        content: "{}",
+        metadata: {
+          source_kind: "marketplace",
+          version_constraint: "not-semver",
+          sync_status: "never_synced",
+          portable: "reference",
+        },
+        source: "composition:plugin",
+        namespace: "not-semver",
+        origin_kind: "marketplace_link",
+        origin_ref: "formatter",
+      });
+      layerModel.addResourceToLayer(layer.id, bad.id);
 
       const result = await runCli([
         "layer",
@@ -793,8 +810,7 @@ describe("CLI layer", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Attachment type required");
       expect(result.stderr).toContain("skill:");
-      expect(result.stderr).toContain("plugin_pin:");
-      expect(result.stderr).toContain("layer:");
+      expect(result.stderr).toContain("plugin:");
     } finally {
       await context.cleanup();
     }
@@ -916,8 +932,7 @@ describe("CLI layer", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Attachment type required");
       expect(result.stderr).toContain("skill:");
-      expect(result.stderr).toContain("plugin_pin:");
-      expect(result.stderr).toContain("layer:");
+      expect(result.stderr).toContain("plugin:");
     } finally {
       await context.cleanup();
     }
@@ -933,8 +948,7 @@ describe("CLI layer", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Invalid --type. Valid:");
-      expect(result.stderr).toContain("plugin_pin");
-      expect(result.stderr).toContain("layer");
+      expect(result.stderr).toContain("plugin");
       expect(result.stderr).not.toContain("layer-dependency");
     } finally {
       await context.cleanup();
@@ -974,26 +988,27 @@ describe("CLI layer", () => {
 
       const versionResult = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--version", "^1.0.0", "--no-interactive"]);
       expect(versionResult.exitCode).toBe(1);
-      expect(versionResult.stderr).toContain("--version is only supported for plugin_pin and layer attachments");
+      expect(versionResult.stderr).toContain("--version is only supported for plugin attachments");
 
       const embedResult = await runCli(["layer", "edit", "team", "--add", "shared-skill", "--type", "skill", "--embed", "--no-interactive"]);
       expect(embedResult.exitCode).toBe(1);
-      expect(embedResult.stderr).toContain("--embed is only supported for plugin_pin attachments");
+      expect(embedResult.stderr).toContain("--embed is only supported for plugin attachments");
     } finally {
       await context.cleanup();
     }
   });
 
-  it("rejects --embed for layer dependencies", async () => {
-    const context = await createTestContext("cli-layer-dependency-embed-invalid");
+  it("allows --embed for local plugin dependencies", async () => {
+    const context = await createTestContext("cli-layer-dependency-embed");
     try {
       await runCli(["init"]);
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
+      await runCli(["layer", "create", "baseline", "--version", "1.0.0"]);
 
       const result = await runCli(["layer", "edit", "team-stack@1.2.0", "--add", "baseline", "--type", "layer", "--version", "^1.0.0", "--embed", "--no-interactive"]);
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("--embed is only supported for plugin_pin attachments");
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(result.stdout).toContain("Attached plugin");
     } finally {
       await context.cleanup();
     }
