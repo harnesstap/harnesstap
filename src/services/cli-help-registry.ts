@@ -246,6 +246,14 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "layer doctor my-layer --format json",
     ],
   },
+  "layer.why": {
+    description: "Explain a resolution decision",
+    examples: [
+      "layer why base",
+      "layer why skill:deploy",
+      "layer why base --format json",
+    ],
+  },
   "layer.from-project": {
     description: "Scan current folder and create a layer from its resources",
     examples: [

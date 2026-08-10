@@ -16,6 +16,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "apply",
   "diff",
   "doctor",
+  "why",
   "from-project",
 ]);
 

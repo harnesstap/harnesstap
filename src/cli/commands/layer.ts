@@ -13,6 +13,7 @@ import {
   handleLayerPublishPlanCommand,
 } from "../handlers/layer-publish.js";
 import { handleLayerShowCommand } from "../handlers/layer-show-command.js";
+import { handleLayerWhyCommand } from "../handlers/layer-why.js";
 import { resolveLayerMutationTarget } from "../handlers/resolve-layer-mutation-target.js";
 import {
   isLayerAttachmentOnlyType,
@@ -2211,6 +2212,17 @@ layerCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Run doctor checks against a layer")
   .action(handleLayerDoctorCommand);
+
+layerCmd
+  .command("why")
+  .argument("<target>", "Layer name, or a resource key like skill:deploy")
+  .option("--project <path>", "Project directory", ".")
+  .option("--root <layer>", "Resolve against this root instead of the lockfile root")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Explain why a version was selected or which layer won a resource")
+  .action((target: string, opts: { project?: string; root?: string; format?: string }) => {
+    handleLayerWhyCommand(target, opts);
+  });
 
 layerCmd
   .command("from-project")
