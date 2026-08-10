@@ -1958,7 +1958,7 @@ addApplyCommandOptions(
     .command("apply")
     .argument(
       "[layers...]",
-      "Layer name(s), layer export path, or URL (multiple layers are merged in order)",
+      "Layer name(s), layer export path, or URL (multiple roots become an ephemeral composition)",
     )
     .description(
       "Apply one or more layers (or a layer export URL) to a project, serializing for each harness",

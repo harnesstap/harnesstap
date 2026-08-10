@@ -4,7 +4,7 @@ description: Versioned context packages you create, diff, export, publish, and a
 
 # Layers
 
-A **layer** is HarnessTap's versioned context package: the unit you create, diff, export, publish, and apply. Layers compose plugins, plugin pins, nested layer refs, and an optional default environment.
+A **layer** is HarnessTap's versioned context package: the unit you create, diff, export, publish, and apply. Layers compose plugins, plugin pins, nested layer dependencies, and an optional default environment.
 
 ## Layers and plugins
 
@@ -13,7 +13,7 @@ A **layer** is HarnessTap's versioned context package: the unit you create, diff
 | **Plugin** | Groups *what* resources (skills, rules, MCP, hooks, …) plus host-specific config |
 | **Layer** | One or more plugins (and attachments) with an optional default environment |
 | **Plugin pin** | Lazy link to a host marketplace plugin (`plugin_pin:name@marketplace`); resolved at sync or apply |
-| **Layer ref** | Nested layer dependency expanded depth-first at apply time |
+| **Layer ref** | Nested layer dependency; apply resolves the whole dependency graph |
 
 Create and edit layers locally:
 
@@ -26,6 +26,50 @@ ht layer show my-setup
 ```
 
 `layer doctor` checks for duplicate resources, empty content, or invalid plugin metadata. `layer diff` compares layer metadata and contents against another layer or a TOML bundle. `layer from-project` scans a repository and turns imported resources into a new layer.
+
+## Composition and resolution
+
+Layers depend on other layers. `ht layer apply` does not walk an ordered stack — it resolves the whole dependency graph, then materializes one coherent set of resources.
+
+**Pass 1 — one version per layer name.** Every constraint on a name is collected and intersected. The selected version is the highest available version that satisfies every constraint. A version or override declared by the layer you applied ends mediation for that name. An empty intersection is a hard error that names both requirers and their dependency paths.
+
+**Pass 2 — one resource per `type:name`.** Resources from the resolved set are flattened with each resource's depth (the root's own resources are depth 0):
+
+| Case | Outcome |
+| --- | --- |
+| Distinct `type:name` | Both materialize |
+| Same `type:name`, different depth | Nearest to root wins (silent; recorded in the explain trail) |
+| Same `type:name`, same depth, identical content | No-op |
+| Same `type:name`, same depth, differing content, set-like types (`skill`, `rule`, `agent`, `command`, `hook`, `mcp_server`) | Last-declared wins with a warning |
+| Same `type:name`, same depth, differing content, singleton types (`instruction`, `model_config`, `permission`, `env_var`) | Error — fix with an override |
+
+Merge semantics are replace-only: the winner replaces the resource whole.
+
+```bash
+ht layer apply my-setup --project .
+ht layer apply team-base team-overrides   # ephemeral root with both as dependencies
+```
+
+### Lockfile
+
+Successful project applies write `.harnesstap/lock.toml`. Check it in. It records the resolved layer name → version set (plus integrity metadata) so re-applies reuse the same resolution until you ask otherwise:
+
+```bash
+ht layer apply my-setup            # reuse lock when consistent with the manifest
+ht layer apply my-setup --update   # ignore the lock and re-resolve
+```
+
+`ht status --check` reports lock drift (manifest and lock disagree) alongside ordinary project drift.
+
+### Inspecting decisions
+
+```bash
+ht layer apply my-setup --explain
+ht layer why base
+ht layer why skill:deploy
+```
+
+`--explain` prints the resolution trail: selected versions with the constraints that produced them, and every contested resource with winner, loser, and reason. `layer why` answers the same questions against the lockfile (or `--root` when you want a fresh resolve).
 
 ## Plugin pins and version policy
 
@@ -153,10 +197,12 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessTap 
 | Create from scratch | `layer create` |
 | Add resources or deps | `layer edit --add` / `--remove` |
 | Diagnose before apply | `layer doctor` |
+| Explain a resolve decision | `layer why` / `layer apply --explain` |
 | Compare versions | `layer diff` |
 | Cut a new semver | `layer cut --version` |
 | Infer from a repo | `layer from-project` |
-| Apply to a project | `layer apply` |
+| Apply to a project | `layer apply` / `layer apply --update` |
+| Check lock drift | `status --check` |
 | Apply to home harness | `profile use` (profile-tagged layers) |
 | Export / import TOML | `migrate export --layer` / `migrate import` |
 | Publish / pull cloud | `layer publish` / `layer pull` |

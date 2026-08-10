@@ -14,6 +14,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "export",
   "import",
   "apply",
+  "cut",
   "diff",
   "doctor",
   "why",
@@ -203,6 +204,11 @@ export function configureProgramHelp(program: Command): void {
             lines.push(description, "");
           }
 
+          const helpEntry = getCommandHelpEntry(cmd);
+          if (helpEntry?.details?.trim()) {
+            lines.push(helpEntry.details.trim(), "");
+          }
+
           const args = cmd.registeredArguments?.filter((arg) => arg.description) ?? [];
           if (args.length > 0) {
             lines.push(ui.theme.heading("ARGUMENTS"));
@@ -213,7 +219,6 @@ export function configureProgramHelp(program: Command): void {
             lines.push("");
           }
 
-          const helpEntry = getCommandHelpEntry(cmd);
           if (
             isLeafHelpCommand(cmd)
             && helpEntry?.examples

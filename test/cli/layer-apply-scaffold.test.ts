@@ -40,7 +40,7 @@ async function seedDiamondConflict(): Promise<void> {
   attachInstruction(a.id, "FROM-A", "a");
   const b = createLayer({ name: "b" });
   attachInstruction(b.id, "FROM-B", "b");
-  const root = createLayer({ name: "root" });
+  createLayer({ name: "root" });
   const rootLayer = getLayerByName("root");
   if (!rootLayer) throw new Error("missing root");
   await addLayerAttachment({ layer: rootLayer, selector: "layer:a" });

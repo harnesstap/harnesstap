@@ -17,7 +17,7 @@ import {
 } from "./wizards/shared.js";
 import {
   SingletonConflictError,
-  UnsatisfiableConstraintError,
+  type UnsatisfiableConstraintError,
 } from "./resolve/types.js";
 import type { Layer } from "../types.js";
 import type { OutputFormat } from "../utils/output-format.js";

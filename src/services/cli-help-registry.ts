@@ -2,6 +2,8 @@ import type { Command } from "commander";
 
 export interface CommandHelpEntry {
   description: string;
+  /** Extra paragraphs shown under the short description on leaf-command help. */
+  details?: string;
   examples?: string[];
 }
 
@@ -163,10 +165,22 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   "layer.apply": {
     description:
       "Apply one or more layers (or a layer export URL) to a project, serializing for each harness",
+    details:
+      "Resolution: apply walks the dependency graph, unifies each layer name to one\n" +
+      "version, and materializes one resource per type:name. When two layers declare\n" +
+      "the same resource, the one closest to what you applied wins. At equal depth,\n" +
+      "the last-declared layer wins for skills, rules, agents, commands, hooks, and\n" +
+      "MCP servers, with a warning; conflicting instructions, model config,\n" +
+      "permissions, or env vars are an error you resolve with an override.\n" +
+      "\n" +
+      "Run with --explain to see every decision. Pass --update to ignore\n" +
+      ".harnesstap/lock.toml and re-resolve.",
     examples: [
       "layer apply my-layer",
       "layer apply team-base team-overrides --project .",
       "layer apply my-layer --dry-run",
+      "layer apply my-layer --explain",
+      "layer apply my-layer --update",
     ],
   },
   "layer.catalog.list": {
@@ -246,8 +260,19 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "layer doctor my-layer --format json",
     ],
   },
+  "layer.cut": {
+    description: "Cut a new local version from the working head",
+    examples: [
+      "layer cut my-layer --version 1.3.0",
+      "layer cut my-layer --version 1.3.0 --format json",
+    ],
+  },
   "layer.why": {
-    description: "Explain a resolution decision",
+    description:
+      "Explain why a version was selected, or which layer won a resource",
+    details:
+      "Answers why a version was selected, or which layer won a given resource, " +
+      "against the lockfile in the current project.",
     examples: [
       "layer why base",
       "layer why skill:deploy",
@@ -304,15 +329,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "profile use --profile dev",
       "profile use work --dry-run",
       "profile use work --harness claude-code",
-    ],
-  },
-  "profile.stash": {
-    description:
-      "Stash untracked on-disk resources for the active profile (like git stash -u)",
-    examples: [
-      "profile stash",
-      "profile stash --dry-run",
-      "profile stash --format json",
     ],
   },
   "profile.stash.list": {
@@ -440,6 +456,15 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     examples: [
       "migrate import backup.tar.gz",
       "migrate import my-layer.harnesstap.toml --layer",
+    ],
+  },
+  "migrate.resolve-order": {
+    description:
+      "Convert apply-order dependence into explicit overrides so previously applied results reproduce",
+    examples: [
+      "migrate resolve-order",
+      "migrate resolve-order --dry-run",
+      "migrate resolve-order --format json",
     ],
   },
   "resource.list": {

@@ -220,7 +220,8 @@ export function registerPluginCommands(root: Command): void {
   );
 
   pluginCmd
-    .command("search [query]")
+    .command("search")
+    .argument("[query]", "Search query for marketplace plugins")
     .option("--refresh", "Refresh marketplace catalogs before searching")
     .option("--layer <name>", "Layer to attach the selected plugin pin to")
     .option("--format <mode>", "Output format: human or json", "human")
@@ -229,7 +230,8 @@ export function registerPluginCommands(root: Command): void {
     .action(handlePluginSearchCommand);
 
   pluginCmd
-    .command("add <ref>")
+    .command("add")
+    .argument("<ref>", "Plugin ref as name@marketplace")
     .option("--layer <name>", "Layer to attach the plugin pin to")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--no-interactive", "Disable interactive prompts")

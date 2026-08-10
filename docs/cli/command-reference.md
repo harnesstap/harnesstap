@@ -131,7 +131,7 @@ Apply layers with `layer apply` (not under this group).
 - `mirror --force-shift-reference <slug>` — set the project main harness before mirroring
 - `mirror --reference <strategy>` — reference source: main, plugin, agents, or auto
 - `mirror --format json`
-- `status --check` — exit `1` when drift exists since the last snapshot (CI)
+- `status --check` — exit `1` when drift exists since the last snapshot, or when `.harnesstap/lock.toml` disagrees with the applied manifest (CI)
 - `status --format json` — includes a `drift` object when git-backed
 - `history --format json`
 - `history --show-id` — show full snapshot IDs in human tables
@@ -156,7 +156,8 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer show <name>`
 - `layer edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `layer delete [name]`
-- `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`)
+- `layer apply [layer...]` — apply layer selectors, export paths, or URLs to a project (`l apply`); resolves the dependency graph and records `.harnesstap/lock.toml`
+- `layer cut <layer> --version <semver>` — cut a new local version from the working head
 - `layer pull <selector>` — download a remote layer bundle and import it
 - `layer catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
 - `layer catalog` — interactive publish-binding wizard (layer picker → catalog checkboxes)
@@ -172,6 +173,7 @@ Remote library discovery, install, and publish live on **`layer`**, not `auth`. 
 - `layer publish plan <layer>` — dry-run: list effective targets and planned versions
 - `layer diff <left> <right>`
 - `layer doctor [name]` — validate a layer without writing to disk
+- `layer why <target>` — explain why a version was selected or which layer won a resource (`skill:name`, layer name)
 - `layer from-project [name] --project <path>`
 
 ### Important options
@@ -215,7 +217,14 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `layer apply --project <path>` — target project directory (default `.`)
 - `layer apply --harness <slugs>` — comma-separated harness slugs
 - `layer apply --dry-run` — show planned file writes only
+- `layer apply --explain` — print the resolution trail (selected versions and every resource decision)
+- `layer apply --update` — ignore `.harnesstap/lock.toml` and re-resolve the dependency graph
 - `layer apply --strict-plugin-versions` / `--ignore-plugin-versions` / `--sync-plugins`
+- `layer why --project <path>` — project with the lockfile to inspect (default `.`)
+- `layer why --root <layer>` — resolve against this root instead of the lockfile root
+- `layer why --format json`
+- `layer cut --version <semver>` — required new version (must differ from the current head)
+- `layer cut --format json`
 - `layer diff --format json`
 - `layer doctor --check <name>` — run one check (repeatable)
 - `layer doctor --list-checks` — list available checks
@@ -236,7 +245,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `layer catalog bindings --clear` — revert layer to all registered catalogs
 - `layer catalog register --account <name>` — optional account for a registered catalog
 
-`layer pull` and `layer list` remote discovery query catalog scope **plus** registered publish catalogs (`layer catalog register`). Use `layer catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `layer catalog register` before `layer publish` when no bindings exist. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse.
+`layer pull` and `layer list` remote discovery query catalog scope **plus** registered publish catalogs (`layer catalog register`). Use `layer catalog connect` to add other public orgs or libraries explicitly. Register publish destinations with `layer catalog register` before `layer publish` when no bindings exist. `layer pull` fails on local name conflict instead of overwriting. `layer apply` resolves bare catalog names at apply time; use `layer pull` to install layers for offline reuse. Apply resolves nested layer dependencies as a graph (nearest-to-root resource precedence; equal-depth set-like types use declaration order with a warning).
 
 ## auth (`a`)
 
@@ -421,6 +430,7 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessTap 
 
 - `migrate export [file]` — export workspace, layer, environment, or resource (interactive when `[file]` omitted on a TTY)
 - `migrate import [file]` — import from archive or TOML (auto-detects scope from file format)
+- `migrate resolve-order` — convert apply-order dependence into explicit resource overrides so previously applied results reproduce under graph resolution
 
 ### Important options
 
@@ -432,6 +442,8 @@ For multiplayer distribution, use `layer publish` / `layer pull` via HarnessTap 
 - `migrate export --include-plugins` / `--embed-plugins` — embed plugin trees (workspace and layer scope)
 - `migrate import --workspace` / `--layer` / `--resource` / `--environment` — force import scope
 - `migrate export --format json` / `migrate import --format json` — machine-readable summary
+- `migrate resolve-order --dry-run` — report planned override writes without changing layers
+- `migrate resolve-order --format json`
 
 Workspace archives include layer bundles, named environments (secret refs only), harness preferences, config, and `active-profile.json` when present. They do not include tracked project records, project snapshots, or cloud accounts.
 
