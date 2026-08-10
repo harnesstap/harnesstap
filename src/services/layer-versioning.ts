@@ -40,6 +40,7 @@ interface LayerRow {
   version: string;
   org_slug: string;
   catalog_slug: string;
+  origin?: string;
   description: string;
   tags: string;
   claude_config: string;
@@ -89,6 +90,7 @@ function rowToLayer(row: LayerRow): Layer {
     version: row.version,
     org_slug: row.org_slug,
     catalog_slug: row.catalog_slug,
+    origin: (row.origin as Layer["origin"]) ?? "authored",
     description: row.description,
     tags: JSON.parse(row.tags) as string[],
     dirty: row.dirty === 1,

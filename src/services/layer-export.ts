@@ -349,6 +349,7 @@ export function parsedLayerExportToDeckJson(
           version,
           org_slug: "",
           catalog_slug: "",
+          origin: "authored",
           description: layer.description ?? "",
           tags: layer.tags ?? [],
           dirty: false,

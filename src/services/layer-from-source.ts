@@ -202,6 +202,7 @@ export async function createLayerFromSource(
         version,
         org_slug: "",
         catalog_slug: "",
+        origin: "authored",
         description: options.description ?? "",
         tags: options.tags ?? [],
         dirty: false,

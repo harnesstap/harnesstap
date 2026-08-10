@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 24;
+const SCHEMA_VERSION = 25;
 
 const MIGRATIONS: Record<number, string> = {
   22: `
@@ -205,6 +205,12 @@ const MIGRATIONS: Record<number, string> = {
   24: `
     ALTER TABLE layers ADD COLUMN overrides TEXT NOT NULL DEFAULT '{}';
     ALTER TABLE global_apply_snapshots ADD COLUMN resolved_set TEXT NOT NULL DEFAULT '[]';
+  `,
+  25: `
+    ALTER TABLE layers ADD COLUMN origin TEXT NOT NULL DEFAULT 'authored'
+      CHECK(origin IN ('authored','upstream','catalog'));
+    UPDATE layers SET origin = 'catalog'
+      WHERE org_slug != '' AND catalog_slug != '';
   `,
 };
 

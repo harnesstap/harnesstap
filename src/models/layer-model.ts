@@ -14,6 +14,7 @@ import type {
   ClaudeLayerConfig,
   Layer,
   LayerDependency,
+  LayerOrigin,
   LayerOverrides,
   Resource,
 } from "../types.js";
@@ -25,6 +26,7 @@ interface LayerRow {
   version: string;
   org_slug: string;
   catalog_slug: string;
+  origin: string;
   description: string;
   tags: string;
   claude_config: string;
@@ -110,6 +112,7 @@ function rowToLayer(row: LayerRow): Layer {
     version: row.version,
     org_slug: row.org_slug,
     catalog_slug: row.catalog_slug,
+    origin: (row.origin as LayerOrigin) ?? "authored",
     description: row.description,
     tags: JSON.parse(row.tags) as string[],
     dirty: row.dirty === 1,
@@ -284,25 +287,28 @@ export function createLayer(input: {
   needs?: string[];
   org_slug?: string;
   catalog_slug?: string;
+  origin?: LayerOrigin;
   default_environment_id?: string;
 }): Layer {
   const db = getDb();
   const now = new Date().toISOString();
   const id = ulid();
   const version = input.version ?? "1.0.0";
+  const origin = input.origin ?? "authored";
 
   db.prepare(
     `INSERT INTO layers (
-      id, name, version, org_slug, catalog_slug, description, tags,
+      id, name, version, org_slug, catalog_slug, origin, description, tags,
       claude_config, needs_config, default_environment_id, dirty, frozen_at,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.name,
     version,
     input.org_slug ?? "",
     input.catalog_slug ?? "",
+    origin,
     input.description ?? "",
     JSON.stringify(input.tags ?? []),
     serializeClaudeConfig(input.claude),
@@ -320,6 +326,7 @@ export function createLayer(input: {
     version,
     org_slug: input.org_slug ?? "",
     catalog_slug: input.catalog_slug ?? "",
+    origin,
     description: input.description ?? "",
     tags: input.tags ?? [],
     dirty: false,

@@ -42,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(24);
+      expect(versionRow.version).toBe(25);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -63,6 +63,7 @@ describe("initializeSchema", () => {
           "default_environment_id",
           "needs_config",
           "overrides",
+          "origin",
         ]),
       );
 
@@ -146,7 +147,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 24 }]);
+      expect(versionRows).toEqual([{ version: 25 }]);
     } finally {
       await context.cleanup();
     }
@@ -368,7 +369,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v22 databases in place to v24 with dirty/frozen_at/snapshots/overrides", async () => {
+  it("upgrades v22 databases in place to v25 with dirty/frozen_at/snapshots/overrides/origin", async () => {
     const context = await createTestContext("schema-v24-upgrade");
     try {
       const db = context.connection.getDb();
@@ -406,13 +407,13 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(24);
+      expect(version).toBe(25);
 
       const cols = db
         .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string }>;
       expect(cols.map((c) => c.name)).toEqual(
-        expect.arrayContaining(["dirty", "frozen_at", "overrides"]),
+        expect.arrayContaining(["dirty", "frozen_at", "overrides", "origin"]),
       );
 
       const snap = db
@@ -431,7 +432,7 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v23 databases in place to v24 with overrides and resolved_set", async () => {
+  it("upgrades v23 databases in place to v25 with overrides, resolved_set, and origin", async () => {
     const context = await createTestContext("schema-v23-to-v24-upgrade");
     try {
       const db = context.connection.getDb();
@@ -476,19 +477,88 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(24);
+      expect(version).toBe(25);
 
       const layerCols = db
         .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       const overridesCol = layerCols.find((c) => c.name === "overrides");
       expect(overridesCol?.dflt_value).toBe("'{}'");
+      const originCol = layerCols.find((c) => c.name === "origin");
+      expect(originCol?.dflt_value).toBe("'authored'");
 
       const globalCols = db
         .prepare("PRAGMA table_info(global_apply_snapshots)")
         .all() as Array<{ name: string; dflt_value: string | null }>;
       const resolvedSetCol = globalCols.find((c) => c.name === "resolved_set");
       expect(resolvedSetCol?.dflt_value).toBe("'[]'");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades v24 databases in place to v25 and backfills catalog origin", async () => {
+    const context = await createTestContext("schema-v24-to-v25-upgrade");
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (24);
+        CREATE TABLE layers (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          org_slug TEXT NOT NULL DEFAULT '',
+          catalog_slug TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          default_environment_id TEXT,
+          dirty INTEGER NOT NULL DEFAULT 0,
+          frozen_at TEXT,
+          overrides TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(org_slug, catalog_slug, name, version)
+        );
+      `);
+      db.prepare(
+        `INSERT INTO layers (
+          id, name, version, org_slug, catalog_slug, description, tags,
+          claude_config, needs_config, created_at, updated_at
+        ) VALUES ('local', 'mine', '1.0.0', '', '', '', '[]', '{}', '[]', ?, ?)`,
+      ).run(now, now);
+      db.prepare(
+        `INSERT INTO layers (
+          id, name, version, org_slug, catalog_slug, description, tags,
+          claude_config, needs_config, created_at, updated_at
+        ) VALUES ('catalog', 'acme-base', '1.0.0', 'acme', 'team', '', '[]', '{}', '[]', ?, ?)`,
+      ).run(now, now);
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(25);
+
+      const localOrigin = (
+        db.prepare("SELECT origin FROM layers WHERE id = 'local'").get() as {
+          origin: string;
+        }
+      ).origin;
+      expect(localOrigin).toBe("authored");
+
+      const catalogOrigin = (
+        db.prepare("SELECT origin FROM layers WHERE id = 'catalog'").get() as {
+          origin: string;
+        }
+      ).origin;
+      expect(catalogOrigin).toBe("catalog");
     } finally {
       await context.cleanup();
     }

@@ -137,6 +137,9 @@ export type ResourceMetadata =
 
 // ── Core entities ───────────────────────────────────────────────────────
 
+export const LAYER_ORIGINS = ["authored", "upstream", "catalog"] as const;
+export type LayerOrigin = (typeof LAYER_ORIGINS)[number];
+
 /**
  * Absolute resolution decisions declared by a root layer. Honored only when
  * the declaring layer is the root of the resolution, matching npm `overrides`.
@@ -209,6 +212,7 @@ export interface Layer {
   version: string;
   org_slug: string;
   catalog_slug: string;
+  origin: LayerOrigin;
   description: string;
   tags: string[];
   dirty: boolean;
@@ -492,6 +496,7 @@ export type LayerExportLayer = Omit<
   | "default_environment_id"
   | "dirty"
   | "frozen_at"
+  | "origin"
 >;
 
 export type LayerExportResource = Omit<
