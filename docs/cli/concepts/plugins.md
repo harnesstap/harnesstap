@@ -260,7 +260,9 @@ Default export is a directory named after the plugin. Pass `--single-file` for a
 
 For a full workspace handoff (plugins, environments, harness preferences, config), use `ht migrate export --workspace` with a `.tar.gz` archive — see [Scenario 28](../../scenarios/details/28-machine-migration.md). Environments are machine-local and are not independently exportable.
 
-For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTap Cloud. See [Cloud connection](../cloud.md).
+For multiplayer distribution, `plugin publish` and `plugin pull` move that same Agent Plugins package over HarnessTap Cloud — the bytes on the wire equal what `migrate export --single-file` writes. There is no second cloud transport. Publish targets `/api/plugins`; pull downloads from the catalog `…/versions/:version/package` route. See [Cloud connection](../cloud.md).
+
+Requests carry `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`. A CLI below the cloud's minimum floor fails with an upgrade instruction (`426`, naming `npm install -g harnesstap@latest`) rather than a parse error on an unfamiliar payload.
 
 ## Deprecated `ht layer` alias
 

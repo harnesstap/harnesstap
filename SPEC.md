@@ -109,7 +109,7 @@ Examples:
 2. `plugin publish` requires an active Cloud account and at least one **registered** publish catalog (`plugin catalog register`). By default it fans out to all registered catalogs; per-plugin allow lists are configured with `plugin catalog` / `plugin catalog bindings`.
 3. `plugin list --search` and `plugin pull` resolve against the CLI [catalog scope](#harnesstap-cloud) (default public org + connected catalogs + authenticated private plugins).
 
-**Wire compatibility:** Cloud APIs and the CLI still accept `org/library[@version]` today. Treat `library` as the published **plugin name** inside the org's default or named catalog until selectors migrate to `org/catalog/name`.
+Published plugins address as `org/catalog/name[@version]` on Cloud `/api/plugins` and the catalog package download routes.
 
 ### Naming map (homonyms)
 
@@ -765,6 +765,8 @@ Use `migrate export` / `import` for workspace, plugin, or resource sharing.
 
 HarnessTap Cloud is the multiplayer control plane for **published plugins**. An **organization** owns **catalogs**; each catalog holds versioned plugins teams can search, review, and install. Offline workspace sharing uses `migrate`; catalogs are the default multiplayer distribution surface.
 
+**Wire format:** Cloud publish and download use the Agent Plugins package envelope exclusively (`urn:harnesstap:ap-package:v1`) — the same `{ schema, files }` document `migrate export --single-file` produces. Publish and related plugin routes live under `/api/plugins`; version bytes are served from catalog `…/versions/:version/package`. Every request carries `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`; every response returns `X-HarnessTap-API-Version` and `X-HarnessTap-Minimum-CLI-Version`. A CLI below the floor receives `426` with an upgrade instruction.
+
 Authentication stores named accounts in `~/.harnesstap/cloud-accounts.json`. There is no `cloud-profiles.json` and no `--profile` flag — use `--account` on catalog and auth commands. Re-run `auth login` after upgrading from pre-account CLI builds.
 
 - `auth login [account]` performs device authentication and saves a named cloud account.
@@ -806,7 +808,7 @@ Configure bindings interactively with `plugin catalog` or in scripts with `plugi
 | `plugin pull` | Selector in catalog scope (or explicit `org/catalog/name@version`) | Local import of the published bundle |
 | Solo local work | Neither org nor catalog | Plugins exist only in local SQLite until published |
 
-**Wire compatibility:** Cloud APIs today expose published plugins as `org/library` entries (`layer_libraries` in HarnessTap Cloud). Spec-wise, `library` is a published **plugin name**; explicit `catalog` segments in selectors and APIs are the target shape. See [harnesstap-cloud SPEC](../harnesstap-cloud/SPEC.md).
+**Selectors:** Published plugins address as `org/catalog/name[@version]` on `/api/plugins` and the catalog package download routes. See [harnesstap-cloud SPEC](../harnesstap-cloud/SPEC.md).
 
 Local integration behavior:
 

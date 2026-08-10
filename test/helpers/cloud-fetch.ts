@@ -94,8 +94,8 @@ export function createCloudPublishFetchMock(input?: {
     if (
       url.startsWith(`${baseUrl}/api/public/plugins`)
       || url.startsWith(`${baseUrl}/api/catalog/plugins`)
-      || /\/api\/public\/.+\/versions\/.+\/(?:plugin)-export/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin)-export/.test(url)
+      || /\/api\/public\/.+\/versions\/.+\/package/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/package/.test(url)
     ) {
       return originalFetch(urlInput, init);
     }
