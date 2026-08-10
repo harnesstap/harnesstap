@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
-import { getLayerResources } from "../../models/plugin-model.js";
+import { getPluginResources } from "../../models/plugin-model.js";
 import { resourceClass } from "../../platforms/registry.js";
 import { MATERIAL_RESOURCE_TYPES } from "../../types.js";
 import type {
   EnvVarMetadata,
-  LayerOverrides,
+  PluginOverrides,
   MaterialResourceType,
   Resource,
 } from "../../types.js";
@@ -14,7 +14,7 @@ import type { ResourceDecision, ResourceSide, SelectedPlugin } from "./types.js"
 interface Candidate {
   resource: Resource;
   side: ResourceSide;
-  /** Sort key: layer declaration index, then resource order within the layer. */
+  /** Sort key: plugin declaration index, then resource order within the plugin. */
   declarationIndex: number;
   resourceIndex: number;
 }
@@ -24,7 +24,7 @@ function isMaterial(type: string): type is MaterialResourceType {
 }
 
 /**
- * `env_var` is singleton per key, not per bundle: two layers setting different
+ * `env_var` is singleton per key, not per bundle: two plugins setting different
  * values for the same variable is a real conflict, while disjoint variables
  * coexist.
  */
@@ -55,10 +55,10 @@ export interface ResolveResourcesResult {
 
 export function resolveResources(input: {
   selected: SelectedPlugin[];
-  overrides: LayerOverrides;
+  overrides: PluginOverrides;
   rootName: string;
   /**
-   * Ephemeral argv sugar (`ht layer apply a b`): equal-depth singleton ties
+   * Ephemeral argv sugar (`ht plugin apply a b`): equal-depth singleton ties
    * use declaration order (last wins) instead of erroring. Durable roots still
    * error so diamond conflicts stay explicit.
    */
@@ -72,7 +72,7 @@ export function resolveResources(input: {
   );
 
   for (const plugin of ordered) {
-    const attached = getLayerResources(plugin.layerId);
+    const attached = getPluginResources(plugin.pluginId);
     for (let index = 0; index < attached.length; index += 1) {
       const resource = attached[index];
       if (!resource || !isMaterial(resource.type)) continue;
@@ -82,8 +82,8 @@ export function resolveResources(input: {
         bucket.push({
           resource,
           side: {
-            layerName: plugin.name,
-            layerVersion: plugin.version,
+            pluginName: plugin.name,
+            pluginVersion: plugin.version,
             depth: plugin.depth,
           },
           declarationIndex: plugin.declarationIndex,
@@ -95,8 +95,8 @@ export function resolveResources(input: {
           {
             resource,
             side: {
-              layerName: plugin.name,
-              layerVersion: plugin.version,
+              pluginName: plugin.name,
+              pluginVersion: plugin.version,
               depth: plugin.depth,
             },
             declarationIndex: plugin.declarationIndex,
@@ -115,9 +115,9 @@ export function resolveResources(input: {
     const bucket = candidates.get(key);
     if (!bucket || bucket.length === 0) continue;
 
-    const overrideLayer = input.overrides.resources[key];
-    if (overrideLayer) {
-      const chosen = bucket.find((c) => c.side.layerName === overrideLayer);
+    const overridePlugin = input.overrides.resources[key];
+    if (overridePlugin) {
+      const chosen = bucket.find((c) => c.side.pluginName === overridePlugin);
       if (chosen) {
         resources.push(chosen.resource);
         decisions.push({
@@ -190,7 +190,7 @@ export function resolveResources(input: {
     }
 
     // Equal depth, differing content: declaration order decides.
-    // Last declared wins, which is what `ht layer apply a b` has always meant.
+    // Last declared wins, which is what `ht plugin apply a b` has always meant.
     const sorted = [...shallowest].sort(
       (a, b) =>
         a.declarationIndex - b.declarationIndex || a.resourceIndex - b.resourceIndex,
@@ -206,9 +206,9 @@ export function resolveResources(input: {
     });
     warnings.push(
       `${key} is declared by ${shallowest
-        .map((c) => c.side.layerName)
+        .map((c) => c.side.pluginName)
         .join(" and ")} at the same depth with different content; ` +
-        `${winner.side.layerName} wins because it is declared last.`,
+        `${winner.side.pluginName} wins because it is declared last.`,
     );
   }
 

@@ -10,12 +10,12 @@ import {
   type MaterializationConflict,
 } from "./applier.js";
 import {
-  getLayerById,
-  getLayerByPublishedIdentity,
-  mergeLayersById,
-  resolveLayerSelector,
+  getPluginById,
+  getPluginByPublishedIdentity,
+  mergePluginsById,
+  resolvePluginSelector,
 } from "../models/plugin-model.js";
-import type { Layer } from "../types.js";
+import type { Plugin } from "../types.js";
 import {
   createGlobalApplySnapshot,
   getLatestGlobalApplySnapshotForProfile,
@@ -27,10 +27,10 @@ import { getHarnessPreference } from "../models/harness.js";
 import { getEnvironment } from "../models/environment.js";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
-  CLEARED_GLOBAL_PROFILE_LAYER_ID,
+  CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
   CLEARED_GLOBAL_PROFILE_NAME,
   isEmptyBuiltinProfile,
-  isProfileLayer,
+  isProfilePlugin,
 } from "../constants/profile.js";
 import { resolveEnvironmentCascadeForApply } from "./environment-cascade.js";
 import {
@@ -47,17 +47,17 @@ import {
 import { detectPlatforms } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
-import { installLayerFromCatalog } from "./layer-catalog-install.js";
+import { installPluginFromCatalog } from "./plugin-catalog-install.js";
 import {
-  listAttachedLayerRefs,
+  listAttachedPluginRefs,
   listAttachedPluginPins,
-} from "./layer-composition.js";
-import { parseLayerSelector, resolveRemoteLayerSelector } from "./layer-selector.js";
+} from "./plugin-composition.js";
+import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import { resolveComposition } from "./resolve/index.js";
 import type { ResolutionResult } from "./resolve/types.js";
 import { ui } from "../ui/index.js";
 
-export interface ApplyProfileLayerOptions {
+export interface ApplyProfilePluginOptions {
   harness?: string;
   conflictPolicy: ConflictPolicy;
   conflictResolver?: (
@@ -69,10 +69,10 @@ export interface ApplyProfileLayerOptions {
   baseUrl?: string;
 }
 
-export interface ApplyProfileLayerResult {
+export interface ApplyProfilePluginResult {
   profile_name: string;
-  profile_layer_id: string;
-  configured_layer_ids: string[];
+  profile_plugin_id: string;
+  configured_plugin_ids: string[];
   harnesses: string[];
   dry_run: boolean;
   snapshot_id?: string;
@@ -82,7 +82,7 @@ export interface ApplyProfileLayerResult {
   skipped_files: string[];
   conflicts: string[];
   default_environment_name?: string;
-  pulled_layers?: Array<{ layer_name: string; source: string }>;
+  pulled_plugins?: Array<{ plugin_name: string; source: string }>;
   expected_files?: Array<{ path: string; content: string }>;
   removed_files?: string[];
 }
@@ -112,14 +112,14 @@ function collectPreviousGlobalApplyTrackedFiles(): string[] {
 async function collectOutgoingProfileFilesForCleanup(
   outgoingProfileName: string,
   incomingProfileName: string,
-  options: Pick<ApplyProfileLayerOptions, "harness" | "pull">,
+  options: Pick<ApplyProfilePluginOptions, "harness" | "pull">,
 ): Promise<string[]> {
   if (outgoingProfileName === incomingProfileName) {
     return collectProfileSnapshotTrackedFiles(outgoingProfileName);
   }
 
   const fromSnapshot = collectProfileSnapshotTrackedFiles(outgoingProfileName);
-  const outgoingApply = await applyProfileLayer(outgoingProfileName, {
+  const outgoingApply = await applyProfilePlugin(outgoingProfileName, {
     dryRun: true,
     harness: options.harness,
     conflictPolicy: "replace",
@@ -131,7 +131,7 @@ async function collectOutgoingProfileFilesForCleanup(
 
 async function resolvePreviousTrackedFilesForApply(
   incomingProfileName: string,
-  options: Pick<ApplyProfileLayerOptions, "harness" | "pull">,
+  options: Pick<ApplyProfilePluginOptions, "harness" | "pull">,
 ): Promise<string[]> {
   const outgoingProfile = getActiveProfileName();
   const tracked = new Set<string>();
@@ -187,16 +187,16 @@ function normalizeVersionConstraint(versionConstraint: string): string | undefin
   return trimmed;
 }
 
-function resolveDependencyLayer(ref: {
+function resolveDependencyPlugin(ref: {
   dependency_name: string;
   version_constraint: string;
-}): Layer | undefined {
+}): Plugin | undefined {
   try {
-    const parsed = parseLayerSelector(ref.dependency_name);
+    const parsed = parsePluginSelector(ref.dependency_name);
     if (parsed.scope === "published") {
       const version = normalizeVersionConstraint(ref.version_constraint) ?? parsed.version;
       if (version) {
-        const byPublishedIdentity = getLayerByPublishedIdentity({
+        const byPublishedIdentity = getPluginByPublishedIdentity({
           name: parsed.name,
           version,
           org: parsed.org,
@@ -213,98 +213,98 @@ function resolveDependencyLayer(ref: {
 
   const versionConstraint = normalizeVersionConstraint(ref.version_constraint);
   if (versionConstraint) {
-    const withVersion = resolveLayerSelector(
+    const withVersion = resolvePluginSelector(
       `${ref.dependency_name}@${versionConstraint}`,
     );
     if (withVersion) {
       return withVersion;
     }
   }
-  return resolveLayerSelector(ref.dependency_name);
+  return resolvePluginSelector(ref.dependency_name);
 }
 
 async function ensureProfileDependenciesAvailable(
-  profileLayer: Layer,
-  options: ApplyProfileLayerOptions,
-): Promise<Array<{ layer_name: string; source: string }>> {
-  const pulledLayers: Array<{ layer_name: string; source: string }> = [];
-  const queue: Layer[] = [profileLayer];
+  profilePlugin: Plugin,
+  options: ApplyProfilePluginOptions,
+): Promise<Array<{ plugin_name: string; source: string }>> {
+  const pulledPlugins: Array<{ plugin_name: string; source: string }> = [];
+  const queue: Plugin[] = [profilePlugin];
   const visited = new Set<string>();
 
   while (queue.length > 0) {
-    const layer = queue.shift();
-    if (!layer || visited.has(layer.id)) {
+    const plugin = queue.shift();
+    if (!plugin || visited.has(plugin.id)) {
       continue;
     }
-    visited.add(layer.id);
+    visited.add(plugin.id);
 
-    for (const ref of listAttachedLayerRefs(layer.id)) {
-      const localDependency = resolveDependencyLayer(ref);
+    for (const ref of listAttachedPluginRefs(plugin.id)) {
+      const localDependency = resolveDependencyPlugin(ref);
       if (localDependency) {
         queue.push(localDependency);
         continue;
       }
 
-      let parsed: ReturnType<typeof parseLayerSelector>;
+      let parsed: ReturnType<typeof parsePluginSelector>;
       try {
-        parsed = parseLayerSelector(ref.dependency_name);
+        parsed = parsePluginSelector(ref.dependency_name);
       } catch {
         throw new Error(
-          `Missing local layer dependency "${ref.dependency_name}" referenced by profile "${layer.name}"`,
+          `Missing local plugin dependency "${ref.dependency_name}" referenced by profile "${plugin.name}"`,
         );
       }
 
       if (parsed.scope !== "published") {
         throw new Error(
-          `Missing local layer dependency "${ref.dependency_name}" referenced by profile "${layer.name}"`,
+          `Missing local plugin dependency "${ref.dependency_name}" referenced by profile "${plugin.name}"`,
         );
       }
 
       if (options.pull === false) {
         throw new Error(
-          `Missing published dependency "${ref.dependency_name}" for profile "${layer.name}". Re-run without --no-pull.`,
+          `Missing published dependency "${ref.dependency_name}" for profile "${plugin.name}". Re-run without --no-pull.`,
         );
       }
 
-      const remoteSelector = resolveRemoteLayerSelector(ref.dependency_name, {
+      const remoteSelector = resolveRemotePluginSelector(ref.dependency_name, {
         version: normalizeVersionConstraint(ref.version_constraint),
       });
-      const installed = await installLayerFromCatalog(remoteSelector, {
+      const installed = await installPluginFromCatalog(remoteSelector, {
         account: options.account,
         baseUrl: options.baseUrl,
       });
-      pulledLayers.push({
-        layer_name: installed.layerName,
+      pulledPlugins.push({
+        plugin_name: installed.pluginName,
         source: installed.sourceLabel,
       });
-      const resolvedInstalled = getLayerById(installed.layerId);
+      const resolvedInstalled = getPluginById(installed.pluginId);
       if (resolvedInstalled) {
         queue.push(resolvedInstalled);
       }
     }
   }
 
-  return pulledLayers;
+  return pulledPlugins;
 }
 
-export function collectProfileLayerIds(profileLayer: Layer): string[] {
+export function collectProfilePluginIds(profilePlugin: Plugin): string[] {
   const orderedIds: string[] = [];
-  const queue: Layer[] = [profileLayer];
+  const queue: Plugin[] = [profilePlugin];
   const visited = new Set<string>();
 
   while (queue.length > 0) {
-    const layer = queue.shift();
-    if (!layer || visited.has(layer.id)) {
+    const plugin = queue.shift();
+    if (!plugin || visited.has(plugin.id)) {
       continue;
     }
-    visited.add(layer.id);
-    orderedIds.push(layer.id);
+    visited.add(plugin.id);
+    orderedIds.push(plugin.id);
 
-    for (const ref of listAttachedLayerRefs(layer.id)) {
-      const resolved = resolveDependencyLayer(ref);
+    for (const ref of listAttachedPluginRefs(plugin.id)) {
+      const resolved = resolveDependencyPlugin(ref);
       if (!resolved) {
         throw new Error(
-          `Missing local layer dependency "${ref.dependency_name}" referenced by profile "${layer.name}"`,
+          `Missing local plugin dependency "${ref.dependency_name}" referenced by profile "${plugin.name}"`,
         );
       }
       queue.push(resolved);
@@ -318,12 +318,12 @@ function listResolvedPluginPins(
   resolution: ResolutionResult,
 ): Array<{ ref: string; version_constraint: string }> {
   const pins = new Map<string, { ref: string; version_constraint: string }>();
-  // Deeper layers first so nearer ones overwrite, matching Pass 2.
+  // Deeper plugins first so nearer ones overwrite, matching Pass 2.
   const ordered = [...resolution.selected].sort(
     (a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex,
   );
   for (const plugin of ordered) {
-    for (const pin of listAttachedPluginPins(plugin.layerId)) {
+    for (const pin of listAttachedPluginPins(plugin.pluginId)) {
       pins.set(pin.ref, {
         ref: pin.ref,
         version_constraint: pin.version_constraint,
@@ -371,8 +371,8 @@ export class ProfileEmptyProfileRemovedError extends Error {
 }
 
 export async function clearGlobalProfileApply(
-  options: ApplyProfileLayerOptions,
-): Promise<ApplyProfileLayerResult> {
+  options: ApplyProfilePluginOptions,
+): Promise<ApplyProfilePluginResult> {
   const harnesses = resolveGlobalApplyHarnessTargets(options.harness);
   const homeRoot = resolveHomeRoot();
   const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
@@ -389,8 +389,8 @@ export async function clearGlobalProfileApply(
   if (options.dryRun) {
     return {
       profile_name: CLEARED_GLOBAL_PROFILE_NAME,
-      profile_layer_id: CLEARED_GLOBAL_PROFILE_LAYER_ID,
-      configured_layer_ids: [],
+      profile_plugin_id: CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
+      configured_plugin_ids: [],
       harnesses,
       dry_run: true,
       cancelled: false,
@@ -409,13 +409,13 @@ export async function clearGlobalProfileApply(
 
   const snapshot = createGlobalApplySnapshot({
     profile_name: CLEARED_GLOBAL_PROFILE_NAME,
-    layer_ids: [],
+    plugin_ids: [],
   });
 
   return {
     profile_name: CLEARED_GLOBAL_PROFILE_NAME,
-    profile_layer_id: CLEARED_GLOBAL_PROFILE_LAYER_ID,
-    configured_layer_ids: [],
+    profile_plugin_id: CLEARED_GLOBAL_PROFILE_PLUGIN_ID,
+    configured_plugin_ids: [],
     harnesses,
     dry_run: false,
     snapshot_id: snapshot.id,
@@ -428,79 +428,79 @@ export async function clearGlobalProfileApply(
   };
 }
 
-export async function applyProfileLayer(
+export async function applyProfilePlugin(
   selector: string,
-  options: ApplyProfileLayerOptions,
-): Promise<ApplyProfileLayerResult> {
+  options: ApplyProfilePluginOptions,
+): Promise<ApplyProfilePluginResult> {
   if (isEmptyBuiltinProfile(selector)) {
     throw new ProfileEmptyProfileRemovedError();
   }
 
-  const profileLayer = resolveLayerSelector(selector);
-  if (!profileLayer) {
-    throw new Error(`Layer not found: ${selector}`);
+  const profilePlugin = resolvePluginSelector(selector);
+  if (!profilePlugin) {
+    throw new Error(`Plugin not found: ${selector}`);
   }
-  if (!isProfileLayer(profileLayer)) {
-    throw new Error(`Layer "${profileLayer.name}" is not tagged as a profile`);
+  if (!isProfilePlugin(profilePlugin)) {
+    throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 
-  const pulledLayers = await ensureProfileDependenciesAvailable(
-    profileLayer,
+  const pulledPlugins = await ensureProfileDependenciesAvailable(
+    profilePlugin,
     options,
   );
   const homeRoot = resolveHomeRoot();
-  const rootPluginPins = collectPluginPinsForPrepare([profileLayer.id]);
+  const rootPluginPins = collectPluginPinsForPrepare([profilePlugin.id]);
   const skipPluginSync = options.dryRun || rootPluginPins.length === 0;
 
   // Marketplace/git pins on the profile root must be materialized before the
-  // first composition resolve can walk them as upstream layers.
+  // first composition resolve can walk them as upstream plugins.
   await preparePluginPinsForApply({
     pins: rootPluginPins,
     baseResources: [],
     projectRoot: homeRoot,
-    claudeConfig: mergeLayersById([profileLayer.id]).claude,
+    claudeConfig: mergePluginsById([profilePlugin.id]).claude,
     scope: "user",
     skipSync: skipPluginSync,
   });
 
-  let resolution = resolveComposition({ rootSelectors: [profileLayer.name] });
+  let resolution = resolveComposition({ rootSelectors: [profilePlugin.name] });
   let merged = {
-    layers: resolution.selected
-      .map((plugin) => getLayerById(plugin.layerId))
-      .filter((layer): layer is NonNullable<typeof layer> => layer != null),
+    plugins: resolution.selected
+      .map((plugin) => getPluginById(plugin.pluginId))
+      .filter((plugin): plugin is NonNullable<typeof plugin> => plugin != null),
     resources: resolution.resources,
-    claude: mergeLayersById(
+    claude: mergePluginsById(
       [...resolution.selected]
         .sort((a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex)
-        .map((plugin) => plugin.layerId),
+        .map((plugin) => plugin.pluginId),
     ).claude,
     pluginPins: listResolvedPluginPins(resolution),
   };
   for (const warning of resolution.warnings) {
     console.warn(ui.theme.warn(warning));
   }
-  const configuredLayerIds = merged.layers.map((layer) => layer.id);
+  const configuredPluginIds = merged.plugins.map((plugin) => plugin.id);
   const resolvedSet = resolution.selected
     .filter((plugin) => plugin.depth > 0)
     .map((plugin) => ({ name: plugin.name, version: plugin.version }));
   const harnesses = resolveGlobalApplyHarnessTargets(options.harness);
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
-    configuredLayerIds,
+    configuredPluginIds,
   });
 
   let defaultEnvironmentName: string | undefined;
-  if (profileLayer.default_environment_id) {
-    const environment = getEnvironment(profileLayer.default_environment_id);
+  if (profilePlugin.default_environment_id) {
+    const environment = getEnvironment(profilePlugin.default_environment_id);
     if (!environment) {
       throw new Error(
-        `Default environment ${profileLayer.default_environment_id} not found for profile ${profileLayer.name}`,
+        `Default environment ${profilePlugin.default_environment_id} not found for profile ${profilePlugin.name}`,
       );
     }
     defaultEnvironmentName = environment.name;
   }
 
   const rootPinRefs = new Set(rootPluginPins.map((pin) => pin.ref));
-  const additionalPins = collectPluginPinsForPrepare(configuredLayerIds).filter(
+  const additionalPins = collectPluginPinsForPrepare(configuredPluginIds).filter(
     (pin) => !rootPinRefs.has(pin.ref),
   );
   if (!options.dryRun && additionalPins.length > 0) {
@@ -517,16 +517,16 @@ export async function applyProfileLayer(
         (install) => install.status !== "already_installed",
       )
     ) {
-      resolution = resolveComposition({ rootSelectors: [profileLayer.name] });
+      resolution = resolveComposition({ rootSelectors: [profilePlugin.name] });
       merged = {
-        layers: resolution.selected
-          .map((plugin) => getLayerById(plugin.layerId))
-          .filter((layer): layer is NonNullable<typeof layer> => layer != null),
+        plugins: resolution.selected
+          .map((plugin) => getPluginById(plugin.pluginId))
+          .filter((plugin): plugin is NonNullable<typeof plugin> => plugin != null),
         resources: resolution.resources,
-        claude: mergeLayersById(
+        claude: mergePluginsById(
           [...resolution.selected]
             .sort((a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex)
-            .map((plugin) => plugin.layerId),
+            .map((plugin) => plugin.pluginId),
         ).claude,
         pluginPins: listResolvedPluginPins(resolution),
       };
@@ -541,7 +541,7 @@ export async function applyProfileLayer(
 
   if (options.dryRun) {
     const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
-      profileLayer.name,
+      profilePlugin.name,
       options,
     );
     const generated = await generateFiles(applyResources, harnesses, homeRoot, {
@@ -563,9 +563,9 @@ export async function applyProfileLayer(
       harnesses,
     );
     return {
-      profile_name: profileLayer.name,
-      profile_layer_id: profileLayer.id,
-      configured_layer_ids: configuredLayerIds,
+      profile_name: profilePlugin.name,
+      profile_plugin_id: profilePlugin.id,
+      configured_plugin_ids: configuredPluginIds,
       harnesses,
       dry_run: true,
       cancelled: materialized.cancelled,
@@ -575,13 +575,13 @@ export async function applyProfileLayer(
       conflicts: materialized.conflicts.map((conflict) => conflict.path),
       expected_files: files.map((file) => ({ path: file.path, content: file.content })),
       ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
-      ...(pulledLayers.length > 0 ? { pulled_layers: pulledLayers } : {}),
+      ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
       ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
     };
   }
 
   const previousTrackedFiles = await resolvePreviousTrackedFilesForApply(
-    profileLayer.name,
+    profilePlugin.name,
     options,
   );
   const applied = await applyToGlobal(applyResources, harnesses, homeRoot, {
@@ -600,8 +600,8 @@ export async function applyProfileLayer(
       harnesses,
     );
     const snapshot = createGlobalApplySnapshot({
-      profile_name: profileLayer.name,
-      layer_ids: configuredLayerIds,
+      profile_name: profilePlugin.name,
+      plugin_ids: configuredPluginIds,
       resolved_set: resolvedSet,
     });
     snapshotId = snapshot.id;
@@ -620,9 +620,9 @@ export async function applyProfileLayer(
   }
 
   return {
-    profile_name: profileLayer.name,
-    profile_layer_id: profileLayer.id,
-    configured_layer_ids: configuredLayerIds,
+    profile_name: profilePlugin.name,
+    profile_plugin_id: profilePlugin.id,
+    configured_plugin_ids: configuredPluginIds,
     harnesses,
     dry_run: false,
     ...(snapshotId ? { snapshot_id: snapshotId } : {}),
@@ -632,7 +632,7 @@ export async function applyProfileLayer(
     skipped_files: applied.skippedFiles,
     conflicts: applied.conflicts.map((conflict) => conflict.path),
     ...(defaultEnvironmentName ? { default_environment_name: defaultEnvironmentName } : {}),
-    ...(pulledLayers.length > 0 ? { pulled_layers: pulledLayers } : {}),
+    ...(pulledPlugins.length > 0 ? { pulled_plugins: pulledPlugins } : {}),
     ...(removedFiles.length > 0 ? { removed_files: removedFiles } : {}),
   };
 }

@@ -11,8 +11,8 @@ import {
 } from "../services/project-status-payload.js";
 import type { ProjectScanComparisonStatus } from "../services/project-scan-status.js";
 
-function formatLayerLabel(layer: { name: string; version: string }): string {
-  return `${layer.name}@${layer.version}`;
+function formatPluginLabel(plugin: { name: string; version: string }): string {
+  return `${plugin.name}@${plugin.version}`;
 }
 
 function formatResourceCountLine(count: number, summary: string): string {
@@ -87,14 +87,14 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
   }
   panel({ title: ["PROFILE"], rows: profileRows });
 
-  subheader("APPLIED LAYERS");
-  if (payload.applied_layers.length === 0) {
+  subheader("APPLIED PLUGINS");
+  if (payload.applied_plugins.length === 0) {
     console.log("  (none applied)");
-    status.dim("  Run `ht layer apply <layer>`");
+    status.dim("  Run `ht plugin apply <plugin>`");
   } else {
-    for (const row of payload.applied_layers) {
+    for (const row of payload.applied_plugins) {
       const summary = formatResourceCountLine(row.resource_count, row.resource_summary);
-      console.log(`  ${theme.accent(formatLayerLabel(row.layer))}  ${summary}`);
+      console.log(`  ${theme.accent(formatPluginLabel(row.plugin))}  ${summary}`);
       const meta = [
         row.platforms.join(", ") || "(no platforms)",
         format.formatRelativeTime(row.applied_at),
@@ -178,7 +178,7 @@ export function renderProjectStatusHuman(payload: ProjectStatusPayload): void {
     for (const name of payload.lock.removed) {
       console.log(`  ${name}  (removed)`);
     }
-    status.dim(`  hint: ht layer apply ${payload.lock.root} --update`);
+    status.dim(`  hint: ht plugin apply ${payload.lock.root} --update`);
   }
 }
 
@@ -194,9 +194,9 @@ export function projectStatusPayloadToJson(payload: ProjectStatusPayload): Recor
       stack_summary: payload.profile.stack_summary,
       ...(payload.profile.warning ? { warning: payload.profile.warning } : {}),
     },
-    applied_layers: payload.applied_layers.map((row) => ({
-      name: row.layer.name,
-      version: row.layer.version,
+    applied_plugins: payload.applied_plugins.map((row) => ({
+      name: row.plugin.name,
+      version: row.plugin.version,
       resource_count: row.resource_count,
       resource_summary: row.resource_summary,
       platforms: row.platforms,
@@ -213,7 +213,7 @@ export function projectStatusPayloadToJson(payload: ProjectStatusPayload): Recor
     ...(payload.lock ? { lock: payload.lock } : {}),
     ...(payload.project
       ? {
-          applied_layers_count: payload.applied_layers.length,
+          applied_plugins_count: payload.applied_plugins.length,
           snapshots: payload.snapshots_count,
         }
       : {}),

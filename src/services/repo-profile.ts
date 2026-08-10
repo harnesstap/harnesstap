@@ -6,7 +6,7 @@ import { detectPlatforms, hasPluginSourceLayout } from "./scanner.js";
 export type RepoProfile =
   | "skill-package"
   | "plugin-source"
-  | "layer-bundle"
+  | "plugin-bundle"
   | "project-config"
   | "harness-project"
   | "unknown";

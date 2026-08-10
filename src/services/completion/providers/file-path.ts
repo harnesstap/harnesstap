@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import type { CompletionCandidate, CompletionContext } from "../types.js";
 import { filterByPrefix } from "../utils.js";
 
-export type FilePathCompletionMode = "file" | "directory" | "layer-import";
+export type FilePathCompletionMode = "file" | "directory" | "plugin-import";
 
 function listPathCandidates(
   prefix: string,
@@ -42,7 +42,7 @@ function listPathCandidates(
     if (mode === "directory" && !isDirectory) {
       continue;
     }
-    if (mode === "layer-import" && !isDirectory) {
+    if (mode === "plugin-import" && !isDirectory) {
       const lower = entry.toLowerCase();
       if (!lower.endsWith(".toml") && !lower.endsWith(".jsonc")) {
         continue;
@@ -66,6 +66,6 @@ export function completeDirectoryPath(ctx: CompletionContext): CompletionCandida
   return filterByPrefix(listPathCandidates(ctx.prefix, "directory"), ctx.prefix);
 }
 
-export function completeLayerImportPath(ctx: CompletionContext): CompletionCandidate[] {
-  return filterByPrefix(listPathCandidates(ctx.prefix, "layer-import"), ctx.prefix);
+export function completePluginImportPath(ctx: CompletionContext): CompletionCandidate[] {
+  return filterByPrefix(listPathCandidates(ctx.prefix, "plugin-import"), ctx.prefix);
 }

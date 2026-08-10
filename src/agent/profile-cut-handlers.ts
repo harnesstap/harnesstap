@@ -1,9 +1,9 @@
 import { ProfileRenameError } from "../services/profile-commands.js";
 import { getProfileDetail } from "../services/profile-edit.js";
 import {
-  cutLayerVersion,
-  LayerVersionError,
-} from "../services/layer-versioning.js";
+  cutPluginVersion,
+  PluginVersionError,
+} from "../services/plugin-versioning.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import { jsonResponse } from "./http.js";
 import { profileEditErrorResponse } from "./profile-edit-handlers.js";
@@ -12,27 +12,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function dirtyLayersConflictResponse(
-  layers: Array<{ name: string; version: string }>,
+export function dirtyPluginsConflictResponse(
+  plugins: Array<{ name: string; version: string }>,
 ): Response {
   return jsonResponse(
     {
-      error: "dirty_layers",
-      message: `Cannot share layers with unpublished edits: ${layers
-        .map((layer) => `${layer.name}@${layer.version}`)
+      error: "dirty_plugins",
+      message: `Cannot share plugins with unpublished edits: ${plugins
+        .map((plugin) => `${plugin.name}@${plugin.version}`)
         .join(", ")}`,
-      dirty_layers: layers,
+      dirty_plugins: plugins,
     },
     { status: 409 },
   );
 }
 
-export function layerVersionErrorResponse(error: LayerVersionError): Response {
+export function pluginVersionErrorResponse(error: PluginVersionError): Response {
   return jsonResponse(
     {
       error: error.code,
       message: error.message,
-      ...(error.dirtyLayers ? { dirty_layers: error.dirtyLayers } : {}),
+      ...(error.dirtyPlugins ? { dirty_plugins: error.dirtyPlugins } : {}),
     },
     { status: 400 },
   );
@@ -71,8 +71,8 @@ export async function handleProfileCut(
 
   try {
     const detail = getProfileDetail(name);
-    const cut = cutLayerVersion({
-      layerId: detail.profile.id,
+    const cut = cutPluginVersion({
+      pluginId: detail.profile.id,
       newVersion: version.trim(),
     });
     return jsonResponse({
@@ -83,8 +83,8 @@ export async function handleProfileCut(
       },
     });
   } catch (error) {
-    if (error instanceof LayerVersionError) {
-      return layerVersionErrorResponse(error);
+    if (error instanceof PluginVersionError) {
+      return pluginVersionErrorResponse(error);
     }
     if (error instanceof ProfileRenameError) {
       return profileEditErrorResponse(error);

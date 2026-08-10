@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { DeckJsonEnvironment, DeckJsonEnvironmentSecretRef } from "../types.js";
 import {
-  LAYER_SCHEMA,
+  PLUGIN_SCHEMA,
   PROJECT_SCHEMA,
   PROJECT_SCHEMA_VERSION,
 } from "../types.js";
@@ -15,18 +15,18 @@ export interface ProjectProfileEntry {
   name: string;
   source: ProjectProfileSource;
   selector?: string;
-  layer?: string;
+  plugin?: string;
   environment?: string;
 }
 
-export type ProjectLayerTable = Record<string, unknown> & { name: string };
+export type ProjectPluginTable = Record<string, unknown> & { name: string };
 
 export interface ProjectConfig {
   default_profile?: string;
   default_environment?: string;
   profiles: ProjectProfileEntry[];
   environments: DeckJsonEnvironment[];
-  layers: ProjectLayerTable[];
+  plugins: ProjectPluginTable[];
 }
 
 export interface ResolvedProjectConfig extends ProjectConfig {
@@ -79,9 +79,9 @@ function locateProjectConfigFile(
 }
 
 function assertProjectSchema(schema: string, version: number, filePath: string): void {
-  if (schema === LAYER_SCHEMA) {
+  if (schema === PLUGIN_SCHEMA) {
     throw new Error(
-      `${filePath} uses layer bundle schema (${LAYER_SCHEMA}); place layer exports in *.harnesstap.toml, not project config`,
+      `${filePath} uses plugin bundle schema (${PLUGIN_SCHEMA}); place plugin exports in *.harnesstap.toml, not project config`,
     );
   }
   if (schema !== PROJECT_SCHEMA) {
@@ -140,11 +140,11 @@ function parseProfileEntry(value: unknown, index: number): ProjectProfileEntry {
       return { name, source, selector, ...(environment ? { environment } : {}) };
     }
     case "inline": {
-      const layer = value.layer;
-      if (typeof layer !== "string" || layer.length === 0) {
-        throw new Error(`Profile ${name} with inline source must include a layer key`);
+      const plugin = value.plugin;
+      if (typeof plugin !== "string" || plugin.length === 0) {
+        throw new Error(`Profile ${name} with inline source must include a plugin key`);
       }
-      return { name, source, layer, ...(environment ? { environment } : {}) };
+      return { name, source, plugin, ...(environment ? { environment } : {}) };
     }
     default: {
       const unhandledSource: never = source;
@@ -192,14 +192,14 @@ function parseEnvironmentEntry(value: unknown, index: number): DeckJsonEnvironme
   };
 }
 
-function parseLayerTable(value: unknown, index: number): ProjectLayerTable {
+function parsePluginTable(value: unknown, index: number): ProjectPluginTable {
   if (!isRecord(value)) {
-    throw new Error(`Layer at index ${index} must be a table`);
+    throw new Error(`Plugin at index ${index} must be a table`);
   }
 
   const name = value.name;
   if (typeof name !== "string" || name.length === 0) {
-    throw new Error(`Layer at index ${index} must include a non-empty name`);
+    throw new Error(`Plugin at index ${index} must include a non-empty name`);
   }
 
   return { ...value, name };
@@ -250,15 +250,15 @@ function parseEnvironments(document: Record<string, unknown>): DeckJsonEnvironme
   return environmentsRaw.map(parseEnvironmentEntry);
 }
 
-function parseLayers(document: Record<string, unknown>): ProjectLayerTable[] {
-  const layersRaw = document.layers;
-  if (layersRaw === undefined) {
+function parsePlugins(document: Record<string, unknown>): ProjectPluginTable[] {
+  const pluginsRaw = document.plugins;
+  if (pluginsRaw === undefined) {
     return [];
   }
-  if (!Array.isArray(layersRaw)) {
-    throw new Error("Project config layers must be an array of tables");
+  if (!Array.isArray(pluginsRaw)) {
+    throw new Error("Project config plugins must be an array of tables");
   }
-  return layersRaw.map(parseLayerTable);
+  return pluginsRaw.map(parsePluginTable);
 }
 
 export function projectConfigFromTomlDocument(document: Record<string, unknown>): ProjectConfig {
@@ -270,7 +270,7 @@ export function projectConfigFromTomlDocument(document: Record<string, unknown>)
     ...(default_environment !== undefined ? { default_environment } : {}),
     profiles: parseProfiles(document),
     environments: parseEnvironments(document),
-    layers: parseLayers(document),
+    plugins: parsePlugins(document),
   };
 }
 
@@ -351,7 +351,7 @@ export function validateProjectConfig(config: ProjectConfig): ProjectConfigValid
   const errors: string[] = [];
   const profileNames = new Set(config.profiles.map((profile) => profile.name));
   const environmentNames = new Set(config.environments.map((environment) => environment.name));
-  const layerNames = new Set(config.layers.map((layer) => layer.name));
+  const pluginNames = new Set(config.plugins.map((plugin) => plugin.name));
 
   if (config.default_profile && !profileNames.has(config.default_profile)) {
     errors.push(`default_profile references unknown profile: ${config.default_profile}`);
@@ -371,10 +371,10 @@ export function validateProjectConfig(config: ProjectConfig): ProjectConfigValid
     }
 
     if (profile.source === "inline") {
-      const layerKey = profile.layer;
-      if (!layerKey || !layerNames.has(layerKey)) {
+      const pluginKey = profile.plugin;
+      if (!pluginKey || !pluginNames.has(pluginKey)) {
         errors.push(
-          `Profile ${profile.name} with inline source references unknown layer: ${layerKey ?? "(missing)"}`,
+          `Profile ${profile.name} with inline source references unknown plugin: ${pluginKey ?? "(missing)"}`,
         );
       }
     }

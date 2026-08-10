@@ -1,4 +1,4 @@
-import type { CatalogLayer } from "../../catalog-types.js";
+import type { CatalogPlugin } from "../../catalog-types.js";
 
 export type RemoteCatalogListMode =
   | { kind: "install" }
@@ -9,7 +9,7 @@ export type RemoteCatalogListConfig = {
   scopeLabel: string;
   mode: RemoteCatalogListMode;
   initialQuery?: string;
-  listLayers: (input: { q: string; limit: number }) => Promise<CatalogLayer[]>;
+  listPlugins: (input: { q: string; limit: number }) => Promise<CatalogPlugin[]>;
 };
 
 export type RemoteCatalogListPromptContext = {

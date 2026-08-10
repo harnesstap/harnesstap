@@ -25,12 +25,12 @@ function printMigrateExportHuman(result: ScopedExportResult): void {
   switch (result.scope) {
     case "workspace":
       ui.success(
-        `Exported migration archive ${ui.icons.hint} ${result.output} ${ui.icons.bullet} ${result.manifest.layer_count} layers, ${result.manifest.environment_count} environments`,
+        `Exported migration archive ${ui.icons.hint} ${result.output} ${ui.icons.bullet} ${result.manifest.plugin_count} plugins, ${result.manifest.environment_count} environments`,
       );
       return;
-    case "layer":
+    case "plugin":
       ui.success(
-        `Exported layer ${ui.theme.accent(result.layers.join(", "))} ${ui.icons.hint} ${result.output}`,
+        `Exported plugin ${ui.theme.accent(result.plugins.join(", "))} ${ui.icons.hint} ${result.output}`,
       );
       return;
     case "resource":
@@ -54,12 +54,12 @@ function printMigrateImportHuman(result: ScopedImportResult): void {
   switch (result.scope) {
     case "workspace":
       ui.success(
-        `Imported migration archive ${ui.icons.bullet} ${formatCount(result.layers_imported, "layer")}, ${formatCount(result.environments_imported, "environment")}`,
+        `Imported migration archive ${ui.icons.bullet} ${formatCount(result.plugins_imported, "plugin")}, ${formatCount(result.environments_imported, "environment")}`,
       );
       return;
-    case "layer":
+    case "plugin":
       ui.success(
-        `Imported layer ${ui.theme.accent(result.layer)} ${ui.icons.bullet} ${formatCount(result.resources_imported, "resource")}`,
+        `Imported plugin ${ui.theme.accent(result.plugin)} ${ui.icons.bullet} ${formatCount(result.resources_imported, "resource")}`,
       );
       return;
     case "resource":
@@ -84,7 +84,7 @@ async function handleMigrateExportCommand(
   opts: {
     file?: string;
     workspace?: boolean;
-    layer?: string;
+    plugin?: string;
     resource?: string;
     environment?: string;
     includePlugins?: boolean;
@@ -109,7 +109,7 @@ async function handleMigrateExportCommand(
     format: opts.format,
     missingRequiredArgs:
       !exportOpts.file
-      && !exportOpts.layer
+      && !exportOpts.plugin
       && !exportOpts.resource
       && !exportOpts.environment
       && !exportOpts.workspace,
@@ -121,7 +121,7 @@ async function handleMigrateExportCommand(
       ...exportOpts,
       file: wizard.outputPath,
       workspace: wizard.scope === "workspace" ? true : undefined,
-      layer: wizard.layer,
+      plugin: wizard.plugin,
       resource: wizard.resource,
       environment: wizard.environment,
       includePlugins: wizard.embedPlugins,
@@ -150,7 +150,7 @@ async function handleMigrateImportCommand(
   file: string | undefined,
   opts: {
     workspace?: boolean;
-    layer?: boolean;
+    plugin?: boolean;
     resource?: boolean;
     environment?: boolean;
     format?: string;
@@ -234,32 +234,32 @@ export function registerMigrateCommands(root: Command): void {
     root
       .command("migrate")
       .alias("m")
-      .description("Export or import workspace, layers, environments, or resources for offline sharing"),
+      .description("Export or import workspace, plugins, environments, or resources for offline sharing"),
   );
 
   migrateCmd
     .command("export")
     .argument("[file]", "Output path (.tar.gz, .json, or .harnesstap.toml)")
     .option("--workspace", "Export full workspace archive")
-    .option("--layer <name>", "Export layer(s); comma-separated names or IDs")
+    .option("--plugin <name>", "Export plugin(s); comma-separated names or IDs")
     .option("--resource <selector>", "Export one resource (type:name or type:name@namespace)")
     .option("--environment <name>", "Export one environment as TOML")
     .option("-o, --file <path>", "Output path (overrides positional)")
-    .option("--include-plugins", "Embed plugin trees (workspace and layer scope)")
+    .option("--include-plugins", "Embed plugin trees (workspace and plugin scope)")
     .option("--embed-plugins", "Alias for --include-plugins")
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Export workspace, layer, or resource for offline sharing")
+    .description("Export workspace, plugin, or resource for offline sharing")
     .action(handleMigrateExportCommand);
 
   migrateCmd
     .command("import")
     .argument("[file]", "Archive or TOML export file")
     .option("--workspace", "Force workspace archive import")
-    .option("--layer", "Force layer bundle import")
+    .option("--plugin", "Force plugin bundle import")
     .option("--resource", "Force resource document import")
     .option("--environment", "Force environment document import")
     .option("--format <mode>", "Output format: human or json", "human")
-    .description("Import workspace, layer, or resource from file")
+    .description("Import workspace, plugin, or resource from file")
     .action(handleMigrateImportCommand);
 
   migrateCmd

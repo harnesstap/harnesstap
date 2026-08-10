@@ -30,7 +30,7 @@ function profileTarget(entry: ProjectProfileEntry): string {
     case "local":
       return entry.selector ?? "";
     case "inline":
-      return entry.layer ?? "";
+      return entry.plugin ?? "";
     default: {
       const unhandledSource: never = entry.source;
       throw new Error(`Unhandled profile source: ${unhandledSource}`);
@@ -88,9 +88,9 @@ function summarizeConfigForJson(config: ResolvedProjectConfig) {
     default_environment: config.default_environment,
     profiles: config.profiles,
     environments: config.environments,
-    layers: config.layers.map((layer) => ({ name: layer.name })),
+    plugins: config.plugins.map((plugin) => ({ name: plugin.name })),
     environment_count: config.environments.length,
-    layer_count: config.layers.length,
+    plugin_count: config.plugins.length,
   };
 }
 
@@ -117,7 +117,7 @@ export function handleConfigShowCommand(opts: ConfigCommandOptions): void {
       ? [{ key: "Default environment", value: config.default_environment }]
       : []),
     { key: "Environments", value: `${config.environments.length}` },
-    { key: "Inline layers", value: `${config.layers.length}` },
+    { key: "Inline plugins", value: `${config.plugins.length}` },
   ]);
 
   const rows = buildProjectProfileShowRows(config);
@@ -130,7 +130,7 @@ export function handleConfigShowCommand(opts: ConfigCommandOptions): void {
     columns: [
       { key: "profile", header: "PROFILE", width: 16 },
       { key: "source", header: "SOURCE", width: 10 },
-      { key: "target", header: "SELECTOR/LAYER", width: 24 },
+      { key: "target", header: "SELECTOR/PLUGIN", width: 24 },
       { key: "environment", header: "ENVIRONMENT", width: 16 },
       { key: "default", header: "", width: 2 },
     ],

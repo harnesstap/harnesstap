@@ -14,7 +14,7 @@ export function makeResourceTypeColumn(width = 14): Column {
   };
 }
 
-export function isLayerAttachmentOnlyType(type: string | undefined): boolean {
+export function isPluginAttachmentOnlyType(type: string | undefined): boolean {
   if (!type) {
     return false;
   }

@@ -12,18 +12,18 @@ export {
   environmentsToTomlRecord,
 } from "./environment-document.js";
 export {
-  formatLayerExportToml,
-  layerExportFromTomlDocument,
-  layerExportToTomlDocument,
-  normalizeLayerExportForToml,
-  parseLayerExportToml,
-  serializeLayerEntry,
-} from "./layer.js";
+  formatPluginExportToml,
+  pluginExportFromTomlDocument,
+  pluginExportToTomlDocument,
+  normalizePluginExportForToml,
+  parsePluginExportToml,
+  serializePluginEntry,
+} from "./plugin.js";
 export {
   bundleExportFromTomlDocument,
   bundleExportToTomlDocument,
   formatBundleToml,
-  layerExportToBundleExport,
+  pluginExportToBundleExport,
   parseBundleToml,
   type BundleExport,
 } from "./bundle.js";

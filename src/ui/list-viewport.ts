@@ -12,10 +12,10 @@ export const VIEWPORT_CHROME_LINES = {
   resourceList: 5,
   catalogBrowse: 8,
   catalogSearch: 10,
-  layerEdit: 7,
+  pluginEdit: 7,
   environmentEdit: 5,
   environmentList: 5,
-  layerListBrowse: 6,
+  pluginListBrowse: 6,
 } as const;
 
 export function computeRemoteListFetchLimit(

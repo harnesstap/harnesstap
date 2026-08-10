@@ -3,8 +3,8 @@ import {
   type CatalogScope,
   type RegisteredCatalog,
 } from "../config/catalog.js";
-import { listCatalogLayersPage } from "./catalog-client.js";
-import type { CatalogLayer } from "./catalog-types.js";
+import { listCatalogPluginsPage } from "./catalog-client.js";
+import type { CatalogPlugin } from "./catalog-types.js";
 import { formatCatalogRequestError } from "./transport/fetch-with-timeout.js";
 
 export type CatalogListSourceKind = "scope" | "registered";
@@ -20,7 +20,7 @@ export interface CatalogListSource {
 
 export interface CatalogListChunk {
   sourceLabel: string;
-  layers: CatalogLayer[];
+  plugins: CatalogPlugin[];
   pageIndex: number;
   exhausted: boolean;
 }
@@ -30,7 +30,7 @@ export type CatalogListStreamEvent =
   | { type: "error"; sourceLabel: string; message: string }
   | { type: "done"; timedOut: boolean };
 
-export interface StreamCatalogLayersOptions {
+export interface StreamCatalogPluginsOptions {
   q?: string;
   tag?: string;
   sort?: "updated" | "name";
@@ -40,26 +40,26 @@ export interface StreamCatalogLayersOptions {
 
 const visibilityRank = { organization: 3, shared: 2, public: 1 } as const;
 
-function catalogLayerKey(layer: CatalogLayer): string {
-  return `${layer.orgSlug}/${layer.catalogSlug}/${layer.slug}`;
+function catalogPluginKey(plugin: CatalogPlugin): string {
+  return `${plugin.orgSlug}/${plugin.catalogSlug}/${plugin.slug}`;
 }
 
-function dedupePageLayers(
-  layers: CatalogLayer[],
-  seen: Map<string, CatalogLayer>,
-): CatalogLayer[] {
-  const result: CatalogLayer[] = [];
-  for (const layer of layers) {
-    const key = catalogLayerKey(layer);
+function dedupePagePlugins(
+  plugins: CatalogPlugin[],
+  seen: Map<string, CatalogPlugin>,
+): CatalogPlugin[] {
+  const result: CatalogPlugin[] = [];
+  for (const plugin of plugins) {
+    const key = catalogPluginKey(plugin);
     const existing = seen.get(key);
     if (!existing) {
-      seen.set(key, layer);
-      result.push(layer);
+      seen.set(key, plugin);
+      result.push(plugin);
       continue;
     }
-    if (visibilityRank[layer.visibility] > visibilityRank[existing.visibility]) {
-      seen.set(key, layer);
-      result.push(layer);
+    if (visibilityRank[plugin.visibility] > visibilityRank[existing.visibility]) {
+      seen.set(key, plugin);
+      result.push(plugin);
     }
   }
   return result;
@@ -69,14 +69,14 @@ type QueueItem =
   | { type: "chunk"; chunk: CatalogListChunk }
   | { type: "error"; sourceLabel: string; message: string };
 
-export async function* streamCatalogLayers(
+export async function* streamCatalogPlugins(
   sources: CatalogListSource[],
-  opts: StreamCatalogLayersOptions = {},
+  opts: StreamCatalogPluginsOptions = {},
 ): AsyncGenerator<CatalogListStreamEvent> {
   const deadlineMs = opts.deadlineMs ?? 30_000;
   const deadline = Date.now() + deadlineMs;
   const pageSize = opts.q?.trim() ? 25 : 50;
-  const seen = new Map<string, CatalogLayer>();
+  const seen = new Map<string, CatalogPlugin>();
 
   const queue: QueueItem[] = [];
   let pendingSources = sources.length;
@@ -109,7 +109,7 @@ export async function* streamCatalogLayers(
 
     try {
       while (!isPastDeadline()) {
-        const result = await listCatalogLayersPage(
+        const result = await listCatalogPluginsPage(
           {
             q: opts.q,
             tag: opts.tag,
@@ -126,13 +126,13 @@ export async function* streamCatalogLayers(
           },
         );
 
-        const layers = dedupePageLayers(result.layers, seen);
+        const plugins = dedupePagePlugins(result.plugins, seen);
         const exhausted = result.nextCursor === null;
         enqueue({
           type: "chunk",
           chunk: {
             sourceLabel: source.label,
-            layers,
+            plugins,
             pageIndex,
             exhausted,
           },
@@ -185,27 +185,27 @@ export async function* streamCatalogLayers(
   yield { type: "done", timedOut };
 }
 
-export async function listCatalogLayersFromSources(
+export async function listCatalogPluginsFromSources(
   sources: CatalogListSource[],
-  opts: StreamCatalogLayersOptions & { limit?: number },
-): Promise<{ layers: CatalogLayer[]; timedOut: boolean }> {
+  opts: StreamCatalogPluginsOptions & { limit?: number },
+): Promise<{ plugins: CatalogPlugin[]; timedOut: boolean }> {
   const limit = opts.limit ?? (opts.q?.trim() ? 25 : 50);
-  const collected: CatalogLayer[] = [];
+  const collected: CatalogPlugin[] = [];
   const seen = new Set<string>();
   let timedOut = false;
 
-  for await (const event of streamCatalogLayers(sources, opts)) {
+  for await (const event of streamCatalogPlugins(sources, opts)) {
     switch (event.type) {
       case "chunk": {
-        for (const layer of event.chunk.layers) {
-          const key = catalogLayerKey(layer);
+        for (const plugin of event.chunk.plugins) {
+          const key = catalogPluginKey(plugin);
           if (seen.has(key)) {
             continue;
           }
           seen.add(key);
-          collected.push(layer);
+          collected.push(plugin);
           if (collected.length >= limit) {
-            return { layers: collected, timedOut };
+            return { plugins: collected, timedOut };
           }
         }
         break;
@@ -222,7 +222,7 @@ export async function listCatalogLayersFromSources(
     }
   }
 
-  return { layers: collected, timedOut };
+  return { plugins: collected, timedOut };
 }
 
 export function buildCatalogListSources(input: {

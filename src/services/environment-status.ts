@@ -1,8 +1,8 @@
 import { getEnvironment, getEnvironmentByName } from "../models/environment.js";
-import { getLayerById } from "../models/plugin-model.js";
+import { getPluginById } from "../models/plugin-model.js";
 import {
   fragmentFromEnvironmentId,
-  loadLayerDefaultFragments,
+  loadPluginDefaultFragments,
   resolveEnvironmentCascade,
   type EnvironmentFragment,
 } from "./environment-cascade.js";
@@ -24,7 +24,7 @@ export interface EnvironmentStatusPayload {
   global_environment: string | null;
   local_environment: string | null;
   effective_environment: string | null;
-  layer_defaults: Array<{ layer_id: string; environment_name: string | null }>;
+  plugin_defaults: Array<{ plugin_id: string; environment_name: string | null }>;
   resolved: EnvironmentFragment;
   secret_warnings: SecretRefWarning[];
   has_drift: boolean;
@@ -42,15 +42,15 @@ function activeEnvironmentFragment(name: string | undefined): EnvironmentFragmen
   return fragmentFromEnvironmentId(environment.id);
 }
 
-function buildLayerDefaultSummary(
-  configuredLayerIds: string[],
-): EnvironmentStatusPayload["layer_defaults"] {
-  return configuredLayerIds.map((layerId) => {
-    const layer = getLayerById(layerId);
-    const environmentId = layer?.default_environment_id;
+function buildPluginDefaultSummary(
+  configuredPluginIds: string[],
+): EnvironmentStatusPayload["plugin_defaults"] {
+  return configuredPluginIds.map((pluginId) => {
+    const plugin = getPluginById(pluginId);
+    const environmentId = plugin?.default_environment_id;
     const environment = environmentId ? getEnvironment(environmentId) : undefined;
     return {
-      layer_id: layerId,
+      plugin_id: pluginId,
       environment_name: environment?.name ?? null,
     };
   });
@@ -74,16 +74,16 @@ function detectVarDrift(expectedVars: Record<string, string>): EnvironmentVarDri
 }
 
 export function detectEnvironmentStatus(input: {
-  configuredLayerIds?: string[];
+  configuredPluginIds?: string[];
 } = {}): EnvironmentStatusPayload {
   const globalEnvironment = getGlobalActiveEnvironmentName() ?? null;
   const localEnvironment = getLocalActiveEnvironmentName() ?? null;
   const effectiveEnvironment = getEffectiveActiveEnvironmentName() ?? null;
-  const configuredLayerIds = input.configuredLayerIds ?? [];
+  const configuredPluginIds = input.configuredPluginIds ?? [];
 
   const resolved = resolveEnvironmentCascade({
     home: activeEnvironmentFragment(effectiveEnvironment ?? undefined),
-    layerDefaults: loadLayerDefaultFragments(configuredLayerIds),
+    pluginDefaults: loadPluginDefaultFragments(configuredPluginIds),
   });
   const { resolved: resolvedSecrets, warnings: secretWarnings } = resolveSecretRefsBestEffort(
     resolved.secretRefs,
@@ -95,7 +95,7 @@ export function detectEnvironmentStatus(input: {
     global_environment: globalEnvironment,
     local_environment: localEnvironment,
     effective_environment: effectiveEnvironment,
-    layer_defaults: buildLayerDefaultSummary(configuredLayerIds),
+    plugin_defaults: buildPluginDefaultSummary(configuredPluginIds),
     resolved,
     secret_warnings: secretWarnings,
     has_drift: drift.length > 0,

@@ -1,15 +1,15 @@
 import semver from "semver";
 import { getDb } from "../../db/connection.js";
 import {
-  getLayerById,
-  getLayerByName,
-  getLayerByPublishedIdentity,
-  listLayerVersions,
+  getPluginById,
+  getPluginByName,
+  getPluginByPublishedIdentity,
+  listPluginVersions,
 } from "../../models/plugin-model.js";
-import type { DependencySourceKind, Layer } from "../../types.js";
+import type { DependencySourceKind, Plugin } from "../../types.js";
 import { listDependencies } from "../plugin-dependency.js";
-import { getLayerOverrides } from "../layer-overrides.js";
-import { parseLayerSelector } from "../layer-selector.js";
+import { getPluginOverrides } from "../plugin-overrides.js";
+import { parsePluginSelector } from "../plugin-selector.js";
 import { selectVersion } from "./version-mediation.js";
 import type { ConstraintRecord, SelectedPlugin, SelectionReason } from "./types.js";
 
@@ -27,10 +27,10 @@ function missingDependency(
 ): Error {
   const fix =
     sourceKind === "marketplace"
-      ? `ht layer apply <root> --sync-plugins`
+      ? `ht plugin apply <root> --sync-plugins`
       : sourceKind === "catalog"
-        ? `ht layer pull ${name}`
-        : `ht layer create ${name}`;
+        ? `ht plugin pull ${name}`
+        : `ht plugin create ${name}`;
   return new Error(
     `Dependency ${name}@${version} is not available locally (source: ${sourceKind})\n  fix: ${fix}`,
   );
@@ -38,11 +38,11 @@ function missingDependency(
 
 function listAvailableVersions(dependencyName: string): string[] {
   try {
-    const parsed = parseLayerSelector(dependencyName);
+    const parsed = parsePluginSelector(dependencyName);
     if (parsed.scope === "published") {
       const rows = getDb()
         .prepare(
-          `SELECT version FROM layers
+          `SELECT version FROM plugins
            WHERE name = ? AND org_slug = ? AND catalog_slug = ?`,
         )
         .all(parsed.name, parsed.org, parsed.catalog) as Array<{ version: string }>;
@@ -51,34 +51,34 @@ function listAvailableVersions(dependencyName: string): string[] {
         .filter((version) => semver.valid(version) !== null)
         .sort(semver.rcompare);
     }
-    return listLayerVersions(parsed.name);
+    return listPluginVersions(parsed.name);
   } catch {
-    return listLayerVersions(dependencyName);
+    return listPluginVersions(dependencyName);
   }
 }
 
 function resolveDependencyVersion(
   dependencyName: string,
   version: string,
-): Layer | undefined {
+): Plugin | undefined {
   try {
-    const parsed = parseLayerSelector(dependencyName);
+    const parsed = parsePluginSelector(dependencyName);
     if (parsed.scope === "published") {
-      return getLayerByPublishedIdentity({
+      return getPluginByPublishedIdentity({
         name: parsed.name,
         version,
         org: parsed.org,
         catalog: parsed.catalog,
       });
     }
-    return getLayerByName(parsed.name, version);
+    return getPluginByName(parsed.name, version);
   } catch {
-    return getLayerByName(dependencyName, version);
+    return getPluginByName(dependencyName, version);
   }
 }
 
 interface WalkFrame {
-  layerId: string;
+  pluginId: string;
   label: string;
   path: string[];
   depth: number;
@@ -91,7 +91,7 @@ export interface DependencyWalk {
 }
 
 /**
- * Walk the dependency graph from `rootLayerId`, unifying every plugin name to
+ * Walk the dependency graph from `rootPluginId`, unifying every plugin name to
  * exactly one version.
  *
  * Selecting a version requires knowing the constraints on it, and discovering
@@ -101,16 +101,16 @@ export interface DependencyWalk {
  * repeats until the selection map stops changing.
  */
 export function walkDependencyGraph(input: {
-  rootLayerId: string;
+  rootPluginId: string;
   /** Pin selections from a lockfile. Bypasses mediation for the named plugins. */
   lockedVersions?: Map<string, string>;
 }): DependencyWalk {
-  const root = getLayerById(input.rootLayerId);
+  const root = getPluginById(input.rootPluginId);
   if (!root) {
-    throw new Error(`Layer not found: ${input.rootLayerId}`);
+    throw new Error(`Plugin not found: ${input.rootPluginId}`);
   }
   const rootLabel = label(root.name, root.version);
-  const overrides = getLayerOverrides(root.id);
+  const overrides = getPluginOverrides(root.id);
 
   let previous = new Map<string, string>();
 
@@ -124,16 +124,16 @@ export function walkDependencyGraph(input: {
 
     const visited = new Set<string>([root.id]);
     const queue: WalkFrame[] = [
-      { layerId: root.id, label: rootLabel, path: [rootLabel], depth: 0 },
+      { pluginId: root.id, label: rootLabel, path: [rootLabel], depth: 0 },
     ];
 
     while (queue.length > 0) {
       const frame = queue.shift();
       if (!frame) break;
 
-      for (const dependency of listDependencies(frame.layerId)) {
+      for (const dependency of listDependencies(frame.pluginId)) {
         // Marketplace refs like `web-search@anthropics` store name `web-search`,
-        // matching the upstream layer created by materializeUpstreamPluginLayer.
+        // matching the upstream plugin created by materializeUpstreamPlugin.
         const name = dependency.name;
         if (!sourceKinds.has(name)) {
           sourceKinds.set(name, dependency.source_kind);
@@ -178,7 +178,7 @@ export function walkDependencyGraph(input: {
         if (!visited.has(resolved.id)) {
           visited.add(resolved.id);
           queue.push({
-            layerId: resolved.id,
+            pluginId: resolved.id,
             label: label(name, provisional),
             path: [...frame.path, label(name, provisional)],
             depth,
@@ -219,7 +219,7 @@ export function walkDependencyGraph(input: {
     if (!stable) {
       throw new Error(
         "Dependency resolution did not converge. This usually means a version " +
-          "cycle; run `ht layer show <layer>` to inspect the dependency list.",
+          "cycle; run `ht plugin show <plugin>` to inspect the dependency list.",
       );
     }
 
@@ -227,7 +227,7 @@ export function walkDependencyGraph(input: {
       {
         name: root.name,
         version: root.version,
-        layerId: root.id,
+        pluginId: root.id,
         depth: 0,
         declarationIndex: 0,
         constraints: [],
@@ -238,8 +238,8 @@ export function walkDependencyGraph(input: {
     ];
 
     for (const [name, version] of current) {
-      const layer = resolveDependencyVersion(name, version);
-      if (!layer) {
+      const plugin = resolveDependencyVersion(name, version);
+      if (!plugin) {
         throw missingDependency(
           name,
           version,
@@ -249,7 +249,7 @@ export function walkDependencyGraph(input: {
       selected.push({
         name,
         version,
-        layerId: layer.id,
+        pluginId: plugin.id,
         depth: depths.get(name) ?? 1,
         declarationIndex: declarationIndexes.get(name) ?? Number.MAX_SAFE_INTEGER,
         constraints: constraints.get(name) ?? [],

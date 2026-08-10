@@ -35,7 +35,7 @@ function readJsonObject(body: unknown): Record<string, unknown> | Response {
 function isMigrateScope(value: string): value is MigrateScope {
   switch (value) {
     case "workspace":
-    case "layer":
+    case "plugin":
     case "resource":
     case "environment":
       return true;
@@ -111,7 +111,7 @@ export async function handleMigrateExport(
     return jsonResponse(
       {
         error: "invalid_scope",
-        message: "scope must be workspace, layer, resource, or environment",
+        message: "scope must be workspace, plugin, resource, or environment",
       },
       { status: 400 },
     );
@@ -125,19 +125,19 @@ export async function handleMigrateExport(
     );
   }
 
-  const layer = typeof body.layer === "string" ? body.layer : undefined;
+  const plugin = typeof body.plugin === "string" ? body.plugin : undefined;
   const resource = typeof body.resource === "string" ? body.resource : undefined;
   const environment =
     typeof body.environment === "string" ? body.environment : undefined;
   const includePlugins = body.include_plugins === true;
 
   switch (scopeRaw) {
-    case "layer":
-      if (!layer || layer.trim().length === 0) {
+    case "plugin":
+      if (!plugin || plugin.trim().length === 0) {
         return jsonResponse(
           {
-            error: "layer_required",
-            message: "layer is required for layer export",
+            error: "plugin_required",
+            message: "plugin is required for plugin export",
           },
           { status: 400 },
         );
@@ -180,7 +180,7 @@ export async function handleMigrateExport(
     file: resolve(path.trim()),
     includePlugins,
     workspace: scopeRaw === "workspace" ? true : undefined,
-    layer: scopeRaw === "layer" ? layer : undefined,
+    plugin: scopeRaw === "plugin" ? plugin : undefined,
     resource: scopeRaw === "resource" ? resource : undefined,
     environment: scopeRaw === "environment" ? environment : undefined,
   };
@@ -235,7 +235,7 @@ export async function handleMigrateImport(
       return jsonResponse(
         {
           error: "invalid_scope",
-          message: "scope must be workspace, layer, resource, or environment",
+          message: "scope must be workspace, plugin, resource, or environment",
         },
         { status: 400 },
       );
@@ -246,7 +246,7 @@ export async function handleMigrateImport(
   const importOpts: MigrateImportCliOpts = {
     file: resolvedPath,
     workspace: forcedScope === "workspace" ? true : undefined,
-    layer: forcedScope === "layer" ? true : undefined,
+    plugin: forcedScope === "plugin" ? true : undefined,
     resource: forcedScope === "resource" ? true : undefined,
     environment: forcedScope === "environment" ? true : undefined,
   };

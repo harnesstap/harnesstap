@@ -1,9 +1,9 @@
 import {
-  normalizeCatalogLayer,
+  normalizeCatalogPlugin,
   type CatalogListOptions,
   type CatalogListResult,
 } from "./catalog-types.js";
-import { DEFAULT_CATALOG_SLUG } from "./layer-selector.js";
+import { DEFAULT_CATALOG_SLUG } from "./plugin-selector.js";
 import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
@@ -26,7 +26,7 @@ function buildSearchParams(options: CatalogListOptions): URLSearchParams {
 function normalizeListResult(result: CatalogListResult): CatalogListResult {
   return {
     ...result,
-    layers: result.layers.map((layer) => normalizeCatalogLayer(layer)),
+    plugins: result.plugins.map((plugin) => normalizeCatalogPlugin(plugin)),
   };
 }
 
@@ -34,12 +34,12 @@ export function createPublicCatalogClient(baseUrl: string) {
   const root = baseUrl.replace(/\/+$/, "");
 
   return {
-    async listLayers(options: CatalogListOptions = {}): Promise<CatalogListResult> {
+    async listPlugins(options: CatalogListOptions = {}): Promise<CatalogListResult> {
       const params = buildSearchParams(options);
-      const url = `${root}/api/public/layers?${params.toString()}`;
+      const url = `${root}/api/public/plugins?${params.toString()}`;
       const response = await fetchWithTimeout(url);
       if (!response.ok) {
-        throw new Error(`Failed to list public layers: ${response.status}`);
+        throw new Error(`Failed to list public plugins: ${response.status}`);
       }
       const result = await response.json() as CatalogListResult;
       return normalizeListResult(result);
@@ -47,17 +47,17 @@ export function createPublicCatalogClient(baseUrl: string) {
 
     async downloadBundle(
       orgSlug: string,
-      layerSlug: string,
+      pluginSlug: string,
       version = "latest",
       catalogSlug = DEFAULT_CATALOG_SLUG,
     ): Promise<{ version: string; body: string }> {
       const encodedVersion = encodeURIComponent(version);
       const url = catalogSlug === DEFAULT_CATALOG_SLUG
-        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`
-        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(layerSlug)}/versions/${encodedVersion}/layer-export`;
+        ? `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(pluginSlug)}/versions/${encodedVersion}/plugin-export`
+        : `${root}/api/public/${encodeURIComponent(orgSlug)}/${encodeURIComponent(catalogSlug)}/${encodeURIComponent(pluginSlug)}/versions/${encodedVersion}/plugin-export`;
       const response = await fetchWithTimeout(url);
       if (!response.ok) {
-        throw new Error(`Failed to download public layer export: ${response.status}`);
+        throw new Error(`Failed to download public plugin export: ${response.status}`);
       }
       const body = await response.text();
       return { version, body };

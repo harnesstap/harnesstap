@@ -1,20 +1,20 @@
-import type { CatalogLayer } from "./catalog-types.js";
+import type { CatalogPlugin } from "./catalog-types.js";
 
 function normalizedQuery(query: string): string {
   return query.trim().toLowerCase();
 }
 
 /** Lower rank means higher priority in search results. */
-export function catalogSearchRank(layer: CatalogLayer, query: string): number {
+export function catalogSearchRank(plugin: CatalogPlugin, query: string): number {
   const q = normalizedQuery(query);
   if (!q) {
     return 100;
   }
 
-  const slug = layer.slug.toLowerCase();
-  const name = layer.name.toLowerCase();
-  const summary = layer.summary.toLowerCase();
-  const tags = layer.tags.map((tag) => tag.toLowerCase());
+  const slug = plugin.slug.toLowerCase();
+  const name = plugin.name.toLowerCase();
+  const summary = plugin.summary.toLowerCase();
+  const tags = plugin.tags.map((tag) => tag.toLowerCase());
 
   if (slug === q) return 0;
   if (slug.startsWith(q)) return 1;
@@ -27,7 +27,7 @@ export function catalogSearchRank(layer: CatalogLayer, query: string): number {
   return 8;
 }
 
-function compareUpdatedDesc(left: CatalogLayer, right: CatalogLayer): number {
+function compareUpdatedDesc(left: CatalogPlugin, right: CatalogPlugin): number {
   const leftTime = left.updatedAt ? Date.parse(left.updatedAt) : 0;
   const rightTime = right.updatedAt ? Date.parse(right.updatedAt) : 0;
   if (rightTime !== leftTime) {
@@ -37,15 +37,15 @@ function compareUpdatedDesc(left: CatalogLayer, right: CatalogLayer): number {
 }
 
 export function rankCatalogSearchResults(
-  layers: CatalogLayer[],
+  plugins: CatalogPlugin[],
   query: string,
-): CatalogLayer[] {
+): CatalogPlugin[] {
   const q = query.trim();
   if (!q) {
-    return layers;
+    return plugins;
   }
 
-  return [...layers].sort((left, right) => {
+  return [...plugins].sort((left, right) => {
     const rankDiff = catalogSearchRank(left, q) - catalogSearchRank(right, q);
     if (rankDiff !== 0) {
       return rankDiff;

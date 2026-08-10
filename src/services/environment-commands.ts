@@ -1,6 +1,6 @@
 import {
   loadHomeEnvironmentFragment,
-  loadLayerDefaultFragments,
+  loadPluginDefaultFragments,
   resolveEnvironmentCascade,
 } from "./environment-cascade.js";
 import {
@@ -8,7 +8,7 @@ import {
   setGlobalActiveEnvironment,
   setLocalActiveEnvironment,
 } from "./environment-session.js";
-import { resolveConfiguredLayerOrThrow, resolveEnvironmentOrThrow } from "./environment-selectors.js";
+import { resolveConfiguredPluginOrThrow, resolveEnvironmentOrThrow } from "./environment-selectors.js";
 import {
   addSecretRefToEnvironment,
   createEnvironment,
@@ -27,9 +27,9 @@ import {
   upsertEnvironmentPermission,
 } from "../models/environment.js";
 import {
-  setLayerDefaultEnvironment,
+  setPluginDefaultEnvironment,
 } from "../models/plugin-model.js";
-import { markLayerDirty } from "./layer-versioning.js";
+import { markPluginDirty } from "./plugin-versioning.js";
 import type {
   EnvVarMetadata,
   Environment,
@@ -114,7 +114,7 @@ export function listEnvironmentsCommand(): Array<{
       environment,
       value_count: getEnvironmentResources(environment.id).length,
       secret_ref_count: getEnvironmentSecretRefs(environment.id).length,
-      reference_count: refs.layers.length,
+      reference_count: refs.plugins.length,
     };
   });
 }
@@ -137,7 +137,7 @@ export function deleteEnvironmentCommand(
   const references = listEnvironmentReferences(environment.id);
   if (!options?.force && hasEnvironmentReferences(environment.id)) {
     throw new Error(
-      `Environment "${environment.name}" is still referenced by configured layers`,
+      `Environment "${environment.name}" is still referenced by configured plugins`,
     );
   }
   return {
@@ -223,36 +223,36 @@ export function unsetEnvironmentSecretCommand(
   return showEnvironmentCommand(environment.id);
 }
 
-export function setLayerEnvironmentCommand(
-  layerSelector: string,
+export function setPluginEnvironmentCommand(
+  pluginSelector: string,
   environmentSelector: string,
-): { configured_layer_id: string; environment_id: string } {
-  const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
+): { configured_plugin_id: string; environment_id: string } {
+  const configuredPlugin = resolveConfiguredPluginOrThrow(pluginSelector);
   const environment = resolveEnvironmentOrThrow(environmentSelector);
-  markLayerDirty(configuredLayer.id);
-  const updated = setLayerDefaultEnvironment(
-    configuredLayer.id,
+  markPluginDirty(configuredPlugin.id);
+  const updated = setPluginDefaultEnvironment(
+    configuredPlugin.id,
     environment.id,
   );
   if (!updated) {
-    throw new Error(`Configured layer not found: ${configuredLayer.id}`);
+    throw new Error(`Configured plugin not found: ${configuredPlugin.id}`);
   }
   return {
-    configured_layer_id: configuredLayer.id,
+    configured_plugin_id: configuredPlugin.id,
     environment_id: environment.id,
   };
 }
 
-export function unsetLayerEnvironmentCommand(layerSelector: string): {
-  configured_layer_id: string;
+export function unsetPluginEnvironmentCommand(pluginSelector: string): {
+  configured_plugin_id: string;
 } {
-  const configuredLayer = resolveConfiguredLayerOrThrow(layerSelector);
-  markLayerDirty(configuredLayer.id);
-  const updated = setLayerDefaultEnvironment(configuredLayer.id, null);
+  const configuredPlugin = resolveConfiguredPluginOrThrow(pluginSelector);
+  markPluginDirty(configuredPlugin.id);
+  const updated = setPluginDefaultEnvironment(configuredPlugin.id, null);
   if (!updated) {
-    throw new Error(`Configured layer not found: ${configuredLayer.id}`);
+    throw new Error(`Configured plugin not found: ${configuredPlugin.id}`);
   }
-  return { configured_layer_id: configuredLayer.id };
+  return { configured_plugin_id: configuredPlugin.id };
 }
 
 export function useEnvironmentCommand(
@@ -291,22 +291,22 @@ export function useEnvironmentPayload(selector: string): {
 }
 
 export function environmentCascadePayload(input: {
-  configuredLayerIds?: string[];
+  configuredPluginIds?: string[];
 }): {
   global_environment: string | null;
   home?: ReturnType<typeof loadHomeEnvironmentFragment>;
-  layer_defaults: ReturnType<typeof loadLayerDefaultFragments>;
+  plugin_defaults: ReturnType<typeof loadPluginDefaultFragments>;
   resolved: ReturnType<typeof resolveEnvironmentCascade>;
 } {
   const home = loadHomeEnvironmentFragment();
-  const layerDefaults = loadLayerDefaultFragments(input.configuredLayerIds ?? []);
+  const pluginDefaults = loadPluginDefaultFragments(input.configuredPluginIds ?? []);
   return {
     global_environment: getGlobalActiveEnvironmentName() ?? null,
     ...(home ? { home } : {}),
-    layer_defaults: layerDefaults,
+    plugin_defaults: pluginDefaults,
     resolved: resolveEnvironmentCascade({
       ...(home ? { home } : {}),
-      layerDefaults,
+      pluginDefaults,
     }),
   };
 }

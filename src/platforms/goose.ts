@@ -16,7 +16,7 @@ import type {
 } from "../types.js";
 
 const GOOSE_CONFIG_FILES = ["config.yaml", "profiles.yaml"] as const;
-const GOOSE_LAYER_PLUGIN_NAME = "harnesstap-layer";
+const GOOSE_PLUGIN_PLUGIN_NAME = "harnesstap-plugin";
 const SKIP_WALK_DIRS = new Set([
   ".git",
   "node_modules",
@@ -444,14 +444,14 @@ export class GooseSerializer extends BaseSerializer {
 
     const hooks = resources.filter((r) => r.type === "hook");
     if (hooks.length > 0 && target === "project") {
-      const pluginRoot = `.agents/plugins/${GOOSE_LAYER_PLUGIN_NAME}`;
+      const pluginRoot = `.agents/plugins/${GOOSE_PLUGIN_PLUGIN_NAME}`;
       files.push({
         path: `${pluginRoot}/plugin.json`,
         content: `${JSON.stringify(
           {
-            name: GOOSE_LAYER_PLUGIN_NAME,
+            name: GOOSE_PLUGIN_PLUGIN_NAME,
             version: "0.0.0",
-            description: "Hooks materialized by HarnessTap layer apply",
+            description: "Hooks materialized by HarnessTap plugin apply",
           },
           null,
           2,

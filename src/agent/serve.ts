@@ -1,6 +1,6 @@
 import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
-import { ensureDefaultProfileLayer } from "../services/ensure-default-profile.js";
+import { ensureDefaultProfilePlugin } from "../services/ensure-default-profile.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
 import { createAgentFetchHandler } from "./routes.js";
 import {
@@ -56,7 +56,7 @@ function bootAgentDatabase(): void {
   initializeSchema(db);
   // Fresh desktop installs never run `ht init`; seed a default profile so the
   // rail and project bootstrap are never blocked on a CLI detour.
-  ensureDefaultProfileLayer();
+  ensureDefaultProfilePlugin();
 }
 
 function listenForAgent(

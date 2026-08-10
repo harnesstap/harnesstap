@@ -1,8 +1,8 @@
 import type {
   DeckJson,
-  DeckJsonLayer,
-  LayerExport,
-  MultiLayerExport,
+  DeckJsonPlugin,
+  PluginExport,
+  MultiPluginExport,
 } from "../../types.js";
 import {
   BUNDLE_SCHEMA,
@@ -18,10 +18,10 @@ import {
   environmentsToTomlRecord,
 } from "./environment-document.js";
 import {
-  layerExportFromTomlDocument,
-  normalizeLayerExportForToml,
-  serializeLayerEntry,
-} from "./layer.js";
+  pluginExportFromTomlDocument,
+  normalizePluginExportForToml,
+  serializePluginEntry,
+} from "./plugin.js";
 import { parseTransportToml } from "./read.js";
 import { readSchemaHeader } from "./validate.js";
 import { formatTransportToml } from "./write.js";
@@ -29,57 +29,57 @@ import { formatTransportToml } from "./write.js";
 export interface BundleExport {
   schema: typeof BUNDLE_SCHEMA;
   version: typeof BUNDLE_SCHEMA_VERSION;
-  deck: Pick<DeckJson, "name" | "active_environment" | "layers">;
+  deck: Pick<DeckJson, "name" | "active_environment" | "plugins">;
   environments: DeckJson["environments"];
-  layers: MultiLayerExport["layers"];
-  embedded_plugins: MultiLayerExport["embedded_plugins"];
+  plugins: MultiPluginExport["plugins"];
+  embedded_plugins: MultiPluginExport["embedded_plugins"];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseDeckLayer(value: unknown): DeckJsonLayer {
+function parseDeckPlugin(value: unknown): DeckJsonPlugin {
   if (!isRecord(value)) {
-    throw new Error("Bundle layer selector must be a table");
+    throw new Error("Bundle plugin selector must be a table");
   }
-  const layer: DeckJsonLayer = {
+  const plugin: DeckJsonPlugin = {
     name: String(value.name ?? ""),
     version: String(value.version ?? "1.0.0"),
   };
   if (typeof value.org === "string" && value.org.length > 0) {
-    layer.org = value.org;
+    plugin.org = value.org;
   }
   if (typeof value.catalog === "string" && value.catalog.length > 0) {
-    layer.catalog = value.catalog;
+    plugin.catalog = value.catalog;
   }
   if (typeof value.environment === "string" && value.environment.length > 0) {
-    layer.environment = value.environment;
+    plugin.environment = value.environment;
   }
-  return layer;
+  return plugin;
 }
 
-function serializeDeckLayer(layer: DeckJsonLayer): Record<string, unknown> {
+function serializeDeckPlugin(plugin: DeckJsonPlugin): Record<string, unknown> {
   const row: Record<string, unknown> = {
-    name: layer.name,
-    version: layer.version,
+    name: plugin.name,
+    version: plugin.version,
   };
-  if (layer.org) row.org = layer.org;
-  if (layer.catalog) row.catalog = layer.catalog;
-  if (layer.environment) row.environment = layer.environment;
+  if (plugin.org) row.org = plugin.org;
+  if (plugin.catalog) row.catalog = plugin.catalog;
+  if (plugin.environment) row.environment = plugin.environment;
   return row;
 }
 
 function deckSectionToTomlDocument(
-  deck: Pick<DeckJson, "name" | "active_environment" | "layers">,
+  deck: Pick<DeckJson, "name" | "active_environment" | "plugins">,
   environments: DeckJson["environments"],
 ): Record<string, unknown> {
   const document: Record<string, unknown> = {
     schema: DECK_SCHEMA,
     version: DECK_JSON_VERSION,
     name: deck.name,
-    layers: deck.layers
-      .map(serializeDeckLayer)
+    plugins: deck.plugins
+      .map(serializeDeckPlugin)
       .sort((left, right) => String(left.name).localeCompare(String(right.name))),
   };
   if (deck.active_environment) {
@@ -92,18 +92,18 @@ function deckSectionToTomlDocument(
 }
 
 function deckSectionFromTomlDocument(document: Record<string, unknown>): {
-  deck: Pick<DeckJson, "name" | "active_environment" | "layers">;
+  deck: Pick<DeckJson, "name" | "active_environment" | "plugins">;
   environments: DeckJson["environments"];
 } {
-  const layersRaw = document.layers;
-  const layers = Array.isArray(layersRaw)
-    ? layersRaw.map(parseDeckLayer)
+  const pluginsRaw = document.plugins;
+  const plugins = Array.isArray(pluginsRaw)
+    ? pluginsRaw.map(parseDeckPlugin)
     : [];
 
   return {
     deck: {
       name: String(document.name ?? ""),
-      layers,
+      plugins,
       ...(typeof document.active_environment === "string"
         ? { active_environment: document.active_environment }
         : {}),
@@ -123,11 +123,11 @@ export function bundleExportToTomlDocument(bundle: BundleExport): Record<string,
       ...(bundle.deck.active_environment
         ? { active_environment: bundle.deck.active_environment }
         : {}),
-      layers: deckDocument.layers,
+      plugins: deckDocument.plugins,
     },
     environments: deckDocument.environments,
-    layers: bundle.layers
-      .map(serializeLayerEntry)
+    plugins: bundle.plugins
+      .map(serializePluginEntry)
       .sort((left, right) =>
         String(left.name).localeCompare(String(right.name)),
       ),
@@ -153,14 +153,14 @@ export function bundleExportFromTomlDocument(
     version: DECK_JSON_VERSION,
     name: deckRaw.name,
     active_environment: deckRaw.active_environment,
-    layers: deckRaw.layers,
+    plugins: deckRaw.plugins,
     environments: document.environments,
   });
 
-  const layerExport = layerExportFromTomlDocument({
-    schema: "urn:harnesstap:layer:v1",
+  const pluginExport = pluginExportFromTomlDocument({
+    schema: "urn:harnesstap:plugin:v1",
     version: 1,
-    layers: document.layers,
+    plugins: document.plugins,
     embedded_plugins: document.embedded_plugins,
   });
 
@@ -169,8 +169,8 @@ export function bundleExportFromTomlDocument(
     version: BUNDLE_SCHEMA_VERSION,
     deck: deckSection.deck,
     environments: deckSection.environments,
-    layers: layerExport.layers,
-    embedded_plugins: layerExport.embedded_plugins,
+    plugins: pluginExport.plugins,
+    embedded_plugins: pluginExport.embedded_plugins,
   };
 }
 
@@ -190,21 +190,21 @@ export function formatBundleToml(bundle: BundleExport): string {
   return formatTransportToml(bundleExportToTomlDocument(bundle));
 }
 
-export function layerExportToBundleExport(
+export function pluginExportToBundleExport(
   deck: DeckJson,
-  layerExport: LayerExport,
+  pluginExport: PluginExport,
 ): BundleExport {
-  const normalized = normalizeLayerExportForToml(layerExport);
+  const normalized = normalizePluginExportForToml(pluginExport);
   return {
     schema: BUNDLE_SCHEMA,
     version: BUNDLE_SCHEMA_VERSION,
     deck: {
       name: deck.name,
-      layers: deck.layers,
+      plugins: deck.plugins,
       ...(deck.active_environment ? { active_environment: deck.active_environment } : {}),
     },
     environments: deck.environments,
-    layers: normalized.layers,
+    plugins: normalized.plugins,
     embedded_plugins: normalized.embedded_plugins,
   };
 }

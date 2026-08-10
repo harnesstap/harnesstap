@@ -43,10 +43,10 @@ export async function handleProfileRemoveResource(
     );
   }
 
-  const layerId = body.layerId;
-  if (layerId !== undefined && typeof layerId !== "string") {
+  const pluginId = body.pluginId;
+  if (pluginId !== undefined && typeof pluginId !== "string") {
     return jsonResponse(
-      { error: "invalid_layer_id", message: "layerId must be a string" },
+      { error: "invalid_plugin_id", message: "pluginId must be a string" },
       { status: 400 },
     );
   }
@@ -56,8 +56,8 @@ export async function handleProfileRemoveResource(
       profileSelector: profileName,
       resourceType: resourceType.trim(),
       resourceName: resourceName.trim(),
-      ...(typeof layerId === "string" && layerId.trim()
-        ? { layerId: layerId.trim() }
+      ...(typeof pluginId === "string" && pluginId.trim()
+        ? { pluginId: pluginId.trim() }
         : {}),
     });
     return jsonResponse({ resource });

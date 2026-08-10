@@ -1,13 +1,13 @@
 import {
-  getLayerById,
-  getLayerResources,
-  listLayerDependencies,
-  listLayers,
+  getPluginById,
+  getPluginResources,
+  listPluginDependencies,
+  listPlugins,
 } from "../models/plugin-model.js";
 import { listProjects } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import type { SnapshotState } from "../types.js";
-import { setLayerResourceOverride } from "./layer-overrides.js";
+import { setPluginResourceOverride } from "./plugin-overrides.js";
 import {
   type ResolutionResult,
   resolutionKey,
@@ -49,8 +49,8 @@ export function migrateOrderToOverrides(
   for (const project of listProjects()) {
     const snapshot = getLatestSnapshot(project.id);
     const state = snapshot?.state as SnapshotState | undefined;
-    const rootLayer = state?.layers?.[state.layers.length - 1];
-    if (!rootLayer) {
+    const rootPlugin = state?.plugins?.[state.plugins.length - 1];
+    if (!rootPlugin) {
       report.projectsWithoutSnapshot += 1;
       continue;
     }
@@ -58,18 +58,18 @@ export function migrateOrderToOverrides(
 
     let resolution: ResolutionResult;
     try {
-      resolution = resolveComposition({ rootSelectors: [rootLayer.name] });
+      resolution = resolveComposition({ rootSelectors: [rootPlugin.name] });
     } catch {
       report.warnings.push(
-        `${project.name}: ${rootLayer.name} no longer resolves; run ` +
-          `\`ht layer apply ${rootLayer.name} --explain\` to inspect.`,
+        `${project.name}: ${rootPlugin.name} no longer resolves; run ` +
+          `\`ht plugin apply ${rootPlugin.name} --explain\` to inspect.`,
       );
       continue;
     }
 
     const previousWinnerByKey = new Map<string, string>();
     for (const resource of state?.resources ?? []) {
-      const owner = ownerLayerName(resource.id, resolution.selected);
+      const owner = ownerPluginName(resource.id, resolution.selected);
       if (owner) {
         previousWinnerByKey.set(resolutionKey(resource), owner);
       }
@@ -77,9 +77,9 @@ export function migrateOrderToOverrides(
 
     for (const decision of resolution.decisions) {
       const previous = previousWinnerByKey.get(decision.key);
-      if (!previous || previous === decision.winner.layerName) continue;
+      if (!previous || previous === decision.winner.pluginName) continue;
       if (!dryRun) {
-        setLayerResourceOverride(resolution.root.layerId, decision.key, previous);
+        setPluginResourceOverride(resolution.root.pluginId, decision.key, previous);
       }
       report.overridesWritten.push({
         root: resolution.root.name,
@@ -98,7 +98,7 @@ export function migrateOrderToOverrides(
         report.warnings.push(
           `${project.name}: no apply snapshot recorded, so previous winners are unknown. ` +
             `Contested: ${contested.keys.join(", ")}. ` +
-            `Run \`ht layer apply ${contested.explainRoot} --explain\` to inspect.`,
+            `Run \`ht plugin apply ${contested.explainRoot} --explain\` to inspect.`,
         );
       } else {
         report.warnings.push(
@@ -114,10 +114,10 @@ export function migrateOrderToOverrides(
 function collectContestedKeys(): { keys: string[]; explainRoot: string } {
   const keys: string[] = [];
   let explainRoot = "<root>";
-  for (const layer of listLayers()) {
-    if (listLayerDependencies(layer.id).length === 0) continue;
+  for (const plugin of listPlugins()) {
+    if (listPluginDependencies(plugin.id).length === 0) continue;
     try {
-      const resolution = resolveComposition({ rootSelectors: [layer.name] });
+      const resolution = resolveComposition({ rootSelectors: [plugin.name] });
       for (const decision of resolution.decisions) {
         if (decision.losers.length === 0) continue;
         if (!keys.includes(decision.key)) {
@@ -125,23 +125,23 @@ function collectContestedKeys(): { keys: string[]; explainRoot: string } {
         }
       }
       if (explainRoot === "<root>") {
-        explainRoot = layer.name;
+        explainRoot = plugin.name;
       }
     } catch {
-      // Skip layers that no longer resolve; the project-level warning still fires.
+      // Skip plugins that no longer resolve; the project-level warning still fires.
     }
   }
   return { keys, explainRoot };
 }
 
-function ownerLayerName(
+function ownerPluginName(
   resourceId: string,
   selected: ReturnType<typeof resolveComposition>["selected"],
 ): string | undefined {
-  for (const plugin of selected) {
-    const layer = getLayerById(plugin.layerId);
-    if (!layer) continue;
-    if (getLayerResources(plugin.layerId).some((resource) => resource.id === resourceId)) {
+  for (const frame of selected) {
+    const plugin = getPluginById(frame.pluginId);
+    if (!plugin) continue;
+    if (getPluginResources(plugin.id).some((resource) => resource.id === resourceId)) {
       return plugin.name;
     }
   }

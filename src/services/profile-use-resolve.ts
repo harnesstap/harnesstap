@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { listProfileLayers } from "../constants/profile.js";
+import { listProfilePlugins } from "../constants/profile.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
   findProjectConfig,
@@ -7,7 +7,7 @@ import {
   type ProjectProfileEntry,
   type ResolvedProjectConfig,
 } from "./project-config.js";
-import { resolveExpectedLayerName } from "./project-config-use.js";
+import { resolveExpectedPluginName } from "./project-config-use.js";
 import { buildProjectProfileChoices } from "./wizards/project-use.js";
 import {
   promptForChoice,
@@ -21,14 +21,14 @@ const GLOBAL_PREFIX = "global:";
 
 export type ProfileUseSelection =
   | { kind: "project"; profileKey: string }
-  | { kind: "global"; layerName: string };
+  | { kind: "global"; pluginName: string };
 
 function encodeProjectChoice(profileKey: string): string {
   return `${PROJECT_PREFIX}${profileKey}`;
 }
 
-function encodeGlobalChoice(layerName: string): string {
-  return `${GLOBAL_PREFIX}${layerName}`;
+function encodeGlobalChoice(pluginName: string): string {
+  return `${GLOBAL_PREFIX}${pluginName}`;
 }
 
 function decodeProfileUseChoice(value: string): ProfileUseSelection {
@@ -36,18 +36,18 @@ function decodeProfileUseChoice(value: string): ProfileUseSelection {
     return { kind: "project", profileKey: value.slice(PROJECT_PREFIX.length) };
   }
   if (value.startsWith(GLOBAL_PREFIX)) {
-    return { kind: "global", layerName: value.slice(GLOBAL_PREFIX.length) };
+    return { kind: "global", pluginName: value.slice(GLOBAL_PREFIX.length) };
   }
   throw new Error(`Invalid profile selection: ${value}`);
 }
 
-function collectProjectLayerNames(config: ResolvedProjectConfig): Set<string> {
+function collectProjectPluginNames(config: ResolvedProjectConfig): Set<string> {
   const names = new Set<string>();
   for (const entry of config.profiles) {
     try {
-      names.add(resolveExpectedLayerName(config, entry));
+      names.add(resolveExpectedPluginName(config, entry));
     } catch {
-      // Skip entries that cannot be resolved yet (e.g. missing inline layer).
+      // Skip entries that cannot be resolved yet (e.g. missing inline plugin).
     }
   }
   return names;
@@ -56,12 +56,12 @@ function collectProjectLayerNames(config: ResolvedProjectConfig): Set<string> {
 function buildGlobalProfileChoices(
   config: ResolvedProjectConfig | null,
 ): PromptChoice<string>[] {
-  const coveredLayerNames = config ? collectProjectLayerNames(config) : new Set<string>();
-  return listProfileLayers()
-    .filter((layer) => !coveredLayerNames.has(layer.name))
-    .map((layer) => ({
-      name: `${layer.name}${getActiveProfileName() === layer.name ? " (active)" : ""}`,
-      value: encodeGlobalChoice(layer.name),
+  const coveredPluginNames = config ? collectProjectPluginNames(config) : new Set<string>();
+  return listProfilePlugins()
+    .filter((plugin) => !coveredPluginNames.has(plugin.name))
+    .map((plugin) => ({
+      name: `${plugin.name}${getActiveProfileName() === plugin.name ? " (active)" : ""}`,
+      value: encodeGlobalChoice(plugin.name),
     }));
 }
 
@@ -125,7 +125,7 @@ async function promptForProfileUseSelection(
 
   const message = config
     ? "Which profile should be applied globally?"
-    : "Which profile layer should be applied globally?";
+    : "Which profile plugin should be applied globally?";
   const defaultChoice = resolveDefaultProfileUseChoice(config, choices);
 
   const value =
@@ -145,7 +145,7 @@ export async function resolveProfileUseSelection(input: {
   format?: string;
 }): Promise<ProfileUseSelection | null> {
   if (input.name) {
-    return { kind: "global", layerName: input.name };
+    return { kind: "global", pluginName: input.name };
   }
 
   const projectPath = resolve(input.project ?? process.cwd());
@@ -154,7 +154,7 @@ export async function resolveProfileUseSelection(input: {
   if (input.profile) {
     if (!config) {
       throw new Error(
-        "No project config found. Omit --profile to switch a local profile layer by name.",
+        "No project config found. Omit --profile to switch a local profile plugin by name.",
       );
     }
     getProfileEntry(config, input.profile);

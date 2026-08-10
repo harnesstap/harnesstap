@@ -6,23 +6,23 @@ import {
   exportEnvironmentToml,
   importEnvironmentFile,
 } from "./environment-import-export.js";
-import { exportToFile } from "./layer-export.js";
-import { importFromFile } from "./layer-import.js";
+import { exportToFile } from "./plugin-export.js";
+import { importFromFile } from "./plugin-import.js";
 import {
   exportResourceToFile,
   formatResourceSelector,
   importResourceFromFile,
 } from "./resource-import-export.js";
 import { parseTransportToml } from "./transport/read.js";
-import { LAYER_SCHEMA, RESOURCE_SCHEMA } from "../types.js";
+import { PLUGIN_SCHEMA, RESOURCE_SCHEMA } from "../types.js";
 
-export type MigrateScope = "workspace" | "layer" | "resource" | "environment";
+export type MigrateScope = "workspace" | "plugin" | "resource" | "environment";
 
 export interface MigrateExportCliOpts {
   file?: string;
   outputFile?: string;
   workspace?: boolean;
-  layer?: string;
+  plugin?: string;
   resource?: string;
   environment?: string;
   includePlugins?: boolean;
@@ -32,7 +32,7 @@ export interface MigrateExportCliOpts {
 export interface MigrateImportCliOpts {
   file?: string;
   workspace?: boolean;
-  layer?: boolean;
+  plugin?: boolean;
   resource?: boolean;
   environment?: boolean;
 }
@@ -43,10 +43,10 @@ export type WorkspaceExportResult = {
   manifest: MigrateManifest;
 };
 
-export type LayerExportResult = {
-  scope: "layer";
+export type PluginExportResult = {
+  scope: "plugin";
   output: string;
-  layers: string[];
+  plugins: string[];
 };
 
 export type ResourceExportResult = {
@@ -63,21 +63,21 @@ export type EnvironmentExportResult = {
 
 export type ScopedExportResult =
   | WorkspaceExportResult
-  | LayerExportResult
+  | PluginExportResult
   | ResourceExportResult
   | EnvironmentExportResult;
 
 export type WorkspaceImportResult = {
   scope: "workspace";
   manifest: AnyMigrateManifest;
-  layers_imported: number;
+  plugins_imported: number;
   environments_imported: number;
 };
 
-export type LayerImportResult = {
-  scope: "layer";
-  layer: string;
-  layers: string[];
+export type PluginImportResult = {
+  scope: "plugin";
+  plugin: string;
+  plugins: string[];
   resources_imported: number;
 };
 
@@ -96,19 +96,19 @@ export type EnvironmentImportResult = {
 
 export type ScopedImportResult =
   | WorkspaceImportResult
-  | LayerImportResult
+  | PluginImportResult
   | ResourceImportResult
   | EnvironmentImportResult;
 
 function countScopeFlags(opts: {
   workspace?: boolean;
-  layer?: string | boolean;
+  plugin?: string | boolean;
   resource?: string | boolean;
   environment?: string | boolean;
 }): number {
   let count = 0;
   if (opts.workspace) count++;
-  if (opts.layer) count++;
+  if (opts.plugin) count++;
   if (opts.resource) count++;
   if (opts.environment) count++;
   return count;
@@ -116,12 +116,12 @@ function countScopeFlags(opts: {
 
 export function assertExclusiveScopeFlags(opts: {
   workspace?: boolean;
-  layer?: string | boolean;
+  plugin?: string | boolean;
   resource?: string | boolean;
   environment?: string | boolean;
 }): void {
   if (countScopeFlags(opts) > 1) {
-    throw new Error("Choose only one of --workspace, --layer, --resource, or --environment.");
+    throw new Error("Choose only one of --workspace, --plugin, --resource, or --environment.");
   }
 }
 
@@ -130,7 +130,7 @@ function embedPlugins(opts: MigrateExportCliOpts): boolean {
 }
 
 function isEnvironmentTomlDocument(document: Record<string, unknown>): boolean {
-  if (document.$schema === LAYER_SCHEMA || document.$schema === RESOURCE_SCHEMA) {
+  if (document.$schema === PLUGIN_SCHEMA || document.$schema === RESOURCE_SCHEMA) {
     return false;
   }
   if (document.environments && typeof document.environments === "object") {
@@ -142,7 +142,7 @@ function isEnvironmentTomlDocument(document: Record<string, unknown>): boolean {
 export function resolveExportScope(opts: MigrateExportCliOpts): {
   scope: MigrateScope;
   outputPath: string;
-  layerSelector?: string;
+  pluginSelector?: string;
   resourceSelector?: string;
   environmentSelector?: string;
 } {
@@ -160,15 +160,15 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
     };
   }
 
-  if (opts.layer) {
-    const firstLayer = opts.layer.split(",")[0]?.trim() ?? "layer";
+  if (opts.plugin) {
+    const firstPlugin = opts.plugin.split(",")[0]?.trim() ?? "plugin";
     const path = outputPath && outputPath.length > 0
       ? resolve(outputPath)
-      : resolve(`${firstLayer}.harnesstap.toml`);
+      : resolve(`${firstPlugin}.harnesstap.toml`);
     return {
-      scope: "layer",
+      scope: "plugin",
       outputPath: path,
-      layerSelector: opts.layer,
+      pluginSelector: opts.plugin,
     };
   }
 
@@ -203,7 +203,7 @@ export function resolveExportScope(opts: MigrateExportCliOpts): {
   }
 
   throw new Error(
-    "Specify export scope: --workspace, --layer <name>, --resource <selector>, or --environment <name>.",
+    "Specify export scope: --workspace, --plugin <name>, --resource <selector>, or --environment <name>.",
   );
 }
 
@@ -219,7 +219,7 @@ export function detectImportScopeFromFile(filePath: string): MigrateScope {
       "migrate import",
     );
     const schema = document.schema;
-    if (schema === LAYER_SCHEMA) return "layer";
+    if (schema === PLUGIN_SCHEMA) return "plugin";
     if (schema === RESOURCE_SCHEMA) return "resource";
     if (isEnvironmentTomlDocument(document)) return "environment";
     throw new Error(`Unsupported TOML schema for migrate import: ${String(schema)}`);
@@ -230,7 +230,7 @@ export function detectImportScopeFromFile(filePath: string): MigrateScope {
 export function resolveImportScope(opts: MigrateImportCliOpts): MigrateScope {
   assertExclusiveScopeFlags({
     workspace: opts.workspace,
-    layer: opts.layer,
+    plugin: opts.plugin,
     resource: opts.resource,
     environment: opts.environment,
   });
@@ -241,8 +241,8 @@ export function resolveImportScope(opts: MigrateImportCliOpts): MigrateScope {
   let scope: MigrateScope;
   if (opts.workspace) {
     scope = "workspace";
-  } else if (opts.layer) {
-    scope = "layer";
+  } else if (opts.plugin) {
+    scope = "plugin";
   } else if (opts.resource) {
     scope = "resource";
   } else if (opts.environment) {
@@ -278,25 +278,25 @@ export function exportScopedMigration(
         manifest,
       };
     }
-    case "layer": {
-      if (!resolved.layerSelector) {
-        throw new Error("Layer selector is required for layer export.");
+    case "plugin": {
+      if (!resolved.pluginSelector) {
+        throw new Error("Plugin selector is required for plugin export.");
       }
-      const layers = resolved.layerSelector
+      const plugins = resolved.pluginSelector
         .split(",")
         .map((name) => name.trim())
         .filter((name) => name.length > 0);
-      if (layers.length === 0) {
-        throw new Error("Provide at least one layer name or ID to export.");
+      if (plugins.length === 0) {
+        throw new Error("Provide at least one plugin name or ID to export.");
       }
-      const exportSelector = layers.length === 1 ? (layers[0] ?? layers) : layers;
+      const exportSelector = plugins.length === 1 ? (plugins[0] ?? plugins) : plugins;
       exportToFile(exportSelector, resolved.outputPath, {
         embedPlugins: includePlugins,
       });
       return {
-        scope: "layer",
+        scope: "plugin",
         output: resolved.outputPath,
-        layers,
+        plugins,
       };
     }
     case "resource": {
@@ -344,21 +344,21 @@ export function importScopedMigration(
       return {
         scope: "workspace",
         manifest: result.manifest,
-        layers_imported: result.layers_imported,
+        plugins_imported: result.plugins_imported,
         environments_imported: result.environments_imported,
       };
     }
-    case "layer": {
+    case "plugin": {
       const imported = importFromFile(resolved);
-      const layerNames = imported.layers.map((entry) => entry.layer.name);
-      const resourcesImported = imported.layers.reduce(
+      const pluginNames = imported.plugins.map((entry) => entry.plugin.name);
+      const resourcesImported = imported.plugins.reduce(
         (total, entry) => total + entry.resources.length,
         0,
       );
       return {
-        scope: "layer",
-        layer: layerNames.join(", "),
-        layers: layerNames,
+        scope: "plugin",
+        plugin: pluginNames.join(", "),
+        plugins: pluginNames,
         resources_imported: resourcesImported,
       };
     }

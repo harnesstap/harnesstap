@@ -9,7 +9,7 @@ export interface ConstraintRecord {
    * A constraint declared by the root itself has `path.length === 1`.
    */
   path: string[];
-  /** Label of the layer that declared this constraint, e.g. `team-standards@2.1.0`. */
+  /** Label of the plugin that declared this constraint, e.g. `team-standards@2.1.0`. */
   requirer: string;
 }
 
@@ -24,7 +24,7 @@ export type SelectionReason =
 export interface SelectedPlugin {
   name: string;
   version: string;
-  layerId: string;
+  pluginId: string;
   /** Root is 0; a direct dependency of the root is 1. */
   depth: number;
   /** Global first-encounter order during the BFS walk. Ties break on this. */
@@ -45,8 +45,8 @@ export type ResourceDecisionReason =
   | "root-override";
 
 export interface ResourceSide {
-  layerName: string;
-  layerVersion: string;
+  pluginName: string;
+  pluginVersion: string;
   depth: number;
 }
 
@@ -61,7 +61,7 @@ export interface ResourceDecision {
 export interface ResolutionRoot {
   name: string;
   version: string;
-  layerId: string;
+  pluginId: string;
   /** True when the root was synthesized from multiple apply arguments. */
   ephemeral: boolean;
 }
@@ -108,12 +108,12 @@ export class UnsatisfiableConstraintError extends Error {
         : `No local versions of ${input.pluginName} found`;
 
     if (input.available.length === 0 && input.sourceKind === "marketplace") {
-      this.hints = [`ht layer apply <root> --sync-plugins`, inventoryHint];
+      this.hints = [`ht plugin apply <root> --sync-plugins`, inventoryHint];
     } else if (input.available.length === 0 && input.sourceKind === "catalog") {
-      this.hints = [`ht layer pull ${input.pluginName}`, inventoryHint];
+      this.hints = [`ht plugin pull ${input.pluginName}`, inventoryHint];
     } else {
       this.hints = [
-        `ht layer edit ${input.rootName} --override plugin:${input.pluginName}@<version>`,
+        `ht plugin edit ${input.rootName} --override plugin:${input.pluginName}@<version>`,
         inventoryHint,
       ];
     }
@@ -129,7 +129,7 @@ export class SingletonConflictError extends Error {
     const lines = [
       `conflicting ${input.key} at the same depth`,
       ...input.sides.map(
-        (side) => `  ${side.layerName}@${side.layerVersion} (depth ${side.depth})`,
+        (side) => `  ${side.pluginName}@${side.pluginVersion} (depth ${side.depth})`,
       ),
     ];
     super(lines.join("\n"));
@@ -138,7 +138,7 @@ export class SingletonConflictError extends Error {
     this.sides = input.sides;
     this.hints = input.sides.map(
       (side) =>
-        `ht layer edit ${input.rootName} --override ${input.key}=${side.layerName}`,
+        `ht plugin edit ${input.rootName} --override ${input.key}=${side.pluginName}`,
     );
   }
 }

@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { getHarnesstapDir } from "../../db/connection.js";
-import { listLayers } from "../../models/plugin-model.js";
+import { listPlugins } from "../../models/plugin-model.js";
 import { CliUsageError } from "../../services/cli-errors.js";
 import {
   type CatalogPlugin,
@@ -26,11 +26,11 @@ import {
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 
-async function resolveLayerName(
-  layerOpt: string | undefined,
+async function resolvePluginName(
+  pluginOpt: string | undefined,
   shouldPrompt: boolean,
 ): Promise<string | undefined> {
-  const trimmed = layerOpt?.trim();
+  const trimmed = pluginOpt?.trim();
   if (trimmed) {
     return trimmed;
   }
@@ -39,19 +39,19 @@ async function resolveLayerName(
     return undefined;
   }
 
-  const layers = listLayers();
-  if (layers.length > 0) {
+  const plugins = listPlugins();
+  if (plugins.length > 0) {
     return promptForChoice({
-      message: "Select a layer for the plugin pin",
-      choices: layers.map((layer) => ({
-        name: layer.name,
-        value: layer.name,
+      message: "Select a plugin for the plugin pin",
+      choices: plugins.map((plugin) => ({
+        name: plugin.name,
+        value: plugin.name,
       })),
     });
   }
 
   return promptForValue({
-    message: "Enter a layer name for the plugin pin",
+    message: "Enter a plugin name for the plugin pin",
   });
 }
 
@@ -97,16 +97,16 @@ function printPluginAddResult(
   }
 
   if (result.status === "already_attached") {
-    ui.info(`Plugin pin already attached: ${result.ref} on ${result.layerName}`);
+    ui.info(`Plugin pin already attached: ${result.ref} on ${result.pluginName}`);
     return;
   }
 
-  ui.success(`Attached plugin pin ${result.ref} to layer ${result.layerName}`);
+  ui.success(`Attached plugin pin ${result.ref} to plugin ${result.pluginName}`);
 }
 
 async function addPluginPin(
   ref: string,
-  layerName: string,
+  pluginName: string,
   format: OutputFormat,
 ): Promise<void> {
   const result = await addPluginFromMarketplace({
@@ -114,7 +114,7 @@ async function addPluginPin(
     homeRoot: resolveHomeRoot(),
     projectRoot: process.cwd(),
     ref,
-    layerName,
+    pluginName,
   });
   printPluginAddResult(result, format);
 }
@@ -124,7 +124,7 @@ async function handlePluginSearchCommand(
   opts: {
     refresh?: boolean;
     format?: string;
-    layer?: string;
+    plugin?: string;
     noInteractive?: boolean;
   } = {},
 ): Promise<void> {
@@ -156,12 +156,12 @@ async function handlePluginSearchCommand(
       })),
     });
 
-    const layerName = await resolveLayerName(opts.layer, true);
-    if (!layerName) {
+    const pluginName = await resolvePluginName(opts.plugin, true);
+    if (!pluginName) {
       process.exitCode = 2;
       renderCliError(
         new CliUsageError(
-          "Layer is required. Pass --layer <name> to choose which layer receives the plugin pin.",
+          "Plugin is required. Pass --plugin <name> to choose which plugin receives the plugin pin.",
           ["Run `ht plugin search --help` for usage."],
           2,
         ),
@@ -169,7 +169,7 @@ async function handlePluginSearchCommand(
       return;
     }
 
-    await addPluginPin(selectedRef, layerName, format);
+    await addPluginPin(selectedRef, pluginName, format);
     return;
   }
 
@@ -182,7 +182,7 @@ async function handlePluginSearchCommand(
 async function handlePluginAddCommand(
   ref: string,
   opts: {
-    layer?: string;
+    plugin?: string;
     format?: string;
     noInteractive?: boolean;
   } = {},
@@ -193,15 +193,15 @@ async function handlePluginAddCommand(
     format: opts.format,
   });
 
-  const layerName = await resolveLayerName(
-    opts.layer,
+  const pluginName = await resolvePluginName(
+    opts.plugin,
     useBrowsePicker,
   );
-  if (!layerName) {
+  if (!pluginName) {
     process.exitCode = 2;
     renderCliError(
       new CliUsageError(
-        "Layer is required. Pass --layer <name> to choose which layer receives the plugin pin.",
+        "Plugin is required. Pass --plugin <name> to choose which plugin receives the plugin pin.",
         ["Run `ht plugin add --help` for usage."],
         2,
       ),
@@ -209,7 +209,7 @@ async function handlePluginAddCommand(
     return;
   }
 
-  await addPluginPin(ref, layerName, format);
+  await addPluginPin(ref, pluginName, format);
 }
 
 export function registerPluginCommands(root: Command): void {
@@ -223,7 +223,7 @@ export function registerPluginCommands(root: Command): void {
     .command("search")
     .argument("[query]", "Search query for marketplace plugins")
     .option("--refresh", "Refresh marketplace catalogs before searching")
-    .option("--layer <name>", "Layer to attach the selected plugin pin to")
+    .option("--plugin <name>", "Plugin to attach the selected plugin pin to")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--no-interactive", "Disable interactive browse picker")
     .description("Search marketplace catalogs for plugins")
@@ -232,9 +232,9 @@ export function registerPluginCommands(root: Command): void {
   pluginCmd
     .command("add")
     .argument("<ref>", "Plugin ref as name@marketplace")
-    .option("--layer <name>", "Layer to attach the plugin pin to")
+    .option("--plugin <name>", "Plugin to attach the plugin pin to")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--no-interactive", "Disable interactive prompts")
-    .description("Attach a marketplace plugin pin to a layer")
+    .description("Attach a marketplace plugin pin to a plugin")
     .action(handlePluginAddCommand);
 }

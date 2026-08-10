@@ -46,7 +46,7 @@ export async function handleProfilePluginAdd(
       homeRoot: process.env.HOME ?? homedir(),
       projectRoot,
       ref: record.ref.trim(),
-      layerName: profileName,
+      pluginName: profileName,
       ...(typeof record.versionConstraint === "string"
         ? { versionConstraint: record.versionConstraint }
         : {}),

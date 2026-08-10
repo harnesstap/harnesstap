@@ -181,7 +181,7 @@ export class ClaudeCodeSerializer extends BaseSerializer {
       );
     }
 
-    // Cast through the model layer (add ids + timestamps on import)
+    // Cast through the model plugin (add ids + timestamps on import)
     return resources;
   }
 

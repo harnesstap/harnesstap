@@ -1,16 +1,16 @@
-import { getLayerResources, getLayer, resolveLayerSelector } from "../models/plugin-model.js";
+import { getPluginResources, getPlugin, resolvePluginSelector } from "../models/plugin-model.js";
 import {
   getEnvironmentResources,
   getEnvironmentSecretRefs,
 } from "../models/environment.js";
-import { resolveLayerGraph } from "./layer-resolver.js";
+import { resolvePluginGraph } from "./plugin-resolver.js";
 import { collectEnvironmentVarPlaceholders } from "./environment-var-substitution.js";
 import type { AgentMetadata, EnvVarMetadata, McpServerMetadata } from "../types.js";
 
 export type RequirementSource = "plugin_needs" | "mcp_env";
 
 export interface EnvironmentRequirementCollection {
-  configured_layer_ids: string[];
+  configured_plugin_ids: string[];
   plugin_ids: string[];
   required_keys: string[];
   required_models: Array<{ name: string; model: string }>;
@@ -37,9 +37,9 @@ function isNoiseEnvKey(key: string): boolean {
   );
 }
 
-function resolveScopedPluginIds(configuredLayerIds: string[]): string[] {
-  const graph = resolveLayerGraph(configuredLayerIds);
-  return unique(graph.resolved.map((layer) => layer.id));
+function resolveScopedPluginIds(configuredPluginIds: string[]): string[] {
+  const graph = resolvePluginGraph(configuredPluginIds);
+  return unique(graph.resolved.map((plugin) => plugin.id));
 }
 
 export function collectRequirementsFromPlugins(
@@ -58,14 +58,14 @@ export function collectRequirementsFromPlugins(
   };
 
   for (const pluginId of pluginIds) {
-    const plugin = getLayer(pluginId);
+    const plugin = getPlugin(pluginId);
     if (!plugin) continue;
 
     for (const need of plugin.needs ?? []) {
       rememberKey(need, "plugin_needs");
     }
 
-    for (const resource of getLayerResources(pluginId)) {
+    for (const resource of getPluginResources(pluginId)) {
       if (resource.type === "mcp_server") {
         const metadata = resource.metadata as McpServerMetadata;
         for (const key of Object.keys(metadata.env ?? {})) {
@@ -90,7 +90,7 @@ export function collectRequirementsFromPlugins(
   }
 
   return {
-    configured_layer_ids: [],
+    configured_plugin_ids: [],
     plugin_ids: pluginIds,
     required_keys: [...requiredKeys].sort(),
     required_models: [...requiredModels.values()].sort((a, b) =>
@@ -102,27 +102,27 @@ export function collectRequirementsFromPlugins(
   };
 }
 
-export function collectLayerRequirements(
-  layerSelectors: string[],
+export function collectPluginRequirements(
+  pluginSelectors: string[],
 ): EnvironmentRequirementCollection {
-  const configuredLayerIds = layerSelectors.map((selector) => {
-    const configuredLayer = resolveLayerSelector(selector);
-    if (!configuredLayer) {
-      throw new Error(`Configured layer not found: ${selector}`);
+  const configuredPluginIds = pluginSelectors.map((selector) => {
+    const configuredPlugin = resolvePluginSelector(selector);
+    if (!configuredPlugin) {
+      throw new Error(`Configured plugin not found: ${selector}`);
     }
-    return configuredLayer.id;
+    return configuredPlugin.id;
   });
-  const pluginIds = resolveScopedPluginIds(configuredLayerIds);
+  const pluginIds = resolveScopedPluginIds(configuredPluginIds);
   const requirements = collectRequirementsFromPlugins(pluginIds);
-  requirements.configured_layer_ids = configuredLayerIds;
+  requirements.configured_plugin_ids = configuredPluginIds;
   return requirements;
 }
 
 export function analyzeEnvironmentGaps(
   environmentId: string,
-  layerSelector: string,
+  pluginSelector: string,
 ): { key: string; sources: string[]; status: "satisfied" | "missing" }[] {
-  const requirements = collectLayerRequirements([layerSelector]);
+  const requirements = collectPluginRequirements([pluginSelector]);
   const envVarKeys = new Set(
     getEnvironmentResources(environmentId)
       .filter((resource) => resource.type === "env_var")

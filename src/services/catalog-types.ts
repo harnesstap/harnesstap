@@ -1,6 +1,6 @@
-export type CatalogLayerVisibility = "organization" | "shared" | "public";
+export type CatalogPluginVisibility = "organization" | "shared" | "public";
 
-export interface CatalogLayer {
+export interface CatalogPlugin {
   orgSlug: string;
   catalogSlug: string;
   slug: string;
@@ -9,33 +9,33 @@ export interface CatalogLayer {
   latestVersion: string | null;
   updatedAt: string | null;
   tags: string[];
-  visibility: CatalogLayerVisibility;
-  layerId?: string;
+  visibility: CatalogPluginVisibility;
+  pluginId?: string;
   orgId?: string;
   manageable?: boolean;
 }
 
-export function normalizeCatalogLayer(
-  layer: Partial<CatalogLayer> & Pick<CatalogLayer, "orgSlug" | "slug">,
-): CatalogLayer {
+export function normalizeCatalogPlugin(
+  plugin: Partial<CatalogPlugin> & Pick<CatalogPlugin, "orgSlug" | "slug">,
+): CatalogPlugin {
   return {
-    orgSlug: layer.orgSlug,
-    catalogSlug: layer.catalogSlug ?? "default",
-    slug: layer.slug,
-    name: layer.name ?? layer.slug,
-    summary: layer.summary ?? "",
-    latestVersion: layer.latestVersion ?? null,
-    updatedAt: layer.updatedAt ?? null,
-    tags: layer.tags ?? [],
-    visibility: layer.visibility ?? "public",
-    layerId: layer.layerId,
-    orgId: layer.orgId,
-    manageable: layer.manageable,
+    orgSlug: plugin.orgSlug,
+    catalogSlug: plugin.catalogSlug ?? "default",
+    slug: plugin.slug,
+    name: plugin.name ?? plugin.slug,
+    summary: plugin.summary ?? "",
+    latestVersion: plugin.latestVersion ?? null,
+    updatedAt: plugin.updatedAt ?? null,
+    tags: plugin.tags ?? [],
+    visibility: plugin.visibility ?? "public",
+    pluginId: plugin.pluginId,
+    orgId: plugin.orgId,
+    manageable: plugin.manageable,
   };
 }
 
 export interface CatalogListResult {
-  layers: CatalogLayer[];
+  plugins: CatalogPlugin[];
   nextCursor: string | null;
 }
 

@@ -1,24 +1,24 @@
 import { resolve } from "node:path";
 import { getActiveProfilePayload } from "./profile-commands.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
+import { mergePluginsForApply } from "./plugin-apply-merge.js";
 import { environmentCascadePayload } from "./environment-commands.js";
 import { assessProjectScanStatus, type ProjectScanStatus } from "./project-scan-status.js";
 import { validatePluginPinsAgainstInventory } from "./plugin-apply-validation.js";
-import { listAttachedPluginPins } from "./layer-composition.js";
-import { getLayerById, getLayerResources, resolveLayerSelector } from "../models/plugin-model.js";
-import { getProjectByLocalPath, getProjectByOrigin, getProjectConfiguredLayers } from "../models/project.js";
+import { listAttachedPluginPins } from "./plugin-composition.js";
+import { getPluginById, getPluginResources, resolvePluginSelector } from "../models/plugin-model.js";
+import { getProjectByLocalPath, getProjectByOrigin, getProjectConfiguredPlugins } from "../models/project.js";
 import { detectProjectDriftFromLatest, type ProjectDriftReport } from "./project-drift.js";
 import { compareLockToResolution, readLockfile, type LockDrift } from "./lockfile.js";
 import { resolveComposition } from "./resolve/index.js";
 import { detectPlatforms } from "./scanner.js";
 import { getGitOrigin, normalizeGitUrl } from "./git.js";
-import { isProfileLayer } from "../constants/profile.js";
+import { isProfilePlugin } from "../constants/profile.js";
 import { listSnapshots } from "../models/snapshot.js";
-import type { Layer, Project, Resource, ResourceType } from "../types.js";
+import type { Plugin, Project, Resource, ResourceType } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";
 
-export interface AppliedLayerStatusRow {
-  layer: Layer;
+export interface AppliedPluginStatusRow {
+  plugin: Plugin;
   resource_count: number;
   resource_summary: string;
   platforms: string[];
@@ -43,12 +43,12 @@ export interface ProjectStatusPayload {
   environment_cascade: ReturnType<typeof environmentCascadePayload>;
   profile: {
     active_profile: string | null;
-    layer: Layer | null;
+    plugin: Plugin | null;
     stack_resource_count: number;
     stack_summary: string | null;
     warning?: string;
   };
-  applied_layers: AppliedLayerStatusRow[];
+  applied_plugins: AppliedPluginStatusRow[];
   resolved: {
     resource_count: number;
     resource_summary: string;
@@ -77,15 +77,15 @@ export function formatResourceTypeSummary(resources: Pick<Resource, "type">[]): 
   return summary.join(", ");
 }
 
-function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
-  return `${layer.name}@${layer.version}`;
+function formatPluginLabel(plugin: Pick<Plugin, "name" | "version">): string {
+  return `${plugin.name}@${plugin.version}`;
 }
 
-function summarizeLayerResources(layerId: string): {
+function summarizePluginResources(pluginId: string): {
   count: number;
   summary: string;
 } {
-  const resources = materialResources(getLayerResources(layerId));
+  const resources = materialResources(getPluginResources(pluginId));
   return {
     count: resources.length,
     summary: formatResourceTypeSummary(resources),
@@ -97,56 +97,56 @@ function buildProfileSection(): ProjectStatusPayload["profile"] {
   if (!active.active_profile) {
     return {
       active_profile: null,
-      layer: null,
+      plugin: null,
       stack_resource_count: 0,
       stack_summary: null,
     };
   }
 
-  const layer = resolveLayerSelector(active.active_profile);
-  if (!layer) {
+  const plugin = resolvePluginSelector(active.active_profile);
+  if (!plugin) {
     return {
       active_profile: active.active_profile,
-      layer: null,
+      plugin: null,
       stack_resource_count: 0,
       stack_summary: null,
-      warning: `missing layer "${active.active_profile}"`,
+      warning: `missing plugin "${active.active_profile}"`,
     };
   }
 
-  if (!isProfileLayer(layer)) {
+  if (!isProfilePlugin(plugin)) {
     return {
       active_profile: active.active_profile,
-      layer,
+      plugin,
       stack_resource_count: 0,
       stack_summary: null,
-      warning: `layer "${layer.name}" is not tagged as a profile`,
+      warning: `plugin "${plugin.name}" is not tagged as a profile`,
     };
   }
 
-  const merged = mergeLayersForApply([layer.id]);
+  const merged = mergePluginsForApply([plugin.id]);
   const resources = materialResources(merged.resources);
   return {
-    active_profile: formatLayerLabel(layer),
-    layer,
+    active_profile: formatPluginLabel(plugin),
+    plugin,
     stack_resource_count: resources.length,
     stack_summary: formatResourceTypeSummary(resources),
   };
 }
 
-function buildAppliedLayers(project: Project | null): AppliedLayerStatusRow[] {
+function buildAppliedPlugins(project: Project | null): AppliedPluginStatusRow[] {
   if (!project) {
     return [];
   }
 
-  return getProjectConfiguredLayers(project.id).flatMap((row) => {
-    const layer = getLayerById(row.layer_id);
-    if (!layer) {
+  return getProjectConfiguredPlugins(project.id).flatMap((row) => {
+    const plugin = getPluginById(row.plugin_id);
+    if (!plugin) {
       return [];
     }
-    const { count, summary } = summarizeLayerResources(layer.id);
+    const { count, summary } = summarizePluginResources(plugin.id);
     return [{
-      layer,
+      plugin,
       resource_count: count,
       resource_summary: summary,
       platforms: row.platforms,
@@ -156,13 +156,13 @@ function buildAppliedLayers(project: Project | null): AppliedLayerStatusRow[] {
 }
 
 function buildResolvedSection(
-  configuredLayerIds: string[],
+  configuredPluginIds: string[],
 ): ProjectStatusPayload["resolved"] {
   const environmentCascade = environmentCascadePayload({
-    configuredLayerIds,
+    configuredPluginIds,
   });
 
-  if (configuredLayerIds.length === 0) {
+  if (configuredPluginIds.length === 0) {
     return {
       resource_count: 0,
       resource_summary: "",
@@ -172,11 +172,11 @@ function buildResolvedSection(
     };
   }
 
-  const merged = mergeLayersForApply(configuredLayerIds);
+  const merged = mergePluginsForApply(configuredPluginIds);
   const resources = materialResources(merged.resources);
   const pinMap = new Map<string, { ref: string; version_constraint: string }>();
-  for (const layerId of configuredLayerIds) {
-    for (const pin of listAttachedPluginPins(layerId)) {
+  for (const pluginId of configuredPluginIds) {
+    for (const pin of listAttachedPluginPins(pluginId)) {
       pinMap.set(pin.ref, {
         ref: pin.ref,
         version_constraint: pin.version_constraint,
@@ -238,17 +238,17 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
     projectByPath
     ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
     ?? null;
-  const configuredLayerIds = project
-    ? getProjectConfiguredLayers(project.id).map((row) => row.layer_id)
+  const configuredPluginIds = project
+    ? getProjectConfiguredPlugins(project.id).map((row) => row.plugin_id)
     : [];
   const environmentCascade = environmentCascadePayload({
-    configuredLayerIds,
+    configuredPluginIds,
   });
   const driftReport = project
     ? detectProjectDriftFromLatest(resolvedRoot, project.id)
     : null;
-  const appliedLayers = buildAppliedLayers(project);
-  const resolved = buildResolvedSection(configuredLayerIds);
+  const appliedPlugins = buildAppliedPlugins(project);
+  const resolved = buildResolvedSection(configuredPluginIds);
   const projectResources = await assessProjectScanStatus(resolvedRoot);
 
   const lock = readLockfile(resolvedRoot);
@@ -282,7 +282,7 @@ export async function buildProjectStatusPayload(projectRoot: string): Promise<Pr
     snapshots_count: project ? listSnapshots(project.id).length : 0,
     environment_cascade: environmentCascade,
     profile: buildProfileSection(),
-    applied_layers: appliedLayers,
+    applied_plugins: appliedPlugins,
     resolved,
     project_resources: projectResources,
     ...(lockSection ? { lock: lockSection } : {}),

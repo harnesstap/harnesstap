@@ -1,9 +1,9 @@
 import { readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getLayer } from "../models/plugin-model.js";
-import { importFromFile } from "./layer-import.js";
-import { inspectLayerExportFile } from "./layer-export.js";
+import { getPlugin } from "../models/plugin-model.js";
+import { importFromFile } from "./plugin-import.js";
+import { inspectPluginExportFile } from "./plugin-export.js";
 
 function normalizePluginVersion(version: string | undefined): string {
   return typeof version === "string" && version.length > 0 ? version : "";
@@ -16,14 +16,14 @@ function pluginKey(name: string, version: string | undefined): string {
 function hasPluginInstalled(name: string, version: string | undefined): boolean {
   const normalizedVersion = normalizePluginVersion(version);
   return normalizedVersion.length > 0
-    ? getLayer(`${name}@${normalizedVersion}`) !== undefined
-    : getLayer(name) !== undefined;
+    ? getPlugin(`${name}@${normalizedVersion}`) !== undefined
+    : getPlugin(name) !== undefined;
 }
 
 function getBuiltInPluginsDir(): string {
   const overrideDir =
     process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR ??
-    process.env.HARNESSTAP_BUILTIN_LAYERS_DIR;
+    process.env.HARNESSTAP_BUILTIN_PLUGINS_DIR;
   if (overrideDir && existsSync(overrideDir)) {
     return overrideDir;
   }
@@ -58,18 +58,18 @@ export function seedBuiltInPlugins(): number {
     if (!file.endsWith(".toml")) continue;
 
     const filePath = join(pluginsDir, file);
-    const summary = inspectLayerExportFile(filePath);
+    const summary = inspectPluginExportFile(filePath);
     const missingPluginKeys = new Set(
-      summary.layers
-        .filter((layer) => !hasPluginInstalled(layer.name, layer.version))
-        .map((layer) => pluginKey(layer.name, layer.version)),
+      summary.plugins
+        .filter((plugin) => !hasPluginInstalled(plugin.name, plugin.version))
+        .map((plugin) => pluginKey(plugin.name, plugin.version)),
     );
     if (missingPluginKeys.size === 0) continue;
 
     importFromFile(filePath, {
       resourceSource: `builtin:${file}`,
-      includeLayers: (layer) =>
-        missingPluginKeys.has(pluginKey(layer.name, layer.version)),
+      includePlugins: (plugin) =>
+        missingPluginKeys.has(pluginKey(plugin.name, plugin.version)),
     });
     seeded++;
   }

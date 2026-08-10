@@ -1,10 +1,10 @@
 import {
-  addResourceToLayer,
-  getLayerResources,
-  removeResourceFromLayer,
+  addResourceToPlugin,
+  getPluginResources,
+  removeResourceFromPlugin,
 } from "../models/plugin-model.js";
 import { findResourceByKey, normalizeResourceInput, upsertResource } from "../models/resource.js";
-import { markLayerDirty } from "./layer-versioning.js";
+import { markPluginDirty } from "./plugin-versioning.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
 import type { DependencySourceKind, PluginDependencyMetadata, Resource } from "../types.js";
 
@@ -113,21 +113,21 @@ export function ensureDependencyResource(
 }
 
 export function addDependency(
-  layerId: string,
+  pluginId: string,
   ref: string,
   opts?: { versionConstraint?: string; embedOnExport?: boolean },
 ): Resource {
-  markLayerDirty(layerId);
+  markPluginDirty(pluginId);
   const resource = ensureDependencyResource(ref, {
     ...(opts?.versionConstraint ? { versionConstraint: opts.versionConstraint } : {}),
     ...(opts?.embedOnExport ? { portable: "embed" as const } : {}),
   });
-  addResourceToLayer(layerId, resource.id);
+  addResourceToPlugin(pluginId, resource.id);
   return resource;
 }
 
-export function listDependencies(layerId: string): DependencyView[] {
-  return getLayerResources(layerId)
+export function listDependencies(pluginId: string): DependencyView[] {
+  return getPluginResources(pluginId)
     .filter((resource) => resource.type === "plugin")
     .map((resource) => {
       const metadata = resource.metadata as PluginDependencyMetadata;
@@ -142,14 +142,14 @@ export function listDependencies(layerId: string): DependencyView[] {
     });
 }
 
-export function removeDependency(layerId: string, nameOrRef: string): boolean {
+export function removeDependency(pluginId: string, nameOrRef: string): boolean {
   const parsed = parseDependencyRef(nameOrRef);
-  const match = listDependencies(layerId).find(
+  const match = listDependencies(pluginId).find(
     (dependency) =>
       dependency.name === parsed.name || dependency.ref === nameOrRef,
   );
   if (!match) return false;
-  markLayerDirty(layerId);
-  removeResourceFromLayer(layerId, match.resource.id);
+  markPluginDirty(pluginId);
+  removeResourceFromPlugin(pluginId, match.resource.id);
   return true;
 }

@@ -2,7 +2,7 @@ import { getDb } from "../db/connection.js";
 import {
   ensurePluginResource,
   findPluginResourceByPin,
-} from "./layer-composition.js";
+} from "./plugin-composition.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
 import {
   listDependencies,
@@ -19,7 +19,7 @@ import {
   type PluginConstraintPin,
   type PluginValidationIssue,
 } from "./plugin-apply-validation.js";
-import { materializeUpstreamPluginLayer } from "./upstream-plugin-layer.js";
+import { materializeUpstreamPlugin } from "./upstream-plugin.js";
 import { listResources } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import type { DependencySourceKind } from "../types.js";
@@ -29,7 +29,7 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   ensureClaudeMarketplacesFromConfig,
 } from "./claude-marketplace-bootstrap.js";
-import type { ClaudeLayerConfig } from "../types.js";
+import type { ClaudePluginConfig } from "../types.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
 
@@ -40,15 +40,15 @@ const PREPARE_BEFORE_RESOLVE_SOURCES = new Set<DependencySourceKind>([
 ]);
 
 /**
- * Collect marketplace/git pins attached directly to the given layers.
- * Used to materialize upstream layers before the first composition resolve.
+ * Collect marketplace/git pins attached directly to the given plugins.
+ * Used to materialize upstream plugins before the first composition resolve.
  */
 export function collectPluginPinsForPrepare(
-  layerIds: string[],
+  pluginIds: string[],
 ): PluginConstraintPin[] {
   const pins = new Map<string, PluginConstraintPin>();
-  for (const layerId of layerIds) {
-    for (const dependency of listDependencies(layerId)) {
+  for (const pluginId of pluginIds) {
+    for (const dependency of listDependencies(pluginId)) {
       if (!PREPARE_BEFORE_RESOLVE_SOURCES.has(dependency.source_kind)) {
         continue;
       }
@@ -89,7 +89,7 @@ export interface PreparePluginPinsForApplyOptions {
   pins: PluginConstraintPin[];
   baseResources: Resource[];
   projectRoot: string;
-  claudeConfig?: ClaudeLayerConfig;
+  claudeConfig?: ClaudePluginConfig;
   /** When true, skip install/sync and only expand resources + validate pins. */
   skipSync?: boolean;
   syncAll?: boolean;
@@ -174,11 +174,11 @@ export async function syncPluginPinsForApply(
     const metadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const needsSync = options.syncAll || !metadata.resolved_version;
     if (!needsSync) {
-      // Already resolved — still ensure the upstream layer exists so the
+      // Already resolved — still ensure the upstream plugin exists so the
       // graph can treat the install as an ordinary node without a re-sync.
       if (metadata.resolved_version) {
         const parsed = parseDependencyRef(pin.ref);
-        materializeUpstreamPluginLayer({
+        materializeUpstreamPlugin({
           ref: pin.ref,
           name: parsed.name,
           version: metadata.resolved_version,
@@ -201,7 +201,7 @@ export async function syncPluginPinsForApply(
     const syncedMetadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const parsed = parseDependencyRef(pin.ref);
     if (syncedMetadata.resolved_version) {
-      materializeUpstreamPluginLayer({
+      materializeUpstreamPlugin({
         ref: pin.ref,
         name: parsed.name,
         version: syncedMetadata.resolved_version,
@@ -217,7 +217,7 @@ export async function syncPluginPinsForApply(
       if (stamped) {
         const stampedMetadata = (stamped.metadata ?? {}) as PluginPinMetadata;
         if (stampedMetadata.resolved_version) {
-          materializeUpstreamPluginLayer({
+          materializeUpstreamPlugin({
             ref: pin.ref,
             name: parsed.name,
             version: stampedMetadata.resolved_version,
@@ -237,8 +237,8 @@ export async function syncPluginPinsForApply(
  * Collect marketplace-linked material resources imported from pinned plugin
  * install trees.
  *
- * @deprecated Resolution owns the resource set via upstream layers. Prefer
- * materializeUpstreamPluginLayer + resolveComposition. Remove in Stage 3.
+ * @deprecated Resolution owns the resource set via upstream plugins. Prefer
+ * materializeUpstreamPlugin + resolveComposition. Remove in Stage 3.
  */
 export function expandPluginPinMaterialResources(
   pins: PluginConstraintPin[],
@@ -280,7 +280,7 @@ export function expandPluginPinMaterialResources(
 }
 
 /**
- * @deprecated Resolution owns the resource set via upstream layers. Remove in Stage 3.
+ * @deprecated Resolution owns the resource set via upstream plugins. Remove in Stage 3.
  */
 export function countPluginPinMaterialResources(
   pins: PluginConstraintPin[],
@@ -320,7 +320,7 @@ export async function preparePluginPinsForApply(
   }
 
   // Resolution owns the resource set. Install/sync still materializes upstream
-  // layers; expandPluginPinMaterialResources is no longer consulted here.
+  // plugins; expandPluginPinMaterialResources is no longer consulted here.
   const validationIssues = validatePluginPinsAgainstInventory(options.pins);
 
   return {

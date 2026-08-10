@@ -3,19 +3,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   isEmptyBuiltinProfile,
-  isProfileLayer,
+  isProfilePlugin,
 } from "../constants/profile.js";
-import { resolveLayerSelector } from "../models/plugin-model.js";
-import { LAYER_SCHEMA, LAYER_SCHEMA_VERSION } from "../types.js";
+import { resolvePluginSelector } from "../models/plugin-model.js";
+import { PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "../types.js";
 import { useEnvironmentCommand } from "./environment-commands.js";
 import {
   formatEnvironmentToml,
   importEnvironmentToml,
 } from "./environment-import-export.js";
 import { detectGlobalProfileStatus } from "./global-profile-drift.js";
-import { installLayerFromCatalog } from "./layer-catalog-install.js";
-import { importFromFile } from "./layer-import.js";
-import { parseLayerSelector, resolveRemoteLayerSelector } from "./layer-selector.js";
+import { installPluginFromCatalog } from "./plugin-catalog-install.js";
+import { importFromFile } from "./plugin-import.js";
+import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import {
   promptMaterializationConflict,
   resolveApplyConflictPolicy,
@@ -25,7 +25,7 @@ import {
   getProfileEntry,
   resolveProfileEnvironment,
   type ProjectProfileEntry,
-  type ProjectLayerTable,
+  type ProjectPluginTable,
   type ResolvedProjectConfig,
 } from "./project-config.js";
 import { MISSING_PROJECT_CONFIG_MESSAGE } from "./project-config-messages.js";
@@ -34,13 +34,13 @@ import { shouldUseWizard } from "./wizards/shared.js";
 import { useProfileCommand } from "./profile-commands.js";
 import { stashProfileCommand, ProfileStashError } from "./profile-stash.js";
 import { maybeSyncActiveProfileBeforeSwitch } from "./profile-switch-prompt.js";
-import { clearGlobalProfileApply, type ApplyProfileLayerResult } from "./profile-apply.js";
+import { clearGlobalProfileApply, type ApplyProfilePluginResult } from "./profile-apply.js";
 import { clearActiveProfileName, getActiveProfileName } from "./active-profile.js";
 import { getGlobalActiveEnvironmentName } from "./environment-session.js";
 import {
-  layerExportToTomlDocument,
-  parseLayerEntry,
-} from "./transport/layer.js";
+  pluginExportToTomlDocument,
+  parsePluginEntry,
+} from "./transport/plugin.js";
 import { formatTransportToml } from "./transport/write.js";
 
 export interface ProjectUseOptions {
@@ -63,33 +63,33 @@ export type ProjectUseResult =
   | {
       skipped: true;
       profile_key: string;
-      layer_name: string;
+      plugin_name: string;
       environment_name?: string;
     }
   | ({
       skipped: false;
       profile_key: string;
-      layer_name: string;
+      plugin_name: string;
       environment_name?: string;
       stashed?: boolean;
       stash_id?: string;
-    } & ApplyProfileLayerResult);
+    } & ApplyProfilePluginResult);
 
-function assertProfileLayer(layer: { name: string; tags: string[] }, context: string): void {
-  if (!isProfileLayer(layer)) {
-    throw new Error(`Layer "${layer.name}" is not tagged as a profile (${context})`);
+function assertProfilePlugin(plugin: { name: string; tags: string[] }, context: string): void {
+  if (!isProfilePlugin(plugin)) {
+    throw new Error(`Plugin "${plugin.name}" is not tagged as a profile (${context})`);
   }
 }
 
-function resolveLayerNameFromSelector(selector: string): string {
-  const existing = resolveLayerSelector(selector);
+function resolvePluginNameFromSelector(selector: string): string {
+  const existing = resolvePluginSelector(selector);
   if (existing) {
     return existing.name;
   }
-  return parseLayerSelector(selector).name;
+  return parsePluginSelector(selector).name;
 }
 
-export function resolveExpectedLayerName(
+export function resolveExpectedPluginName(
   config: ResolvedProjectConfig,
   entry: ProjectProfileEntry,
 ): string {
@@ -98,17 +98,17 @@ export function resolveExpectedLayerName(
     case "local": {
       const selector = entry.selector;
       if (!selector) {
-        throw new Error(`Profile ${entry.name} is missing a layer selector.`);
+        throw new Error(`Profile ${entry.name} is missing a plugin selector.`);
       }
-      return resolveLayerNameFromSelector(selector);
+      return resolvePluginNameFromSelector(selector);
     }
     case "inline": {
-      const layerKey = entry.layer;
-      if (!layerKey) {
-        throw new Error(`Inline profile ${entry.name} is missing a layer reference.`);
+      const pluginKey = entry.plugin;
+      if (!pluginKey) {
+        throw new Error(`Inline profile ${entry.name} is missing a plugin reference.`);
       }
-      const inlineLayer = config.layers.find((layer) => layer.name === layerKey);
-      return inlineLayer?.name ?? layerKey;
+      const inlinePlugin = config.plugins.find((plugin) => plugin.name === pluginKey);
+      return inlinePlugin?.name ?? pluginKey;
     }
     default: {
       const unhandledSource: never = entry.source;
@@ -117,30 +117,30 @@ export function resolveExpectedLayerName(
   }
 }
 
-function resolvePreviewLayerName(
+function resolvePreviewPluginName(
   config: ResolvedProjectConfig,
   entry: ProjectProfileEntry,
 ): string {
-  return resolveExpectedLayerName(config, entry);
+  return resolveExpectedPluginName(config, entry);
 }
 
-function findInlineLayerTable(
+function findInlinePluginTable(
   config: ResolvedProjectConfig,
-  layerKey: string,
-): ProjectLayerTable {
-  const layer = config.layers.find((entry) => entry.name === layerKey);
-  if (!layer) {
-    throw new Error(`Inline profile references unknown layer: ${layerKey}`);
+  pluginKey: string,
+): ProjectPluginTable {
+  const plugin = config.plugins.find((entry) => entry.name === pluginKey);
+  if (!plugin) {
+    throw new Error(`Inline profile references unknown plugin: ${pluginKey}`);
   }
-  return layer;
+  return plugin;
 }
 
-function writeInlineLayerImportFile(layerTable: ProjectLayerTable): string {
-  const layerEntry = parseLayerEntry(layerTable);
-  const document = layerExportToTomlDocument({
-    $schema: LAYER_SCHEMA,
-    version: LAYER_SCHEMA_VERSION,
-    layers: [layerEntry],
+function writeInlinePluginImportFile(pluginTable: ProjectPluginTable): string {
+  const pluginEntry = parsePluginEntry(pluginTable);
+  const document = pluginExportToTomlDocument({
+    $schema: PLUGIN_SCHEMA,
+    version: PLUGIN_SCHEMA_VERSION,
+    plugins: [pluginEntry],
     embedded_plugins: [],
   });
   const dir = mkdtempSync(join(tmpdir(), "harnesstap-project-inline-"));
@@ -184,7 +184,7 @@ export async function resolveProjectProfileKey(
   throw new Error("multiple profiles configured; pass --profile <name>");
 }
 
-export async function resolveProjectProfileLayerName(
+export async function resolveProjectProfilePluginName(
   config: ResolvedProjectConfig,
   entry: ProjectProfileEntry,
   options: Pick<ProjectUseOptions, "pull" | "account" | "baseUrl">,
@@ -195,58 +195,58 @@ export async function resolveProjectProfileLayerName(
     case "catalog": {
       const selector = entry.selector;
       if (!selector) {
-        throw new Error(`Catalog profile ${entry.name} is missing a layer selector.`);
+        throw new Error(`Catalog profile ${entry.name} is missing a plugin selector.`);
       }
-      const existing = resolveLayerSelector(selector);
+      const existing = resolvePluginSelector(selector);
       if (existing) {
-        assertProfileLayer(existing, `catalog profile ${entry.name}`);
+        assertProfilePlugin(existing, `catalog profile ${entry.name}`);
         return existing.name;
       }
       if (!pull) {
         throw new Error(
-          `Profile layer not found locally: ${selector}. Re-run with pull enabled or install the layer first.`,
+          `Profile plugin not found locally: ${selector}. Re-run with pull enabled or install the plugin first.`,
         );
       }
 
-      const parsed = parseLayerSelector(selector);
+      const parsed = parsePluginSelector(selector);
       if (parsed.scope === "published") {
-        const remote = resolveRemoteLayerSelector(selector, {});
-        const installed = await installLayerFromCatalog(remote, {
+        const remote = resolveRemotePluginSelector(selector, {});
+        const installed = await installPluginFromCatalog(remote, {
           account: options.account,
           baseUrl: options.baseUrl,
         });
-        const layer = resolveLayerSelector(installed.layerName);
-        if (!layer) {
-          throw new Error(`Layer not found after catalog install: ${installed.layerName}`);
+        const plugin = resolvePluginSelector(installed.pluginName);
+        if (!plugin) {
+          throw new Error(`Plugin not found after catalog install: ${installed.pluginName}`);
         }
-        assertProfileLayer(layer, `catalog profile ${entry.name}`);
-        return layer.name;
+        assertProfilePlugin(plugin, `catalog profile ${entry.name}`);
+        return plugin.name;
       }
 
-      throw new Error(`Profile layer not found locally: ${selector}`);
+      throw new Error(`Profile plugin not found locally: ${selector}`);
     }
     case "local": {
       const selector = entry.selector;
       if (!selector) {
-        throw new Error(`Local profile ${entry.name} is missing a layer selector.`);
+        throw new Error(`Local profile ${entry.name} is missing a plugin selector.`);
       }
-      const layer = resolveLayerSelector(selector);
-      if (!layer) {
-        throw new Error(`Profile layer not found locally: ${selector}`);
+      const plugin = resolvePluginSelector(selector);
+      if (!plugin) {
+        throw new Error(`Profile plugin not found locally: ${selector}`);
       }
-      assertProfileLayer(layer, `local profile ${entry.name}`);
-      return layer.name;
+      assertProfilePlugin(plugin, `local profile ${entry.name}`);
+      return plugin.name;
     }
     case "inline": {
-      const layerKey = entry.layer;
-      if (!layerKey) {
-        throw new Error(`Inline profile ${entry.name} is missing a layer reference.`);
+      const pluginKey = entry.plugin;
+      if (!pluginKey) {
+        throw new Error(`Inline profile ${entry.name} is missing a plugin reference.`);
       }
-      const layerTable = findInlineLayerTable(config, layerKey);
-      const tempPath = writeInlineLayerImportFile(layerTable);
+      const pluginTable = findInlinePluginTable(config, pluginKey);
+      const tempPath = writeInlinePluginImportFile(pluginTable);
       const imported = importFromFile(tempPath);
-      assertProfileLayer(imported.layer, `inline profile ${entry.name}`);
-      return imported.layer.name;
+      assertProfilePlugin(imported.plugin, `inline profile ${entry.name}`);
+      return imported.plugin.name;
     }
     default: {
       const unhandledSource: never = entry.source;
@@ -266,7 +266,7 @@ export async function importProjectConfigEnvironments(
 }
 
 export async function shouldSkipProjectUse(input: {
-  layerName: string;
+  pluginName: string;
   environmentName?: string;
   force?: boolean;
   harness?: string;
@@ -276,7 +276,7 @@ export async function shouldSkipProjectUse(input: {
   }
 
   const activeProfile = getActiveProfileName();
-  if (activeProfile !== input.layerName) {
+  if (activeProfile !== input.pluginName) {
     return false;
   }
 
@@ -335,7 +335,7 @@ export async function executeProjectUse(
     return {
       skipped: false,
       profile_key: stashed?.entry.profile_name ?? getActiveProfileName() ?? "empty",
-      layer_name: cleared.profile_name,
+      plugin_name: cleared.profile_name,
       stashed: Boolean(stashed),
       ...(stashed ? { stash_id: stashed.entry.id } : {}),
       ...cleared,
@@ -355,12 +355,12 @@ export async function executeProjectUse(
   });
   const entry = getProfileEntry(config, profileKey);
   const environmentName = resolveProfileEnvironment(config, entry);
-  const expectedLayerName = resolveExpectedLayerName(config, entry);
+  const expectedPluginName = resolveExpectedPluginName(config, entry);
   const dryRun = options.dryRun === true;
 
   if (
     await shouldSkipProjectUse({
-      layerName: expectedLayerName,
+      pluginName: expectedPluginName,
       environmentName,
       force: options.force,
       harness: options.harness,
@@ -369,7 +369,7 @@ export async function executeProjectUse(
     return {
       skipped: true,
       profile_key: profileKey,
-      layer_name: expectedLayerName,
+      plugin_name: expectedPluginName,
       ...(environmentName ? { environment_name: environmentName } : {}),
     };
   }
@@ -378,9 +378,9 @@ export async function executeProjectUse(
     await importProjectConfigEnvironments(config);
   }
 
-  const layerName = dryRun
-    ? resolvePreviewLayerName(config, entry)
-    : await resolveProjectProfileLayerName(config, entry, {
+  const pluginName = dryRun
+    ? resolvePreviewPluginName(config, entry)
+    : await resolveProjectProfilePluginName(config, entry, {
         pull: options.pull ?? true,
         account: options.account,
         baseUrl: options.baseUrl,
@@ -392,7 +392,7 @@ export async function executeProjectUse(
 
   if (!dryRun) {
     await maybeSyncActiveProfileBeforeSwitch({
-      targetProfileName: layerName,
+      targetProfileName: pluginName,
       harness: options.harness,
       yes: options.yes,
       format: options.format,
@@ -403,7 +403,7 @@ export async function executeProjectUse(
     onConflict: options.onConflict,
     noInteractive: options.noInteractive ?? options.format === "json",
   });
-  const applied = await useProfileCommand(layerName, {
+  const applied = await useProfileCommand(pluginName, {
     harness: options.harness,
     dryRun: options.dryRun,
     pull: options.pull ?? true,
@@ -418,7 +418,7 @@ export async function executeProjectUse(
   return {
     skipped: false,
     profile_key: profileKey,
-    layer_name: layerName,
+    plugin_name: pluginName,
     ...(environmentName ? { environment_name: environmentName } : {}),
     ...applied,
   };

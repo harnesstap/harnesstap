@@ -3,7 +3,7 @@ import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { listEnvironments } from "../../models/environment.js";
-import { getLayerById, resolveLayerSelector } from "../../models/plugin-model.js";
+import { getPluginById, resolvePluginSelector } from "../../models/plugin-model.js";
 import {
   deleteEnvironmentCommand,
   listEnvironmentsCommand,
@@ -35,7 +35,7 @@ import {
   runEnvironmentListWizard,
 } from "../../services/wizards/environment-list.js";
 import { renderEnvironmentListTable } from "../../ui/environment-list-render.js";
-import type { Layer, PermissionMetadata } from "../../types.js";
+import type { Plugin, PermissionMetadata } from "../../types.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { configureCommandGroup } from "../help.js";
@@ -49,8 +49,8 @@ import {
   shouldUseWizard,
 } from "../../services/wizards/shared.js";
 
-function formatLayerLabel(layer: Pick<Layer, "name" | "version">): string {
-  return `${layer.name}@${layer.version}`;
+function formatPluginLabel(plugin: Pick<Plugin, "name" | "version">): string {
+  return `${plugin.name}@${plugin.version}`;
 }
 
 function parseVarAssignment(raw: string): { key: string; value: string } {
@@ -401,19 +401,19 @@ async function handleEnvironmentEditCommand(
 function renderEnvironmentDeleteReferences(
   references: ReturnType<typeof listEnvironmentReferences>,
 ): void {
-  if (references.layers.length === 0) {
+  if (references.plugins.length === 0) {
     return;
   }
 
   ui.subheader("REFERENCES");
   ui.table.print({
     columns: [
-      { key: "layer", header: "LAYER", width: 40 },
+      { key: "plugin", header: "PLUGIN", width: 40 },
     ],
-    rows: references.layers.map((ref) => {
-      const layer = getLayerById(ref.id);
+    rows: references.plugins.map((ref) => {
+      const plugin = getPluginById(ref.id);
       return {
-        layer: layer ? formatLayerLabel(layer) : ref.name,
+        plugin: plugin ? formatPluginLabel(plugin) : ref.name,
       };
     }),
   });
@@ -459,7 +459,7 @@ async function handleEnvironmentDeleteCommand(
   if (useWizard && !opts.force) {
     renderEnvironmentDeleteReferences(references);
     const confirmed = await promptForConfirmation({
-      message: references.layers.length > 0
+      message: references.plugins.length > 0
         ? `Delete environment "${environment.name}" even though it is referenced?`
         : `Delete environment "${environment.name}"?`,
       default: false,
@@ -468,7 +468,7 @@ async function handleEnvironmentDeleteCommand(
       ui.info("Operation cancelled.");
       return;
     }
-    confirmedWithReferences = references.layers.length > 0;
+    confirmedWithReferences = references.plugins.length > 0;
   }
 
   const result = deleteEnvironmentCommand(resolvedName, {
@@ -485,10 +485,10 @@ async function handleEnvironmentDeleteCommand(
 function hasExplicitCreateMode(opts: {
   blank?: boolean;
   fromProject?: string;
-  fromLayer?: string[];
+  fromPlugin?: string[];
 }): boolean {
   return Boolean(
-    opts.blank || opts.fromProject || (opts.fromLayer && opts.fromLayer.length > 0),
+    opts.blank || opts.fromProject || (opts.fromPlugin && opts.fromPlugin.length > 0),
   );
 }
 
@@ -521,7 +521,7 @@ function printEnvironmentCreateResult(
         rows: [
           ["Project", opts.fromProject ? resolve(opts.fromProject) : "—"],
           ["Main harness", captureResult.main_harness],
-          ["Configured layers", `${captureResult.configured_layer_ids.length}`],
+          ["Configured plugins", `${captureResult.configured_plugin_ids.length}`],
           ["Persisted", captureResult.persisted ? "yes" : "no"],
           ["Missing keys", `${captureResult.missing_keys.length}`],
         ],
@@ -545,26 +545,26 @@ function printEnvironmentCreateResult(
     return;
   }
 
-  const fromLayerResult = result.preview;
+  const fromPluginResult = result.preview;
   if (opts.format === "json") {
     printJson({
-      ...fromLayerResult,
+      ...fromPluginResult,
       environment: result.payload.environment,
       persisted: result.persisted,
     });
   } else {
     ui.panel({
-      title: ["ENVIRONMENT", `create ${opts.name} from layer`],
+      title: ["ENVIRONMENT", `create ${opts.name} from plugin`],
       rows: [
-        ["Configured layers", `${fromLayerResult.configured_layer_ids.length}`],
+        ["Configured plugins", `${fromPluginResult.configured_plugin_ids.length}`],
         ["Persisted", result.persisted ? "yes" : "no"],
-        ["Missing keys", `${fromLayerResult.missing_keys.length}`],
-        ["Bound layers", `${fromLayerResult.bound_layer_ids.length}`],
+        ["Missing keys", `${fromPluginResult.missing_keys.length}`],
+        ["Bound plugins", `${fromPluginResult.bound_plugin_ids.length}`],
       ],
     });
-    if (fromLayerResult.missing_keys.length > 0) {
+    if (fromPluginResult.missing_keys.length > 0) {
       ui.subheader("MISSING KEYS");
-      for (const missing of fromLayerResult.missing_keys) {
+      for (const missing of fromPluginResult.missing_keys) {
         const sources =
           missing.sources.length > 0 ? missing.sources.join(", ") : "unknown";
         ui.warn(`${missing.key} (${sources})`);
@@ -575,7 +575,7 @@ function printEnvironmentCreateResult(
     }
   }
 
-  if (fromLayerResult.strict_failed) {
+  if (fromPluginResult.strict_failed) {
     process.exitCode = 1;
     if (opts.format === "human") {
       ui.danger("Strict mode failed: missing required environment keys.");
@@ -588,10 +588,10 @@ async function handleEnvironmentCreateCommand(
   opts: {
     blank?: boolean;
     fromProject?: string;
-    fromLayer?: string[];
+    fromPlugin?: string[];
     refresh?: boolean;
     bind?: boolean;
-    layers?: string[];
+    plugins?: string[];
     strict?: boolean;
     dryRun?: boolean;
     includePermissions?: boolean;
@@ -633,8 +633,8 @@ async function handleEnvironmentCreateCommand(
     return;
   }
 
-  const fromLayer = opts.fromLayer?.length
-    ? opts.fromLayer.flatMap((entry) =>
+  const fromPlugin = opts.fromPlugin?.length
+    ? opts.fromPlugin.flatMap((entry) =>
         entry.split(",").map((part) => part.trim()).filter(Boolean),
       )
     : undefined;
@@ -643,10 +643,10 @@ async function handleEnvironmentCreateCommand(
     name,
     ...(opts.blank ? { blank: true } : {}),
     ...(opts.fromProject ? { fromProject: resolve(opts.fromProject) } : {}),
-    ...(fromLayer ? { fromLayer } : {}),
+    ...(fromPlugin ? { fromPlugin } : {}),
     refresh: opts.refresh,
     bind: opts.bind,
-    layers: opts.layers,
+    plugins: opts.plugins,
     strict: opts.strict,
     dryRun: opts.dryRun,
     includePermissions: opts.includePermissions,
@@ -685,23 +685,23 @@ async function handleEnvironmentUseCommand(
 }
 
 async function handleEnvironmentStatusCommand(opts: {
-  layers?: string[];
+  plugins?: string[];
   check?: boolean;
   format?: string;
 }): Promise<void> {
   const db = getDb();
   initializeSchema(db);
   const format = parseOutputFormat(opts.format);
-  const configuredLayerIds = opts.layers?.map((selector) => {
-    const configuredLayer = resolveLayerSelector(selector);
-    if (!configuredLayer) {
-      throw new Error(`Configured layer not found: ${selector}`);
+  const configuredPluginIds = opts.plugins?.map((selector) => {
+    const configuredPlugin = resolvePluginSelector(selector);
+    if (!configuredPlugin) {
+      throw new Error(`Configured plugin not found: ${selector}`);
     }
-    return configuredLayer.id;
+    return configuredPlugin.id;
   }) ?? [];
 
   try {
-    const status = detectEnvironmentStatus({ configuredLayerIds });
+    const status = detectEnvironmentStatus({ configuredPluginIds });
     if (format === "json") {
       printJson(status);
     } else {
@@ -763,7 +763,7 @@ export function registerEnvironmentCommands(root: Command): void {
   root
     .command("environment")
     .alias("e")
-    .description("Manage reusable environments and layer environment cascade"),
+    .description("Manage reusable environments and plugin environment cascade"),
 );
 
 environmentCmd
@@ -772,14 +772,14 @@ environmentCmd
   .option("--blank", "Create an empty environment")
   .option("--from-project <path>", "Create from project harness configuration")
   .option(
-    "--from-layer <layer>",
-    "Create from configured layer requirements (repeatable or comma-separated)",
+    "--from-plugin <plugin>",
+    "Create from configured plugin requirements (repeatable or comma-separated)",
     collectRepeatedOption,
     [],
   )
   .option("--refresh", "Refresh an existing environment (--from-project only)")
-  .option("--bind", "Bind environment as layer default (--from-layer only)")
-  .option("--layers <layers...>", "Configured layer selectors for --from-project")
+  .option("--bind", "Bind environment as plugin default (--from-plugin only)")
+  .option("--plugins <plugins...>", "Configured plugin selectors for --from-project")
   .option("--strict", "Fail when required keys are missing")
   .option("--dry-run", "Preview without persisting")
   .option("--include-permissions", "Include scanned permission resources")
@@ -787,16 +787,16 @@ environmentCmd
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
   .option("--format <mode>", "Output format: human or json", "human")
-  .description("Create a blank, project-scoped, or layer-derived environment")
+  .description("Create a blank, project-scoped, or plugin-derived environment")
   .action(async (
     name: string,
     opts: {
       blank?: boolean;
       fromProject?: string;
-      fromLayer?: string[];
+      fromPlugin?: string[];
       refresh?: boolean;
       bind?: boolean;
-      layers?: string[];
+      plugins?: string[];
       strict?: boolean;
       dryRun?: boolean;
       includePermissions?: boolean;
@@ -881,16 +881,16 @@ environmentCmd
 environmentCmd
   .command("show")
   .argument("[name]", "Environment name or ID")
-  .option("--layer <selector>", "Analyze requirement gaps for a configured layer")
+  .option("--plugin <selector>", "Analyze requirement gaps for a configured plugin")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("--no-interactive", "Disable interactive wizards")
-  .description("Show environment values, secret refs, and layer references")
+  .description("Show environment values, secret refs, and plugin references")
   .action(async (
     name: string | undefined,
     opts: {
       format?: string;
-      layer?: string;
+      plugin?: string;
       interactive?: boolean;
       noInteractive?: boolean;
     },
@@ -918,8 +918,8 @@ environmentCmd
       return;
     }
     const payload = showEnvironmentCommand(resolvedName);
-    const requirementGaps = opts.layer
-      ? analyzeEnvironmentGaps(payload.environment.id, opts.layer)
+    const requirementGaps = opts.plugin
+      ? analyzeEnvironmentGaps(payload.environment.id, opts.plugin)
       : undefined;
     if (format === "json") {
       printJson(
@@ -975,11 +975,11 @@ environmentCmd
 
 environmentCmd
   .command("status")
-  .option("--layers <layers...>", "Configured layer selectors to include layer default environments")
+  .option("--plugins <plugins...>", "Configured plugin selectors to include plugin default environments")
   .option("--check", "Exit with code 1 when the terminal environment is out of sync")
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Show the active environment and whether terminal env vars match expected values")
-  .action(async (opts: { layers?: string[]; check?: boolean; format?: string }) => {
+  .action(async (opts: { plugins?: string[]; check?: boolean; format?: string }) => {
     await handleEnvironmentStatusCommand(opts);
   });
 }

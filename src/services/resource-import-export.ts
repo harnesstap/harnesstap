@@ -8,7 +8,7 @@ import {
 import type { Resource, ResourceExport } from "../types.js";
 import { RESOURCE_SCHEMA, RESOURCE_SCHEMA_VERSION } from "../types.js";
 import { parseResourceSelector } from "./resource-selector.js";
-import { isCompositionResourceType } from "./layer-composition.js";
+import { isCompositionResourceType } from "./plugin-composition.js";
 import { formatResourceExportToml, parseResourceExportToml } from "./transport/resource.js";
 import { assertTransportExtension } from "./transport/validate.js";
 

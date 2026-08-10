@@ -1,4 +1,4 @@
-import { findPluginResourceByPin } from "./layer-composition.js";
+import { findPluginResourceByPin } from "./plugin-composition.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 import type { PluginPinMetadata } from "../types.js";
 

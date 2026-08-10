@@ -4,7 +4,7 @@ import { ui } from "../ui/index.js";
 import { PACKAGE_VERSION } from "../version.js";
 import { formatCommand, resolveInvocationName } from "./shared.js";
 
-const LAYER_HELP_LOCAL_COMMANDS = new Set([
+const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
   "create",
   "list",
   "show",
@@ -22,7 +22,7 @@ const LAYER_HELP_LOCAL_COMMANDS = new Set([
   "from-project",
 ]);
 
-const LAYER_HELP_REMOTE_COMMANDS = new Set([
+const PLUGIN_HELP_REMOTE_COMMANDS = new Set([
   "search",
   "catalog",
   "pull",
@@ -142,12 +142,12 @@ function renderCommandSection(title: string, commands: Command[]): string {
   return lines.join("\n");
 }
 
-function renderLayerGroupedCommandHelp(cmd: Command): string {
+function renderPluginGroupedCommandHelp(cmd: Command): string {
   const local = cmd.commands.filter((command) =>
-    LAYER_HELP_LOCAL_COMMANDS.has(command.name()),
+    PLUGIN_HELP_LOCAL_COMMANDS.has(command.name()),
   );
   const remote = cmd.commands.filter((command) =>
-    LAYER_HELP_REMOTE_COMMANDS.has(command.name()),
+    PLUGIN_HELP_REMOTE_COMMANDS.has(command.name()),
   );
   return [
     renderCommandSection("LOCAL LIBRARY", local),
@@ -243,11 +243,11 @@ export function configureProgramHelp(program: Command): void {
             lines.push("");
           }
 
-          const subcommands = cmd.name() === "layer"
-            ? renderLayerGroupedCommandHelp(cmd)
+          const subcommands = cmd.name() === "plugin"
+            ? renderPluginGroupedCommandHelp(cmd)
             : renderGroupedCommandHelp(cmd);
           if (subcommands) {
-            if (cmd.name() !== "layer") {
+            if (cmd.name() !== "plugin") {
               lines.push(ui.theme.heading("COMMANDS"));
             }
             lines.push(subcommands);

@@ -1,11 +1,11 @@
 import {
-  addResourceToLayer,
-  createLayer,
-  getLayerByName,
+  addResourceToPlugin,
+  createPlugin,
+  getPluginByName,
 } from "../models/plugin-model.js";
-import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
+import { PROFILE_PLUGIN_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listResources } from "../models/resource.js";
-import type { Layer, Resource, ResourceCreateInput } from "../types.js";
+import type { Plugin, Resource, ResourceCreateInput } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { ProfileReservedNameError } from "./profile-commands.js";
 import {
@@ -15,10 +15,10 @@ import {
 
 export type ProfileConflictPolicy = "skip" | "overwrite";
 
-export class ProfileLayerExistsError extends Error {
+export class ProfilePluginExistsError extends Error {
   constructor(name: string) {
-    super(`Layer already exists: ${name}`);
-    this.name = "ProfileLayerExistsError";
+    super(`Plugin already exists: ${name}`);
+    this.name = "ProfilePluginExistsError";
   }
 }
 
@@ -34,7 +34,7 @@ export interface ProfileFromHomePreview {
 }
 
 export interface ProfileFromHomeResult {
-  layer: Layer;
+  plugin: Plugin;
   imported_count: number;
   resources: Resource[];
 }
@@ -47,21 +47,21 @@ function resourceKey(resource: ResourceCreateInput): string {
   return `${resource.type}:${resource.name}:${resourceNamespace(resource)}`;
 }
 
-function createNewProfileLayer(input: {
+function createNewProfilePlugin(input: {
   name: string;
   description?: string;
-}): Layer {
+}): Plugin {
   try {
-    return createLayer({
+    return createPlugin({
       name: input.name,
       ...(input.description !== undefined
         ? { description: input.description }
         : {}),
-      tags: [PROFILE_LAYER_TAG],
+      tags: [PROFILE_PLUGIN_TAG],
     });
   } catch (error) {
-    if (getLayerByName(input.name)) {
-      throw new ProfileLayerExistsError(input.name);
+    if (getPluginByName(input.name)) {
+      throw new ProfilePluginExistsError(input.name);
     }
     throw error;
   }
@@ -119,8 +119,8 @@ export async function createProfileFromHome(input: {
   if (isEmptyBuiltinProfile(input.name)) {
     throw new ProfileReservedNameError(input.name);
   }
-  if (getLayerByName(input.name)) {
-    throw new ProfileLayerExistsError(input.name);
+  if (getPluginByName(input.name)) {
+    throw new ProfilePluginExistsError(input.name);
   }
 
   const homeRoot = input.homeRoot ?? resolveHomeRoot();
@@ -129,7 +129,7 @@ export async function createProfileFromHome(input: {
     conflictPolicy: input.conflictPolicy,
     originRef: homeRoot,
   });
-  const layer = createNewProfileLayer({
+  const plugin = createNewProfilePlugin({
     name: input.name,
     ...(input.description !== undefined
       ? { description: input.description }
@@ -137,11 +137,11 @@ export async function createProfileFromHome(input: {
   });
 
   for (const resource of persisted.resolved) {
-    addResourceToLayer(layer.id, resource.id);
+    addResourceToPlugin(plugin.id, resource.id);
   }
 
   return {
-    layer,
+    plugin,
     imported_count: persisted.resolved.length,
     resources: persisted.resolved,
   };

@@ -241,7 +241,7 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: "~/.kiro/skills/",
   }, "instruction-only"),
 
-  // Pi extensions install via `pi install git:...`, not layer apply.
+  // Pi extensions install via `pi install git:...`, not plugin apply.
   // HarnessTap can scan `.agents/skills/` but cannot materialize pi-extension/index.js.
   def("pi", "Pi", ["instructions", "skills"], {
     instructions: "AGENTS.md",

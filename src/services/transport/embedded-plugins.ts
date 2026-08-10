@@ -1,4 +1,4 @@
-import type { LayerExportEmbeddedPlugin } from "../../types.js";
+import type { PluginExportEmbeddedPlugin } from "../../types.js";
 import { sortStringRecord } from "./sort.js";
 
 export interface TomlEmbeddedPluginRecord {
@@ -9,7 +9,7 @@ export interface TomlEmbeddedPluginRecord {
 }
 
 export function embeddedPluginsToTomlRecord(
-  plugins: LayerExportEmbeddedPlugin[],
+  plugins: PluginExportEmbeddedPlugin[],
 ): Record<string, TomlEmbeddedPluginRecord> {
   const record: Record<string, TomlEmbeddedPluginRecord> = {};
   for (const plugin of [...plugins].sort((left, right) =>
@@ -27,12 +27,12 @@ export function embeddedPluginsToTomlRecord(
 
 export function embeddedPluginsFromTomlRecord(
   record: unknown,
-): LayerExportEmbeddedPlugin[] {
+): PluginExportEmbeddedPlugin[] {
   if (!record || typeof record !== "object" || Array.isArray(record)) {
     return [];
   }
 
-  const plugins: LayerExportEmbeddedPlugin[] = [];
+  const plugins: PluginExportEmbeddedPlugin[] = [];
   for (const entry of Object.values(record as Record<string, unknown>)) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       continue;

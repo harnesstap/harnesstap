@@ -1,4 +1,4 @@
-import { listLayers } from "../../models/plugin-model.js";
+import { listPlugins } from "../../models/plugin-model.js";
 import { getHarnessPreference } from "../../models/harness.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
 import type { DiscoveredSkill } from "../skill-discovery.js";
@@ -17,8 +17,8 @@ export interface AddPackageWizardResult {
   projectRoot?: string;
   method: "symlink" | "copy";
   harnesses?: string[];
-  createLayer?: string;
-  layer?: string;
+  createPlugin?: string;
+  plugin?: string;
   confirmed: boolean;
 }
 
@@ -55,12 +55,12 @@ function buildSkillChoices(discovered: DiscoveredSkill[]) {
   return choices;
 }
 
-function resolveLayerStepChoice(input: {
-  createLayer?: string;
-  layer?: string;
+function resolvePluginStepChoice(input: {
+  createPlugin?: string;
+  plugin?: string;
 }): "skip" | "create" | "existing" | undefined {
-  if (input.createLayer) return "create";
-  if (input.layer) return "existing";
+  if (input.createPlugin) return "create";
+  if (input.plugin) return "existing";
   return undefined;
 }
 
@@ -72,8 +72,8 @@ export async function runAddPackageWizard(input: {
   projectRoot?: string;
   method?: "symlink" | "copy";
   harnesses?: string[];
-  createLayer?: string;
-  layer?: string;
+  createPlugin?: string;
+  plugin?: string;
   sourceLabel?: string;
   shouldPrompt: boolean;
 }): Promise<AddPackageWizardResult> {
@@ -90,8 +90,8 @@ export async function runAddPackageWizard(input: {
       projectRoot: input.projectRoot,
       method,
       harnesses: input.harnesses,
-      createLayer: input.createLayer,
-      layer: input.layer,
+      createPlugin: input.createPlugin,
+      plugin: input.plugin,
       confirmed: true,
     };
   }
@@ -176,41 +176,41 @@ export async function runAddPackageWizard(input: {
       }),
   });
 
-  let createLayer = input.createLayer;
-  let layer = input.layer;
-  const layerStep = resolveLayerStepChoice(input);
-  if (!layerStep) {
-    const layerChoice = await promptForChoice({
-      message: "Attach skills to a layer?",
+  let createPlugin = input.createPlugin;
+  let plugin = input.plugin;
+  const pluginStep = resolvePluginStepChoice(input);
+  if (!pluginStep) {
+    const pluginChoice = await promptForChoice({
+      message: "Attach skills to a plugin?",
       choices: [
         { name: "Skip", value: "skip" },
         {
-          name: "Create a new layer",
+          name: "Create a new plugin",
           value: "create",
         },
-        { name: "Add to an existing layer", value: "existing" },
+        { name: "Add to an existing plugin", value: "existing" },
       ],
       default: "skip",
     });
 
-    if (layerChoice === "create") {
-      createLayer = await promptForValue({
-        message: "New layer name",
+    if (pluginChoice === "create") {
+      createPlugin = await promptForValue({
+        message: "New plugin name",
         default: input.sourceLabel?.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || undefined,
       });
-    } else if (layerChoice === "existing") {
-      const layers = listLayers();
-      if (layers.length > 0) {
-        layer = await promptForChoice({
-          message: "Which layer?",
-          choices: layers.map((entry) => ({
+    } else if (pluginChoice === "existing") {
+      const plugins = listPlugins();
+      if (plugins.length > 0) {
+        plugin = await promptForChoice({
+          message: "Which plugin?",
+          choices: plugins.map((entry) => ({
             name: `${entry.name}@${entry.version}`,
             value: entry.name,
           })),
         });
       } else {
-        layer = await promptForValue({
-          message: "Existing layer name",
+        plugin = await promptForValue({
+          message: "Existing plugin name",
         });
       }
     }
@@ -228,8 +228,8 @@ export async function runAddPackageWizard(input: {
     projectRoot,
     method: installMethod ?? method,
     harnesses,
-    createLayer,
-    layer,
+    createPlugin,
+    plugin,
     confirmed,
   };
 }

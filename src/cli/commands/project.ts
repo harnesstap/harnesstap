@@ -482,11 +482,11 @@ async function handleProjectStatusCommand(
           snapshot_id: null,
           has_drift: false,
           changes: [],
-          message: `No project record. Run ${formatCommand("layer apply")} first.`,
+          message: `No project record. Run ${formatCommand("plugin apply")} first.`,
         });
         return;
       }
-      ui.warn(`No project record found. Run \`${formatCommand("layer apply")}\` first.`);
+      ui.warn(`No project record found. Run \`${formatCommand("plugin apply")}\` first.`);
       return;
     }
 
@@ -635,7 +635,7 @@ export function registerProjectCommandsBeforeConfig(root: Command): void {
     .option("--list", "List profiles from project config without applying")
     .option("--dry-run", "Show what would be written without applying")
     .option("--force", "Apply even when the profile is already active and in sync")
-    .option("--no-pull", "Do not auto-pull missing published layer dependencies")
+    .option("--no-pull", "Do not auto-pull missing published plugin dependencies")
     .option(
       "--harness <slugs>",
       "Comma-separated harness slugs (defaults to global harness preference)",

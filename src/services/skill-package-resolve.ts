@@ -11,7 +11,7 @@ import {
 
 export const DEFAULT_EXCLUDED_SKILL_CATEGORIES = ["dbt-migration"] as const;
 
-export type LayerSourceConflictPolicy = "cancel" | "merge" | "overwrite";
+export type PluginSourceConflictPolicy = "cancel" | "merge" | "overwrite";
 
 export interface ResolvedSkillPackage {
   checkoutRoot: string;

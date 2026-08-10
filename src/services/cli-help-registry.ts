@@ -91,7 +91,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "config.init": {
-    description: "Create a starter .harnesstap/config.toml from local profile layers",
+    description: "Create a starter .harnesstap/config.toml from local profile plugins",
     examples: [
       "config init",
       "config init --profile work --profile personal --default work",
@@ -118,189 +118,189 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Revert a project to a previous configuration snapshot",
     examples: ["revert <snapshot-id>"],
   },
-  "layer.create": {
-    description: "Create a new local layer",
+  "plugin.create": {
+    description: "Create a new local plugin",
     examples: [
-      "layer create my-layer",
-      "layer create my-layer -d \"Team defaults\" --tags team",
-      "layer create skills --from mattpocock/skills --skill caveman",
+      "plugin create my-plugin",
+      "plugin create my-plugin -d \"Team defaults\" --tags team",
+      "plugin create skills --from mattpocock/skills --skill caveman",
     ],
   },
-  "layer.list": {
+  "plugin.list": {
     description:
-      "List local layers plus streamed remote catalog layers (default); use --local-only for local library only",
+      "List local plugins plus streamed remote catalog plugins (default); use --local-only for local library only",
     examples: [
-      "layer list",
-      "layer list --search foundation",
-      "layer list --remote-only --tag profile",
+      "plugin list",
+      "plugin list --search foundation",
+      "plugin list --remote-only --tag profile",
     ],
   },
-  "layer.show": {
-    description: "Show layer details, resources, and plugin pins",
+  "plugin.show": {
+    description: "Show plugin details, resources, and plugin pins",
     examples: [
-      "layer show my-layer",
-      "layer show my-layer --format json",
+      "plugin show my-plugin",
+      "plugin show my-plugin --format json",
     ],
   },
-  "layer.edit": {
+  "plugin.edit": {
     description:
-      "Edit layer composition and default environment (interactive or scripting)",
+      "Edit plugin composition and default environment (interactive or scripting)",
     examples: [
-      "layer edit my-layer",
-      "layer edit my-layer --add skill:caveman",
-      "layer edit my-layer --environment dev",
+      "plugin edit my-plugin",
+      "plugin edit my-plugin --add skill:caveman",
+      "plugin edit my-plugin --environment dev",
     ],
   },
-  "layer.editor": {
-    description: "Open a layer definition file in your system editor",
-    examples: ["layer editor my-layer"],
+  "plugin.editor": {
+    description: "Open a plugin definition file in your system editor",
+    examples: ["plugin editor my-plugin"],
   },
-  "layer.delete": {
-    description: "Delete a local layer",
+  "plugin.delete": {
+    description: "Delete a local plugin",
     examples: [
-      "layer delete my-layer",
-      "layer delete",
+      "plugin delete my-plugin",
+      "plugin delete",
     ],
   },
-  "layer.apply": {
+  "plugin.apply": {
     description:
-      "Apply one or more layers (or a layer export URL) to a project, serializing for each harness",
+      "Apply one or more plugins (or a plugin export URL) to a project, serializing for each harness",
     details:
-      "Resolution: apply walks the dependency graph, unifies each layer name to one\n" +
-      "version, and materializes one resource per type:name. When two layers declare\n" +
+      "Resolution: apply walks the dependency graph, unifies each plugin name to one\n" +
+      "version, and materializes one resource per type:name. When two plugins declare\n" +
       "the same resource, the one closest to what you applied wins. At equal depth,\n" +
-      "the last-declared layer wins for skills, rules, agents, commands, hooks, and\n" +
+      "the last-declared plugin wins for skills, rules, agents, commands, hooks, and\n" +
       "MCP servers, with a warning; conflicting instructions, model config,\n" +
       "permissions, or env vars are an error you resolve with an override.\n" +
       "\n" +
       "Run with --explain to see every decision. Pass --update to ignore\n" +
       ".harnesstap/lock.toml and re-resolve.",
     examples: [
-      "layer apply my-layer",
-      "layer apply team-base team-overrides --project .",
-      "layer apply my-layer --dry-run",
-      "layer apply my-layer --explain",
-      "layer apply my-layer --update",
+      "plugin apply my-plugin",
+      "plugin apply team-base team-overrides --project .",
+      "plugin apply my-plugin --dry-run",
+      "plugin apply my-plugin --explain",
+      "plugin apply my-plugin --update",
     ],
   },
-  "layer.catalog.list": {
+  "plugin.catalog.list": {
     description: "Show default and connected catalog sources",
     examples: [
-      "layer catalog list",
-      "layer catalog list --format json",
+      "plugin catalog list",
+      "plugin catalog list --format json",
     ],
   },
-  "layer.catalog.connect": {
+  "plugin.catalog.connect": {
     description:
-      "Connect an org or individual public layer to the local catalog scope",
+      "Connect an org or individual public plugin to the local catalog scope",
     examples: [
-      "layer catalog connect org acme",
-      "layer catalog connect layer acme/default/foundation",
+      "plugin catalog connect org acme",
+      "plugin catalog connect plugin acme/default/foundation",
     ],
   },
-  "layer.catalog.disconnect": {
+  "plugin.catalog.disconnect": {
     description:
-      "Disconnect a connected org or layer from the local catalog scope",
+      "Disconnect a connected org or plugin from the local catalog scope",
     examples: [
-      "layer catalog disconnect org acme",
-      "layer catalog disconnect layer acme/default/foundation",
+      "plugin catalog disconnect org acme",
+      "plugin catalog disconnect plugin acme/default/foundation",
     ],
   },
-  "layer.catalog.register": {
+  "plugin.catalog.register": {
     description: "Register a publish catalog on this machine",
     examples: [
-      "layer catalog register acme/default",
-      "layer catalog register work@acme/releases",
+      "plugin catalog register acme/default",
+      "plugin catalog register work@acme/releases",
     ],
   },
-  "layer.catalog.unregister": {
+  "plugin.catalog.unregister": {
     description: "Remove a publish catalog from this machine",
-    examples: ["layer catalog unregister acme/default"],
+    examples: ["plugin catalog unregister acme/default"],
   },
-  "layer.catalog.registered": {
+  "plugin.catalog.registered": {
     description: "List registered publish catalogs",
     examples: [
-      "layer catalog registered",
-      "layer catalog registered --format json",
+      "plugin catalog registered",
+      "plugin catalog registered --format json",
     ],
   },
-  "layer.catalog.bindings": {
-    description: "Configure which registered catalogs a layer publishes to",
+  "plugin.catalog.bindings": {
+    description: "Configure which registered catalogs a plugin publishes to",
     examples: [
-      "layer catalog bindings my-layer",
-      "layer catalog bindings my-layer --add acme/default",
-      "layer catalog bindings my-layer --clear",
+      "plugin catalog bindings my-plugin",
+      "plugin catalog bindings my-plugin --add acme/default",
+      "plugin catalog bindings my-plugin --clear",
     ],
   },
-  "layer.pull": {
-    description: "Pull a layer from the remote catalog into the local DB",
+  "plugin.pull": {
+    description: "Pull a plugin from the remote catalog into the local DB",
     examples: [
-      "layer pull acme/foundation",
-      "layer pull foundation --org acme --as local-foundation",
+      "plugin pull acme/foundation",
+      "plugin pull foundation --org acme --as local-foundation",
     ],
   },
-  "layer.publish.plan": {
-    description: "Dry-run publish targets for a local layer",
+  "plugin.publish.plan": {
+    description: "Dry-run publish targets for a local plugin",
     examples: [
-      "layer publish plan my-layer",
-      "layer publish plan my-layer --format json",
+      "plugin publish plan my-plugin",
+      "plugin publish plan my-plugin --format json",
     ],
   },
-  "layer.diff": {
-    description: "Diff two layers or a layer and a layer export file",
+  "plugin.diff": {
+    description: "Diff two plugins or a plugin and a plugin export file",
     examples: [
-      "layer diff left right",
-      "layer diff my-layer ./export.harnesstap.toml",
+      "plugin diff left right",
+      "plugin diff my-plugin ./export.harnesstap.toml",
     ],
   },
-  "layer.doctor": {
-    description: "Run doctor checks against a layer",
+  "plugin.doctor": {
+    description: "Run doctor checks against a plugin",
     examples: [
-      "layer doctor my-layer",
-      "layer doctor my-layer --format json",
+      "plugin doctor my-plugin",
+      "plugin doctor my-plugin --format json",
     ],
   },
-  "layer.cut": {
+  "plugin.cut": {
     description: "Cut a new local version from the working head",
     examples: [
-      "layer cut my-layer --version 1.3.0",
-      "layer cut my-layer --version 1.3.0 --format json",
+      "plugin cut my-plugin --version 1.3.0",
+      "plugin cut my-plugin --version 1.3.0 --format json",
     ],
   },
-  "layer.why": {
+  "plugin.why": {
     description:
-      "Explain why a version was selected, or which layer won a resource",
+      "Explain why a version was selected, or which plugin won a resource",
     details:
-      "Answers why a version was selected, or which layer won a given resource, " +
+      "Answers why a version was selected, or which plugin won a given resource, " +
       "against the lockfile in the current project.",
     examples: [
-      "layer why base",
-      "layer why skill:deploy",
-      "layer why base --format json",
+      "plugin why base",
+      "plugin why skill:deploy",
+      "plugin why base --format json",
     ],
   },
-  "layer.fork": {
+  "plugin.fork": {
     description:
       "Create an editable authored copy of an upstream or catalog plugin",
     details:
       "Upstream and catalog plugins cannot be edited in place. A fork is an "
       + "authored plugin that starts with the same resources and dependencies.",
     examples: [
-      "layer fork web-search",
-      "layer fork web-search --as my-search",
-      "layer fork web-search --format json",
+      "plugin fork web-search",
+      "plugin fork web-search --as my-search",
+      "plugin fork web-search --format json",
     ],
   },
-  "layer.from-project": {
-    description: "Scan current folder and create a layer from its resources",
+  "plugin.from-project": {
+    description: "Scan current folder and create a plugin from its resources",
     examples: [
-      "layer from-project my-layer --project .",
-      "layer from-project team-layer -d \"From repo\"",
+      "plugin from-project my-plugin --project .",
+      "plugin from-project team-plugin -d \"From repo\"",
     ],
   },
   "profile.list": {
     description:
-      "List local profile layers, then stream remote catalog layers with tag=profile; marks active profile",
+      "List local profile plugins, then stream remote catalog plugins with tag=profile; marks active profile",
     examples: [
       "profile list",
       "profile list --search work",
@@ -309,7 +309,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "profile.show": {
     description:
-      "Show profile layer details, resources, and dependencies",
+      "Show profile plugin details, resources, and dependencies",
     examples: [
       "profile show work",
       "profile show work --format json",
@@ -368,7 +368,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "profile.create": {
     description:
-      "Create a profile layer, promote an existing layer, or import from a skill package",
+      "Create a profile plugin, promote an existing plugin, or import from a skill package",
     examples: [
       "profile create work",
       "profile create work --from mattpocock/skills --use",
@@ -377,21 +377,21 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "profile.delete": {
     description:
-      "Demote a profile layer and optionally delete the underlying layer",
+      "Demote a profile plugin and optionally delete the underlying plugin",
     examples: [
       "profile delete work",
-      "profile delete work --layer -y",
+      "profile delete work --plugin -y",
     ],
   },
   "profile.pull": {
-    description: "Pull a profile layer from catalog",
+    description: "Pull a profile plugin from catalog",
     examples: [
       "profile pull acme/work-profile",
       "profile pull work-profile --org acme --as work",
     ],
   },
   "profile.publish": {
-    description: "Publish a profile layer with validation warnings",
+    description: "Publish a profile plugin with validation warnings",
     examples: [
       "profile publish work",
       "profile publish work --org acme --catalog default",
@@ -399,11 +399,11 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "environment.create": {
     description:
-      "Create a named environment bundle (blank, from project, or from configured layer requirements)",
+      "Create a named environment bundle (blank, from project, or from configured plugin requirements)",
     examples: [
       "environment create dev",
       "environment create dev --from-project .",
-      "environment create dev --from-layer my-layer --bind",
+      "environment create dev --from-plugin my-plugin --bind",
     ],
   },
   "environment.edit": {
@@ -427,7 +427,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "Show environment values, secret refs, and reverse references",
     examples: [
       "environment show dev",
-      "environment show dev --layer my-layer",
+      "environment show dev --plugin my-plugin",
     ],
   },
   "environment.delete": {
@@ -456,18 +456,18 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
   },
   "migrate.export": {
     description:
-      "Export workspace, layer, environment, or resource for offline sharing",
+      "Export workspace, plugin, environment, or resource for offline sharing",
     examples: [
       "migrate export backup.tar.gz --workspace",
-      "migrate export --layer my-layer -o my-layer.harnesstap.toml",
+      "migrate export --plugin my-plugin -o my-plugin.harnesstap.toml",
       "migrate export --resource skill:caveman",
     ],
   },
   "migrate.import": {
-    description: "Import workspace, layer, or resource from file",
+    description: "Import workspace, plugin, or resource from file",
     examples: [
       "migrate import backup.tar.gz",
-      "migrate import my-layer.harnesstap.toml --layer",
+      "migrate import my-plugin.harnesstap.toml --plugin",
     ],
   },
   "migrate.resolve-order": {
@@ -609,10 +609,10 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     ],
   },
   "plugin.add": {
-    description: "Attach a marketplace plugin pin to a layer",
+    description: "Attach a marketplace plugin pin to a plugin",
     examples: [
-      "plugin add fmt@demo --layer team-stack",
-      "plugin add fmt@demo --layer team-stack --format json",
+      "plugin add fmt@demo --plugin team-stack",
+      "plugin add fmt@demo --plugin team-stack --format json",
     ],
   },
 };

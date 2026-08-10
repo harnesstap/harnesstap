@@ -13,13 +13,13 @@ import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
-import { listLayers } from "../models/plugin-model.js";
-import { exportToFile } from "./layer-export.js";
-import { importFromFile } from "./layer-import.js";
+import { listPlugins } from "../models/plugin-model.js";
+import { exportToFile } from "./plugin-export.js";
+import { importFromFile } from "./plugin-import.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnesstapSettings } from "../config/settings.js";
-import type { HarnessPreference, LayerExport } from "../types.js";
-import { formatLayerExportToml, parseLayerExportToml } from "./transport/layer.js";
+import type { HarnessPreference, PluginExport } from "../types.js";
+import { formatPluginExportToml, parsePluginExportToml } from "./transport/plugin.js";
 import {
   formatEnvironmentToml,
   importEnvironmentToml,
@@ -32,7 +32,7 @@ export const MIGRATE_MANIFEST_VERSION = 2 as const;
 export interface MigrateManifestV1 {
   version: typeof MIGRATE_MANIFEST_VERSION_V1;
   exported_at: string;
-  layer_count: number;
+  plugin_count: number;
   include_plugins: boolean;
   includes_active_profile: boolean;
 }
@@ -40,7 +40,7 @@ export interface MigrateManifestV1 {
 export interface MigrateManifest {
   version: typeof MIGRATE_MANIFEST_VERSION;
   exported_at: string;
-  layer_count: number;
+  plugin_count: number;
   environment_count: number;
   include_plugins: boolean;
   includes_active_profile: boolean;
@@ -90,11 +90,11 @@ function createArchive(sourceDir: string, outputPath: string): void {
       active_profile: existsSync(join(sourceDir, "active-profile.json"))
         ? JSON.parse(readFileSync(join(sourceDir, "active-profile.json"), "utf-8"))
         : null,
-      layers: readdirSync(join(sourceDir, "layers"))
+      plugins: readdirSync(join(sourceDir, "plugins"))
         .filter((f) => f.endsWith(".toml"))
         .map((f) =>
-          parseLayerExportToml(
-            readFileSync(join(sourceDir, "layers", f), "utf-8"),
+          parsePluginExportToml(
+            readFileSync(join(sourceDir, "plugins", f), "utf-8"),
           ),
         ),
     };
@@ -119,18 +119,18 @@ function isMigrateManifestV1(manifest: AnyMigrateManifest): manifest is MigrateM
 }
 
 /**
- * Export all layers, environments, harness preferences, and config into an archive.
+ * Export all plugins, environments, harness preferences, and config into an archive.
  */
 export function exportMigrationState(opts: MigrateExportOptions): MigrateManifest {
   const workDir = mkdtempSync(join(tmpdir(), "harnesstap-migrate-"));
-  const layersDir = join(workDir, "layers");
+  const pluginsDir = join(workDir, "plugins");
   const environmentsDir = join(workDir, "environments");
-  mkdirSync(layersDir, { recursive: true });
+  mkdirSync(pluginsDir, { recursive: true });
   mkdirSync(environmentsDir, { recursive: true });
 
-  const layers = listLayers();
-  for (const layer of layers) {
-    exportToFile(layer.name, join(layersDir, `${layer.name}.harnesstap.toml`), {
+  const plugins = listPlugins();
+  for (const plugin of plugins) {
+    exportToFile(plugin.name, join(pluginsDir, `${plugin.name}.harnesstap.toml`), {
       embedPlugins: opts.includePlugins ?? false,
     });
   }
@@ -161,7 +161,7 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
   const manifest: MigrateManifest = {
     version: MIGRATE_MANIFEST_VERSION,
     exported_at: new Date().toISOString(),
-    layer_count: layers.length,
+    plugin_count: plugins.length,
     environment_count: environments.length,
     include_plugins: opts.includePlugins ?? false,
     includes_active_profile: includesActiveProfile,
@@ -193,7 +193,7 @@ function importEnvironmentsFromDir(environmentsDir: string): number {
  */
 export function importMigrationState(opts: MigrateImportOptions): {
   manifest: AnyMigrateManifest;
-  layers_imported: number;
+  plugins_imported: number;
   environments_imported: number;
 } {
   const workDir = mkdtempSync(join(tmpdir(), "harnesstap-migrate-import-"));
@@ -202,7 +202,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
     extractArchive(opts.archivePath, workDir);
 
     let manifest: AnyMigrateManifest;
-    let layersDir: string;
+    let pluginsDir: string;
     let environmentsDir: string;
     let harnessPath: string;
     let configPath: string;
@@ -215,18 +215,18 @@ export function importMigrationState(opts: MigrateImportOptions): {
         harness: HarnessPreference | null;
         config: HarnesstapSettings;
         active_profile: { name?: string } | null;
-        layers: unknown[];
+        plugins: unknown[];
         environments?: string[];
       };
       manifest = state.manifest;
-      layersDir = join(workDir, "import-layers");
+      pluginsDir = join(workDir, "import-plugins");
       environmentsDir = join(workDir, "import-environments");
-      mkdirSync(layersDir, { recursive: true });
+      mkdirSync(pluginsDir, { recursive: true });
       mkdirSync(environmentsDir, { recursive: true });
-      for (let i = 0; i < state.layers.length; i++) {
+      for (let i = 0; i < state.plugins.length; i++) {
         writeFileSync(
-          join(layersDir, `layer-${i}.harnesstap.toml`),
-          formatLayerExportToml(state.layers[i] as LayerExport),
+          join(pluginsDir, `plugin-${i}.harnesstap.toml`),
+          formatPluginExportToml(state.plugins[i] as PluginExport),
           "utf-8",
         );
       }
@@ -252,7 +252,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       manifest = JSON.parse(
         readFileSync(join(workDir, "manifest.json"), "utf-8"),
       ) as AnyMigrateManifest;
-      layersDir = join(workDir, "layers");
+      pluginsDir = join(workDir, "plugins");
       environmentsDir = join(workDir, "environments");
       harnessPath = join(workDir, "harness.json");
       configPath = join(workDir, "config.json");
@@ -267,12 +267,12 @@ export function importMigrationState(opts: MigrateImportOptions): {
       throw new Error(`Unsupported migration manifest version: ${manifestVersion}`);
     }
 
-    let layersImported = 0;
-    if (existsSync(layersDir)) {
-      for (const file of readdirSync(layersDir)) {
+    let pluginsImported = 0;
+    if (existsSync(pluginsDir)) {
+      for (const file of readdirSync(pluginsDir)) {
         if (!file.endsWith(".toml")) continue;
-        importFromFile(join(layersDir, file));
-        layersImported++;
+        importFromFile(join(pluginsDir, file));
+        pluginsImported++;
       }
     }
 
@@ -307,7 +307,7 @@ export function importMigrationState(opts: MigrateImportOptions): {
       writeJson(join(targetDir, "active-profile.json"), activeProfile);
     }
 
-    return { manifest, layers_imported: layersImported, environments_imported: environmentsImported };
+    return { manifest, plugins_imported: pluginsImported, environments_imported: environmentsImported };
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }

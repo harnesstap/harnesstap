@@ -296,7 +296,7 @@ export const PROJECT_SCHEMA_VERSION = 1 as const;
 export const BUNDLE_SCHEMA = "urn:harnesstap:bundle:v1" as const;
 export const BUNDLE_SCHEMA_VERSION = 1 as const;
 
-export interface DeckJsonLayer {
+export interface DeckJsonPlugin {
   name: string;
   version: string;
   org?: string;
@@ -325,7 +325,7 @@ export interface DeckJson {
   $schema: typeof DECK_SCHEMA;
   version: typeof DECK_JSON_VERSION;
   name: string;
-  layers: DeckJsonLayer[];
+  plugins: DeckJsonPlugin[];
   environments: DeckJsonEnvironment[];
   active_environment?: string;
 }
@@ -497,7 +497,7 @@ export interface PlatformDefinition {
 export const PLUGIN_SCHEMA = "urn:harnesstap:layer:v1" as const;
 export const PLUGIN_SCHEMA_VERSION = 1 as const;
 
-export type LayerExportLayer = Omit<
+export type PluginExportPlugin = Omit<
   Plugin,
   | "id"
   | "created_at"
@@ -510,38 +510,38 @@ export type LayerExportLayer = Omit<
   | "origin"
 >;
 
-export type LayerExportResource = Omit<
+export type PluginExportResource = Omit<
   Resource,
   "id" | "created_at" | "updated_at" | "source"
 >;
 
-export type LayerExportDependency = Omit<PluginDependencyRef, "plugin_id">;
+export type PluginExportDependency = Omit<PluginDependencyRef, "plugin_id">;
 
-export interface LayerExportEntry extends LayerExportLayer {
+export interface PluginExportEntry extends PluginExportPlugin {
   name: string;
   version: string;
   description: string;
   tags: string[];
-  resources: LayerExportResource[];
+  resources: PluginExportResource[];
   /** Claude Code marketplace and plugin configuration for this plugin. */
   claude?: ClaudePluginConfig;
   /** Host plugin pins (marketplace refs, not inlined in the export file). */
-  plugin_pins: LayerExportPluginPin[];
+  plugin_pins: PluginExportPluginPin[];
   /** Embedded plugin refs used by this plugin; payload lives at export root. */
   embedded_plugin_refs?: string[];
   /** Plugin composition dependencies (name + version constraint). */
-  dependencies?: LayerExportDependency[];
+  dependencies?: PluginExportDependency[];
 }
 
-export interface MultiLayerExport {
+export interface MultiPluginExport {
   $schema: typeof PLUGIN_SCHEMA;
   version: typeof PLUGIN_SCHEMA_VERSION;
-  layers: LayerExportEntry[];
+  plugins: PluginExportEntry[];
   /** Plugin trees inlined in the export file and shared by exported plugins. */
-  embedded_plugins: LayerExportEmbeddedPlugin[];
+  embedded_plugins: PluginExportEmbeddedPlugin[];
 }
 
-export type LayerExport = MultiLayerExport;
+export type PluginExport = MultiPluginExport;
 
 /** @deprecated Use Plugin */
 export type Layer = Plugin;
@@ -563,6 +563,24 @@ export type ProjectLayer = ProjectPlugin;
 export const LAYER_SCHEMA = PLUGIN_SCHEMA;
 /** @deprecated Use PLUGIN_SCHEMA_VERSION */
 export const LAYER_SCHEMA_VERSION = PLUGIN_SCHEMA_VERSION;
+/** @deprecated Use DeckJsonPlugin */
+export type DeckJsonLayer = DeckJsonPlugin;
+/** @deprecated Use PluginExportPlugin */
+export type LayerExportLayer = PluginExportPlugin;
+/** @deprecated Use PluginExportResource */
+export type LayerExportResource = PluginExportResource;
+/** @deprecated Use PluginExportDependency */
+export type LayerExportDependency = PluginExportDependency;
+/** @deprecated Use PluginExportEntry */
+export type LayerExportEntry = PluginExportEntry;
+/** @deprecated Use MultiPluginExport */
+export type MultiLayerExport = MultiPluginExport;
+/** @deprecated Use PluginExport */
+export type LayerExport = PluginExport;
+/** @deprecated Use PluginExportPluginPin */
+export type LayerExportPluginPin = PluginExportPluginPin;
+/** @deprecated Use PluginExportEmbeddedPlugin */
+export type LayerExportEmbeddedPlugin = PluginExportEmbeddedPlugin;
 
 // ── Resource export format ──────────────────────────────────────────────
 
@@ -579,14 +597,14 @@ export interface ResourceExport extends ResourceExportPayload {
   version: typeof RESOURCE_SCHEMA_VERSION;
 }
 
-/** Plugin pin carried in layer exports (non-embedded). */
-export interface LayerExportPluginPin {
+/** Plugin pin carried in plugin exports (non-embedded). */
+export interface PluginExportPluginPin {
   ref: string;
   version_constraint: string;
 }
 
-/** Plugin tree inlined in layer exports. */
-export interface LayerExportEmbeddedPlugin {
+/** Plugin tree inlined in plugin exports. */
+export interface PluginExportEmbeddedPlugin {
   ref: string;
   version_constraint: string;
   /** Logical directory key for imports that are not `./...` project-relative refs. */

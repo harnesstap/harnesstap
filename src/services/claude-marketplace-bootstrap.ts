@@ -1,6 +1,6 @@
 import { marketplaceIsConfigured } from "../plugins/claude-plugin-ref.js";
 import { defaultRunCommand } from "../plugins/run-command.js";
-import type { ClaudeLayerConfig } from "../types.js";
+import type { ClaudePluginConfig } from "../types.js";
 
 export interface MarketplaceRepoEntry {
   name: string;
@@ -12,7 +12,7 @@ export function marketplaceRepoKey(repo: string): string {
 }
 
 export function extractMarketplaceRepos(
-  config: ClaudeLayerConfig | undefined,
+  config: ClaudePluginConfig | undefined,
 ): MarketplaceRepoEntry[] {
   if (!config?.marketplaces) {
     return [];
@@ -44,7 +44,7 @@ export interface EnsureMarketplacesOptions {
 }
 
 export function ensureClaudeMarketplacesFromConfig(
-  config: ClaudeLayerConfig | undefined,
+  config: ClaudePluginConfig | undefined,
   options: EnsureMarketplacesOptions,
 ): string[] {
   const run =

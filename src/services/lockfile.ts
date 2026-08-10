@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getLayerResources } from "../models/plugin-model.js";
+import { getPluginResources } from "../models/plugin-model.js";
 import { formatTransportToml, parseTransportToml } from "./transport/index.js";
 import { resourceFingerprint } from "./resolve/resource-resolution.js";
 import { resolutionKey } from "./resolve/resource-resolution.js";
@@ -17,7 +17,7 @@ export interface LockEntry {
   name: string;
   version: string;
   source: LockSource;
-  /** Hash over the layer's attached resource fingerprints. */
+  /** Hash over the plugin's attached resource fingerprints. */
   integrity: string;
   depth: number;
   /** Dependency path from the root that selected this version. */
@@ -43,8 +43,8 @@ export function resourceMapHash(resources: Resource[]): string {
   return createHash("sha256").update(entries.join("\n")).digest("hex");
 }
 
-export function layerIntegrity(layerId: string): string {
-  const entries = getLayerResources(layerId)
+export function pluginIntegrity(pluginId: string): string {
+  const entries = getPluginResources(pluginId)
     .map((resource) => `${resolutionKey(resource)}=${resourceFingerprint(resource)}`)
     .sort();
   return createHash("sha256").update(entries.join("\n")).digest("hex");
@@ -61,7 +61,7 @@ export function lockfileFromResolution(result: ResolutionResult): Lockfile {
         name: plugin.name,
         version: plugin.version,
         source: plugin.source,
-        integrity: layerIntegrity(plugin.layerId),
+        integrity: pluginIntegrity(plugin.pluginId),
         depth: plugin.depth,
         path: plugin.path,
       })),

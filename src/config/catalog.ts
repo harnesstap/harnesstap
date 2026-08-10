@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
-import { DEFAULT_CATALOG_SLUG } from "../services/layer-selector.js";
+import { DEFAULT_CATALOG_SLUG } from "../services/plugin-selector.js";
 import { parseJsonc } from "./settings.js";
 
 export const DEFAULT_CATALOG_ORG_SLUG = "harnesstap-cloud";
@@ -21,7 +21,7 @@ export interface RegisteredCatalog {
 export interface CatalogSettings {
   cloudBaseUrl: string;
   connectedOrgs: string[];
-  connectedLayers: string[];
+  connectedPlugins: string[];
   publicCatalog: boolean;
   registered: RegisteredCatalog[];
 }
@@ -36,7 +36,7 @@ export interface CatalogScope {
 const DEFAULT_CATALOG_SETTINGS: CatalogSettings = {
   cloudBaseUrl: DEFAULT_CLOUD_BASE_URL,
   connectedOrgs: [],
-  connectedLayers: [],
+  connectedPlugins: [],
   publicCatalog: true,
   registered: [],
 };
@@ -129,7 +129,7 @@ function normalizeSelector(selector: string): string {
     return `${parts[0]}/${parts[1]}/${parts[2]}`;
   }
   throw new Error(
-    `Invalid layer selector: ${selector}. Use org/catalog/layer.`,
+    `Invalid plugin selector: ${selector}. Use org/catalog/plugin.`,
   );
 }
 
@@ -157,8 +157,8 @@ export function loadCatalogSettings(harnesstapDir = getHarnesstapDir()): Catalog
     const connectedOrgs = Array.isArray(catalog.connectedOrgs)
       ? [...new Set(catalog.connectedOrgs.map((org) => normalizeOrgSlug(String(org))).filter(Boolean))]
       : [];
-    const connectedLayers = Array.isArray(catalog.connectedLayers)
-      ? [...new Set(catalog.connectedLayers.map((selector) => normalizeSelector(String(selector))))]
+    const connectedPlugins = Array.isArray(catalog.connectedPlugins)
+      ? [...new Set(catalog.connectedPlugins.map((selector) => normalizeSelector(String(selector))))]
       : [];
     const registered = Array.isArray(catalog.registered)
       ? sortRegisteredCatalogs(
@@ -197,7 +197,7 @@ export function loadCatalogSettings(harnesstapDir = getHarnesstapDir()): Catalog
           ? catalog.cloudBaseUrl.replace(/\/+$/, "")
           : DEFAULT_CATALOG_SETTINGS.cloudBaseUrl,
       connectedOrgs: connectedOrgs.filter((org) => org !== DEFAULT_CATALOG_ORG_SLUG),
-      connectedLayers,
+      connectedPlugins,
       publicCatalog:
         typeof catalog.publicCatalog === "boolean"
           ? catalog.publicCatalog
@@ -227,7 +227,7 @@ export function saveCatalogSettings(
   const next: CatalogSettings = {
     cloudBaseUrl: input.cloudBaseUrl?.replace(/\/+$/, "") ?? current.cloudBaseUrl,
     connectedOrgs: input.connectedOrgs ?? current.connectedOrgs,
-    connectedLayers: input.connectedLayers ?? current.connectedLayers,
+    connectedPlugins: input.connectedPlugins ?? current.connectedPlugins,
     publicCatalog: input.publicCatalog ?? current.publicCatalog,
     registered: input.registered ?? current.registered,
   };
@@ -254,7 +254,7 @@ export function resolveCatalogScope(input?: {
         ...settings.connectedOrgs,
       ]),
     ],
-    selectors: settings.connectedLayers,
+    selectors: settings.connectedPlugins,
     cloudBaseUrl: resolveCloudBaseUrl(input?.baseUrl),
   };
 }
@@ -284,41 +284,41 @@ export function formatCatalogScopeLabel(scope: CatalogScope): string {
 function selectorVariants(selector: {
   orgSlug: string;
   catalogSlug: string;
-  layerSlug: string;
+  pluginSlug: string;
 }): string[] {
   const orgSlug = normalizeOrgSlug(selector.orgSlug);
   const catalogSlug = selector.catalogSlug.trim() || DEFAULT_CATALOG_SLUG;
-  const layerSlug = selector.layerSlug.trim();
-  const variants = [`${orgSlug}/${layerSlug}`];
+  const pluginSlug = selector.pluginSlug.trim();
+  const variants = [`${orgSlug}/${pluginSlug}`];
   if (catalogSlug !== DEFAULT_CATALOG_SLUG) {
-    variants.push(`${orgSlug}/${catalogSlug}/${layerSlug}`);
+    variants.push(`${orgSlug}/${catalogSlug}/${pluginSlug}`);
   }
   return variants;
 }
 
 export function isSelectorInCatalogScope(
-  selector: { orgSlug: string; catalogSlug?: string; layerSlug: string },
+  selector: { orgSlug: string; catalogSlug?: string; pluginSlug: string },
   scope: CatalogScope,
 ): boolean {
   const orgSlug = normalizeOrgSlug(selector.orgSlug);
   const catalogSlug = selector.catalogSlug?.trim() || DEFAULT_CATALOG_SLUG;
-  const layerSlug = selector.layerSlug.trim();
+  const pluginSlug = selector.pluginSlug.trim();
 
   if (scope.orgs.map(normalizeOrgSlug).includes(orgSlug)) {
     return true;
   }
 
   const normalizedScopeSelectors = scope.selectors.map((entry) => normalizeSelector(entry));
-  return selectorVariants({ orgSlug, catalogSlug, layerSlug }).some((variant) =>
+  return selectorVariants({ orgSlug, catalogSlug, pluginSlug }).some((variant) =>
     normalizedScopeSelectors.includes(variant),
   );
 }
 
 export function formatOutOfScopeMessage(selector: string): string {
   return [
-    `Layer ${selector} is not in your catalog scope.`,
-    `Connect the org:  ht layer catalog connect org <slug>`,
-    `Connect one lib:  ht layer catalog connect layer ${selector}`,
+    `Plugin ${selector} is not in your catalog scope.`,
+    `Connect the org:  ht plugin catalog connect org <slug>`,
+    `Connect one lib:  ht plugin catalog connect plugin ${selector}`,
   ].join("\n");
 }
 
@@ -347,28 +347,28 @@ export function disconnectCatalogOrg(orgSlug: string, harnesstapDir = getHarness
   }, harnesstapDir);
 }
 
-export function connectCatalogLayer(
+export function connectCatalogPlugin(
   selector: string,
   harnesstapDir = getHarnesstapDir(),
 ): CatalogSettings {
   const normalized = normalizeSelector(selector);
   const current = loadCatalogSettings(harnesstapDir);
-  if (current.connectedLayers.includes(normalized)) {
+  if (current.connectedPlugins.includes(normalized)) {
     return current;
   }
   return saveCatalogSettings({
-    connectedLayers: [...current.connectedLayers, normalized],
+    connectedPlugins: [...current.connectedPlugins, normalized],
   }, harnesstapDir);
 }
 
-export function disconnectCatalogLayer(
+export function disconnectCatalogPlugin(
   selector: string,
   harnesstapDir = getHarnesstapDir(),
 ): CatalogSettings {
   const normalized = normalizeSelector(selector);
   const current = loadCatalogSettings(harnesstapDir);
   return saveCatalogSettings({
-    connectedLayers: current.connectedLayers.filter((entry) => entry !== normalized),
+    connectedPlugins: current.connectedPlugins.filter((entry) => entry !== normalized),
   }, harnesstapDir);
 }
 

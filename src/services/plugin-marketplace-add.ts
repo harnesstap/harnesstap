@@ -1,16 +1,16 @@
 import type { PluginMarketplacePlatform } from "../config/settings.js";
 import {
-  getLayerById,
-  ensureLayerClaudeMarketplace,
-  resolveLayerSelector,
-  syncClaudeLayerPluginsAfterAdd,
+  getPluginById,
+  ensurePluginClaudeMarketplace,
+  resolvePluginSelector,
+  syncClaudeMarketplacePluginsAfterAdd,
 } from "../models/plugin-model.js";
 import type { ClaudeMarketplaceSource } from "../types.js";
 import {
-  attachPluginPinToLayer,
+  attachPluginPinToPlugin,
   listAttachedPluginPins,
   parsePluginRef,
-} from "./layer-composition.js";
+} from "./plugin-composition.js";
 import { listMarketplaces } from "./marketplace-registry.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {
@@ -28,7 +28,7 @@ export interface AddPluginFromMarketplaceInput {
   homeRoot: string;
   projectRoot: string;
   ref: string;
-  layerName: string;
+  pluginName: string;
   versionConstraint?: string;
   install?: typeof installPluginPinAsync;
   ensureMarketplaces?: typeof ensureClaudeMarketplacesFromConfig;
@@ -37,7 +37,7 @@ export interface AddPluginFromMarketplaceInput {
 export interface AddPluginFromMarketplaceResult {
   status: "attached" | "already_attached";
   ref: string;
-  layerName: string;
+  pluginName: string;
   marketplaceCopied: boolean;
   install?: InstallPluginPinResult;
 }
@@ -65,12 +65,12 @@ function preferredInstallPlatform(platforms: PluginMarketplacePlatform[]): strin
   return first;
 }
 
-function requireLayer(layerName: string) {
-  const layer = resolveLayerSelector(layerName);
-  if (!layer) {
-    throw new Error(`Layer not found: ${layerName}`);
+function requirePlugin(pluginName: string) {
+  const plugin = resolvePluginSelector(pluginName);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${pluginName}`);
   }
-  return layer;
+  return plugin;
 }
 
 function requireMarketplaceRef(ref: string) {
@@ -84,7 +84,7 @@ function requireMarketplaceRef(ref: string) {
 export async function addPluginFromMarketplace(
   input: AddPluginFromMarketplaceInput,
 ): Promise<AddPluginFromMarketplaceResult> {
-  const layer = requireLayer(input.layerName);
+  const plugin = requirePlugin(input.pluginName);
   const parsed = requireMarketplaceRef(input.ref);
   const marketplaceName = parsed.namespace;
 
@@ -96,7 +96,7 @@ export async function addPluginFromMarketplace(
   }
 
   const versionConstraint = input.versionConstraint ?? "latest";
-  const existingPin = listAttachedPluginPins(layer.id).some(
+  const existingPin = listAttachedPluginPins(plugin.id).some(
     (pin) => pin.ref === input.ref,
   );
   let status: AddPluginFromMarketplaceResult["status"] = "attached";
@@ -104,35 +104,35 @@ export async function addPluginFromMarketplace(
   if (existingPin) {
     status = "already_attached";
   } else {
-    attachPluginPinToLayer(layer.id, input.ref, versionConstraint);
-    const attached = getLayerById(layer.id);
+    attachPluginPinToPlugin(plugin.id, input.ref, versionConstraint);
+    const attached = getPluginById(plugin.id);
     if (!attached) {
-      throw new Error(`Layer ${layer.id} not found after attaching plugin pin`);
+      throw new Error(`Plugin ${plugin.id} not found after attaching plugin pin`);
     }
-    syncClaudeLayerPluginsAfterAdd(attached, input.ref, versionConstraint);
+    syncClaudeMarketplacePluginsAfterAdd(attached, input.ref, versionConstraint);
   }
 
-  let refreshed = getLayerById(layer.id);
+  let refreshed = getPluginById(plugin.id);
   if (!refreshed) {
-    throw new Error(`Layer ${layer.id} not found after plugin pin mutation`);
+    throw new Error(`Plugin ${plugin.id} not found after plugin pin mutation`);
   }
 
   let marketplaceCopied = false;
   if (marketplace.platforms.includes("claude-code")) {
-    marketplaceCopied = ensureLayerClaudeMarketplace(refreshed, marketplaceName, {
+    marketplaceCopied = ensurePluginClaudeMarketplace(refreshed, marketplaceName, {
       source: claudeSourceFromMarketplaceUrl(marketplace.url),
     });
     if (marketplaceCopied) {
-      refreshed = getLayerById(layer.id);
+      refreshed = getPluginById(plugin.id);
       if (!refreshed) {
-        throw new Error(`Layer ${layer.id} not found after marketplace copy`);
+        throw new Error(`Plugin ${plugin.id} not found after marketplace copy`);
       }
     }
   }
 
   let installResult: InstallPluginPinResult | undefined;
   const activeProfile = getActiveProfileName();
-  if (activeProfile === layer.name) {
+  if (activeProfile === plugin.name) {
     const ensureMarketplaces = input.ensureMarketplaces ?? ensureClaudeMarketplacesFromConfig;
     const ensureOptions: EnsureMarketplacesOptions = {
       homeRoot: input.homeRoot,
@@ -153,7 +153,7 @@ export async function addPluginFromMarketplace(
   return {
     status,
     ref: input.ref,
-    layerName: layer.name,
+    pluginName: plugin.name,
     marketplaceCopied,
     ...(installResult ? { install: installResult } : {}),
   };

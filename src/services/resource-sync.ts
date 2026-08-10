@@ -9,7 +9,7 @@ import {
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
-import { getLayerByName } from "../models/plugin-model.js";
+import { getPluginByName } from "../models/plugin-model.js";
 import type { PluginDependencyMetadata, PluginPinMetadata, Resource } from "../types.js";
 import {
   readPluginVersionFromInstallRoot,
@@ -18,8 +18,8 @@ import {
 import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
-import { formatPluginRef } from "./layer-composition.js";
-import { assertSyncable } from "./layer-origin.js";
+import { formatPluginRef } from "./plugin-composition.js";
+import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
 
 export interface SyncLinkedResourcesOptions {
@@ -106,8 +106,8 @@ function resolveConflictPolicy(
 
 /**
  * Sync is about refreshing an upstream/catalog install tree — not about
- * consumer layers that merely attach the dependency. Local composition deps
- * gate on the named layer's origin (authored → refuse).
+ * consumer plugins that merely attach the dependency. Local composition deps
+ * gate on the named plugin's origin (authored → refuse).
  */
 function assertPluginResourceSyncable(pluginResource: Resource): void {
   const metadata = (pluginResource.metadata ?? {}) as PluginDependencyMetadata;
@@ -117,13 +117,13 @@ function assertPluginResourceSyncable(pluginResource: Resource): void {
   if (sourceKind !== "local") {
     return;
   }
-  const layer =
-    getLayerByName(pluginResource.name) ??
+  const plugin =
+    getPluginByName(pluginResource.name) ??
     (pluginResource.origin_ref
-      ? getLayerByName(pluginResource.origin_ref)
+      ? getPluginByName(pluginResource.origin_ref)
       : undefined);
-  if (layer) {
-    assertSyncable(layer.id);
+  if (plugin) {
+    assertSyncable(plugin.id);
   }
 }
 

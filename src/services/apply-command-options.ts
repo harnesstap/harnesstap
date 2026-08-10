@@ -30,7 +30,7 @@ export function addApplyCommandOptions(command: Command): Command {
     .option("--interactive", "Prompt instead of relying on explicit flags")
     .option(
       "--ignore-plugin-versions",
-      "Skip validating layer Claude plugin pins against installed versions",
+      "Skip validating plugin Claude plugin pins against installed versions",
     )
     .option(
       "--strict-plugin-versions",

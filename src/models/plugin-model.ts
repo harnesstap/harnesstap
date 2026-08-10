@@ -3,10 +3,10 @@ import { ulid } from "ulid";
 import semver from "semver";
 import { mapResourceRow } from "./resource.js";
 import {
-  ensureLayerResource as ensurePluginResource,
-  listAttachedLayerRefs as listAttachedPluginRefs,
-  listAttachedPluginPins,
-} from "../services/layer-composition.js";
+  ensurePluginResource,
+  listAttachedPluginRefs,
+} from "../services/plugin-composition.js";
+import { listDependencies } from "../services/plugin-dependency.js";
 import { claudeConfigFromPluginPins } from "../services/claude-plugin-pins.js";
 import type {
   ClaudeMarketplaceEntry,
@@ -167,13 +167,13 @@ function mergeClaudeConfig(
   };
 }
 
-function listPluginPluginPins(pluginId: string): Array<{
+function listPluginPins(pluginId: string): Array<{
   ref: string;
   version_constraint: string;
 }> {
-  return listAttachedPluginPins(pluginId).map((pin) => ({
-    ref: pin.ref,
-    version_constraint: pin.version_constraint,
+  return listDependencies(pluginId).map((dependency) => ({
+    ref: dependency.ref,
+    version_constraint: dependency.version_constraint,
   }));
 }
 
@@ -206,7 +206,7 @@ export function mergePluginsById(pluginIds: string[]): MergedPluginContent {
       resourceByKey.set(key, resource);
     }
 
-    for (const pin of listPluginPluginPins(plugin.id)) {
+    for (const pin of listPluginPins(plugin.id)) {
       pluginPins.set(pin.ref, pin);
     }
 
@@ -629,7 +629,7 @@ export function ensurePluginClaudeMarketplace(
   return true;
 }
 
-export function syncClaudePluginPluginsAfterAdd(
+export function syncClaudeMarketplacePluginsAfterAdd(
   plugin: Plugin,
   ref: string,
   versionConstraint: string,
@@ -648,7 +648,7 @@ export function syncClaudePluginPluginsAfterAdd(
   });
 }
 
-export function syncClaudePluginPluginsAfterRemove(plugin: Plugin, ref: string): void {
+export function syncClaudeMarketplacePluginsAfterRemove(plugin: Plugin, ref: string): void {
   if (!plugin.claude) return;
   const plugins = (plugin.claude.plugins ?? []).filter((p) => p.id !== ref);
   writePluginClaudeConfig(plugin.id, { ...plugin.claude, plugins });
@@ -887,10 +887,10 @@ export const touchLayerUpdatedAt = touchPluginUpdatedAt;
 export const getLayerResources = getPluginResources;
 /** @deprecated Use ensurePluginClaudeMarketplace */
 export const ensureLayerClaudeMarketplace = ensurePluginClaudeMarketplace;
-/** @deprecated Use syncClaudePluginPluginsAfterAdd */
-export const syncClaudeLayerPluginsAfterAdd = syncClaudePluginPluginsAfterAdd;
-/** @deprecated Use syncClaudePluginPluginsAfterRemove */
-export const syncClaudeLayerPluginsAfterRemove = syncClaudePluginPluginsAfterRemove;
+/** @deprecated Use syncClaudeMarketplacePluginsAfterAdd */
+export const syncClaudeLayerPluginsAfterAdd = syncClaudeMarketplacePluginsAfterAdd;
+/** @deprecated Use syncClaudeMarketplacePluginsAfterRemove */
+export const syncClaudeLayerPluginsAfterRemove = syncClaudeMarketplacePluginsAfterRemove;
 /** @deprecated Use addDependencyToPlugin */
 export const addDependencyToLayer = addDependencyToPlugin;
 /** @deprecated Use listPluginDependencies */

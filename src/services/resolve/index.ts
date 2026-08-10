@@ -1,13 +1,13 @@
 import { getDb } from "../../db/connection.js";
 import {
-  addResourceToLayer,
-  createLayer,
-  deleteLayer,
-  getLayerById,
-  resolveLayerSelector,
+  addResourceToPlugin,
+  createPlugin,
+  deletePlugin,
+  getPluginById,
+  resolvePluginSelector,
 } from "../../models/plugin-model.js";
-import { ensureLayerResource } from "../layer-composition.js";
-import { getLayerOverrides } from "../layer-overrides.js";
+import { ensurePluginResource } from "../plugin-composition.js";
+import { getPluginOverrides } from "../plugin-overrides.js";
 import { walkDependencyGraph } from "./dependency-graph.js";
 import { resolveResources } from "./resource-resolution.js";
 import type { ResolutionResult } from "./types.js";
@@ -20,23 +20,23 @@ const EPHEMERAL_PREFIX = "__ht_ephemeral_root__";
 
 function createEphemeralRoot(selectors: string[]): string {
   const name = `${EPHEMERAL_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const root = createLayer({ name, version: "0.0.0" });
+  const root = createPlugin({ name, version: "0.0.0" });
   for (const selector of selectors) {
-    const target = resolveLayerSelector(selector);
+    const target = resolvePluginSelector(selector);
     if (!target) {
-      deleteLayer(root.id);
-      throw new Error(`Layer not found: ${selector}`);
+      deletePlugin(root.id);
+      throw new Error(`Plugin not found: ${selector}`);
     }
-    const reference = ensureLayerResource(`layer:${target.name}`, {
+    const reference = ensurePluginResource(`plugin:${target.name}`, {
       versionConstraint: target.version,
     });
-    addResourceToLayer(root.id, reference.id);
+    addResourceToPlugin(root.id, reference.id);
   }
   return root.id;
 }
 
 export interface ResolveCompositionInput {
-  /** One selector resolves to that layer as root; several synthesize a root. */
+  /** One selector resolves to that plugin as root; several synthesize a root. */
   rootSelectors: string[];
   /** Pin versions from a lockfile instead of re-mediating. */
   lockedVersions?: Map<string, string>;
@@ -46,35 +46,35 @@ export interface ResolveCompositionInput {
  * Resolve a composition into the exact resource set to materialize.
  *
  * Pass 1 unifies every plugin name to one version. Pass 2 flattens the
- * resulting layers into one resource per `type:name`. Both passes contribute
+ * resulting plugins into one resource per `type:name`. Both passes contribute
  * to the explain trail on the result.
  */
 export function resolveComposition(input: ResolveCompositionInput): ResolutionResult {
   const single = input.rootSelectors.length === 1 ? input.rootSelectors[0] : undefined;
-  let rootLayerId: string;
+  let rootPluginId: string;
   let ephemeral = false;
 
   if (single !== undefined) {
-    const resolved = resolveLayerSelector(single);
+    const resolved = resolvePluginSelector(single);
     if (!resolved) {
-      throw new Error(`Layer not found: ${single}`);
+      throw new Error(`Plugin not found: ${single}`);
     }
-    rootLayerId = resolved.id;
+    rootPluginId = resolved.id;
   } else if (input.rootSelectors.length === 0) {
-    throw new Error("Provide at least one layer to resolve.");
+    throw new Error("Provide at least one plugin to resolve.");
   } else {
-    rootLayerId = createEphemeralRoot(input.rootSelectors);
+    rootPluginId = createEphemeralRoot(input.rootSelectors);
     ephemeral = true;
   }
 
   try {
-    const root = getLayerById(rootLayerId);
+    const root = getPluginById(rootPluginId);
     if (!root) {
-      throw new Error(`Layer not found: ${rootLayerId}`);
+      throw new Error(`Plugin not found: ${rootPluginId}`);
     }
-    const overrides = getLayerOverrides(root.id);
+    const overrides = getPluginOverrides(root.id);
     const walk = walkDependencyGraph({
-      rootLayerId,
+      rootPluginId,
       ...(input.lockedVersions ? { lockedVersions: input.lockedVersions } : {}),
     });
     const pass2 = resolveResources({
@@ -88,7 +88,7 @@ export function resolveComposition(input: ResolveCompositionInput): ResolutionRe
       root: {
         name: root.name,
         version: root.version,
-        layerId: root.id,
+        pluginId: root.id,
         ephemeral,
       },
       selected: walk.selected,
@@ -100,7 +100,7 @@ export function resolveComposition(input: ResolveCompositionInput): ResolutionRe
     if (ephemeral) {
       // The synthesized root exists only for the duration of one resolution.
       const db = getDb();
-      db.prepare("DELETE FROM layers WHERE id = ?").run(rootLayerId);
+      db.prepare("DELETE FROM plugins WHERE id = ?").run(rootPluginId);
     }
   }
 }

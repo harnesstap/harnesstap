@@ -13,8 +13,8 @@ type PromptConfig = {
   message: string;
   scopeLabel: string;
   initialQuery?: string;
-  listLayers: (input: { q: string; limit: number }) => Promise<
-    import("../catalog-types.js").CatalogLayer[]
+  listPlugins: (input: { q: string; limit: number }) => Promise<
+    import("../catalog-types.js").CatalogPlugin[]
   >;
 };
 
@@ -31,7 +31,7 @@ export async function runInteractiveCatalogSearch(input: {
   message: string;
   scopeLabel: string;
   initialQuery?: string;
-  listLayers: PromptConfig["listLayers"];
+  listPlugins: PromptConfig["listPlugins"];
 }): Promise<InteractiveCatalogSearchResult> {
   return promptForInteractiveCatalogSearch(input);
 }

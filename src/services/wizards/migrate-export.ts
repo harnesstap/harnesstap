@@ -1,9 +1,9 @@
 import inquirer from "inquirer";
 import { listEnvironments } from "../../models/environment.js";
 import { listResources } from "../../models/resource.js";
-import { toLayerChoices } from "../completion/choices.js";
+import { toPluginChoices } from "../completion/choices.js";
 import type { MigrateScope } from "../migrate-scope.js";
-import { isCompositionResourceType } from "../layer-composition.js";
+import { isCompositionResourceType } from "../plugin-composition.js";
 import {
   formatResourceSelectionLabel,
   sortResourcesByUpdatedAt,
@@ -14,7 +14,7 @@ import { promptForSearchableChoice, promptForValue } from "./shared.js";
 export type MigrateExportWizardResult = {
   scope: MigrateScope;
   outputPath: string;
-  layer?: string;
+  plugin?: string;
   resource?: string;
   environment?: string;
   embedPlugins?: boolean;
@@ -28,22 +28,22 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
       message: "What should be exported?",
       choices: [
         { name: "Workspace (full local library)", value: "workspace" },
-        { name: "Layer", value: "layer" },
+        { name: "Plugin", value: "plugin" },
         { name: "Resource", value: "resource" },
         { name: "Environment", value: "environment" },
       ],
     },
   ]);
 
-  if (scope === "layer") {
-    const choices = toLayerChoices();
-    const layer = choices.length > 0
-      ? await promptForSearchableChoice({ message: "Which layer?", choices })
-      : await promptForValue({ message: "Layer name or ID" });
-    const firstLayer = layer.split(",")[0]?.trim() ?? "layer";
+  if (scope === "plugin") {
+    const choices = toPluginChoices();
+    const plugin = choices.length > 0
+      ? await promptForSearchableChoice({ message: "Which plugin?", choices })
+      : await promptForValue({ message: "Plugin name or ID" });
+    const firstPlugin = plugin.split(",")[0]?.trim() ?? "plugin";
     const outputPath = await promptForValue({
       message: "Output file",
-      default: `${firstLayer}.harnesstap.toml`,
+      default: `${firstPlugin}.harnesstap.toml`,
     });
     const { embed } = await inquirer.prompt<{ embed: boolean }>([
       {
@@ -53,7 +53,7 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
         default: false,
       },
     ]);
-    return { scope, layer, outputPath, embedPlugins: embed };
+    return { scope, plugin, outputPath, embedPlugins: embed };
   }
 
   if (scope === "resource") {
@@ -114,7 +114,7 @@ export async function runMigrateExportWizard(): Promise<MigrateExportWizardResul
     {
       type: "confirm",
       name: "embed",
-      message: "Embed plugin trees in layer exports?",
+      message: "Embed plugin trees in plugin exports?",
       default: false,
     },
   ]);

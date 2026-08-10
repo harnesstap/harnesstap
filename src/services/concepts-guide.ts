@@ -24,8 +24,8 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
   return {
     concepts: [
       { term: "resource", definition: "Single canonical item (skill, rule, MCP, hook, agent, …)" },
-      { term: "layer", definition: "Named bundle of resources you apply to projects" },
-      { term: "profile", definition: "Layer tagged profile; apply globally with profile use" },
+      { term: "plugin", definition: "Named bundle of resources you apply to projects" },
+      { term: "profile", definition: "Plugin tagged profile; apply globally with profile use" },
       { term: "account", definition: "HarnessTap Cloud login identity stored locally" },
       { term: "environment", definition: "Named how-values (vars, secrets, model config)" },
       { term: "harness", definition: "Target CLI (claude-code, codex, cursor, …)" },
@@ -36,12 +36,12 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
     ],
     commands: [
       {
-        command: "layer apply <layer>",
-        purpose: "Materialize layer(s) onto a project",
+        command: "plugin apply <plugin>",
+        purpose: "Materialize plugin(s) onto a project",
       },
       {
         command: "profile use <profile>",
-        purpose: "Apply a profile layer globally to home harness files",
+        purpose: "Apply a profile plugin globally to home harness files",
       },
       {
         command: "migrate export <archive>",
@@ -52,19 +52,19 @@ export function buildConceptsGuidePayload(): ConceptsGuidePayload {
         purpose: "Sync alias harnesses from on-disk main",
       },
       {
-        command: `layer list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`,
-        purpose: "Browse public catalog layers",
+        command: `plugin list --search ${CANONICAL_CATALOG_SEARCH_HINT} --remote-only`,
+        purpose: "Browse public catalog plugins",
       },
       {
-        command: `layer pull org/catalog/${CANONICAL_CATALOG_BASELINE}`,
-        purpose: "Cache a catalog layer locally",
+        command: `plugin pull org/catalog/${CANONICAL_CATALOG_BASELINE}`,
+        purpose: "Cache a catalog plugin locally",
       },
       {
-        command: "layer edit <layer> --add <item> --type skill",
-        purpose: "Add a local resource to a layer",
+        command: "plugin edit <plugin> --add <item> --type skill",
+        purpose: "Add a local resource to a plugin",
       },
     ],
-    environment_cascade: "home env ◂ layer default env (last wins on apply)",
+    environment_cascade: "home env ◂ plugin default env (last wins on apply)",
   };
 }
 

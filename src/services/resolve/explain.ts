@@ -40,8 +40,8 @@ export interface ExplainPayload {
   warnings: string[];
 }
 
-function side(input: { layerName: string; layerVersion: string }): string {
-  return `${input.layerName}@${input.layerVersion}`;
+function side(input: { pluginName: string; pluginVersion: string }): string {
+  return `${input.pluginName}@${input.pluginVersion}`;
 }
 
 export function explainPayload(result: ResolutionResult): ExplainPayload {
