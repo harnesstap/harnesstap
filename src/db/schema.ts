@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 23;
+const SCHEMA_VERSION = 24;
 
 const MIGRATIONS: Record<number, string> = {
   22: `
@@ -201,6 +201,10 @@ const MIGRATIONS: Record<number, string> = {
       payload TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+  `,
+  24: `
+    ALTER TABLE layers ADD COLUMN overrides TEXT NOT NULL DEFAULT '{}';
+    ALTER TABLE global_apply_snapshots ADD COLUMN resolved_set TEXT NOT NULL DEFAULT '[]';
   `,
 };
 

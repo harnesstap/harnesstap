@@ -137,6 +137,17 @@ export type ResourceMetadata =
 
 // ── Core entities ───────────────────────────────────────────────────────
 
+/**
+ * Absolute resolution decisions declared by a root layer. Honored only when
+ * the declaring layer is the root of the resolution, matching npm `overrides`.
+ */
+export interface LayerOverrides {
+  /** Layer name → exact version that ends mediation for that name. */
+  versions: Record<string, string>;
+  /** `type:name` → layer name whose copy of that resource wins. */
+  resources: Record<string, string>;
+}
+
 export interface Resource {
   id: string;
   type: ResourceType;
@@ -205,6 +216,7 @@ export interface Layer {
   claude?: ClaudeLayerConfig;
   /** Config contract keys this layer requires from an environment. */
   needs?: string[];
+  overrides?: LayerOverrides;
   default_environment_id?: string;
   created_at: string;
   updated_at: string;

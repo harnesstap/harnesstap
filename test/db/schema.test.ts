@@ -42,7 +42,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(23);
+      expect(versionRow.version).toBe(24);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -62,6 +62,7 @@ describe("initializeSchema", () => {
           "catalog_slug",
           "default_environment_id",
           "needs_config",
+          "overrides",
         ]),
       );
 
@@ -137,7 +138,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 23 }]);
+      expect(versionRows).toEqual([{ version: 24 }]);
     } finally {
       await context.cleanup();
     }
@@ -359,8 +360,8 @@ describe("initializeSchema", () => {
     }
   });
 
-  it("upgrades v22 databases in place to v23 with dirty/frozen_at/snapshots", async () => {
-    const context = await createTestContext("schema-v23-upgrade");
+  it("upgrades v22 databases in place to v24 with dirty/frozen_at/snapshots/overrides", async () => {
+    const context = await createTestContext("schema-v24-upgrade");
     try {
       const db = context.connection.getDb();
       // Simulate a v22 DB: create minimal v22 layers table then stamp version 22
@@ -382,6 +383,12 @@ describe("initializeSchema", () => {
           updated_at TEXT NOT NULL,
           UNIQUE(org_slug, catalog_slug, name, version)
         );
+        CREATE TABLE global_apply_snapshots (
+          id TEXT PRIMARY KEY,
+          profile_name TEXT NOT NULL,
+          layer_ids TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
       `);
 
       context.schema.initializeSchema(db);
@@ -391,13 +398,13 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(23);
+      expect(version).toBe(24);
 
       const cols = db
         .prepare("PRAGMA table_info(layers)")
         .all() as Array<{ name: string }>;
       expect(cols.map((c) => c.name)).toEqual(
-        expect.arrayContaining(["dirty", "frozen_at"]),
+        expect.arrayContaining(["dirty", "frozen_at", "overrides"]),
       );
 
       const snap = db
@@ -406,6 +413,74 @@ describe("initializeSchema", () => {
         )
         .get();
       expect(snap).toBeTruthy();
+
+      const globalCols = db
+        .prepare("PRAGMA table_info(global_apply_snapshots)")
+        .all() as Array<{ name: string }>;
+      expect(globalCols.map((c) => c.name)).toContain("resolved_set");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades v23 databases in place to v24 with overrides and resolved_set", async () => {
+    const context = await createTestContext("schema-v23-to-v24-upgrade");
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (23);
+        CREATE TABLE layers (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          version TEXT NOT NULL DEFAULT '1.0.0',
+          org_slug TEXT NOT NULL DEFAULT '',
+          catalog_slug TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]',
+          claude_config TEXT NOT NULL DEFAULT '{}',
+          needs_config TEXT NOT NULL DEFAULT '[]',
+          default_environment_id TEXT,
+          dirty INTEGER NOT NULL DEFAULT 0,
+          frozen_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(org_slug, catalog_slug, name, version)
+        );
+        CREATE TABLE layer_working_snapshots (
+          layer_id TEXT PRIMARY KEY REFERENCES layers(id) ON DELETE CASCADE,
+          source_version TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        CREATE TABLE global_apply_snapshots (
+          id TEXT PRIMARY KEY,
+          profile_name TEXT NOT NULL,
+          layer_ids TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+      `);
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(24);
+
+      const layerCols = db
+        .prepare("PRAGMA table_info(layers)")
+        .all() as Array<{ name: string; dflt_value: string | null }>;
+      const overridesCol = layerCols.find((c) => c.name === "overrides");
+      expect(overridesCol?.dflt_value).toBe("'{}'");
+
+      const globalCols = db
+        .prepare("PRAGMA table_info(global_apply_snapshots)")
+        .all() as Array<{ name: string; dflt_value: string | null }>;
+      const resolvedSetCol = globalCols.find((c) => c.name === "resolved_set");
+      expect(resolvedSetCol?.dflt_value).toBe("'[]'");
     } finally {
       await context.cleanup();
     }

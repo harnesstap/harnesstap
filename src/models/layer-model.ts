@@ -14,6 +14,7 @@ import type {
   ClaudeLayerConfig,
   Layer,
   LayerDependency,
+  LayerOverrides,
   Resource,
 } from "../types.js";
 import { satisfiesConstraint, parseVersionConstraint } from "../services/plugin-constraints.js";
@@ -28,6 +29,7 @@ interface LayerRow {
   tags: string;
   claude_config: string;
   needs_config: string;
+  overrides: string;
   default_environment_id: string | null;
   dirty?: number;
   frozen_at: string | null;
@@ -87,9 +89,21 @@ function serializeNeedsConfig(needs: string[] | undefined): string {
   return JSON.stringify(needs ?? []);
 }
 
+function parseOverrides(raw: string | undefined): LayerOverrides | undefined {
+  if (!raw || raw === "{}") return undefined;
+  const parsed = JSON.parse(raw) as Partial<LayerOverrides>;
+  const versions = parsed.versions ?? {};
+  const resources = parsed.resources ?? {};
+  if (Object.keys(versions).length === 0 && Object.keys(resources).length === 0) {
+    return undefined;
+  }
+  return { versions, resources };
+}
+
 function rowToLayer(row: LayerRow): Layer {
   const claude = parseClaudeConfig(row.claude_config);
   const needs = parseNeedsConfig(row.needs_config);
+  const overrides = parseOverrides(row.overrides);
   return {
     id: row.id,
     name: row.name,
@@ -102,6 +116,7 @@ function rowToLayer(row: LayerRow): Layer {
     ...(row.frozen_at ? { frozen_at: row.frozen_at } : {}),
     ...(claude ? { claude } : {}),
     ...(needs ? { needs } : {}),
+    ...(overrides ? { overrides } : {}),
     ...(row.default_environment_id
       ? { default_environment_id: row.default_environment_id }
       : {}),
@@ -802,4 +817,16 @@ export function resolveLayerSelector(selector: string): Layer | undefined {
   const asLayer = getLayerByName(selector);
   if (asLayer) return asLayer;
   return getLayer(selector);
+}
+
+/** Every locally available version for a layer name, newest first. */
+export function listLayerVersions(name: string): string[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT version FROM layers WHERE name = ?")
+    .all(name) as Array<{ version: string }>;
+  return rows
+    .map((row) => row.version)
+    .filter((version) => semver.valid(version) !== null)
+    .sort(semver.rcompare);
 }
