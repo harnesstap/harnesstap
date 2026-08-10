@@ -1,35 +1,7 @@
 import { DEFAULT_CLOUD_BASE_URL } from "../../src/config/catalog.ts";
-import { formatPluginExportToml } from "../../src/services/transport/plugin.ts";
-import { PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "../../src/types.ts";
+import { makeApEnvelope } from "./ap-package-fixtures.ts";
 
-const DEFAULT_BUNDLE = formatPluginExportToml({
-  $schema: PLUGIN_SCHEMA,
-  version: PLUGIN_SCHEMA_VERSION,
-  plugins: [
-    {
-      name: "remote-team",
-      version: "1.0.0",
-      description: "from cloud",
-      tags: [],
-      resources: [
-        {
-          type: "instruction",
-          name: "r",
-          description: "",
-          content: "#x",
-          metadata: {},
-          namespace: "",
-          origin_kind: "manual",
-          origin_ref: "",
-          content_hash: "",
-          content_blob_ref: "",
-        },
-      ],
-      plugin_pins: [],
-    },
-  ],
-  embedded_plugins: [],
-});
+const DEFAULT_BUNDLE = makeApEnvelope();
 
 function normalizePlugin(plugin: Record<string, unknown>) {
   return {

@@ -694,7 +694,7 @@ describe("CLI plugin", () => {
   });
 
   it("rejects unknown plugin import subcommand", async () => {
-    await expect(runCli(["plugin", "import", "./team.harnesstap.toml"])).rejects.toMatchObject({
+    await expect(runCli(["plugin", "import", "./team.ap.json"])).rejects.toMatchObject({
       code: "commander.unknownCommand",
       exitCode: 1,
       message: expect.stringMatching(/unknown command/i),

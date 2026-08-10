@@ -1,5 +1,6 @@
-import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
-import { parsePluginExportToml } from "./transport/index.js";
+import { fetchWithTimeout } from "../utils/fetch-with-timeout.js";
+import { parseApEnvelope } from "./agent-plugins/envelope.js";
+import { parseApPackageFiles } from "./agent-plugins/import.js";
 
 export interface DeviceCodeResponse {
   device_code: string;
@@ -176,30 +177,24 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
 
 export { nextPublishVersion };
 
-function exportPluginExportToCloudPayload(pluginExportToml: string): { plugins: Array<Record<string, unknown>> } {
-  const parsed = parsePluginExportToml(pluginExportToml);
+function exportPluginExportToCloudPayload(packageBody: string): { plugins: Array<Record<string, unknown>> } {
+  const files = parseApEnvelope(packageBody, "published package");
+  const parsed = parseApPackageFiles(files);
   return {
-    plugins: parsed.plugins.map((plugin) => {
-      const pluginPins = plugin.plugin_pins.map((pluginPin) => {
-        const ref = pluginPin.ref;
-        const at = ref.lastIndexOf("@");
-        const id = at >= 0 ? ref.slice(0, at) : ref;
-        const author = at >= 0 ? ref.slice(at + 1) : "";
-        return {
-          id,
-          author,
-          version: pluginPin.version_constraint,
-        };
-      });
-      return {
-        name: plugin.name,
-        description: plugin.description,
-        tags: plugin.tags,
-        pluginPins,
-        resources: plugin.resources,
-        ...(plugin.claude ? { claude: plugin.claude } : {}),
-      };
-    }),
+    plugins: [
+      {
+        name: parsed.sourceName,
+        description: parsed.description,
+        tags: parsed.keywords,
+        pluginPins: parsed.dependencies.map((dependency) => ({
+          id: dependency.name,
+          author: "",
+          version: dependency.constraint,
+        })),
+        resources: parsed.resources,
+        ...(parsed.claude ? { claude: parsed.claude } : {}),
+      },
+    ],
   };
 }
 
@@ -319,7 +314,7 @@ export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
   planPluginPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
-  publishPluginExport(metadata: Record<string, unknown>, pluginExportToml: string): Promise<Record<string, unknown>>;
+  publishPluginExport(metadata: Record<string, unknown>, packageBody: string): Promise<Record<string, unknown>>;
   deletePublishedPlugin(input: { orgId: string; pluginId: string }): Promise<void>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
@@ -461,7 +456,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       return { nextVersion: nextPublishVersion(publishedPlugin?.latestVersion) };
     },
 
-    async publishPluginExport(metadata: Record<string, unknown>, pluginExportToml: string) {
+    async publishPluginExport(metadata: Record<string, unknown>, packageBody: string) {
       const orgSlug = String(metadata.org_slug ?? "");
       const catalogSlug = String(metadata.catalog_slug ?? "default");
       const pluginName = String(metadata.plugin_name ?? "");
@@ -476,7 +471,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       }
 
       const slug = toSlug(pluginName);
-      const pluginExportPayload = exportPluginExportToCloudPayload(pluginExportToml);
+      const pluginExportPayload = exportPluginExportToCloudPayload(packageBody);
       const pluginCount = pluginExportPayload.plugins.length;
       const summary = String(
         (pluginExportPayload.plugins[0] as { description?: string } | undefined)?.description
@@ -518,7 +513,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         version,
         summary,
         pluginExport: pluginExportPayload,
-        harnesstapPluginExportBody: pluginExportToml,
+        harnesstapPluginExportBody: packageBody,
       });
 
       return {

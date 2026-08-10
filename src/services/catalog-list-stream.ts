@@ -5,7 +5,7 @@ import {
 } from "../config/catalog.js";
 import { listCatalogPluginsPage } from "./catalog-client.js";
 import type { CatalogPlugin } from "./catalog-types.js";
-import { formatCatalogRequestError } from "./transport/fetch-with-timeout.js";
+import { formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
 
 export type CatalogListSourceKind = "scope" | "registered";
 

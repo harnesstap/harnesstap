@@ -5,22 +5,11 @@ import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
-import { formatPluginExportToml } from "../../src/services/transport/plugin.ts";
+import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
 
-const FOUNDATION_CATALOG_BUNDLE = formatPluginExportToml({
-  $schema: "urn:harnesstap:layer:v1",
-  version: 1,
-  plugins: [
-    {
-      name: "engineering-foundation",
-      version: "1.0.0",
-      description: "Shared engineering baseline",
-      tags: ["foundation"],
-      resources: [],
-      plugin_pins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
-    },
-  ],
-  embedded_plugins: [],
+const FOUNDATION_CATALOG_BUNDLE = makeApEnvelope({
+  name: "engineering-foundation",
+  description: "Shared engineering baseline",
 });
 
 describe("CLI platforms, status, and catalog baselines", () => {

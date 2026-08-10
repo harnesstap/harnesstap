@@ -14,6 +14,10 @@ import {
   writeApEnvelope,
 } from "./agent-plugins/envelope.js";
 import { slugifyApName } from "./agent-plugins/name.js";
+import {
+  isLegacyTomlTransportPath,
+  legacyTomlTransportRejection,
+} from "./legacy-toml-transport.js";
 import type { AnyMigrateManifest, MigrateManifest } from "./migrate.js";
 import { exportMigrationState, importMigrationState } from "./migrate.js";
 import {
@@ -220,12 +224,8 @@ export function detectImportScopeFromFile(filePath: string): MigrateScope {
   const lower = resolved.toLowerCase();
   if (lower.endsWith(".tar.gz")) return "workspace";
   if (isApEnvelopePath(resolved)) return "plugin";
-  if (lower.endsWith(".harnesstap.toml") || lower.endsWith(".environment.toml")) {
-    throw new Error(
-      `${resolved} is a HarnessTap TOML transport file, which is no longer supported. ` +
-        "Portable artifacts are Agent Plugins packages: a directory with a plugin.json, " +
-        "or a single .ap.json envelope.",
-    );
+  if (isLegacyTomlTransportPath(resolved)) {
+    throw new Error(legacyTomlTransportRejection(resolved));
   }
   throw new Error(
     `Cannot tell what ${resolved} is. Pass an Agent Plugins package directory, ` +

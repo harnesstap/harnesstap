@@ -1,6 +1,15 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import type { PluginExportEmbeddedPlugin } from "../types.js";
+
+/** Plugin tree inlined for Claude marketplace materialization. */
+export interface EmbeddedPluginTree {
+  ref: string;
+  version_constraint: string;
+  /** Logical directory key for imports that are not `./...` project-relative refs. */
+  root: string;
+  /** Paths relative to the plugin root, POSIX-style separators. */
+  files: Record<string, string>;
+}
 
 /** Relative path under plugin root (`./`-style prefixes stripped). */
 function stripProjectRelativePrefix(ref: string): string {
@@ -34,17 +43,17 @@ export function collectEmbeddedPluginFiles(pluginRootAbs: string): Record<string
   return out;
 }
 
-function embeddedMaterializeBase(targetDir: string, entry: PluginExportEmbeddedPlugin): string {
+function embeddedMaterializeBase(targetDir: string, entry: EmbeddedPluginTree): string {
   if (entry.ref.startsWith("./") || entry.ref.startsWith(".\\")) {
     return join(targetDir, stripProjectRelativePrefix(entry.ref));
   }
   return join(targetDir, "plugins", entry.root);
 }
 
-/** Write inlined plugin trees from a bundle to disk under `targetDir`. */
+/** Write inlined plugin trees from a package to disk under `targetDir`. */
 export function writeEmbeddedPluginsOnImport(
   targetDir: string,
-  embedded: PluginExportEmbeddedPlugin[],
+  embedded: EmbeddedPluginTree[],
 ): void {
   for (const entry of embedded) {
     const base = embeddedMaterializeBase(targetDir, entry);

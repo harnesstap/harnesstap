@@ -4,7 +4,7 @@ import {
   type CatalogListResult,
 } from "./catalog-types.js";
 import { DEFAULT_CATALOG_SLUG } from "./plugin-selector.js";
-import { fetchWithTimeout } from "./transport/fetch-with-timeout.js";
+import { fetchWithTimeout } from "../utils/fetch-with-timeout.js";
 
 function buildSearchParams(options: CatalogListOptions): URLSearchParams {
   const params = new URLSearchParams();

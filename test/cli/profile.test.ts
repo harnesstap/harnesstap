@@ -11,8 +11,8 @@ import {
   createPlugin,
   setPluginTags,
 } from "../../src/models/plugin-model.ts";
-import { formatPluginExportToml } from "../../src/services/transport/plugin.ts";
-import { PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "../../src/types.ts";
+import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
+
 
 describe("CLI profile", () => {
   it("lists and creates profile plugins", async () => {
@@ -484,29 +484,11 @@ describe("CLI profile", () => {
       });
       addResourceToPlugin(profile.id, ref.id);
 
-      const dependencyBundle = formatPluginExportToml({
-        $schema: PLUGIN_SCHEMA,
-        version: PLUGIN_SCHEMA_VERSION,
-        plugins: [{
-          name: "remote-base",
-          version: "1.0.0",
-          description: "Remote base",
-          tags: [],
-          resources: [{
-            type: "instruction",
-            name: "remote-guide",
-            description: "",
-            content: "# remote",
-            metadata: {},
-            namespace: "",
-            origin_kind: "manual",
-            origin_ref: "",
-            content_hash: "",
-            content_blob_ref: "",
-          }],
-          plugin_pins: [],
-        }],
-        embedded_plugins: [],
+      const dependencyBundle = makeApEnvelope({
+        name: "remote-base",
+        description: "Remote base",
+        skillName: "remote-guide",
+        skillBody: "# remote",
       });
       const restoreFetch = createCatalogFetchMock({
         baseUrl: "https://mock",

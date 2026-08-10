@@ -71,7 +71,7 @@ describe("CLI help and command organization", () => {
     for (const args of [
       ["plugin", "validate", "empty-plugin"],
       ["plugin", "export", "empty-plugin"],
-      ["plugin", "import", "./missing.harnesstap.toml"],
+      ["plugin", "import", "./missing.ap.json"],
     ]) {
       await expect(runCli(args)).rejects.toMatchObject({
         code: "commander.unknownCommand",

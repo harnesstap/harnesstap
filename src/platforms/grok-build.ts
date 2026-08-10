@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { parse } from "smol-toml";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
-import { formatTransportToml } from "../services/transport/write.js";
+import { formatTransportToml } from "../services/toml/write.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import {
   canonicalAgentFromResource,

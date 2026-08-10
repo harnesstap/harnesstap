@@ -21,7 +21,7 @@ import {
 } from "./plugin-selector.js";
 import { createPublicCatalogClient } from "./public-catalog-client.js";
 import { rankCatalogSearchResults } from "./catalog-search-rank.js";
-import { fetchWithTimeout, formatCatalogRequestError } from "./transport/fetch-with-timeout.js";
+import { fetchWithTimeout, formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
 
 function buildScopeParams(scope: CatalogScope, options: CatalogListOptions): CatalogListOptions {
   return {

@@ -93,7 +93,7 @@ describe("agent migrate routes", () => {
     );
     addResourceToPlugin(plugin.id, resource.id);
 
-    const outputPath = join(tempDirs.at(-1)!, "export-plugin.harnesstap.toml");
+    const outputPath = join(tempDirs.at(-1)!, "export-plugin.ap.json");
     const response = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
       headers: {
@@ -143,7 +143,7 @@ describe("agent migrate routes", () => {
 
   it("POST /v1/migrate/export returns 400 for unknown plugin", async () => {
     const server = withServer();
-    const outputPath = join(tempDirs.at(-1)!, "missing.harnesstap.toml");
+    const outputPath = join(tempDirs.at(-1)!, "missing.ap.json");
 
     const response = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
@@ -174,7 +174,7 @@ describe("agent migrate routes", () => {
       }),
     );
 
-    const outputPath = join(tempDirs.at(-1)!, "solo.harnesstap.toml");
+    const outputPath = join(tempDirs.at(-1)!, "solo.ap.json");
     const response = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
       headers: {
@@ -228,7 +228,7 @@ describe("agent migrate routes", () => {
   it("POST /v1/migrate/import imports a plugin bundle with detected scope", async () => {
     const exportDir = mkdtempSync(join(tmpdir(), "ht-agent-migrate-bundle-"));
     tempDirs.push(exportDir);
-    const bundlePath = join(exportDir, "import-plugin.harnesstap.toml");
+    const bundlePath = join(exportDir, "import-plugin.ap.json");
 
     const exportServer = withServer();
     const plugin = createPlugin({ name: "import-plugin" });
@@ -272,7 +272,7 @@ describe("agent migrate routes", () => {
     const server = withServer();
     createPlugin({ name: "mismatch-plugin" });
 
-    const bundlePath = join(tempDirs.at(-1)!, "mismatch-plugin.harnesstap.toml");
+    const bundlePath = join(tempDirs.at(-1)!, "mismatch-plugin.ap.json");
     const exportResponse = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
       headers: {

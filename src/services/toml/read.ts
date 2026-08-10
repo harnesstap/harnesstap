@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { parse, TomlError } from "smol-toml";
-import { assertTransportExtension } from "./validate.js";
+import { assertTomlExtension } from "./validate.js";
 
 export function parseTransportToml(
   raw: string,
@@ -21,6 +21,6 @@ export function parseTransportToml(
 }
 
 export function readTransportFile(filePath: string): string {
-  assertTransportExtension(filePath);
+  assertTomlExtension(filePath);
   return readFileSync(filePath, "utf-8");
 }

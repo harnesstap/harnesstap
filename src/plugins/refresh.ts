@@ -3,7 +3,7 @@ import { join } from "node:path";
 import {
   DEFAULT_GIT_CLONE_TIMEOUT_MS,
   runCommandWithTimeout,
-} from "../services/transport/run-command-with-timeout.js";
+} from "../utils/run-command-with-timeout.js";
 import type { RunCommand } from "./run-command.js";
 
 export interface GitRefreshOptions {

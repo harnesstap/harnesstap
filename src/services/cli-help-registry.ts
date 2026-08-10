@@ -239,7 +239,7 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Diff two plugins or a plugin and a plugin export file",
     examples: [
       "plugin diff left right",
-      "plugin diff my-plugin ./export.harnesstap.toml",
+      "plugin diff my-plugin ./export.ap.json",
     ],
   },
   "plugin.doctor": {

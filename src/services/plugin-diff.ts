@@ -1,7 +1,11 @@
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { getPlugin, getPluginResources, listPluginDependencies } from "../models/plugin-model.js";
 import { listDependencies } from "./plugin-dependency.js";
 import type { Resource } from "../types.js";
-import { inspectPluginExportFile } from "./plugin-export.js";
+import { isApEnvelopePath } from "./agent-plugins/envelope.js";
+import { parseApPackageFiles } from "./agent-plugins/import.js";
+import { readPackageFilesFromPath } from "./plugin-import.js";
 
 export interface PluginDiffEntry {
   kind: "resource" | "plugin_pin" | "metadata";
@@ -36,56 +40,61 @@ function resourceKey(resource: Pick<Resource, "type" | "name" | "namespace">): s
   return `${resource.type}:${resource.name}`;
 }
 
+function isPackagePath(nameOrPath: string): boolean {
+  if (isApEnvelopePath(nameOrPath)) {
+    return true;
+  }
+  try {
+    if (existsSync(nameOrPath) && statSync(nameOrPath).isDirectory()) {
+      return existsSync(join(nameOrPath, "plugin.json"));
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 function loadPluginView(nameOrPath: string): PluginView {
-  if (
-    nameOrPath.endsWith(".toml") ||
-    nameOrPath.endsWith(".harnesstap.toml")
-  ) {
-    const summary = inspectPluginExportFile(nameOrPath);
-    if (summary.plugins.length > 1) {
-      throw new Error(
-        `Multi-plugin exports are not supported by plugin diff: ${nameOrPath}`,
-      );
-    }
-    const [bundle] = summary.plugins;
-    if (!bundle) {
-      throw new Error(`Unsupported plugin export: ${nameOrPath}`);
-    }
-    const resources = bundle.resources.map((r, order) => ({
-      key: resourceKey(r),
-      order,
-      resource: {
-        id: `bundle:${r.type}:${r.name}`,
-        type: r.type,
-        name: r.name,
-        description: r.description,
-        content: r.content,
-        metadata: r.metadata,
-        source: `bundle:${nameOrPath}`,
-        namespace: r.namespace ?? "",
-        origin_kind: r.origin_kind ?? "manual",
-        origin_ref: r.origin_ref ?? "",
-        content_hash: r.content_hash ?? "",
-        content_blob_ref: r.content_blob_ref ?? "",
-        created_at: "",
-        updated_at: "",
-      },
-    }));
+  if (isPackagePath(nameOrPath)) {
+    const parsed = parseApPackageFiles(readPackageFilesFromPath(nameOrPath));
+    const resources = parsed.resources.map((r, order) => {
+      const namespace = r.namespace ?? "";
+      return {
+        key: resourceKey({ type: r.type, name: r.name, namespace }),
+        order,
+        resource: {
+          id: `package:${r.type}:${r.name}`,
+          type: r.type,
+          name: r.name,
+          description: r.description,
+          content: r.content,
+          metadata: r.metadata,
+          source: `package:${nameOrPath}`,
+          namespace,
+          origin_kind: r.origin_kind ?? "manual",
+          origin_ref: r.origin_ref ?? "",
+          content_hash: r.content_hash ?? "",
+          content_blob_ref: r.content_blob_ref ?? "",
+          created_at: "",
+          updated_at: "",
+        },
+      };
+    });
     return {
       label: nameOrPath,
       resources,
-      plugin_pins: (bundle.plugin_pins ?? []).map((p) => ({
-        ref: p.ref,
-        version_constraint: p.version_constraint,
+      plugin_pins: parsed.dependencies.map((dependency) => ({
+        ref: dependency.name,
+        version_constraint: dependency.constraint,
       })),
-      description: bundle.description,
-      tags: bundle.tags,
-      claudeJson: JSON.stringify(bundle.claude ?? null),
-      version: bundle.version ?? "",
+      description: parsed.description,
+      tags: parsed.keywords,
+      claudeJson: JSON.stringify(parsed.claude ?? null),
+      version: parsed.version,
       dependenciesJson: JSON.stringify(
-        (bundle.dependencies ?? []).map((d) => ({
-          dependency_name: d.dependency_name,
-          version_constraint: d.version_constraint,
+        parsed.dependencies.map((d) => ({
+          dependency_name: d.name,
+          version_constraint: d.constraint,
         })),
       ),
     };

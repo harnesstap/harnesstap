@@ -2,17 +2,15 @@ import { extname } from "node:path";
 
 const LEGACY_EXTENSIONS = new Set([".json", ".jsonc"]);
 
-export function assertTransportExtension(filePath: string): void {
+export function assertTomlExtension(filePath: string): void {
   const extension = extname(filePath).toLowerCase();
   if (LEGACY_EXTENSIONS.has(extension)) {
     throw new Error(
-      "JSON transport was removed. Re-export with `ht migrate export --plugin <name>` or `ht migrate export <archive> --workspace` to produce TOML.",
+      "JSON transport was removed. Re-export with `ht migrate export --plugin <name>` or `ht migrate export <archive> --workspace`.",
     );
   }
   if (extension !== ".toml") {
-    throw new Error(
-      `Expected a TOML transport file (.toml): ${filePath}`,
-    );
+    throw new Error(`Expected a .toml file: ${filePath}`);
   }
 }
 
@@ -22,10 +20,10 @@ export function readSchemaHeader(
   const schema = document.schema;
   const version = document.version;
   if (typeof schema !== "string" || schema.length === 0) {
-    throw new Error("Transport file must include a non-empty schema string");
+    throw new Error("TOML file must include a non-empty schema string");
   }
   if (typeof version !== "number") {
-    throw new Error("Transport file must include a numeric version");
+    throw new Error("TOML file must include a numeric version");
   }
   return { schema, version };
 }

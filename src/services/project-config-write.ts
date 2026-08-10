@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { PROJECT_SCHEMA, PROJECT_SCHEMA_VERSION } from "../types.js";
 import { PROJECT_CONFIG_EXISTS_MESSAGE } from "./project-config-messages.js";
-import { formatTransportToml } from "./transport/write.js";
+import { formatTransportToml } from "./toml/write.js";
 
 export function buildStarterProjectConfigDocument(input: {
   defaultProfile: string;

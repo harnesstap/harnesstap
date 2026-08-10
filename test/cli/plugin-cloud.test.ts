@@ -7,7 +7,7 @@ import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { createCloudPublishFetchMock } from "../helpers/cloud-fetch.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
-import { formatPluginExportToml } from "../../src/services/transport/plugin.ts";
+import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
 
 describe("CLI cloud plugin workflows", () => {
   it("search, add (remote install), publish, apply cloud-installed plugin, and conflict handling", async () => {
@@ -196,20 +196,9 @@ describe("CLI cloud plugin workflows", () => {
     try {
       await runCli(["init"]);
 
-      const foundationBundle = formatPluginExportToml({
-        $schema: "urn:harnesstap:layer:v1",
-        version: 1,
-        plugins: [
-          {
-            name: "engineering-foundation",
-            version: "1.0.0",
-            description: "Shared baseline",
-            tags: ["foundation"],
-            resources: [],
-            plugin_pins: [{ ref: "superpowers@obra", version_constraint: "5.1.0" }],
-          },
-        ],
-        embedded_plugins: [],
+      const foundationBundle = makeApEnvelope({
+        name: "engineering-foundation",
+        description: "Shared baseline",
       });
 
       const restoreFetch = createCatalogFetchMock({
@@ -1468,7 +1457,7 @@ describe("CLI cloud plugin workflows", () => {
       pluginModel.addResourceToPlugin(plugin.id, resource.id);
       versioning.markPluginDirty(plugin.id);
 
-      const bundlePath = join(context.projectDir, "dirty.harnesstap.toml");
+      const bundlePath = join(context.projectDir, "dirty.ap.json");
       const result = await runCli([
         "migrate",
         "export",

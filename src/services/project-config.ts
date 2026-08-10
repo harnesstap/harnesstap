@@ -2,12 +2,11 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { DeckJsonEnvironment, DeckJsonEnvironmentSecretRef } from "../types.js";
 import {
-  PLUGIN_SCHEMA,
   PROJECT_SCHEMA,
   PROJECT_SCHEMA_VERSION,
 } from "../types.js";
-import { parseTransportToml } from "./transport/read.js";
-import { readSchemaHeader } from "./transport/validate.js";
+import { parseTransportToml } from "./toml/read.js";
+import { readSchemaHeader } from "./toml/validate.js";
 
 export type ProjectProfileSource = "catalog" | "local" | "inline";
 
@@ -79,9 +78,10 @@ function locateProjectConfigFile(
 }
 
 function assertProjectSchema(schema: string, version: number, filePath: string): void {
-  if (schema === PLUGIN_SCHEMA) {
+  if (schema.includes(":layer:")) {
     throw new Error(
-      `${filePath} uses plugin bundle schema (${PLUGIN_SCHEMA}); place plugin exports in *.harnesstap.toml, not project config`,
+      `${filePath} looks like a legacy plugin bundle schema (${schema}); ` +
+        "portable plugins are Agent Plugins packages, not project config",
     );
   }
   if (schema !== PROJECT_SCHEMA) {

@@ -1,20 +1,36 @@
 import { describe, expect, it } from "bun:test";
 import { LOCK_SCHEMA } from "../../src/services/lockfile.ts";
 import {
-  BUNDLE_SCHEMA,
-  DECK_SCHEMA,
-  PLUGIN_SCHEMA,
-  PROJECT_SCHEMA,
-  RESOURCE_SCHEMA,
-} from "../../src/types.js";
+  AP_PACKAGE_SCHEMA,
+} from "../../src/services/agent-plugins/files.ts";
+import { HT_EXTENSION_SCHEMA } from "../../src/services/agent-plugins/manifest.ts";
+import { environmentToTomlDocument } from "../../src/services/toml/environment-document.ts";
+import { DECK_SCHEMA, PROJECT_SCHEMA } from "../../src/types.js";
+import * as types from "../../src/types.js";
 
 describe("schema URNs", () => {
-  it("uses harnesstap brand prefix", () => {
+  it("keeps surviving local and package schemas", () => {
+    expect(LOCK_SCHEMA).toBe("urn:harnesstap:lock:v1");
+    expect(AP_PACKAGE_SCHEMA).toBe("urn:harnesstap:ap-package:v1");
+    expect(HT_EXTENSION_SCHEMA).toBe("urn:harnesstap:ap-extension:v1");
     expect(DECK_SCHEMA).toBe("urn:harnesstap:deck:v1");
     expect(PROJECT_SCHEMA).toBe("urn:harnesstap:project:v1");
-    expect(BUNDLE_SCHEMA).toBe("urn:harnesstap:bundle:v1");
-    expect(PLUGIN_SCHEMA).toBe("urn:harnesstap:layer:v1");
-    expect(RESOURCE_SCHEMA).toBe("urn:harnesstap:resource:v1");
-    expect(LOCK_SCHEMA).toBe("urn:harnesstap:lock:v1");
+  });
+
+  it("keeps environment documents as schema-less TOML tables", () => {
+    expect(environmentToTomlDocument({ name: "work", values: { A: "1" } })).toEqual({
+      name: "work",
+      values: { A: "1" },
+    });
+  });
+
+  it("retires layer and resource transport schema constants", () => {
+    expect("PLUGIN_SCHEMA" in types).toBe(false);
+    expect("RESOURCE_SCHEMA" in types).toBe(false);
+    expect("BUNDLE_SCHEMA" in types).toBe(false);
+    expect("LAYER_SCHEMA" in types).toBe(false);
+    const serialized = JSON.stringify(types);
+    expect(serialized).not.toContain("urn:harnesstap:layer:v1");
+    expect(serialized).not.toContain("urn:harnesstap:resource:v1");
   });
 });

@@ -10,9 +10,9 @@ import {
   upsertEnvironmentEnvVar,
 } from "../models/environment.js";
 import { resolveEnvironmentOrThrow } from "./environment-selectors.js";
-import { assertTransportExtension } from "./transport/validate.js";
-import { formatTransportToml } from "./transport/write.js";
-import { environmentToTomlDocument } from "./transport/environment-document.js";
+import { assertTomlExtension } from "./toml/validate.js";
+import { formatTransportToml } from "./toml/write.js";
+import { environmentToTomlDocument } from "./toml/environment-document.js";
 import type {
   DeckJsonEnvironment,
   DeckJsonEnvironmentSecretRef,
@@ -177,7 +177,7 @@ export function importEnvironmentToml(
 export const importEnvironmentJsonc = importEnvironmentToml;
 
 export function importEnvironmentFile(filePath: string): ReturnType<typeof importEnvironmentToml> {
-  assertTransportExtension(filePath);
+  assertTomlExtension(filePath);
   return importEnvironmentToml(readFileSync(filePath, "utf-8"));
 }
 

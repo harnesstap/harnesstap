@@ -11,7 +11,7 @@ export function defaultMigrateExportFilename(input: {
       return "harnesstap-migrate.tar.gz";
     case "plugin": {
       const first = (input.plugin ?? "plugin").split(",")[0]?.trim() || "plugin";
-      return `${first}.harnesstap.toml`;
+      return `${first}.ap.json`;
     }
     case "resource": {
       const selector = input.resource ?? "resource:export";
@@ -19,7 +19,7 @@ export function defaultMigrateExportFilename(input: {
       const type = colon === -1 ? "resource" : selector.slice(0, colon);
       const rest = colon === -1 ? selector : selector.slice(colon + 1);
       const name = rest.split("@")[0] || "export";
-      return `${type}-${name}.harnesstap.toml`;
+      return `${type}-${name}.ap.json`;
     }
     case "environment":
       return `${(input.environment ?? "environment").trim() || "environment"}.environment.toml`;

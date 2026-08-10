@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getPluginResources } from "../models/plugin-model.js";
-import { formatTransportToml, parseTransportToml } from "./transport/index.js";
+import { formatTransportToml, parseTransportToml } from "./toml/index.js";
 import { resourceFingerprint } from "./resolve/resource-resolution.js";
 import { resolutionKey } from "./resolve/resource-resolution.js";
 import type { ResolutionResult } from "./resolve/types.js";

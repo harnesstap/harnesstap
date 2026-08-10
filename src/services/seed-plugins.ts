@@ -1,9 +1,9 @@
-import { readdirSync, existsSync } from "node:fs";
+import { readdirSync, existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getPlugin } from "../models/plugin-model.js";
-import { importFromFile } from "./plugin-import.js";
-import { inspectPluginExportFile } from "./plugin-export.js";
+import { importFromFile, inspectPluginExportFile } from "./plugin-import.js";
+import { isApEnvelopePath } from "./agent-plugins/envelope.js";
 
 function normalizePluginVersion(version: string | undefined): string {
   return typeof version === "string" && version.length > 0 ? version : "";
@@ -48,16 +48,32 @@ function getBuiltInPluginsDir(): string {
   return firstCandidate;
 }
 
+function listBuiltinPackagePaths(pluginsDir: string): string[] {
+  const paths: string[] = [];
+  for (const entry of readdirSync(pluginsDir)) {
+    const fullPath = join(pluginsDir, entry);
+    if (isApEnvelopePath(fullPath)) {
+      paths.push(fullPath);
+      continue;
+    }
+    try {
+      if (statSync(fullPath).isDirectory() && existsSync(join(fullPath, "plugin.json"))) {
+        paths.push(fullPath);
+      }
+    } catch {
+      // skip unreadable entries
+    }
+  }
+  return paths.sort();
+}
+
 export function seedBuiltInPlugins(): number {
   const pluginsDir = getBuiltInPluginsDir();
   if (!existsSync(pluginsDir)) return 0;
 
   let seeded = 0;
 
-  for (const file of readdirSync(pluginsDir)) {
-    if (!file.endsWith(".toml")) continue;
-
-    const filePath = join(pluginsDir, file);
+  for (const filePath of listBuiltinPackagePaths(pluginsDir)) {
     const summary = inspectPluginExportFile(filePath);
     const missingPluginKeys = new Set(
       summary.plugins
@@ -67,9 +83,7 @@ export function seedBuiltInPlugins(): number {
     if (missingPluginKeys.size === 0) continue;
 
     importFromFile(filePath, {
-      resourceSource: `builtin:${file}`,
-      includePlugins: (plugin) =>
-        missingPluginKeys.has(pluginKey(plugin.name, plugin.version)),
+      resourceSource: `builtin:${filePath}`,
     });
     seeded++;
   }

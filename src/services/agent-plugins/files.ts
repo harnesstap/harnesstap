@@ -12,7 +12,7 @@ import type {
 import { assertContainedPath, listContainedFiles, PathEscapeError } from "../../utils/path-containment.js";
 import { listDependencies } from "../plugin-dependency.js";
 import { emitSkillAuxiliaryFiles, listSkillAuxiliaryFiles } from "../skill-auxiliary.js";
-import { formatTransportToml } from "../transport/write.js";
+import { formatTransportToml } from "../toml/write.js";
 import {
   COMPONENT_LAYOUT,
   HT_EXTENSION_NAMESPACE,

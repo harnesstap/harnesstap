@@ -23,7 +23,7 @@ import {
   setPluginResourceOverride,
   setPluginVersionOverride,
 } from "../plugin-overrides.js";
-import { parseTransportToml } from "../transport/read.js";
+import { parseTransportToml } from "../toml/read.js";
 import type { ApPackageFile, ApPackageFiles } from "./files.js";
 import { readApPackageFiles } from "./files.js";
 import type { ApDependency, ApManifest, HarnesstapExtension } from "./manifest.js";

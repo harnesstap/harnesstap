@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import type { CommandResult, RunCommandOptions } from "../../plugins/run-command.js";
+import type { CommandResult, RunCommandOptions } from "../plugins/run-command.js";
 
 export const DEFAULT_GIT_CLONE_TIMEOUT_MS = 120_000;
 

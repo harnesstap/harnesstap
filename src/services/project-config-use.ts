@@ -1,12 +1,17 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import {
   isEmptyBuiltinProfile,
   isProfilePlugin,
 } from "../constants/profile.js";
-import { resolvePluginSelector } from "../models/plugin-model.js";
-import { PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "../types.js";
+import {
+  addResourceToPlugin,
+  createPlugin,
+  resolvePluginSelector,
+} from "../models/plugin-model.js";
+import {
+  normalizeResourceInput,
+  upsertResource,
+} from "../models/resource.js";
+import type { ClaudePluginConfig, ResourceType } from "../types.js";
 import { useEnvironmentCommand } from "./environment-commands.js";
 import {
   formatEnvironmentToml,
@@ -14,7 +19,6 @@ import {
 } from "./environment-import-export.js";
 import { detectGlobalProfileStatus } from "./global-profile-drift.js";
 import { installPluginFromCatalog } from "./plugin-catalog-install.js";
-import { importFromFile } from "./plugin-import.js";
 import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import {
   promptMaterializationConflict,
@@ -37,11 +41,6 @@ import { maybeSyncActiveProfileBeforeSwitch } from "./profile-switch-prompt.js";
 import { clearGlobalProfileApply, type ApplyProfilePluginResult } from "./profile-apply.js";
 import { clearActiveProfileName, getActiveProfileName } from "./active-profile.js";
 import { getGlobalActiveEnvironmentName } from "./environment-session.js";
-import {
-  pluginExportToTomlDocument,
-  parsePluginEntry,
-} from "./transport/plugin.js";
-import { formatTransportToml } from "./transport/write.js";
 
 export interface ProjectUseOptions {
   profile?: string;
@@ -135,18 +134,50 @@ function findInlinePluginTable(
   return plugin;
 }
 
-function writeInlinePluginImportFile(pluginTable: ProjectPluginTable): string {
-  const pluginEntry = parsePluginEntry(pluginTable);
-  const document = pluginExportToTomlDocument({
-    $schema: PLUGIN_SCHEMA,
-    version: PLUGIN_SCHEMA_VERSION,
-    plugins: [pluginEntry],
-    embedded_plugins: [],
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function importInlinePluginTable(pluginTable: ProjectPluginTable) {
+  const resourcesRaw = Array.isArray(pluginTable.resources) ? pluginTable.resources : [];
+  const plugin = createPlugin({
+    name: pluginTable.name,
+    version: typeof pluginTable.version === "string" ? pluginTable.version : "1.0.0",
+    description: typeof pluginTable.description === "string" ? pluginTable.description : "",
+    tags: Array.isArray(pluginTable.tags) ? pluginTable.tags.map(String) : [],
+    ...(isRecord(pluginTable.claude)
+      ? { claude: pluginTable.claude as ClaudePluginConfig }
+      : {}),
   });
-  const dir = mkdtempSync(join(tmpdir(), "harnesstap-project-inline-"));
-  const filePath = join(dir, "inline.harnesstap.toml");
-  writeFileSync(filePath, formatTransportToml(document), "utf-8");
-  return filePath;
+
+  for (const raw of resourcesRaw) {
+    if (!isRecord(raw)) continue;
+    const metadata = isRecord(raw.metadata)
+      ? raw.metadata
+      : typeof raw.metadata_json === "string"
+        ? (JSON.parse(raw.metadata_json) as Record<string, unknown>)
+        : {};
+    const upserted = upsertResource(
+      normalizeResourceInput({
+        type: String(raw.type ?? "") as ResourceType,
+        name: String(raw.name ?? ""),
+        description: String(raw.description ?? ""),
+        content: String(raw.content ?? ""),
+        metadata,
+        source: `project-inline:${pluginTable.name}`,
+        namespace: String(raw.namespace ?? ""),
+        origin_kind: (raw.origin_kind ?? "manual") as "manual",
+        origin_ref: String(raw.origin_ref ?? ""),
+      }),
+      { policy: "overwrite" },
+    );
+    if (upserted.action === "skipped") {
+      throw new Error(`Failed to import inline resource: ${String(raw.type)}:${String(raw.name)}`);
+    }
+    addResourceToPlugin(plugin.id, upserted.resource.id);
+  }
+
+  return plugin;
 }
 
 export async function resolveProjectProfileKey(
@@ -243,10 +274,9 @@ export async function resolveProjectProfilePluginName(
         throw new Error(`Inline profile ${entry.name} is missing a plugin reference.`);
       }
       const pluginTable = findInlinePluginTable(config, pluginKey);
-      const tempPath = writeInlinePluginImportFile(pluginTable);
-      const imported = importFromFile(tempPath);
-      assertProfilePlugin(imported.plugin, `inline profile ${entry.name}`);
-      return imported.plugin.name;
+      const imported = importInlinePluginTable(pluginTable);
+      assertProfilePlugin(imported, `inline profile ${entry.name}`);
+      return imported.name;
     }
     default: {
       const unhandledSource: never = entry.source;

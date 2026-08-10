@@ -1,14 +1,15 @@
 import { getCloudAccount } from "../config/cloud-accounts.js";
 import type { RegisteredCatalog } from "../config/catalog.js";
 import { formatPublishCatalogSelector } from "../config/catalog.js";
-import { exportPlugin } from "./plugin-export.js";
-import { formatPluginExportToml } from "./transport/plugin.js";
 import { updatePluginPublishedIdentity } from "../models/plugin-model.js";
 import type { Plugin } from "../types.js";
 import type { CloudClient } from "./cloud-client.js";
 import { createPersistingCloudClient } from "./cloud-account-auth.js";
 import { formatPublishedSelector } from "./plugin-selector.js";
 import { ui } from "../ui/index.js";
+import { buildApPackageFiles } from "./agent-plugins/files.js";
+import { envelopeFromFiles } from "./agent-plugins/envelope.js";
+import { assertPluginsCleanForShare } from "./plugin-versioning.js";
 
 export interface PublishTargetResult {
   target: RegisteredCatalog;
@@ -31,8 +32,12 @@ export async function publishPluginToCatalogs(
   targets: RegisteredCatalog[],
   opts?: { account?: string },
 ): Promise<PublishTargetResult[]> {
-  const pluginExport = exportPlugin(plugin.id);
-  const pluginExportToml = formatPluginExportToml(pluginExport);
+  assertPluginsCleanForShare([plugin]);
+  const packageBody = JSON.stringify(
+    envelopeFromFiles(buildApPackageFiles(plugin.id)),
+    null,
+    2,
+  );
   const results: PublishTargetResult[] = [];
   let firstSuccess: { org_slug: string; catalog_slug: string; version?: string } | undefined;
 
@@ -55,7 +60,7 @@ export async function publishPluginToCatalogs(
           org_slug: target.org,
           catalog_slug: target.catalog,
         },
-        pluginExportToml,
+        packageBody,
       );
       const version = typeof resp.version === "string" ? resp.version : undefined;
       results.push({ target, ok: true, version });

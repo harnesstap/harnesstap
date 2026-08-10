@@ -2,8 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { getPluginResources } from "../models/plugin-model.js";
 import { getResource, resolveResource } from "../models/resource.js";
-import type { Resource, ResourceExport } from "../types.js";
-import { RESOURCE_SCHEMA, RESOURCE_SCHEMA_VERSION } from "../types.js";
+import type { Resource } from "../types.js";
 import {
   buildApPackageFilesForResource,
   readApPackageFiles,
@@ -18,13 +17,18 @@ import { importApPackageFiles } from "./agent-plugins/import.js";
 import { isCompositionResourceType } from "./plugin-composition.js";
 import { parseResourceSelector } from "./resource-selector.js";
 
-function toResourceExport(resource: Resource): ResourceExport {
-  const { id, created_at, updated_at, source, ...payload } = resource;
-  return {
-    $schema: RESOURCE_SCHEMA,
-    version: RESOURCE_SCHEMA_VERSION,
-    ...payload,
-  };
+export interface ResourcePackageExportResult {
+  type: Resource["type"];
+  name: string;
+  description: string;
+  content: string;
+  metadata: Resource["metadata"];
+  namespace: string;
+  origin_kind: Resource["origin_kind"];
+  origin_ref: string;
+  content_hash: string;
+  content_blob_ref: string;
+  files: string[];
 }
 
 export function formatResourceSelector(
@@ -40,7 +44,7 @@ export function exportResourceToFile(
   selector: string,
   filePath: string,
   options?: { singleFile?: boolean },
-): ResourceExport & { files: string[] } {
+): ResourcePackageExportResult {
   const parsed = parseResourceSelector(selector);
   if (parsed.type && isCompositionResourceType(parsed.type)) {
     throw new Error(
@@ -66,8 +70,10 @@ export function exportResourceToFile(
   const written = singleFile
     ? (writeApEnvelope(files, out), Object.keys(files).sort())
     : writeApPackageFiles(files, out);
+  const { id: _id, created_at: _c, updated_at: _u, source: _s, ...payload } =
+    resolved.resource;
   return {
-    ...toResourceExport(resolved.resource),
+    ...payload,
     files: written,
   };
 }

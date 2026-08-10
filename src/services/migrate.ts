@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,18 +15,27 @@ import { execSync } from "node:child_process";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
 import { listPlugins } from "../models/plugin-model.js";
-import { exportToFile } from "./plugin-export.js";
-import { importFromFile } from "./plugin-import.js";
 import { loadSettings } from "../config/settings.js";
 import type { HarnesstapSettings } from "../config/settings.js";
-import type { HarnessPreference, PluginExport } from "../types.js";
-import { formatPluginExportToml, parsePluginExportToml } from "./transport/plugin.js";
+import type { HarnessPreference } from "../types.js";
 import {
   formatEnvironmentToml,
   importEnvironmentToml,
   listEnvironmentDocuments,
 } from "./environment-import-export.js";
 import { listContainedFiles } from "../utils/path-containment.js";
+import {
+  buildApPackageFiles,
+  writeApPackageFiles,
+  readApPackageFiles,
+} from "./agent-plugins/files.js";
+import { importApPackageFiles } from "./agent-plugins/import.js";
+import { slugifyApName } from "./agent-plugins/name.js";
+import {
+  envelopeFromFiles,
+  parseApEnvelope,
+} from "./agent-plugins/envelope.js";
+import { isLegacyPluginTomlPath } from "./legacy-toml-transport.js";
 
 export const MIGRATE_MANIFEST_VERSION_V1 = 1 as const;
 export const MIGRATE_MANIFEST_VERSION = 2 as const;
@@ -64,7 +74,7 @@ function writeJson(path: string, data: unknown): void {
 
 function extractArchive(archivePath: string, destDir: string): void {
   const resolved = resolve(archivePath);
-  if (resolved.endsWith(".json")) {
+  if (resolved.endsWith(".json") && !resolved.endsWith(".ap.json")) {
     mkdirSync(join(destDir, "state"), { recursive: true });
     cpSync(resolved, join(destDir, "state", "migrate.json"));
     return;
@@ -75,12 +85,23 @@ function extractArchive(archivePath: string, destDir: string): void {
 
 function createArchive(sourceDir: string, outputPath: string): void {
   const resolved = resolve(outputPath);
-  if (resolved.endsWith(".json")) {
-    const manifest = readFileSync(
-      join(sourceDir, "manifest.json"),
-      "utf-8",
-    );
+  if (resolved.endsWith(".json") && !resolved.endsWith(".ap.json")) {
+    const manifest = readFileSync(join(sourceDir, "manifest.json"), "utf-8");
     const environmentsDir = join(sourceDir, "environments");
+    const pluginsDir = join(sourceDir, "plugins");
+    const plugins: unknown[] = [];
+    if (existsSync(pluginsDir)) {
+      for (const entry of readdirSync(pluginsDir)) {
+        const packageDir = join(pluginsDir, entry);
+        if (!statSync(packageDir).isDirectory()) continue;
+        if (!existsSync(join(packageDir, "plugin.json"))) {
+          throw new Error(
+            `Archive plugin directory ${entry} is missing plugin.json`,
+          );
+        }
+        plugins.push(envelopeFromFiles(readApPackageFiles(packageDir)));
+      }
+    }
     const state: Record<string, unknown> = {
       manifest: JSON.parse(manifest) as AnyMigrateManifest,
       harness: existsSync(join(sourceDir, "harness.json"))
@@ -92,13 +113,7 @@ function createArchive(sourceDir: string, outputPath: string): void {
       active_profile: existsSync(join(sourceDir, "active-profile.json"))
         ? JSON.parse(readFileSync(join(sourceDir, "active-profile.json"), "utf-8"))
         : null,
-      plugins: readdirSync(join(sourceDir, "plugins"))
-        .filter((f) => f.endsWith(".toml"))
-        .map((f) =>
-          parsePluginExportToml(
-            readFileSync(join(sourceDir, "plugins", f), "utf-8"),
-          ),
-        ),
+      plugins,
     };
     if (existsSync(environmentsDir)) {
       state.environments = readdirSync(environmentsDir)
@@ -132,9 +147,8 @@ export function exportMigrationState(opts: MigrateExportOptions): MigrateManifes
 
   const plugins = listPlugins();
   for (const plugin of plugins) {
-    exportToFile(plugin.name, join(pluginsDir, `${plugin.name}.harnesstap.toml`), {
-      embedPlugins: opts.includePlugins ?? false,
-    });
+    const packageDir = join(pluginsDir, slugifyApName(plugin.name));
+    writeApPackageFiles(buildApPackageFiles(plugin.id), packageDir);
   }
 
   const environments = listEnvironmentDocuments();
@@ -190,6 +204,33 @@ function importEnvironmentsFromDir(environmentsDir: string): number {
   return imported;
 }
 
+function importPluginsFromDir(pluginsDir: string): number {
+  if (!existsSync(pluginsDir)) {
+    return 0;
+  }
+  let imported = 0;
+  for (const entry of readdirSync(pluginsDir)) {
+    const packageDir = join(pluginsDir, entry);
+    if (!statSync(packageDir).isDirectory()) {
+      if (isLegacyPluginTomlPath(entry) || entry.endsWith(".toml")) {
+        throw new Error(
+          "This archive stores plugins as TOML, which is no longer supported. " +
+            "Re-export with a current CLI to produce Agent Plugins packages.",
+        );
+      }
+      continue;
+    }
+    if (!existsSync(join(packageDir, "plugin.json"))) {
+      throw new Error(
+        `Archive plugin directory ${entry} is missing plugin.json`,
+      );
+    }
+    importApPackageFiles(readApPackageFiles(packageDir));
+    imported++;
+  }
+  return imported;
+}
+
 /**
  * Import a migration archive produced by exportMigrationState.
  */
@@ -226,11 +267,10 @@ export function importMigrationState(opts: MigrateImportOptions): {
       mkdirSync(pluginsDir, { recursive: true });
       mkdirSync(environmentsDir, { recursive: true });
       for (let i = 0; i < state.plugins.length; i++) {
-        writeFileSync(
-          join(pluginsDir, `plugin-${i}.harnesstap.toml`),
-          formatPluginExportToml(state.plugins[i] as PluginExport),
-          "utf-8",
-        );
+        const packageDir = join(pluginsDir, `plugin-${i}`);
+        const envelopeRaw = JSON.stringify(state.plugins[i]);
+        const files = parseApEnvelope(envelopeRaw, `archive plugin ${i}`);
+        writeApPackageFiles(files, packageDir);
       }
       if (state.environments) {
         for (let i = 0; i < state.environments.length; i++) {
@@ -261,26 +301,20 @@ export function importMigrationState(opts: MigrateImportOptions): {
     }
     const activeProfilePath = join(workDir, "active-profile.json");
 
+    if (isMigrateManifestV1(manifest)) {
+      throw new Error(
+        "This archive uses manifest version 1, which stored plugins as TOML. " +
+          "Version 1 archives were never released and are not supported.",
+      );
+    }
+
     const manifestVersion = manifest.version;
-    if (
-      manifestVersion !== MIGRATE_MANIFEST_VERSION
-      && manifestVersion !== MIGRATE_MANIFEST_VERSION_V1
-    ) {
+    if (manifestVersion !== MIGRATE_MANIFEST_VERSION) {
       throw new Error(`Unsupported migration manifest version: ${manifestVersion}`);
     }
 
-    let pluginsImported = 0;
-    if (existsSync(pluginsDir)) {
-      for (const file of readdirSync(pluginsDir)) {
-        if (!file.endsWith(".toml")) continue;
-        importFromFile(join(pluginsDir, file));
-        pluginsImported++;
-      }
-    }
-
-    const environmentsImported = isMigrateManifestV1(manifest)
-      ? 0
-      : importEnvironmentsFromDir(environmentsDir);
+    const pluginsImported = importPluginsFromDir(pluginsDir);
+    const environmentsImported = importEnvironmentsFromDir(environmentsDir);
 
     if (existsSync(harnessPath)) {
       const harness = JSON.parse(
@@ -309,7 +343,11 @@ export function importMigrationState(opts: MigrateImportOptions): {
       writeJson(join(targetDir, "active-profile.json"), activeProfile);
     }
 
-    return { manifest, plugins_imported: pluginsImported, environments_imported: environmentsImported };
+    return {
+      manifest,
+      plugins_imported: pluginsImported,
+      environments_imported: environmentsImported,
+    };
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }

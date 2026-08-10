@@ -93,7 +93,7 @@ describe("agent plugin routes", () => {
   it("uses scope=plugin for migrate export", async () => {
     const server = withServer();
     createPlugin({ name: "base", description: "Base plugin" });
-    const outputPath = join(tempDirs.at(-1)!, "base.harnesstap.toml");
+    const outputPath = join(tempDirs.at(-1)!, "base.ap.json");
 
     const response = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",

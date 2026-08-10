@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   DEFAULT_TIMEOUT_MS,
   fetchWithTimeout,
-} from "../../src/services/transport/fetch-with-timeout.js";
+} from "../../src/utils/fetch-with-timeout.js";
 
 describe("fetchWithTimeout", () => {
   let originalFetch: typeof globalThis.fetch;

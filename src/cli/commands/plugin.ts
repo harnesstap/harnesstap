@@ -37,9 +37,8 @@ import {
   generateFiles,
   materializeFiles,
 } from "../../services/applier.js";
-import { inspectPluginExportFile } from "../../services/plugin-export.js";
 import { exportPluginDefinition } from "../../services/plugin-editor.js";
-import { importFromFile } from "../../services/plugin-import.js";
+import { importFromFile, inspectPluginExportFile } from "../../services/plugin-import.js";
 import { openPathInSystemEditor } from "../../services/open-path.js";
 import {
   createPlugin,

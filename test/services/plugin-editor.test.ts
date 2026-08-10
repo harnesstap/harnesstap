@@ -10,7 +10,8 @@ import {
   exportPluginDefinition,
   resolvePluginDefinitionPath,
 } from "../../src/services/plugin-editor.ts";
-import { parseTestPluginToml } from "../helpers/transport-fixtures.ts";
+import { parseApEnvelope } from "../../src/services/agent-plugins/envelope.ts";
+import { parseApPackageFiles } from "../../src/services/agent-plugins/import.ts";
 
 describe("plugin editor service", () => {
   it("resolves a stable definition path under the harnesstap home", async () => {
@@ -21,7 +22,7 @@ describe("plugin editor service", () => {
       const plugin = pluginModel.createPlugin({ name: "team-stack", version: "1.2.0" });
 
       expect(resolvePluginDefinitionPath(plugin)).toBe(
-        join(context.homeDir, ".harnesstap", "plugins", "team-stack@1.2.0.harnesstap.toml"),
+        join(context.homeDir, ".harnesstap", "plugins", "team-stack@1.2.0.ap.json"),
       );
     } finally {
       await context.cleanup();
@@ -43,10 +44,12 @@ describe("plugin editor service", () => {
       const definitionPath = exportPluginDefinition(plugin);
       expect(existsSync(definitionPath)).toBe(true);
 
-      const parsed = parseTestPluginToml(readFileSync(definitionPath, "utf-8"));
-      expect(parsed.plugins[0]?.name).toBe("team-stack");
-      expect(parsed.plugins[0]?.version).toBe("1.2.0");
-      expect(parsed.plugins[0]?.resources).toEqual(
+      const parsed = parseApPackageFiles(
+        parseApEnvelope(readFileSync(definitionPath, "utf-8"), definitionPath),
+      );
+      expect(parsed.sourceName).toBe("team-stack");
+      expect(parsed.version).toBe("1.2.0");
+      expect(parsed.resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: "skill", name: "shared-skill" }),
         ]),
@@ -77,7 +80,7 @@ describe("CLI plugin editor", () => {
       const payload = JSON.parse(result.stdout) as { plugin: string; path: string };
       expect(payload.plugin).toBe("team-stack@1.2.0");
       expect(payload.path).toBe(
-        join(context.homeDir, ".harnesstap", "plugins", "team-stack@1.2.0.harnesstap.toml"),
+        join(context.homeDir, ".harnesstap", "plugins", "team-stack@1.2.0.ap.json"),
       );
       expect(existsSync(payload.path)).toBe(true);
     } finally {

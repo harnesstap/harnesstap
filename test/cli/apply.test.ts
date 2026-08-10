@@ -4,7 +4,7 @@ import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
-import { writePluginExportToml, makeSinglePluginExport } from "../helpers/transport-fixtures.ts";
+import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { findPluginResourceByPin } from "../../src/services/plugin-composition.ts";
 import { getDb } from "../../src/db/connection.ts";
@@ -581,26 +581,15 @@ describe("CLI apply", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-bundle-reuse.git");
       await runCli(["init"]);
 
-      const bundlePath = join(context.projectDir, "bundle.harnesstap.toml");
-      writePluginExportToml(
+      const bundlePath = join(context.projectDir, "bundle.ap.json");
+      writeFileSync(
         bundlePath,
-        makeSinglePluginExport({
+        makeApEnvelope({
           name: "bundle-reuse",
-          resources: [
-            {
-              type: "instruction",
-              name: "ctx",
-              description: "",
-              content: "# Reusable",
-              metadata: {},
-              namespace: "",
-              origin_kind: "manual",
-              origin_ref: "",
-              content_hash: "",
-              content_blob_ref: "",
-            },
-          ],
+          skillName: "ctx",
+          skillBody: "# Reusable",
         }),
+        "utf-8",
       );
 
       const firstApply = await runCli([
