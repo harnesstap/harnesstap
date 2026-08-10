@@ -19,7 +19,7 @@ describe("CLI export and import", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
       const layer = layerModel.createLayer({ name: "bundle-layer" });
@@ -52,7 +52,7 @@ describe("CLI export and import", () => {
       try {
         await runCli(["init"]);
         const importResult = await runCli(["migrate", "import", bundlePath]);
-        const importedLayerModel = await import("../../src/models/layer-model.ts");
+        const importedLayerModel = await import("../../src/models/plugin-model.ts");
 
         expect(importResult.stdout).toContain("Imported layer");
         expect(importedLayerModel.getLayer("bundle-layer")).toBeDefined();
@@ -94,7 +94,7 @@ describe("CLI export and import", () => {
         }),
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "embed-flag" });
@@ -135,7 +135,7 @@ describe("CLI export and import", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "toml-export" });
 
       const bundlePath = join(context.projectDir, "bundle.harnesstap.toml");
@@ -180,7 +180,7 @@ plugins = []
       );
 
       const importResult = await runCli(["migrate", "import", bundlePath]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       expect(importResult.stdout).toContain("Imported layer");
       expect(layerModel.getLayer("commented-import")).toBeDefined();
@@ -195,7 +195,7 @@ plugins = []
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "alpha" });
       layerModel.createLayer({ name: "beta" });
 
@@ -308,7 +308,7 @@ plugins = []
       expect(applyResult.exitCode).toBeUndefined();
       expect(readFileSync(join(context.projectDir, "AGENTS.md"), "utf-8")).toBe("# Beta");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.getLayer("alpha-imported")).toBeDefined();
       expect(layerModel.getLayer("beta-imported")).toBeDefined();
     } finally {

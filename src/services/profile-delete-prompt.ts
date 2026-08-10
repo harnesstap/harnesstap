@@ -1,4 +1,4 @@
-import { deleteLayer } from "../models/layer-model.js";
+import { deleteLayer } from "../models/plugin-model.js";
 import { ui } from "../ui/index.js";
 import { promptForConfirmation } from "./wizards/shared.js";
 import { shouldPromptProfileEnable } from "./profile-enable-prompt.js";

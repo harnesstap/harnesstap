@@ -8,7 +8,7 @@ import {
   createLayer,
   getLayerResources,
   setLayerTags,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { removeResourceFromProfile } from "../../src/services/profile-remove-resource.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";

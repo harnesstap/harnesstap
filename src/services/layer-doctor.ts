@@ -1,4 +1,4 @@
-import { getLayer, getLayerResources } from "../models/layer-model.js";
+import { getLayer, getLayerResources } from "../models/plugin-model.js";
 import { listLayerPlugins } from "../services/layer-composition.js";
 import { duplicateResourcesCheck } from "./layer-doctor/checks/duplicate-resources.js";
 import { emptyContentCheck } from "./layer-doctor/checks/empty-content.js";

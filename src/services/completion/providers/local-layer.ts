@@ -1,4 +1,4 @@
-import { listLayers } from "../../../models/layer-model.js";
+import { listLayers } from "../../../models/plugin-model.js";
 import type { CompletionCandidate, CompletionContext } from "../types.js";
 import { filterByPrefix } from "../utils.js";
 

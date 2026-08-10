@@ -88,7 +88,7 @@ describe("CLI layer create --from", () => {
       const payload = JSON.parse(result.stdout);
       expect(payload.conflict_policy).toBe("merge");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.getLayer("dbt-expert");
       if (!layer) throw new Error("Expected dbt-expert layer");
       const attached = layerModel.getLayerResources(layer.id);

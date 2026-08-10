@@ -51,7 +51,7 @@ describe("addSkillPackage integration", () => {
         harnesstapDir: join(context.homeDir, ".harnesstap"),
         createLayer: "mattpocock-skills",
       });
-      const { getLayer, getLayerResources } = await import("../../src/models/layer-model.ts");
+      const { getLayer, getLayerResources } = await import("../../src/models/plugin-model.ts");
       const layer = getLayer("mattpocock-skills");
       expect(layer).toBeDefined();
       if (!layer) throw new Error("Expected mattpocock-skills layer");

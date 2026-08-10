@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { getLayerResources } from "../models/layer-model.js";
+import { getLayerResources } from "../models/plugin-model.js";
 import { formatTransportToml, parseTransportToml } from "./transport/index.js";
 import { resourceFingerprint } from "./resolve/resource-resolution.js";
 import { resolutionKey } from "./resolve/resource-resolution.js";

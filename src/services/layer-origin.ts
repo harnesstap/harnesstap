@@ -1,5 +1,5 @@
 import { getDb } from "../db/connection.js";
-import { getLayerById } from "../models/layer-model.js";
+import { getLayerById } from "../models/plugin-model.js";
 import type { LayerOrigin } from "../types.js";
 
 export type AuthoredCapability = "edit" | "cut" | "publish" | "needs";

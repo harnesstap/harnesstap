@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createLayer, setLayerTags } from "../../../src/models/layer-model.ts";
+import { createLayer, setLayerTags } from "../../../src/models/plugin-model.ts";
 import { completeProfileLayers } from "../../../src/services/completion/providers/profile-layer.ts";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 

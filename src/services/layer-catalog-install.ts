@@ -1,6 +1,6 @@
 import { downloadCatalogBundle } from "./catalog-client.js";
 import { importFromFile } from "./layer-import.js";
-import { updateLayerPublishedIdentity } from "../models/layer-model.js";
+import { updateLayerPublishedIdentity } from "../models/plugin-model.js";
 import {
   formatPublishedSelectorWithVersion,
   type ResolvedRemoteLayerSelector,

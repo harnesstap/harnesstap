@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import { createProfileCommand } from "../../src/services/profile-commands.ts";
 import { cutLayerVersion } from "../../src/services/layer-versioning.ts";
-import { createLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, setLayerTags } from "../../src/models/plugin-model.ts";
 import { writeStarterProjectConfig } from "../../src/services/project-config-write.ts";
 
 describe("agent routes", () => {

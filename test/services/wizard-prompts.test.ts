@@ -43,7 +43,7 @@ describe("wizard prompts", () => {
     layerDeleteWizardMock.mockResolvedValueOnce(["team@1.0.0"]);
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "team" });
       layerModel.createLayer({ name: "baseline", version: "2.0.0" });
 
@@ -141,7 +141,7 @@ describe("wizard prompts", () => {
     const context = await createInitializedTestContext("wizard-layer-apply-prompts");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "apply-layer" });
 
       const shared = await import("../../src/services/wizards/shared.ts");

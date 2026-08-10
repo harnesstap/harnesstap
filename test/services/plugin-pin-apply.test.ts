@@ -7,7 +7,7 @@ import {
   preparePluginPinsForApply,
   syncPluginPinsForApply,
 } from "../../src/services/plugin-pin-apply.ts";
-import { createLayer, deleteLayer, getLayerByName } from "../../src/models/layer-model.ts";
+import { createLayer, deleteLayer, getLayerByName } from "../../src/models/plugin-model.ts";
 import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
 import { getLayerOrigin } from "../../src/services/layer-origin.ts";
 import type { RunCommand } from "../../src/plugins/run-command.ts";

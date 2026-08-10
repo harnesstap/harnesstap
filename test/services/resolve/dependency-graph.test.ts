@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import type { TestContext } from "../../helpers/db.ts";
-import { createLayer, getLayerByName } from "../../../src/models/layer-model.ts";
+import { createLayer, getLayerByName } from "../../../src/models/plugin-model.ts";
 import { addLayerAttachment } from "../../../src/services/layer-composition.ts";
 import { walkDependencyGraph } from "../../../src/services/resolve/dependency-graph.ts";
 import { UnsatisfiableConstraintError } from "../../../src/services/resolve/types.ts";

@@ -1,4 +1,4 @@
-import { listLayers } from "../../models/layer-model.js";
+import { listLayers } from "../../models/plugin-model.js";
 import { getHarnessPreference } from "../../models/harness.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
 import type { DiscoveredSkill } from "../skill-discovery.js";

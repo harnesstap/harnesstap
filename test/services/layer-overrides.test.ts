@@ -5,7 +5,7 @@ import {
   createLayer,
   getLayerById,
   listLayerVersions,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import {
   getLayerOverrides,
   setLayerVersionOverride,

@@ -1,4 +1,4 @@
-import { getLayer } from "../../models/layer-model.js";
+import { getLayer } from "../../models/plugin-model.js";
 import type { Layer } from "../../types.js";
 import type { ResourceType } from "../../types.js";
 import { buildLayerEditCandidates, type LayerEditRow } from "../layer-edit.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import * as layerModel from "../../src/models/layer-model.ts";
+import * as layerModel from "../../src/models/plugin-model.ts";
 import {
   createResource,
   listResources,

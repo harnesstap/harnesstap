@@ -1,7 +1,7 @@
 import { getDb } from "../db/connection.js";
 import { resolve } from "node:path";
 import { ulid } from "ulid";
-import type { Project, ProjectLayer } from "../types.js";
+import type { Project, ProjectPlugin } from "../types.js";
 
 export function createProject(input: {
   git_origin: string;
@@ -62,40 +62,40 @@ export function getProjectByLocalPath(localPath: string): Project | undefined {
   return listProjects().find((project) => resolve(project.local_path) === normalized);
 }
 
-export function applyLayerToProject(input: {
+export function applyPluginToProject(input: {
   project_id: string;
-  layer_id: string;
+  plugin_id: string;
   platforms: string[];
 }): void {
   const db = getDb();
   const now = new Date().toISOString();
 
   db.prepare(
-    `INSERT OR REPLACE INTO project_layers (project_id, layer_id, platforms, applied_at)
+    `INSERT OR REPLACE INTO project_plugins (project_id, plugin_id, platforms, applied_at)
      VALUES (?, ?, ?, ?)`,
-  ).run(input.project_id, input.layer_id, JSON.stringify(input.platforms), now);
+  ).run(input.project_id, input.plugin_id, JSON.stringify(input.platforms), now);
 }
 
-/** @deprecated Use applyLayerToProject */
-export function applyConfiguredLayerToProject(input: {
+/** @deprecated Use applyPluginToProject */
+export function applyConfiguredPluginToProject(input: {
   project_id: string;
-  configured_layer_id: string;
+  configured_plugin_id: string;
   platforms: string[];
 }): void {
-  applyLayerToProject({
+  applyPluginToProject({
     project_id: input.project_id,
-    layer_id: input.configured_layer_id,
+    plugin_id: input.configured_plugin_id,
     platforms: input.platforms,
   });
 }
 
-export function getProjectLayers(projectId: string): ProjectLayer[] {
+export function getProjectPlugins(projectId: string): ProjectPlugin[] {
   const db = getDb();
   const rows = db
     .prepare(
-      "SELECT * FROM project_layers WHERE project_id = ? ORDER BY applied_at DESC",
+      "SELECT * FROM project_plugins WHERE project_id = ? ORDER BY applied_at DESC",
     )
-    .all(projectId) as Array<Omit<ProjectLayer, "platforms"> & { platforms: string }>;
+    .all(projectId) as Array<Omit<ProjectPlugin, "platforms"> & { platforms: string }>;
 
   return rows.map((row) => ({
     ...row,
@@ -103,7 +103,16 @@ export function getProjectLayers(projectId: string): ProjectLayer[] {
   }));
 }
 
-/** @deprecated Use getProjectLayers */
-export function getProjectConfiguredLayers(projectId: string): ProjectLayer[] {
-  return getProjectLayers(projectId);
+/** @deprecated Use getProjectPlugins */
+export function getProjectConfiguredPlugins(projectId: string): ProjectPlugin[] {
+  return getProjectPlugins(projectId);
 }
+
+/** @deprecated Use applyPluginToProject */
+export const applyLayerToProject = applyPluginToProject;
+/** @deprecated Use applyConfiguredPluginToProject */
+export const applyConfiguredLayerToProject = applyConfiguredPluginToProject;
+/** @deprecated Use getProjectPlugins */
+export const getProjectLayers = getProjectPlugins;
+/** @deprecated Use getProjectConfiguredPlugins */
+export const getProjectConfiguredLayers = getProjectConfiguredPlugins;

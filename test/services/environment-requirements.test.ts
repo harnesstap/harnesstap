@@ -5,7 +5,7 @@ import {
   addResourceToLayer,
   createLayer,
   createLayerFromSources,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import {
   addSecretRefToEnvironment,
   createEnvironment,

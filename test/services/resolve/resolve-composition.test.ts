@@ -5,7 +5,7 @@ import {
   addResourceToLayer,
   createLayer,
   getLayerByName,
-} from "../../../src/models/layer-model.ts";
+} from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import { addLayerAttachment } from "../../../src/services/layer-composition.ts";
 import { resolveComposition } from "../../../src/services/resolve/index.ts";

@@ -4,7 +4,7 @@ import {
   addResourceToLayer,
   resolveLayerSelector,
   touchLayerUpdatedAt,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { isProfileLayer, listProfileLayers } from "../constants/profile.js";
 import {
   MATERIAL_RESOURCE_TYPES,

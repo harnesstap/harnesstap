@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment } from "../../src/models/environment.ts";
-import { createLayer, createLayerFromSources, getLayerResources } from "../../src/models/layer-model.ts";
+import { createLayer, createLayerFromSources, getLayerResources } from "../../src/models/plugin-model.ts";
 
 describe("layer from sources", () => {
   it("binds multiple plugins and a default environment", async () => {

@@ -10,7 +10,7 @@ import {
   getLayer,
   getLayerByName,
   getLayerResources,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import type { Layer } from "../types.js";
 import { resolveScanGlobalHarnessTargets } from "./harness-targets.js";
 import { importSkillPackage } from "./skill-package-import.js";

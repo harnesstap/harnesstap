@@ -1,4 +1,4 @@
-import { listLayers } from "../../models/layer-model.js";
+import { listLayers } from "../../models/plugin-model.js";
 import { toLayerChoices } from "../completion/choices.js";
 import {
   collectLayerRequirements,

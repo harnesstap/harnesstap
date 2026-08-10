@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, spyOn } from "bun:test";
-import * as layerModel from "../../src/models/layer-model.ts";
+import * as layerModel from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import {
   commitProfileCreate,

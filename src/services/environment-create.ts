@@ -5,8 +5,8 @@ import {
   upsertEnvironmentEnvVar,
   upsertEnvironmentModelConfig,
 } from "../models/environment.js";
-import { setLayerDefaultEnvironment } from "../models/layer-model.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { setLayerDefaultEnvironment } from "../models/plugin-model.js";
+import { resolveLayerSelector } from "../models/plugin-model.js";
 import {
   createEnvironmentCommand,
   showEnvironmentCommand,

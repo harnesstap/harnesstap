@@ -1,11 +1,11 @@
-import { listLayerDependencies } from "../models/layer-model.js";
+import { listLayerDependencies } from "../models/plugin-model.js";
 import {
   createLayer,
   getLayerByName,
   resolveLayerSelector,
   setLayerTags,
   updateLayerName,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { renameGlobalApplySnapshotsProfile } from "../models/global-apply-snapshot.js";
 import { renameLayerTypedResources } from "../models/resource.js";
 import {

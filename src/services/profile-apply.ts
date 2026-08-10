@@ -14,7 +14,7 @@ import {
   getLayerByPublishedIdentity,
   mergeLayersById,
   resolveLayerSelector,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import type { Layer } from "../types.js";
 import {
   createGlobalApplySnapshot,

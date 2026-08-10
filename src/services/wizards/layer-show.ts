@@ -1,4 +1,4 @@
-import { listLayers } from "../../models/layer-model.js";
+import { listLayers } from "../../models/plugin-model.js";
 import { getActiveProfileName } from "../active-profile.js";
 import { isProfileLayer } from "../../constants/profile.js";
 import { createLocalLayerPickAdapter } from "./adapters/layer-table-browser.js";

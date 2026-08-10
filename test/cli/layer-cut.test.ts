@@ -3,7 +3,7 @@ import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { upsertResource } from "../../src/models/resource.ts";
-import { getLayer, getLayerByName } from "../../src/models/layer-model.ts";
+import { getLayer, getLayerByName } from "../../src/models/plugin-model.ts";
 
 describe("CLI layer cut", () => {
   it("cuts a new version from the working head", async () => {

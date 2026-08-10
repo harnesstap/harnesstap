@@ -1,4 +1,4 @@
-import { listLayers } from "../models/layer-model.js";
+import { listLayers } from "../models/plugin-model.js";
 import { formatCatalogScopeLabel, resolveCatalogScope } from "../config/catalog.js";
 import { listLayersInScope } from "./catalog-client.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";

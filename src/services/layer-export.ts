@@ -4,7 +4,7 @@ import {
   getLayer,
   getLayerResources,
   listLayerDependencies,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { listLayerPlugins } from "./layer-composition.js";
 import { isCompositionResourceType } from "./layer-composition.js";
 import type { LayerPluginRow } from "./layer-composition.js";

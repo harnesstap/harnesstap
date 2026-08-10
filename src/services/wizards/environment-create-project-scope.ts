@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { getLayerById } from "../../models/layer-model.js";
+import { getLayerById } from "../../models/plugin-model.js";
 import {
   getProjectByLocalPath,
   getProjectConfiguredLayers,

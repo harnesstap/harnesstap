@@ -5,7 +5,7 @@ import {
   deleteLayer,
   getLayerById,
   resolveLayerSelector,
-} from "../../models/layer-model.js";
+} from "../../models/plugin-model.js";
 import { ensureLayerResource } from "../layer-composition.js";
 import { getLayerOverrides } from "../layer-overrides.js";
 import { walkDependencyGraph } from "./dependency-graph.js";

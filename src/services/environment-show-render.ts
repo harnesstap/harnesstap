@@ -1,4 +1,4 @@
-import { getLayerById } from "../models/layer-model.js";
+import { getLayerById } from "../models/plugin-model.js";
 import type { analyzeEnvironmentGaps } from "./environment-requirements.js";
 import type { EnvironmentShowPayload } from "./environment-commands.js";
 import { renderPanel } from "../ui/panel.js";

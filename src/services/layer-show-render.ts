@@ -3,7 +3,7 @@ import {
   getLayerById,
   getLayerResources,
   resolveLayerSelector,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { listDependencies } from "./plugin-dependency.js";
 import { formatLayerVersionLabel } from "./layer-versioning.js";
 import { formatRelativeTimeWithAbsolute, shortenId } from "../ui/format.js";

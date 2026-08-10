@@ -28,7 +28,7 @@ import {
 } from "../models/environment.js";
 import {
   setLayerDefaultEnvironment,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { markLayerDirty } from "./layer-versioning.js";
 import type {
   EnvVarMetadata,

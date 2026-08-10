@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createLayer } from "../../src/models/layer-model.js";
+import { createLayer } from "../../src/models/plugin-model.js";
 import { createResource } from "../../src/models/resource.js";
 import {
   toLayerChoices,

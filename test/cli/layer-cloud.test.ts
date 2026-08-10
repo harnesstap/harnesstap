@@ -88,7 +88,7 @@ describe("CLI cloud layer workflows", () => {
       );
 
       // publish should return JSON when requested
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "pubtest" });
       const resource = resourceModel.createResource(
@@ -600,7 +600,7 @@ describe("CLI cloud layer workflows", () => {
 
       const restorePublishFetch = createCloudPublishFetchMock({ baseUrl: "https://mock" });
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "my-layer" });
@@ -651,7 +651,7 @@ describe("CLI cloud layer workflows", () => {
         ],
       });
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "multi-org-layer" });
@@ -701,7 +701,7 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "zero-org-layer" });
@@ -745,7 +745,7 @@ describe("CLI cloud layer workflows", () => {
         patchStatus: 409,
       });
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "existing-slug" });
@@ -854,7 +854,7 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "catalog-layer" });
       const resource = resourceModel.createResource(
@@ -1019,7 +1019,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       // Create an existing layer
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const existingLayer = layerModel.createLayer({ name: "existing" });
@@ -1058,7 +1058,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       // Create an existing layer with a resource
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const existingLayer = layerModel.createLayer({ name: "mylayer" });
@@ -1122,7 +1122,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       // Create an existing layer
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const existingLayer = layerModel.createLayer({ name: "original" });
@@ -1193,7 +1193,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       // Create an existing layer
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const existingLayer = layerModel.createLayer({ name: "tocancel" });
@@ -1256,7 +1256,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       // Create an existing layer with a resource
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const existingLayer = layerModel.createLayer({ name: "existing" });
@@ -1300,7 +1300,7 @@ describe("CLI cloud layer workflows", () => {
       await runCli(["init"]);
 
       // Create an existing layer with a resource
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const existingLayer = layerModel.createLayer({ name: "existing-new" });
@@ -1356,7 +1356,7 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const versioning = await import("../../src/services/layer-versioning.ts");
       const layer = layerModel.createLayer({ name: "dirty-pub", version: "1.0.0" });
@@ -1396,7 +1396,7 @@ describe("CLI cloud layer workflows", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const versioning = await import("../../src/services/layer-versioning.ts");
       const layer = layerModel.createLayer({ name: "cut-pub", version: "1.0.0" });
@@ -1458,7 +1458,7 @@ describe("CLI cloud layer workflows", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const versioning = await import("../../src/services/layer-versioning.ts");
       const layer = layerModel.createLayer({ name: "dirty-migrate", version: "1.0.0" });

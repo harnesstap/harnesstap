@@ -3,7 +3,7 @@ import type { Command } from "commander";
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { listEnvironments } from "../../models/environment.js";
-import { getLayerById, resolveLayerSelector } from "../../models/layer-model.js";
+import { getLayerById, resolveLayerSelector } from "../../models/plugin-model.js";
 import {
   deleteEnvironmentCommand,
   listEnvironmentsCommand,

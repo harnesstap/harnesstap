@@ -25,7 +25,7 @@ describe("CLI layer catalog publish bindings", () => {
         }),
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "team" });
       const resource = resourceModel.createResource(
@@ -81,7 +81,7 @@ describe("CLI layer catalog publish bindings", () => {
       await runCli(["layer", "catalog", "register", "acme/internal"]);
       await runCli(["layer", "catalog", "register", "widgets/default"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "fanout" });
       const resource = resourceModel.createResource(
@@ -136,7 +136,7 @@ describe("CLI layer catalog publish bindings", () => {
       });
       await cloudAccounts.setDefaultCloudAccount("test");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "oneoff" });
       const resource = resourceModel.createResource(

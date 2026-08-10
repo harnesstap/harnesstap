@@ -8,7 +8,7 @@ import {
   createLayer,
   getLayerByName,
   setLayerTags,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addLayerAttachment } from "../../src/services/layer-composition.ts";
 import { applyProfileLayer } from "../../src/services/profile-apply.ts";

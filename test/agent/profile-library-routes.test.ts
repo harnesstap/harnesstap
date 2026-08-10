@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 
 describe("agent library routes", () => {

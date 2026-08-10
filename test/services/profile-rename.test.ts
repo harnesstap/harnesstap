@@ -4,7 +4,7 @@ import {
   createLayer,
   getLayerById,
   getLayerByName,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import {
   createGlobalApplySnapshot,
   getLatestGlobalApplySnapshotForProfile,

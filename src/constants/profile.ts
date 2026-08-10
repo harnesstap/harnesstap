@@ -1,4 +1,4 @@
-import { listLayers } from "../models/layer-model.js";
+import { listLayers } from "../models/plugin-model.js";
 import type { Layer } from "../types.js";
 
 export const PROFILE_LAYER_TAG = "profile";

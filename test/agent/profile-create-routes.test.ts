@@ -7,7 +7,7 @@ import {
   createDefaultAgentRouteDeps,
 } from "../../src/agent/routes.ts";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { isProfileLayer } from "../../src/constants/profile.ts";
 import { writeTextFile } from "../helpers/fs.ts";

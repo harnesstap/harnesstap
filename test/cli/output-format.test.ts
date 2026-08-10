@@ -31,7 +31,7 @@ describe("CLI output format", () => {
       expect(Array.isArray(combined.remote)).toBe(true);
 
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-output.git");
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "dry-run-layer" });
       const resource = resourceModel.createResource(

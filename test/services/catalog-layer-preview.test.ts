@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { listLayers } from "../../src/models/layer-model.js";
+import { listLayers } from "../../src/models/plugin-model.js";
 import { renderCatalogLayerPreviewShow } from "../../src/services/catalog-layer-preview.js";
 import type { CatalogLayer } from "../../src/services/catalog-types.js";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";

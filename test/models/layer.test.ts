@@ -6,7 +6,7 @@ describe("layer model", () => {
   it("creates layers clean and unfrozen by default", async () => {
     const context = await createInitializedTestContext("layer-dirty-defaults");
     try {
-      const { createLayer, getLayerById } = await import("../../src/models/layer-model.ts");
+      const { createLayer, getLayerById } = await import("../../src/models/plugin-model.ts");
       const layer = createLayer({ name: "clean-head", version: "1.0.0" });
       expect(layer.dirty).toBe(false);
       expect(layer.frozen_at).toBeUndefined();
@@ -19,7 +19,7 @@ describe("layer model", () => {
   });
 
   it("isFrozenLayer returns true only when frozen_at is set", async () => {
-    const { isFrozenLayer } = await import("../../src/models/layer-model.ts");
+    const { isFrozenLayer } = await import("../../src/models/plugin-model.ts");
     expect(
       isFrozenLayer({
         id: "1",
@@ -55,7 +55,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-needs");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       const layer = layerModel.createLayer({
         name: "pagerduty",
@@ -73,7 +73,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-list");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       const regular = layerModel.createLayer({
         name: "default",
@@ -100,7 +100,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-version");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       const p1 = layerModel.createLayer({ name: "my-layer" });
       expect(p1.version).toBe("1.0.0");
@@ -123,7 +123,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-selector");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       layerModel.createLayer({ name: "tool", version: "1.0.0" });
       layerModel.createLayer({ name: "tool", version: "1.5.0" });
@@ -148,7 +148,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-parse-selector");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       const idSelector = layerModel.parseLayerSelectorString("01HZXYZ1234567890ABCDEFGHJ");
       expect(idSelector.kind).toBe("id");
@@ -171,7 +171,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-resources");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
 
       const layer = layerModel.createLayer({ name: "bundle" });
@@ -206,7 +206,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-not-found");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.getLayer("non-existent-id")).toBeUndefined();
     } finally {
       await context.cleanup();
@@ -217,7 +217,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-empty");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.listLayers()).toEqual([]);
     } finally {
       await context.cleanup();
@@ -228,7 +228,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-no-resources");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.createLayer({ name: "empty" });
 
       expect(layerModel.getLayerResources(layer.id)).toEqual([]);
@@ -241,7 +241,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-dependencies");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.createLayer({ name: "composite" });
 
       layerModel.addDependencyToLayer(layer.id, "base-layer", "^1.0.0");
@@ -269,7 +269,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-dep-order");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.createLayer({ name: "composite2" });
 
       layerModel.addDependencyToLayer(layer.id, "base", "^1.0.0");
@@ -293,7 +293,7 @@ describe("layer model", () => {
     const context = await createInitializedTestContext("layer-no-deps");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.createLayer({ name: "standalone" });
       expect(layerModel.listLayerDependencies(layer.id)).toEqual([]);
     } finally {

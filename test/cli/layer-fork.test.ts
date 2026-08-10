@@ -7,7 +7,7 @@ import {
   createLayer,
   getLayerByName,
   getLayerResources,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addDependency, listDependencies } from "../../src/services/plugin-dependency.ts";
 import { getLayerOrigin, setLayerOrigin } from "../../src/services/layer-origin.ts";

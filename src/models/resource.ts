@@ -506,8 +506,8 @@ export function updateResource(
   return getResource(resource.id);
 }
 
-/** Rewrite type=layer resources that point at a renamed layer. */
-export function renameLayerTypedResources(
+/** Rewrite type=plugin resources that point at a renamed plugin. */
+export function renamePluginTypedResources(
   oldName: string,
   newName: string,
 ): number {
@@ -532,6 +532,9 @@ export function renameLayerTypedResources(
   }
   return updated;
 }
+
+/** @deprecated Use renamePluginTypedResources */
+export const renameLayerTypedResources = renamePluginTypedResources;
 
 export function listResourcesByOriginRef(
   originRef: string,

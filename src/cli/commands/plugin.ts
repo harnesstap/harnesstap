@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { getHarnesstapDir } from "../../db/connection.js";
-import { listLayers } from "../../models/layer-model.js";
+import { listLayers } from "../../models/plugin-model.js";
 import { CliUsageError } from "../../services/cli-errors.js";
 import {
   type CatalogPlugin,

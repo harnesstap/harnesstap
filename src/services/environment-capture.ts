@@ -1,4 +1,4 @@
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolveLayerSelector } from "../models/plugin-model.js";
 import {
   addSecretRefToEnvironment,
   createEnvironment,

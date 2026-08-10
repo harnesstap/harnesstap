@@ -7,7 +7,7 @@ import {
   unregisterPublishCatalog,
   type RegisteredCatalog,
 } from "../config/catalog.js";
-import { getLayer, listLayers } from "../models/layer-model.js";
+import { getLayer, listLayers } from "../models/plugin-model.js";
 import { isProfileLayer } from "../constants/profile.js";
 import {
   assertResolvablePublishTargets,

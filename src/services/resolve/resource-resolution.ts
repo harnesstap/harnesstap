@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getLayerResources } from "../../models/layer-model.js";
+import { getLayerResources } from "../../models/plugin-model.js";
 import { resourceClass } from "../../platforms/registry.js";
 import { MATERIAL_RESOURCE_TYPES } from "../../types.js";
 import type {

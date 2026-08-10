@@ -23,7 +23,7 @@ describe("exporter services", () => {
     const context = await createInitializedTestContext("export-bundle");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -52,7 +52,7 @@ describe("exporter services", () => {
     const context = await createInitializedTestContext("export-dirty-layer");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const versioning = await import("../../src/services/layer-versioning.ts");
       const exporter = await loadLayerTransportServices();
@@ -76,7 +76,7 @@ describe("exporter services", () => {
     const exportContext = await createInitializedTestContext("export-import-export");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -115,7 +115,7 @@ describe("exporter services", () => {
     const exportContext = await createInitializedTestContext("export-toml-comment-block");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "commented-export" });
@@ -279,7 +279,7 @@ content = "# Shared"
     const context = await createInitializedTestContext("export-bundle-plugins");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -314,7 +314,7 @@ content = "# Shared"
       );
       writeTextFile(join(demoRoot, "README.md"), "hello");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -363,7 +363,7 @@ content = "# Shared"
         }),
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -396,7 +396,7 @@ content = "# Shared"
         embeddedTargetDir: unpack,
       });
       const pluginModelFresh = await import("../../src/services/layer-composition.ts");
-      const layerModelFresh = await import("../../src/models/layer-model.ts");
+      const layerModelFresh = await import("../../src/models/plugin-model.ts");
 
       const restored = layerModelFresh.getLayer(imported.layer.name);
       if (!restored) throw new Error("expected imported layer");
@@ -434,7 +434,7 @@ content = "# Shared"
     const exportContext = await createInitializedTestContext("export-version-rt");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "versioned", version: "2.3.1" });
@@ -462,7 +462,7 @@ content = "# Shared"
     const exportContext = await createInitializedTestContext("export-deps-rt");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const exporter = await loadLayerTransportServices();
 
       const layer = layerModel.createLayer({ name: "with-deps" });
@@ -499,7 +499,7 @@ content = "# Shared"
     const exportContext = await createInitializedTestContext("export-multi");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -561,7 +561,7 @@ content = "# Shared"
       );
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadLayerTransportServices();
@@ -601,7 +601,7 @@ content = "# Shared"
 
       try {
         const importedExporter = await loadLayerTransportServices();
-        const importedLayerModel = await import("../../src/models/layer-model.ts");
+        const importedLayerModel = await import("../../src/models/plugin-model.ts");
         const importedPluginModel = await import("../../src/services/layer-composition.ts");
 
         const imported = importedExporter.importFromFile(bundlePath, {
@@ -646,7 +646,7 @@ content = "# Shared"
       );
       writeTextFile(join(pluginRoot, "README.md"), "shared plugin readme");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -691,7 +691,7 @@ content = "# Shared"
 
       try {
         const importedExporter = await loadLayerTransportServices();
-        const importedLayerModel = await import("../../src/models/layer-model.ts");
+        const importedLayerModel = await import("../../src/models/plugin-model.ts");
         const importedPluginModel = await import("../../src/services/layer-composition.ts");
 
         importedExporter.importFromFile(bundlePath, {
@@ -727,7 +727,7 @@ content = "# Shared"
         JSON.stringify({ version: "1.0.0", name: "shared-plugin" }),
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const exporter = await loadLayerTransportServices();
 
@@ -758,7 +758,7 @@ content = "# Shared"
       const importContext = await createInitializedTestContext("import-shared-ref-different-constraints");
       try {
         const importedExporter = await loadLayerTransportServices();
-        const importedLayerModel = await import("../../src/models/layer-model.ts");
+        const importedLayerModel = await import("../../src/models/plugin-model.ts");
         const importedPluginModel = await import("../../src/services/layer-composition.ts");
 
         importedExporter.importFromFile(bundlePath, {

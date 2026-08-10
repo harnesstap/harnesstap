@@ -137,7 +137,7 @@ describe("CLI planned scenarios", () => {
 
       expect(result.stdout).toContain("cli-inferred");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.getLayer("cli-inferred");
       if (!layer) throw new Error("Expected cli-inferred layer");
 
@@ -167,7 +167,7 @@ describe("CLI planned scenarios", () => {
       );
       mkdirSync(join(context.projectDir, ".cursor"), { recursive: true });
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const layer = layerModel.createLayer({ name: "sync-layer" });
@@ -268,7 +268,7 @@ describe("CLI planned scenarios", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/apply-wizard.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const { makeResourceInput } = await import("../helpers/resources.ts");
       const layer = layerModel.createLayer({ name: "apply-layer" });

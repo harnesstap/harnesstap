@@ -6,7 +6,7 @@ describe("plugin model", () => {
     const context = await createInitializedTestContext("plugin-layer-plugins");
 
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pinModel = await import("../../src/services/layer-composition.ts");
 
       const layer = layerModel.createLayer({ name: "with-plugins-row" });

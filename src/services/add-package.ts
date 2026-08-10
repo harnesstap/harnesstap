@@ -13,7 +13,7 @@ import {
 import {
   createLayer,
   getLayer,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { addLayerAttachment } from "./layer-composition.js";
 import {
   resolveSelectedSkills,

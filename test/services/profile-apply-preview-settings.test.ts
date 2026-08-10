@@ -5,7 +5,7 @@ import {
   addResourceToLayer,
   createLayer,
   setLayerTags,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";

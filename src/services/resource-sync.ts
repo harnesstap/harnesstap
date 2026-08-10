@@ -9,7 +9,7 @@ import {
   upsertResource,
   type ImportConflictPolicy,
 } from "../models/resource.js";
-import { getLayerByName } from "../models/layer-model.js";
+import { getLayerByName } from "../models/plugin-model.js";
 import type { PluginDependencyMetadata, PluginPinMetadata, Resource } from "../types.js";
 import {
   readPluginVersionFromInstallRoot,

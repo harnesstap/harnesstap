@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../../helpers/db.ts";
 import type { TestContext } from "../../helpers/db.ts";
-import { addResourceToLayer, createLayer } from "../../../src/models/layer-model.ts";
+import { addResourceToLayer, createLayer } from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import { resolveResources } from "../../../src/services/resolve/resource-resolution.ts";
 import { SingletonConflictError } from "../../../src/services/resolve/types.ts";

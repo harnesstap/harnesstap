@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/plugin-model.ts";
 import { addDependency } from "../../src/services/plugin-dependency.ts";
 import { LayerProvenanceError } from "../../src/services/layer-origin.ts";
 import { syncPluginResource } from "../../src/services/resource-sync.ts";

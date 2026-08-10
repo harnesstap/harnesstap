@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, mergeLayersById } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, mergeLayersById } from "../../src/models/plugin-model.ts";
 import { attachPluginPinToLayer } from "../../src/services/layer-composition.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { createResource } from "../../src/models/resource.ts";

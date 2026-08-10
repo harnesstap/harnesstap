@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { registerPublishCatalog } from "../../src/config/catalog.js";
-import { createLayer } from "../../src/models/layer-model.js";
+import { createLayer } from "../../src/models/plugin-model.js";
 import {
   clearLayerPublishTargets,
   getLayerPublishBindingMode,

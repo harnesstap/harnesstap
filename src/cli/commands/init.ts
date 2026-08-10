@@ -17,7 +17,7 @@ import {
   createLayer,
   getLayerResources,
   listLayers,
-} from "../../models/layer-model.js";
+} from "../../models/plugin-model.js";
 import { getAllPlatforms } from "../../platforms/registry.js";
 import { addSkillPackage } from "../../services/add-package.js";
 import { setActiveProfileName } from "../../services/active-profile.js";

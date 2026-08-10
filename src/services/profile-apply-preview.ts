@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolveLayerSelector } from "../models/plugin-model.js";
 import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";

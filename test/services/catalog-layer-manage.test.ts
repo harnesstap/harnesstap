@@ -6,7 +6,7 @@ import {
 } from "../../src/services/catalog-layer-manage.js";
 import { getDb } from "../../src/db/connection.ts";
 import { initializeSchema } from "../../src/db/schema.ts";
-import { createLayer } from "../../src/models/layer-model.js";
+import { createLayer } from "../../src/models/plugin-model.js";
 import { createTestContext } from "../helpers/db.ts";
 
 const catalogLayer: CatalogLayer = {

@@ -62,7 +62,7 @@ describe("CLI environment revamp", () => {
         "utf-8",
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const plugin = layerModel.createLayer({
         name: "revamp-capture-plugin",
         needs: ["CAPTURE_KEY", "MISSING_KEY"],
@@ -109,7 +109,7 @@ describe("CLI environment revamp", () => {
         "utf-8",
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const plugin = layerModel.createLayer({
         name: "revamp-refresh-plugin",
         needs: ["CAPTURE_KEY"],
@@ -170,7 +170,7 @@ describe("CLI environment revamp", () => {
       process.env.BIND_REGION = "eu";
       process.env.BIND_TOKEN = "secret-token";
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const plugin = layerModel.createLayer({
         name: "bind-plugin",
         needs: ["BIND_REGION", "BIND_TOKEN"],
@@ -216,7 +216,7 @@ describe("CLI environment revamp", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const plugin = layerModel.createLayer({ name: "app-layer" });
       const configuredLayer = layerModel.createLayerFromSources({
         name: plugin.name,
@@ -240,7 +240,7 @@ describe("CLI environment revamp", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const plugin = layerModel.createLayer({
         name: "gap-plugin",
         needs: ["MISSING_VAR"],
@@ -298,7 +298,7 @@ describe("CLI environment revamp", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const plugin = layerModel.createLayer({ name: "ref-layer" });
       const configuredLayer = layerModel.createLayerFromSources({
         name: plugin.name,

@@ -5,7 +5,7 @@ import {
   syncClaudeLayerPluginsAfterAdd,
   addDependencyToLayer,
   getLayer,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { attachPluginPinToLayer } from "./layer-composition.js";
 import { isCompositionResourceType } from "./layer-composition.js";
 import {

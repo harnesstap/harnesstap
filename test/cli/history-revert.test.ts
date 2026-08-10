@@ -13,7 +13,7 @@ describe("CLI history and revert", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-history.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
@@ -81,7 +81,7 @@ describe("CLI history and revert", () => {
     try {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-history.git");
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const projectModel = await import("../../src/models/project.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");

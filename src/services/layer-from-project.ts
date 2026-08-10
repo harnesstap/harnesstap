@@ -4,7 +4,7 @@ import {
   getLayer,
   getLayerResources,
   deleteLayer,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import {
   scanProjectWithPluginSource,
   persistMergedProjectScan,

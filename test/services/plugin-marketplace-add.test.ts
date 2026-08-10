@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createTestContext } from "../helpers/db.ts";
-import { createLayer, getLayerById } from "../../src/models/layer-model.ts";
+import { createLayer, getLayerById } from "../../src/models/plugin-model.ts";
 import { addMarketplace } from "../../src/services/marketplace-registry.ts";
 import {
   addPluginFromMarketplace,

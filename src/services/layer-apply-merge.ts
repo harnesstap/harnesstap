@@ -1,4 +1,4 @@
-import { getLayerById, mergeLayersById, type MergedLayerContent } from "../models/layer-model.js";
+import { getLayerById, mergeLayersById, type MergedLayerContent } from "../models/plugin-model.js";
 import { getEnvironmentResources } from "../models/environment.js";
 import type { ClaudeLayerConfig, Resource } from "../types.js";
 

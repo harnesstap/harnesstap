@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, mock } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { applyProfileLayer } from "../../src/services/profile-apply.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";

@@ -1,4 +1,4 @@
-import { getLayerByName } from "../../models/layer-model.js";
+import { getLayerByName } from "../../models/plugin-model.js";
 import type { DiscoveredSkill } from "../skill-discovery.js";
 import {
   DEFAULT_EXCLUDED_SKILL_CATEGORIES,

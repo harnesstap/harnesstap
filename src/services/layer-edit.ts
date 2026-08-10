@@ -3,7 +3,7 @@ import {
   listLayers,
   setLayerResourceOrder,
   touchLayerUpdatedAt,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { listResources } from "../models/resource.js";
 import type { Layer, Resource } from "../types.js";
 import { RESOURCE_TYPES } from "../types.js";

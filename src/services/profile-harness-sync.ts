@@ -4,7 +4,7 @@ import {
   removeResourceFromLayer,
   resolveLayerSelector,
   touchLayerUpdatedAt,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { getHarnessPreference } from "../models/harness.js";
 import { isProfileLayer } from "../constants/profile.js";
 import {

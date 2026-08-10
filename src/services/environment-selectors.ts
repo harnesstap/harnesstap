@@ -1,4 +1,4 @@
-import { getLayerByName, getLayerById, resolveLayerSelector } from "../models/layer-model.js";
+import { getLayerByName, getLayerById, resolveLayerSelector } from "../models/plugin-model.js";
 import { getEnvironment, resolveEnvironmentSelector } from "../models/environment.js";
 import type { Layer, Environment } from "../types.js";
 

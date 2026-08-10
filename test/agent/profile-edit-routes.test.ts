@@ -6,7 +6,7 @@ import { startAgentServer } from "../../src/agent/serve.ts";
 import {
   createLayer,
   getLayerResources,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 
 describe("agent profile edit routes", () => {

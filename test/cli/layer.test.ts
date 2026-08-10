@@ -11,7 +11,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-version");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "versioned-layer", "--version", "2.3.0"]);
 
@@ -49,7 +49,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-list-show-id");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "team-stack", "--version", "1.0.0"]);
       const layer = layerModel.getLayer("team-stack");
@@ -72,7 +72,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-show-version");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
       const layer = layerModel.getLayer("team-stack");
@@ -133,7 +133,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-dependency");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "team-stack", "--version", "1.2.0"]);
 
@@ -264,7 +264,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-delete-version-selector");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "tool", "--version", "1.0.0"]);
       await runCli(["layer", "create", "tool", "--version", "2.0.0"]);
@@ -283,7 +283,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-delete-latest-version");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "tool", "--version", "1.0.0"]);
       await runCli(["layer", "create", "tool", "--version", "2.0.0"]);
@@ -303,7 +303,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-delete-multi-select");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       await runCli(["layer", "create", "keep-layer"]);
       await runCli(["layer", "create", "delete-a", "--version", "1.0.0"]);
@@ -331,7 +331,7 @@ describe("CLI layer", () => {
     try {
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const _resource = resourceModel.createResource(
         makeResourceInput({
@@ -506,7 +506,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-doctor-ui");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "healthy-layer" });
 
       const result = await runCli(["layer", "doctor", "healthy-layer"]);
@@ -527,7 +527,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-doctor-plugin-metadata");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "bad-plugin-meta" });
       // Bypass addDependency validation so doctor can see invalid stored metadata.
@@ -594,7 +594,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-doctor-prompt");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "healthy-layer" });
 
       const result = await runCli(["layer", "doctor"], {
@@ -614,7 +614,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-doctor-no-prompt");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "healthy-layer" });
 
       const result = await runCli(["layer", "doctor"], {
@@ -632,7 +632,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-doctor-check-filter");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "doctor-filter" });
       const duplicateResourceA = resourceModel.createResource(
@@ -705,7 +705,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-resource-selector");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "team" });
       const resource = resourceModel.createResource(
@@ -764,7 +764,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-remove-ambiguous-resource");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "team" });
       const first = resourceModel.createResource(
@@ -820,7 +820,7 @@ describe("CLI layer", () => {
     const context = await createTestContext("cli-layer-edit-missing-layer");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "team" });
       const resource = resourceModel.createResource(

@@ -6,7 +6,7 @@ import {
   deleteLayer,
   getLayerByPublishedIdentity,
   getLayerResources,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import type { ClaudeLayerConfig, Layer } from "../types.js";
 import { resolveComposition } from "./resolve/index.js";
 

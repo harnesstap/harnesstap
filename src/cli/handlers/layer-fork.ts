@@ -6,7 +6,7 @@ import {
   getLayerByName,
   getLayerResources,
   resolveLayerSelector,
-} from "../../models/layer-model.js";
+} from "../../models/plugin-model.js";
 import { getLayerOrigin } from "../../services/layer-origin.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";

@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { getHarnesstapDir } from "../db/connection.js";
 import { getHarnessPreference, setHarnessPreference } from "../models/harness.js";
-import { listLayers } from "../models/layer-model.js";
+import { listLayers } from "../models/plugin-model.js";
 import { exportToFile } from "./layer-export.js";
 import { importFromFile } from "./layer-import.js";
 import { loadSettings } from "../config/settings.js";

@@ -4,7 +4,7 @@ import {
   removeResourceFromLayer,
   resolveLayerSelector,
   touchLayerUpdatedAt,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { resolveResource } from "../models/resource.js";
 import { collectProfileLayerIds } from "./profile-apply.js";
 import { markLayerDirty } from "./layer-versioning.js";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   addResourceToLayer,
   createLayer,
-} from "../../../src/models/layer-model.ts";
+} from "../../../src/models/plugin-model.ts";
 import { createResource } from "../../../src/models/resource.ts";
 import {
   completeLayerEditAddAttachment,

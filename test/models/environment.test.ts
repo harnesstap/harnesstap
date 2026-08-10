@@ -18,7 +18,7 @@ import {
 import {
   createLayerFromSources,
   setLayerDefaultEnvironment,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 
 describe("environment model", () => {
   it("stores non-secret env vars on environment", async () => {

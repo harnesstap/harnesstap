@@ -5,7 +5,7 @@ import type { GlobalApplySnapshot, GlobalApplySnapshotInstall } from "../types.j
 interface GlobalApplySnapshotRow {
   id: string;
   profile_name: string;
-  layer_ids: string;
+  plugin_ids: string;
   resolved_set: string;
   created_at: string;
 }
@@ -21,7 +21,7 @@ function rowToGlobalApplySnapshot(row: GlobalApplySnapshotRow): GlobalApplySnaps
   return {
     id: row.id,
     profile_name: row.profile_name,
-    layer_ids: JSON.parse(row.layer_ids) as string[],
+    plugin_ids: JSON.parse(row.plugin_ids) as string[],
     resolved_set: JSON.parse(row.resolved_set ?? "[]") as Array<{
       name: string;
       version: string;
@@ -41,24 +41,24 @@ function rowToGlobalApplySnapshotInstall(
 
 export function createGlobalApplySnapshot(input: {
   profile_name: string;
-  layer_ids: string[];
+  plugin_ids: string[];
   resolved_set?: Array<{ name: string; version: string }>;
 }): GlobalApplySnapshot {
   const db = getDb();
   const snapshot: GlobalApplySnapshot = {
     id: ulid(),
     profile_name: input.profile_name,
-    layer_ids: input.layer_ids,
+    plugin_ids: input.plugin_ids,
     resolved_set: input.resolved_set ?? [],
     created_at: new Date().toISOString(),
   };
   db.prepare(
-    `INSERT INTO global_apply_snapshots (id, profile_name, layer_ids, resolved_set, created_at)
+    `INSERT INTO global_apply_snapshots (id, profile_name, plugin_ids, resolved_set, created_at)
      VALUES (?, ?, ?, ?, ?)`,
   ).run(
     snapshot.id,
     snapshot.profile_name,
-    JSON.stringify(snapshot.layer_ids),
+    JSON.stringify(snapshot.plugin_ids),
     JSON.stringify(snapshot.resolved_set),
     snapshot.created_at,
   );

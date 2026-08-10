@@ -10,7 +10,7 @@ import {
 import { detectGlobalProfileStatus } from "../../src/services/global-profile-drift.ts";
 import { applyProfileLayer } from "../../src/services/profile-apply.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { scanHomeDefaults } from "../../src/services/scanner.ts";
 import { detectNotStagedProfileResources } from "../../src/services/profile-untracked-resources.ts";

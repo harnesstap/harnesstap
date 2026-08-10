@@ -1,5 +1,5 @@
 import { ulid } from "ulid";
-import { deleteLayer } from "../models/layer-model.js";
+import { deleteLayer } from "../models/plugin-model.js";
 import type { CatalogLayer } from "./catalog-types.js";
 import { downloadCatalogBundle } from "./catalog-client.js";
 import { importFromFile } from "./layer-import.js";

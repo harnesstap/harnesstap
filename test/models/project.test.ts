@@ -34,7 +34,7 @@ describe("project model", () => {
 
     try {
       const projectModel = await import("../../src/models/project.ts");
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       const project = projectModel.createProject({
         git_origin: "git@github.com:acme/repo.git",
@@ -42,7 +42,7 @@ describe("project model", () => {
         local_path: "/tmp/repo",
       });
       const layer = layerModel.createLayer({ name: "starter" });
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const configuredLayerModel = await import("../../src/models/plugin-model.ts");
       const configuredLayer = configuredLayerModel.createLayerFromSources({
         name: "starter-stack",
         sourceLayerIds: [layer.id],

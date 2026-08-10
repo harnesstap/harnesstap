@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
-import { getLayerById } from "../models/layer-model.js";
+import { getLayerById } from "../models/plugin-model.js";
 import {
   getEnvironmentByName,
   getEnvironmentResources,

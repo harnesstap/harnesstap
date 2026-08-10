@@ -2,7 +2,7 @@ import {
   addResourceToLayer,
   createLayer,
   getLayerByName,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { PROFILE_LAYER_TAG, isEmptyBuiltinProfile } from "../constants/profile.js";
 import { listResources } from "../models/resource.js";
 import type { Layer, Resource, ResourceCreateInput } from "../types.js";

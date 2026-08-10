@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
-import { createLayer, updateLayerPublishedIdentity } from "../../src/models/layer-model.ts";
+import { createLayer, updateLayerPublishedIdentity } from "../../src/models/plugin-model.ts";
 import {
   assertInstallLayerNameAvailable,
   findInstallNameConflict,

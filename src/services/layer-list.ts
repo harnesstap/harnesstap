@@ -4,7 +4,7 @@ import {
   loadRegisteredCatalogs,
   resolveCatalogScope,
 } from "../config/catalog.js";
-import { listLayers } from "../models/layer-model.js";
+import { listLayers } from "../models/plugin-model.js";
 import { formatLayerVersionLabel } from "./layer-versioning.js";
 import type { Layer } from "../types.js";
 import { parseOutputFormat, printJson } from "../utils/output-format.js";

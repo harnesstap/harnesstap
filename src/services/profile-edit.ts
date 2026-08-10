@@ -12,7 +12,7 @@ import {
   resolveLayerSelector,
   setLayerTags,
   updateLayerDescription,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { getResource } from "../models/resource.js";
 import type { Layer, Resource } from "../types.js";
 import { getActiveProfileName } from "./active-profile.js";

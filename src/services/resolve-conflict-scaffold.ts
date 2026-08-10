@@ -3,7 +3,7 @@ import {
   createLayer,
   getLayerByName,
   resolveLayerSelector,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { ensureLayerResource } from "./layer-composition.js";
 import {
   setLayerResourceOverride,

@@ -5,7 +5,7 @@ import {
   CLEARED_GLOBAL_PROFILE_LAYER_ID,
   CLEARED_GLOBAL_PROFILE_NAME,
 } from "../../src/constants/profile.ts";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setHarnessPreference } from "../../src/models/harness.js";
 import {

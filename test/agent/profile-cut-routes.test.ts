@@ -7,7 +7,7 @@ import {
   layerVersionErrorResponse,
 } from "../../src/agent/profile-cut-handlers.ts";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/plugin-model.ts";
 import { markLayerDirty } from "../../src/services/layer-versioning.ts";
 
 describe("agent profile cut routes", () => {

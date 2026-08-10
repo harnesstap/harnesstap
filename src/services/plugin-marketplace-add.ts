@@ -4,7 +4,7 @@ import {
   ensureLayerClaudeMarketplace,
   resolveLayerSelector,
   syncClaudeLayerPluginsAfterAdd,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import type { ClaudeMarketplaceSource } from "../types.js";
 import {
   attachPluginPinToLayer,

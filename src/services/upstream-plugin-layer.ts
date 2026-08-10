@@ -3,7 +3,7 @@ import {
   createLayer,
   getLayerByName,
   getLayerResources,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { listResourcesByOriginRef } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import { getLayerOrigin, setLayerOrigin } from "./layer-origin.js";

@@ -1,4 +1,4 @@
-import { getLayer, getLayerResources, listLayerDependencies } from "../models/layer-model.js";
+import { getLayer, getLayerResources, listLayerDependencies } from "../models/plugin-model.js";
 import { listLayerPlugins } from "../services/layer-composition.js";
 import type { Resource } from "../types.js";
 import { inspectLayerExportFile } from "./layer-export.js";

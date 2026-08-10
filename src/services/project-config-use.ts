@@ -5,7 +5,7 @@ import {
   isEmptyBuiltinProfile,
   isProfileLayer,
 } from "../constants/profile.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolveLayerSelector } from "../models/plugin-model.js";
 import { LAYER_SCHEMA, LAYER_SCHEMA_VERSION } from "../types.js";
 import { useEnvironmentCommand } from "./environment-commands.js";
 import {

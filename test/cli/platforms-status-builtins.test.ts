@@ -82,7 +82,7 @@ describe("CLI platforms, status, and catalog baselines", () => {
       initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-status.git");
       await runCli(["init"]);
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "tracked" });
       const resource = resourceModel.createResource(

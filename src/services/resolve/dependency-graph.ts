@@ -5,7 +5,7 @@ import {
   getLayerByName,
   getLayerByPublishedIdentity,
   listLayerVersions,
-} from "../../models/layer-model.js";
+} from "../../models/plugin-model.js";
 import type { DependencySourceKind, Layer } from "../../types.js";
 import { listDependencies } from "../plugin-dependency.js";
 import { getLayerOverrides } from "../layer-overrides.js";

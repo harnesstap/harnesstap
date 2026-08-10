@@ -3,7 +3,7 @@ import {
   getLayer,
   listLayerDependencies,
   parseLayerSelectorString,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { satisfiesConstraint } from "./plugin-constraints.js";
 
 export interface LayerResolutionResult {

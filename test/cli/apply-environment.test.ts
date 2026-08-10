@@ -5,9 +5,9 @@ import { createTestContext } from "../helpers/db.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { createLayerFromSources } from "../../src/models/plugin-model.ts";
 
 describe("CLI apply with environment cascade", () => {
   it("materializes the global active environment when the layer has no default", async () => {

@@ -59,7 +59,7 @@ export interface EnvironmentLookupResult {
 }
 
 export interface EnvironmentReferenceSummary {
-  layers: Array<{ id: string; name: string }>;
+  plugins: Array<{ id: string; name: string }>;
 }
 
 function findEnvironmentByIdPrefix(prefix: string): Environment[] {
@@ -333,22 +333,22 @@ export function listEnvironmentReferences(
   environmentId: string,
 ): EnvironmentReferenceSummary {
   const db = getDb();
-  const configuredLayerRows = db
+  const configuredPluginRows = db
     .prepare(
       `SELECT id, name
-       FROM layers
+       FROM plugins
        WHERE default_environment_id = ?
        ORDER BY name`,
     )
     .all(environmentId) as EnvironmentReferenceRow[];
   return {
-    layers: configuredLayerRows,
+    plugins: configuredPluginRows,
   };
 }
 
 export function hasEnvironmentReferences(environmentId: string): boolean {
   const refs = listEnvironmentReferences(environmentId);
-  return refs.layers.length > 0;
+  return refs.plugins.length > 0;
 }
 
 export function addResourceToEnvironment(

@@ -1,4 +1,4 @@
-import { listLayers } from "../../models/layer-model.js";
+import { listLayers } from "../../models/plugin-model.js";
 import { createLocalLayerPickAdapter } from "./adapters/layer-table-browser.js";
 import { createTableBrowserPrompt } from "./prompts/create-table-browser-prompt.js";
 import { promptForValue } from "./shared.js";

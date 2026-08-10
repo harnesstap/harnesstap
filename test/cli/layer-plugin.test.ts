@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { listLayerPlugins } from "../../src/services/layer-composition.ts";
-import { getLayer } from "../../src/models/layer-model.ts";
+import { getLayer } from "../../src/models/plugin-model.ts";
 
 describe("CLI layer plugin pins", () => {
   it("adds and shows plugin pin on layer through layer edit --type plugin", async () => {

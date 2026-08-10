@@ -5,7 +5,7 @@ import {
   type ConflictResolution,
   type MaterializationConflict,
 } from "./applier.js";
-import { getLayerById, mergeLayersById } from "../models/layer-model.js";
+import { getLayerById, mergeLayersById } from "../models/plugin-model.js";
 import {
   resolveApplyLayerSource,
   type ResolveApplyLayerSourceOptions,

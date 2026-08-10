@@ -6,7 +6,7 @@ import { startAgentServer } from "../../src/agent/serve.ts";
 import {
   addResourceToLayer,
   createLayer,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import {
   createEnvironment,
   upsertEnvironmentEnvVar,

@@ -127,7 +127,7 @@ describe("project status payload", () => {
         `${JSON.stringify({ name: "default" }, null, 2)}\n`,
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const profileLayer = layerModel.createLayer({
         name: "default",
         tags: ["profile"],

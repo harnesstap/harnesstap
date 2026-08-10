@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createLayer, createLayerFromSources } from "../../src/models/layer-model.js";
+import { createLayer, createLayerFromSources } from "../../src/models/plugin-model.js";
 import { createProject, applyLayerToProject } from "../../src/models/project.js";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { inspectProjectLayerScope } from "../../src/services/wizards/environment-create-project-scope.ts";

@@ -1,4 +1,4 @@
-import { getLayerResources, getLayer, resolveLayerSelector } from "../models/layer-model.js";
+import { getLayerResources, getLayer, resolveLayerSelector } from "../models/plugin-model.js";
 import {
   getEnvironmentResources,
   getEnvironmentSecretRefs,

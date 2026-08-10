@@ -1,4 +1,4 @@
-import { getLayer, listLayers } from "../models/layer-model.js";
+import { getLayer, listLayers } from "../models/plugin-model.js";
 import type { Layer } from "../types.js";
 import { ui } from "../ui/index.js";
 import { formatCatalogSelectionLabel } from "../ui/catalog-list-render.js";

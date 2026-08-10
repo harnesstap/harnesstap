@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createLayer, addResourceToLayer } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { createLayerFromSources } from "../../src/models/plugin-model.ts";
 import { mergeLayersForApply } from "../../src/services/layer-apply-merge.ts";
 
 describe("layer apply merge", () => {

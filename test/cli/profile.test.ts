@@ -10,7 +10,7 @@ import {
   addResourceToLayer,
   createLayer,
   setLayerTags,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
 
 describe("CLI profile", () => {
@@ -119,7 +119,7 @@ describe("CLI profile", () => {
       expect(result.stdout).toContain("Demoted profile");
       expect(result.stdout).toContain("layer delete dbt-expert");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.getLayer("dbt-expert")).toBeDefined();
       expect(layerModel.getLayer("dbt-expert")?.tags).not.toContain("profile");
     } finally {
@@ -144,7 +144,7 @@ describe("CLI profile", () => {
       expect(result.stdout).toContain("Demoted profile");
       expect(result.stdout).toContain("Deleted layer");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.getLayer("dbt-expert")).toBeUndefined();
     } finally {
       await context.cleanup();

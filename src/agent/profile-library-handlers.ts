@@ -1,4 +1,4 @@
-import { listLayers } from "../models/layer-model.js";
+import { listLayers } from "../models/plugin-model.js";
 import { listResources, resolveResource } from "../models/resource.js";
 import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";

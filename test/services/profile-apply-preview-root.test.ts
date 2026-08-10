@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/layer-model.ts";
+import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { applyProfileLayer } from "../../src/services/profile-apply.ts";
 import { previewProfileApply } from "../../src/services/profile-apply-preview.ts";

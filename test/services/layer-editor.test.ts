@@ -17,7 +17,7 @@ describe("layer editor service", () => {
     const context = await createTestContext("layer-editor-path");
     try {
       initializeSchema(getDb());
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const layer = layerModel.createLayer({ name: "team-stack", version: "1.2.0" });
 
       expect(resolveLayerDefinitionPath(layer)).toBe(
@@ -32,7 +32,7 @@ describe("layer editor service", () => {
     const context = await createTestContext("layer-editor-export");
     try {
       initializeSchema(getDb());
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const layer = layerModel.createLayer({ name: "team-stack", version: "1.2.0" });
       const resource = resourceModel.createResource(
@@ -62,7 +62,7 @@ describe("CLI layer editor", () => {
     const context = await createTestContext("cli-layer-editor-json");
     try {
       await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       layerModel.createLayer({ name: "team-stack", version: "1.2.0" });
 
       const result = await runCli([

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
-import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/layer-model.ts";
+import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createSnapshot } from "../../src/models/snapshot.ts";
 import { upsertProject } from "../../src/models/project.ts";

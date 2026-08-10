@@ -5,7 +5,7 @@ import { createInitializedTestContext } from "../helpers/db.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
 import { resolveApplyLayerSource } from "../../src/services/layer-apply-source.ts";
 import { LayerAmbiguityError, LayerResolveError } from "../../src/services/layer-bare-name-resolve.ts";
-import { createLayer, updateLayerPublishedIdentity } from "../../src/models/layer-model.ts";
+import { createLayer, updateLayerPublishedIdentity } from "../../src/models/plugin-model.ts";
 import { connectCatalogOrg, saveCatalogSettings } from "../../src/config/catalog.ts";
 
 describe("resolveApplyLayerSource", () => {

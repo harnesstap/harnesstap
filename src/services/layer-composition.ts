@@ -3,7 +3,7 @@ import {
   removeResourceFromLayer,
   syncClaudeLayerPluginsAfterAdd,
   syncClaudeLayerPluginsAfterRemove,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { findResourceByKey, resolveResource } from "../models/resource.js";
 import { markLayerDirty } from "./layer-versioning.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";

@@ -3,7 +3,7 @@ import {
   getLayerById,
   getLayerResources,
   resolveLayerSelector,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { getEnvironmentResources } from "../models/environment.js";
 import type { Resource } from "../types.js";
 import { mergeLayersForApply } from "./layer-apply-merge.js";

@@ -7,7 +7,7 @@ import {
   getLayerResources,
   listLayerDependencies,
   resolveLayerSelector,
-} from "../../models/layer-model.js";
+} from "../../models/plugin-model.js";
 import { listAttachedPluginPins } from "../../services/layer-composition.js";
 import { renderLayerShow } from "../../services/layer-show-render.js";
 import { ui } from "../../ui/index.js";

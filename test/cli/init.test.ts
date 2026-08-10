@@ -10,7 +10,7 @@ describe("CLI init", () => {
 
     try {
       const result = await runCli(["init"]);
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       expect(result.stdout).toContain("HarnessTap initialized");
       expect(result.stdout).toContain("Database");
@@ -92,7 +92,7 @@ describe("CLI init", () => {
       expect(layerShow.stdout).toContain("instruction");
       expect(layerShow.stdout).not.toContain("No resources in this layer.");
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const defaultLayer = layerModel.listLayers().find(
         (layer) => layer.name === "default",
       );

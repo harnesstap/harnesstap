@@ -1,4 +1,4 @@
-import { getLayer, getLayerResources } from "../models/layer-model.js";
+import { getLayer, getLayerResources } from "../models/plugin-model.js";
 import { listLayerPlugins } from "../services/layer-composition.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";

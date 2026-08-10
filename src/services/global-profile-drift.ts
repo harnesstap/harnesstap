@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEmptyBuiltinProfile, isProfileLayer } from "../constants/profile.js";
 import { getLatestGlobalApplySnapshotForProfile } from "../models/global-apply-snapshot.js";
-import { resolveLayerSelector } from "../models/layer-model.js";
+import { resolveLayerSelector } from "../models/plugin-model.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
 import {

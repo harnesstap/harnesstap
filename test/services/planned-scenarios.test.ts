@@ -17,7 +17,7 @@ describe("planned scenarios services", () => {
         "utf-8",
       );
 
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const snapshotModel = await import("../../src/models/snapshot.ts");
       const projectModel = await import("../../src/models/project.ts");
@@ -80,7 +80,7 @@ describe("planned scenarios services", () => {
   it("diffs two layers", async () => {
     const context = await createInitializedTestContext("diff");
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const { diffLayers } = await import("../../src/services/layer-diff.ts");
 
@@ -108,7 +108,7 @@ describe("planned scenarios services", () => {
   it("runs doctor and reports empty layers as warnings only", async () => {
     const context = await createInitializedTestContext("doctor");
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const { runLayerDoctor } = await import(
         "../../src/services/layer-doctor.ts"
       );
@@ -129,7 +129,7 @@ describe("planned scenarios services", () => {
   it("runs plugin-metadata checks against invalid plugin refs and versions", async () => {
     const context = await createInitializedTestContext("doctor-plugin-meta");
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const pluginPins = await import("../../src/services/layer-composition.ts");
       const { runLayerDoctor } = await import(
         "../../src/services/layer-doctor.ts"
@@ -182,7 +182,7 @@ describe("planned scenarios services", () => {
       const { createLayerFromProject } = await import(
         "../../src/services/layer-from-project.ts"
       );
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
 
       const result = await createLayerFromProject({
         name: "from-proj",
@@ -205,7 +205,7 @@ describe("planned scenarios services", () => {
   it("exports and imports migration state", async () => {
     const context = await createInitializedTestContext("migrate");
     try {
-      const layerModel = await import("../../src/models/layer-model.ts");
+      const layerModel = await import("../../src/models/plugin-model.ts");
       const resourceModel = await import("../../src/models/resource.ts");
       const harnessModel = await import("../../src/models/harness.ts");
       const environmentModel = await import("../../src/models/environment.ts");

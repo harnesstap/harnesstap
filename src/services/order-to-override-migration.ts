@@ -3,7 +3,7 @@ import {
   getLayerResources,
   listLayerDependencies,
   listLayers,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { listProjects } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import type { SnapshotState } from "../types.js";

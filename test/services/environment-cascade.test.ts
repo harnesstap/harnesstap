@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createEnvironment, addResourceToEnvironment } from "../../src/models/environment.ts";
-import { createLayerFromSources } from "../../src/models/layer-model.ts";
+import { createLayerFromSources } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import {
   buildEnvironmentCascadeInput,

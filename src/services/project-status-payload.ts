@@ -5,7 +5,7 @@ import { environmentCascadePayload } from "./environment-commands.js";
 import { assessProjectScanStatus, type ProjectScanStatus } from "./project-scan-status.js";
 import { validatePluginPinsAgainstInventory } from "./plugin-apply-validation.js";
 import { listAttachedPluginPins } from "./layer-composition.js";
-import { getLayerById, getLayerResources, resolveLayerSelector } from "../models/layer-model.js";
+import { getLayerById, getLayerResources, resolveLayerSelector } from "../models/plugin-model.js";
 import { getProjectByLocalPath, getProjectByOrigin, getProjectConfiguredLayers } from "../models/project.js";
 import { detectProjectDriftFromLatest, type ProjectDriftReport } from "./project-drift.js";
 import { compareLockToResolution, readLockfile, type LockDrift } from "./lockfile.js";

@@ -121,8 +121,8 @@ describe("CLI environment", () => {
     try {
       await runCli(["init"]);
 
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredLayerModel = await import("../../src/models/plugin-model.ts");
       const plugin = pluginModel.createLayer({ name: "app-layer" });
       const configuredLayer = configuredLayerModel.createLayerFromSources({
         name: plugin.name,
@@ -174,8 +174,8 @@ describe("CLI environment", () => {
         "utf-8",
       );
 
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredLayerModel = await import("../../src/models/plugin-model.ts");
       const plugin = pluginModel.createLayer({
         name: "capture-layer-plugin",
         needs: ["CAPTURE_KEY", "MISSING_KEY"],
@@ -242,8 +242,8 @@ describe("CLI environment", () => {
       await runCli(["init"]);
 
       const projectModel = await import("../../src/models/project.ts");
-      const pluginModel = await import("../../src/models/layer-model.ts");
-      const configuredLayerModel = await import("../../src/models/layer-model.ts");
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const configuredLayerModel = await import("../../src/models/plugin-model.ts");
 
       const project = projectModel.createProject({
         git_origin: "git@github.com:acme/cascade.git",

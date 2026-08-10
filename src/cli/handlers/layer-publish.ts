@@ -1,6 +1,6 @@
 import { getDb } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
-import { getLayer, getLayerResources } from "../../models/layer-model.js";
+import { getLayer, getLayerResources } from "../../models/plugin-model.js";
 import {
   resolveOneOffPublishTarget,
   resolvePublishTargetsForLayer,

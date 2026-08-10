@@ -3,7 +3,7 @@ import type { RegisteredCatalog } from "../config/catalog.js";
 import { formatPublishCatalogSelector } from "../config/catalog.js";
 import { exportLayer } from "./layer-export.js";
 import { formatLayerExportToml } from "./transport/layer.js";
-import { updateLayerPublishedIdentity } from "../models/layer-model.js";
+import { updateLayerPublishedIdentity } from "../models/plugin-model.js";
 import type { Layer } from "../types.js";
 import type { CloudClient } from "./cloud-client.js";
 import { createPersistingCloudClient } from "./cloud-account-auth.js";

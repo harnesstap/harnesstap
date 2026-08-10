@@ -4,7 +4,7 @@ import {
   addResourceToLayer,
   getLayerById,
   getLayerResources,
-} from "../../src/models/layer-model.ts";
+} from "../../src/models/plugin-model.ts";
 import { upsertResource } from "../../src/models/resource.ts";
 import {
   applyLayerEdit,

@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_LAYER_TAG, isProfileLayer } from "../../constants/profile.js";
-import { getLayer, resolveLayerSelector } from "../../models/layer-model.js";
+import { getLayer, resolveLayerSelector } from "../../models/plugin-model.js";
 import { listAttachedLayerRefs } from "../../services/layer-composition.js";
 import { missingRequiredArg } from "../../services/cli-errors.js";
 import { createLayerFromSource } from "../../services/layer-from-source.js";

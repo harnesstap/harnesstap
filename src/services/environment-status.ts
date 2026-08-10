@@ -1,5 +1,5 @@
 import { getEnvironment, getEnvironmentByName } from "../models/environment.js";
-import { getLayerById } from "../models/layer-model.js";
+import { getLayerById } from "../models/plugin-model.js";
 import {
   fragmentFromEnvironmentId,
   loadLayerDefaultFragments,

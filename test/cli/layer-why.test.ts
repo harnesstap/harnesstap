@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/layer-model.ts";
+import { addResourceToLayer, createLayer, getLayerByName } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addLayerAttachment } from "../../src/services/layer-composition.ts";
 

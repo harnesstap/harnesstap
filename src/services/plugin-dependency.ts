@@ -2,7 +2,7 @@ import {
   addResourceToLayer,
   getLayerResources,
   removeResourceFromLayer,
-} from "../models/layer-model.js";
+} from "../models/plugin-model.js";
 import { findResourceByKey, normalizeResourceInput, upsertResource } from "../models/resource.js";
 import { markLayerDirty } from "./layer-versioning.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";

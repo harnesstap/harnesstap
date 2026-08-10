@@ -1,5 +1,5 @@
 import { isProfileLayer } from "../constants/profile.js";
-import { getLayerByName } from "../models/layer-model.js";
+import { getLayerByName } from "../models/plugin-model.js";
 import {
   listCatalogLayersPage,
   resolveCatalogAccess,

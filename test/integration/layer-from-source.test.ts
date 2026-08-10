@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import { createLayerFromSource } from "../../src/services/layer-from-source.ts";
-import { createLayer } from "../../src/models/layer-model.ts";
+import { createLayer } from "../../src/models/plugin-model.ts";
 
 const fixture = join(import.meta.dirname, "../fixtures/skill-packages/mattpocock-minimal");
 
@@ -24,7 +24,7 @@ describe("createLayerFromSource integration", () => {
       expect(result.conflictPolicy).toBe("create");
       expect(existsSync(join(context.homeDir, ".agents/skills/caveman"))).toBe(false);
 
-      const { getLayerResources } = await import("../../src/models/layer-model.ts");
+      const { getLayerResources } = await import("../../src/models/plugin-model.ts");
       const attached = getLayerResources(result.layer.id);
       expect(attached.some((resource) => resource.type === "skill" && resource.name === "caveman")).toBe(
         true,
@@ -76,7 +76,7 @@ describe("createLayerFromSource integration", () => {
       expect(merged.conflictPolicy).toBe("merge");
       expect(merged.attachedSkills).toEqual(["tdd"]);
 
-      const { getLayer, getLayerResources } = await import("../../src/models/layer-model.ts");
+      const { getLayer, getLayerResources } = await import("../../src/models/plugin-model.ts");
       const layer = getLayer("dbt-expert");
       if (!layer) throw new Error("Expected dbt-expert layer");
       const attached = getLayerResources(layer.id);
@@ -109,7 +109,7 @@ describe("createLayerFromSource integration", () => {
       });
 
       expect(replaced.conflictPolicy).toBe("overwrite");
-      const { getLayer, getLayerResources } = await import("../../src/models/layer-model.ts");
+      const { getLayer, getLayerResources } = await import("../../src/models/plugin-model.ts");
       const layer = getLayer("dbt-expert");
       if (!layer) throw new Error("Expected dbt-expert layer");
       const attached = getLayerResources(layer.id);

@@ -1,7 +1,7 @@
 import { readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getLayer } from "../models/layer-model.js";
+import { getLayer } from "../models/plugin-model.js";
 import { importFromFile } from "./layer-import.js";
 import { inspectLayerExportFile } from "./layer-export.js";
 
