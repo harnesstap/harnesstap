@@ -33,6 +33,7 @@ describe("CLI harness", () => {
         "copilot-cli",
         "gemini-cli",
         "goose",
+        "grok-build",
       ]);
 
       const pluginList = await runCli(["l", "ls", "--local-only", "--format", "json"], {

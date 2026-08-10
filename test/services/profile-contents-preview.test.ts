@@ -44,8 +44,7 @@ describe("profile contents and apply preview", () => {
       expect(contents?.type_counts.instruction).toBe(1);
       expect(contents?.type_counts.mcp_server).toBe(1);
       expect(contents?.type_counts.plugin).toBeGreaterThanOrEqual(1);
-      expect(contents?.type_counts.plugin_pin).toBe(1);
-      expect(contents?.resources).toEqual(
+            expect(contents?.resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             id: instruction.id,

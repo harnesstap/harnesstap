@@ -5,7 +5,6 @@ import {
 } from "../models/plugin-model.js";
 import { findResourceByKey, normalizeResourceInput, upsertResource } from "../models/resource.js";
 import { markPluginDirty } from "./plugin-versioning.js";
-import { parseVersionConstraint } from "./plugin-constraints.js";
 import type { DependencySourceKind, PluginDependencyMetadata, Resource } from "../types.js";
 
 export interface ParsedDependencyRef {
@@ -73,9 +72,8 @@ export function ensureDependencyResource(
   opts?: { versionConstraint?: string; portable?: "reference" | "embed" },
 ): Resource {
   const parsed = parseDependencyRef(ref);
-  if (opts?.versionConstraint) {
-    parseVersionConstraint(opts.versionConstraint);
-  }
+  // Store constraints as authored; doctor / apply validate semver separately so
+  // invalid values remain inspectable via `plugin doctor` / plugin-metadata.
   const namespace = dependencyNamespace(parsed, opts?.versionConstraint);
 
   const existing = findResourceByKey("plugin", parsed.name, namespace);

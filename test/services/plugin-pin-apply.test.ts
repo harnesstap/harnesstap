@@ -169,8 +169,8 @@ describe("expandPluginPinMaterialResources", () => {
     const context = await createTestContext("plugin-materialize-expand");
     try {
       context.schema.initializeSchema(context.connection.getDb());
-      const plugin = createPlugin({ name: "with-plugin-skills" });
-      attachPluginPinToPlugin(plugin.id, "formatter@acme-marketplace", "1.2.3");
+      const hostPlugin = createPlugin({ name: "with-plugin-skills" });
+      attachPluginPinToPlugin(hostPlugin.id, "formatter@acme-marketplace", "1.2.3");
 
       await syncPluginPinsForApply({
         pins: [{ ref: "formatter@acme-marketplace", version_constraint: "1.2.3" }],

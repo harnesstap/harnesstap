@@ -52,10 +52,39 @@ import {
   listAttachedPluginRefs,
   listAttachedPluginPins,
 } from "./plugin-composition.js";
+import { parseDependencyRef } from "./plugin-dependency.js";
 import { parsePluginSelector, resolveRemotePluginSelector } from "./plugin-selector.js";
 import { resolveComposition } from "./resolve/index.js";
 import type { ResolutionResult } from "./resolve/types.js";
 import { ui } from "../ui/index.js";
+
+/** HT library deps that belong in the profile stack (not host marketplace/git/path pins). */
+function isProfileStackDependency(ref: string): boolean {
+  const parsed = parseDependencyRef(ref);
+  if (parsed.source_kind === "catalog") {
+    return true;
+  }
+  if (parsed.source_kind !== "local") {
+    return false;
+  }
+  return !(
+    parsed.origin_ref.startsWith("./")
+    || parsed.origin_ref.startsWith("../")
+  );
+}
+
+function listProfileStackRefs(pluginId: string): ReturnType<typeof listAttachedPluginRefs> {
+  return listAttachedPluginRefs(pluginId).filter((ref) =>
+    isProfileStackDependency(ref.dependency_name)
+  );
+}
+
+function listHostPluginPins(pluginId: string): ReturnType<typeof listAttachedPluginPins> {
+  return listAttachedPluginPins(pluginId).filter((pin) => {
+    const kind = parseDependencyRef(pin.ref).source_kind;
+    return kind === "marketplace" || kind === "git";
+  });
+}
 
 export interface ApplyProfilePluginOptions {
   harness?: string;
@@ -244,7 +273,7 @@ async function ensureProfileDependenciesAvailable(
     }
     visited.add(plugin.id);
 
-    for (const ref of listAttachedPluginRefs(plugin.id)) {
+    for (const ref of listProfileStackRefs(plugin.id)) {
       const localDependency = resolveDependencyPlugin(ref);
       if (localDependency) {
         queue.push(localDependency);
@@ -306,7 +335,7 @@ export function collectProfilePluginIds(profilePlugin: Plugin): string[] {
     visited.add(plugin.id);
     orderedIds.push(plugin.id);
 
-    for (const ref of listAttachedPluginRefs(plugin.id)) {
+    for (const ref of listProfileStackRefs(plugin.id)) {
       const resolved = resolveDependencyPlugin(ref);
       if (!resolved) {
         throw new Error(
@@ -329,7 +358,7 @@ function listResolvedPluginPins(
     (a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex,
   );
   for (const plugin of ordered) {
-    for (const pin of listAttachedPluginPins(plugin.pluginId)) {
+    for (const pin of listHostPluginPins(plugin.pluginId)) {
       pins.set(pin.ref, {
         ref: pin.ref,
         version_constraint: pin.version_constraint,

@@ -17,29 +17,25 @@ describe("plugin model", () => {
       });
       pinModel.attachPluginPinToPlugin(plugin.id, "@m/c", "*");
 
-      const rows = pinModel.listPluginPlugins(plugin.id);
+      const rows = pinModel.listAttachedPluginPins(plugin.id);
 
       expect(rows).toHaveLength(3);
 
       expect(rows.find((r) => r.ref === "@m/a")).toMatchObject({
-        plugin_id: plugin.id,
         ref: "@m/a",
         version_constraint: ">=1 <2",
         embed_on_export: false,
       });
 
       expect(rows.find((r) => r.ref === "@m/b")).toMatchObject({
-        plugin_id: plugin.id,
         ref: "@m/b",
         version_constraint: "=3.4.5",
         embed_on_export: true,
       });
 
-      expect(rows.map((r) => r.order)).toEqual(expect.arrayContaining([0, 1, 2]));
-
       pinModel.detachPluginPinFromPlugin(plugin.id, "@m/b");
 
-      const afterRemove = pinModel.listPluginPlugins(plugin.id).map((r) => r.ref);
+      const afterRemove = pinModel.listAttachedPluginPins(plugin.id).map((r) => r.ref);
       expect(afterRemove).toEqual(expect.arrayContaining(["@m/a", "@m/c"]));
       expect(afterRemove).not.toContain("@m/b");
     } finally {

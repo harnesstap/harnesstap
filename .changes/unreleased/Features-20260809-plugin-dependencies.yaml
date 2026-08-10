@@ -1,3 +1,3 @@
 kind: Features
-body: Unify plugin pins and layer references into one plugin dependency type with provenance, surface origin in listings, gate edit/cut/publish/sync on it, and add `layer fork`
+body: Unify plugin pins and nested plugin references into one plugin dependency type with provenance, surface origin in listings, gate edit/cut/publish/sync on it, and add `plugin fork`
 time: 2026-08-09T21:00:00Z

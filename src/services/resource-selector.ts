@@ -8,7 +8,6 @@ export interface ParsedResourceSelector {
 
 const LEGACY_TYPE_ALIASES: Record<string, string> = {
   plugin_pin: "plugin",
-  plugin: "plugin",
 };
 
 let deprecations: string[] = [];

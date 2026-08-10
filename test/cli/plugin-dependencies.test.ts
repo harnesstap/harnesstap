@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
-import { listPluginPlugins } from "../../src/services/plugin-composition.ts";
+import { listAttachedPluginPins } from "../../src/services/plugin-composition.ts";
 import { getPlugin } from "../../src/models/plugin-model.ts";
 
 describe("CLI plugin plugin pins", () => {
@@ -13,7 +13,8 @@ describe("CLI plugin plugin pins", () => {
       await runCli(["plugin", "create", "p1"]);
       await runCli(["plugin", "edit", "p1", "--add", "fmt@acme", "--type", "plugin", "--version", ">=2.0.0 <3.0.0", "--no-interactive"]);
       const show = await runCli(["plugin", "show", "p1"]);
-      expect(show.stdout).toContain("fmt@acme");
+      expect(show.stdout).toContain("fmt");
+      expect(show.stdout).toContain("marketplace");
       expect(show.stdout).toContain(">=2.0.0");
     } finally {
       await context.cleanup();
@@ -88,7 +89,7 @@ describe("CLI plugin plugin pins", () => {
       expect(result.exitCode ?? 0).toBe(0);
       const plugin = getPlugin("embed-plugin");
       if (!plugin) throw new Error("Expected plugin to exist");
-      expect(listPluginPlugins(plugin.id)).toEqual(
+      expect(listAttachedPluginPins(plugin.id)).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             ref: "tools@hub",

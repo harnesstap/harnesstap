@@ -27,7 +27,6 @@ describe("CLI platforms, status, and catalog baselines", () => {
   it("lists harnesses and applies catalog baseline plugins", async () => {
     const context = await createTestContext("cli-builtins");
     const restoreFetch = createCatalogFetchMock({
-      baseUrl: "https://cloud.harnesstap.com",
       bundle: FOUNDATION_CATALOG_BUNDLE,
       plugins: [{
         orgSlug: "harnesstap-cloud",

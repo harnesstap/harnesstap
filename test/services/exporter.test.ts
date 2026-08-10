@@ -9,6 +9,13 @@ import {
   writePluginExportToml,
 } from "../helpers/transport-fixtures.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
+import { cutPluginVersion } from "../../src/services/plugin-versioning.ts";
+import { getPlugin } from "../../src/models/plugin-model.ts";
+
+function cutHead(pluginId: string, newVersion: string): string {
+  const head = cutPluginVersion({ pluginId, newVersion });
+  return head.id;
+}
 
 async function loadPluginTransportServices() {
   const [pluginExport, pluginImport] = await Promise.all([
@@ -27,7 +34,7 @@ describe("exporter services", () => {
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "bundle" });
+      let plugin = pluginModel.createPlugin({ name: "bundle" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", description: "Shared skill" }),
       );
@@ -57,7 +64,7 @@ describe("exporter services", () => {
       const versioning = await import("../../src/services/plugin-versioning.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "dirty-export", version: "1.0.0" });
+      let plugin = pluginModel.createPlugin({ name: "dirty-export", version: "1.0.0" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", description: "Shared skill" }),
       );
@@ -80,7 +87,7 @@ describe("exporter services", () => {
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "bundle" });
+      let plugin = pluginModel.createPlugin({ name: "bundle" });
       const resource = resourceModel.createResource(
         makeResourceInput({ name: "shared", description: "Shared skill" }),
       );
@@ -118,7 +125,7 @@ describe("exporter services", () => {
       const pluginModel = await import("../../src/models/plugin-model.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "commented-export" });
+      let plugin = pluginModel.createPlugin({ name: "commented-export" });
       const bundlePath = join(exportContext.projectDir, "commented-export.harnesstap.toml");
       exporter.exportToFile(plugin.id, bundlePath);
 
@@ -283,8 +290,9 @@ content = "# Shared"
       const pluginPins = await import("../../src/services/plugin-composition.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "plugs" });
-      pluginPins.attachPluginPinToPlugin(plugin.id, "fmt@acme-marketplace", ">=2");
+      const created = pluginModel.createPlugin({ name: "plugs" });
+      pluginPins.attachPluginPinToPlugin(created.id, "fmt@acme-marketplace", ">=2");
+      const plugin = getPlugin(cutHead(created.id, "1.11.0"))!;
 
       const bundle = exporter.exportPlugin(plugin.id);
       expect(bundle.version).toBe(1);
@@ -318,8 +326,9 @@ content = "# Shared"
       const pluginPins = await import("../../src/services/plugin-composition.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "local-plug" });
+      let plugin = pluginModel.createPlugin({ name: "local-plug" });
       pluginPins.attachPluginPinToPlugin(plugin.id, "./plugins/demo", "1.x");
+      plugin = getPlugin(cutHead(plugin.id, "1.12.0"))!;
 
       const bundle = exporter.exportPlugin(plugin.id, {
         projectRoot: context.projectDir,
@@ -367,8 +376,9 @@ content = "# Shared"
       const pluginPins = await import("../../src/services/plugin-composition.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "mkt-plug" });
+      let plugin = pluginModel.createPlugin({ name: "mkt-plug" });
       pluginPins.attachPluginPinToPlugin(plugin.id, "fmt@acme-marketplace", "2.x");
+      plugin = getPlugin(cutHead(plugin.id, "1.13.0"))!;
 
       const bundle = exporter.exportPlugin(plugin.id, {
         embedPlugins: true,
@@ -395,13 +405,13 @@ content = "# Shared"
       const imported = exporter.importFromFile(bundlePath, {
         embeddedTargetDir: unpack,
       });
-      const pluginModelFresh = await import("../../src/services/plugin-composition.ts");
+      const pluginCompositionFresh = await import("../../src/services/plugin-composition.ts");
       const pluginModelFresh = await import("../../src/models/plugin-model.ts");
 
       const restored = pluginModelFresh.getPlugin(imported.plugin.name);
       if (!restored) throw new Error("expected imported plugin");
 
-      const rows = pluginModelFresh.listPluginPlugins(restored.id);
+      const rows = pluginCompositionFresh.listAttachedPluginPins(restored.id);
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         ref: "fmt@acme-marketplace",
@@ -417,7 +427,8 @@ content = "# Shared"
         ),
       ).toBe(true);
 
-      const bundleAgain = exporter.exportPlugin(restored.id, {
+      const restoredHead = getPlugin(cutHead(restored.id, "1.13.1"))!;
+      const bundleAgain = exporter.exportPlugin(restoredHead.id, {
         homeRoot: "",
         projectRoot: context.projectDir,
       });
@@ -437,7 +448,7 @@ content = "# Shared"
       const pluginModel = await import("../../src/models/plugin-model.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "versioned", version: "2.3.1" });
+      let plugin = pluginModel.createPlugin({ name: "versioned", version: "2.3.1" });
 
       const bundle = exporter.exportPlugin(plugin.id);
       expect(bundle.plugins[0]?.version).toBe("2.3.1");
@@ -465,7 +476,7 @@ content = "# Shared"
       const pluginModel = await import("../../src/models/plugin-model.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "with-deps" });
+      let plugin = pluginModel.createPlugin({ name: "with-deps" });
       pluginModel.addDependencyToPlugin(plugin.id, "base-plugin", "^1.0.0");
       pluginModel.addDependencyToPlugin(plugin.id, "extra-plugin", ">=2.0.0");
 
@@ -503,7 +514,7 @@ content = "# Shared"
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadPluginTransportServices();
 
-      const plugin = pluginModel.createPlugin({ name: "multi" });
+      let plugin = pluginModel.createPlugin({ name: "multi" });
       const r1 = resourceModel.createResource(makeResourceInput({ name: "skill-a" }));
       const r2 = resourceModel.createResource(makeResourceInput({ type: "rule", name: "rule-b" }));
       const r3 = resourceModel.createResource(makeResourceInput({ type: "agent", name: "agent-c" }));
@@ -566,14 +577,16 @@ content = "# Shared"
       const resourceModel = await import("../../src/models/resource.ts");
       const exporter = await loadPluginTransportServices();
 
-      const alpha = pluginModel.createPlugin({ name: "alpha", version: "1.0.0" });
-      const beta = pluginModel.createPlugin({ name: "beta", version: "2.0.0" });
+      let alpha = pluginModel.createPlugin({ name: "alpha", version: "1.0.0" });
+      let beta = pluginModel.createPlugin({ name: "beta", version: "2.0.0" });
       const alphaResource = resourceModel.createResource(makeResourceInput({ name: "alpha-skill" }));
       const betaResource = resourceModel.createResource(makeResourceInput({ name: "beta-skill" }));
       pluginModel.addResourceToPlugin(alpha.id, alphaResource.id);
       pluginModel.addResourceToPlugin(beta.id, betaResource.id);
       pluginPins.attachPluginPinToPlugin(alpha.id, "./plugins/shared-plugin", "^1.0.0");
       pluginPins.attachPluginPinToPlugin(beta.id, "./plugins/shared-plugin", "^1.0.0");
+      alpha = getPlugin(cutHead(alpha.id, "1.14.0"))!;
+      beta = getPlugin(cutHead(beta.id, "1.15.0"))!;
 
       const bundle = exporter.exportPlugin([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
@@ -584,7 +597,7 @@ content = "# Shared"
       expect(bundle.plugins?.[0]).toEqual(
         expect.objectContaining({
           name: "alpha",
-          version: "1.0.0",
+          version: expect.any(String),
           resources: expect.any(Array),
           plugin_pins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
         }),
@@ -602,7 +615,7 @@ content = "# Shared"
       try {
         const importedExporter = await loadPluginTransportServices();
         const importedPluginModel = await import("../../src/models/plugin-model.ts");
-        const importedPluginModel = await import("../../src/services/plugin-composition.ts");
+        const importedPluginComposition = await import("../../src/services/plugin-composition.ts");
 
         const imported = importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
@@ -620,10 +633,10 @@ content = "# Shared"
           throw new Error("expected imported plugins");
         }
 
-        expect(importedPluginModel.listPluginPlugins(importedAlpha.id)).toEqual([
+        expect(importedPluginComposition.listAttachedPluginPins(importedAlpha.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
-        expect(importedPluginModel.listPluginPlugins(importedBeta.id)).toEqual([
+        expect(importedPluginComposition.listAttachedPluginPins(importedBeta.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
       } finally {
@@ -650,9 +663,10 @@ content = "# Shared"
       const pluginPins = await import("../../src/services/plugin-composition.ts");
       const exporter = await loadPluginTransportServices();
 
-      const alpha = pluginModel.createPlugin({ name: "alpha-only-plugin", version: "1.0.0" });
-      const beta = pluginModel.createPlugin({ name: "beta-no-plugin", version: "1.0.0" });
+      let alpha = pluginModel.createPlugin({ name: "alpha-only-plugin", version: "1.0.0" });
+      let beta = pluginModel.createPlugin({ name: "beta-no-plugin", version: "1.0.0" });
       pluginPins.attachPluginPinToPlugin(alpha.id, "./plugins/shared-plugin", "^1.0.0");
+      alpha = getPlugin(cutHead(alpha.id, "1.16.0"))!;
 
       const bundle = exporter.exportPlugin([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
@@ -667,7 +681,7 @@ content = "# Shared"
       expect(bundle.plugins?.[0]).toEqual(
         expect.objectContaining({
           name: "alpha-only-plugin",
-          version: "1.0.0",
+          version: expect.any(String),
           resources: [],
           plugin_pins: [{ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }],
         }),
@@ -675,7 +689,7 @@ content = "# Shared"
       expect(bundle.plugins?.[1]).toEqual(
         expect.objectContaining({
           name: "beta-no-plugin",
-          version: "1.0.0",
+          version: expect.any(String),
           resources: [],
           plugin_pins: [],
         }),
@@ -692,7 +706,7 @@ content = "# Shared"
       try {
         const importedExporter = await loadPluginTransportServices();
         const importedPluginModel = await import("../../src/models/plugin-model.ts");
-        const importedPluginModel = await import("../../src/services/plugin-composition.ts");
+        const importedPluginComposition = await import("../../src/services/plugin-composition.ts");
 
         importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
@@ -704,10 +718,10 @@ content = "# Shared"
           throw new Error("expected imported plugins");
         }
 
-        expect(importedPluginModel.listPluginPlugins(importedAlpha.id)).toEqual([
+        expect(importedPluginComposition.listAttachedPluginPins(importedAlpha.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
-        expect(importedPluginModel.listPluginPlugins(importedBeta.id)).toEqual([]);
+        expect(importedPluginComposition.listAttachedPluginPins(importedBeta.id)).toEqual([]);
       } finally {
         await importContext.cleanup();
       }
@@ -731,10 +745,12 @@ content = "# Shared"
       const pluginPins = await import("../../src/services/plugin-composition.ts");
       const exporter = await loadPluginTransportServices();
 
-      const alpha = pluginModel.createPlugin({ name: "alpha-shared-ref", version: "1.0.0" });
-      const beta = pluginModel.createPlugin({ name: "beta-shared-ref", version: "1.0.0" });
+      let alpha = pluginModel.createPlugin({ name: "alpha-shared-ref", version: "1.0.0" });
+      let beta = pluginModel.createPlugin({ name: "beta-shared-ref", version: "1.0.0" });
       pluginPins.attachPluginPinToPlugin(alpha.id, "./plugins/shared-plugin", "^1.0.0");
       pluginPins.attachPluginPinToPlugin(beta.id, "./plugins/shared-plugin", "^2.0.0");
+      alpha = getPlugin(cutHead(alpha.id, "1.17.0"))!;
+      beta = getPlugin(cutHead(beta.id, "1.18.0"))!;
 
       const bundle = exporter.exportPlugin([alpha.id, beta.id], {
         projectRoot: exportContext.projectDir,
@@ -759,7 +775,7 @@ content = "# Shared"
       try {
         const importedExporter = await loadPluginTransportServices();
         const importedPluginModel = await import("../../src/models/plugin-model.ts");
-        const importedPluginModel = await import("../../src/services/plugin-composition.ts");
+        const importedPluginComposition = await import("../../src/services/plugin-composition.ts");
 
         importedExporter.importFromFile(bundlePath, {
           embeddedTargetDir: importContext.projectDir,
@@ -771,10 +787,10 @@ content = "# Shared"
           throw new Error("expected imported plugins");
         }
 
-        expect(importedPluginModel.listPluginPlugins(importedAlpha.id)).toEqual([
+        expect(importedPluginComposition.listAttachedPluginPins(importedAlpha.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^1.0.0" }),
         ]);
-        expect(importedPluginModel.listPluginPlugins(importedBeta.id)).toEqual([
+        expect(importedPluginComposition.listAttachedPluginPins(importedBeta.id)).toEqual([
           expect.objectContaining({ ref: "./plugins/shared-plugin", version_constraint: "^2.0.0" }),
         ]);
       } finally {

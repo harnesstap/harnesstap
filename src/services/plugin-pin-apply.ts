@@ -145,13 +145,18 @@ export async function syncPluginPinsForApply(
   const scope = options.scope ?? "user";
   const pinsToInstall = options.pins.filter((pin) => pin.version_constraint);
 
-  const installs = await installPluginPins(pinsToInstall, {
-    homeRoot,
-    projectRoot: options.projectRoot,
-    scope,
-    installPlatformId: options.installPlatformId,
-    progress: options.progress,
-  });
+  // --ignore-plugin-versions stamps exact constraints locally; skip marketplace
+  // install attempts that can hang or fail without a real host install.
+  const installs =
+    options.ignoreMissingInstall && !options.syncAll
+      ? []
+      : await installPluginPins(pinsToInstall, {
+          homeRoot,
+          projectRoot: options.projectRoot,
+          scope,
+          installPlatformId: options.installPlatformId,
+          progress: options.progress,
+        });
 
   let syncedResourceCount = 0;
   const unresolvedPins: string[] = [];
@@ -185,6 +190,27 @@ export async function syncPluginPinsForApply(
         });
       }
       continue;
+    }
+
+    // --ignore-plugin-versions: stamp exact constraints into upstream stubs
+    // without contacting marketplaces (avoids hangs / missing installs).
+    if (options.ignoreMissingInstall && !options.syncAll) {
+      const stamped = stampResolvedVersionFromExactConstraint(
+        resource,
+        pin.version_constraint,
+      );
+      if (stamped) {
+        const stampedMetadata = (stamped.metadata ?? {}) as PluginPinMetadata;
+        const parsed = parseDependencyRef(pin.ref);
+        if (stampedMetadata.resolved_version) {
+          materializeUpstreamPlugin({
+            ref: pin.ref,
+            name: parsed.name,
+            version: stampedMetadata.resolved_version,
+          });
+        }
+        continue;
+      }
     }
 
     options.progress?.onSyncStart?.(pin.ref);

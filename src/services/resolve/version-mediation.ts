@@ -75,6 +75,15 @@ export function selectVersion(input: {
   );
   const winner = satisfying[0];
   if (winner === undefined) {
+    // Marketplace installs are validated softly via plugin-pin inventory
+    // (warn by default; --strict-plugin-versions aborts). Prefer the best
+    // installed version so apply can still materialize Claude settings.
+    if (input.sourceKind === "marketplace" && sorted[0]) {
+      return {
+        version: sorted[0],
+        reason: rootDeclared.length > 0 ? "root-constraint" : "mediation",
+      };
+    }
     throw new UnsatisfiableConstraintError({
       pluginName: input.name,
       requirers: input.constraints,

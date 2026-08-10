@@ -28,6 +28,13 @@ function buildProgram(): Command {
     .option("--account <name>", "account")
     .description("pull");
 
+  program
+    .command("apply")
+    .argument("[plugins...]", "plugins")
+    .option("--project <path>", "project")
+    .option("--harness <slugs>", "harness")
+    .description("apply");
+
   const environment = program.command("environment").description("environment");
   environment.command("show").argument("[name]", "name").description("show");
 
@@ -44,10 +51,10 @@ describe("completion engine", () => {
   const program = buildProgram();
 
   it("resolves subcommand slot for partial top-level command", async () => {
-    const ctx = parseCompletionContext(program, "ht lay");
+    const ctx = parseCompletionContext(program, "ht plug");
     expect(ctx.slot).toBe("subcommand");
     expect(ctx.commandPath).toEqual([]);
-    expect(ctx.prefix).toBe("lay");
+    expect(ctx.prefix).toBe("plug");
 
     const candidates = await resolveCompletions(program, ctx);
     expect(candidates.map((entry) => entry.value)).toContain("plugin");

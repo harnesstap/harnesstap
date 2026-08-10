@@ -130,13 +130,30 @@ describe("planned scenarios services", () => {
     const context = await createInitializedTestContext("doctor-plugin-meta");
     try {
       const pluginModel = await import("../../src/models/plugin-model.ts");
-      const pluginPins = await import("../../src/services/plugin-composition.ts");
       const { runPluginDoctor } = await import(
         "../../src/services/plugin-doctor.ts"
       );
 
       const plugin = pluginModel.createPlugin({ name: "bad-plugin-meta" });
-      pluginPins.attachPluginPinToPlugin(plugin.id, "formatter", "not-semver");
+      // Bypass attach validation so doctor can report marketplace/constraint errors.
+      const resourceModel = await import("../../src/models/resource.ts");
+      const badPin = resourceModel.createResource({
+        type: "plugin",
+        name: "formatter",
+        namespace: "",
+        description: "Bad pin",
+        content: "{}",
+        metadata: {
+          source_kind: "marketplace",
+          version_constraint: "not-semver",
+          sync_status: "never_synced",
+          portable: "reference",
+        },
+        source: "composition:plugin",
+        origin_kind: "marketplace_link",
+        origin_ref: "formatter",
+      });
+      pluginModel.addResourceToPlugin(plugin.id, badPin.id);
 
       const report = runPluginDoctor({
         nameOrId: "bad-plugin-meta",

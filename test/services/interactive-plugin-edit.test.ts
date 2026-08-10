@@ -27,12 +27,12 @@ const sampleRows: PluginEditRow[] = [
   },
   {
     id: "pin-1",
-    type: "plugin_pin",
+    type: "plugin",
     name: "posthog",
     namespace: "cursor-team-kit",
     display_name: "posthog@cursor-team-kit",
-    description: "Plugin pin",
-    source: "composition:plugin_pin",
+    description: "Plugin dependency",
+    source: "composition:plugin",
     origin_kind: "manual",
     origin_ref: "",
     content_hash: "",
@@ -83,7 +83,7 @@ describe("interactive plugin edit prompt", () => {
     await expect(answer).resolves.toMatchObject({
       rows: expect.arrayContaining([
         expect.objectContaining({
-          type: "plugin_pin",
+          type: "plugin",
           checked: true,
           version_constraint: "latest",
         }),

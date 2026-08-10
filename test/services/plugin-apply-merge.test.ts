@@ -11,9 +11,9 @@ describe("plugin apply merge", () => {
     const context = await createInitializedTestContext("plugin-apply-merge");
 
     try {
-      const plugin = createPlugin({ name: "pagerduty" });
+      const sourcePlugin = createPlugin({ name: "pagerduty" });
       addResourceToPlugin(
-        plugin.id,
+        sourcePlugin.id,
         createResource({
           type: "instruction",
           name: "oncall",
@@ -39,7 +39,7 @@ describe("plugin apply merge", () => {
 
       const plugin = createPluginFromSources({
         name: "backend-oncall",
-        sourcePluginIds: [plugin.id],
+        sourcePluginIds: [sourcePlugin.id],
         environmentId: env.id,
       });
 

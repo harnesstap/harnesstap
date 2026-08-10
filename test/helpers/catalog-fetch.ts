@@ -54,14 +54,13 @@ function encodeCursor(offset: number): string {
 
 export function createCatalogFetchMock(input?: {
   plugins?: Array<Record<string, unknown>>;
-  plugins?: Array<Record<string, unknown>>;
   bundle?: string;
   baseUrl?: string;
   failOrgFilters?: string[];
   pageDelayMs?: number;
 }) {
   const baseUrl = (input?.baseUrl ?? DEFAULT_CLOUD_BASE_URL).replace(/\/+$/, "");
-  const plugins = (input?.plugins ?? input?.plugins ?? [{
+  const plugins = (input?.plugins ?? [{
     orgSlug: "harnesstap-cloud",
     slug: "team",
     name: "Team Plugin",
@@ -85,8 +84,6 @@ export function createCatalogFetchMock(input?: {
     }
     const isPluginList =
       url.startsWith(`${baseUrl}/api/public/plugins`)
-      || url.startsWith(`${baseUrl}/api/catalog/plugins`)
-      || url.startsWith(`${baseUrl}/api/public/plugins`)
       || url.startsWith(`${baseUrl}/api/catalog/plugins`);
     if (isPluginList) {
       const parsed = new URL(url);
@@ -129,12 +126,12 @@ export function createCatalogFetchMock(input?: {
       }
       return {
         ok: true,
-        json: async () => ({ plugins: page, plugins: page, nextCursor }),
+        json: async () => ({ plugins: page, nextCursor }),
       };
     }
     if (
-      /\/api\/public\/.+\/versions\/.+\/(?:plugin|plugin)-export/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin|plugin)-export/.test(url)
+      /\/api\/public\/.+\/versions\/.+\/plugin-export/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/plugin-export/.test(url)
     ) {
       return { ok: true, text: async () => bundle };
     }

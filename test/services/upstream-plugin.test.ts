@@ -4,7 +4,7 @@ import type { TestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { createPlugin, getPluginByName, getPluginResources } from "../../src/models/plugin-model.ts";
 import { getPluginOrigin } from "../../src/services/plugin-origin.ts";
-import { materializeUpstreamPluginPlugin } from "../../src/services/upstream-plugin-plugin.ts";
+import { materializeUpstreamPlugin } from "../../src/services/upstream-plugin.ts";
 
 let ctx: TestContext;
 
@@ -30,12 +30,12 @@ function linkedSkill(name: string, ref: string): void {
   });
 }
 
-describe("materializeUpstreamPluginPlugin", () => {
+describe("materializeUpstreamPlugin", () => {
   it("groups an install tree's resources into an upstream plugin", () => {
     linkedSkill("search", "web-search@anthropics");
     linkedSkill("summarize", "web-search@anthropics");
 
-    const plugin = materializeUpstreamPluginPlugin({
+    const plugin = materializeUpstreamPlugin({
       ref: "web-search@anthropics",
       name: "web-search",
       version: "1.2.0",
@@ -52,12 +52,12 @@ describe("materializeUpstreamPluginPlugin", () => {
 
   it("is idempotent for the same ref and version", () => {
     linkedSkill("search", "web-search@anthropics");
-    const first = materializeUpstreamPluginPlugin({
+    const first = materializeUpstreamPlugin({
       ref: "web-search@anthropics",
       name: "web-search",
       version: "1.2.0",
     });
-    const second = materializeUpstreamPluginPlugin({
+    const second = materializeUpstreamPlugin({
       ref: "web-search@anthropics",
       name: "web-search",
       version: "1.2.0",
@@ -67,12 +67,12 @@ describe("materializeUpstreamPluginPlugin", () => {
 
   it("creates a separate row for a new upstream version", () => {
     linkedSkill("search", "web-search@anthropics");
-    const v1 = materializeUpstreamPluginPlugin({
+    const v1 = materializeUpstreamPlugin({
       ref: "web-search@anthropics",
       name: "web-search",
       version: "1.2.0",
     });
-    const v2 = materializeUpstreamPluginPlugin({
+    const v2 = materializeUpstreamPlugin({
       ref: "web-search@anthropics",
       name: "web-search",
       version: "1.3.0",
@@ -98,7 +98,7 @@ describe("materializeUpstreamPluginPlugin", () => {
     createPlugin({ name: "web-search", version: "1.2.0" });
 
     expect(() =>
-      materializeUpstreamPluginPlugin({
+      materializeUpstreamPlugin({
         ref: "web-search@anthropics",
         name: "web-search",
         version: "1.2.0",

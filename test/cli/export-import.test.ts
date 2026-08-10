@@ -99,6 +99,8 @@ describe("CLI export and import", () => {
 
       const plugin = pluginModel.createPlugin({ name: "embed-flag" });
       pluginPins.attachPluginPinToPlugin(plugin.id, "fmt-cli@acme-marketplace", "2.x");
+      const cut = await runCli(["plugin", "cut", "embed-flag", "--version", "1.1.0"]);
+      expect(cut.exitCode ?? 0).toBe(0);
 
       const bundlePath = join(context.projectDir, "embedded-cli.harnesstap.toml");
       const exportResult = await runCli([

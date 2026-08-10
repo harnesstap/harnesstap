@@ -543,8 +543,6 @@ export interface MultiPluginExport {
 
 export type PluginExport = MultiPluginExport;
 
-/** @deprecated Use Plugin */
-export type Layer = Plugin;
 /** @deprecated Use PluginOrigin */
 export type LayerOrigin = PluginOrigin;
 /** @deprecated Use PLUGIN_ORIGINS */

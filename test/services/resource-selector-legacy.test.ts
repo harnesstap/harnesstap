@@ -17,17 +17,6 @@ describe("legacy selector spellings", () => {
     ]);
   });
 
-  it("maps plugin: to plugin: and records a deprecation", () => {
-    takeSelectorDeprecations();
-    expect(parseResourceSelector("plugin:base")).toMatchObject({
-      type: "plugin",
-      name: "base",
-    });
-    expect(takeSelectorDeprecations()).toEqual([
-      "plugin: is now plugin: — use plugin:base",
-    ]);
-  });
-
   it("records nothing for a current spelling", () => {
     takeSelectorDeprecations();
     parseResourceSelector("plugin:base");
@@ -36,7 +25,7 @@ describe("legacy selector spellings", () => {
 
   it("drains the buffer so warnings are emitted once", () => {
     takeSelectorDeprecations();
-    parseResourceSelector("plugin:base");
+    parseResourceSelector("plugin_pin:base@mp");
     expect(takeSelectorDeprecations()).toHaveLength(1);
     expect(takeSelectorDeprecations()).toEqual([]);
   });

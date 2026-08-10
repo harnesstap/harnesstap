@@ -9,13 +9,9 @@ type CloudPublishPlugin = {
   summary: string;
 };
 
-/** @deprecated Use CloudPublishPlugin */
-type CloudPublishPlugin = CloudPublishPlugin;
-
 export function createCloudPublishFetchMock(input?: {
   baseUrl?: string;
   orgs?: CloudOrg[];
-  existingPlugins?: CloudPublishPlugin[];
   existingPlugins?: CloudPublishPlugin[];
   createStatus?: number;
   patchStatus?: number;
@@ -24,7 +20,7 @@ export function createCloudPublishFetchMock(input?: {
 }) {
   const baseUrl = (input?.baseUrl ?? "https://mock").replace(/\/+$/, "");
   const orgs = input?.orgs ?? [{ id: "org-1", slug: "acme", name: "Acme Corp" }];
-  const plugins = [...(input?.existingPlugins ?? input?.existingPlugins ?? [])];
+  const plugins = [...(input?.existingPlugins ?? [])];
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = (async (urlInput: unknown, init?: RequestInit) => {
@@ -40,10 +36,10 @@ export function createCloudPublishFetchMock(input?: {
     if (url.endsWith("/api/me/orgs")) {
       return { ok: true, json: async () => ({ orgs }) };
     }
-    if (url.includes("/api/plugins?orgId=") || url.includes("/api/plugins?orgId=")) {
-      return { ok: true, json: async () => ({ plugins, plugins: plugins }) };
+    if (url.includes("/api/plugins?orgId=")) {
+      return { ok: true, json: async () => ({ plugins }) };
     }
-    if ((url.endsWith("/api/plugins") || url.endsWith("/api/plugins")) && method === "POST") {
+    if (url.endsWith("/api/plugins") && method === "POST") {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
       input?.onCreate?.(body);
       if ((input?.createStatus ?? 201) !== 201) {
@@ -67,9 +63,9 @@ export function createCloudPublishFetchMock(input?: {
         summary: String(body.summary),
       };
       plugins.push(created);
-      return { ok: true, status: 201, json: async () => ({ plugin: created, plugin: created }) };
+      return { ok: true, status: 201, json: async () => ({ plugin: created }) };
     }
-    if ((url.endsWith("/api/plugins") || url.endsWith("/api/plugins")) && method === "PATCH") {
+    if (url.endsWith("/api/plugins") && method === "PATCH") {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
       input?.onPatch?.(body);
       if ((input?.patchStatus ?? 200) !== 200) {
@@ -84,7 +80,7 @@ export function createCloudPublishFetchMock(input?: {
           }),
         };
       }
-      const pluginId = String(body.pluginId ?? body.pluginId ?? "");
+      const pluginId = String(body.pluginId ?? "");
       const plugin = plugins.find((entry) => entry.id === pluginId);
       if (plugin) {
         plugin.latestVersion = String(body.version);
@@ -98,10 +94,8 @@ export function createCloudPublishFetchMock(input?: {
     if (
       url.startsWith(`${baseUrl}/api/public/plugins`)
       || url.startsWith(`${baseUrl}/api/catalog/plugins`)
-      || url.startsWith(`${baseUrl}/api/public/plugins`)
-      || url.startsWith(`${baseUrl}/api/catalog/plugins`)
-      || /\/api\/public\/.+\/versions\/.+\/(?:plugin|plugin)-export/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin|plugin)-export/.test(url)
+      || /\/api\/public\/.+\/versions\/.+\/(?:plugin)-export/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin)-export/.test(url)
     ) {
       return originalFetch(urlInput, init);
     }

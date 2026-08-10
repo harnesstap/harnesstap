@@ -261,6 +261,8 @@ async function resolveApplyPlugins(
   options: ResolveApplyPluginSourceOptions & {
     onFetched?: (sourceLabel: string) => void;
     lockedVersions?: Map<string, string>;
+    /** Skip a second catalog fetch when roots were already resolved for pin prepare. */
+    resolvedRoots?: { selectors: string[]; rootPluginIds: string[] };
   } = {},
 ): Promise<{
   plugins: ReturnType<typeof getPlugin>[];
@@ -271,11 +273,12 @@ async function resolveApplyPlugins(
   resolution: ResolutionResult;
   rootPluginIds: string[];
 }> {
-  const { selectors, rootPluginIds } = await resolveApplyRootSelectors(
-    pluginNames,
-    projectRoot,
-    options,
-  );
+  const { selectors, rootPluginIds } = options.resolvedRoots
+    ?? await resolveApplyRootSelectors(
+      pluginNames,
+      projectRoot,
+      options,
+    );
 
   const resolution = resolveComposition({
     rootSelectors: selectors,
@@ -430,8 +433,9 @@ export async function handleProjectApplyCommand(
   // Resolve argv selectors to concrete local plugins without walking the graph,
   // so marketplace/git pins on those roots can be prepared first.
   let rootPluginIds: string[];
+  let rootSelectors: string[];
   try {
-    ({ rootPluginIds } = await resolveApplyRootSelectors(
+    ({ rootPluginIds, selectors: rootSelectors } = await resolveApplyRootSelectors(
       resolvedPluginNames as [string, ...string[]],
       projectRoot,
       resolveSourceOptions,
@@ -448,8 +452,10 @@ export async function handleProjectApplyCommand(
   }
 
   const rootPluginPins = collectPluginPinsForPrepare(rootPluginIds);
-  const skipPluginSync =
-    opts.ignorePluginVersions || rootPluginPins.length === 0 || opts.dryRun;
+  // Always prepare marketplace/git pins when present so upstream stubs exist for
+  // the dependency graph. Dry-run and --ignore-plugin-versions skip host installs
+  // via ignoreMissingInstall (exact constraints are stamped locally).
+  const skipPluginSync = rootPluginPins.length === 0;
 
   let pluginValidationIssues: Awaited<
     ReturnType<typeof preparePluginPinsForApply>
@@ -476,7 +482,7 @@ export async function handleProjectApplyCommand(
       skipSync: false,
       syncAll: opts.syncPlugins,
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
-      ignoreMissingInstall: opts.ignorePluginVersions,
+      ignoreMissingInstall: Boolean(opts.ignorePluginVersions || opts.dryRun),
       progress: {
         onInstallStart: (ref) => {
           pluginProgressState.current?.stop();
@@ -511,6 +517,7 @@ export async function handleProjectApplyCommand(
       {
         ...resolveSourceOptions,
         ...(lockedVersions ? { lockedVersions } : {}),
+        resolvedRoots: { selectors: rootSelectors, rootPluginIds },
       },
     );
   } catch (err) {
@@ -616,10 +623,7 @@ export async function handleProjectApplyCommand(
   const additionalPins = collectPluginPinsForPrepare(
     applyBundle.configuredPluginIds,
   ).filter((pin) => !rootPinRefs.has(pin.ref));
-  const shouldPrepareAdditional =
-    !opts.ignorePluginVersions &&
-    !opts.dryRun &&
-    additionalPins.length > 0;
+  const shouldPrepareAdditional = !opts.dryRun && additionalPins.length > 0;
 
   if (shouldPrepareAdditional) {
     if (skipPluginSync) {
@@ -683,6 +687,7 @@ export async function handleProjectApplyCommand(
             noInteractive: opts.noInteractive,
             format: outputFormat,
             ...(lockedVersions ? { lockedVersions } : {}),
+            resolvedRoots: { selectors: rootSelectors, rootPluginIds },
           },
         );
         resources = applyBundle.resources;
