@@ -8,6 +8,7 @@ import {
   getLayerResources,
 } from "../models/layer-model.js";
 import type { ClaudeLayerConfig, Layer } from "../types.js";
+import { resolveComposition } from "./resolve/index.js";
 
 export type LayerVersionErrorCode =
   | "invalid_version"
@@ -58,6 +59,7 @@ interface LayerWorkingSnapshotPayload {
   needs_config: string;
   default_environment_id: string | null;
   source_version: string;
+  resolved_set: Array<{ name: string; version: string }>;
 }
 
 function parseClaudeConfig(raw: string | undefined): ClaudeLayerConfig | undefined {
@@ -116,6 +118,17 @@ function captureWorkingSnapshot(layerId: string): void {
   }
 
   const resourceIds = getLayerResources(layerId).map((resource) => resource.id);
+  const resolvedSet = (() => {
+    try {
+      return resolveComposition({ rootSelectors: [`${row.name}@${row.version}`] })
+        .selected.filter((plugin) => plugin.depth > 0)
+        .map((plugin) => ({ name: plugin.name, version: plugin.version }));
+    } catch {
+      // A layer that does not currently resolve can still be cut; consumers
+      // will re-resolve. Record nothing rather than blocking the cut.
+      return [];
+    }
+  })();
   const payload: LayerWorkingSnapshotPayload = {
     resource_ids: resourceIds,
     description: row.description,
@@ -124,6 +137,7 @@ function captureWorkingSnapshot(layerId: string): void {
     needs_config: row.needs_config,
     default_environment_id: row.default_environment_id,
     source_version: row.version,
+    resolved_set: resolvedSet,
   };
   const now = new Date().toISOString();
 
@@ -340,6 +354,15 @@ export function cutLayerVersion(input: {
       now,
     );
 
+    db.prepare("UPDATE layers SET overrides = ? WHERE id = ?").run(
+      JSON.stringify({
+        versions: {},
+        resources: {},
+        frozen_resolved_set: payload.resolved_set ?? [],
+      }),
+      frozenId,
+    );
+
     copySnapshotAttachments(frozenId, payload.resource_ids);
     db.prepare("DELETE FROM layer_working_snapshots WHERE layer_id = ?").run(
       headRow.id,
@@ -370,4 +393,18 @@ export function assertLayersCleanForShare(layers: Layer[]): void {
       .join(", ")}`,
     { dirtyLayers },
   );
+}
+
+export function getFrozenResolvedSet(
+  layerId: string,
+): Array<{ name: string; version: string }> {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT overrides FROM layers WHERE id = ?")
+    .get(layerId) as { overrides: string } | undefined;
+  if (!row) return [];
+  const parsed = JSON.parse(row.overrides || "{}") as {
+    frozen_resolved_set?: Array<{ name: string; version: string }>;
+  };
+  return parsed.frozen_resolved_set ?? [];
 }
