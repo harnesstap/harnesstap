@@ -602,7 +602,11 @@ async function handleApplyCommand(
     }
   }
 
-  if (!opts.dryRun) {
+  // Ephemeral multi-selector roots (`ht layer apply a b`) use a synthetic
+  // `__ht_ephemeral_root__…` name that is never reusable via lockIsUsable —
+  // writing that lock would poison checked-in locks. Durable single-root
+  // applies still record the resolved plugin set.
+  if (!opts.dryRun && !applyBundle.resolution.root.ephemeral) {
     writeLockfile(projectRoot, lockfileFromResolution(applyBundle.resolution));
   }
 

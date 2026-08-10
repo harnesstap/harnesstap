@@ -144,6 +144,29 @@ describe("resolveResources", () => {
     ).toThrow(SingletonConflictError);
   });
 
+  it("last-wins singleton ties when declarationOrderSingletons is set", () => {
+    const a = createLayer({ name: "a" });
+    const b = createLayer({ name: "b" });
+    attach(a.id, { type: "instruction", name: "context", content: "FROM-A" });
+    attach(b.id, {
+      type: "instruction",
+      name: "context",
+      content: "FROM-B",
+      namespace: "b",
+    });
+
+    const result = resolveResources({
+      selected: [selection(a.id, "a", 1, 1), selection(b.id, "b", 1, 2)],
+      overrides: { versions: {}, resources: {} },
+      rootName: "__ht_ephemeral_root__",
+      declarationOrderSingletons: true,
+    });
+
+    expect(result.resources[0]?.content).toBe("FROM-B");
+    expect(result.decisions[0]?.reason).toBe("declaration-order");
+    expect(result.warnings[0]).toContain("instruction:context");
+  });
+
   it("honors a root resource override over depth", () => {
     const root = createLayer({ name: "root" });
     const dep = createLayer({ name: "dep" });

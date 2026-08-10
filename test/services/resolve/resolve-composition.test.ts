@@ -9,6 +9,7 @@ import {
 import { createResource } from "../../../src/models/resource.ts";
 import { addLayerAttachment } from "../../../src/services/layer-composition.ts";
 import { resolveComposition } from "../../../src/services/resolve/index.ts";
+import { SingletonConflictError } from "../../../src/services/resolve/types.ts";
 
 let ctx: TestContext;
 
@@ -24,6 +25,19 @@ function attachSkill(layerId: string, name: string, content: string, ns: string)
   const resource = createResource({
     type: "skill",
     name,
+    description: "",
+    content,
+    metadata: {},
+    source: "test",
+    namespace: ns,
+  });
+  addResourceToLayer(layerId, resource.id);
+}
+
+function attachInstruction(layerId: string, content: string, ns: string): void {
+  const resource = createResource({
+    type: "instruction",
+    name: "context",
     description: "",
     content,
     metadata: {},
@@ -58,6 +72,35 @@ describe("resolveComposition", () => {
     expect(result.root.ephemeral).toBe(true);
     expect(result.resources).toHaveLength(1);
     expect(result.resources[0]?.content).toBe("FROM-B");
+  });
+
+  it("last-wins conflicting instructions under an ephemeral multi-selector root", () => {
+    const a = createLayer({ name: "a" });
+    const b = createLayer({ name: "b" });
+    attachInstruction(a.id, "FROM-A", "a");
+    attachInstruction(b.id, "FROM-B", "b");
+
+    const result = resolveComposition({ rootSelectors: ["a", "b"] });
+    expect(result.root.ephemeral).toBe(true);
+    expect(result.resources).toHaveLength(1);
+    expect(result.resources[0]?.content).toBe("FROM-B");
+    expect(result.decisions[0]?.reason).toBe("declaration-order");
+  });
+
+  it("errors on a durable equal-depth singleton diamond", async () => {
+    const a = createLayer({ name: "a" });
+    const b = createLayer({ name: "b" });
+    attachInstruction(a.id, "FROM-A", "a");
+    attachInstruction(b.id, "FROM-B", "b");
+    const root = createLayer({ name: "root" });
+    const rootLayer = getLayerByName("root");
+    if (!rootLayer) throw new Error("missing root");
+    await addLayerAttachment({ layer: rootLayer, selector: "layer:a" });
+    await addLayerAttachment({ layer: rootLayer, selector: "layer:b" });
+
+    expect(() => resolveComposition({ rootSelectors: ["root"] })).toThrow(
+      SingletonConflictError,
+    );
   });
 
   it("cleans up the ephemeral root layer row", () => {

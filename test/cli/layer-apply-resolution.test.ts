@@ -116,6 +116,26 @@ describe("layer apply resolution", () => {
     expect(existsSync(join(ctx.projectDir, ".harnesstap", "lock.toml"))).toBe(false);
   });
 
+  it("does not write a lockfile for multi-selector (ephemeral) apply", async () => {
+    const a = createLayer({ name: "a" });
+    attachInstruction(a.id, "FROM-A", "a");
+    const b = createLayer({ name: "b" });
+    attachInstruction(b.id, "FROM-B", "b");
+
+    await runCli([
+      "layer",
+      "apply",
+      "a",
+      "b",
+      "--project",
+      ctx.projectDir,
+      "--harness",
+      "claude-code",
+    ]);
+
+    expect(existsSync(join(ctx.projectDir, ".harnesstap", "lock.toml"))).toBe(false);
+  });
+
   it("prints the resolution trail with --explain", async () => {
     const base = createLayer({ name: "base" });
     attachInstruction(base.id, "FROM-BASE", "base");
