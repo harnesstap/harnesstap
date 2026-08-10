@@ -1,6 +1,5 @@
 import { cloudFetch } from "./cloud-api-version.js";
-import { parseApEnvelope } from "./agent-plugins/envelope.js";
-import { parseApPackageFiles } from "./agent-plugins/import.js";
+import type { ApEnvelope } from "./agent-plugins/envelope.js";
 
 export interface DeviceCodeResponse {
   device_code: string;
@@ -177,25 +176,19 @@ function nextPublishVersion(latestVersion: string | null | undefined): string {
 
 export { nextPublishVersion };
 
-function exportPluginExportToCloudPayload(packageBody: string): { plugins: Array<Record<string, unknown>> } {
-  const files = parseApEnvelope(packageBody, "published package");
-  const parsed = parseApPackageFiles(files);
-  return {
-    plugins: [
-      {
-        name: parsed.sourceName,
-        description: parsed.description,
-        tags: parsed.keywords,
-        pluginPins: parsed.dependencies.map((dependency) => ({
-          id: dependency.name,
-          author: "",
-          version: dependency.constraint,
-        })),
-        resources: parsed.resources,
-        ...(parsed.claude ? { claude: parsed.claude } : {}),
-      },
-    ],
-  };
+function summaryFromPackage(apPackage: ApEnvelope, pluginName: string): string {
+  const pluginJson = apPackage.files["plugin.json"];
+  if (pluginJson?.encoding === "utf8") {
+    try {
+      const manifest = JSON.parse(pluginJson.content) as { description?: unknown };
+      if (typeof manifest.description === "string" && manifest.description.trim()) {
+        return manifest.description.trim();
+      }
+    } catch {
+      // fall through to default summary
+    }
+  }
+  return `Published plugin ${pluginName}`;
 }
 
 export async function requestDeviceCode(
@@ -314,7 +307,7 @@ export interface CloudClient {
   whoami(): Promise<Record<string, unknown>>;
   listOrgs(): Promise<Record<string, unknown>[]>;
   planPluginPublishVersion(metadata: Record<string, unknown>): Promise<{ nextVersion: string }>;
-  publishPluginExport(metadata: Record<string, unknown>, packageBody: string): Promise<Record<string, unknown>>;
+  publishPackage(metadata: Record<string, unknown>, apPackage: ApEnvelope): Promise<Record<string, unknown>>;
   deletePublishedPlugin(input: { orgId: string; pluginId: string }): Promise<void>;
   revokeRefreshToken(): Promise<boolean | undefined>;
   _state: { baseUrl: string; token?: { access_token: string; refresh_token?: string; expires_at?: number } };
@@ -371,7 +364,6 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     name: string;
     slug: string;
     summary: string;
-    pluginCount: number;
     catalogSlug: string;
   }): Promise<PublishedPluginRecord> {
     const response = await authFetch(apiUrl(state.baseUrl, "/plugins"), {
@@ -382,7 +374,6 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         name: input.name,
         slug: input.slug,
         summary: input.summary,
-        pluginCount: input.pluginCount,
         catalogSlug: input.catalogSlug,
       }),
     });
@@ -398,8 +389,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
     pluginId: string;
     version: string;
     summary: string;
-    pluginExport: { plugins: Array<Record<string, unknown>> };
-    harnesstapPluginExportBody: string;
+    apPackage: ApEnvelope;
   }): Promise<{ version: { version: string } }> {
     const response = await authFetch(apiUrl(state.baseUrl, "/plugins"), {
       method: "PATCH",
@@ -409,8 +399,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         pluginId: input.pluginId,
         version: input.version,
         summary: input.summary,
-        pluginExport: input.pluginExport,
-        harnesstapPluginExportBody: input.harnesstapPluginExportBody,
+        package: input.apPackage,
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -456,7 +445,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       return { nextVersion: nextPublishVersion(publishedPlugin?.latestVersion) };
     },
 
-    async publishPluginExport(metadata: Record<string, unknown>, packageBody: string) {
+    async publishPackage(metadata: Record<string, unknown>, apPackage: ApEnvelope) {
       const orgSlug = String(metadata.org_slug ?? "");
       const catalogSlug = String(metadata.catalog_slug ?? "default");
       const pluginName = String(metadata.plugin_name ?? "");
@@ -471,12 +460,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
       }
 
       const slug = toSlug(pluginName);
-      const pluginExportPayload = exportPluginExportToCloudPayload(packageBody);
-      const pluginCount = pluginExportPayload.plugins.length;
-      const summary = String(
-        (pluginExportPayload.plugins[0] as { description?: string } | undefined)?.description
-          || `Published plugin ${pluginName}`,
-      );
+      const summary = summaryFromPackage(apPackage, pluginName);
 
       let publishedPlugin = (await listPublishedPlugins(org.id)).find(
         (entry) => entry.slug === slug && entry.catalogSlug === catalogSlug,
@@ -489,7 +473,6 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
             name: pluginName,
             slug,
             summary,
-            pluginCount,
             catalogSlug,
           });
         } catch (error) {
@@ -512,8 +495,7 @@ export function createCloudClient(opts: CloudClientOptions): CloudClient {
         pluginId: publishedPlugin.id,
         version,
         summary,
-        pluginExport: pluginExportPayload,
-        harnesstapPluginExportBody: packageBody,
+        apPackage,
       });
 
       return {

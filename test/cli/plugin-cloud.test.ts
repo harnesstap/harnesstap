@@ -8,6 +8,8 @@ import { createCloudPublishFetchMock } from "../helpers/cloud-fetch.ts";
 import { initGitRepo } from "../helpers/git.ts";
 import { makeResourceInput } from "../helpers/resources.ts";
 import { makeApEnvelope } from "../helpers/ap-package-fixtures.ts";
+import { buildApPackageFiles } from "../../src/services/agent-plugins/files.ts";
+import { envelopeFromFiles } from "../../src/services/agent-plugins/envelope.ts";
 
 describe("CLI cloud plugin workflows", () => {
   it("search, add (remote install), publish, apply cloud-installed plugin, and conflict handling", async () => {
@@ -1468,6 +1470,159 @@ describe("CLI cloud plugin workflows", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("Cannot share plugins with unpublished edits");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("publishes an Agent Plugins package", async () => {
+    const context = await createTestContext("cli-plugin-publish-ap-package");
+    try {
+      await runCli(["init"]);
+
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudAccounts.setDefaultCloudAccount("test");
+
+      const bodies: Array<Record<string, unknown>> = [];
+      const restore = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        onPatch: (body) => bodies.push(body),
+      });
+      try {
+        const pluginModel = await import("../../src/models/plugin-model.ts");
+        const resourceModel = await import("../../src/models/resource.ts");
+        const plugin = pluginModel.createPlugin({ name: "planner", version: "1.0.0" });
+        pluginModel.addResourceToPlugin(
+          plugin.id,
+          resourceModel.createResource(
+            makeResourceInput({
+              type: "skill",
+              name: "plan",
+              description: "Planning",
+              content: "# Plan",
+              metadata: {},
+              source: "test",
+            }),
+          ).id,
+        );
+
+        const result = await runCli([
+          "plugin",
+          "publish",
+          "planner",
+          "acme/main",
+          "--account",
+          "test",
+        ]);
+        expect(result.exitCode === undefined || result.exitCode === 0).toBe(true);
+
+        const patch = bodies.find((body) => "package" in body);
+        expect(patch).toBeDefined();
+        const apPackage = patch?.package as {
+          schema: string;
+          files: Record<string, { encoding: string; content: string }>;
+        };
+        expect(apPackage.schema).toBe("urn:harnesstap:ap-package:v1");
+        expect(Object.keys(apPackage.files).sort()).toEqual([
+          "plugin.json",
+          "skills/plan/SKILL.md",
+        ]);
+        expect(JSON.parse(apPackage.files["plugin.json"]!.content).name).toBe("planner");
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("sends no TOML body", async () => {
+    const context = await createTestContext("cli-plugin-publish-no-toml");
+    try {
+      await runCli(["init"]);
+
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudAccounts.setDefaultCloudAccount("test");
+
+      const bodies: Array<Record<string, unknown>> = [];
+      const restore = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        onPatch: (body) => bodies.push(body),
+      });
+      try {
+        const pluginModel = await import("../../src/models/plugin-model.ts");
+        pluginModel.createPlugin({ name: "planner", version: "1.0.0" });
+        await runCli([
+          "plugin",
+          "publish",
+          "planner",
+          "acme/main",
+          "--account",
+          "test",
+        ]);
+        const patch = bodies.find((body) => "package" in body);
+        expect(patch).not.toHaveProperty("harnesstapLayerExportBody");
+        expect(patch).not.toHaveProperty("layerExport");
+        expect(patch).not.toHaveProperty("harnesstapPluginExportBody");
+        expect(patch).not.toHaveProperty("pluginExport");
+      } finally {
+        restore();
+      }
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("sends the envelope bytes that --single-file would write", async () => {
+    const context = await createTestContext("cli-plugin-publish-envelope-parity");
+    try {
+      await runCli(["init"]);
+
+      const cloudAccounts = await import("../../src/config/cloud-accounts.ts");
+      await cloudAccounts.saveCloudAccount("test", {
+        cloudBaseUrl: "https://mock",
+        accessToken: "tok",
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+        refreshToken: "r",
+        scopes: [],
+      });
+      await cloudAccounts.setDefaultCloudAccount("test");
+
+      const bodies: Array<Record<string, unknown>> = [];
+      const restore = createCloudPublishFetchMock({
+        baseUrl: "https://mock",
+        onPatch: (body) => bodies.push(body),
+      });
+      try {
+        const pluginModel = await import("../../src/models/plugin-model.ts");
+        const plugin = pluginModel.createPlugin({ name: "planner", version: "1.0.0" });
+        await runCli([
+          "plugin",
+          "publish",
+          "planner",
+          "acme/main",
+          "--account",
+          "test",
+        ]);
+        const patch = bodies.find((body) => "package" in body);
+        expect(patch?.package).toEqual(envelopeFromFiles(buildApPackageFiles(plugin.id)));
+      } finally {
+        restore();
+      }
     } finally {
       await context.cleanup();
     }

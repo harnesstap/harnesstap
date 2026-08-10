@@ -33,11 +33,7 @@ export async function publishPluginToCatalogs(
   opts?: { account?: string },
 ): Promise<PublishTargetResult[]> {
   assertPluginsCleanForShare([plugin]);
-  const packageBody = JSON.stringify(
-    envelopeFromFiles(buildApPackageFiles(plugin.id)),
-    null,
-    2,
-  );
+  const apPackage = envelopeFromFiles(buildApPackageFiles(plugin.id));
   const results: PublishTargetResult[] = [];
   let firstSuccess: { org_slug: string; catalog_slug: string; version?: string } | undefined;
 
@@ -54,13 +50,13 @@ export async function publishPluginToCatalogs(
         continue;
       }
 
-      const resp = await client.publishPluginExport(
+      const resp = await client.publishPackage(
         {
           plugin_name: plugin.name,
           org_slug: target.org,
           catalog_slug: target.catalog,
         },
-        packageBody,
+        apPackage,
       );
       const version = typeof resp.version === "string" ? resp.version : undefined;
       results.push({ target, ok: true, version });
