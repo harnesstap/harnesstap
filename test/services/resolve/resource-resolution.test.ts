@@ -32,6 +32,7 @@ function selection(
     constraints: [],
     reason: depth === 0 ? "root" : "mediation",
     path: [],
+    source: "local",
   };
 }
 

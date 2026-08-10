@@ -60,8 +60,7 @@ export function lockfileFromResolution(result: ResolutionResult): Lockfile {
       .map((plugin) => ({
         name: plugin.name,
         version: plugin.version,
-        // Stage 2 replaces this with real provenance from the dependency row.
-        source: "local" as LockSource,
+        source: plugin.source,
         integrity: layerIntegrity(plugin.layerId),
         depth: plugin.depth,
         path: plugin.path,

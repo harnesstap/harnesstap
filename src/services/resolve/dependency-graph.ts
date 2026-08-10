@@ -6,7 +6,7 @@ import {
   getLayerByPublishedIdentity,
   listLayerVersions,
 } from "../../models/layer-model.js";
-import type { Layer } from "../../types.js";
+import type { DependencySourceKind, Layer } from "../../types.js";
 import { listDependencies } from "../plugin-dependency.js";
 import { getLayerOverrides } from "../layer-overrides.js";
 import { parseLayerSelector } from "../layer-selector.js";
@@ -119,7 +119,7 @@ export function walkDependencyGraph(input: {
     const depths = new Map<string, number>();
     const declarationIndexes = new Map<string, number>();
     const shortestPaths = new Map<string, string[]>();
-    const sourceKinds = new Map<string, string>();
+    const sourceKinds = new Map<string, DependencySourceKind>();
     let nextDeclarationIndex = 1;
 
     const visited = new Set<string>([root.id]);
@@ -233,6 +233,7 @@ export function walkDependencyGraph(input: {
         constraints: [],
         reason: "root",
         path: [rootLabel],
+        source: "local",
       },
     ];
 
@@ -254,6 +255,7 @@ export function walkDependencyGraph(input: {
         constraints: constraints.get(name) ?? [],
         reason: reasons.get(name) ?? "mediation",
         path: shortestPaths.get(name) ?? [rootLabel],
+        source: sourceKinds.get(name) ?? "local",
       });
     }
 

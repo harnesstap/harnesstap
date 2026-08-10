@@ -17,6 +17,7 @@ const result: ResolutionResult = {
       constraints: [],
       reason: "root",
       path: ["my-setup@1.0.0"],
+      source: "local",
     },
     {
       name: "base",
@@ -33,6 +34,7 @@ const result: ResolutionResult = {
       ],
       reason: "mediation",
       path: ["my-setup@1.0.0", "team-standards@2.1.0"],
+      source: "local",
     },
   ],
   resources: [],

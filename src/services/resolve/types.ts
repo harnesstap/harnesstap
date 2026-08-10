@@ -1,4 +1,4 @@
-import type { Resource } from "../../types.js";
+import type { DependencySourceKind, Resource } from "../../types.js";
 
 /** One version constraint on a plugin name, with the path that introduced it. */
 export interface ConstraintRecord {
@@ -33,6 +33,8 @@ export interface SelectedPlugin {
   reason: SelectionReason;
   /** Shortest path from the root to this plugin. */
   path: string[];
+  /** Provenance from the first-seen dependency edge; root is always `local`. */
+  source: DependencySourceKind;
 }
 
 export type ResourceDecisionReason =
