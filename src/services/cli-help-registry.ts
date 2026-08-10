@@ -118,6 +118,16 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Revert a project to a previous configuration snapshot",
     examples: ["revert <snapshot-id>"],
   },
+  apply: {
+    description:
+      "Resolve a plugin's dependency graph and materialize it into the project, or into machine home with --global",
+    examples: [
+      "apply base",
+      "apply base --harness claude-code",
+      "apply work --global",
+      "apply base --format json",
+    ],
+  },
   "plugin.create": {
     description: "Create a new local plugin",
     examples: [

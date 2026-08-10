@@ -11,7 +11,8 @@ import {
   createLayer,
   setLayerTags,
 } from "../../src/models/plugin-model.ts";
-import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+import { formatPluginExportToml } from "../../src/services/transport/plugin.ts";
+import { PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "../../src/types.ts";
 
 describe("CLI profile", () => {
   it("lists and creates profile layers", async () => {
@@ -41,7 +42,7 @@ describe("CLI profile", () => {
       createLayer({ name: "dbt-expert" });
 
       const createResult = await runCli(["profile", "create", "dbt-expert"]);
-      expect(createResult.stdout).toContain("Tagged layer");
+      expect(createResult.stdout).toContain("Tagged plugin");
       expect(createResult.stdout).toContain("dbt-expert");
       expect(createResult.stdout).toContain("profile use dbt-expert");
     } finally {
@@ -71,7 +72,7 @@ describe("CLI profile", () => {
           promptResponses: [{ value: true }],
         },
       );
-      expect(createResult.stdout).toContain("Tagged layer");
+      expect(createResult.stdout).toContain("Tagged plugin");
       expect(createResult.stdout).toContain("Applied profile");
 
       const status = await runCli(["profile", "status"]);
@@ -117,7 +118,7 @@ describe("CLI profile", () => {
 
       const result = await runCli(["profile", "delete", "dbt-expert"]);
       expect(result.stdout).toContain("Demoted profile");
-      expect(result.stdout).toContain("layer delete dbt-expert");
+      expect(result.stdout).toContain("plugin delete dbt-expert");
 
       const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.getLayer("dbt-expert")).toBeDefined();
@@ -142,7 +143,7 @@ describe("CLI profile", () => {
         },
       );
       expect(result.stdout).toContain("Demoted profile");
-      expect(result.stdout).toContain("Deleted layer");
+      expect(result.stdout).toContain("Deleted plugin");
 
       const layerModel = await import("../../src/models/plugin-model.ts");
       expect(layerModel.getLayer("dbt-expert")).toBeUndefined();
@@ -168,7 +169,7 @@ describe("CLI profile", () => {
       addResourceToLayer(layer.id, resource.id);
       await runCli(["profile", "use", "dbt-expert", "--harness", "claude-code"]);
 
-      const result = await runCli(["profile", "delete", "dbt-expert", "--layer"]);
+      const result = await runCli(["profile", "delete", "dbt-expert", "--plugin"]);
       expect(result.stdout).toContain("Cleared active profile pointer");
 
       const status = await runCli(["profile", "status", "--format", "json"]);
@@ -197,7 +198,7 @@ describe("CLI profile", () => {
       addResourceToLayer(baseLayer.id, resource.id);
 
       const created = await runCli(["profile", "create", "work-layer", "--yes"]);
-      expect(created.stdout).toContain("Tagged layer");
+      expect(created.stdout).toContain("Tagged plugin");
 
       const dryRun = await runCli([
         "profile",
@@ -245,7 +246,7 @@ describe("CLI profile", () => {
       const layerShow = await runCli(["layer", "show", "dbt-expert"]);
       const profileShow = await runCli(["profile", "show", "dbt-expert"]);
 
-      for (const marker of ["LAYER", "Description", "RESOURCES", "dbt-guide"]) {
+      for (const marker of ["PLUGIN", "Description", "RESOURCES", "dbt-guide"]) {
         expect(layerShow.stdout).toContain(marker);
         expect(profileShow.stdout).toContain(marker);
       }
@@ -368,7 +369,7 @@ describe("CLI profile", () => {
         "https://mock",
       ]);
       const pullOutput = `${pull.stdout}\n${pull.stderr}`;
-      expect(pullOutput).toContain("Installed layer remote-team");
+      expect(pullOutput).toContain("Installed plugin remote-team");
       expect(pullOutput).toContain("is not tagged as a profile");
       restoreFetch();
     } finally {
@@ -397,11 +398,11 @@ describe("CLI profile", () => {
       const _depTarget = createLayer({ name: "local-dep" });
       const depProfile = createLayer({ name: "dep-profile" });
       setLayerTags(depProfile.id, ["profile"]);
-      const composition = await import("../../src/services/layer-composition.ts");
-      const depResource = composition.ensureLayerResource("local-dep");
+      const composition = await import("../../src/services/plugin-composition.ts");
+      const depResource = composition.ensurePluginResource("local-dep");
       addResourceToLayer(depProfile.id, depResource.id);
 
-      await runCli(["layer", "catalog", "register", "acme/default"]);
+      await runCli(["plugin", "catalog", "register", "acme/default"]);
 
       const result = await runCli([
         "profile",
@@ -411,7 +412,7 @@ describe("CLI profile", () => {
         "test",
       ]);
       const publishOutput = `${result.stdout}\n${result.stderr}`;
-      expect(publishOutput).toContain("unpublished local layers");
+      expect(publishOutput).toContain("unpublished local plugins");
       expect(publishOutput).toContain("Published dep-profile to acme/dep-profile");
 
       const emptyResult = await runCli([
@@ -424,7 +425,7 @@ describe("CLI profile", () => {
         "test",
       ]);
       const emptyPublishOutput = `${emptyResult.stdout}\n${emptyResult.stderr}`;
-      expect(emptyPublishOutput).toContain("no layer references and no material resources");
+      expect(emptyPublishOutput).toContain("no plugin references and no material resources");
       expect(emptyPublishOutput).toContain("Published orphan-profile to acme/orphan-profile");
 
       restorePublishFetch();
@@ -477,16 +478,16 @@ describe("CLI profile", () => {
 
       const profile = createLayer({ name: "work" });
       setLayerTags(profile.id, ["profile"]);
-      const composition = await import("../../src/services/layer-composition.ts");
-      const ref = composition.ensureLayerResource("harnesstap-cloud/default/remote-base", {
+      const composition = await import("../../src/services/plugin-composition.ts");
+      const ref = composition.ensurePluginResource("harnesstap-cloud/default/remote-base", {
         versionConstraint: "1.0.0",
       });
       addResourceToLayer(profile.id, ref.id);
 
-      const dependencyBundle = formatLayerExportToml({
-        $schema: "urn:harnesstap:layer:v1",
-        version: 1,
-        layers: [{
+      const dependencyBundle = formatPluginExportToml({
+        $schema: PLUGIN_SCHEMA,
+        version: PLUGIN_SCHEMA_VERSION,
+        plugins: [{
           name: "remote-base",
           version: "1.0.0",
           description: "Remote base",
@@ -546,7 +547,7 @@ describe("CLI profile", () => {
         "https://mock",
       ]);
       const applyOutput = `${apply.stdout}\n${apply.stderr}`;
-      expect(applyOutput).toContain("Pulled 1 missing layer dependencies");
+      expect(applyOutput).toContain("Pulled 1 missing plugin dependencies");
       expect(applyOutput).toContain("remote-base");
 
       restoreFetch();

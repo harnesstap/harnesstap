@@ -67,6 +67,12 @@ export interface ApplyProfilePluginOptions {
   pull?: boolean;
   account?: string;
   baseUrl?: string;
+  /**
+   * When false, allow applying a non-profile plugin to machine home without
+   * requiring the `profile` tag. Active-profile recording is owned by callers.
+   * Defaults to true (require profile tag).
+   */
+  recordActiveProfile?: boolean;
 }
 
 export interface ApplyProfilePluginResult {
@@ -440,7 +446,8 @@ export async function applyProfilePlugin(
   if (!profilePlugin) {
     throw new Error(`Plugin not found: ${selector}`);
   }
-  if (!isProfilePlugin(profilePlugin)) {
+  const requireProfileTag = options.recordActiveProfile !== false;
+  if (requireProfileTag && !isProfilePlugin(profilePlugin)) {
     throw new Error(`Plugin "${profilePlugin.name}" is not tagged as a profile`);
   }
 

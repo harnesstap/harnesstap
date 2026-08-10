@@ -49,7 +49,9 @@ import {
   getPluginById,
   resolvePluginSelector,
   mergePluginsById,
+  setPluginTags,
 } from "../../models/plugin-model.js";
+import { PROFILE_PLUGIN_TAG } from "../../constants/profile.js";
 import {
   upsertProject,
   getProjectByLocalPath,
@@ -360,7 +362,7 @@ function printPluginApplyPostSyncSummary(
 }
 
 
-async function handleApplyCommand(
+export async function handleProjectApplyCommand(
   pluginNames: [string, ...string[]] | [],
   opts: ApplyCommandOpts,
 ): Promise<void> {
@@ -531,7 +533,7 @@ async function handleApplyCommand(
       if (scaffolded) {
         process.exitCode = 0;
         ui.success(`Created composition plugin ${scaffolded}. Re-applying…`);
-        await handleApplyCommand([scaffolded], opts);
+        await handleProjectApplyCommand([scaffolded], opts);
         return;
       }
       return;
@@ -850,6 +852,7 @@ async function handleApplyCommand(
     const format = parseOutputFormat(opts.format);
     if (format === "json") {
       printJson({
+        scope: "project",
         plugin: primaryPlugin.name,
         plugins: resolvedPluginNames,
         project_root: projectRoot,
@@ -880,6 +883,12 @@ async function handleApplyCommand(
   const conflictResolver =
     conflictPolicy === "prompt" ? promptMaterializationConflict : undefined;
 
+  const platformResults: Array<{
+    platform: string;
+    written_files: string[];
+    skipped_files: string[];
+  }> = [];
+
   for (const result of generated) {
     const spin = createProgress(`Applying ${result.platformId}…`);
     const materialized = await materializeFiles(result.files, projectRoot, {
@@ -892,25 +901,42 @@ async function handleApplyCommand(
       process.exitCode = 1;
       return;
     }
-    const writtenCount = materialized.writtenFiles.length;
-    const skippedCount = materialized.skippedFiles.length;
-    const summary =
-      skippedCount > 0
-        ? `wrote ${formatCount(writtenCount, "file")}, skipped ${formatCount(skippedCount, "file")}`
-        : `wrote ${formatCount(writtenCount, "file")}`;
-    console.log(
-      ui.theme.success(
-        `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${summary}`,
-      ),
-    );
-    for (const filePath of materialized.writtenFiles) {
-      console.log(ui.theme.muted(`  ${ui.icons.bullet} ${filePath}`));
-    }
-    for (const filePath of materialized.skippedFiles) {
+    platformResults.push({
+      platform: result.platformId,
+      written_files: materialized.writtenFiles,
+      skipped_files: materialized.skippedFiles,
+    });
+    if (outputFormat === "human") {
+      const writtenCount = materialized.writtenFiles.length;
+      const skippedCount = materialized.skippedFiles.length;
+      const summary =
+        skippedCount > 0
+          ? `wrote ${formatCount(writtenCount, "file")}, skipped ${formatCount(skippedCount, "file")}`
+          : `wrote ${formatCount(writtenCount, "file")}`;
       console.log(
-        ui.theme.muted(`  ${ui.icons.bullet} skipped ${filePath}`),
+        ui.theme.success(
+          `${ui.icons.success} ${result.platformId} ${ui.icons.bullet} ${summary}`,
+        ),
       );
+      for (const filePath of materialized.writtenFiles) {
+        console.log(ui.theme.muted(`  ${ui.icons.bullet} ${filePath}`));
+      }
+      for (const filePath of materialized.skippedFiles) {
+        console.log(
+          ui.theme.muted(`  ${ui.icons.bullet} skipped ${filePath}`),
+        );
+      }
     }
+  }
+
+  if (outputFormat === "json") {
+    printJson({
+      scope: "project",
+      plugin: primaryPlugin.name,
+      plugins: resolvedPluginNames,
+      project_root: projectRoot,
+      platforms: platformResults,
+    });
   }
 
   // Non-strict plugin warnings (shown after successful file writes).
@@ -975,6 +1001,7 @@ async function handlePluginEditCommand(
     sync?: boolean;
     environment?: string;
     clearEnvironment?: boolean;
+    profile?: boolean;
   },
 ): Promise<void> {
   const db = getDb();
@@ -988,10 +1015,16 @@ async function handlePluginEditCommand(
     : opts.clearEnvironment
       ? { kind: "clear" as const }
       : undefined;
+  const profileChange = opts.profile === true
+    ? { kind: "add" as const }
+    : opts.profile === false
+      ? { kind: "remove" as const }
+      : undefined;
   const scripting = adds.length > 0
     || removes.length > 0
     || Boolean(opts.apply)
-    || Boolean(environmentChange);
+    || Boolean(environmentChange)
+    || Boolean(profileChange);
 
   if (opts.environment && opts.clearEnvironment) {
     process.exitCode = 1;
@@ -1058,6 +1091,35 @@ async function handlePluginEditCommand(
 
   if (scripting) {
     try {
+      if (profileChange) {
+        if (opts.dryRun) {
+          const action = profileChange.kind === "add"
+            ? "add profile tag"
+            : "remove profile tag";
+          ui.info(`Would ${action} on ${formatPluginLabel(plugin)}`);
+        } else {
+          const nextTags = profileChange.kind === "add"
+            ? [...new Set([...plugin.tags, PROFILE_PLUGIN_TAG])]
+            : plugin.tags.filter((tag) => tag !== PROFILE_PLUGIN_TAG);
+          setPluginTags(plugin.id, nextTags);
+          if (format === "json") {
+            printJson({
+              plugin: plugin.name,
+              tags: nextTags,
+              profile: profileChange.kind === "add",
+            });
+          } else if (profileChange.kind === "add") {
+            ui.success(
+              `Tagged ${ui.theme.accent(formatPluginLabel(plugin))} as a profile`,
+            );
+          } else {
+            ui.success(
+              `Removed profile tag from ${ui.theme.accent(formatPluginLabel(plugin))}`,
+            );
+          }
+        }
+      }
+
       if (environmentChange) {
         if (opts.dryRun) {
           const action = environmentChange.kind === "set"
@@ -1668,12 +1730,16 @@ async function handlePluginCreateCommand(
     format?: string;
     interactive?: boolean;
     yes?: boolean;
+    profile?: boolean;
   },
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
   const db = getDb();
   initializeSchema(db);
   const tags = opts.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) ?? [];
+  if (opts.profile) {
+    tags.push(PROFILE_PLUGIN_TAG);
+  }
   const version = opts.version ?? "1.0.0";
 
   if (!opts.from) {
@@ -1815,7 +1881,7 @@ async function handlePluginCreateCommand(
 
 configurePluginListInteractiveDeps({
   applyToProject: async (selectors, applyOpts) => {
-    await handleApplyCommand(selectors, {
+    await handleProjectApplyCommand(selectors, {
       project: resolveCatalogSearchProjectRoot(),
       account: applyOpts.account,
       baseUrl: applyOpts.baseUrl,
@@ -2115,6 +2181,7 @@ pluginCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
   .option("-y, --yes", "Skip interactive prompts")
+  .option("--profile", "Tag the new plugin as a switchable profile")
   .description("Create a plugin from scratch, a skill package, or a scan")
   .action(
     async (
@@ -2137,6 +2204,7 @@ pluginCmd
         format?: string;
         interactive?: boolean;
         yes?: boolean;
+        profile?: boolean;
       },
     ) => {
       try {
@@ -2244,6 +2312,8 @@ pluginCmd
   .option("--sync", "Sync plugin resource immediately after add")
   .option("--environment <name>", "Set default environment for plugin apply cascade")
   .option("--clear-environment", "Clear default environment from plugin")
+  .option("--profile", "Tag the plugin as a switchable profile")
+  .option("--no-profile", "Remove the profile tag from the plugin")
   .option("--dry-run", "Preview changes without writing")
   .option("--format <mode>", "Output format: human or json", "human")
   .option("--interactive", "Prompt instead of relying on explicit flags")
@@ -2261,6 +2331,7 @@ pluginCmd
     sync?: boolean;
     environment?: string;
     clearEnvironment?: boolean;
+    profile?: boolean;
     dryRun?: boolean;
     format?: string;
     interactive?: boolean;

@@ -1,10 +1,11 @@
 import { DEFAULT_CLOUD_BASE_URL } from "../../src/config/catalog.ts";
-import { formatLayerExportToml } from "../../src/services/transport/layer.ts";
+import { formatPluginExportToml } from "../../src/services/transport/plugin.ts";
+import { PLUGIN_SCHEMA, PLUGIN_SCHEMA_VERSION } from "../../src/types.ts";
 
-const DEFAULT_BUNDLE = formatLayerExportToml({
-  $schema: "urn:harnesstap:layer:v1",
-  version: 1,
-  layers: [
+const DEFAULT_BUNDLE = formatPluginExportToml({
+  $schema: PLUGIN_SCHEMA,
+  version: PLUGIN_SCHEMA_VERSION,
+  plugins: [
     {
       name: "remote-team",
       version: "1.0.0",
@@ -30,10 +31,10 @@ const DEFAULT_BUNDLE = formatLayerExportToml({
   embedded_plugins: [],
 });
 
-function normalizeLayer(layer: Record<string, unknown>) {
+function normalizePlugin(plugin: Record<string, unknown>) {
   return {
     catalogSlug: "default",
-    ...layer,
+    ...plugin,
   };
 }
 
@@ -53,13 +54,14 @@ function encodeCursor(offset: number): string {
 
 export function createCatalogFetchMock(input?: {
   layers?: Array<Record<string, unknown>>;
+  plugins?: Array<Record<string, unknown>>;
   bundle?: string;
   baseUrl?: string;
   failOrgFilters?: string[];
   pageDelayMs?: number;
 }) {
   const baseUrl = (input?.baseUrl ?? DEFAULT_CLOUD_BASE_URL).replace(/\/+$/, "");
-  const layers = (input?.layers ?? [{
+  const plugins = (input?.plugins ?? input?.layers ?? [{
     orgSlug: "harnesstap-cloud",
     slug: "team",
     name: "Team Layer",
@@ -68,7 +70,7 @@ export function createCatalogFetchMock(input?: {
     updatedAt: new Date().toISOString(),
     tags: [],
     visibility: "public",
-  }]).map((layer) => normalizeLayer(layer));
+  }]).map((plugin) => normalizePlugin(plugin));
   const bundle = input?.bundle ?? DEFAULT_BUNDLE;
   const pageDelayMs = input?.pageDelayMs ?? 0;
   const originalFetch = globalThis.fetch;
@@ -81,7 +83,12 @@ export function createCatalogFetchMock(input?: {
         json: async () => ({ access_token: "tok", refresh_token: "r", expires_in: 3600 }),
       };
     }
-    if (url.startsWith(`${baseUrl}/api/public/layers`) || url.startsWith(`${baseUrl}/api/catalog/layers`)) {
+    const isPluginList =
+      url.startsWith(`${baseUrl}/api/public/plugins`)
+      || url.startsWith(`${baseUrl}/api/catalog/plugins`)
+      || url.startsWith(`${baseUrl}/api/public/layers`)
+      || url.startsWith(`${baseUrl}/api/catalog/layers`);
+    if (isPluginList) {
       const parsed = new URL(url);
       const orgFilters = parsed.searchParams.getAll("org");
       if (input?.failOrgFilters?.some((org) => orgFilters.includes(org))) {
@@ -91,24 +98,24 @@ export function createCatalogFetchMock(input?: {
       const tag = parsed.searchParams.get("tag")?.trim().toLowerCase();
       const catalog = parsed.searchParams.get("catalog")?.trim();
       let filtered = orgFilters.length === 0
-        ? layers
-        : layers.filter((layer) =>
-            orgFilters.includes(String(layer.orgSlug)),
+        ? plugins
+        : plugins.filter((plugin) =>
+            orgFilters.includes(String(plugin.orgSlug)),
           );
       if (catalog) {
-        filtered = filtered.filter((layer) => String(layer.catalogSlug ?? "default") === catalog);
+        filtered = filtered.filter((plugin) => String(plugin.catalogSlug ?? "default") === catalog);
       }
       if (query) {
-        filtered = filtered.filter((layer) => {
-          const slug = String(layer.slug ?? "").toLowerCase();
-          const name = String(layer.name ?? "").toLowerCase();
+        filtered = filtered.filter((plugin) => {
+          const slug = String(plugin.slug ?? "").toLowerCase();
+          const name = String(plugin.name ?? "").toLowerCase();
           return slug.includes(query) || name.includes(query);
         });
       }
       if (tag) {
-        filtered = filtered.filter((layer) => {
-          const layerTags = Array.isArray(layer.tags) ? layer.tags : [];
-          return layerTags.some((entry) => String(entry).toLowerCase() === tag);
+        filtered = filtered.filter((plugin) => {
+          const pluginTags = Array.isArray(plugin.tags) ? plugin.tags : [];
+          return pluginTags.some((entry) => String(entry).toLowerCase() === tag);
         });
       }
       const limit = Math.min(Number(parsed.searchParams.get("limit") ?? 10) || 10, 100);
@@ -122,13 +129,13 @@ export function createCatalogFetchMock(input?: {
       }
       return {
         ok: true,
-        json: async () => ({ layers: page, nextCursor }),
+        json: async () => ({ plugins: page, layers: page, nextCursor }),
       };
     }
-    if (/\/api\/public\/.+\/versions\/.+\/layer-export/.test(url)) {
-      return { ok: true, text: async () => bundle };
-    }
-    if (/\/api\/catalog\/.+\/versions\/.+\/layer-export/.test(url)) {
+    if (
+      /\/api\/public\/.+\/versions\/.+\/(?:plugin|layer)-export/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin|layer)-export/.test(url)
+    ) {
       return { ok: true, text: async () => bundle };
     }
     if (url.endsWith("/api/me/orgs")) {

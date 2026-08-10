@@ -1,6 +1,6 @@
 type CloudOrg = { id: string; slug: string; name: string };
 
-type CloudPublishLayer = {
+type CloudPublishPlugin = {
   id: string;
   slug: string;
   catalogSlug: string;
@@ -9,10 +9,14 @@ type CloudPublishLayer = {
   summary: string;
 };
 
+/** @deprecated Use CloudPublishPlugin */
+type CloudPublishLayer = CloudPublishPlugin;
+
 export function createCloudPublishFetchMock(input?: {
   baseUrl?: string;
   orgs?: CloudOrg[];
   existingLayers?: CloudPublishLayer[];
+  existingPlugins?: CloudPublishPlugin[];
   createStatus?: number;
   patchStatus?: number;
   onCreate?: (body: Record<string, unknown>) => void;
@@ -20,7 +24,7 @@ export function createCloudPublishFetchMock(input?: {
 }) {
   const baseUrl = (input?.baseUrl ?? "https://mock").replace(/\/+$/, "");
   const orgs = input?.orgs ?? [{ id: "org-1", slug: "acme", name: "Acme Corp" }];
-  const layers = [...(input?.existingLayers ?? [])];
+  const plugins = [...(input?.existingPlugins ?? input?.existingLayers ?? [])];
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = (async (urlInput: unknown, init?: RequestInit) => {
@@ -36,43 +40,54 @@ export function createCloudPublishFetchMock(input?: {
     if (url.endsWith("/api/me/orgs")) {
       return { ok: true, json: async () => ({ orgs }) };
     }
-    if (url.includes("/api/layers?orgId=")) {
-      return { ok: true, json: async () => ({ layers }) };
+    if (url.includes("/api/plugins?orgId=") || url.includes("/api/layers?orgId=")) {
+      return { ok: true, json: async () => ({ plugins, layers: plugins }) };
     }
-    if (url.endsWith("/api/layers") && method === "POST") {
+    if ((url.endsWith("/api/plugins") || url.endsWith("/api/layers")) && method === "POST") {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
       input?.onCreate?.(body);
       if ((input?.createStatus ?? 201) !== 201) {
         return {
           ok: false,
           status: input?.createStatus ?? 409,
-          json: async () => ({ error: { code: "duplicate_slug", message: "A layer with this slug already exists." } }),
+          json: async () => ({
+            error: {
+              code: "duplicate_slug",
+              message: "A plugin with this slug already exists.",
+            },
+          }),
         };
       }
-      const created: CloudPublishLayer = {
-        id: `layer-${layers.length + 1}`,
+      const created: CloudPublishPlugin = {
+        id: `plugin-${plugins.length + 1}`,
         slug: String(body.slug),
         catalogSlug: String(body.catalogSlug ?? "default"),
         latestVersion: null,
         name: String(body.name),
         summary: String(body.summary),
       };
-      layers.push(created);
-      return { ok: true, status: 201, json: async () => ({ layer: created }) };
+      plugins.push(created);
+      return { ok: true, status: 201, json: async () => ({ plugin: created, layer: created }) };
     }
-    if (url.endsWith("/api/layers") && method === "PATCH") {
+    if ((url.endsWith("/api/plugins") || url.endsWith("/api/layers")) && method === "PATCH") {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
       input?.onPatch?.(body);
       if ((input?.patchStatus ?? 200) !== 200) {
         return {
           ok: false,
           status: input?.patchStatus ?? 409,
-          json: async () => ({ error: { code: "duplicate_version", message: "Version already exists." } }),
+          json: async () => ({
+            error: {
+              code: "duplicate_version",
+              message: "Version already exists.",
+            },
+          }),
         };
       }
-      const layer = layers.find((entry) => entry.id === body.layerId);
-      if (layer) {
-        layer.latestVersion = String(body.version);
+      const pluginId = String(body.pluginId ?? body.layerId ?? "");
+      const plugin = plugins.find((entry) => entry.id === pluginId);
+      if (plugin) {
+        plugin.latestVersion = String(body.version);
       }
       return {
         ok: true,
@@ -81,10 +96,12 @@ export function createCloudPublishFetchMock(input?: {
     }
 
     if (
-      url.startsWith(`${baseUrl}/api/public/layers`)
+      url.startsWith(`${baseUrl}/api/public/plugins`)
+      || url.startsWith(`${baseUrl}/api/catalog/plugins`)
+      || url.startsWith(`${baseUrl}/api/public/layers`)
       || url.startsWith(`${baseUrl}/api/catalog/layers`)
-      || /\/api\/public\/.+\/versions\/.+\/layer-export/.test(url)
-      || /\/api\/catalog\/.+\/versions\/.+\/layer-export/.test(url)
+      || /\/api\/public\/.+\/versions\/.+\/(?:plugin|layer)-export/.test(url)
+      || /\/api\/catalog\/.+\/versions\/.+\/(?:plugin|layer)-export/.test(url)
     ) {
       return originalFetch(urlInput, init);
     }

@@ -6,6 +6,7 @@ import { registerConfigCommands } from "./cli/commands/config.js";
 import { registerEnvironmentCommands } from "./cli/commands/environment.js";
 import { registerHarnessCommands } from "./cli/commands/harness.js";
 import { registerMarketplaceCommands } from "./cli/commands/marketplace.js";
+import { registerApplyCommand } from "./cli/commands/apply.js";
 import {
   registerDeprecatedLayerAlias,
   registerPluginCommands,
@@ -35,6 +36,7 @@ registerProfileCommands(program);
 registerPluginCommands(program);
 registerDeprecatedLayerAlias(program);
 registerMarketplaceCommands(program);
+registerApplyCommand(program);
 registerCommands(program);
 
 export { program } from "./cli/program.js";

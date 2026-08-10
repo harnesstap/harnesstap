@@ -161,7 +161,7 @@ export function detachPluginPinFromPlugin(pluginId: string, ref: string): void {
 /** @deprecated Use listDependencies */
 export function listAttachedPluginRefs(pluginId: string): PluginRefView[] {
   return listDependencies(pluginId).map((dependency) => ({
-    dependency_name: dependency.name,
+    dependency_name: dependency.ref,
     version_constraint: dependency.version_constraint,
     resource: dependency.resource,
   }));
