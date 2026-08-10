@@ -6,6 +6,7 @@ interface GlobalApplySnapshotRow {
   id: string;
   profile_name: string;
   layer_ids: string;
+  resolved_set: string;
   created_at: string;
 }
 
@@ -18,8 +19,14 @@ interface GlobalApplySnapshotInstallRow {
 
 function rowToGlobalApplySnapshot(row: GlobalApplySnapshotRow): GlobalApplySnapshot {
   return {
-    ...row,
+    id: row.id,
+    profile_name: row.profile_name,
     layer_ids: JSON.parse(row.layer_ids) as string[],
+    resolved_set: JSON.parse(row.resolved_set ?? "[]") as Array<{
+      name: string;
+      version: string;
+    }>,
+    created_at: row.created_at,
   };
 }
 
@@ -35,21 +42,24 @@ function rowToGlobalApplySnapshotInstall(
 export function createGlobalApplySnapshot(input: {
   profile_name: string;
   layer_ids: string[];
+  resolved_set?: Array<{ name: string; version: string }>;
 }): GlobalApplySnapshot {
   const db = getDb();
   const snapshot: GlobalApplySnapshot = {
     id: ulid(),
     profile_name: input.profile_name,
     layer_ids: input.layer_ids,
+    resolved_set: input.resolved_set ?? [],
     created_at: new Date().toISOString(),
   };
   db.prepare(
-    `INSERT INTO global_apply_snapshots (id, profile_name, layer_ids, created_at)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO global_apply_snapshots (id, profile_name, layer_ids, resolved_set, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
   ).run(
     snapshot.id,
     snapshot.profile_name,
     JSON.stringify(snapshot.layer_ids),
+    JSON.stringify(snapshot.resolved_set),
     snapshot.created_at,
   );
   return snapshot;

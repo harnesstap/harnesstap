@@ -9,10 +9,10 @@ import {
   type ConflictResolution,
   type MaterializationConflict,
 } from "./applier.js";
-import { mergeLayersForApply } from "./layer-apply-merge.js";
 import {
   getLayerById,
   getLayerByPublishedIdentity,
+  mergeLayersById,
   resolveLayerSelector,
 } from "../models/layer-model.js";
 import type { Layer } from "../types.js";
@@ -48,8 +48,14 @@ import { detectPlatforms } from "./scanner.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
 import { installLayerFromCatalog } from "./layer-catalog-install.js";
-import { listAttachedLayerRefs } from "./layer-composition.js";
+import {
+  listAttachedLayerRefs,
+  listAttachedPluginPins,
+} from "./layer-composition.js";
 import { parseLayerSelector, resolveRemoteLayerSelector } from "./layer-selector.js";
+import { resolveComposition } from "./resolve/index.js";
+import type { ResolutionResult } from "./resolve/types.js";
+import { ui } from "../ui/index.js";
 
 export interface ApplyProfileLayerOptions {
   harness?: string;
@@ -308,6 +314,25 @@ export function collectProfileLayerIds(profileLayer: Layer): string[] {
   return orderedIds;
 }
 
+function listResolvedPluginPins(
+  resolution: ResolutionResult,
+): Array<{ ref: string; version_constraint: string }> {
+  const pins = new Map<string, { ref: string; version_constraint: string }>();
+  // Deeper layers first so nearer ones overwrite, matching Pass 2.
+  const ordered = [...resolution.selected].sort(
+    (a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex,
+  );
+  for (const plugin of ordered) {
+    for (const pin of listAttachedPluginPins(plugin.layerId)) {
+      pins.set(pin.ref, {
+        ref: pin.ref,
+        version_constraint: pin.version_constraint,
+      });
+    }
+  }
+  return [...pins.values()];
+}
+
 function resolveGlobalApplyHarnessTargets(harnessOption?: string): string[] {
   const explicitTargets = uniqueHarnessTargets(parsePlatformFilter(harnessOption) ?? []);
   if (explicitTargets.length > 0) {
@@ -423,9 +448,26 @@ export async function applyProfileLayer(
     profileLayer,
     options,
   );
-  const layerIdsForApply = collectProfileLayerIds(profileLayer);
-  const merged = mergeLayersForApply(layerIdsForApply);
+  const resolution = resolveComposition({ rootSelectors: [profileLayer.name] });
+  const merged = {
+    layers: resolution.selected
+      .map((plugin) => getLayerById(plugin.layerId))
+      .filter((layer): layer is NonNullable<typeof layer> => layer != null),
+    resources: resolution.resources,
+    claude: mergeLayersById(
+      [...resolution.selected]
+        .sort((a, b) => b.depth - a.depth || b.declarationIndex - a.declarationIndex)
+        .map((plugin) => plugin.layerId),
+    ).claude,
+    pluginPins: listResolvedPluginPins(resolution),
+  };
+  for (const warning of resolution.warnings) {
+    console.warn(ui.theme.warn(warning));
+  }
   const configuredLayerIds = merged.layers.map((layer) => layer.id);
+  const resolvedSet = resolution.selected
+    .filter((plugin) => plugin.depth > 0)
+    .map((plugin) => ({ name: plugin.name, version: plugin.version }));
   const harnesses = resolveGlobalApplyHarnessTargets(options.harness);
   const homeRoot = resolveHomeRoot();
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
@@ -520,6 +562,7 @@ export async function applyProfileLayer(
     const snapshot = createGlobalApplySnapshot({
       profile_name: profileLayer.name,
       layer_ids: configuredLayerIds,
+      resolved_set: resolvedSet,
     });
     snapshotId = snapshot.id;
     for (const result of applied.results) {

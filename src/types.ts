@@ -384,6 +384,7 @@ export interface GlobalApplySnapshot {
   id: string;
   profile_name: string;
   layer_ids: string[];
+  resolved_set: Array<{ name: string; version: string }>;
   created_at: string;
 }
 

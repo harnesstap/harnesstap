@@ -1,6 +1,15 @@
-import { getLayerById, getLayerByName, listLayerVersions } from "../../models/layer-model.js";
+import semver from "semver";
+import { getDb } from "../../db/connection.js";
+import {
+  getLayerById,
+  getLayerByName,
+  getLayerByPublishedIdentity,
+  listLayerVersions,
+} from "../../models/layer-model.js";
+import type { Layer } from "../../types.js";
 import { listAttachedLayerRefs } from "../layer-composition.js";
 import { getLayerOverrides } from "../layer-overrides.js";
+import { parseLayerSelector } from "../layer-selector.js";
 import { selectVersion } from "./version-mediation.js";
 import type { ConstraintRecord, SelectedPlugin, SelectionReason } from "./types.js";
 
@@ -9,6 +18,47 @@ const MAX_PASSES = 64;
 
 function label(name: string, version: string): string {
   return `${name}@${version}`;
+}
+
+function listAvailableVersions(dependencyName: string): string[] {
+  try {
+    const parsed = parseLayerSelector(dependencyName);
+    if (parsed.scope === "published") {
+      const rows = getDb()
+        .prepare(
+          `SELECT version FROM layers
+           WHERE name = ? AND org_slug = ? AND catalog_slug = ?`,
+        )
+        .all(parsed.name, parsed.org, parsed.catalog) as Array<{ version: string }>;
+      return rows
+        .map((row) => row.version)
+        .filter((version) => semver.valid(version) !== null)
+        .sort(semver.rcompare);
+    }
+    return listLayerVersions(parsed.name);
+  } catch {
+    return listLayerVersions(dependencyName);
+  }
+}
+
+function resolveDependencyVersion(
+  dependencyName: string,
+  version: string,
+): Layer | undefined {
+  try {
+    const parsed = parseLayerSelector(dependencyName);
+    if (parsed.scope === "published") {
+      return getLayerByPublishedIdentity({
+        name: parsed.name,
+        version,
+        org: parsed.org,
+        catalog: parsed.catalog,
+      });
+    }
+    return getLayerByName(parsed.name, version);
+  } catch {
+    return getLayerByName(dependencyName, version);
+  }
 }
 
 interface WalkFrame {
@@ -92,13 +142,13 @@ export function walkDependencyGraph(input: {
           previous.get(name) ??
           selectVersion({
             name,
-            available: listLayerVersions(name),
+            available: listAvailableVersions(name),
             constraints: bucket,
             rootOverride: overrides.versions[name],
             rootName: root.name,
           }).version;
 
-        const resolved = getLayerByName(name, provisional);
+        const resolved = resolveDependencyVersion(name, provisional);
         if (!resolved) {
           throw new Error(`Layer not found: ${label(name, provisional)}`);
         }
@@ -125,7 +175,7 @@ export function walkDependencyGraph(input: {
       }
       const selection = selectVersion({
         name,
-        available: listLayerVersions(name),
+        available: listAvailableVersions(name),
         constraints: records,
         rootOverride: overrides.versions[name],
         rootName: root.name,
@@ -163,7 +213,7 @@ export function walkDependencyGraph(input: {
     ];
 
     for (const [name, version] of current) {
-      const layer = getLayerByName(name, version);
+      const layer = resolveDependencyVersion(name, version);
       if (!layer) {
         throw new Error(`Layer not found: ${label(name, version)}`);
       }
