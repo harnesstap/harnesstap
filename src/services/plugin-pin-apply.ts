@@ -4,6 +4,7 @@ import {
   findPluginResourceByPin,
 } from "./layer-composition.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import { parseDependencyRef } from "./plugin-dependency.js";
 import {
   installPluginPins,
   type InstallPluginPinResult,
@@ -15,6 +16,7 @@ import {
   type PluginConstraintPin,
   type PluginValidationIssue,
 } from "./plugin-apply-validation.js";
+import { materializeUpstreamPluginLayer } from "./upstream-plugin-layer.js";
 import { listResources } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
@@ -155,12 +157,31 @@ export async function syncPluginPinsForApply(
     resource =
       findPluginResourceByPin(pin.ref, pin.version_constraint) ?? resource;
     const syncedMetadata = (resource.metadata ?? {}) as PluginPinMetadata;
+    const parsed = parseDependencyRef(pin.ref);
     if (syncedMetadata.resolved_version) {
+      materializeUpstreamPluginLayer({
+        ref: pin.ref,
+        name: parsed.name,
+        version: syncedMetadata.resolved_version,
+      });
       continue;
     }
 
     if (options.ignoreMissingInstall) {
-      stampResolvedVersionFromExactConstraint(resource, pin.version_constraint);
+      const stamped = stampResolvedVersionFromExactConstraint(
+        resource,
+        pin.version_constraint,
+      );
+      if (stamped) {
+        const stampedMetadata = (stamped.metadata ?? {}) as PluginPinMetadata;
+        if (stampedMetadata.resolved_version) {
+          materializeUpstreamPluginLayer({
+            ref: pin.ref,
+            name: parsed.name,
+            version: stampedMetadata.resolved_version,
+          });
+        }
+      }
       continue;
     }
 
