@@ -7,7 +7,7 @@ import {
   listLayerVersions,
 } from "../../models/layer-model.js";
 import type { Layer } from "../../types.js";
-import { listAttachedLayerRefs } from "../layer-composition.js";
+import { listDependencies } from "../plugin-dependency.js";
 import { getLayerOverrides } from "../layer-overrides.js";
 import { parseLayerSelector } from "../layer-selector.js";
 import { selectVersion } from "./version-mediation.js";
@@ -18,6 +18,22 @@ const MAX_PASSES = 64;
 
 function label(name: string, version: string): string {
   return `${name}@${version}`;
+}
+
+function missingDependency(
+  name: string,
+  version: string,
+  sourceKind: string,
+): Error {
+  const fix =
+    sourceKind === "marketplace"
+      ? `ht layer apply <root> --sync-plugins`
+      : sourceKind === "catalog"
+        ? `ht layer pull ${name}`
+        : `ht layer create ${name}`;
+  return new Error(
+    `Dependency ${name}@${version} is not available locally (source: ${sourceKind})\n  fix: ${fix}`,
+  );
 }
 
 function listAvailableVersions(dependencyName: string): string[] {
@@ -103,6 +119,7 @@ export function walkDependencyGraph(input: {
     const depths = new Map<string, number>();
     const declarationIndexes = new Map<string, number>();
     const shortestPaths = new Map<string, string[]>();
+    const sourceKinds = new Map<string, string>();
     let nextDeclarationIndex = 1;
 
     const visited = new Set<string>([root.id]);
@@ -114,8 +131,13 @@ export function walkDependencyGraph(input: {
       const frame = queue.shift();
       if (!frame) break;
 
-      for (const dependency of listAttachedLayerRefs(frame.layerId)) {
-        const name = dependency.dependency_name;
+      for (const dependency of listDependencies(frame.layerId)) {
+        // Marketplace refs like `web-search@anthropics` store name `web-search`,
+        // matching the upstream layer created by materializeUpstreamPluginLayer.
+        const name = dependency.name;
+        if (!sourceKinds.has(name)) {
+          sourceKinds.set(name, dependency.source_kind);
+        }
         const bucket = constraints.get(name) ?? [];
         bucket.push({
           constraint: dependency.version_constraint || "*",
@@ -146,11 +168,12 @@ export function walkDependencyGraph(input: {
             constraints: bucket,
             rootOverride: overrides.versions[name],
             rootName: root.name,
+            sourceKind: dependency.source_kind,
           }).version;
 
         const resolved = resolveDependencyVersion(name, provisional);
         if (!resolved) {
-          throw new Error(`Layer not found: ${label(name, provisional)}`);
+          throw missingDependency(name, provisional, dependency.source_kind);
         }
         if (!visited.has(resolved.id)) {
           visited.add(resolved.id);
@@ -179,6 +202,7 @@ export function walkDependencyGraph(input: {
         constraints: records,
         rootOverride: overrides.versions[name],
         rootName: root.name,
+        sourceKind: sourceKinds.get(name),
       });
       current.set(name, selection.version);
       reasons.set(name, selection.reason);
@@ -215,7 +239,11 @@ export function walkDependencyGraph(input: {
     for (const [name, version] of current) {
       const layer = resolveDependencyVersion(name, version);
       if (!layer) {
-        throw new Error(`Layer not found: ${label(name, version)}`);
+        throw missingDependency(
+          name,
+          version,
+          sourceKinds.get(name) ?? "local",
+        );
       }
       selected.push({
         name,

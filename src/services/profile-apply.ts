@@ -493,9 +493,17 @@ export async function applyProfileLayer(
     scope: "user",
     skipSync: options.dryRun || merged.pluginPins.length === 0,
   });
-  let applyResources = pluginPrepare.applyResources;
-  applyResources = substituteResourcesForApply(
-    applyResources,
+  let resolvedResources = merged.resources;
+  if (
+    !options.dryRun &&
+    merged.pluginPins.length > 0 &&
+    pluginPrepare.installs.some((install) => install.status !== "already_installed")
+  ) {
+    const refreshed = resolveComposition({ rootSelectors: [profileLayer.name] });
+    resolvedResources = refreshed.resources;
+  }
+  let applyResources = substituteResourcesForApply(
+    resolvedResources,
     resolvedEnvironment.vars,
   ).resources;
 

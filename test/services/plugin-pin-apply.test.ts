@@ -217,7 +217,7 @@ describe("expandPluginPinMaterialResources", () => {
 });
 
 describe("preparePluginPinsForApply", () => {
-  it("chains sync, material expansion, and validation", async () => {
+  it("chains sync, upstream materialization, and validation without splicing resources", async () => {
     const context = await createTestContext("plugin-pin-apply-prepare");
     try {
       context.schema.initializeSchema(context.connection.getDb());
@@ -235,11 +235,9 @@ describe("preparePluginPinsForApply", () => {
       expect(result.installs[0]?.status).toBe("already_installed");
       expect(result.unresolvedPins).toEqual([]);
       expect(result.validationIssues).toEqual([]);
-      expect(
-        result.applyResources.some(
-          (resource) => resource.type === "skill" && resource.name === "format-code",
-        ),
-      ).toBe(true);
+      expect(result.applyResources).toEqual([]);
+      expect(result.extraMaterialized).toBe(0);
+      expect(getLayerByName("formatter", "1.2.3")).toBeDefined();
     } finally {
       await context.cleanup();
     }

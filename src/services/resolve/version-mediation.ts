@@ -37,6 +37,7 @@ export function selectVersion(input: {
   constraints: ConstraintRecord[];
   rootOverride?: string;
   rootName: string;
+  sourceKind?: string;
 }): { version: string; reason: SelectionReason } {
   const sorted = [...input.available]
     .filter((version) => semver.valid(version) !== null)
@@ -55,6 +56,7 @@ export function selectVersion(input: {
         ],
         available: sorted,
         rootName: input.rootName,
+        ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
       });
     }
     return { version: input.rootOverride, reason: "root-override" };
@@ -78,6 +80,7 @@ export function selectVersion(input: {
       requirers: input.constraints,
       available: sorted,
       rootName: input.rootName,
+      ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
     });
   }
 

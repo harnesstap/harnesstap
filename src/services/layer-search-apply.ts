@@ -116,6 +116,19 @@ export async function applyLayersGlobally(
     skipSync: mergedPluginPins.length === 0,
   });
 
+  let resolvedResources = merged.resources;
+  if (
+    mergedPluginPins.length > 0 &&
+    pluginPrepare.installs.some((install) => install.status !== "already_installed")
+  ) {
+    const refreshed = await resolveMergedApplyBundle(selectors, homeRoot, {
+      account: options.account,
+      baseUrl: options.baseUrl,
+      onFetched: options.onFetched,
+    });
+    resolvedResources = refreshed.resources;
+  }
+
   const homeRootForClaude = resolveHomeRoot();
   const resolvedClaude =
     merged.claude?.plugins && merged.claude.plugins.length > 0
@@ -129,7 +142,7 @@ export async function applyLayersGlobally(
       : merged.claude;
 
   const applyResources = substituteResourcesForApply(
-    pluginPrepare.applyResources,
+    resolvedResources,
     resolvedEnvironment.vars,
   ).resources;
 

@@ -466,7 +466,7 @@ async function handleApplyCommand(
     }
   }
 
-  const { resources, claude } = applyBundle;
+  let { resources, claude } = applyBundle;
   const resolvedEnvironment = resolveEnvironmentCascadeForApply({
     configuredLayerIds: applyBundle.configuredLayerIds,
   });
@@ -529,8 +529,44 @@ async function handleApplyCommand(
   });
   pluginProgressState.current?.stop();
 
-  applyResources = pluginPrepare.applyResources;
+  // Resolution owns the resource set. The prepare step still installs and
+  // syncs plugin trees, and materializes them as upstream layers; those
+  // layers then participate in the graph on the next resolution.
   pluginValidationIssues = pluginPrepare.validationIssues;
+
+  if (
+    !skipPluginSync &&
+    pluginPrepare.installs.some((install) => install.status !== "already_installed")
+  ) {
+    try {
+      applyBundle = await resolveApplyLayers(
+        resolvedLayerNames as [string, ...string[]],
+        projectRoot,
+        {
+          account: opts.account,
+          baseUrl: opts.baseUrl,
+          interactive: opts.interactive,
+          noInteractive: opts.noInteractive,
+          format: outputFormat,
+          ...(lockedVersions ? { lockedVersions } : {}),
+        },
+      );
+      resources = applyBundle.resources;
+      claude = applyBundle.claude;
+      applyResources = resources;
+    } catch (err) {
+      process.exitCode = 1;
+      if (
+        err instanceof UnsatisfiableConstraintError ||
+        err instanceof SingletonConflictError
+      ) {
+        ui.danger(err.message, { hints: err.hints });
+        return;
+      }
+      ui.danger(err instanceof Error ? err.message : String(err));
+      return;
+    }
+  }
 
   const substituted = substituteResourcesForApply(
     applyResources,

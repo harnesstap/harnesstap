@@ -201,7 +201,13 @@ export async function syncPluginPinsForApply(
   return { installs, syncedResourceCount, unresolvedPins };
 }
 
-/** Collect marketplace-linked material resources imported from pinned plugin install trees. */
+/**
+ * Collect marketplace-linked material resources imported from pinned plugin
+ * install trees.
+ *
+ * @deprecated Resolution owns the resource set via upstream layers. Prefer
+ * materializeUpstreamPluginLayer + resolveComposition. Remove in Stage 3.
+ */
 export function expandPluginPinMaterialResources(
   pins: PluginConstraintPin[],
   baseResources: Resource[] = [],
@@ -241,6 +247,9 @@ export function expandPluginPinMaterialResources(
     .filter((resource): resource is Resource => resource !== undefined);
 }
 
+/**
+ * @deprecated Resolution owns the resource set via upstream layers. Remove in Stage 3.
+ */
 export function countPluginPinMaterialResources(
   pins: PluginConstraintPin[],
   baseResources: Resource[] = [],
@@ -278,20 +287,14 @@ export async function preparePluginPinsForApply(
     });
   }
 
-  const applyResources = expandPluginPinMaterialResources(
-    options.pins,
-    options.baseResources,
-  );
-  const extraMaterialized = countPluginPinMaterialResources(
-    options.pins,
-    options.baseResources,
-  );
+  // Resolution owns the resource set. Install/sync still materializes upstream
+  // layers; expandPluginPinMaterialResources is no longer consulted here.
   const validationIssues = validatePluginPinsAgainstInventory(options.pins);
 
   return {
     ...syncResult,
-    applyResources,
-    extraMaterialized,
+    applyResources: options.baseResources,
+    extraMaterialized: 0,
     validationIssues,
   };
 }

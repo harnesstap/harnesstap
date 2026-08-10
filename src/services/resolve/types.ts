@@ -85,6 +85,8 @@ export class UnsatisfiableConstraintError extends Error {
     requirers: ConstraintRecord[];
     available: string[];
     rootName: string;
+    /** When set, empty local inventory can point at source-specific install/sync fixes. */
+    sourceKind?: string;
   }) {
     const lines = [`cannot satisfy plugin ${input.pluginName}`];
     for (const record of input.requirers) {
@@ -97,12 +99,22 @@ export class UnsatisfiableConstraintError extends Error {
     this.pluginName = input.pluginName;
     this.requirers = input.requirers;
     this.available = input.available;
-    this.hints = [
-      `ht layer edit ${input.rootName} --override plugin:${input.pluginName}@<version>`,
+
+    const inventoryHint =
       input.available.length > 0
         ? `Available locally: ${input.available.join(", ")}`
-        : `No local versions of ${input.pluginName} found`,
-    ];
+        : `No local versions of ${input.pluginName} found`;
+
+    if (input.available.length === 0 && input.sourceKind === "marketplace") {
+      this.hints = [`ht layer apply <root> --sync-plugins`, inventoryHint];
+    } else if (input.available.length === 0 && input.sourceKind === "catalog") {
+      this.hints = [`ht layer pull ${input.pluginName}`, inventoryHint];
+    } else {
+      this.hints = [
+        `ht layer edit ${input.rootName} --override plugin:${input.pluginName}@<version>`,
+        inventoryHint,
+      ];
+    }
   }
 }
 
