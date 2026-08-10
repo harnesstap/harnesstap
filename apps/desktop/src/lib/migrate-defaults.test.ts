@@ -8,9 +8,9 @@ describe("defaultMigrateExportFilename", () => {
     );
   });
 
-  it("returns layer toml name", () => {
+  it("returns plugin toml name", () => {
     expect(
-      defaultMigrateExportFilename({ scope: "layer", layer: "my-setup" }),
+      defaultMigrateExportFilename({ scope: "plugin", plugin: "my-setup" }),
     ).toBe("my-setup.harnesstap.toml");
   });
 

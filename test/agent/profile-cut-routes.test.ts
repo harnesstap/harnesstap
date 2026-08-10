@@ -3,12 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import {
-  dirtyLayersConflictResponse,
-  layerVersionErrorResponse,
+  dirtyPluginsConflictResponse,
+  pluginVersionErrorResponse,
 } from "../../src/agent/profile-cut-handlers.ts";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer } from "../../src/models/plugin-model.ts";
-import { markLayerDirty } from "../../src/services/layer-versioning.ts";
+import { createPlugin } from "../../src/models/plugin-model.ts";
+import { markPluginDirty } from "../../src/services/plugin-versioning.ts";
 
 describe("agent profile cut routes", () => {
   const previousHarnessTapHome = process.env.HARNESSTAP_HOME;
@@ -46,12 +46,12 @@ describe("agent profile cut routes", () => {
 
   it("cuts a profile version and returns updated profile summary", async () => {
     const server = withServer();
-    const profile = createLayer({
+    const profile = createPlugin({
       name: "focus",
       version: "1.0.0",
       tags: ["profile"],
     });
-    markLayerDirty(profile.id);
+    markPluginDirty(profile.id);
 
     const response = await fetch(
       `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/cut`,
@@ -74,7 +74,7 @@ describe("agent profile cut routes", () => {
 
   it("rejects cut without bearer token", async () => {
     const server = withServer();
-    createLayer({ name: "focus", version: "1.0.0", tags: ["profile"] });
+    createPlugin({ name: "focus", version: "1.0.0", tags: ["profile"] });
 
     const response = await fetch(
       `${server.url}/v1/profiles/focus/cut`,
@@ -87,9 +87,9 @@ describe("agent profile cut routes", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns layer version errors as 400", async () => {
+  it("returns plugin version errors as 400", async () => {
     const server = withServer();
-    createLayer({ name: "focus", version: "1.0.0", tags: ["profile"] });
+    createPlugin({ name: "focus", version: "1.0.0", tags: ["profile"] });
 
     const response = await fetch(
       `${server.url}/v1/profiles/focus/cut`,
@@ -107,12 +107,12 @@ describe("agent profile cut routes", () => {
 
   it("includes dirty on profile list and detail payloads", async () => {
     const server = withServer();
-    const profile = createLayer({
+    const profile = createPlugin({
       name: "focus",
       version: "1.0.0",
       tags: ["profile"],
     });
-    markLayerDirty(profile.id);
+    markPluginDirty(profile.id);
 
     const listResponse = await fetch(`${server.url}/v1/profiles`);
     expect(listResponse.status).toBe(200);
@@ -134,34 +134,34 @@ describe("agent profile cut routes", () => {
 });
 
 describe("profile cut handler helpers", () => {
-  it("dirtyLayersConflictResponse returns 409 with dirty layer list", async () => {
-    const response = dirtyLayersConflictResponse([
+  it("dirtyPluginsConflictResponse returns 409 with dirty plugin list", async () => {
+    const response = dirtyPluginsConflictResponse([
       { name: "focus", version: "1.0.0" },
     ]);
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      error: "dirty_layers",
-      message: "Cannot share layers with unpublished edits: focus@1.0.0",
-      dirty_layers: [{ name: "focus", version: "1.0.0" }],
+      error: "dirty_plugins",
+      message: "Cannot share plugins with unpublished edits: focus@1.0.0",
+      dirty_plugins: [{ name: "focus", version: "1.0.0" }],
     });
   });
 
-  it("layerVersionErrorResponse maps dirty_layers code with list", async () => {
-    const { LayerVersionError } = await import(
-      "../../src/services/layer-versioning.ts"
+  it("pluginVersionErrorResponse maps dirty_plugins code with list", async () => {
+    const { PluginVersionError } = await import(
+      "../../src/services/plugin-versioning.ts"
     );
-    const response = layerVersionErrorResponse(
-      new LayerVersionError(
-        "dirty_layers",
-        "Cannot share layers with unpublished edits: focus@1.0.0",
-        { dirtyLayers: [{ name: "focus", version: "1.0.0" }] },
+    const response = pluginVersionErrorResponse(
+      new PluginVersionError(
+        "dirty_plugins",
+        "Cannot share plugins with unpublished edits: focus@1.0.0",
+        { dirtyPlugins: [{ name: "focus", version: "1.0.0" }] },
       ),
     );
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "dirty_layers",
-      message: "Cannot share layers with unpublished edits: focus@1.0.0",
-      dirty_layers: [{ name: "focus", version: "1.0.0" }],
+      error: "dirty_plugins",
+      message: "Cannot share plugins with unpublished edits: focus@1.0.0",
+      dirty_plugins: [{ name: "focus", version: "1.0.0" }],
     });
   });
 });

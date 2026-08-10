@@ -31,8 +31,8 @@ function suggestedName(profile: CloudProfile): string {
   return `${slug}-copy`;
 }
 
-function catalogKind(profile: CloudProfile): "profile" | "layer" {
-  return (profile.tags ?? []).includes("profile") ? "profile" : "layer";
+function catalogKind(profile: CloudProfile): "profile" | "plugin" {
+  return (profile.tags ?? []).includes("profile") ? "profile" : "plugin";
 }
 
 export function CloudBrowseDrawer({
@@ -113,7 +113,7 @@ export function CloudBrowseDrawer({
             setAuthRequired(true);
             return;
           }
-          setError(errorMessage(loadError, "Could not browse catalog layers."));
+          setError(errorMessage(loadError, "Could not browse catalog plugins."));
         })
         .finally(() => {
           if (!cancelled) {
@@ -178,7 +178,7 @@ export function CloudBrowseDrawer({
         setCollision(true);
         setRename((current) => current || suggestedName(selected));
         setError(
-          "A local profile or layer already uses this name. Choose a new name.",
+          "A local profile or plugin already uses this name. Choose a new name.",
         );
       } else if (
         pullError instanceof AgentApiError
@@ -188,7 +188,7 @@ export function CloudBrowseDrawer({
         setProfiles([]);
         setSelected(null);
       } else {
-        setError(errorMessage(pullError, "Could not pull catalog layer."));
+        setError(errorMessage(pullError, "Could not pull catalog plugin."));
       }
     } finally {
       setBusy(false);
@@ -279,7 +279,7 @@ export function CloudBrowseDrawer({
             <div className="cloud-auth-state">
               <h3>Cloud sign-in required</h3>
               <p className="muted">
-                Sign in to HarnessTap Cloud to browse and pull shared layers.
+                Sign in to HarnessTap Cloud to browse and pull shared plugins.
               </p>
               {onRequestSignIn ? (
                 <div className="cloud-account-actions">
@@ -304,13 +304,13 @@ export function CloudBrowseDrawer({
               <div
                 className="cloud-results"
                 role="listbox"
-                aria-label="Catalog layers"
+                aria-label="Catalog plugins"
               >
                 {loading ? (
                   <p className="muted cloud-list-message">Searching…</p>
                 ) : profiles.length === 0 ? (
                   <p className="muted cloud-list-message">
-                    No catalog layers found.
+                    No catalog plugins found.
                   </p>
                 ) : (
                   profiles.map((profile) => {
@@ -341,7 +341,7 @@ export function CloudBrowseDrawer({
                 )}
               </div>
 
-              <section className="cloud-preview" aria-label="Layer preview">
+              <section className="cloud-preview" aria-label="Plugin preview">
                 {selected ? (
                   <>
                     <div>
@@ -364,7 +364,7 @@ export function CloudBrowseDrawer({
                     </div>
                   </>
                 ) : (
-                  <p className="muted">Select a layer to preview it.</p>
+                  <p className="muted">Select a plugin to preview it.</p>
                 )}
               </section>
             </div>

@@ -1273,7 +1273,7 @@ export function App() {
   );
 
   const handleRemoveResourceFromProfile = useCallback(
-    async (resource: ProfileContentsResource, layerId?: string) => {
+    async (resource: ProfileContentsResource, pluginId?: string) => {
       const profileName = selectedProfile ?? activeProfile;
       if (!baseUrl || !profileName || removingResourceKey) {
         return;
@@ -1292,7 +1292,7 @@ export function App() {
         await removeProfileResource(baseUrl, token, profileName, {
           resourceType: resource.type,
           resourceName: resource.name,
-          ...(layerId ? { layerId } : {}),
+          ...(pluginId ? { pluginId } : {}),
         });
         await refreshProfilePreview();
         if (
@@ -1597,7 +1597,7 @@ export function App() {
       setSuccessMessage(`Renamed to ${result.name}`);
       window.setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
-      if (error instanceof AgentApiError && error.code === "layer_exists") {
+      if (error instanceof AgentApiError && error.code === "plugin_exists") {
         setRenameError("A profile with this name already exists.");
       } else if (error instanceof AgentApiError && error.code === "not_found") {
         setRenameError(
@@ -2071,7 +2071,7 @@ export function App() {
                     </>
                   ) : (
                     <>
-                      Local profile layers appear in Global. Switch to Project for
+                      Local profile plugins appear in Global. Switch to Project for
                       profiles enabled in the current project.
                     </>
                   )}

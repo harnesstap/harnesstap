@@ -7,9 +7,9 @@ import {
   createDefaultAgentRouteDeps,
 } from "../../src/agent/routes.ts";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createLayer } from "../../src/models/plugin-model.ts";
+import { createPlugin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { isProfileLayer } from "../../src/constants/profile.ts";
+import { isProfilePlugin } from "../../src/constants/profile.ts";
 import { writeTextFile } from "../helpers/fs.ts";
 
 describe("agent profile create routes", () => {
@@ -97,7 +97,7 @@ describe("agent profile create routes", () => {
     });
   });
 
-  it("returns layer_exists when a profile name is already used", async () => {
+  it("returns plugin_exists when a profile name is already used", async () => {
     const server = withServer();
     const resource = createResource({
       type: "skill",
@@ -107,7 +107,7 @@ describe("agent profile create routes", () => {
       metadata: {},
       source: "manual",
     });
-    createLayer({ name: "duplicate" });
+    createPlugin({ name: "duplicate" });
 
     const response = await postJson(`${server.url}/v1/profiles`, server.token, {
       source: "compose",
@@ -116,12 +116,12 @@ describe("agent profile create routes", () => {
     });
 
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: "layer_exists" });
+    await expect(response.json()).resolves.toEqual({ error: "plugin_exists" });
   });
 
-  it("returns layer_exists for project overwrite requests", async () => {
+  it("returns plugin_exists for project overwrite requests", async () => {
     const server = withServer();
-    createLayer({ name: "duplicate-project" });
+    createPlugin({ name: "duplicate-project" });
 
     const response = await postJson(`${server.url}/v1/profiles`, server.token, {
       source: "project",
@@ -132,7 +132,7 @@ describe("agent profile create routes", () => {
     });
 
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: "layer_exists" });
+    await expect(response.json()).resolves.toEqual({ error: "plugin_exists" });
   });
 
   it("rejects unauthenticated profile creation requests", async () => {
@@ -150,9 +150,9 @@ describe("agent profile create routes", () => {
     expect(response.status).toBe(401);
   });
 
-  it("tags an existing layer as a profile", async () => {
+  it("tags an existing plugin as a profile", async () => {
     const server = withServer();
-    const layer = createLayer({ name: "promote-me" });
+    const plugin = createPlugin({ name: "promote-me" });
 
     const response = await postJson(
       `${server.url}/v1/profiles/promote-me/tag`,
@@ -161,15 +161,15 @@ describe("agent profile create routes", () => {
     );
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { layer_id: string; tags: string[] };
-    expect(body.layer_id).toBe(layer.id);
+    const body = (await response.json()) as { plugin_id: string; tags: string[] };
+    expect(body.plugin_id).toBe(plugin.id);
     expect(body.tags).toContain("profile");
-    expect(isProfileLayer({ ...layer, tags: body.tags })).toBe(true);
+    expect(isProfilePlugin({ ...plugin, tags: body.tags })).toBe(true);
   });
 
   it("renames a profile", async () => {
     const server = withServer();
-    createLayer({ name: "work", tags: ["profile"] });
+    createPlugin({ name: "work", tags: ["profile"] });
 
     const response = await postJson(
       `${server.url}/v1/profiles/work/rename`,
@@ -181,15 +181,15 @@ describe("agent profile create routes", () => {
     await expect(response.json()).resolves.toEqual({
       old_name: "work",
       name: "focus",
-      layer_id: expect.any(String),
+      plugin_id: expect.any(String),
       was_active: false,
     });
   });
 
-  it("returns layer_exists when rename target is taken", async () => {
+  it("returns plugin_exists when rename target is taken", async () => {
     const server = withServer();
-    createLayer({ name: "alpha", tags: ["profile"] });
-    createLayer({ name: "beta", tags: ["profile"] });
+    createPlugin({ name: "alpha", tags: ["profile"] });
+    createPlugin({ name: "beta", tags: ["profile"] });
 
     const response = await postJson(
       `${server.url}/v1/profiles/alpha/rename`,
@@ -198,7 +198,7 @@ describe("agent profile create routes", () => {
     );
 
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: "layer_exists" });
+    await expect(response.json()).resolves.toEqual({ error: "plugin_exists" });
   });
 
   it("blocks profile creation while a switch is in progress", async () => {

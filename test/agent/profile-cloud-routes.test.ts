@@ -7,10 +7,10 @@ import {
   createAgentFetchHandler,
   createDefaultAgentRouteDeps,
 } from "../../src/agent/routes.ts";
-import type { CatalogLayer } from "../../src/services/catalog-types.ts";
-import type { Layer } from "../../src/types.ts";
+import type { CatalogPlugin } from "../../src/services/catalog-types.ts";
+import type { Plugin } from "../../src/types.ts";
 
-const catalogLayer: CatalogLayer = {
+const catalogPlugin: CatalogPlugin = {
   orgSlug: "acme",
   catalogSlug: "default",
   slug: "focus",
@@ -22,9 +22,9 @@ const catalogLayer: CatalogLayer = {
   visibility: "public",
 };
 
-function localLayer(overrides: Partial<Layer> = {}): Layer {
+function localPlugin(overrides: Partial<Plugin> = {}): Plugin {
   return {
-    id: "layer-1",
+    id: "plugin-1",
     name: "focus",
     version: "2.0.0",
     org_slug: "acme",
@@ -41,25 +41,25 @@ function createDeps(overrides: Partial<ProfileCloudDeps> = {}): ProfileCloudDeps
   let installed = false;
   return {
     resolveAccess: async () => ({ isAuthenticated: true }),
-    listLayers: async () => ({ layers: [catalogLayer], nextCursor: null }),
+    listPlugins: async () => ({ plugins: [catalogPlugin], nextCursor: null }),
     resolveSelector: async () => ({
       org_slug: "acme",
       catalog_slug: "default",
-      layer_slug: "focus",
+      plugin_slug: "focus",
       version: "2.0.0",
     }),
-    installLayer: async () => {
+    installPlugin: async () => {
       installed = true;
       return {
-        layerId: "layer-1",
-        layerName: "focus",
+        pluginId: "plugin-1",
+        pluginName: "focus",
         version: "2.0.0",
         sourceLabel: "acme/default/focus@2.0.0",
       };
     },
-    getLayerByName: () => installed ? localLayer() : undefined,
-    isProfileLayer: (layer) => layer.tags.includes("profile"),
-    tagProfile: () => ({ layer_id: "layer-1", tags: ["profile"] }),
+    getPluginByName: () => installed ? localPlugin() : undefined,
+    isProfilePlugin: (plugin) => plugin.tags.includes("profile"),
+    tagProfile: () => ({ plugin_id: "plugin-1", tags: ["profile"] }),
     isSwitchInProgress: () => false,
     ...overrides,
   };
@@ -116,17 +116,17 @@ describe("agent cloud profile routes", () => {
     });
   });
 
-  it("searches remote catalog layers without a profile tag filter", async () => {
-    const listLayers = mock(async () => ({
-      layers: [catalogLayer, { ...catalogLayer, slug: "plain", tags: [] }],
+  it("searches remote catalog plugins without a profile tag filter", async () => {
+    const listPlugins = mock(async () => ({
+      plugins: [catalogPlugin, { ...catalogPlugin, slug: "plain", tags: [] }],
       nextCursor: null,
     }));
-    const fetch = createFetch(createDeps({ listLayers }));
+    const fetch = createFetch(createDeps({ listPlugins }));
 
     const response = await fetch(request("/v1/profiles/cloud?q=focus"));
 
     expect(response.status).toBe(200);
-    expect(listLayers).toHaveBeenCalledWith({
+    expect(listPlugins).toHaveBeenCalledWith({
       q: "focus",
       limit: 50,
       sort: "name",
@@ -155,20 +155,20 @@ describe("agent cloud profile routes", () => {
     });
   });
 
-  it("pulls and auto-tags when the installed layer is not profile-tagged", async () => {
+  it("pulls and auto-tags when the installed plugin is not profile-tagged", async () => {
     let installed = false;
-    const tagProfile = mock(() => ({ layer_id: "layer-1", tags: ["profile"] }));
+    const tagProfile = mock(() => ({ plugin_id: "plugin-1", tags: ["profile"] }));
     const fetch = createFetch(createDeps({
-      installLayer: async () => {
+      installPlugin: async () => {
         installed = true;
         return {
-          layerId: "layer-1",
-          layerName: "focus",
+          pluginId: "plugin-1",
+          pluginName: "focus",
           version: "2.0.0",
           sourceLabel: "acme/default/focus@2.0.0",
         };
       },
-      getLayerByName: () => installed ? localLayer({ tags: [] }) : undefined,
+      getPluginByName: () => installed ? localPlugin({ tags: [] }) : undefined,
       tagProfile,
     }));
 
@@ -179,16 +179,16 @@ describe("agent cloud profile routes", () => {
     expect(response.status).toBe(200);
     expect(tagProfile).toHaveBeenCalledWith("focus");
     await expect(response.json()).resolves.toEqual({
-      profile: { name: "focus", id: "layer-1" },
+      profile: { name: "focus", id: "plugin-1" },
       tagged: true,
     });
   });
 
-  it("requires as when the remote name collides with a local layer", async () => {
-    const installLayer = mock(createDeps().installLayer);
+  it("requires as when the remote name collides with a local plugin", async () => {
+    const installPlugin = mock(createDeps().installPlugin);
     const fetch = createFetch(createDeps({
-      getLayerByName: () => localLayer(),
-      installLayer,
+      getPluginByName: () => localPlugin(),
+      installPlugin,
     }));
 
     const response = await fetch(postRequest("/v1/profiles/cloud/pull", {
@@ -200,18 +200,18 @@ describe("agent cloud profile routes", () => {
       error: "name_collision",
       message: expect.any(String),
     });
-    expect(installLayer).not.toHaveBeenCalled();
+    expect(installPlugin).not.toHaveBeenCalled();
   });
 
   it("leaves tagged profile use to the desktop switch flow", async () => {
     const fetch = createFetch(createDeps({
-      getLayerByName: (name) => name === "renamed" ? localLayer({
+      getPluginByName: (name) => name === "renamed" ? localPlugin({
         id: "renamed-id",
         name,
       }) : undefined,
-      installLayer: async () => ({
-        layerId: "renamed-id",
-        layerName: "renamed",
+      installPlugin: async () => ({
+        pluginId: "renamed-id",
+        pluginName: "renamed",
         version: "2.0.0",
         sourceLabel: "acme/default/focus@2.0.0",
       }),
@@ -231,9 +231,9 @@ describe("agent cloud profile routes", () => {
   });
 
   it("blocks pulls while a profile switch is in progress", async () => {
-    const installLayer = mock(createDeps().installLayer);
+    const installPlugin = mock(createDeps().installPlugin);
     const fetch = createFetch(createDeps({
-      installLayer,
+      installPlugin,
       isSwitchInProgress: () => true,
     }));
 
@@ -247,6 +247,6 @@ describe("agent cloud profile routes", () => {
       error: "switch_in_progress",
       message: expect.any(String),
     });
-    expect(installLayer).not.toHaveBeenCalled();
+    expect(installPlugin).not.toHaveBeenCalled();
   });
 });

@@ -2,10 +2,10 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
-import { createLayer, addResourceToLayer, setLayerTags } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin, setPluginTags } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setActiveProfileName } from "../../src/services/active-profile.ts";
-import { applyProfileLayer } from "../../src/services/profile-apply.ts";
+import { applyProfilePlugin } from "../../src/services/profile-apply.ts";
 import { createAgentFetchHandler } from "../../src/agent/routes.ts";
 import { writeAgentTokenFile } from "../../src/agent/token.ts";
 import { getDb } from "../../src/db/connection.ts";
@@ -44,9 +44,9 @@ describe("agent profile stash routes", () => {
   it("lists, stashes untracked resources, and pops them back", async () => {
     const { token, fetch, homeDir } = withHandler();
 
-    const profile = createLayer({ name: "work" });
-    setLayerTags(profile.id, ["profile"]);
-    addResourceToLayer(
+    const profile = createPlugin({ name: "work" });
+    setPluginTags(profile.id, ["profile"]);
+    addResourceToPlugin(
       profile.id,
       createResource({
         type: "skill",
@@ -57,7 +57,7 @@ describe("agent profile stash routes", () => {
         source: "manual",
       }).id,
     );
-    await applyProfileLayer("work", {
+    await applyProfilePlugin("work", {
       harness: "claude-code",
       conflictPolicy: "replace",
     });

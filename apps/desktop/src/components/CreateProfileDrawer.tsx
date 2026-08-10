@@ -8,12 +8,12 @@ import { SourcePicker } from "@/components/ui/source-picker";
 import {
   AgentApiError,
   createProfile,
-  fetchLibraryLayers,
+  fetchLibraryPlugins,
   fetchLibraryResources,
   previewProfileCreate,
 } from "../lib/agent-client";
 import type {
-  LibraryLayer,
+  LibraryPlugin,
   LibraryResource,
   ProfileConflictPolicy,
   ProfileCreatePreview,
@@ -45,7 +45,7 @@ interface CreateProfileDrawerProps {
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof AgentApiError && error.code === "layer_exists") {
+  if (error instanceof AgentApiError && error.code === "plugin_exists") {
     return "A profile with this name already exists.";
   }
   return error instanceof Error ? error.message : fallback;
@@ -88,10 +88,10 @@ export function CreateProfileDrawer({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [source, setSource] = useState<ProfileCreateSource>("compose");
-  const [layerIds, setLayerIds] = useState<string[]>([]);
+  const [pluginIds, setPluginIds] = useState<string[]>([]);
   const [resourceIds, setResourceIds] = useState<string[]>([]);
   const [resourceFilter, setResourceFilter] = useState("");
-  const [layers, setLayers] = useState<LibraryLayer[]>([]);
+  const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -113,7 +113,7 @@ export function CreateProfileDrawer({
     setName("");
     setDescription("");
     setSource(resolvedSource);
-    setLayerIds([]);
+    setPluginIds([]);
     setResourceIds([]);
     setResourceFilter("");
     setPreview(null);
@@ -130,12 +130,12 @@ export function CreateProfileDrawer({
     setLibraryLoading(true);
     setLibraryError(null);
     void Promise.all([
-      fetchLibraryLayers(baseUrl, token),
+      fetchLibraryPlugins(baseUrl, token),
       fetchLibraryResources(baseUrl, token),
     ])
-      .then(([nextLayers, nextResources]) => {
+      .then(([nextPlugins, nextResources]) => {
         if (!cancelled) {
-          setLayers(nextLayers);
+          setPlugins(nextPlugins);
           setResources(nextResources);
         }
       })
@@ -177,7 +177,7 @@ export function CreateProfileDrawer({
       case "compose":
         return (
           !libraryLoading
-          && layerIds.length + resourceIds.length > 0
+          && pluginIds.length + resourceIds.length > 0
         );
       case "home":
         return true;
@@ -190,7 +190,7 @@ export function CreateProfileDrawer({
     }
   }, [
     baseUrl,
-    layerIds.length,
+    pluginIds.length,
     libraryLoading,
     name,
     projectPath,
@@ -207,7 +207,7 @@ export function CreateProfileDrawer({
     };
     switch (source) {
       case "compose":
-        return { ...common, source, layerIds, resourceIds };
+        return { ...common, source, pluginIds, resourceIds };
       case "home":
         return { ...common, source, conflictPolicy };
       case "project":
@@ -356,7 +356,7 @@ export function CreateProfileDrawer({
               {
                 value: "compose",
                 title: "Compose",
-                description: "Select existing layers and resources.",
+                description: "Select existing plugins and resources.",
                 testId: "create-source-compose",
               },
               {
@@ -388,13 +388,13 @@ export function CreateProfileDrawer({
               ) : (
                 <>
                   <SelectionList
-                    title="Layers"
-                    emptyLabel="No layers available."
-                    rows={layers}
-                    selectedIds={layerIds}
+                    title="Plugins"
+                    emptyLabel="No plugins available."
+                    rows={plugins}
+                    selectedIds={pluginIds}
                     disabled={controlsDisabled}
                     onToggle={(id) =>
-                      toggleSelection(id, layerIds, setLayerIds)}
+                      toggleSelection(id, pluginIds, setPluginIds)}
                   />
                   <ResourceSelectionList
                     resources={resources}

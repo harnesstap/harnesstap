@@ -2,15 +2,15 @@ import type { MigrateScope } from "./types";
 
 export function defaultMigrateExportFilename(input: {
   scope: MigrateScope;
-  layer?: string;
+  plugin?: string;
   resource?: string;
   environment?: string;
 }): string {
   switch (input.scope) {
     case "workspace":
       return "harnesstap-migrate.tar.gz";
-    case "layer": {
-      const first = (input.layer ?? "layer").split(",")[0]?.trim() || "layer";
+    case "plugin": {
+      const first = (input.plugin ?? "plugin").split(",")[0]?.trim() || "plugin";
       return `${first}.harnesstap.toml`;
     }
     case "resource": {

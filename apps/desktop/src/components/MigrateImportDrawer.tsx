@@ -32,8 +32,8 @@ function scopeLabel(scope: MigrateScope): string {
   switch (scope) {
     case "workspace":
       return "Full workspace";
-    case "layer":
-      return "Layer";
+    case "plugin":
+      return "Plugin";
     case "resource":
       return "Resource";
     case "environment":
@@ -280,9 +280,9 @@ export function MigrateImportDrawer({
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="layer" id="migrate-import-scope-layer" />
-                  <Label htmlFor="migrate-import-scope-layer" className="font-normal">
-                    Layer bundle
+                  <RadioGroupItem value="plugin" id="migrate-import-scope-plugin" />
+                  <Label htmlFor="migrate-import-scope-plugin" className="font-normal">
+                    Plugin bundle
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export function MigrateImportDrawer({
                 </div>
               </dl>
               <p className="muted m-0 text-[11px]">
-                Importing may update existing matching layers, resources,
+                Importing may update existing matching plugins, resources,
                 environments, or workspace data.
               </p>
             </>

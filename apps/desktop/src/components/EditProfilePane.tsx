@@ -15,7 +15,7 @@ import {
   addProfilePlugin,
   attachProfileComposition,
   detachProfileComposition,
-  fetchLibraryLayers,
+  fetchLibraryPlugins,
   fetchLibraryResources,
   fetchMarketplacePlugins,
   fetchMarketplaces,
@@ -25,7 +25,7 @@ import {
 } from "../lib/agent-client";
 import type {
   CatalogPlugin,
-  LibraryLayer,
+  LibraryPlugin,
   LibraryResource,
   PluginMarketplaceEntry,
   ProfileDetail,
@@ -51,7 +51,7 @@ export interface EditProfilePaneProps {
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof AgentApiError && error.code === "layer_exists") {
+  if (error instanceof AgentApiError && error.code === "plugin_exists") {
     return "A profile with this name already exists.";
   }
   return error instanceof Error ? error.message : fallback;
@@ -75,7 +75,7 @@ export function EditProfilePane({
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [tagsDraft, setTagsDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const [layers, setLayers] = useState<LibraryLayer[]>([]);
+  const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -134,12 +134,12 @@ export function EditProfilePane({
     setLibraryLoading(true);
     setLibraryError(null);
     void Promise.all([
-      fetchLibraryLayers(baseUrl, token),
+      fetchLibraryPlugins(baseUrl, token),
       fetchLibraryResources(baseUrl, token),
     ])
-      .then(([nextLayers, nextResources]) => {
+      .then(([nextPlugins, nextResources]) => {
         if (!cancelled) {
-          setLayers(nextLayers);
+          setPlugins(nextPlugins);
           setResources(nextResources);
         }
       })
@@ -226,26 +226,26 @@ export function EditProfilePane({
     };
   }, [baseUrl, marketplaceName, token]);
 
-  const layerRows = useMemo(
+  const pluginRows = useMemo(
     () =>
-      layers
+      plugins
         .filter(
-          (layer) =>
-            layer.name !== profileName && !layer.tags.includes("profile"),
+          (plugin) =>
+            plugin.name !== profileName && !plugin.tags.includes("profile"),
         )
-        .map((layer) => ({
-          id: layer.id,
-          name: layer.name,
-          description: layer.description,
+        .map((plugin) => ({
+          id: plugin.id,
+          name: plugin.name,
+          description: plugin.description,
         })),
-    [layers, profileName],
+    [plugins, profileName],
   );
 
-  const selectedLayerIds = useMemo(() => {
+  const selectedPluginIds = useMemo(() => {
     if (!detail) {
       return [];
     }
-    const byName = new Map(layers.map((layer) => [layer.name, layer.id]));
+    const byName = new Map(plugins.map((plugin) => [plugin.name, plugin.id]));
     const ids: string[] = [];
     for (const dep of detail.dependencies) {
       const fromMap = byName.get(dep.dependency_name);
@@ -256,7 +256,7 @@ export function EditProfilePane({
       }
     }
     return ids;
-  }, [detail, layers]);
+  }, [detail, plugins]);
 
   const selectedResourceIds = useMemo(
     () => detail?.resources.map((resource) => resource.id) ?? [],
@@ -264,7 +264,7 @@ export function EditProfilePane({
   );
 
   const composeResources = useMemo(
-    () => resources.filter((resource) => resource.type !== "layer"),
+    () => resources.filter((resource) => resource.type !== "plugin"),
     [resources],
   );
 
@@ -346,23 +346,23 @@ export function EditProfilePane({
     );
   };
 
-  const toggleLayer = (layerId: string) => {
+  const togglePlugin = (pluginId: string) => {
     if (!baseUrl || !detail) {
       return;
     }
-    const selected = selectedLayerIds.includes(layerId);
-    const layer = layers.find((entry) => entry.id === layerId);
-    if (!layer) {
+    const selected = selectedPluginIds.includes(pluginId);
+    const plugin = plugins.find((entry) => entry.id === pluginId);
+    if (!plugin) {
       return;
     }
     void runMutation(
       () =>
         selected
           ? detachProfileComposition(baseUrl, token, profileName, {
-              dependencyName: layer.name,
+              dependencyName: plugin.name,
             })
           : attachProfileComposition(baseUrl, token, profileName, {
-              layerId,
+              pluginId,
             }),
       { affectsApply: true },
     );
@@ -600,12 +600,12 @@ export function EditProfilePane({
               ) : (
                 <>
                   <SelectionList
-                    title="Layers"
-                    emptyLabel="No layers available."
-                    rows={layerRows}
-                    selectedIds={selectedLayerIds}
+                    title="Plugins"
+                    emptyLabel="No plugins available."
+                    rows={pluginRows}
+                    selectedIds={selectedPluginIds}
                     disabled={controlsDisabled}
-                    onToggle={toggleLayer}
+                    onToggle={togglePlugin}
                   />
                   <ResourceSelectionList
                     resources={composeResources}

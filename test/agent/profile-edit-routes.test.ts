@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import {
-  createLayer,
-  getLayerResources,
+  createPlugin,
+  getPluginResources,
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 
@@ -45,12 +45,12 @@ describe("agent profile edit routes", () => {
 
   it("gets, patches, attaches, and detaches profile composition", async () => {
     const server = withServer();
-    const profile = createLayer({
+    const profile = createPlugin({
       name: "focus",
       description: "before",
       tags: ["profile"],
     });
-    const dep = createLayer({ name: "shared-layer", tags: [] });
+    const dep = createPlugin({ name: "shared-plugin", tags: [] });
     const skill = createResource({
       type: "skill",
       name: "demo-skill",
@@ -95,21 +95,21 @@ describe("agent profile edit routes", () => {
     expect(patched.profile.tags).toContain("focus");
     expect(patched.profile.tags).toContain("profile");
 
-    const attachLayer = await fetch(
+    const attachDependency = await fetch(
       `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
       {
         method: "POST",
         headers: authHeaders(server.token),
-        body: JSON.stringify({ layerId: dep.id }),
+        body: JSON.stringify({ pluginId: dep.id }),
       },
     );
-    expect(attachLayer.status).toBe(200);
-    const withLayer = (await attachLayer.json()) as {
+    expect(attachDependency.status).toBe(200);
+    const withDependency = (await attachDependency.json()) as {
       dependencies: Array<{ dependency_name: string }>;
     };
-    expect(withLayer.dependencies.map((row) => row.dependency_name)).toContain(
-      "shared-layer",
-    );
+    expect(
+      withDependency.dependencies.map((row) => row.dependency_name),
+    ).toContain("shared-plugin");
 
     const attachResource = await fetch(
       `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
@@ -125,33 +125,6 @@ describe("agent profile edit routes", () => {
     };
     expect(withResource.resources.some((row) => row.id === skill.id)).toBe(true);
 
-    const plugin = createResource({
-      type: "plugin_pin",
-      name: "superpowers",
-      description: "plugin",
-      content: "",
-      metadata: {},
-      source: "test",
-      namespace: "obra",
-    });
-    const attachPlugin = await fetch(
-      `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
-      {
-        method: "POST",
-        headers: authHeaders(server.token),
-        body: JSON.stringify({ resourceId: plugin.id }),
-      },
-    );
-    expect(attachPlugin.status).toBe(200);
-    const withPlugin = (await attachPlugin.json()) as {
-      resources: Array<{ id: string; type: string; name: string }>;
-    };
-    expect(
-      withPlugin.resources.some(
-        (row) => row.id === plugin.id && row.type === "plugin_pin",
-      ),
-    ).toBe(true);
-
     const detachResource = await fetch(
       `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
       {
@@ -162,27 +135,27 @@ describe("agent profile edit routes", () => {
     );
     expect(detachResource.status).toBe(200);
     expect(
-      getLayerResources(profile.id).some((row) => row.id === skill.id),
+      getPluginResources(profile.id).some((row) => row.id === skill.id),
     ).toBe(false);
 
-    const detachLayer = await fetch(
+    const detachPlugin = await fetch(
       `${server.url}/v1/profiles/${encodeURIComponent(profile.name)}/attachments`,
       {
         method: "DELETE",
         headers: authHeaders(server.token),
-        body: JSON.stringify({ dependencyName: "shared-layer" }),
+        body: JSON.stringify({ dependencyName: "shared-plugin" }),
       },
     );
-    expect(detachLayer.status).toBe(200);
-    const afterDetach = (await detachLayer.json()) as {
+    expect(detachPlugin.status).toBe(200);
+    const afterDetach = (await detachPlugin.json()) as {
       dependencies: unknown[];
     };
     expect(afterDetach.dependencies).toEqual([]);
   });
 
-  it("returns not_a_profile for plain layers", async () => {
+  it("returns not_a_profile for plain plugins", async () => {
     const server = withServer();
-    createLayer({ name: "plain", tags: [] });
+    createPlugin({ name: "plain", tags: [] });
     const response = await fetch(`${server.url}/v1/profiles/plain`, {
       headers: authHeaders(server.token),
     });

@@ -77,7 +77,7 @@ const mockExecuteProjectUse = mock(executeProjectUse);
 mockExecuteProjectUse.mockImplementation(async () => ({
   skipped: false,
   profile_key: "work",
-  layer_name: "work-profile",
+  plugin_name: "work-profile",
   profile_name: "work-profile",
   dry_run: false,
   cancelled: false,

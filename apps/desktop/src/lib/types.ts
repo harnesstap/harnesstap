@@ -15,7 +15,7 @@ export interface ProfileSummary {
   dirty?: boolean;
 }
 
-export interface LibraryLayer {
+export interface LibraryPlugin {
   id: string;
   name: string;
   version: string;
@@ -99,7 +99,7 @@ interface ProfileCreateCommon {
 
 export interface ProfileCreateComposeRequest extends ProfileCreateCommon {
   source: "compose";
-  layerIds: string[];
+  pluginIds: string[];
   resourceIds: string[];
 }
 
@@ -187,14 +187,14 @@ export interface CloudAuthLoginPollResult {
 }
 
 export interface ProfileTagResult {
-  layer_id: string;
+  plugin_id: string;
   tags: string[];
 }
 
 export interface ProfileRenameResult {
   old_name: string;
   name: string;
-  layer_id: string;
+  plugin_id: string;
   was_active: boolean;
 }
 
@@ -213,7 +213,7 @@ export interface HarnessLiveStatus {
   mcp: HarnessMcpStatusRow[];
 }
 
-export interface ProfileContentsLayer {
+export interface ProfileContentsPlugin {
   id: string;
   name: string;
   version: string;
@@ -234,10 +234,10 @@ export interface ProfileContentsResource {
 }
 
 export interface ProfileContents {
-  layers: ProfileContentsLayer[];
+  plugins: ProfileContentsPlugin[];
   stack_resource_count: number;
   stack_summary: string | null;
-  /** Counts by resource type, plus `layer` and `plugin_pin`. */
+  /** Counts by resource type, plus `plugin` and `plugin_pin`. */
   type_counts: Record<string, number>;
   resources: ProfileContentsResource[];
   plugin_pins: ProfileContentsPin[];
@@ -335,7 +335,7 @@ export interface ProfileAddAllResourcesResult {
 export interface ProfileRemoveResourceRequest {
   resourceType: string;
   resourceName: string;
-  layerId?: string;
+  pluginId?: string;
 }
 
 export interface ProfileRemoveResourceResult {
@@ -581,11 +581,11 @@ export interface ProfilePluginAddRequest {
 export interface ProfilePluginAddResult {
   status: "attached" | "already_attached";
   ref: string;
-  layerName: string;
+  pluginName: string;
   marketplaceCopied: boolean;
 }
 
-export type MigrateScope = "workspace" | "layer" | "resource" | "environment";
+export type MigrateScope = "workspace" | "plugin" | "resource" | "environment";
 
 export interface LibraryEnvironment {
   id: string;
@@ -604,7 +604,7 @@ export interface MigrateDetectImportScopeResult {
 export interface MigrateExportInput {
   scope: MigrateScope;
   path: string;
-  layer?: string;
+  plugin?: string;
   resource?: string;
   environment?: string;
   include_plugins?: boolean;
@@ -617,12 +617,12 @@ export type MigrateExportResult =
       output: string;
       version: number;
       exported_at: string;
-      layer_count: number;
+      plugin_count: number;
       environment_count?: number;
       include_plugins: boolean;
       includes_active_profile: boolean;
     }
-  | { scope: "layer"; output: string; layers: string[] }
+  | { scope: "plugin"; output: string; plugins: string[] }
   | { scope: "resource"; output: string; resource: string }
   | { scope: "environment"; output: string; environment: string };
 
@@ -635,13 +635,13 @@ export type MigrateImportResult =
   | {
       scope: "workspace";
       manifest: Record<string, unknown>;
-      layers_imported: number;
+      plugins_imported: number;
       environments_imported: number;
     }
   | {
-      scope: "layer";
-      layer: string;
-      layers: string[];
+      scope: "plugin";
+      plugin: string;
+      plugins: string[];
       resources_imported: number;
     }
   | {

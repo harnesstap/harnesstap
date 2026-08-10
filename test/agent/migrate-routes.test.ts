@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
 import {
-  addResourceToLayer,
-  createLayer,
+  addResourceToPlugin,
+  createPlugin,
 } from "../../src/models/plugin-model.ts";
 import {
   createEnvironment,
@@ -43,7 +43,7 @@ describe("agent migrate routes", () => {
 
   it("POST /v1/migrate/detect-import-scope requires auth and detects workspace archive", async () => {
     const server = withServer();
-    createLayer({ name: "migrate-layer" });
+    createPlugin({ name: "migrate-plugin" });
 
     const archivePath = join(tempDirs.at(-1)!, "workspace.tar.gz");
     const resolved = resolveExportScope({ workspace: true, file: archivePath });
@@ -85,15 +85,15 @@ describe("agent migrate routes", () => {
     expect(body.error).toBe("path_required");
   });
 
-  it("POST /v1/migrate/export exports a layer bundle", async () => {
+  it("POST /v1/migrate/export exports a plugin bundle", async () => {
     const server = withServer();
-    const layer = createLayer({ name: "export-layer" });
+    const plugin = createPlugin({ name: "export-plugin" });
     const resource = createResource(
       makeResourceInput({ type: "skill", name: "helper" }),
     );
-    addResourceToLayer(layer.id, resource.id);
+    addResourceToPlugin(plugin.id, resource.id);
 
-    const outputPath = join(tempDirs.at(-1)!, "export-layer.harnesstap.toml");
+    const outputPath = join(tempDirs.at(-1)!, "export-plugin.harnesstap.toml");
     const response = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
       headers: {
@@ -101,24 +101,24 @@ describe("agent migrate routes", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        scope: "layer",
+        scope: "plugin",
         path: outputPath,
-        layer: "export-layer",
+        plugin: "export-plugin",
       }),
     });
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.scope).toBe("layer");
+    expect(body.scope).toBe("plugin");
     expect(body.output).toBe(outputPath);
-    expect(body.layers).toEqual(["export-layer"]);
+    expect(body.plugins).toEqual(["export-plugin"]);
     expect(existsSync(outputPath)).toBe(true);
-    expect(readFileSync(outputPath, "utf-8")).toContain("export-layer");
+    expect(readFileSync(outputPath, "utf-8")).toContain("export-plugin");
   });
 
   it("POST /v1/migrate/export exports workspace archive", async () => {
     const server = withServer();
-    createLayer({ name: "workspace-layer" });
+    createPlugin({ name: "workspace-plugin" });
 
     const archivePath = join(tempDirs.at(-1)!, "workspace.tar.gz");
     const response = await fetch(`${server.url}/v1/migrate/export`, {
@@ -137,11 +137,11 @@ describe("agent migrate routes", () => {
     const body = await response.json();
     expect(body.scope).toBe("workspace");
     expect(body.output).toBe(archivePath);
-    expect(body.layer_count).toBeGreaterThanOrEqual(1);
+    expect(body.plugin_count).toBeGreaterThanOrEqual(1);
     expect(existsSync(archivePath)).toBe(true);
   });
 
-  it("POST /v1/migrate/export returns 400 for unknown layer", async () => {
+  it("POST /v1/migrate/export returns 400 for unknown plugin", async () => {
     const server = withServer();
     const outputPath = join(tempDirs.at(-1)!, "missing.harnesstap.toml");
 
@@ -152,9 +152,9 @@ describe("agent migrate routes", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        scope: "layer",
+        scope: "plugin",
         path: outputPath,
-        layer: "does-not-exist",
+        plugin: "does-not-exist",
       }),
     });
 
@@ -225,17 +225,17 @@ describe("agent migrate routes", () => {
     expect(readFileSync(outputPath, "utf-8")).toContain("staging");
   });
 
-  it("POST /v1/migrate/import imports a layer bundle with detected scope", async () => {
+  it("POST /v1/migrate/import imports a plugin bundle with detected scope", async () => {
     const exportDir = mkdtempSync(join(tmpdir(), "ht-agent-migrate-bundle-"));
     tempDirs.push(exportDir);
-    const bundlePath = join(exportDir, "import-layer.harnesstap.toml");
+    const bundlePath = join(exportDir, "import-plugin.harnesstap.toml");
 
     const exportServer = withServer();
-    const layer = createLayer({ name: "import-layer" });
+    const plugin = createPlugin({ name: "import-plugin" });
     const resource = createResource(
       makeResourceInput({ type: "skill", name: "imported-skill" }),
     );
-    addResourceToLayer(layer.id, resource.id);
+    addResourceToPlugin(plugin.id, resource.id);
 
     const exportResponse = await fetch(`${exportServer.url}/v1/migrate/export`, {
       method: "POST",
@@ -244,9 +244,9 @@ describe("agent migrate routes", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        scope: "layer",
+        scope: "plugin",
         path: bundlePath,
-        layer: "import-layer",
+        plugin: "import-plugin",
       }),
     });
     expect(exportResponse.status).toBe(200);
@@ -263,16 +263,16 @@ describe("agent migrate routes", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.scope).toBe("layer");
-    expect(body.layers).toEqual(["import-layer"]);
-    expect(body.layer).toBe("import-layer");
+    expect(body.scope).toBe("plugin");
+    expect(body.plugins).toEqual(["import-plugin"]);
+    expect(body.plugin).toBe("import-plugin");
   });
 
   it("POST /v1/migrate/import returns 400 for forced scope mismatch", async () => {
     const server = withServer();
-    createLayer({ name: "mismatch-layer" });
+    createPlugin({ name: "mismatch-plugin" });
 
-    const bundlePath = join(tempDirs.at(-1)!, "mismatch-layer.harnesstap.toml");
+    const bundlePath = join(tempDirs.at(-1)!, "mismatch-plugin.harnesstap.toml");
     const exportResponse = await fetch(`${server.url}/v1/migrate/export`, {
       method: "POST",
       headers: {
@@ -280,9 +280,9 @@ describe("agent migrate routes", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        scope: "layer",
+        scope: "plugin",
         path: bundlePath,
-        layer: "mismatch-layer",
+        plugin: "mismatch-plugin",
       }),
     });
     expect(exportResponse.status).toBe(200);
@@ -299,6 +299,6 @@ describe("agent migrate routes", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe("import_failed");
-    expect(body.message).toMatch(/looks like layer data/i);
+    expect(body.message).toMatch(/looks like plugin data/i);
   });
 });
