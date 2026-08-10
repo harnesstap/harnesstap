@@ -25,6 +25,7 @@ import {
   importEnvironmentToml,
   listEnvironmentDocuments,
 } from "./environment-import-export.js";
+import { listContainedFiles } from "../utils/path-containment.js";
 
 export const MIGRATE_MANIFEST_VERSION_V1 = 1 as const;
 export const MIGRATE_MANIFEST_VERSION = 2 as const;
@@ -69,6 +70,7 @@ function extractArchive(archivePath: string, destDir: string): void {
     return;
   }
   execSync(`tar -xzf "${resolved}" -C "${destDir}"`, { stdio: "pipe" });
+  listContainedFiles(destDir);
 }
 
 function createArchive(sourceDir: string, outputPath: string): void {
