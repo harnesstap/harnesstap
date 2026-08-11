@@ -660,6 +660,14 @@ export function App() {
           ...(view === "project" && projectPath ? { projectPath } : {}),
         });
         setApplyPreview(preview);
+        if (preview.warning) {
+          setApplyPreviewError(
+            `Recovery finished, but the constraint is still unsatisfied: ${preview.warning.split("\n")[0]}`,
+          );
+        } else {
+          setSuccessMessage(`Recovered: ${action.label}`);
+          window.setTimeout(() => setSuccessMessage(null), 3000);
+        }
         if (selectedProfile === activeProfile) {
           await refreshStatus("full");
         }

@@ -121,11 +121,30 @@ export async function runConstraintRecovery(
             `No marketplace pin for ${action.pluginName} on ${input.rootName}`,
           );
         }
-        await syncPluginPinsForApply({
+        const syncResult = await syncPluginPinsForApply({
           pins,
           syncAll: true,
           projectRoot: input.projectRoot ?? resolveHomeRoot(),
         });
+        const failedInstalls = syncResult.installs.filter(
+          (install) =>
+            install.status === "failed" || install.status === "unsupported",
+        );
+        if (failedInstalls.length > 0) {
+          const details = failedInstalls
+            .map((install) => `${install.ref}: ${install.message}`)
+            .join("; ");
+          throw new Error(
+            `Could not install ${action.pluginName} from marketplace. ${details}`,
+          );
+        }
+        if (syncResult.unresolvedPins.length > 0) {
+          const refs = syncResult.unresolvedPins.join(", ");
+          throw new Error(
+            `Could not sync ${refs} from marketplace — no local install found. ` +
+              `Install the plugin in Claude Code (or run: ht resource sync plugin_pin:${syncResult.unresolvedPins[0]}), then retry.`,
+          );
+        }
         return;
       }
 

@@ -165,4 +165,90 @@ describe("runConstraintRecovery", () => {
       syncSpy.mockRestore();
     }
   });
+
+  it("errors when marketplace sync leaves pins unresolved", async () => {
+    const root = createPlugin({ name: "Teads (Default)" });
+    addDependency(root.id, "design-doc@teads-plugins", { versionConstraint: "*" });
+
+    const syncSpy = spyOn(pluginPinApply, "syncPluginPinsForApply").mockResolvedValue({
+      installs: [],
+      syncedResourceCount: 0,
+      unresolvedPins: ["design-doc@teads-plugins"],
+    });
+    try {
+      await expect(
+        runConstraintRecovery({
+          rootName: "Teads (Default)",
+          projectRoot: ctx.projectDir,
+          action: {
+            id: "sync-install",
+            label: "Sync marketplace plugins (install design-doc)",
+            pluginName: "design-doc",
+            sourceKind: "marketplace",
+          },
+        }),
+      ).rejects.toThrow(/Could not sync design-doc@teads-plugins from marketplace/);
+      await expect(
+        runConstraintRecovery({
+          rootName: "Teads (Default)",
+          projectRoot: ctx.projectDir,
+          action: {
+            id: "sync-install",
+            label: "Sync marketplace plugins (install design-doc)",
+            pluginName: "design-doc",
+            sourceKind: "marketplace",
+          },
+        }),
+      ).rejects.toThrow(/ht resource sync plugin_pin:design-doc@teads-plugins/);
+    } finally {
+      syncSpy.mockRestore();
+    }
+  });
+
+  it("errors when marketplace install reports failure", async () => {
+    const root = createPlugin({ name: "Teads (Default)" });
+    addDependency(root.id, "design-doc@teads-plugins", { versionConstraint: "*" });
+
+    const syncSpy = spyOn(pluginPinApply, "syncPluginPinsForApply").mockResolvedValue({
+      installs: [
+        {
+          ref: "design-doc@teads-plugins",
+          platformId: "claude-code",
+          scope: "user",
+          status: "failed",
+          message: "marketplace not registered",
+        },
+      ],
+      syncedResourceCount: 0,
+      unresolvedPins: [],
+    });
+    try {
+      await expect(
+        runConstraintRecovery({
+          rootName: "Teads (Default)",
+          projectRoot: ctx.projectDir,
+          action: {
+            id: "sync-install",
+            label: "Sync marketplace plugins (install design-doc)",
+            pluginName: "design-doc",
+            sourceKind: "marketplace",
+          },
+        }),
+      ).rejects.toThrow(/Could not install design-doc from marketplace/);
+      await expect(
+        runConstraintRecovery({
+          rootName: "Teads (Default)",
+          projectRoot: ctx.projectDir,
+          action: {
+            id: "sync-install",
+            label: "Sync marketplace plugins (install design-doc)",
+            pluginName: "design-doc",
+            sourceKind: "marketplace",
+          },
+        }),
+      ).rejects.toThrow(/marketplace not registered/);
+    } finally {
+      syncSpy.mockRestore();
+    }
+  });
 });
