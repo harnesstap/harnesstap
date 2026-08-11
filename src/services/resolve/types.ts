@@ -76,10 +76,200 @@ export interface ResolutionResult {
   warnings: string[];
 }
 
+export type UnsatisfiableReason =
+  | "missing-inventory"
+  | "constraint-conflict"
+  | "override-missing";
+
+export type RecoveryAction =
+  | {
+      id: "sync-install";
+      label: string;
+      pluginName: string;
+      sourceKind?: string;
+    }
+  | {
+      id: "override-version";
+      label: string;
+      pluginName: string;
+      versions: string[];
+      rootName: string;
+    }
+  | {
+      id: "detach-dependency";
+      label: string;
+      rootName: string;
+      pluginName: string;
+    }
+  | {
+      id: "clear-override";
+      label: string;
+      rootName: string;
+      pluginName: string;
+    };
+
+function requirerLines(
+  pluginName: string,
+  requirers: ConstraintRecord[],
+): string[] {
+  return requirers.map(
+    (record) =>
+      `  ${record.requirer} → ${pluginName} ${record.constraint || "*"}`,
+  );
+}
+
+function buildUnsatisfiable(input: {
+  pluginName: string;
+  requirers: ConstraintRecord[];
+  available: string[];
+  rootName: string;
+  sourceKind?: string;
+  rootOverride?: string;
+}): {
+  reason: UnsatisfiableReason;
+  message: string;
+  actions: RecoveryAction[];
+  hints: string[];
+} {
+  const { pluginName, requirers, available, rootName, sourceKind } = input;
+
+  if (input.rootOverride && !available.includes(input.rootOverride)) {
+    const actions: RecoveryAction[] = [];
+    if (available.length > 0) {
+      actions.push({
+        id: "override-version",
+        label: `Pick an installed version of ${pluginName}`,
+        pluginName,
+        versions: available,
+        rootName,
+      });
+    } else if (sourceKind === "marketplace" || sourceKind === "catalog") {
+      actions.push({
+        id: "sync-install",
+        label:
+          sourceKind === "marketplace"
+            ? `Sync marketplace plugins (install ${pluginName})`
+            : `Pull ${pluginName} from catalog`,
+        pluginName,
+        sourceKind,
+      });
+    }
+    actions.push({
+      id: "clear-override",
+      label: `Clear override for ${pluginName}`,
+      rootName,
+      pluginName,
+    });
+    const message = [
+      `Override requests ${pluginName}@${input.rootOverride}, but that version is not installed.`,
+      available.length > 0
+        ? `  available: ${available.join(", ")}`
+        : `  available: (none)`,
+      `  fix: ${actions[0]?.label ?? "clear the override"}`,
+    ].join("\n");
+    return {
+      reason: "override-missing",
+      message,
+      actions,
+      hints: actions.map((action) => hintForAction(action)),
+    };
+  }
+
+  if (available.length === 0) {
+    const actions: RecoveryAction[] = [
+      {
+        id: "sync-install",
+        label:
+          sourceKind === "catalog"
+            ? `Pull ${pluginName} from catalog`
+            : sourceKind === "marketplace"
+              ? `Sync marketplace plugins (install ${pluginName})`
+              : `Install or create ${pluginName}`,
+        pluginName,
+        ...(sourceKind ? { sourceKind } : {}),
+      },
+      {
+        id: "detach-dependency",
+        label: `Detach ${pluginName} from ${rootName}`,
+        rootName,
+        pluginName,
+      },
+    ];
+    const requiredBy = requirers.map(
+      (record) =>
+        `  required by: ${record.requirer} → ${pluginName} ${record.constraint || "*"}`,
+    );
+    const message = [
+      `No local version of ${pluginName} is installed.`,
+      ...requiredBy,
+      `  fix: ${actions[0].label}, then re-apply`,
+    ].join("\n");
+    return {
+      reason: "missing-inventory",
+      message,
+      actions,
+      hints: actions.map((action) => hintForAction(action)),
+    };
+  }
+
+  const actions: RecoveryAction[] = [
+    {
+      id: "override-version",
+      label: `Override ${pluginName} to an available version`,
+      pluginName,
+      versions: available,
+      rootName,
+    },
+    {
+      id: "detach-dependency",
+      label: `Detach ${pluginName} from ${rootName}`,
+      rootName,
+      pluginName,
+    },
+  ];
+  const message = [
+    `No installed version of ${pluginName} satisfies the required constraints.`,
+    ...requirerLines(pluginName, requirers),
+    `  available: ${available.join(", ")}`,
+    `  fix: override ${pluginName} to an available version, or detach a conflicting dependency`,
+  ].join("\n");
+  return {
+    reason: "constraint-conflict",
+    message,
+    actions,
+    hints: actions.map((action) => hintForAction(action)),
+  };
+}
+
+function hintForAction(action: RecoveryAction): string {
+  switch (action.id) {
+    case "sync-install":
+      if (action.sourceKind === "catalog") {
+        return `ht plugin pull ${action.pluginName}`;
+      }
+      if (action.sourceKind === "marketplace") {
+        return `ht plugin apply <root> --sync-plugins`;
+      }
+      return `ht plugin create ${action.pluginName}`;
+    case "override-version":
+      return `ht plugin edit ${action.rootName} --override plugin:${action.pluginName}@<version>`;
+    case "detach-dependency":
+      return `ht plugin edit ${action.rootName} --remove plugin:${action.pluginName}`;
+    case "clear-override":
+      return `ht plugin edit ${action.rootName} --clear-override plugin:${action.pluginName}`;
+    default: {
+      const _exhaustive: never = action;
+      return _exhaustive;
+    }
+  }
+}
+
 export class UnsatisfiableConstraintError extends Error {
   readonly pluginName: string;
   readonly requirers: ConstraintRecord[];
   readonly available: string[];
+  readonly reason: UnsatisfiableReason;
+  readonly actions: RecoveryAction[];
   readonly hints: string[];
 
   constructor(input: {
@@ -89,34 +279,17 @@ export class UnsatisfiableConstraintError extends Error {
     rootName: string;
     /** When set, empty local inventory can point at source-specific install/sync fixes. */
     sourceKind?: string;
+    rootOverride?: string;
   }) {
-    const lines = [`cannot satisfy plugin ${input.pluginName}`];
-    for (const record of input.requirers) {
-      lines.push(
-        `  ${record.requirer} → ${input.pluginName} ${record.constraint || "*"}`,
-      );
-    }
-    super(lines.join("\n"));
+    const built = buildUnsatisfiable(input);
+    super(built.message);
     this.name = "UnsatisfiableConstraintError";
     this.pluginName = input.pluginName;
     this.requirers = input.requirers;
     this.available = input.available;
-
-    const inventoryHint =
-      input.available.length > 0
-        ? `Available locally: ${input.available.join(", ")}`
-        : `No local versions of ${input.pluginName} found`;
-
-    if (input.available.length === 0 && input.sourceKind === "marketplace") {
-      this.hints = [`ht plugin apply <root> --sync-plugins`, inventoryHint];
-    } else if (input.available.length === 0 && input.sourceKind === "catalog") {
-      this.hints = [`ht plugin pull ${input.pluginName}`, inventoryHint];
-    } else {
-      this.hints = [
-        `ht plugin edit ${input.rootName} --override plugin:${input.pluginName}@<version>`,
-        inventoryHint,
-      ];
-    }
+    this.reason = built.reason;
+    this.actions = built.actions;
+    this.hints = built.hints;
   }
 }
 

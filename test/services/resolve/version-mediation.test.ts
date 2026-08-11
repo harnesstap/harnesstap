@@ -110,15 +110,48 @@ describe("selectVersion", () => {
     }
     expect(caught).toBeInstanceOf(UnsatisfiableConstraintError);
     const error = caught as UnsatisfiableConstraintError;
-    expect(error.message).toContain("cannot satisfy plugin base");
+    expect(error.reason).toBe("constraint-conflict");
+    expect(error.message).toContain("No installed version of base satisfies");
     expect(error.message).toContain("team-standards@2.1.0 → base ^2.0.0");
     expect(error.message).toContain("legacy-review@1.4.0 → base ^1.2.0");
-    expect(error.hints[0]).toBe(
-      "ht plugin edit my-setup --override plugin:base@<version>",
-    );
+    expect(error.message).toContain("available:");
+    expect(error.actions[0]?.id).toBe("override-version");
+    expect(error.actions.some((a) => a.id === "detach-dependency")).toBe(true);
+    expect(error.hints[0]).toContain("ht plugin edit my-setup --override plugin:base@");
   });
 
-  it("errors when a root override names a version that is not available", () => {
+  it("classifies empty inventory as missing-inventory with sync-install primary", () => {
+    let caught: unknown;
+    try {
+      selectVersion({
+        name: "design-doc",
+        available: [],
+        constraints: [
+          {
+            constraint: "*",
+            requirer: "Teads (Default)@1.0.1",
+            path: ["Teads (Default)@1.0.1"],
+          },
+        ],
+        rootName: "Teads (Default)",
+        sourceKind: "marketplace",
+      });
+    } catch (err) {
+      caught = err;
+    }
+    const error = caught as UnsatisfiableConstraintError;
+    expect(error.reason).toBe("missing-inventory");
+    expect(error.message).toContain("No local version of design-doc is installed");
+    expect(error.message).toContain("required by: Teads (Default)@1.0.1 → design-doc *");
+    expect(error.actions[0]).toMatchObject({
+      id: "sync-install",
+      pluginName: "design-doc",
+      sourceKind: "marketplace",
+    });
+    expect(error.hints[0]).toContain("--sync-plugins");
+  });
+
+  it("classifies a missing override version as override-missing", () => {
     expect(() =>
       selectVersion({
         name: "base",
@@ -128,5 +161,21 @@ describe("selectVersion", () => {
         rootName: "root",
       }),
     ).toThrow(UnsatisfiableConstraintError);
+
+    try {
+      selectVersion({
+        name: "base",
+        available,
+        constraints: [],
+        rootOverride: "9.9.9",
+        rootName: "root",
+      });
+    } catch (err) {
+      const error = err as UnsatisfiableConstraintError;
+      expect(error.reason).toBe("override-missing");
+      expect(error.message).toContain("Override requests base@9.9.9");
+      expect(error.actions.some((a) => a.id === "clear-override")).toBe(true);
+      expect(error.actions.some((a) => a.id === "override-version")).toBe(true);
+    }
   });
 });

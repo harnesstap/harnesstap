@@ -56,6 +56,7 @@ export function selectVersion(input: {
         ],
         available: sorted,
         rootName: input.rootName,
+        rootOverride: input.rootOverride,
         ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
       });
     }
