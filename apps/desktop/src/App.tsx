@@ -636,6 +636,12 @@ export function App() {
             return;
           }
           chosenVersion = promptResult.trim();
+          if (!action.versions.includes(chosenVersion)) {
+            setApplyPreviewError(
+              `Version "${chosenVersion}" is not available. Choose one of: ${action.versions.join(", ")}`,
+            );
+            return;
+          }
         }
       }
 

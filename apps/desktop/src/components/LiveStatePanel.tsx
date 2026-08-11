@@ -1067,7 +1067,7 @@ export function LiveStatePanel({
       : null;
 
   const previewWarning = applyPreview?.warning ?? null;
-  const showPreviewError = Boolean(selectedProfile && applyPreviewError && !applyPreview);
+  const showPreviewError = Boolean(selectedProfile && applyPreviewError);
   const showNotTrackedActions =
     previewWarning === PROJECT_NOT_TRACKED_WARNING
     && Boolean(onBootstrap || onCreateProfileFromProject);
