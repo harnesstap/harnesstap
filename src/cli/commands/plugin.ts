@@ -124,6 +124,7 @@ import {
   SingletonConflictError,
   UnsatisfiableConstraintError,
 } from "../../services/resolve/types.js";
+import { offerConstraintRecovery } from "../../services/constraint-recovery.js";
 import { offerConflictScaffold } from "../../services/resolve-conflict-scaffold.js";
 import { explainPayload, renderExplain } from "../../services/resolve/explain.js";
 import {
@@ -522,10 +523,30 @@ export async function handleProjectApplyCommand(
   } catch (err) {
     compositionSpin.stop();
     process.exitCode = 1;
-    if (
-      err instanceof UnsatisfiableConstraintError ||
-      err instanceof SingletonConflictError
-    ) {
+    if (err instanceof UnsatisfiableConstraintError) {
+      ui.danger(err.message, { hints: err.hints });
+      const recovered = await offerConstraintRecovery({
+        error: err,
+        rootName: resolvedPluginNames[0] ?? "",
+        projectRoot,
+        ...(opts.interactive !== undefined ? { interactive: opts.interactive } : {}),
+        ...(opts.noInteractive !== undefined
+          ? { noInteractive: opts.noInteractive }
+          : {}),
+        format: outputFormat,
+      });
+      if (recovered) {
+        process.exitCode = 0;
+        ui.success("Constraint recovery applied. Re-applying…");
+        await handleProjectApplyCommand(
+          resolvedPluginNames as [string, ...string[]],
+          opts,
+        );
+        return;
+      }
+      return;
+    }
+    if (err instanceof SingletonConflictError) {
       ui.danger(err.message, { hints: err.hints });
       const scaffolded = await offerConflictScaffold({
         error: err,
@@ -694,11 +715,46 @@ export async function handleProjectApplyCommand(
         applyResources = resources;
       } catch (err) {
         process.exitCode = 1;
-        if (
-          err instanceof UnsatisfiableConstraintError ||
-          err instanceof SingletonConflictError
-        ) {
+        if (err instanceof UnsatisfiableConstraintError) {
           ui.danger(err.message, { hints: err.hints });
+          const recovered = await offerConstraintRecovery({
+            error: err,
+            rootName: resolvedPluginNames[0] ?? "",
+            projectRoot,
+            ...(opts.interactive !== undefined ? { interactive: opts.interactive } : {}),
+            ...(opts.noInteractive !== undefined
+              ? { noInteractive: opts.noInteractive }
+              : {}),
+            format: outputFormat,
+          });
+          if (recovered) {
+            process.exitCode = 0;
+            ui.success("Constraint recovery applied. Re-applying…");
+            await handleProjectApplyCommand(
+              resolvedPluginNames as [string, ...string[]],
+              opts,
+            );
+            return;
+          }
+          return;
+        }
+        if (err instanceof SingletonConflictError) {
+          ui.danger(err.message, { hints: err.hints });
+          const scaffolded = await offerConflictScaffold({
+            error: err,
+            attemptedSelectors: resolvedPluginNames as string[],
+            ...(opts.interactive !== undefined ? { interactive: opts.interactive } : {}),
+            ...(opts.noInteractive !== undefined
+              ? { noInteractive: opts.noInteractive }
+              : {}),
+            format: outputFormat,
+          });
+          if (scaffolded) {
+            process.exitCode = 0;
+            ui.success(`Created composition plugin ${scaffolded}. Re-applying…`);
+            await handleProjectApplyCommand([scaffolded], opts);
+            return;
+          }
           return;
         }
         ui.danger(err instanceof Error ? err.message : String(err));
