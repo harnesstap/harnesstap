@@ -36,6 +36,10 @@ import { resourceKeyFromManagedPath } from "./profile-commit-resource.js";
 import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import { detectPlatforms } from "./scanner.js";
+import {
+  UnsatisfiableConstraintError,
+  type RecoveryAction,
+} from "./resolve/types.js";
 
 export type ProfileApplyPreviewScope = "home" | "project";
 
@@ -63,8 +67,34 @@ export interface ProfileApplyPreview {
   };
   relative_to_active: boolean;
   warning?: string;
+  recovery_actions?: RecoveryAction[];
   /** App-managed inventory for home scope; never applied or persisted. */
   host_managed?: HostManagedStatus;
+}
+
+function warningFromError(error: unknown): {
+  warning: string;
+  recovery_actions?: RecoveryAction[];
+} {
+  if (error instanceof UnsatisfiableConstraintError) {
+    return {
+      warning: error.message,
+      recovery_actions: error.actions,
+    };
+  }
+  return {
+    warning: error instanceof Error ? error.message : String(error),
+  };
+}
+
+function spreadWarningFields(input: {
+  warning?: string;
+  recovery_actions?: RecoveryAction[];
+}): { warning?: string; recovery_actions?: RecoveryAction[] } {
+  return {
+    ...(input.warning ? { warning: input.warning } : {}),
+    ...(input.recovery_actions ? { recovery_actions: input.recovery_actions } : {}),
+  };
 }
 
 function readRootFile(rootPath: string, relativePath: string): string | null {
@@ -311,6 +341,7 @@ export interface CollectExpectedManagedFilesResult {
   rootPath: string;
   expectedFiles: Array<{ path: string; content: string }>;
   warning?: string;
+  recovery_actions?: RecoveryAction[];
   expectedApply?: ApplyProfilePluginResult;
   pluginIds?: string[];
   removedFiles?: string[];
@@ -340,7 +371,7 @@ async function collectHomeExpectedManagedFiles(
       return {
         rootPath: homeRoot,
         expectedFiles: [],
-        warning: error instanceof Error ? error.message : String(error),
+        ...warningFromError(error),
       };
     }
   }
@@ -381,7 +412,7 @@ async function collectHomeExpectedManagedFiles(
       rootPath: homeRoot,
       expectedFiles: [],
       pluginIds,
-      warning: error instanceof Error ? error.message : String(error),
+      ...warningFromError(error),
     };
   }
 }
@@ -471,7 +502,7 @@ async function collectProjectExpectedManagedFiles(
       rootPath: resolvedRoot,
       expectedFiles: [],
       pluginIds,
-      warning: error instanceof Error ? error.message : String(error),
+      ...warningFromError(error),
     };
   }
 }
@@ -492,7 +523,9 @@ export async function collectExpectedManagedFiles(
 async function previewHomeApply(
   profile: string,
   harness?: string,
-): Promise<Pick<ProfileApplyPreview, "harnesses" | "files" | "warning">> {
+): Promise<
+  Pick<ProfileApplyPreview, "harnesses" | "files" | "warning" | "recovery_actions">
+> {
   const collected = await collectHomeExpectedManagedFiles(profile, harness);
 
   if (collected.warning) {
@@ -518,7 +551,7 @@ async function previewHomeApply(
           changes: withMappedResources([]),
           root_path: collected.rootPath,
         },
-        warning: collected.warning,
+        ...spreadWarningFields(collected),
       };
     }
     return {
@@ -527,7 +560,7 @@ async function previewHomeApply(
         changes: withMappedResources([]),
         root_path: collected.rootPath,
       },
-      warning: collected.warning,
+      ...spreadWarningFields(collected),
     };
   }
 
@@ -581,7 +614,7 @@ async function previewProjectApply(
   profile: string,
   projectPath?: string,
   harness?: string,
-): Promise<Pick<ProfileApplyPreview, "files" | "warning">> {
+): Promise<Pick<ProfileApplyPreview, "files" | "warning" | "recovery_actions">> {
   const collected = await collectProjectExpectedManagedFiles(
     profile,
     projectPath,
@@ -599,7 +632,7 @@ async function previewProjectApply(
       ),
       root_path: collected.rootPath,
     },
-    ...(collected.warning ? { warning: collected.warning } : {}),
+    ...spreadWarningFields(collected),
   };
 }
 
@@ -630,7 +663,7 @@ export async function previewProfileApply(
       untracked_resources: notStaged,
       files: projectPreview.files,
       relative_to_active: relativeToActive,
-      ...(projectPreview.warning ? { warning: projectPreview.warning } : {}),
+      ...spreadWarningFields(projectPreview),
     };
   }
 
@@ -648,6 +681,6 @@ export async function previewProfileApply(
       homeRoot: homePreview.files.root_path,
       profileSkills: profileSkillNameMap(contents?.resources ?? []),
     }),
-    ...(homePreview.warning ? { warning: homePreview.warning } : {}),
+    ...spreadWarningFields(homePreview),
   };
 }
