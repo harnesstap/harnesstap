@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import {
@@ -11,8 +11,9 @@ import {
   setPluginVersionOverride,
   clearPluginVersionOverride,
 } from "../../src/services/plugin-overrides.ts";
-import { listDependencies } from "../../src/services/plugin-dependency.ts";
+import { addDependency, listDependencies } from "../../src/services/plugin-dependency.ts";
 import { runConstraintRecovery } from "../../src/services/constraint-recovery.ts";
+import * as pluginPinApply from "../../src/services/plugin-pin-apply.ts";
 
 let ctx: TestContext;
 
@@ -88,5 +89,80 @@ describe("runConstraintRecovery", () => {
     });
 
     expect(getPluginOverrides(root.id).versions.base).toBeUndefined();
+  });
+
+  it("rejects sync-install without a marketplace or catalog source", async () => {
+    const root = createPlugin({ name: "my-setup" });
+    addDependency(root.id, "missing-plugin");
+
+    await expect(
+      runConstraintRecovery({
+        rootName: "my-setup",
+        action: {
+          id: "sync-install",
+          label: "Install or create missing-plugin",
+          pluginName: "missing-plugin",
+        },
+      }),
+    ).rejects.toThrow(
+      "Automated sync-install is only supported for marketplace and catalog dependencies",
+    );
+    await expect(
+      runConstraintRecovery({
+        rootName: "my-setup",
+        action: {
+          id: "sync-install",
+          label: "Install or create missing-plugin",
+          pluginName: "missing-plugin",
+        },
+      }),
+    ).rejects.toThrow("ht plugin create missing-plugin");
+  });
+
+  it("errors when marketplace sync-install has no matching pin", async () => {
+    const root = createPlugin({ name: "Teads (Default)" });
+
+    await expect(
+      runConstraintRecovery({
+        rootName: "Teads (Default)",
+        action: {
+          id: "sync-install",
+          label: "Sync marketplace plugins (install design-doc)",
+          pluginName: "design-doc",
+          sourceKind: "marketplace",
+        },
+      }),
+    ).rejects.toThrow("No marketplace pin for design-doc on Teads (Default)");
+  });
+
+  it("syncs marketplace pins matching the plugin name", async () => {
+    const root = createPlugin({ name: "Teads (Default)" });
+    addDependency(root.id, "design-doc@anthropics", { versionConstraint: "*" });
+
+    const syncSpy = spyOn(pluginPinApply, "syncPluginPinsForApply").mockResolvedValue({
+      installs: [],
+      syncedResourceCount: 0,
+      unresolvedPins: [],
+    });
+    try {
+      await runConstraintRecovery({
+        rootName: "Teads (Default)",
+        projectRoot: ctx.projectDir,
+        action: {
+          id: "sync-install",
+          label: "Sync marketplace plugins (install design-doc)",
+          pluginName: "design-doc",
+          sourceKind: "marketplace",
+        },
+      });
+
+      expect(syncSpy).toHaveBeenCalledWith({
+        pins: [{ ref: "design-doc@anthropics", version_constraint: "*" }],
+        syncAll: true,
+        projectRoot: ctx.projectDir,
+      });
+    } finally {
+      syncSpy.mockRestore();
+    }
   });
 });

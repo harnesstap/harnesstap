@@ -107,29 +107,31 @@ export async function runConstraintRecovery(
         return;
       }
 
-      const pins = listDependencies(root.id)
-        .filter((dependency) => {
-          if (action.sourceKind === "marketplace") {
-            return marketplaceDependencyMatches(dependency, action.pluginName);
-          }
-          const name = dependency.name || dependency.ref;
-          return name === action.pluginName || name.endsWith(`/${action.pluginName}`);
-        })
-        .map((dependency) => ({
-          ref: dependency.ref,
-          version_constraint: dependency.version_constraint || "*",
-        }));
-      if (pins.length === 0) {
-        throw new Error(
-          `No marketplace pin for ${action.pluginName} on ${input.rootName}`,
-        );
+      if (action.sourceKind === "marketplace") {
+        const pins = listDependencies(root.id)
+          .filter((dependency) =>
+            marketplaceDependencyMatches(dependency, action.pluginName),
+          )
+          .map((dependency) => ({
+            ref: dependency.ref,
+            version_constraint: dependency.version_constraint || "*",
+          }));
+        if (pins.length === 0) {
+          throw new Error(
+            `No marketplace pin for ${action.pluginName} on ${input.rootName}`,
+          );
+        }
+        await syncPluginPinsForApply({
+          pins,
+          syncAll: true,
+          projectRoot: input.projectRoot ?? resolveHomeRoot(),
+        });
+        return;
       }
-      await syncPluginPinsForApply({
-        pins,
-        syncAll: true,
-        projectRoot: input.projectRoot ?? resolveHomeRoot(),
-      });
-      return;
+
+      throw new Error(
+        `Automated sync-install is only supported for marketplace and catalog dependencies. Create or import ${action.pluginName} first (ht plugin create ${action.pluginName}).`,
+      );
     }
     default: {
       const _exhaustive: never = action;
