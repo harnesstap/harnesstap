@@ -15,6 +15,7 @@ import {
   createCloudAuthHandlers,
 } from "./cloud-auth-handlers.js";
 import { jsonResponse } from "./http.js";
+import { handleConstraintRecoveryRun } from "./constraint-recovery-handlers.js";
 import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
 import { handleProfileAddAllResources, handleProfileAddResource, handleProfileCommitResource } from "./profile-add-resource-handlers.js";
 import { handleProfileRestoreFile } from "./profile-restore-file-handlers.js";
@@ -548,6 +549,8 @@ export function createAgentFetchHandler(
       response = await handleProfileCreatePreview(request, token);
     } else if (method === "POST" && url.pathname === "/v1/profiles/apply-preview") {
       response = await handleProfileApplyPreview(request, token);
+    } else if (method === "POST" && url.pathname === "/v1/recovery/run") {
+      response = await handleConstraintRecoveryRun(request, token);
     } else if (method === "POST" && url.pathname === "/v1/profiles") {
       response = await handleProfileCreate(
         request,
