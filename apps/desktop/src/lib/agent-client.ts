@@ -50,6 +50,7 @@ import type {
   ProfileSwitchStepEvent,
   ProfileTagResult,
   ProfileRenameResult,
+  RecoveryAction,
   ProfileStashListResult,
   ProfileStashPopResult,
   ProfileStashPushResult,
@@ -857,6 +858,26 @@ export async function fetchApplyPreview(
     return throwAgentError(response, "Could not preview profile apply");
   }
   return (await response.json()) as ProfileApplyPreview;
+}
+
+export async function runConstraintRecoveryAction(
+  baseUrl: string,
+  token: string | null,
+  body: {
+    root: string;
+    action: RecoveryAction;
+    chosenVersion?: string;
+    projectPath?: string;
+  },
+): Promise<void> {
+  const response = await agentFetch(baseUrl, token, "/v1/recovery/run", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not run recovery action");
+  }
 }
 
 export async function addProfileResource(

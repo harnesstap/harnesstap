@@ -44,6 +44,7 @@ import {
   removeProfileResource,
   restoreProfileFile,
   rescanResourceTrackedDirectories,
+  runConstraintRecoveryAction,
 } from "./lib/agent-client";
 import {
   loadRecentProjects,
@@ -62,6 +63,7 @@ import type {
   ProfileSwitchStep,
   ProfileSwitchStepEvent,
   ProfileStashEntry,
+  RecoveryAction,
   ViewScope,
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
@@ -151,6 +153,7 @@ export function App() {
   const [applyPreview, setApplyPreview] = useState<ProfileApplyPreview | null>(null);
   const [applyPreviewError, setApplyPreviewError] = useState<string | null>(null);
   const [applyPreviewLoading, setApplyPreviewLoading] = useState(false);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [addingResourceKey, setAddingResourceKey] = useState<string | null>(null);
   const [committingManagedChanges, setCommittingManagedChanges] = useState(false);
   const [removingResourceKey, setRemovingResourceKey] = useState<string | null>(null);
@@ -613,6 +616,68 @@ export function App() {
     token,
     view,
   ]);
+
+  const handleRecoveryAction = useCallback(
+    async (action: RecoveryAction) => {
+      if (!baseUrl || !selectedProfile || recoveryBusy) {
+        return;
+      }
+
+      let chosenVersion: string | undefined;
+      if (action.id === "override-version") {
+        if (action.versions.length === 1) {
+          chosenVersion = action.versions[0];
+        } else {
+          const promptResult = window.prompt(
+            `Choose version for ${action.pluginName}`,
+            action.versions[0] ?? "",
+          );
+          if (!promptResult || promptResult.trim().length === 0) {
+            return;
+          }
+          chosenVersion = promptResult.trim();
+        }
+      }
+
+      setRecoveryBusy(true);
+      setApplyPreviewError(null);
+      try {
+        await runConstraintRecoveryAction(baseUrl, token, {
+          root: selectedProfile,
+          action,
+          ...(chosenVersion ? { chosenVersion } : {}),
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        const preview = await fetchApplyPreview(baseUrl, token, {
+          profile: selectedProfile,
+          scope: view,
+          ...(view === "project" && projectPath ? { projectPath } : {}),
+        });
+        setApplyPreview(preview);
+        if (selectedProfile === activeProfile) {
+          await refreshStatus("full");
+        }
+      } catch (error) {
+        setApplyPreviewError(
+          error instanceof Error
+            ? error.message
+            : "Could not run recovery action",
+        );
+      } finally {
+        setRecoveryBusy(false);
+      }
+    },
+    [
+      activeProfile,
+      baseUrl,
+      projectPath,
+      recoveryBusy,
+      refreshStatus,
+      selectedProfile,
+      token,
+      view,
+    ],
+  );
 
   const handleCommitManagedChanges = useCallback(async () => {
     if (!baseUrl || !selectedProfile || !applyPreview || committingManagedChanges) {
@@ -2531,6 +2596,14 @@ export function App() {
                   resourceActionError && !switching ? resourceActionError : null
                 }
                 onDismissResourceActionError={() => setResourceActionError(null)}
+                onRecoveryAction={
+                  connected && token && !switching
+                    ? (action) => {
+                        void handleRecoveryAction(action);
+                      }
+                    : undefined
+                }
+                recoveryBusy={recoveryBusy}
               />
             )}
 

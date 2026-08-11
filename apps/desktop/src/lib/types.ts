@@ -292,6 +292,18 @@ export interface ProfileApplyPreviewRequest {
   projectPath?: string;
 }
 
+export type RecoveryAction =
+  | { id: "sync-install"; label: string; pluginName: string; sourceKind?: string }
+  | {
+      id: "override-version";
+      label: string;
+      pluginName: string;
+      versions: string[];
+      rootName: string;
+    }
+  | { id: "detach-dependency"; label: string; rootName: string; pluginName: string }
+  | { id: "clear-override"; label: string; rootName: string; pluginName: string };
+
 export interface ProfileApplyPreview {
   profile: string;
   scope: ViewScope;
@@ -308,6 +320,7 @@ export interface ProfileApplyPreview {
   };
   relative_to_active: boolean;
   warning?: string;
+  recovery_actions?: RecoveryAction[];
 }
 
 export interface ProfileAddResourceRequest {

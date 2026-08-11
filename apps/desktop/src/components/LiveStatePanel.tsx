@@ -46,6 +46,7 @@ import type {
   ProfileContents,
   ProfileContentsPlugin,
   ProfileContentsResource,
+  RecoveryAction,
   ViewScope,
 } from "../lib/types";
 import { RelatedHarnessIcons } from "./HarnessIcons";
@@ -950,6 +951,8 @@ export interface LiveStatePanelProps {
   /** Row-action failures (open / add / drop / remove resource). */
   resourceActionError?: string | null;
   onDismissResourceActionError?: () => void;
+  onRecoveryAction?: (action: RecoveryAction) => void;
+  recoveryBusy?: boolean;
 }
 
 export function LiveStatePanel({
@@ -985,6 +988,8 @@ export function LiveStatePanel({
   filesRootPath = null,
   resourceActionError = null,
   onDismissResourceActionError,
+  onRecoveryAction,
+  recoveryBusy = false,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -1066,6 +1071,10 @@ export function LiveStatePanel({
   const showNotTrackedActions =
     previewWarning === PROJECT_NOT_TRACKED_WARNING
     && Boolean(onBootstrap || onCreateProfileFromProject);
+  const recoveryActions =
+    !showNotTrackedActions && applyPreview?.recovery_actions?.length
+      ? applyPreview.recovery_actions
+      : null;
 
   return (
     <>
@@ -1092,7 +1101,7 @@ export function LiveStatePanel({
       ) : null}
       {previewWarning ? (
         <div className="banner" role="status">
-          <div>{previewWarning}</div>
+          <div style={{ whiteSpace: "pre-wrap" }}>{previewWarning}</div>
           {showNotTrackedActions ? (
             <div className="banner-actions">
               {onBootstrap ? (
@@ -1119,6 +1128,20 @@ export function LiveStatePanel({
                   Create profile from project
                 </button>
               ) : null}
+            </div>
+          ) : recoveryActions && onRecoveryAction ? (
+            <div className="banner-actions">
+              {recoveryActions.map((action, index) => (
+                <button
+                  key={`${action.id}-${index}`}
+                  type="button"
+                  className={index === 0 ? "btn primary" : "btn"}
+                  onClick={() => onRecoveryAction(action)}
+                  disabled={recoveryBusy}
+                >
+                  {action.label}
+                </button>
+              ))}
             </div>
           ) : null}
         </div>
