@@ -1,0 +1,3 @@
+kind: Changed
+body: Clarify unsatisfiable plugin constraint errors and offer recovery actions in CLI and desktop
+time: 2026-08-10T18:00:00Z
