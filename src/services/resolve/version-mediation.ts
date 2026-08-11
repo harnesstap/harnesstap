@@ -1,5 +1,6 @@
 import semver from "semver";
 import { parseVersionConstraint } from "../plugin-constraints.js";
+import type { DependencySourceKind } from "../../types.js";
 import { UnsatisfiableConstraintError } from "./types.js";
 import type { ConstraintRecord, SelectionReason } from "./types.js";
 
@@ -37,7 +38,7 @@ export function selectVersion(input: {
   constraints: ConstraintRecord[];
   rootOverride?: string;
   rootName: string;
-  sourceKind?: string;
+  sourceKind?: DependencySourceKind;
 }): { version: string; reason: SelectionReason } {
   const sorted = [...input.available]
     .filter((version) => semver.valid(version) !== null)

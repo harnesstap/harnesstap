@@ -86,7 +86,7 @@ export type RecoveryAction =
       id: "sync-install";
       label: string;
       pluginName: string;
-      sourceKind?: string;
+      sourceKind?: DependencySourceKind;
     }
   | {
       id: "override-version";
@@ -123,7 +123,7 @@ function buildUnsatisfiable(input: {
   requirers: ConstraintRecord[];
   available: string[];
   rootName: string;
-  sourceKind?: string;
+  sourceKind?: DependencySourceKind;
   rootOverride?: string;
 }): {
   reason: UnsatisfiableReason;
@@ -195,6 +195,7 @@ function buildUnsatisfiable(input: {
         pluginName,
       },
     ];
+    const primary = actions[0]!;
     const requiredBy = requirers.map(
       (record) =>
         `  required by: ${record.requirer} → ${pluginName} ${record.constraint || "*"}`,
@@ -202,7 +203,7 @@ function buildUnsatisfiable(input: {
     const message = [
       `No local version of ${pluginName} is installed.`,
       ...requiredBy,
-      `  fix: ${actions[0].label}, then re-apply`,
+      `  fix: ${primary.label}, then re-apply`,
     ].join("\n");
     return {
       reason: "missing-inventory",
@@ -278,7 +279,7 @@ export class UnsatisfiableConstraintError extends Error {
     available: string[];
     rootName: string;
     /** When set, empty local inventory can point at source-specific install/sync fixes. */
-    sourceKind?: string;
+    sourceKind?: DependencySourceKind;
     rootOverride?: string;
   }) {
     const built = buildUnsatisfiable(input);
