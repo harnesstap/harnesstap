@@ -48,6 +48,19 @@ export function setPluginResourceOverride(
   });
 }
 
+export function clearPluginVersionOverride(
+  pluginId: string,
+  name: string,
+): void {
+  const current = getPluginOverrides(pluginId);
+  if (!(name in current.versions)) {
+    return;
+  }
+  const versions = { ...current.versions };
+  delete versions[name];
+  writePluginOverrides(pluginId, { ...current, versions });
+}
+
 export function clearPluginOverrides(pluginId: string): void {
   writePluginOverrides(pluginId, { versions: {}, resources: {} });
 }
