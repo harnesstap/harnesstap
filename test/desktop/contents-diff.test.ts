@@ -1,11 +1,18 @@
 import { describe, expect, it } from "bun:test";
 import {
   aggregateInstallGaps,
+  countFileChangeKindResources,
   diffProfileContents,
   fileChangeAction,
+  fileChangeHoverRows,
+  fileChangeHoverTitle,
+  fileChangeMatchesKindFilter,
+  groupFileChangesByResource,
   orderedTypeCounts,
   summarizeStackChanges,
+  uniqueFileChanges,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
+import type { FileChangeResourceGroup } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
 function contents(
@@ -150,6 +157,78 @@ describe("contents-diff helpers", () => {
     });
   });
 
+  it("builds file-change hover text with path, type, and origin", () => {
+    expect(
+      fileChangeHoverRows({
+        path: "/Users/me/.claude/skills/ship/SKILL.md",
+        resource: {
+          type: "skill",
+          name: "ship",
+          origin_kind: "marketplace_link",
+        },
+      }),
+    ).toEqual([
+      { kind: "path", text: "/Users/me/.claude/skills/ship/SKILL.md" },
+      { kind: "type", text: "skill", type: "skill" },
+      { kind: "origin", text: "marketplace", originKind: "marketplace_link" },
+    ]);
+    expect(
+      fileChangeHoverTitle({
+        path: "/Users/me/.claude/commands/deploy.md",
+        resource: { type: "command", name: "deploy", origin_kind: "local_snapshot" },
+      }),
+    ).toBe("/Users/me/.claude/commands/deploy.md\ncommand\nlocal");
+    expect(
+      fileChangeHoverRows({
+        path: "/Users/me/.cursor/mcp.json",
+      }),
+    ).toEqual([
+      { kind: "path", text: "/Users/me/.cursor/mcp.json" },
+      { kind: "type", text: "MCP", type: "mcp_server" },
+    ]);
+  });
+
+  it("counts unique related resources per file-change kind", () => {
+    const changes = uniqueFileChanges([
+      {
+        path: ".claude/skills/x/SKILL.md",
+        type: "deleted",
+        resource: { type: "skill", name: "x" },
+      },
+      {
+        path: ".claude/skills/x/notes.md",
+        type: "deleted",
+        resource: { type: "skill", name: "x" },
+      },
+      {
+        path: ".claude/skills/y/SKILL.md",
+        type: "added",
+        resource: { type: "skill", name: "y" },
+      },
+      { path: ".cursor/mcp.json", type: "modified" },
+      { path: ".cursor/mcp.json", type: "modified" },
+    ]);
+
+    expect(countFileChangeKindResources(changes)).toEqual({
+      add: 1,
+      remove: 1,
+      update: 1,
+    });
+  });
+
+  it("filters file changes by selected kinds; empty selection shows all", () => {
+    const added = { path: "missing.md", type: "deleted" as const };
+    const removed = { path: "extra.md", type: "added" as const };
+    const modified = { path: "edit.md", type: "modified" as const };
+
+    expect(fileChangeMatchesKindFilter(added, new Set())).toBe(true);
+    expect(fileChangeMatchesKindFilter(added, new Set(["add"]))).toBe(true);
+    expect(fileChangeMatchesKindFilter(removed, new Set(["add"]))).toBe(false);
+    expect(fileChangeMatchesKindFilter(modified, new Set(["add", "update"]))).toBe(
+      true,
+    );
+  });
+
   it("aggregates install gaps with clear labels", () => {
     const gaps = aggregateInstallGaps({
       "claude-code": {
@@ -170,20 +249,105 @@ describe("contents-diff helpers", () => {
         key: "plugin:missing:demo@demo",
         label: "plugin demo@demo",
         kind: "missing",
+        iconType: "plugin",
         harnesses: ["claude-code", "cursor"],
       },
       {
         key: "mcp:outside_profile:search",
         label: "mcp search",
         kind: "outside_profile",
+        iconType: "mcp_server",
         harnesses: ["cursor"],
       },
       {
         key: "plugin:outside_profile:extra@x",
         label: "plugin extra@x",
         kind: "outside_profile",
+        iconType: "plugin",
         harnesses: ["claude-code"],
       },
     ]);
+  });
+
+  it("groups file changes by resource across harness paths", () => {
+    const groups = groupFileChangesByResource([
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship", origin_kind: "local_snapshot" },
+      },
+      {
+        path: ".cursor/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "cursor",
+        resource: { type: "skill", name: "ship", origin_kind: "local_snapshot" },
+      },
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      key: "skill:ship",
+      singleton: false,
+      kinds: ["add"],
+      platforms: ["claude-code", "cursor"],
+      resource: { type: "skill", name: "ship" },
+    });
+    expect(groups[0].changes).toHaveLength(2);
+  });
+
+  it("marks a one-file resource group as singleton", () => {
+    const groups = groupFileChangesByResource([
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship" },
+      },
+    ]);
+    expect(groups).toEqual([
+      expect.objectContaining({
+        key: "skill:ship",
+        singleton: true,
+        kinds: ["add"],
+        platforms: ["claude-code"],
+      }),
+    ]);
+  });
+
+  it("keeps unmapped paths as their own groups", () => {
+    const groups = groupFileChangesByResource([
+      { path: ".cursor/mcp.json", type: "modified", platform: "cursor" },
+    ]);
+    expect(groups).toEqual([
+      expect.objectContaining({
+        key: "path:.cursor/mcp.json",
+        resource: null,
+        singleton: true,
+        kinds: ["update"],
+        platforms: ["cursor"],
+      }),
+    ]);
+  });
+
+  it("keeps mixed add and update in one group with both counts", () => {
+    const groups = groupFileChangesByResource([
+      {
+        path: ".cursor/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "cursor",
+        resource: { type: "skill", name: "ship" },
+      },
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "modified",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship" },
+      },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].kinds).toEqual(["add", "update"]);
+    expect(groups[0].platforms).toEqual(["claude-code", "cursor"]);
+    expect(groups[0].singleton).toBe(false);
   });
 });

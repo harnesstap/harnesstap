@@ -1,3 +1,4 @@
+import { DESKTOP_HARNESS_IDS } from "./harness-meta";
 import type {
   DriftFileChange,
   HarnessLiveStatus,
@@ -30,6 +31,7 @@ export interface InstallGapRow {
   key: string;
   label: string;
   kind: "missing" | "outside_profile";
+  iconType: "plugin" | "mcp_server";
   harnesses: string[];
 }
 
@@ -69,6 +71,55 @@ function labelForType(type: string, count: number): string {
     return count === 1 ? known.one : known.other;
   }
   return count === 1 ? type : `${type}s`;
+}
+
+const ORIGIN_HOVER_LABELS: Record<string, string> = {
+  local_snapshot: "local",
+  marketplace_link: "marketplace",
+  manual: "manual",
+  untracked: "untracked",
+};
+
+function inferFileChangeType(path: string): string | undefined {
+  const normalized = path.replace(/\\/g, "/");
+  if (/(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)) {
+    return "mcp_server";
+  }
+  return undefined;
+}
+
+export type FileChangeHoverRow =
+  | { kind: "path"; text: string }
+  | { kind: "type"; text: string; type: string }
+  | { kind: "origin"; text: string; originKind: string };
+
+export function fileChangeHoverRows(input: {
+  path: string;
+  resource?: { type: string; name: string; origin_kind?: string | null };
+}): FileChangeHoverRow[] {
+  const rows: FileChangeHoverRow[] = [{ kind: "path", text: input.path }];
+  const type = input.resource?.type ?? inferFileChangeType(input.path);
+  if (type) {
+    rows.push({ kind: "type", text: labelForType(type, 1), type });
+  }
+  const origin = input.resource?.origin_kind?.trim();
+  if (origin) {
+    rows.push({
+      kind: "origin",
+      text: ORIGIN_HOVER_LABELS[origin] ?? origin.replaceAll("_", " "),
+      originKind: origin,
+    });
+  }
+  return rows;
+}
+
+export function fileChangeHoverTitle(input: {
+  path: string;
+  resource?: { type: string; name: string; origin_kind?: string | null };
+}): string {
+  return fileChangeHoverRows(input)
+    .map((row) => row.text)
+    .join("\n");
 }
 
 function pluginKey(plugin: { id: string; name: string; version: string }): string {
@@ -325,6 +376,132 @@ export function fileChangeAction(change: DriftFileChange): {
   }
 }
 
+export type FileChangeKind = "add" | "remove" | "update";
+
+export function uniqueFileChanges(changes: DriftFileChange[]): DriftFileChange[] {
+  const seen = new Set<string>();
+  const deduped: DriftFileChange[] = [];
+  for (const change of changes) {
+    const key = `${change.type}:${change.path}:${change.platform ?? ""}`;
+    if (seen.has(key) || seen.has(change.path)) {
+      continue;
+    }
+    seen.add(key);
+    seen.add(change.path);
+    deduped.push(change);
+  }
+  return deduped;
+}
+
+function fileChangeResourceKey(change: DriftFileChange): string {
+  if (change.resource) {
+    return `${change.resource.type}:${change.resource.name}`;
+  }
+  return `path:${change.path}`;
+}
+
+const FILE_CHANGE_KIND_ORDER: FileChangeKind[] = ["add", "remove", "update"];
+
+export interface FileChangeResourceGroup {
+  key: string;
+  resource: { type: string; name: string; origin_kind?: string | null } | null;
+  changes: DriftFileChange[];
+  kinds: FileChangeKind[];
+  platforms: string[];
+  singleton: boolean;
+}
+
+function sortFileChangePlatforms(ids: string[]): string[] {
+  const unique = [...new Set(ids)];
+  return unique.sort((left, right) => {
+    const leftIndex = (DESKTOP_HARNESS_IDS as readonly string[]).indexOf(left);
+    const rightIndex = (DESKTOP_HARNESS_IDS as readonly string[]).indexOf(right);
+    const leftOrder = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+    const rightOrder = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    return left.localeCompare(right);
+  });
+}
+
+export function deriveFileChangeResourceGroup(
+  key: string,
+  resource: FileChangeResourceGroup["resource"],
+  changes: DriftFileChange[],
+): FileChangeResourceGroup {
+  const kindSet = new Set<FileChangeKind>();
+  const platforms: string[] = [];
+  for (const change of changes) {
+    kindSet.add(fileChangeAction(change).action);
+    if (change.platform) {
+      platforms.push(change.platform);
+    }
+  }
+  return {
+    key,
+    resource,
+    changes,
+    kinds: FILE_CHANGE_KIND_ORDER.filter((kind) => kindSet.has(kind)),
+    platforms: sortFileChangePlatforms(platforms),
+    singleton: changes.length === 1,
+  };
+}
+
+export function groupFileChangesByResource(
+  changes: DriftFileChange[],
+): FileChangeResourceGroup[] {
+  const unique = uniqueFileChanges(changes);
+  const groups = new Map<string, DriftFileChange[]>();
+  const resources = new Map<string, FileChangeResourceGroup["resource"]>();
+  const order: string[] = [];
+
+  for (const change of unique) {
+    const key = fileChangeResourceKey(change);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(change);
+    } else {
+      groups.set(key, [change]);
+      order.push(key);
+      resources.set(key, change.resource ?? null);
+    }
+  }
+
+  return order.map((key) =>
+    deriveFileChangeResourceGroup(key, resources.get(key) ?? null, groups.get(key) ?? []),
+  );
+}
+
+export function countFileChangeKindResources(
+  changes: DriftFileChange[],
+): Record<FileChangeKind, number> {
+  const keys: Record<FileChangeKind, Set<string>> = {
+    add: new Set(),
+    remove: new Set(),
+    update: new Set(),
+  };
+  for (const change of changes) {
+    const kind = fileChangeAction(change).action;
+    keys[kind].add(fileChangeResourceKey(change));
+  }
+  return {
+    add: keys.add.size,
+    remove: keys.remove.size,
+    update: keys.update.size,
+  };
+}
+
+export function fileChangeMatchesKindFilter(
+  change: DriftFileChange,
+  selected: ReadonlySet<FileChangeKind>,
+): boolean {
+  if (selected.size === 0) {
+    return true;
+  }
+  return selected.has(fileChangeAction(change).action);
+}
+
 export function aggregateInstallGaps(
   harnesses: Record<string, HarnessLiveStatus> | null | undefined,
 ): InstallGapRow[] {
@@ -352,6 +529,7 @@ export function aggregateInstallGaps(
         key,
         label: `plugin ${plugin.id}`,
         kind,
+        iconType: "plugin",
         harnesses: [harnessId],
       });
     }
@@ -373,6 +551,7 @@ export function aggregateInstallGaps(
         key,
         label: `mcp ${mcp.name}`,
         kind,
+        iconType: "mcp_server",
         harnesses: [harnessId],
       });
     }
