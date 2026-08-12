@@ -4,6 +4,7 @@ import {
   countFileChangeKindResources,
   diffProfileContents,
   fileChangeAction,
+  fileChangeDestinationSummary,
   fileChangeGroupHoverRows,
   fileChangeGroupHoverTitle,
   fileChangeHoverRows,
@@ -409,6 +410,31 @@ describe("contents-diff helpers", () => {
         kind: "destinations",
         text: "add → Cursor · update → Claude Code",
       },
+    ]);
+  });
+
+  it("summarizes destination kind without platforms", () => {
+    const [group] = groupFileChangesByResource([
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "deleted",
+        resource: { type: "skill", name: "ship" },
+      },
+    ]);
+    expect(fileChangeDestinationSummary(group)).toBe("add");
+    expect(fileChangeGroupHoverRows(group)).toEqual([
+      { kind: "type", text: "skill", type: "skill" },
+      { kind: "destinations", text: "add" },
+    ]);
+  });
+
+  it("infers MCP type for unmapped mcp.json group hover", () => {
+    const [group] = groupFileChangesByResource([
+      { path: ".cursor/mcp.json", type: "modified", platform: "cursor" },
+    ]);
+    expect(fileChangeGroupHoverRows(group)).toEqual([
+      { kind: "type", text: "MCP", type: "mcp_server" },
+      { kind: "destinations", text: "update → Cursor" },
     ]);
   });
 });

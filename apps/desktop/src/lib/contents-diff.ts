@@ -481,37 +481,32 @@ export function fileChangeDestinationSummary(
     return null;
   }
 
-  const platformsByKind = new Map<FileChangeKind, string[]>();
-  for (const change of group.changes) {
-    const { action } = fileChangeAction(change);
-    if (!change.platform) {
-      continue;
-    }
-    const existing = platformsByKind.get(action) ?? [];
-    existing.push(change.platform);
-    platformsByKind.set(action, existing);
-  }
-
   const clauses: string[] = [];
-  for (const kind of FILE_CHANGE_KIND_ORDER) {
-    const platforms = platformsByKind.get(kind);
-    if (!platforms || platforms.length === 0) {
-      continue;
+  for (const kind of group.kinds) {
+    const platforms: string[] = [];
+    for (const change of group.changes) {
+      if (fileChangeAction(change).action !== kind) {
+        continue;
+      }
+      if (change.platform) {
+        platforms.push(change.platform);
+      }
     }
     const names = sortFileChangePlatforms(platforms)
       .map((platform) => harnessDisplayName(platform))
       .join(", ");
-    clauses.push(`${kind} → ${names}`);
+    clauses.push(names.length > 0 ? `${kind} → ${names}` : kind);
   }
 
-  return clauses.length > 0 ? clauses.join(" · ") : null;
+  return clauses.join(" · ");
 }
 
 export function fileChangeGroupHoverRows(
   group: FileChangeResourceGroup,
 ): FileChangeHoverRow[] {
   const rows: FileChangeHoverRow[] = [];
-  const type = group.resource?.type;
+  const firstPath = group.changes[0]?.path ?? "";
+  const type = group.resource?.type ?? inferFileChangeType(firstPath);
   if (type) {
     rows.push({ kind: "type", text: labelForType(type, 1), type });
   }
