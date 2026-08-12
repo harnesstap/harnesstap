@@ -4,6 +4,8 @@ import {
   countFileChangeKindResources,
   diffProfileContents,
   fileChangeAction,
+  fileChangeGroupHoverRows,
+  fileChangeGroupHoverTitle,
   fileChangeHoverRows,
   fileChangeHoverTitle,
   fileChangeMatchesKindFilter,
@@ -12,7 +14,6 @@ import {
   summarizeStackChanges,
   uniqueFileChanges,
 } from "../../apps/desktop/src/lib/contents-diff.ts";
-import type { FileChangeResourceGroup } from "../../apps/desktop/src/lib/contents-diff.ts";
 import type { ProfileContents } from "../../apps/desktop/src/lib/types.ts";
 
 function contents(
@@ -349,5 +350,65 @@ describe("contents-diff helpers", () => {
     expect(groups[0].kinds).toEqual(["add", "update"]);
     expect(groups[0].platforms).toEqual(["claude-code", "cursor"]);
     expect(groups[0].singleton).toBe(false);
+  });
+
+  it("builds group hover with type, origin, and destination summary", () => {
+    const [group] = groupFileChangesByResource([
+      {
+        path: ".cursor/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "cursor",
+        resource: {
+          type: "skill",
+          name: "ship",
+          origin_kind: "marketplace_link",
+        },
+      },
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "claude-code",
+        resource: {
+          type: "skill",
+          name: "ship",
+          origin_kind: "marketplace_link",
+        },
+      },
+    ]);
+    expect(fileChangeGroupHoverRows(group)).toEqual([
+      { kind: "type", text: "skill", type: "skill" },
+      { kind: "origin", text: "marketplace", originKind: "marketplace_link" },
+      {
+        kind: "destinations",
+        text: "add → Claude Code, Cursor",
+      },
+    ]);
+    expect(fileChangeGroupHoverTitle(group)).toBe(
+      "skill\nmarketplace\nadd → Claude Code, Cursor",
+    );
+  });
+
+  it("joins mixed destination kinds with a middle dot", () => {
+    const [group] = groupFileChangesByResource([
+      {
+        path: ".cursor/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "cursor",
+        resource: { type: "skill", name: "ship" },
+      },
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "modified",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship" },
+      },
+    ]);
+    expect(fileChangeGroupHoverRows(group)).toEqual([
+      { kind: "type", text: "skill", type: "skill" },
+      {
+        kind: "destinations",
+        text: "add → Cursor · update → Claude Code",
+      },
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { DESKTOP_HARNESS_IDS } from "./harness-meta";
+import { DESKTOP_HARNESS_IDS, harnessDisplayName } from "./harness-meta";
 import type {
   DriftFileChange,
   HarnessLiveStatus,
@@ -91,7 +91,8 @@ function inferFileChangeType(path: string): string | undefined {
 export type FileChangeHoverRow =
   | { kind: "path"; text: string }
   | { kind: "type"; text: string; type: string }
-  | { kind: "origin"; text: string; originKind: string };
+  | { kind: "origin"; text: string; originKind: string }
+  | { kind: "destinations"; text: string };
 
 export function fileChangeHoverRows(input: {
   path: string;
@@ -471,6 +472,68 @@ export function groupFileChangesByResource(
   return order.map((key) =>
     deriveFileChangeResourceGroup(key, resources.get(key) ?? null, groups.get(key) ?? []),
   );
+}
+
+export function fileChangeDestinationSummary(
+  group: FileChangeResourceGroup,
+): string | null {
+  if (group.changes.length === 0) {
+    return null;
+  }
+
+  const platformsByKind = new Map<FileChangeKind, string[]>();
+  for (const change of group.changes) {
+    const { action } = fileChangeAction(change);
+    if (!change.platform) {
+      continue;
+    }
+    const existing = platformsByKind.get(action) ?? [];
+    existing.push(change.platform);
+    platformsByKind.set(action, existing);
+  }
+
+  const clauses: string[] = [];
+  for (const kind of FILE_CHANGE_KIND_ORDER) {
+    const platforms = platformsByKind.get(kind);
+    if (!platforms || platforms.length === 0) {
+      continue;
+    }
+    const names = sortFileChangePlatforms(platforms)
+      .map((platform) => harnessDisplayName(platform))
+      .join(", ");
+    clauses.push(`${kind} → ${names}`);
+  }
+
+  return clauses.length > 0 ? clauses.join(" · ") : null;
+}
+
+export function fileChangeGroupHoverRows(
+  group: FileChangeResourceGroup,
+): FileChangeHoverRow[] {
+  const rows: FileChangeHoverRow[] = [];
+  const type = group.resource?.type;
+  if (type) {
+    rows.push({ kind: "type", text: labelForType(type, 1), type });
+  }
+  const origin = group.resource?.origin_kind?.trim();
+  if (origin) {
+    rows.push({
+      kind: "origin",
+      text: ORIGIN_HOVER_LABELS[origin] ?? origin.replaceAll("_", " "),
+      originKind: origin,
+    });
+  }
+  const destinations = fileChangeDestinationSummary(group);
+  if (destinations) {
+    rows.push({ kind: "destinations", text: destinations });
+  }
+  return rows;
+}
+
+export function fileChangeGroupHoverTitle(group: FileChangeResourceGroup): string {
+  return fileChangeGroupHoverRows(group)
+    .map((row) => row.text)
+    .join("\n");
 }
 
 export function countFileChangeKindResources(
