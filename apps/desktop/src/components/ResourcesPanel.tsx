@@ -3,6 +3,7 @@ import {
   Bot,
   FileCode2,
   FileText,
+  FolderDown,
   FolderInput,
   Package,
   Plug,
@@ -13,6 +14,8 @@ import {
   Webhook,
   Wrench,
 } from "lucide-react";
+import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
+import { loadRecentProjects } from "../lib/recent-projects";
 import { RelatedHarnessIcons } from "./HarnessIcons";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
@@ -81,9 +84,9 @@ export function ResourcesPanel({
   token,
   reloadKey = 0,
   disabled = false,
-  projectPath: _projectPath = null,
-  selectedProfile: _selectedProfile = null,
-  onImported: _onImported,
+  projectPath,
+  selectedProfile,
+  onImported,
   onSuccess,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
@@ -97,6 +100,11 @@ export function ResourcesPanel({
   );
   const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
   const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
+  const resolvedProjectPath =
+    (projectPath && projectPath.trim())
+    || loadRecentProjects()[0]?.path
+    || "";
   const filterRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -159,6 +167,16 @@ export function ResourcesPanel({
           </div>
           <button
             type="button"
+            className="icon-action"
+            aria-label="Import into library"
+            title="Import into library"
+            disabled={disabled || !baseUrl}
+            onClick={() => setImportOpen(true)}
+          >
+            <FolderDown size={16} aria-hidden />
+          </button>
+          <button
+            type="button"
             className="icon-action resources-panel-tracked-dirs-btn"
             aria-label="Tracked directories"
             title="Show tracked directories for resources"
@@ -195,6 +213,16 @@ export function ResourcesPanel({
                     ? "No matches."
                     : "No resources to show."}
               </p>
+              {resources.length === 0 ? (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={disabled || !baseUrl}
+                  onClick={() => setImportOpen(true)}
+                >
+                  Import into library
+                </button>
+              ) : null}
             </div>
           ) : (
             groups.map((group) => (
@@ -271,6 +299,20 @@ export function ResourcesPanel({
         disabled={disabled}
         onClose={() => setTrackedDirsOpen(false)}
         onChanged={() => setResourcesReloadKey((value) => value + 1)}
+      />
+
+      <ImportLibraryDrawer
+        open={importOpen}
+        baseUrl={baseUrl}
+        token={token}
+        projectPath={resolvedProjectPath}
+        selectedProfile={selectedProfile ?? null}
+        disabled={disabled}
+        onClose={() => setImportOpen(false)}
+        onImported={(message) => {
+          setResourcesReloadKey((value) => value + 1);
+          onImported?.(message);
+        }}
       />
     </main>
   );
