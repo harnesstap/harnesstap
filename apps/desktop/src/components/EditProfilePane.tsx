@@ -50,6 +50,8 @@ export interface EditProfilePaneProps {
   }) => void | Promise<void>;
   onDeleted?: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
   onOpenEnvironments?: () => void;
+  onSuccess?: (message: string) => void;
+  onRequestSignIn?: () => void;
   onRequestCut?: (name: string, version: string) => void;
 }
 
@@ -71,6 +73,8 @@ export function EditProfilePane({
   onMutated,
   onDeleted,
   onOpenEnvironments,
+  onSuccess,
+  onRequestSignIn,
   onRequestCut,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
@@ -626,6 +630,7 @@ export function EditProfilePane({
           </section>
           <EditProfileParitySlots
             profileName={profileName}
+            profileVersion={detail?.profile.version}
             baseUrl={baseUrl}
             token={token}
             disabled={disabled || busy}
@@ -634,6 +639,9 @@ export function EditProfilePane({
               void onMutated({ profileName, affectsApply: true });
             }}
             onOpenEnvironments={onOpenEnvironments}
+            onSuccess={onSuccess}
+            onRequestSignIn={onRequestSignIn}
+            onRequestCut={onRequestCut}
           />
         </div>
       ) : null}

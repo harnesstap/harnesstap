@@ -18,6 +18,7 @@ export interface ParityChromeProps {
   onWorkspaceFocus: (focus: ParityWorkspaceFocus) => void;
   onSuccess: (message: string) => void;
   onProfilesChanged: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }
 
 export function ParityChrome({
@@ -30,6 +31,7 @@ export function ParityChrome({
   onWorkspaceFocus,
   onSuccess,
   onProfilesChanged,
+  onBusyChange,
 }: ParityChromeProps) {
   const [applyOpen, setApplyOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -82,10 +84,14 @@ export function ParityChrome({
         open={applyOpen}
         baseUrl={baseUrl}
         token={token}
+        connected={connected}
+        switching={switching}
         projectPath={projectPath}
         disabled={chromeDisabled}
         onClose={() => setApplyOpen(false)}
         onSuccess={onSuccess}
+        onProfilesChanged={onProfilesChanged}
+        onBusyChange={onBusyChange}
       />
       <ProjectHistoryDrawer
         open={historyOpen}

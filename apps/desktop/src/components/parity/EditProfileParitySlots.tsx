@@ -5,12 +5,16 @@ import { PublishProfileDrawer } from "./PublishProfileDrawer";
 
 export function EditProfileParitySlots(props: {
   profileName: string;
+  profileVersion?: string;
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
   onDeleted: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
   onMutated?: () => void;
   onOpenEnvironments?: () => void;
+  onSuccess?: (message: string) => void;
+  onRequestSignIn?: () => void;
+  onRequestCut?: (name: string, version: string) => void;
 }) {
   return (
     <div className="edit-profile-parity-slots">
@@ -28,7 +32,16 @@ export function EditProfileParitySlots(props: {
         token={props.token}
         disabled={props.disabled}
       />
-      <PublishProfileDrawer />
+      <PublishProfileDrawer
+        profileName={props.profileName}
+        profileVersion={props.profileVersion}
+        baseUrl={props.baseUrl}
+        token={props.token}
+        disabled={props.disabled}
+        onSuccess={props.onSuccess}
+        onRequestSignIn={props.onRequestSignIn}
+        onRequestCut={props.onRequestCut}
+      />
       <ProfileDeleteControls
         profileName={props.profileName}
         baseUrl={props.baseUrl}

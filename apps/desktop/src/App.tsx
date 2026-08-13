@@ -175,6 +175,7 @@ export function App() {
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
+  const [pluginApplyBusy, setPluginApplyBusy] = useState(false);
   const [switchEvents, setSwitchEvents] = useState<ProfileSwitchStepEvent[]>([]);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [switchId, setSwitchId] = useState<string | null>(null);
@@ -1750,6 +1751,7 @@ export function App() {
   const applyDisabled =
     !connected
     || switching
+    || pluginApplyBusy
     || bootstrapBusy
     || (view === "project" && (!projectPath || !projectReady))
     || (showReapply
@@ -1798,6 +1800,7 @@ export function App() {
                 void refreshProfiles();
                 void refreshStatus("full");
               }}
+              onBusyChange={setPluginApplyBusy}
             />
             <div
               className="header-focus-segment"
@@ -2387,6 +2390,11 @@ export function App() {
               setEditingProfile(null);
               setWorkspaceFocus("environments");
             }}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
+            onRequestSignIn={() => setCloudAccountOpen(true)}
             onRequestCut={
               editingProfile && baseUrl && token
                 ? (name, version) => openCutForProfile(name, version)
