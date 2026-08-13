@@ -1,3 +1,4 @@
+import { ui } from "../ui/index.js";
 import { getActiveProfileName } from "./active-profile.js";
 import type { ApplyProfilePluginOptions, ApplyProfilePluginResult } from "./profile-apply.js";
 import { withProfileApplyLock } from "./profile-apply-lock.js";
@@ -17,6 +18,70 @@ export interface ProfileSwitchStepEvent {
   status: ProfileSwitchStepStatus;
   profile_name?: string;
   error?: string;
+}
+
+const WRITE_WINDOW_STEPS = new Set<ProfileSwitchStep>([
+  "apply_home",
+  "restore_previous",
+]);
+
+export function isProfileSwitchCancelAllowed(
+  events: readonly ProfileSwitchStepEvent[],
+): boolean {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (!event || !WRITE_WINDOW_STEPS.has(event.step)) {
+      continue;
+    }
+    return event.status !== "started";
+  }
+  return true;
+}
+
+export const PROFILE_SWITCH_CANCEL_DISABLED_MESSAGE =
+  "Cancel is disabled while an apply step is running";
+
+export const PROFILE_SWITCH_SIGINT_HINT =
+  "Ctrl-C cancels before apply starts; it is ignored while files are being written.";
+
+function isSigintCancelAllowed(events: readonly ProfileSwitchStepEvent[]): boolean {
+  return !events.some(
+    (event) => event.step === "apply_home" && event.status === "started",
+  );
+}
+
+function cliArgvRequestsJson(argv: readonly string[]): boolean {
+  const formatIndex = argv.findIndex((arg) => arg === "--format" || arg === "-f");
+  if (formatIndex >= 0) {
+    return (argv[formatIndex + 1] ?? "").toLowerCase() === "json";
+  }
+  return argv.some(
+    (arg) => arg === "--format=json" || arg === "-f=json",
+  );
+}
+
+function installProfileSwitchSigint(events: ProfileSwitchStepEvent[]): {
+  isCancelled: () => boolean;
+  uninstall: () => void;
+} {
+  let cancelled = false;
+  const onSigint = (): void => {
+    if (!isSigintCancelAllowed(events)) {
+      process.stderr.write(`${PROFILE_SWITCH_CANCEL_DISABLED_MESSAGE}\n`);
+      return;
+    }
+    cancelled = true;
+  };
+  process.on("SIGINT", onSigint);
+  if (!cliArgvRequestsJson(process.argv)) {
+    ui.hint(PROFILE_SWITCH_SIGINT_HINT);
+  }
+  return {
+    isCancelled: () => cancelled,
+    uninstall: () => {
+      process.off("SIGINT", onSigint);
+    },
+  };
 }
 
 export type ProfileSwitchStepListener = (event: ProfileSwitchStepEvent) => void;
@@ -118,17 +183,24 @@ export async function switchProfile(
   selector: string,
   options: SwitchProfileOptions,
 ): Promise<SwitchProfileResult> {
-  return withProfileApplyLock(async () => {
-    const events: ProfileSwitchStepEvent[] = [];
-    const previousProfile = getActiveProfileName() ?? null;
-    const useProfile = options.useProfile ?? useProfileCommandUnlocked;
+  const events: ProfileSwitchStepEvent[] = [];
+  const ownsSigint = options.isCancelled === undefined;
+  const sigint = ownsSigint ? installProfileSwitchSigint(events) : null;
+  const resolvedOptions: SwitchProfileOptions = ownsSigint
+    ? { ...options, isCancelled: () => sigint?.isCancelled() === true }
+    : options;
 
-    emitStep(events, options.onStep, {
+  try {
+    return await withProfileApplyLock(async () => {
+      const previousProfile = getActiveProfileName() ?? null;
+      const useProfile = resolvedOptions.useProfile ?? useProfileCommandUnlocked;
+
+    emitStep(events, resolvedOptions.onStep, {
       step: "validate_baseline",
       status: "started",
     });
     const cancelledBeforeBaseline = checkCancellation(
-      options,
+      resolvedOptions,
       events,
       previousProfile,
       "validate_baseline",
@@ -138,13 +210,13 @@ export async function switchProfile(
     }
     // First apply after init has no snapshot yet — proceed and establish one.
     // Restore-on-failure only matters when a previous apply baseline exists.
-    emitStep(events, options.onStep, {
+    emitStep(events, resolvedOptions.onStep, {
       step: "validate_baseline",
       status: "completed",
     });
 
     const cancelledBeforeApply = checkCancellation(
-      options,
+      resolvedOptions,
       events,
       previousProfile,
       "apply_home",
@@ -153,16 +225,16 @@ export async function switchProfile(
       return cancelledBeforeApply;
     }
 
-    emitStep(events, options.onStep, {
+    emitStep(events, resolvedOptions.onStep, {
       step: "apply_home",
       status: "started",
       profile_name: selector,
     });
 
     try {
-      const apply = await useProfile(selector, options.apply);
+      const apply = await useProfile(selector, resolvedOptions.apply);
       if (apply.cancelled) {
-        emitStep(events, options.onStep, {
+        emitStep(events, resolvedOptions.onStep, {
           step: "apply_home",
           status: "cancelled",
           profile_name: selector,
@@ -174,12 +246,12 @@ export async function switchProfile(
           events,
         };
       }
-      emitStep(events, options.onStep, {
+      emitStep(events, resolvedOptions.onStep, {
         step: "apply_home",
         status: "completed",
         profile_name: selector,
       });
-      emitStep(events, options.onStep, {
+      emitStep(events, resolvedOptions.onStep, {
         step: "complete",
         status: "completed",
         profile_name: selector,
@@ -193,7 +265,7 @@ export async function switchProfile(
       };
     } catch (error) {
       const applyError = formatError(error);
-      emitStep(events, options.onStep, {
+      emitStep(events, resolvedOptions.onStep, {
         step: "apply_home",
         status: "failed",
         profile_name: selector,
@@ -205,7 +277,7 @@ export async function switchProfile(
       }
 
       const cancelledBeforeRestore = checkCancellation(
-        options,
+        resolvedOptions,
         events,
         previousProfile,
         "restore_previous",
@@ -214,18 +286,18 @@ export async function switchProfile(
         return cancelledBeforeRestore;
       }
 
-      emitStep(events, options.onStep, {
+      emitStep(events, resolvedOptions.onStep, {
         step: "restore_previous",
         status: "started",
         profile_name: previousProfile,
       });
 
       try {
-        const restored = await useProfile(previousProfile, options.apply);
+        const restored = await useProfile(previousProfile, resolvedOptions.apply);
         if (restored.cancelled) {
           throw new Error("Restore apply was cancelled.");
         }
-        emitStep(events, options.onStep, {
+        emitStep(events, resolvedOptions.onStep, {
           step: "restore_previous",
           status: "completed",
           profile_name: previousProfile,
@@ -240,7 +312,7 @@ export async function switchProfile(
         };
       } catch (restoreError) {
         const restoreMessage = formatError(restoreError);
-        emitStep(events, options.onStep, {
+        emitStep(events, resolvedOptions.onStep, {
           step: "restore_previous",
           status: "failed",
           profile_name: previousProfile,
@@ -254,5 +326,8 @@ export async function switchProfile(
         });
       }
     }
-  });
+    });
+  } finally {
+    sigint?.uninstall();
+  }
 }
