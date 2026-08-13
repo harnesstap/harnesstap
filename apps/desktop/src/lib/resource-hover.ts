@@ -25,6 +25,10 @@ export type ResourceHoverModel = {
   extra: ResourceHoverExtra[];
 };
 
+export function formatHoverPath(path: string): string {
+  return path.replaceAll("/", "/\u200b");
+}
+
 export function resourceHoverCardHasContent(model: ResourceHoverModel): boolean {
   if (model.type !== undefined) {
     return true;

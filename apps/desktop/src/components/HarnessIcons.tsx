@@ -9,7 +9,7 @@ type HarnessMarkProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
-function HarnessMark({ id, size = ICON_SIZE, ...props }: HarnessMarkProps): ReactNode {
+export function HarnessMark({ id, size = ICON_SIZE, ...props }: HarnessMarkProps): ReactNode {
   const mark = HARNESS_MARKS[id];
   if (!mark) {
     const letter = (id[0] ?? "?").toUpperCase();
@@ -76,13 +76,18 @@ function HarnessMark({ id, size = ICON_SIZE, ...props }: HarnessMarkProps): Reac
 export function HarnessIcon({
   id,
   size = ICON_SIZE,
+  tooltip = true,
 }: {
   id: string;
   size?: number;
+  tooltip?: boolean;
 }): ReactNode {
   const name = harnessDisplayName(id);
   return (
-    <span className={`harness-icon harness-icon-${id}`} title={name}>
+    <span
+      className={`harness-icon harness-icon-${id}`}
+      {...(tooltip ? { title: name } : {})}
+    >
       <HarnessMark id={id} size={size} />
       <span className="sr-only">{name}</span>
     </span>
@@ -93,10 +98,12 @@ export function RelatedHarnessIcons({
   harnessIds,
   size = ICON_SIZE,
   label = "Related harnesses",
+  tooltip = true,
 }: {
   harnessIds: readonly string[];
   size?: number;
   label?: string;
+  tooltip?: boolean;
 }): ReactNode {
   if (harnessIds.length === 0) {
     return null;
@@ -104,7 +111,12 @@ export function RelatedHarnessIcons({
   return (
     <span className="harness-icon-row" aria-label={label}>
       {harnessIds.map((harnessId) => (
-        <HarnessIcon key={harnessId} id={harnessId} size={size} />
+        <HarnessIcon
+          key={harnessId}
+          id={harnessId}
+          size={size}
+          tooltip={tooltip}
+        />
       ))}
     </span>
   );

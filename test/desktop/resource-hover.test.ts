@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { groupFileChangesByResource } from "../../apps/desktop/src/lib/contents-diff";
 import {
+  formatHoverPath,
   hoverModelFromFileChangeChild,
   hoverModelFromFileChangeGroup,
   hoverModelFromLibraryResource,
@@ -131,5 +132,9 @@ describe("resource hover model", () => {
         extra: [],
       }),
     ).toBe(true);
+  });
+
+  it("inserts break opportunities after slashes", () => {
+    expect(formatHoverPath("a/b/c")).toBe("a/\u200bb/\u200bc");
   });
 });
