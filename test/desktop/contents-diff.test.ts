@@ -10,6 +10,7 @@ import {
   fileChangeHoverRows,
   fileChangeHoverTitle,
   fileChangeMatchesKindFilter,
+  filterFileChangeGroups,
   groupFileChangesByResource,
   orderedTypeCounts,
   summarizeStackChanges,
@@ -436,5 +437,74 @@ describe("contents-diff helpers", () => {
       { kind: "type", text: "MCP", type: "mcp_server" },
       { kind: "destinations", text: "update → Cursor" },
     ]);
+  });
+
+  it("filters group children by kind and hides empty groups", () => {
+    const groups = groupFileChangesByResource([
+      {
+        path: ".cursor/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "cursor",
+        resource: { type: "skill", name: "ship" },
+      },
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "modified",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship" },
+      },
+      {
+        path: ".claude/skills/old/SKILL.md",
+        type: "added",
+        platform: "claude-code",
+        resource: { type: "skill", name: "old" },
+      },
+    ]);
+
+    const addOnly = filterFileChangeGroups(groups, new Set(["add"]), "");
+    expect(addOnly.map((group) => group.key)).toEqual(["skill:ship"]);
+    expect(addOnly[0].changes).toHaveLength(1);
+    expect(addOnly[0].changes[0].platform).toBe("cursor");
+    expect(addOnly[0].singleton).toBe(true);
+
+    const removeOnly = filterFileChangeGroups(groups, new Set(["remove"]), "");
+    expect(removeOnly.map((group) => group.key)).toEqual(["skill:old"]);
+  });
+
+  it("keeps a group when the resource name matches even if paths do not", () => {
+    const groups = groupFileChangesByResource([
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship" },
+      },
+    ]);
+    const byName = filterFileChangeGroups(groups, new Set(), "ship");
+    expect(byName).toHaveLength(1);
+    const byPath = filterFileChangeGroups(groups, new Set(), "SKILL.md");
+    expect(byPath).toHaveLength(1);
+    const miss = filterFileChangeGroups(groups, new Set(), "review");
+    expect(miss).toHaveLength(0);
+  });
+
+  it("matches type:name search against the resource", () => {
+    const groups = groupFileChangesByResource([
+      {
+        path: ".claude/skills/ship/SKILL.md",
+        type: "deleted",
+        platform: "claude-code",
+        resource: { type: "skill", name: "ship" },
+      },
+      {
+        path: ".claude/commands/ship.md",
+        type: "deleted",
+        platform: "claude-code",
+        resource: { type: "command", name: "ship" },
+      },
+    ]);
+    expect(
+      filterFileChangeGroups(groups, new Set(), "skill:ship").map((group) => group.key),
+    ).toEqual(["skill:ship"]);
   });
 });

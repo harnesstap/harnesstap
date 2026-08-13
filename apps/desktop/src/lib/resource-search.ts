@@ -16,6 +16,10 @@ const RESOURCE_TYPE_PREFIXES = new Set([
   "plugin",
 ]);
 
+export function isResourceTypeSearchPrefix(section: string): boolean {
+  return RESOURCE_TYPE_PREFIXES.has(section);
+}
+
 export type ListSearchQuery = {
   section: string | undefined;
   text: string;

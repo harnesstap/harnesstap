@@ -1,4 +1,9 @@
 import { DESKTOP_HARNESS_IDS, harnessDisplayName } from "./harness-meta";
+import {
+  isResourceTypeSearchPrefix,
+  matchesListSearchQuery,
+  parseListSearchQuery,
+} from "./resource-search";
 import type {
   DriftFileChange,
   HarnessLiveStatus,
@@ -558,6 +563,58 @@ export function fileChangeMatchesKindFilter(
     return true;
   }
   return selected.has(fileChangeAction(change).action);
+}
+
+export function filterFileChangeGroups(
+  groups: FileChangeResourceGroup[],
+  selected: ReadonlySet<FileChangeKind>,
+  search: string,
+): FileChangeResourceGroup[] {
+  const parsed = parseListSearchQuery(search);
+  const sectionIsResourceType =
+    parsed.section !== undefined && isResourceTypeSearchPrefix(parsed.section);
+  const textQuery = sectionIsResourceType
+    ? parsed
+    : parsed.section !== undefined
+      ? { section: undefined, text: parsed.raw, raw: parsed.raw }
+      : parsed;
+  const hasSearch = parsed.raw.trim().length > 0;
+
+  const filtered: FileChangeResourceGroup[] = [];
+  for (const group of groups) {
+    if (
+      sectionIsResourceType
+      && group.resource
+      && group.resource.type !== parsed.section
+    ) {
+      continue;
+    }
+
+    const kindMatched = group.changes.filter((change) =>
+      fileChangeMatchesKindFilter(change, selected),
+    );
+    if (kindMatched.length === 0) {
+      continue;
+    }
+
+    const nameHaystack = group.resource
+      ? `${group.resource.name} ${group.resource.type} ${group.resource.type}:${group.resource.name}`
+      : "";
+    const nameHits =
+      !hasSearch || matchesListSearchQuery(nameHaystack, textQuery);
+
+    const changes = nameHits
+      ? kindMatched
+      : kindMatched.filter((change) =>
+          matchesListSearchQuery(change.path, textQuery),
+        );
+    if (changes.length === 0) {
+      continue;
+    }
+
+    filtered.push(deriveFileChangeResourceGroup(group.key, group.resource, changes));
+  }
+  return filtered;
 }
 
 export function aggregateInstallGaps(
