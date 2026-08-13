@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Settings, Tag, Unplug, Upload, User } from "lucide-react";
+import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
@@ -1761,6 +1762,7 @@ export function App() {
         || (selectedProfile === activeProfile && Boolean(status?.applied)));
 
   return (
+    <Tooltip.Provider delayDuration={400}>
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-brand">
@@ -2927,5 +2929,6 @@ export function App() {
         }}
       />
     </div>
+    </Tooltip.Provider>
   );
 }

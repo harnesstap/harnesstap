@@ -133,62 +133,57 @@ export function ResourceHoverCard({
   const firstHarnessId = model.harnessIds[0];
 
   return (
-    <Tooltip.Provider
+    <Tooltip.Root
+      open={open}
+      onOpenChange={handleOpenChange}
       delayDuration={OPEN_DELAY_MS}
       disableHoverableContent
     >
-      <Tooltip.Root
-        open={open}
-        onOpenChange={handleOpenChange}
-        delayDuration={OPEN_DELAY_MS}
-        disableHoverableContent
-      >
-        <Tooltip.Trigger asChild onFocusCapture={handleFocusCapture}>
-          {children}
-        </Tooltip.Trigger>
-        <Tooltip.Portal container={document.body}>
-          <Tooltip.Content
-            className="resource-hover-card"
-            role="tooltip"
-            side="top"
-            collisionPadding={COLLISION_PADDING}
-            sideOffset={6}
-          >
-            {model.type !== undefined ? (
-              <HoverCardRow
-                icon={<TypeIcon type={model.type} />}
-                text={labelForType(model.type, 1)}
-              />
-            ) : null}
-            {model.originKind !== undefined ? (
-              <HoverCardRow
-                icon={<OriginHoverIcon originKind={model.originKind} />}
-                text={formatOriginKindLabel(model.originKind)}
-              />
-            ) : null}
-            {model.path !== undefined ? (
-              <HoverCardRow
-                icon={<FileText size={ICON_SIZE} aria-hidden />}
-                text={formatHoverPath(model.path)}
-                mono
-              />
-            ) : null}
-            {firstHarnessId !== undefined ? (
-              <HoverCardRow
-                icon={<HarnessMark id={firstHarnessId} />}
-                text={model.harnessIds.map(harnessDisplayName).join(", ")}
-              />
-            ) : null}
-            {model.extra.map((extra) => (
-              <HoverCardRow
-                key={`${extra.kind}-${extra.text}`}
-                icon={<ExtraHoverIcon extra={extra} />}
-                text={extra.text}
-              />
-            ))}
-          </Tooltip.Content>
-        </Tooltip.Portal>
-      </Tooltip.Root>
-    </Tooltip.Provider>
+      <Tooltip.Trigger asChild onFocusCapture={handleFocusCapture}>
+        {children}
+      </Tooltip.Trigger>
+      <Tooltip.Portal container={document.body}>
+        <Tooltip.Content
+          className="resource-hover-card"
+          role="tooltip"
+          side="top"
+          collisionPadding={COLLISION_PADDING}
+          sideOffset={6}
+        >
+          {model.type !== undefined ? (
+            <HoverCardRow
+              icon={<TypeIcon type={model.type} />}
+              text={labelForType(model.type, 1)}
+            />
+          ) : null}
+          {model.originKind !== undefined ? (
+            <HoverCardRow
+              icon={<OriginHoverIcon originKind={model.originKind} />}
+              text={formatOriginKindLabel(model.originKind)}
+            />
+          ) : null}
+          {model.path !== undefined ? (
+            <HoverCardRow
+              icon={<FileText size={ICON_SIZE} aria-hidden />}
+              text={formatHoverPath(model.path)}
+              mono
+            />
+          ) : null}
+          {firstHarnessId !== undefined ? (
+            <HoverCardRow
+              icon={<HarnessMark id={firstHarnessId} />}
+              text={model.harnessIds.map(harnessDisplayName).join(", ")}
+            />
+          ) : null}
+          {model.extra.map((extra) => (
+            <HoverCardRow
+              key={`${extra.kind}-${extra.text}`}
+              icon={<ExtraHoverIcon extra={extra} />}
+              text={extra.text}
+            />
+          ))}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
   );
 }

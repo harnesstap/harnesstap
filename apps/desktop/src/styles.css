@@ -872,6 +872,11 @@ button:focus-visible,
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
+.resources-list-item:has(.resource-row) {
+  padding: 0;
+  border: 0;
+}
+
 .resources-list-main {
   display: flex;
   align-items: center;
@@ -2716,7 +2721,8 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
 }
 
 /* Radix Checkbox uses button[data-state], not input:checked */
-.selection-row:has([data-state="checked"]) {
+.selection-row:has([data-state="checked"]),
+.resource-row:has([data-state="checked"]) {
   background: color-mix(in srgb, var(--accent) 9%, var(--bg));
 }
 
