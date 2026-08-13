@@ -48,7 +48,7 @@ export interface EditProfilePaneProps {
     profileName: string;
     affectsApply: boolean;
   }) => void | Promise<void>;
-  onDeleted?: () => void;
+  onDeleted?: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
   onRequestCut?: (name: string, version: string) => void;
 }
 
@@ -627,7 +627,7 @@ export function EditProfilePane({
             baseUrl={baseUrl}
             token={token}
             disabled={disabled || busy}
-            onDeleted={() => onDeleted?.()}
+            onDeleted={(result, message) => onDeleted?.(result, message)}
             onMutated={() => {
               void onMutated({ profileName, affectsApply: true });
             }}

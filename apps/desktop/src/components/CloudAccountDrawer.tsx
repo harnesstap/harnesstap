@@ -17,6 +17,7 @@ interface CloudAccountDrawerProps {
   disabled?: boolean;
   onClose: () => void;
   onAuthChange?: (status: CloudAuthStatus) => void;
+  onOrgSwitched?: (slug: string) => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {

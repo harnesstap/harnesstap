@@ -3,7 +3,7 @@ export function ProfileDeleteControls(_props: {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
-  onDeleted: () => void;
+  onDeleted: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
 }): null {
   return null;
 }

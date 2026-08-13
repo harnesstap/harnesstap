@@ -2355,7 +2355,22 @@ export function App() {
               setEditingProfile(nextName);
             }}
             onMutated={maybeAutoReapplyAfterMutation}
-            onDeleted={clearProfileSelection}
+            onDeleted={(result, message) => {
+              clearProfileSelection();
+              void refreshProfiles();
+              void refreshStatus("full");
+              if (message) {
+                setSuccessMessage(message);
+                window.setTimeout(() => setSuccessMessage(null), 3000);
+              } else if (result?.plugin_name) {
+                setSuccessMessage(
+                  result.plugin_deleted
+                    ? `Removed profile ${result.plugin_name} and deleted the plugin`
+                    : `Removed profile ${result.plugin_name}`,
+                );
+                window.setTimeout(() => setSuccessMessage(null), 3000);
+              }
+            }}
             onRequestCut={
               editingProfile && baseUrl && token
                 ? (name, version) => openCutForProfile(name, version)
@@ -2744,6 +2759,10 @@ export function App() {
         onClose={() => setCloudAccountOpen(false)}
         onAuthChange={(next) => {
           setCloudAuth(next);
+        }}
+        onOrgSwitched={(slug) => {
+          setSuccessMessage(`Switched to org: ${slug}`);
+          window.setTimeout(() => setSuccessMessage(null), 3000);
         }}
       />
 

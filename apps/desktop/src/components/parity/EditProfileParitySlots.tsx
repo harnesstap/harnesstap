@@ -8,7 +8,7 @@ export function EditProfileParitySlots(props: {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
-  onDeleted: () => void;
+  onDeleted: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
   onMutated?: () => void;
 }) {
   return (
