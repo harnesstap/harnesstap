@@ -1230,12 +1230,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   padding-left: 1.35rem;
 }
 
-.file-change-group-row:hover > .file-change-tooltip,
-.file-change-group-row:focus-within > .file-change-tooltip {
-  display: grid;
-  gap: 0.28rem;
-}
-
 .list-search input {
   width: 100%;
   box-sizing: border-box;
@@ -1771,59 +1765,6 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   min-width: 0;
   flex: 1;
   position: relative;
-}
-
-.file-change-tooltip {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% + 0.35rem);
-  z-index: 40;
-  display: none;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--fg) 16%, transparent);
-  pointer-events: none;
-}
-
-.diff-row:hover .file-change-tooltip,
-.diff-row:focus-within .file-change-tooltip {
-  display: grid;
-  gap: 0.28rem;
-}
-
-.file-change-tooltip-row {
-  display: grid;
-  grid-template-columns: 0.9rem minmax(0, 1fr);
-  gap: 0.4rem;
-  align-items: start;
-  font-size: 0.75rem;
-  line-height: 1.35;
-  color: var(--fg);
-}
-
-.file-change-tooltip-row > span:last-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.file-change-tooltip-path {
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.file-change-tooltip-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  line-height: 0;
-  margin-top: 0.1rem;
 }
 
 .diff-label {
