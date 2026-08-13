@@ -21,6 +21,7 @@ import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./plugin-composition.js";
 import { assertSyncable } from "./plugin-origin.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import { hashResourceBody } from "./resource-hash.js";
 
 export interface SyncLinkedResourcesOptions {
   selector?: string;
@@ -87,6 +88,79 @@ function resolveInstallRoot(
 function isPinned(resource: Resource): boolean {
   const metadata = resource.metadata as { sync_status?: string };
   return metadata.sync_status === "pinned";
+}
+
+function importPolicyFromConflict(
+  conflictPolicy: "overwrite" | "ignore" | "fail",
+): ImportConflictPolicy {
+  switch (conflictPolicy) {
+    case "overwrite":
+      return "overwrite";
+    case "ignore":
+      return "skip";
+    case "fail":
+      return "fail";
+    default: {
+      const _exhaustive: never = conflictPolicy;
+      return _exhaustive;
+    }
+  }
+}
+
+function classifyDryRunWrite(
+  existing: Resource | undefined,
+  incoming: { type: Resource["type"]; content: string; metadata: Resource["metadata"] },
+  upsertPolicy: ImportConflictPolicy,
+): "updated" | "unchanged" | "skipped" {
+  if (!existing) {
+    return upsertPolicy === "skip" ? "skipped" : "updated";
+  }
+  const nextHash = hashResourceBody({
+    type: incoming.type,
+    content: incoming.content,
+    metadata: incoming.metadata,
+  });
+  if (existing.content_hash === nextHash) {
+    return "unchanged";
+  }
+  if (upsertPolicy === "skip") {
+    return "skipped";
+  }
+  return "updated";
+}
+
+function placeholderSyncedResource(
+  existing: Resource | undefined,
+  candidate: {
+    type: Resource["type"];
+    name: string;
+    description: string;
+    content: string;
+    metadata: Resource["metadata"];
+    source: string;
+  },
+  namespace: string,
+  originRef: string,
+): Resource {
+  if (existing) {
+    return existing;
+  }
+  return {
+    id: "",
+    type: candidate.type,
+    name: candidate.name,
+    description: candidate.description,
+    content: candidate.content,
+    metadata: candidate.metadata,
+    source: candidate.source,
+    namespace,
+    origin_kind: "marketplace_link",
+    origin_ref: originRef,
+    content_hash: "",
+    content_blob_ref: "",
+    created_at: "",
+    updated_at: "",
+  };
 }
 
 function resolveConflictPolicy(
@@ -183,6 +257,8 @@ export async function syncPluginResource(
         pluginResource.id,
       );
       updated.push({ ...pluginResource, metadata });
+    } else {
+      updated.push(pluginResource);
     }
 
     return { checked: 1, updated, stale, unchanged, skipped };
@@ -224,26 +300,28 @@ export async function syncPluginResource(
       continue;
     }
 
+    const incoming = normalizeResourceInput({
+      ...candidate,
+      namespace,
+      origin_kind: "marketplace_link",
+      origin_ref: originRef,
+    });
+    const upsertPolicy = importPolicyFromConflict(conflictPolicy);
+
     if (options.dryRun) {
+      const bucket = classifyDryRunWrite(existing, incoming, upsertPolicy);
+      const row = placeholderSyncedResource(existing, candidate, namespace, originRef);
+      if (bucket === "updated") {
+        updated.push(row);
+      } else if (bucket === "unchanged") {
+        unchanged.push(row);
+      } else {
+        skipped.push(row);
+      }
       continue;
     }
 
-    const policy: ImportConflictPolicy =
-      conflictPolicy === "overwrite"
-        ? "overwrite"
-        : conflictPolicy === "ignore"
-          ? "skip"
-          : "fail";
-
-    const result = upsertResource(
-      normalizeResourceInput({
-        ...candidate,
-        namespace,
-        origin_kind: "marketplace_link",
-        origin_ref: originRef,
-      }),
-      { policy },
-    );
+    const result = upsertResource(incoming, { policy: upsertPolicy });
 
     if (result.action === "updated" || result.action === "created") {
       updated.push(result.resource);
@@ -320,7 +398,23 @@ export async function syncLinkedResources(
       continue;
     }
 
+    const upsertPolicy = policy;
+
     if (options.dryRun) {
+      const incoming = normalizeResourceInput({
+        ...match,
+        namespace: resource.namespace,
+        origin_kind: "marketplace_link",
+        origin_ref: resource.origin_ref,
+      });
+      const bucket = classifyDryRunWrite(resource, incoming, upsertPolicy);
+      if (bucket === "updated") {
+        aggregated.updated.push(resource);
+      } else if (bucket === "unchanged") {
+        aggregated.unchanged.push(resource);
+      } else {
+        aggregated.skipped.push(resource);
+      }
       continue;
     }
 
@@ -331,7 +425,7 @@ export async function syncLinkedResources(
         origin_kind: "marketplace_link",
         origin_ref: resource.origin_ref,
       }),
-      { policy },
+      { policy: upsertPolicy },
     );
 
     if (result.action === "updated" || result.action === "created") {
