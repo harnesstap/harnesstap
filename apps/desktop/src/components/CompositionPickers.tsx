@@ -7,8 +7,16 @@ import {
 } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ResourceRowDescription,
+  ResourceRowIdentity,
+  ResourceRowLeading,
+  ResourceRowMeta,
+  ResourceRowRoot,
+} from "@/components/ui/resource-row";
 import { SelectionList as UiSelectionList } from "@/components/ui/selection-list";
+import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import {
   filterLibraryResourcesBySearch,
   groupLibraryResourcesByType,
@@ -64,6 +72,53 @@ export interface ResourceSelectionListProps {
   selectedIds: string[];
   disabled: boolean;
   onToggle: (id: string) => void;
+}
+
+function ResourcePickerRow({
+  resource,
+  selected,
+  disabled,
+  onToggle,
+  measure = false,
+}: {
+  resource: LibraryResource;
+  selected: boolean;
+  disabled: boolean;
+  onToggle?: (id: string) => void;
+  measure?: boolean;
+}) {
+  const id = measure
+    ? `resource-${resource.id}-measure`
+    : `resource-${resource.id}`;
+  const label = resourceDisplayName(resource);
+  return (
+    <ResourceRowRoot
+      hover={hoverModelFromLibraryResource(resource)}
+      testId={measure ? undefined : `create-resource-${label}`}
+      disabled={disabled}
+    >
+      <ResourceRowLeading>
+        <Checkbox
+          id={id}
+          checked={selected}
+          disabled={disabled}
+          tabIndex={measure ? -1 : undefined}
+          aria-hidden={measure || undefined}
+          onCheckedChange={
+            measure || !onToggle ? undefined : () => onToggle(resource.id)
+          }
+        />
+      </ResourceRowLeading>
+      <ResourceRowIdentity type={resource.type} label={label} htmlFor={id}>
+        {resource.description ? (
+          <ResourceRowDescription>{resource.description}</ResourceRowDescription>
+        ) : null}
+      </ResourceRowIdentity>
+      <ResourceRowMeta
+        harnessIds={relatedHarnessesForResourceType(resource.type)}
+      />
+    </ResourceRowRoot>
+  );
 }
 
 export function ResourceSelectionList({
@@ -181,32 +236,15 @@ export function ResourceSelectionList({
                   </button>
                   {expanded ? (
                     <div className="selection-type-body">
-                      {group.resources.map((resource) => {
-                        const id = `resource-${resource.id}`;
-                        return (
-                          <div
-                            key={resource.id}
-                            className="selection-row"
-                            data-testid={`create-resource-${resourceDisplayName(resource)}`}
-                          >
-                            <Checkbox
-                              id={id}
-                              checked={selectedIds.includes(resource.id)}
-                              disabled={disabled}
-                              onCheckedChange={() => onToggle(resource.id)}
-                            />
-                            <Label
-                              htmlFor={id}
-                              className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 font-normal"
-                            >
-                              <strong>{resourceDisplayName(resource)}</strong>
-                              {resource.description ? (
-                                <small>{resource.description}</small>
-                              ) : null}
-                            </Label>
-                          </div>
-                        );
-                      })}
+                      {group.resources.map((resource) => (
+                        <ResourcePickerRow
+                          key={resource.id}
+                          resource={resource}
+                          selected={selectedIds.includes(resource.id)}
+                          disabled={disabled}
+                          onToggle={onToggle}
+                        />
+                      ))}
                     </div>
                   ) : null}
                 </section>
@@ -233,20 +271,13 @@ export function ResourceSelectionList({
                 </div>
                 <div className="selection-type-body">
                   {group.resources.map((resource) => (
-                    <div key={resource.id} className="selection-row">
-                      <Checkbox
-                        checked={false}
-                        disabled
-                        tabIndex={-1}
-                        aria-hidden
-                      />
-                      <span>
-                        <strong>{resourceDisplayName(resource)}</strong>
-                        {resource.description ? (
-                          <small>{resource.description}</small>
-                        ) : null}
-                      </span>
-                    </div>
+                    <ResourcePickerRow
+                      key={resource.id}
+                      resource={resource}
+                      selected={false}
+                      disabled
+                      measure
+                    />
                   ))}
                 </div>
               </section>
