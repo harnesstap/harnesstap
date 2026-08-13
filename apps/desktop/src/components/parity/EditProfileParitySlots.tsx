@@ -10,6 +10,7 @@ export function EditProfileParitySlots(props: {
   disabled?: boolean;
   onDeleted: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
   onMutated?: () => void;
+  onOpenEnvironments?: () => void;
 }) {
   return (
     <div className="edit-profile-parity-slots">
@@ -19,6 +20,7 @@ export function EditProfileParitySlots(props: {
         token={props.token}
         disabled={props.disabled}
         onMutated={props.onMutated}
+        onOpenEnvironments={props.onOpenEnvironments}
       />
       <ProfileCatalogBindings
         profileName={props.profileName}

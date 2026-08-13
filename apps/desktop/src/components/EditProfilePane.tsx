@@ -49,6 +49,7 @@ export interface EditProfilePaneProps {
     affectsApply: boolean;
   }) => void | Promise<void>;
   onDeleted?: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
+  onOpenEnvironments?: () => void;
   onRequestCut?: (name: string, version: string) => void;
 }
 
@@ -69,6 +70,7 @@ export function EditProfilePane({
   onProfileRenamed,
   onMutated,
   onDeleted,
+  onOpenEnvironments,
   onRequestCut,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
@@ -631,6 +633,7 @@ export function EditProfilePane({
             onMutated={() => {
               void onMutated({ profileName, affectsApply: true });
             }}
+            onOpenEnvironments={onOpenEnvironments}
           />
         </div>
       ) : null}

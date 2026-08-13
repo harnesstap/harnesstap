@@ -4,6 +4,7 @@ export function DefaultEnvironmentField(_props: {
   token: string | null;
   disabled?: boolean;
   onMutated?: () => void;
+  onOpenEnvironments?: () => void;
 }): null {
   return null;
 }

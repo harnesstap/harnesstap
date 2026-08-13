@@ -2371,6 +2371,10 @@ export function App() {
                 window.setTimeout(() => setSuccessMessage(null), 3000);
               }
             }}
+            onOpenEnvironments={() => {
+              setEditingProfile(null);
+              setWorkspaceFocus("environments");
+            }}
             onRequestCut={
               editingProfile && baseUrl && token
                 ? (name, version) => openCutForProfile(name, version)
