@@ -5,10 +5,6 @@ import {
   diffProfileContents,
   fileChangeAction,
   fileChangeDestinationSummary,
-  fileChangeGroupHoverRows,
-  fileChangeGroupHoverTitle,
-  fileChangeHoverRows,
-  fileChangeHoverTitle,
   fileChangeMatchesKindFilter,
   filterFileChangeGroups,
   groupFileChangesByResource,
@@ -158,37 +154,6 @@ describe("contents-diff helpers", () => {
       action: "remove",
       label: "remove",
     });
-  });
-
-  it("builds file-change hover text with path, type, and origin", () => {
-    expect(
-      fileChangeHoverRows({
-        path: "/Users/me/.claude/skills/ship/SKILL.md",
-        resource: {
-          type: "skill",
-          name: "ship",
-          origin_kind: "marketplace_link",
-        },
-      }),
-    ).toEqual([
-      { kind: "path", text: "/Users/me/.claude/skills/ship/SKILL.md" },
-      { kind: "type", text: "skill", type: "skill" },
-      { kind: "origin", text: "marketplace", originKind: "marketplace_link" },
-    ]);
-    expect(
-      fileChangeHoverTitle({
-        path: "/Users/me/.claude/commands/deploy.md",
-        resource: { type: "command", name: "deploy", origin_kind: "local_snapshot" },
-      }),
-    ).toBe("/Users/me/.claude/commands/deploy.md\ncommand\nlocal");
-    expect(
-      fileChangeHoverRows({
-        path: "/Users/me/.cursor/mcp.json",
-      }),
-    ).toEqual([
-      { kind: "path", text: "/Users/me/.cursor/mcp.json" },
-      { kind: "type", text: "MCP", type: "mcp_server" },
-    ]);
   });
 
   it("counts unique related resources per file-change kind", () => {
@@ -354,42 +319,6 @@ describe("contents-diff helpers", () => {
     expect(groups[0].singleton).toBe(false);
   });
 
-  it("builds group hover with type, origin, and destination summary", () => {
-    const [group] = groupFileChangesByResource([
-      {
-        path: ".cursor/skills/ship/SKILL.md",
-        type: "deleted",
-        platform: "cursor",
-        resource: {
-          type: "skill",
-          name: "ship",
-          origin_kind: "marketplace_link",
-        },
-      },
-      {
-        path: ".claude/skills/ship/SKILL.md",
-        type: "deleted",
-        platform: "claude-code",
-        resource: {
-          type: "skill",
-          name: "ship",
-          origin_kind: "marketplace_link",
-        },
-      },
-    ]);
-    expect(fileChangeGroupHoverRows(group)).toEqual([
-      { kind: "type", text: "skill", type: "skill" },
-      { kind: "origin", text: "marketplace", originKind: "marketplace_link" },
-      {
-        kind: "destinations",
-        text: "add → Claude Code, Cursor",
-      },
-    ]);
-    expect(fileChangeGroupHoverTitle(group)).toBe(
-      "skill\nmarketplace\nadd → Claude Code, Cursor",
-    );
-  });
-
   it("joins mixed destination kinds with a middle dot", () => {
     const [group] = groupFileChangesByResource([
       {
@@ -405,13 +334,9 @@ describe("contents-diff helpers", () => {
         resource: { type: "skill", name: "ship" },
       },
     ]);
-    expect(fileChangeGroupHoverRows(group)).toEqual([
-      { kind: "type", text: "skill", type: "skill" },
-      {
-        kind: "destinations",
-        text: "add → Cursor · update → Claude Code",
-      },
-    ]);
+    expect(fileChangeDestinationSummary(group)).toBe(
+      "add → Cursor · update → Claude Code",
+    );
   });
 
   it("summarizes destination kind without platforms", () => {
@@ -423,20 +348,6 @@ describe("contents-diff helpers", () => {
       },
     ]);
     expect(fileChangeDestinationSummary(group)).toBe("add");
-    expect(fileChangeGroupHoverRows(group)).toEqual([
-      { kind: "type", text: "skill", type: "skill" },
-      { kind: "destinations", text: "add" },
-    ]);
-  });
-
-  it("infers MCP type for unmapped mcp.json group hover", () => {
-    const [group] = groupFileChangesByResource([
-      { path: ".cursor/mcp.json", type: "modified", platform: "cursor" },
-    ]);
-    expect(fileChangeGroupHoverRows(group)).toEqual([
-      { kind: "type", text: "MCP", type: "mcp_server" },
-      { kind: "destinations", text: "update → Cursor" },
-    ]);
   });
 
   it("filters group children by kind and hides empty groups", () => {

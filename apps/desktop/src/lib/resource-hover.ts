@@ -1,6 +1,7 @@
 import {
   fileChangeDestinationSummary,
   inferFileChangeType,
+  type ContentsDiffItem,
   type FileChangeResourceGroup,
 } from "./contents-diff";
 import { relatedHarnessesForResourceType } from "./harness-meta";
@@ -78,6 +79,22 @@ export function hoverModelFromProfileResource(
     extra: [],
   };
   const path = resource.source?.trim();
+  if (path) {
+    model.path = path;
+  }
+  return model;
+}
+
+export function hoverModelFromContentsDiffItem(
+  item: ContentsDiffItem,
+): ResourceHoverModel {
+  const model: ResourceHoverModel = {
+    type: item.iconType,
+    name: item.label,
+    harnessIds: [...relatedHarnessesForResourceType(item.iconType)],
+    extra: [],
+  };
+  const path = item.path?.trim();
   if (path) {
     model.path = path;
   }

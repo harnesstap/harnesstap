@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { groupFileChangesByResource } from "../../apps/desktop/src/lib/contents-diff";
+import {
+  groupFileChangesByResource,
+  type ContentsDiffItem,
+} from "../../apps/desktop/src/lib/contents-diff";
 import {
   formatHoverPath,
+  hoverModelFromContentsDiffItem,
   hoverModelFromFileChangeChild,
   hoverModelFromFileChangeGroup,
   hoverModelFromLibraryResource,
@@ -59,6 +63,40 @@ describe("resource hover model", () => {
       name: "deploy",
       path: "/Users/me/.claude/commands/deploy.md",
       harnessIds: ["claude-code"],
+      extra: [],
+    });
+  });
+
+  it("builds a contents-diff model from icon type, label, and path", () => {
+    const item: ContentsDiffItem = {
+      key: "resource:command:deploy",
+      kind: "added",
+      category: "resource",
+      iconType: "command",
+      label: "deploy",
+      path: "/Users/me/.claude/commands/deploy.md",
+    };
+    expect(hoverModelFromContentsDiffItem(item)).toEqual({
+      type: "command",
+      name: "deploy",
+      path: "/Users/me/.claude/commands/deploy.md",
+      harnessIds: ["claude-code"],
+      extra: [],
+    });
+  });
+
+  it("omits empty path from a contents-diff hover model", () => {
+    const item: ContentsDiffItem = {
+      key: "pin:work@1",
+      kind: "unchanged",
+      category: "plugin_pin",
+      iconType: "plugin_pin",
+      label: "work@1",
+    };
+    expect(hoverModelFromContentsDiffItem(item)).toEqual({
+      type: "plugin_pin",
+      name: "work@1",
+      harnessIds: ["claude-code", "cursor"],
       extra: [],
     });
   });

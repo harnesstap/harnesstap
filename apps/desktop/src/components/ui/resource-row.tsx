@@ -14,17 +14,23 @@ export function ResourceRowRoot({
   className,
   children,
   disabled,
+  ariaLabel,
 }: {
   hover: ResourceHoverModel;
   testId?: string;
   className?: string;
   children: ReactNode;
   disabled?: boolean;
+  ariaLabel?: string;
 }): ReactNode {
   return (
     <ResourceRowDisabledContext.Provider value={Boolean(disabled)}>
       <ResourceHoverCard model={hover} disabled={disabled}>
-        <div className={cn("resource-row", className)} data-testid={testId}>
+        <div
+          className={cn("resource-row", className)}
+          data-testid={testId}
+          aria-label={ariaLabel}
+        >
           {children}
         </div>
       </ResourceHoverCard>
