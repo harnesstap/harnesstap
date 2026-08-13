@@ -496,6 +496,7 @@ export function SettingsDrawer({
                 token={token}
                 projectPath={projectPath}
                 disabled={controlsDisabled}
+                onSaved={onSaved}
               />
 
               <div className="switch-after-create settings-show-all flex items-center gap-2">

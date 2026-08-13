@@ -9,6 +9,7 @@ export function SettingsParitySections(props: {
   token: string | null;
   projectPath: string | null;
   disabled?: boolean;
+  onSaved?: () => void;
 }) {
   return (
     <>
@@ -33,6 +34,7 @@ export function SettingsParitySections(props: {
         baseUrl={props.baseUrl}
         token={props.token}
         disabled={props.disabled}
+        onSaved={props.onSaved}
       />
     </>
   );
