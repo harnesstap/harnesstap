@@ -1,6 +1,7 @@
-import { resolvePluginSelector } from "../models/plugin-model.js";
+import { createPlugin, getPluginByName, resolvePluginSelector } from "../models/plugin-model.js";
 import type { OutputFormat } from "../utils/output-format.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
+import { tagProfileCommand } from "./profile-commands.js";
 import { installPluginFromCatalog } from "./plugin-catalog-install.js";
 import {
   listDependencies,
@@ -8,6 +9,7 @@ import {
 } from "./plugin-dependency.js";
 import {
   clearPluginVersionOverride,
+  setPluginResourceOverride,
   setPluginVersionOverride,
 } from "./plugin-overrides.js";
 import { syncPluginPinsForApply } from "./plugin-pin-apply.js";
@@ -71,6 +73,23 @@ export async function runConstraintRecovery(
     }
     case "clear-override": {
       clearPluginVersionOverride(root.id, action.pluginName);
+      return;
+    }
+    case "create-plugin": {
+      if (!getPluginByName(action.pluginName)) {
+        createPlugin({
+          name: action.pluginName,
+          description: `Created to satisfy ${input.rootName}`,
+        });
+      }
+      return;
+    }
+    case "override-resource": {
+      setPluginResourceOverride(root.id, action.key, action.winnerPluginName);
+      return;
+    }
+    case "tag-as-profile": {
+      tagProfileCommand(action.pluginName);
       return;
     }
     case "override-version": {
@@ -141,8 +160,8 @@ export async function runConstraintRecovery(
         if (syncResult.unresolvedPins.length > 0) {
           const refs = syncResult.unresolvedPins.join(", ");
           throw new Error(
-            `Could not sync ${refs} from marketplace — no local install found. ` +
-              `Install the plugin in Claude Code (or run: ht resource sync plugin_pin:${syncResult.unresolvedPins[0]}), then retry.`,
+            `Could not sync ${refs} from marketplace — no local install with a resolvable version was found. ` +
+              `Install or update the plugin in Claude Code, then retry.`,
           );
         }
         return;
@@ -168,6 +187,24 @@ export interface OfferConstraintRecoveryInput {
   projectRoot?: string;
 }
 
+function recoveryActionKey(action: RecoveryAction): string {
+  switch (action.id) {
+    case "override-resource":
+      return `${action.id}::${action.key}::${action.winnerPluginName}`;
+    case "sync-install":
+    case "create-plugin":
+    case "override-version":
+    case "detach-dependency":
+    case "clear-override":
+    case "tag-as-profile":
+      return `${action.id}::${action.pluginName}`;
+    default: {
+      const _never: never = action;
+      return _never;
+    }
+  }
+}
+
 /**
  * TTY chooser over error.actions. Returns true when an action ran successfully.
  */
@@ -189,7 +226,7 @@ export async function offerConstraintRecovery(
     choices: [
       ...input.error.actions.map((action) => ({
         name: action.label,
-        value: action.id + "::" + action.pluginName,
+        value: recoveryActionKey(action),
       })),
       { name: "Cancel", value: "cancel" },
     ],
@@ -199,7 +236,7 @@ export async function offerConstraintRecovery(
   }
 
   const action = input.error.actions.find(
-    (candidate) => `${candidate.id}::${candidate.pluginName}` === choice,
+    (candidate) => recoveryActionKey(candidate) === choice,
   );
   if (!action) {
     return false;

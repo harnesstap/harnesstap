@@ -89,11 +89,23 @@ export type RecoveryAction =
       sourceKind?: DependencySourceKind;
     }
   | {
+      id: "create-plugin";
+      label: string;
+      pluginName: string;
+    }
+  | {
       id: "override-version";
       label: string;
       pluginName: string;
       versions: string[];
       rootName: string;
+    }
+  | {
+      id: "override-resource";
+      label: string;
+      rootName: string;
+      key: string;
+      winnerPluginName: string;
     }
   | {
       id: "detach-dependency";
@@ -105,6 +117,11 @@ export type RecoveryAction =
       id: "clear-override";
       label: string;
       rootName: string;
+      pluginName: string;
+    }
+  | {
+      id: "tag-as-profile";
+      label: string;
       pluginName: string;
     };
 
@@ -176,18 +193,24 @@ function buildUnsatisfiable(input: {
   }
 
   if (available.length === 0) {
+    const installAction: RecoveryAction =
+      sourceKind === "catalog" || sourceKind === "marketplace"
+        ? {
+            id: "sync-install",
+            label:
+              sourceKind === "catalog"
+                ? `Pull ${pluginName} from catalog`
+                : `Sync marketplace plugins (install ${pluginName})`,
+            pluginName,
+            sourceKind,
+          }
+        : {
+            id: "create-plugin",
+            label: `Create ${pluginName}`,
+            pluginName,
+          };
     const actions: RecoveryAction[] = [
-      {
-        id: "sync-install",
-        label:
-          sourceKind === "catalog"
-            ? `Pull ${pluginName} from catalog`
-            : sourceKind === "marketplace"
-              ? `Sync marketplace plugins (install ${pluginName})`
-              : `Install or create ${pluginName}`,
-        pluginName,
-        ...(sourceKind ? { sourceKind } : {}),
-      },
+      installAction,
       {
         id: "detach-dependency",
         label: `Detach ${pluginName} from ${rootName}`,
@@ -195,7 +218,6 @@ function buildUnsatisfiable(input: {
         pluginName,
       },
     ];
-    const primary = actions[0]!;
     const requiredBy = requirers.map(
       (record) =>
         `  required by: ${record.requirer} → ${pluginName} ${record.constraint || "*"}`,
@@ -203,7 +225,7 @@ function buildUnsatisfiable(input: {
     const message = [
       `No local version of ${pluginName} is installed.`,
       ...requiredBy,
-      `  fix: ${primary.label}, then re-apply`,
+      `  fix: ${installAction.label}, then re-apply`,
     ].join("\n");
     return {
       reason: "missing-inventory",
@@ -252,12 +274,18 @@ function hintForAction(action: RecoveryAction): string {
         return `ht plugin apply <root> --sync-plugins`;
       }
       return `ht plugin create ${action.pluginName}`;
+    case "create-plugin":
+      return `ht plugin create ${action.pluginName}`;
     case "override-version":
       return `ht plugin edit ${action.rootName} --override plugin:${action.pluginName}@<version>`;
+    case "override-resource":
+      return `ht plugin edit ${action.rootName} --override ${action.key}=${action.winnerPluginName}`;
     case "detach-dependency":
       return `ht plugin edit ${action.rootName} --remove plugin:${action.pluginName}`;
     case "clear-override":
       return `ht plugin edit ${action.rootName} --clear-override plugin:${action.pluginName}`;
+    case "tag-as-profile":
+      return `ht profile tag ${action.pluginName}`;
     default: {
       const _exhaustive: never = action;
       return _exhaustive;
@@ -298,21 +326,28 @@ export class SingletonConflictError extends Error {
   readonly key: string;
   readonly sides: ResourceSide[];
   readonly hints: string[];
+  readonly actions: RecoveryAction[];
 
   constructor(input: { key: string; sides: ResourceSide[]; rootName: string }) {
+    const actions: RecoveryAction[] = input.sides.map((side) => ({
+      id: "override-resource",
+      label: `Use ${side.pluginName}@${side.pluginVersion} for ${input.key}`,
+      rootName: input.rootName,
+      key: input.key,
+      winnerPluginName: side.pluginName,
+    }));
     const lines = [
       `conflicting ${input.key} at the same depth`,
       ...input.sides.map(
         (side) => `  ${side.pluginName}@${side.pluginVersion} (depth ${side.depth})`,
       ),
+      `  fix: ${actions[0]?.label ?? `override ${input.key}`}`,
     ];
     super(lines.join("\n"));
     this.name = "SingletonConflictError";
     this.key = input.key;
     this.sides = input.sides;
-    this.hints = input.sides.map(
-      (side) =>
-        `ht plugin edit ${input.rootName} --override ${input.key}=${side.pluginName}`,
-    );
+    this.actions = actions;
+    this.hints = actions.map((action) => hintForAction(action));
   }
 }

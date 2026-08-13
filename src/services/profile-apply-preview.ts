@@ -37,6 +37,7 @@ import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import { detectPlatforms } from "./scanner.js";
 import {
+  SingletonConflictError,
   UnsatisfiableConstraintError,
   type RecoveryAction,
 } from "./resolve/types.js";
@@ -82,8 +83,30 @@ function warningFromError(error: unknown): {
       recovery_actions: error.actions,
     };
   }
+  if (error instanceof SingletonConflictError) {
+    return {
+      warning: error.message,
+      recovery_actions: error.actions,
+    };
+  }
   return {
     warning: error instanceof Error ? error.message : String(error),
+  };
+}
+
+function notProfileWarning(pluginName: string): {
+  warning: string;
+  recovery_actions: RecoveryAction[];
+} {
+  return {
+    warning: `plugin "${pluginName}" is not tagged as a profile`,
+    recovery_actions: [
+      {
+        id: "tag-as-profile",
+        label: `Tag ${pluginName} as a profile`,
+        pluginName,
+      },
+    ],
   };
 }
 
@@ -388,7 +411,7 @@ async function collectHomeExpectedManagedFiles(
     return {
       rootPath: homeRoot,
       expectedFiles: [],
-      warning: `plugin "${plugin.name}" is not tagged as a profile`,
+      ...notProfileWarning(plugin.name),
     };
   }
 
@@ -458,7 +481,7 @@ async function collectProjectExpectedManagedFiles(
     return {
       rootPath: resolvedRoot,
       expectedFiles: [],
-      warning: `plugin "${plugin.name}" is not tagged as a profile`,
+      ...notProfileWarning(plugin.name),
     };
   }
 

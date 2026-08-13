@@ -11,6 +11,7 @@ import { listDependencies } from "../plugin-dependency.js";
 import { getPluginOverrides } from "../plugin-overrides.js";
 import { parsePluginSelector } from "../plugin-selector.js";
 import { selectVersion } from "./version-mediation.js";
+import { UnsatisfiableConstraintError } from "./types.js";
 import type { ConstraintRecord, SelectedPlugin, SelectionReason } from "./types.js";
 
 /** Safety valve: the fixpoint converges in far fewer passes in practice. */
@@ -20,20 +21,20 @@ function label(name: string, version: string): string {
   return `${name}@${version}`;
 }
 
-function missingDependency(
-  name: string,
-  version: string,
-  sourceKind: string,
-): Error {
-  const fix =
-    sourceKind === "marketplace"
-      ? `ht plugin apply <root> --sync-plugins`
-      : sourceKind === "catalog"
-        ? `ht plugin pull ${name}`
-        : `ht plugin create ${name}`;
-  return new Error(
-    `Dependency ${name}@${version} is not available locally (source: ${sourceKind})\n  fix: ${fix}`,
-  );
+function unsatisfiableMissing(input: {
+  name: string;
+  rootName: string;
+  sourceKind?: DependencySourceKind;
+  requirers: ConstraintRecord[];
+  available: string[];
+}): UnsatisfiableConstraintError {
+  return new UnsatisfiableConstraintError({
+    pluginName: input.name,
+    requirers: input.requirers,
+    available: input.available,
+    rootName: input.rootName,
+    ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
+  });
 }
 
 function listAvailableVersions(dependencyName: string): string[] {
@@ -173,7 +174,13 @@ export function walkDependencyGraph(input: {
 
         const resolved = resolveDependencyVersion(name, provisional);
         if (!resolved) {
-          throw missingDependency(name, provisional, dependency.source_kind);
+          throw unsatisfiableMissing({
+            name,
+            rootName: root.name,
+            sourceKind: dependency.source_kind,
+            requirers: bucket,
+            available: listAvailableVersions(name),
+          });
         }
         if (!visited.has(resolved.id)) {
           visited.add(resolved.id);
@@ -240,11 +247,13 @@ export function walkDependencyGraph(input: {
     for (const [name, version] of current) {
       const plugin = resolveDependencyVersion(name, version);
       if (!plugin) {
-        throw missingDependency(
+        throw unsatisfiableMissing({
           name,
-          version,
-          sourceKinds.get(name) ?? "local",
-        );
+          rootName: root.name,
+          sourceKind: sourceKinds.get(name),
+          requirers: constraints.get(name) ?? [],
+          available: listAvailableVersions(name),
+        });
       }
       selected.push({
         name,

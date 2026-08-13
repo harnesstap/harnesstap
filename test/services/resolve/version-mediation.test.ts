@@ -151,6 +151,41 @@ describe("selectVersion", () => {
     expect(error.hints[0]).toContain("--sync-plugins");
   });
 
+  it("classifies empty local inventory as create-plugin, not sync-install", () => {
+    try {
+      selectVersion({
+        name: "missing-plugin",
+        available: [],
+        constraints: [record("*", "my-setup@1.0.0", 1)],
+        rootName: "my-setup",
+      });
+      throw new Error("expected UnsatisfiableConstraintError");
+    } catch (err) {
+      const error = err as UnsatisfiableConstraintError;
+      expect(error.reason).toBe("missing-inventory");
+      expect(error.actions[0]).toMatchObject({
+        id: "create-plugin",
+        pluginName: "missing-plugin",
+      });
+      expect(error.actions.some((a) => a.id === "sync-install")).toBe(false);
+      expect(error.actions.some((a) => a.id === "detach-dependency")).toBe(true);
+    }
+  });
+
+  it("falls back to a git SHA when only non-semver marketplace installs exist", () => {
+    const result = selectVersion({
+      name: "design-doc",
+      available: ["4a4211102f36"],
+      constraints: [record("*", "Teads (Default)@1.0.1", 1)],
+      rootName: "Teads (Default)",
+      sourceKind: "marketplace",
+    });
+    expect(result).toEqual({
+      version: "4a4211102f36",
+      reason: "mediation",
+    });
+  });
+
   it("classifies a missing override version as override-missing", () => {
     expect(() =>
       selectVersion({

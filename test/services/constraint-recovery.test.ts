@@ -4,7 +4,9 @@ import type { TestContext } from "../helpers/db.ts";
 import {
   addResourceToPlugin,
   createPlugin,
+  getPluginByName,
 } from "../../src/models/plugin-model.ts";
+import { isProfilePlugin } from "../../src/constants/profile.ts";
 import { ensurePluginResource } from "../../src/services/plugin-composition.ts";
 import {
   getPluginOverrides,
@@ -89,6 +91,58 @@ describe("runConstraintRecovery", () => {
     });
 
     expect(getPluginOverrides(root.id).versions.base).toBeUndefined();
+  });
+
+  it("creates a local plugin for create-plugin recovery", async () => {
+    createPlugin({ name: "my-setup" });
+    expect(getPluginByName("missing-plugin")).toBeUndefined();
+
+    await runConstraintRecovery({
+      rootName: "my-setup",
+      action: {
+        id: "create-plugin",
+        label: "Create missing-plugin",
+        pluginName: "missing-plugin",
+      },
+    });
+
+    expect(getPluginByName("missing-plugin")?.name).toBe("missing-plugin");
+  });
+
+  it("sets a resource override for override-resource recovery", async () => {
+    const root = createPlugin({ name: "my-setup" });
+
+    await runConstraintRecovery({
+      rootName: "my-setup",
+      action: {
+        id: "override-resource",
+        label: "Use a for instruction:context",
+        rootName: "my-setup",
+        key: "instruction:context",
+        winnerPluginName: "a",
+      },
+    });
+
+    expect(getPluginOverrides(root.id).resources).toEqual({
+      "instruction:context": "a",
+    });
+  });
+
+  it("tags the plugin as a profile for tag-as-profile recovery", async () => {
+    const plugin = createPlugin({ name: "focus" });
+    expect(isProfilePlugin(plugin)).toBe(false);
+
+    await runConstraintRecovery({
+      rootName: "focus",
+      action: {
+        id: "tag-as-profile",
+        label: "Tag focus as a profile",
+        pluginName: "focus",
+      },
+    });
+
+    const tagged = getPluginByName("focus");
+    expect(tagged && isProfilePlugin(tagged)).toBe(true);
   });
 
   it("rejects sync-install without a marketplace or catalog source", async () => {
@@ -199,7 +253,7 @@ describe("runConstraintRecovery", () => {
             sourceKind: "marketplace",
           },
         }),
-      ).rejects.toThrow(/ht resource sync plugin_pin:design-doc@teads-plugins/);
+      ).rejects.toThrow(/Install or update the plugin in Claude Code/);
     } finally {
       syncSpy.mockRestore();
     }

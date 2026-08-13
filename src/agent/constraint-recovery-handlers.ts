@@ -168,11 +168,85 @@ function parseRecoveryAction(value: unknown): RecoveryAction | Response {
         pluginName: pluginName.trim(),
       };
     }
+    case "create-plugin": {
+      const pluginName = value.pluginName;
+      if (typeof pluginName !== "string" || pluginName.trim().length === 0) {
+        return jsonResponse(
+          {
+            error: "invalid_action",
+            message: "action.pluginName is required for create-plugin",
+          },
+          { status: 400 },
+        );
+      }
+      return {
+        id: "create-plugin",
+        label: label.trim(),
+        pluginName: pluginName.trim(),
+      };
+    }
+    case "override-resource": {
+      const rootName = value.rootName;
+      if (typeof rootName !== "string" || rootName.trim().length === 0) {
+        return jsonResponse(
+          {
+            error: "invalid_action",
+            message: "action.rootName is required for override-resource",
+          },
+          { status: 400 },
+        );
+      }
+      const key = value.key;
+      if (typeof key !== "string" || key.trim().length === 0) {
+        return jsonResponse(
+          {
+            error: "invalid_action",
+            message: "action.key is required for override-resource",
+          },
+          { status: 400 },
+        );
+      }
+      const winnerPluginName = value.winnerPluginName;
+      if (typeof winnerPluginName !== "string" || winnerPluginName.trim().length === 0) {
+        return jsonResponse(
+          {
+            error: "invalid_action",
+            message: "action.winnerPluginName is required for override-resource",
+          },
+          { status: 400 },
+        );
+      }
+      return {
+        id: "override-resource",
+        label: label.trim(),
+        rootName: rootName.trim(),
+        key: key.trim(),
+        winnerPluginName: winnerPluginName.trim(),
+      };
+    }
+    case "tag-as-profile": {
+      const pluginName = value.pluginName;
+      if (typeof pluginName !== "string" || pluginName.trim().length === 0) {
+        return jsonResponse(
+          {
+            error: "invalid_action",
+            message: "action.pluginName is required for tag-as-profile",
+          },
+          { status: 400 },
+        );
+      }
+      return {
+        id: "tag-as-profile",
+        label: label.trim(),
+        pluginName: pluginName.trim(),
+      };
+    }
     default: {
       return jsonResponse(
         {
           error: "invalid_action",
-          message: `action.id must be one of sync-install, override-version, detach-dependency, clear-override`,
+          message:
+            "action.id must be one of sync-install, create-plugin, override-version, override-resource, detach-dependency, clear-override, tag-as-profile",
         },
         { status: 400 },
       );
