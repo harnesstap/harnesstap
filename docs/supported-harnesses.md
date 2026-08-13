@@ -252,4 +252,3 @@ ht environment list                      # named environments (env vars, models,
 
 - [Portability limits](portability-limits.md) — fidelity matrix and workarounds
 - [CLI command reference](cli/command-reference.md) — full command surface
-- [SPEC.md](../SPEC.md) — authoritative product specification

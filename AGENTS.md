@@ -21,7 +21,7 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 
 - **Resources** are imported into a local library, composed into **plugins**, then **applied** to harness-specific on-disk files.
 - Platform serializers live under `src/platforms/`; shared orchestration under `src/services/`.
-- Authoritative product spec: `SPEC.md`. Contributing workflow: `CONTRIBUTING.md`.
+- Contributor product spec: `SPEC.md`. Contributing workflow: `CONTRIBUTING.md`. Desktop UI language: `apps/desktop/DESIGN.md`.
 
 ## Scope discipline
 
@@ -31,5 +31,6 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 
 ## Documentation
 
-- Don't reference spec / plan files in documentation. Prefer including direct content in the documentation file itself.
-- Don't commit spec / plan files to the repository.
+- User-facing docs live in `README.md` and `docs/`. Put the content there; do not link those pages at `SPEC.md` or working notes.
+- `SPEC.md` is the contributor source of truth for product behavior. Keep it in git at the repo root. Update it when CLI behavior or concepts change.
+- Working notes, Superpowers plans, and local task lists belong in `docs/internal/` (gitignored). Do not commit transcripts, `TODOS.md`, or plan files.

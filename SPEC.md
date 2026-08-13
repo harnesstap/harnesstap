@@ -111,13 +111,18 @@ Examples:
 
 Published plugins address as `org/catalog/name[@version]` on Cloud `/api/plugins` and the catalog package download routes.
 
+### Audience
+
+- **Primary (phase 1):** a solo developer or small team who already uses two or more coding agents and wants one canonical configuration materialized across repos and harnesses.
+- **Enterprise (phase 2):** a platform or DX team that publishes governed baselines to an organization catalog. Delivered via HarnessTap Cloud.
+
 ### Naming map (homonyms)
 
-Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.md).
+Use this table to disambiguate overlapping words.
 
 | Term | Meaning | CLI / storage |
 | --- | --- | --- |
-| **Plugin** | Versioned context package (material resources + deps + optional default environment) | `ht plugin …`, `apply <plugin>` · `plugins` + `layer_resources` |
+| **Plugin** | Versioned context package (material resources + deps + optional default environment) | `ht plugin …`, `apply <plugin>` · `plugins` + `plugin_resources` |
 | **Host plugin** | Claude/Cursor/Codex installable bundle (manifest + tree) | Host commands (`claude plugin install`, …) — not a HarnessTap row |
 | **`plugin_pin`** | Dependency on a host plugin attached to a plugin | `plugin edit --add plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
 | **`plugin` ref** | Dependency on another HarnessTap plugin (catalog/local) | `plugin edit --add plugin:name@^1.0` · `resources.type=plugin` |
@@ -126,6 +131,22 @@ Use this table to disambiguate overlapping words. See also [CONTEXT.md](CONTEXT.
 | **Catalog** | Org-scoped published plugin collection (multiplayer) | `plugin list --search`, `plugin pull` · Cloud APIs |
 | **Account** | Cloud auth identity (tokens, org context) | `auth login`, `--account` · `cloud-accounts.json` |
 | **Project config** | Repo-declared profiles for `ht use` | `.harnesstap/config.toml` · `config show|init`, `use` |
+| **Context-side** | What the model sees: instructions, skills, rules, MCP, hooks, agents, commands, and composition refs | Plugin material attachments |
+| **Environment-side** | Runtime how: env vars, models, permissions, secret refs | Environment values; satisfies `needs[]` |
+| **Dependency** | A required plugin from marketplace, path, git, or catalog | `plugin` / `plugin_pin` resources — not the material rows inside a plugin |
+| **Marketplace** | Third-party source of host plugins (Claude marketplace, Cursor packs, etc.) | `marketplace` commands; `plugin_pin` provenance |
+
+| Term | Use for | Do not use for |
+| --- | --- | --- |
+| **plugin** | HarnessTap versioned package of resources + deps; catalog publish unit | Global preset alone (that's a **profile**) |
+| **dependency** | A required plugin from marketplace, path, git, or catalog | The resources inside a plugin |
+| **profile** | Tagged plugin (`tags` includes `profile`); global switch UX | Cloud login identity (that's an **account**) |
+| **workspace** | Single local SQLite library (`~/.harnesstap`); offline share via `migrate` | Org-published multiplayer baseline (that's **catalog**) |
+| **catalog** | Org-scoped published plugins; browse/search/pull | Personal plugin collection (that's the **workspace**) |
+| **account** | HarnessTap Cloud auth identity (`cloud-accounts.json`, `--account`) | Profile plugin or `active-profile.json` pointer |
+| **context-side** | The *what* axis (skills, rules, …) | Runtime secrets/env (that's **environment-side**) |
+
+`layer` is a hidden CLI alias of `plugin` for one release. Do not use `layer` in new docs or APIs.
 
 **Package.json analogy:** a **plugin** is the package; **context-side resources** are source files; **`plugin_pin`** / **`plugin` ref** are dependencies; **`environment`** is runtime config (.env).
 

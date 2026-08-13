@@ -78,8 +78,12 @@ HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules �
 | **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
 | **Profile** | A plugin tagged for machine-wide switching (`ht work`, `profile use`) |
 | **Workspace** | Local library of plugins, resources, and environments at `~/.harnesstap` |
+| **Catalog** | Org-scoped published plugins you search and pull into the workspace |
+| **Account** | HarnessTap Cloud login identity (`auth login`, `--account`) — not a profile |
 
 A **plugin** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **plugin** refs are dependencies attached during composition.
+
+Do not confuse **plugin** with **profile** (a tagged plugin used as a global preset), **account** with **profile**, or **workspace** with **catalog**.
 
 **Cascade (last wins):** `home env ◂ plugin default env`. Switch the home active environment to change how-values without reloading the same plugin stack.
 
@@ -114,5 +118,3 @@ Profiles answer "what stack runs on this machine by default?" Projects answer "w
 | Harness matrix and resource types | [Supported harnesses](../../supported-harnesses.md) |
 | Cross-harness fidelity caveats | [Portability limits](../../portability-limits.md) |
 | Full CLI surface | [Command reference](../command-reference.md) |
-
-Full specification: [SPEC.md](https://github.com/harnesstap/harnesstap/blob/main/SPEC.md) in the HarnessTap repository.

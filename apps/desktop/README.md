@@ -1,6 +1,6 @@
 # HarnessTap Desktop
 
-Tauri 2 desktop app for the profile control plane (Variant A split pane).
+Tauri 2 desktop app for the profile control plane (Variant A split pane). Visual language: [DESIGN.md](./DESIGN.md).
 
 ## Prerequisites
 

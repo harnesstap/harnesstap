@@ -123,3 +123,4 @@ bun run preflight
 
 - The project uses Bun for local development, CI, and builds.
 - The published package is intended for the npm registry.
+- Contributor product spec: [`SPEC.md`](SPEC.md). User-facing docs: [`README.md`](README.md) and [`docs/`](docs/). Desktop UI language: [`apps/desktop/DESIGN.md`](apps/desktop/DESIGN.md).
