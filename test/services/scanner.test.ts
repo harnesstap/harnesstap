@@ -16,9 +16,8 @@ describe("scanner services", () => {
       const scanner = await import("../../src/services/scanner.ts");
       const results = await scanner.scanProject(context.projectDir);
 
-      expect(scanner.detectPlatforms(context.projectDir)).toEqual(["grok-build"]);
+      expect(scanner.detectPlatforms(context.projectDir)).toEqual([]);
       expect(results.map((result) => result.platformId).sort()).toEqual([
-        "grok-build",
         "shared",
       ]);
       const shared = results.find((result) => result.platformId === "shared");

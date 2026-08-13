@@ -240,6 +240,9 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Rebuild better-sqlite3 for Node 20
+        run: npm rebuild better-sqlite3
+
       - name: SQLite dual-runtime WAL write smoke
         run: bun run check:sqlite-wal-smoke
 
