@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { getAllPlatforms } from "../platforms/registry.js";
 import type { PlatformPaths, Resource } from "../types.js";
 import {
@@ -55,12 +55,29 @@ function existingPaths(paths: PlatformPaths, rootPath: string): string[] {
 
 // ── Platform detection ─────────────────────────────────────────────────
 
+function pathHasExactConfiguredName(fullPath: string, configuredPath: string): boolean {
+  const expectedName = basename(configuredPath.replace(/\/+$/, ""));
+  if (!expectedName || expectedName === "." || expectedName === "..") {
+    return true;
+  }
+  try {
+    return readdirSync(dirname(fullPath)).includes(expectedName);
+  } catch {
+    return false;
+  }
+}
+
 function pathCountsForPlatformDetection(
   projectRoot: string,
   configuredPath: string,
 ): boolean {
   const fullPath = join(projectRoot, configuredPath);
   if (!existsSync(fullPath)) {
+    return false;
+  }
+  // existsSync is case-insensitive on macOS; grok-build's AGENT.md / Agents.md
+  // alternates must not count as evidence for a shared AGENTS.md file.
+  if (!pathHasExactConfiguredName(fullPath, configuredPath)) {
     return false;
   }
   if (configuredPath === "AGENTS.md" && lstatSync(fullPath).isSymbolicLink()) {
