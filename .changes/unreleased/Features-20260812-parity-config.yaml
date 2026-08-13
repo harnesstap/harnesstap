@@ -1,0 +1,3 @@
+kind: Features
+body: Show a read-only project config inspector in Settings, loaded from GET /v1/config with the same JSON as ht config show and validation errors from ht config validate.
+time: 2026-08-12T00:00:00Z
