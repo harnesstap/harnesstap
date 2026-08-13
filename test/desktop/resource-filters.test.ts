@@ -57,9 +57,9 @@ const rows: LibraryResource[] = [
 ];
 
 describe("LISTABLE_FILTER_RESOURCE_TYPES", () => {
-  it("includes plugin_pin and excludes plugin", () => {
-    expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("plugin_pin");
-    expect(LISTABLE_FILTER_RESOURCE_TYPES).not.toContain("plugin");
+  it("includes plugin and excludes plugin_pin", () => {
+    expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("plugin");
+    expect(LISTABLE_FILTER_RESOURCE_TYPES).not.toContain("plugin_pin");
     expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("skill");
   });
 });

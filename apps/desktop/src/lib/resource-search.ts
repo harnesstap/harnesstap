@@ -12,9 +12,14 @@ const RESOURCE_TYPE_PREFIXES = new Set([
   "command",
   "env_var",
   "model_config",
-  "plugin_pin",
   "plugin",
+  "plugin_pin",
 ]);
+
+/** Legacy `plugin_pin:` search prefix matches stored `plugin` rows. */
+function canonicalSearchType(section: string): string {
+  return section === "plugin_pin" ? "plugin" : section;
+}
 
 export function isResourceTypeSearchPrefix(section: string): boolean {
   return RESOURCE_TYPE_PREFIXES.has(section);
@@ -78,7 +83,11 @@ export function filterLibraryResourcesBySearch(
       : parsed;
 
   return resources.filter((resource) => {
-    if (sectionIsResourceType && resource.type !== parsed.section) {
+    if (
+      sectionIsResourceType &&
+      parsed.section !== undefined &&
+      resource.type !== canonicalSearchType(parsed.section)
+    ) {
       return false;
     }
     const haystack = [
@@ -150,7 +159,11 @@ export function filterContentsResourcesBySearch(
       : parsed;
 
   return resources.filter((resource) => {
-    if (sectionIsResourceType && resource.type !== parsed.section) {
+    if (
+      sectionIsResourceType &&
+      parsed.section !== undefined &&
+      resource.type !== canonicalSearchType(parsed.section)
+    ) {
       return false;
     }
     return matchesListSearchQuery(

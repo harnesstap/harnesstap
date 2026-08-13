@@ -12,7 +12,7 @@ export const LISTABLE_FILTER_RESOURCE_TYPES = [
   "command",
   "env_var",
   "model_config",
-  "plugin_pin",
+  "plugin",
 ] as const;
 
 export type UpdatedPreset = "all" | "1d" | "7d" | "30d" | "90d" | "custom";

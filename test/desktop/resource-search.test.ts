@@ -60,6 +60,23 @@ describe("filterLibraryResourcesBySearch", () => {
   it("returns all rows for empty search", () => {
     expect(filterLibraryResourcesBySearch(rows, "  ")).toEqual(rows);
   });
+
+  it("maps legacy plugin_pin: prefix to plugin rows", () => {
+    const withPlugin = [
+      ...rows,
+      resource({ id: "4", type: "plugin", name: "formatter", namespace: "hub" }),
+    ];
+    expect(
+      filterLibraryResourcesBySearch(withPlugin, "plugin_pin:formatter").map(
+        (row) => row.id,
+      ),
+    ).toEqual(["4"]);
+    expect(
+      filterLibraryResourcesBySearch(withPlugin, "plugin:formatter").map(
+        (row) => row.id,
+      ),
+    ).toEqual(["4"]);
+  });
 });
 
 describe("filterLibraryResourcesByProfile", () => {
