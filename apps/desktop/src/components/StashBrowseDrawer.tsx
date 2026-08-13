@@ -1,19 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  Bot,
-  ArchiveRestore,
-  FileCode2,
-  FileText,
-  Package,
-  Plug,
-  Shield,
-  Sparkles,
-  Terminal,
-  Variable,
-  Webhook,
-  Wrench,
-  X,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArchiveRestore, FileText, X } from "lucide-react";
 import {
   connectAgent,
   fetchProfileStash,
@@ -25,37 +11,22 @@ import {
   stashApplySuccessMessage,
   stashRestoreDropSuccessMessage,
 } from "../lib/api/stash-apply";
+import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import { hoverModelFromProfileResource } from "../lib/resource-hover";
 import type { ProfileContentsResource, ProfileStashEntry } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import {
+  ResourceDetailPane,
+  type ResourceDetailTarget,
+} from "./ResourceDetailPane";
+import { TypeIcon } from "./TypeIcon";
+import {
+  ResourceRowIdentity,
+  ResourceRowMeta,
+  ResourceRowRoot,
+} from "./ui/resource-row";
 
 const ICON_SIZE = 14;
-
-function TypeIcon({ type }: { type: string }): ReactNode {
-  switch (type) {
-    case "skill":
-      return <Sparkles size={ICON_SIZE} aria-hidden />;
-    case "mcp_server":
-      return <Plug size={ICON_SIZE} aria-hidden />;
-    case "instruction":
-      return <FileText size={ICON_SIZE} aria-hidden />;
-    case "rule":
-      return <FileCode2 size={ICON_SIZE} aria-hidden />;
-    case "agent":
-      return <Bot size={ICON_SIZE} aria-hidden />;
-    case "command":
-      return <Terminal size={ICON_SIZE} aria-hidden />;
-    case "hook":
-      return <Webhook size={ICON_SIZE} aria-hidden />;
-    case "permission":
-      return <Shield size={ICON_SIZE} aria-hidden />;
-    case "env_var":
-      return <Variable size={ICON_SIZE} aria-hidden />;
-    case "plugin_pin":
-      return <Package size={ICON_SIZE} aria-hidden />;
-    default:
-      return <Wrench size={ICON_SIZE} aria-hidden />;
-  }
-}
 
 function formatStashTimestamp(value: string): string {
   const date = new Date(value);
@@ -118,6 +89,9 @@ export function StashBrowseDrawer({
   const [stashAction, setStashAction] = useState<StashDrawerAction>(null);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [bannerSuccess, setBannerSuccess] = useState<string | null>(null);
+  const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
+    null,
+  );
 
   const resolvedEntries = overlayEntries ?? entries;
   const stashBusy = stashAction !== null;
@@ -140,6 +114,7 @@ export function StashBrowseDrawer({
       setStashAction(null);
       setBannerError(null);
       setBannerSuccess(null);
+      setDetailTarget(null);
       return;
     }
     if (baseUrl) {
@@ -205,6 +180,7 @@ export function StashBrowseDrawer({
       return;
     }
     setSelectedId(resolvedEntries[0]?.id ?? null);
+    setDetailTarget(null);
   }, [resolvedEntries, open]);
 
   const selectedEntry = useMemo(
@@ -343,7 +319,10 @@ export function StashBrowseDrawer({
                         .filter(Boolean)
                         .join(" ")}
                       aria-selected={selected}
-                      onClick={() => setSelectedId(entry.id)}
+                      onClick={() => {
+                        setSelectedId(entry.id);
+                        setDetailTarget(null);
+                      }}
                     >
                       <strong>{entry.profile_name}</strong>
                       <small>
@@ -402,20 +381,32 @@ export function StashBrowseDrawer({
                           </h3>
                           <ul className="resources-list">
                             {group.resources.map((resource) => (
-                              <li className="resources-list-item" key={`${resource.type}:${resource.name}`}>
-                                <div className="resources-list-main">
-                                  <span
-                                    className="resources-list-name"
-                                    title={resource.source || undefined}
-                                  >
-                                    {resource.name}
-                                  </span>
-                                  {resource.source ? (
-                                    <span className="muted resources-list-source">
-                                      {resource.source}
-                                    </span>
-                                  ) : null}
-                                </div>
+                              <li
+                                className="resources-list-item"
+                                key={`${resource.type}:${resource.name}`}
+                              >
+                                <ResourceRowRoot
+                                  hover={hoverModelFromProfileResource(resource)}
+                                >
+                                  <ResourceRowIdentity
+                                    type={resource.type}
+                                    label={resource.name}
+                                    onOpen={() =>
+                                      setDetailTarget({
+                                        selector:
+                                          resource.id
+                                          ?? `${resource.type}:${resource.name}`,
+                                        label: resource.name,
+                                        pathHint: resource.source,
+                                      })
+                                    }
+                                  />
+                                  <ResourceRowMeta
+                                    harnessIds={relatedHarnessesForResourceType(
+                                      resource.type,
+                                    )}
+                                  />
+                                </ResourceRowRoot>
                               </li>
                             ))}
                           </ul>
@@ -482,6 +473,14 @@ export function StashBrowseDrawer({
           </button>
         </div>
       </div>
+
+      <ResourceDetailPane
+        open={detailTarget !== null}
+        target={detailTarget}
+        baseUrl={resolvedBaseUrl}
+        token={resolvedToken}
+        onClose={() => setDetailTarget(null)}
+      />
     </div>
   );
 }

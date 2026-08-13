@@ -2779,6 +2779,8 @@ export function App() {
       <StashBrowseDrawer
         open={stashBrowseOpen}
         entries={stashEntries}
+        baseUrl={baseUrl}
+        token={token}
         onClose={() => setStashBrowseOpen(false)}
       />
 
