@@ -1,17 +1,22 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   Bot,
+  ChevronDown,
+  ChevronRight,
   Diff,
   ExternalLink,
   FileCode2,
   FileText,
+  Folder,
   Layers,
   Minus,
   Package,
+  Pencil,
   Plug,
   Plus,
   Shield,
   Sparkles,
+  Store,
   Terminal,
   Trash2,
   Variable,
@@ -21,13 +26,21 @@ import {
 import { ButtonSpinner } from "./ButtonSpinner";
 import {
   aggregateInstallGaps,
+  countFileChangeKindResources,
   diffProfileContents,
   fallbackTypeCounts,
   fileChangeAction,
+  fileChangeGroupHoverRows,
+  fileChangeGroupHoverTitle,
+  filterFileChangeGroups,
+  groupFileChangesByResource,
   orderedTypeCounts,
   summarizeStackChanges,
   typeCountsFromItems,
   type ContentsDiffItem,
+  type FileChangeHoverRow,
+  type FileChangeKind,
+  type FileChangeResourceGroup,
   type StackChangeSummaryRow,
   type StackChangeTone,
 } from "../lib/contents-diff";
@@ -35,7 +48,6 @@ import { fileChangeRowActions } from "../lib/file-change-actions";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
   filterContentsResourcesBySearch,
-  filterPathsBySearch,
   LIST_PAGE_SIZE,
   nextVisibleCount,
 } from "../lib/resource-search";
@@ -161,16 +173,20 @@ function resourceDetailTarget(
 function ResourceNameButton({
   label,
   path,
+  className,
   onOpen,
 }: {
   label: string;
   path?: string | null;
+  className?: string;
   onOpen: () => void;
 }) {
   return (
     <button
       type="button"
-      className="resource-name-btn enabled-label"
+      className={["resource-name-btn", "enabled-label", className]
+        .filter(Boolean)
+        .join(" ")}
       title={path || undefined}
       onClick={onOpen}
     >
@@ -664,6 +680,66 @@ function matchesPinSearch(
   ).length > 0;
 }
 
+function OriginHoverIcon({ originKind }: { originKind: string }): ReactNode {
+  switch (originKind) {
+    case "marketplace_link":
+      return <Store size={ICON_SIZE} aria-hidden />;
+    case "local_snapshot":
+      return <Folder size={ICON_SIZE} aria-hidden />;
+    case "manual":
+      return <Pencil size={ICON_SIZE} aria-hidden />;
+    default:
+      return <Package size={ICON_SIZE} aria-hidden />;
+  }
+}
+
+function FileChangeHoverTooltip({
+  rows,
+}: {
+  rows: FileChangeHoverRow[];
+}): ReactNode {
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <div className="file-change-tooltip" role="tooltip">
+      {rows.map((row) => {
+        let icon: ReactNode;
+        switch (row.kind) {
+          case "path":
+            icon = <FileText size={ICON_SIZE} aria-hidden />;
+            break;
+          case "type":
+            icon = <TypeIcon type={row.type} />;
+            break;
+          case "origin":
+            icon = <OriginHoverIcon originKind={row.originKind} />;
+            break;
+          case "destinations":
+            icon = <Folder size={ICON_SIZE} aria-hidden />;
+            break;
+          default: {
+            const neverKind: never = row;
+            return neverKind;
+          }
+        }
+        return (
+          <div className="file-change-tooltip-row" key={`${row.kind}-${row.text}`}>
+            <span className="file-change-tooltip-icon">{icon}</span>
+            <span
+              className={
+                row.kind === "path" ? "mono file-change-tooltip-path" : undefined
+              }
+            >
+              {row.kind === "path" ? row.text.replaceAll("/", "/\u200b") : row.text}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function FileChangeRowActions({
   change,
   row,
@@ -708,8 +784,16 @@ function FileChangeRowActions({
           ]
             .filter(Boolean)
             .join(" ")}
-          aria-label={`Open ${change.path} in editor`}
-          title="Open in default editor"
+          aria-label={
+            change.type === "deleted"
+              ? `Open ${change.resource?.name ?? change.path} in editor`
+              : `Open ${change.path} in editor`
+          }
+          title={
+            change.type === "deleted"
+              ? "Open resource in default editor"
+              : "Open in default editor"
+          }
           disabled={busy}
           aria-busy={openBusy}
           onClick={() => void onOpenFileChange(change, absolutePath)}
@@ -787,6 +871,82 @@ function FileChangeRowActions({
   );
 }
 
+const FILE_CHANGE_KIND_BADGES: Array<{
+  kind: FileChangeKind;
+  label: string;
+  Icon: typeof Plus;
+}> = [
+  { kind: "add", label: "Added", Icon: Plus },
+  { kind: "remove", label: "Removed", Icon: Minus },
+  { kind: "update", label: "Modified", Icon: Pencil },
+];
+
+function fileChangeKindClass(kind: FileChangeKind): FileChangeKind {
+  switch (kind) {
+    case "add":
+    case "remove":
+    case "update":
+      return kind;
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
+function fileChangeKindMark(kind: FileChangeKind): string {
+  switch (kind) {
+    case "add":
+      return "+";
+    case "remove":
+      return "−";
+    case "update":
+      return "~";
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
+function groupKindCounts(
+  group: FileChangeResourceGroup,
+): Record<FileChangeKind, number> {
+  const counts: Record<FileChangeKind, number> = {
+    add: 0,
+    remove: 0,
+    update: 0,
+  };
+  for (const change of group.changes) {
+    counts[fileChangeAction(change).action] += 1;
+  }
+  return counts;
+}
+
+function FileChangeGroupCounts({
+  group,
+}: {
+  group: FileChangeResourceGroup;
+}): ReactNode {
+  const counts = groupKindCounts(group);
+  return (
+    <span className="file-change-group-counts" aria-hidden>
+      {FILE_CHANGE_KIND_BADGES.map(({ kind, Icon }) => {
+        const count = counts[kind];
+        if (count === 0) {
+          return null;
+        }
+        return (
+          <span key={kind} className={`file-change-group-count ${kind}`}>
+            <Icon size={ICON_SIZE} strokeWidth={2} />
+            <span>{count}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function FileChangeRows({
   changes,
   filesRootPath,
@@ -797,6 +957,7 @@ function FileChangeRows({
   onDiffFileChange,
   onAddFileChange,
   onDropFileChange,
+  onOpenResource,
 }: {
   changes: DriftFileChange[];
   filesRootPath?: string | null;
@@ -807,97 +968,219 @@ function FileChangeRows({
   onDiffFileChange?: (change: DriftFileChange) => void;
   onAddFileChange?: (change: DriftFileChange) => Promise<void>;
   onDropFileChange?: (change: DriftFileChange) => Promise<void>;
+  onOpenResource?: (target: ResourceDetailTarget) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<Set<FileChangeKind>>(
+    () => new Set(),
+  );
   const [visibleCount, setVisibleCount] = useState(LIST_PAGE_SIZE);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
 
-  const uniqueChanges = (() => {
-    const seen = new Set<string>();
-    const deduped: DriftFileChange[] = [];
-    for (const change of changes) {
-      const key = `${change.type}:${change.path}:${change.platform ?? ""}`;
-      if (seen.has(key) || seen.has(change.path)) {
-        continue;
-      }
-      seen.add(key);
-      seen.add(change.path);
-      deduped.push(change);
-    }
-    return deduped;
-  })();
+  const groups = groupFileChangesByResource(changes);
+  const kindCounts = countFileChangeKindResources(
+    groups.flatMap((group) => group.changes),
+  );
 
-  if (uniqueChanges.length === 0) {
+  if (groups.length === 0) {
     return <div className="muted">No file changes vs live target</div>;
   }
 
-  const filteredChanges = uniqueChanges.filter((change) =>
-    filterPathsBySearch([change.path], search).length > 0,
-  );
-  const visible = filteredChanges.slice(0, visibleCount);
+  const filteredGroups = filterFileChangeGroups(groups, kindFilter, search);
+  const visible = filteredGroups.slice(0, visibleCount);
+
+  const rowForChange = (change: DriftFileChange) => {
+    const profileHasResource = change.resource
+      ? profileResourceKeys.has(`${change.resource.type}:${change.resource.name}`)
+      : false;
+    return fileChangeRowActions(change, {
+      rootPath: filesRootPath ?? null,
+      profileHasResource,
+    });
+  };
 
   return (
-    <>
-      <ListSearchField
-        value={search}
-        onChange={(value) => {
-          setSearch(value);
-          setVisibleCount(LIST_PAGE_SIZE);
-        }}
-        placeholder="Filter paths (name or type:name)"
-        label="Filter file changes"
-      />
-      {visible.map((change, index) => {
-        const profileHasResource = change.resource
-          ? profileResourceKeys.has(`${change.resource.type}:${change.resource.name}`)
-          : false;
-        const row = fileChangeRowActions(change, {
-          rootPath: filesRootPath ?? null,
-          profileHasResource,
-        });
-        const busy = fileChangeBusyPath === change.path;
-        return (
-          <div
-            className={`diff-row ${row.action === "add" ? "add" : row.action === "remove" ? "remove" : "update"}`}
-            key={`${change.type}-${change.path}-${change.platform ?? "na"}-${index}`}
-          >
-            <span className="diff-mark" aria-hidden>
-              {row.action === "add" ? "+" : row.action === "remove" ? "−" : "~"}
-            </span>
-            <span className="diff-body">
-              <span
-                className="diff-label mono"
-                title={row.absolutePath ?? undefined}
+    <div className="file-change-list">
+      <div className="file-change-filters">
+        <div
+          className="file-change-kind-badges"
+          role="group"
+          aria-label="Filter file changes by kind"
+        >
+          {FILE_CHANGE_KIND_BADGES.map(({ kind, label, Icon }) => {
+            const count = kindCounts[kind];
+            const on = kindFilter.has(kind);
+            return (
+              <button
+                key={kind}
+                type="button"
+                className={[
+                  "file-change-kind-badge",
+                  kind,
+                  on ? "on" : "",
+                  count === 0 ? "empty" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-pressed={on}
+                aria-label={`Filter ${label.toLowerCase()} (${count})`}
+                title={label}
+                disabled={count === 0}
+                onClick={() => {
+                  setKindFilter((current) => {
+                    const next = new Set(current);
+                    if (next.has(kind)) {
+                      next.delete(kind);
+                    } else {
+                      next.add(kind);
+                    }
+                    return next;
+                  });
+                  setVisibleCount(LIST_PAGE_SIZE);
+                }}
               >
-                {change.path}
-              </span>
-              {change.platform ? (
-                <RelatedHarnessIcons harnessIds={[change.platform]} />
+                <Icon size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                <span>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        <ListSearchField
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            setVisibleCount(LIST_PAGE_SIZE);
+          }}
+          placeholder="Filter resources or paths"
+          label="Filter file changes"
+        />
+      </div>
+      {visible.map((group) => {
+        const expanded = expandedKeys.has(group.key);
+        const firstChange = group.changes[0];
+        const firstRow = firstChange ? rowForChange(firstChange) : null;
+        const resource = group.resource;
+        return (
+          <div className="file-change-group" key={group.key}>
+            <div
+              className="diff-row file-change-group-row"
+              aria-label={fileChangeGroupHoverTitle(group)}
+            >
+              {!group.singleton ? (
+                <button
+                  type="button"
+                  className="file-change-expand-btn"
+                  aria-expanded={expanded}
+                  aria-label={expanded ? "Collapse file paths" : "Expand file paths"}
+                  onClick={() => {
+                    setExpandedKeys((current) => {
+                      const next = new Set(current);
+                      if (next.has(group.key)) {
+                        next.delete(group.key);
+                      } else {
+                        next.add(group.key);
+                      }
+                      return next;
+                    });
+                  }}
+                >
+                  {expanded ? (
+                    <ChevronDown size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                  ) : (
+                    <ChevronRight size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                  )}
+                </button>
               ) : null}
-            </span>
-            <FileChangeRowActions
-              change={change}
-              row={row}
-              busy={busy}
-              busyAction={busy ? fileChangeBusyAction : null}
-              onOpenFileChange={onOpenFileChange}
-              onDiffFileChange={onDiffFileChange}
-              onAddFileChange={onAddFileChange}
-              onDropFileChange={onDropFileChange}
-            />
+              <span className="diff-body">
+                {resource ? (
+                  onOpenResource ? (
+                    <ResourceNameButton
+                      label={resource.name}
+                      className="diff-label"
+                      onOpen={() =>
+                        onOpenResource({
+                          selector: `${resource.type}:${resource.name}`,
+                          label: resource.name,
+                          pathHint: firstRow?.absolutePath,
+                        })
+                      }
+                    />
+                  ) : (
+                    <span className="diff-label">{resource.name}</span>
+                  )
+                ) : (
+                  <span className="diff-label mono">
+                    {firstChange?.path ?? group.key}
+                  </span>
+                )}
+                <RelatedHarnessIcons harnessIds={group.platforms} />
+                <FileChangeGroupCounts group={group} />
+              </span>
+              {group.singleton && firstChange && firstRow ? (
+                <FileChangeRowActions
+                  change={firstChange}
+                  row={firstRow}
+                  busy={fileChangeBusyPath === firstChange.path}
+                  busyAction={
+                    fileChangeBusyPath === firstChange.path
+                      ? fileChangeBusyAction
+                      : null
+                  }
+                  onOpenFileChange={onOpenFileChange}
+                  onDiffFileChange={onDiffFileChange}
+                  onAddFileChange={onAddFileChange}
+                  onDropFileChange={onDropFileChange}
+                />
+              ) : null}
+              <FileChangeHoverTooltip rows={fileChangeGroupHoverRows(group)} />
+            </div>
+            {!group.singleton && expanded
+              ? group.changes.map((change, index) => {
+                  const row = rowForChange(change);
+                  const kind = row.action;
+                  const busy = fileChangeBusyPath === change.path;
+                  return (
+                    <div
+                      className={`diff-row file-change-child ${fileChangeKindClass(kind)}`}
+                      key={`${change.type}-${change.path}-${change.platform ?? "na"}-${index}`}
+                    >
+                      <span className="diff-mark" aria-hidden>
+                        {fileChangeKindMark(kind)}
+                      </span>
+                      <span className="diff-body">
+                        <span className="diff-label mono">{change.path}</span>
+                        {change.platform ? (
+                          <RelatedHarnessIcons harnessIds={[change.platform]} />
+                        ) : null}
+                      </span>
+                      <FileChangeRowActions
+                        change={change}
+                        row={row}
+                        busy={busy}
+                        busyAction={busy ? fileChangeBusyAction : null}
+                        onOpenFileChange={onOpenFileChange}
+                        onDiffFileChange={onDiffFileChange}
+                        onAddFileChange={onAddFileChange}
+                        onDropFileChange={onDropFileChange}
+                      />
+                    </div>
+                  );
+                })
+              : null}
           </div>
         );
       })}
       <ListTruncationControls
         visible={visible.length}
-        total={filteredChanges.length}
+        total={filteredGroups.length}
         onMore={() =>
           setVisibleCount((current) =>
-            nextVisibleCount(current, filteredChanges.length),
+            nextVisibleCount(current, filteredGroups.length),
           )
         }
-        onShowAll={() => setVisibleCount(filteredChanges.length)}
+        onShowAll={() => setVisibleCount(filteredGroups.length)}
       />
-    </>
+    </div>
   );
 }
 
@@ -1460,24 +1743,28 @@ export function LiveStatePanel({
 
                   {view === "home" && installGaps.length > 0 ? (
                     <details className="diff-section" open>
-                      <summary className="compare-title">Install gaps (in profile)</summary>
+                      <summary className="compare-title">
+                        <span
+                          className="compare-title-text"
+                          title="In this profile, missing on the harness. Apply installs them."
+                        >
+                          Apply will install
+                          {` · ${installGaps.length}`}
+                        </span>
+                      </summary>
                       {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
                         <div className="muted">Checking live installs…</div>
                       ) : (
                         installGaps.map((row) => (
-                          <div
-                            className={`diff-row ${row.kind === "missing" ? "update" : "remove"}`}
-                            key={row.key}
-                          >
+                          <div className="diff-row add" key={row.key}>
                             <span className="diff-mark" aria-hidden>
-                              {row.kind === "missing" ? "!" : "·"}
+                              +
                             </span>
                             <span className="diff-body">
+                              <TypeIcon type={row.iconType} />
                               <span className="diff-label">{row.label}</span>
                               <span className="diff-detail muted">
-                                {row.kind === "missing"
-                                  ? "not installed"
-                                  : "outside profile"}
+                                will install
                               </span>
                               <RelatedHarnessIcons harnessIds={row.harnesses} />
                             </span>
@@ -1538,6 +1825,7 @@ export function LiveStatePanel({
                       onDiffFileChange={onDiffFileChange}
                       onAddFileChange={onAddFileChange}
                       onDropFileChange={onDropFileChange}
+                      onOpenResource={openResource}
                     />
                   </details>
                 </div>

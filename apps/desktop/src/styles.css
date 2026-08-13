@@ -1105,6 +1105,137 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   margin: 0.35rem 0 0.5rem;
 }
 
+.file-change-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-change-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.file-change-filters .list-search {
+  margin: 0;
+}
+
+.file-change-kind-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.file-change-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem 0.15rem 0.4rem;
+  font-size: 11px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.file-change-kind-badge.add {
+  color: var(--green);
+}
+
+.file-change-kind-badge.remove {
+  color: var(--red);
+}
+
+.file-change-kind-badge.update {
+  color: var(--yellow);
+}
+
+.file-change-kind-badge.on {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 16%, var(--surface));
+}
+
+.file-change-kind-badge:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.file-change-kind-badge.empty:not(.on) {
+  opacity: 0.55;
+}
+
+.file-change-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-change-group-row {
+  position: relative;
+}
+
+.file-change-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.file-change-expand-btn:hover,
+.file-change-expand-btn:focus-visible {
+  color: var(--fg);
+}
+
+.file-change-group-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.file-change-group-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 11px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.file-change-group-count.add {
+  color: var(--green);
+}
+
+.file-change-group-count.remove {
+  color: var(--red);
+}
+
+.file-change-group-count.update {
+  color: var(--yellow);
+}
+
+.file-change-child {
+  padding-left: 1.35rem;
+}
+
+.file-change-group-row:hover > .file-change-tooltip,
+.file-change-group-row:focus-within > .file-change-tooltip {
+  display: grid;
+  gap: 0.28rem;
+}
+
 .list-search input {
   width: 100%;
   box-sizing: border-box;
@@ -1639,6 +1770,60 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   gap: 0.3rem 0.45rem;
   min-width: 0;
   flex: 1;
+  position: relative;
+}
+
+.file-change-tooltip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 0.35rem);
+  z-index: 40;
+  display: none;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--fg) 16%, transparent);
+  pointer-events: none;
+}
+
+.diff-row:hover .file-change-tooltip,
+.diff-row:focus-within .file-change-tooltip {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.file-change-tooltip-row {
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr);
+  gap: 0.4rem;
+  align-items: start;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--fg);
+}
+
+.file-change-tooltip-row > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.file-change-tooltip-path {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.file-change-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  line-height: 0;
+  margin-top: 0.1rem;
 }
 
 .diff-label {
