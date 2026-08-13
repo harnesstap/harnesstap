@@ -1,10 +1,12 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { ResourceHoverModel } from "../../lib/resource-hover";
 import { RelatedHarnessIcons } from "../HarnessIcons";
 import { TypeIcon } from "../TypeIcon";
 import { Label } from "./label";
 import { ResourceHoverCard } from "./resource-hover-card";
+
+const ResourceRowDisabledContext = createContext(false);
 
 export function ResourceRowRoot({
   hover,
@@ -20,11 +22,13 @@ export function ResourceRowRoot({
   disabled?: boolean;
 }): ReactNode {
   return (
-    <ResourceHoverCard model={hover} disabled={disabled}>
-      <div className={cn("resource-row", className)} data-testid={testId}>
-        {children}
-      </div>
-    </ResourceHoverCard>
+    <ResourceRowDisabledContext.Provider value={Boolean(disabled)}>
+      <ResourceHoverCard model={hover} disabled={disabled}>
+        <div className={cn("resource-row", className)} data-testid={testId}>
+          {children}
+        </div>
+      </ResourceHoverCard>
+    </ResourceRowDisabledContext.Provider>
   );
 }
 
@@ -57,10 +61,16 @@ export function ResourceRowIdentity({
   children,
   className,
 }: ResourceRowIdentityProps): ReactNode {
+  const disabled = useContext(ResourceRowDisabledContext);
   let name: ReactNode;
   if (onOpen) {
     name = (
-      <button type="button" className="resource-name-btn" onClick={onOpen}>
+      <button
+        type="button"
+        className="resource-name-btn"
+        disabled={disabled}
+        onClick={onOpen}
+      >
         {label}
       </button>
     );
