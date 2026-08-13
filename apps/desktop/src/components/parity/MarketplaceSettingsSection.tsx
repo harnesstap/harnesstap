@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addMarketplace, fetchMarketplaces } from "../../lib/agent-client";
+import { removeMarketplace } from "../../lib/api/marketplace-remove";
 import type { PluginMarketplaceEntry } from "../../lib/types";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -27,6 +30,8 @@ export function MarketplaceSettingsSection({
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [marketplaceWarning, setMarketplaceWarning] = useState<string | null>(null);
   const [marketplaceSuccess, setMarketplaceSuccess] = useState<string | null>(null);
+  const [marketplacePendingRemove, setMarketplacePendingRemove] =
+    useState<PluginMarketplaceEntry | null>(null);
   const marketplaceSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -76,6 +81,7 @@ export function MarketplaceSettingsSection({
         setMarketplaceError(null);
         setMarketplaceWarning(null);
         setMarketplaceSuccess(null);
+        setMarketplacePendingRemove(null);
         clearMarketplaceSuccessTimer();
       }
       return;
@@ -131,6 +137,33 @@ export function MarketplaceSettingsSection({
     }
   };
 
+  const onConfirmRemoveMarketplace = async () => {
+    if (!baseUrl || !token || marketplaceBusy || !marketplacePendingRemove) {
+      return;
+    }
+    const pending = marketplacePendingRemove;
+    setMarketplaceBusy(true);
+    setMarketplaceError(null);
+    setMarketplaceWarning(null);
+    setMarketplaceSuccess(null);
+    clearMarketplaceSuccessTimer();
+    try {
+      await removeMarketplace(baseUrl, token, pending.name);
+      setMarketplacePendingRemove(null);
+      await loadMarketplaces();
+      flashMarketplaceSuccess("Marketplace removed.");
+    } catch (removeError) {
+      setMarketplacePendingRemove(null);
+      setMarketplaceSuccess(null);
+      clearMarketplaceSuccessTimer();
+      setMarketplaceError(
+        errorMessage(removeError, "Could not remove marketplace."),
+      );
+    } finally {
+      setMarketplaceBusy(false);
+    }
+  };
+
   return (
     <section
       className="settings-section"
@@ -161,13 +194,28 @@ export function MarketplaceSettingsSection({
               key={entry.name}
               data-testid={`marketplace-row-${entry.name}`}
             >
-              <span className="marketplace-row-name">{entry.name}</span>
-              <span className="marketplace-row-url muted">{entry.url}</span>
-              {entry.platforms.length > 0 ? (
-                <span className="marketplace-row-platforms muted">
-                  {entry.platforms.join(", ")}
-                </span>
-              ) : null}
+              <div className="flex flex-row items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="marketplace-row-name">{entry.name}</span>
+                  <span className="marketplace-row-url muted">{entry.url}</span>
+                  {entry.platforms.length > 0 ? (
+                    <span className="marketplace-row-platforms muted">
+                      {entry.platforms.join(", ")}
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="icon-action"
+                  aria-label={`Remove marketplace ${entry.name}`}
+                  title="Remove marketplace"
+                  data-testid={`marketplace-remove-${entry.name}`}
+                  disabled={marketplaceControlsDisabled}
+                  onClick={() => setMarketplacePendingRemove(entry)}
+                >
+                  <Trash2 size={14} aria-hidden />
+                </button>
+              </div>
             </li>
           ))
         )}
@@ -216,6 +264,29 @@ export function MarketplaceSettingsSection({
         {marketplaceBusy ? <ButtonSpinner size={16} /> : null}
         {marketplaceBusy ? "Adding…" : "Add marketplace"}
       </button>
+      <ConfirmDialog
+        open={marketplacePendingRemove !== null}
+        title="Remove marketplace?"
+        description={
+          marketplacePendingRemove ? (
+            <p className="muted">
+              Removing <strong>{marketplacePendingRemove.name}</strong> unregisters
+              this source. Plugins already pinned on profiles stay installed.
+            </p>
+          ) : (
+            ""
+          )
+        }
+        confirmLabel="Remove marketplace"
+        cancelLabel="Cancel"
+        confirmBusy={marketplaceBusy}
+        onConfirm={() => void onConfirmRemoveMarketplace()}
+        onCancel={() => {
+          if (!marketplaceBusy) {
+            setMarketplacePendingRemove(null);
+          }
+        }}
+      />
     </section>
   );
 }
