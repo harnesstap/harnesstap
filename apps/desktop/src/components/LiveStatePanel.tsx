@@ -1743,28 +1743,24 @@ export function LiveStatePanel({
 
                   {view === "home" && installGaps.length > 0 ? (
                     <details className="diff-section" open>
-                      <summary className="compare-title">
-                        <span
-                          className="compare-title-text"
-                          title="In this profile, missing on the harness. Apply installs them."
-                        >
-                          Apply will install
-                          {` · ${installGaps.length}`}
-                        </span>
-                      </summary>
+                      <summary className="compare-title">Install gaps (in profile)</summary>
                       {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
                         <div className="muted">Checking live installs…</div>
                       ) : (
                         installGaps.map((row) => (
-                          <div className="diff-row add" key={row.key}>
+                          <div
+                            className={`diff-row ${row.kind === "missing" ? "update" : "remove"}`}
+                            key={row.key}
+                          >
                             <span className="diff-mark" aria-hidden>
-                              +
+                              {row.kind === "missing" ? "!" : "·"}
                             </span>
                             <span className="diff-body">
-                              <TypeIcon type={row.iconType} />
                               <span className="diff-label">{row.label}</span>
                               <span className="diff-detail muted">
-                                will install
+                                {row.kind === "missing"
+                                  ? "not installed"
+                                  : "outside profile"}
                               </span>
                               <RelatedHarnessIcons harnessIds={row.harnesses} />
                             </span>
