@@ -36,6 +36,7 @@ import {
 import { configureCommandGroup } from "../help.js";
 import { renderCliError } from "../runtime.js";
 import { formatCommand } from "../shared.js";
+import { registerResourceParityCommands } from "./parity-register.js";
 
 async function deleteLibraryResource(selector: string): Promise<void> {
   const result = resolveResource(selector);
@@ -348,4 +349,6 @@ export function registerResourceCommands(root: Command): void {
         }
       }
     });
+
+  registerResourceParityCommands(resourceCmd);
 }

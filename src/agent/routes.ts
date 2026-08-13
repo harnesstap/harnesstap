@@ -15,6 +15,7 @@ import {
   createCloudAuthHandlers,
 } from "./cloud-auth-handlers.js";
 import { jsonResponse } from "./http.js";
+import { tryParityRoutes } from "./parity-routes.js";
 import { handleConstraintRecoveryRun } from "./constraint-recovery-handlers.js";
 import { handleProfileApplyPreview } from "./profile-apply-preview-handlers.js";
 import { handleProfileAddAllResources, handleProfileAddResource, handleProfileCommitResource } from "./profile-add-resource-handlers.js";
@@ -778,6 +779,15 @@ export function createAgentFetchHandler(
         }
       }
       }
+      }
+    }
+
+    if (response.status === 404) {
+      const parity = await tryParityRoutes(request, token, {
+        isAgentSwitchInProgress: routeDeps.isAgentSwitchInProgress,
+      });
+      if (parity) {
+        response = parity;
       }
     }
 

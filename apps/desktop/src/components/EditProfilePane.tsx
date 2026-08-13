@@ -34,6 +34,7 @@ import {
   ResourceSelectionList,
   SelectionList,
 } from "./CompositionPickers";
+import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 
 export interface EditProfilePaneProps {
   profileName: string;
@@ -47,6 +48,7 @@ export interface EditProfilePaneProps {
     profileName: string;
     affectsApply: boolean;
   }) => void | Promise<void>;
+  onDeleted?: () => void;
   onRequestCut?: (name: string, version: string) => void;
 }
 
@@ -66,6 +68,7 @@ export function EditProfilePane({
   onClose,
   onProfileRenamed,
   onMutated,
+  onDeleted,
   onRequestCut,
 }: EditProfilePaneProps) {
   const [detail, setDetail] = useState<ProfileDetail | null>(null);
@@ -619,6 +622,16 @@ export function EditProfilePane({
               )}
             </div>
           </section>
+          <EditProfileParitySlots
+            profileName={profileName}
+            baseUrl={baseUrl}
+            token={token}
+            disabled={disabled || busy}
+            onDeleted={() => onDeleted?.()}
+            onMutated={() => {
+              void onMutated({ profileName, affectsApply: true });
+            }}
+          />
         </div>
       ) : null}
     </main>

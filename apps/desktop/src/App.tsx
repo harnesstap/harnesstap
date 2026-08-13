@@ -13,6 +13,9 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { CutVersionsModal } from "./components/CutVersionsModal";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
 import { EditProfilePane } from "./components/EditProfilePane";
+import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
+import { ParityChrome } from "./components/parity/ParityChrome";
+import { PluginsWorkspace } from "./components/parity/PluginsWorkspace";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
@@ -68,7 +71,7 @@ import type {
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 
-type WorkspaceFocus = "resources" | "scope";
+type WorkspaceFocus = "resources" | "scope" | "environments" | "plugins";
 
 const HEADER_ICON_SIZE = 18;
 const RAIL_ICON_SIZE = 15;
@@ -1775,6 +1778,26 @@ export function App() {
             >
               <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
             </button>
+            <ParityChrome
+              baseUrl={baseUrl}
+              token={token}
+              connected={connected}
+              switching={switching}
+              projectPath={view === "project" ? projectPath : null}
+              selectedProfile={selectedProfile}
+              workspaceFocus={workspaceFocus}
+              onWorkspaceFocus={(focus) => {
+                setEditingProfile(null);
+                setWorkspaceFocus(focus);
+              }}
+              onSuccess={(message) => {
+                setSuccessMessage(message);
+                window.setTimeout(() => setSuccessMessage(null), 3000);
+              }}
+              onProfilesChanged={() => {
+                void refreshProfiles();
+              }}
+            />
             <div
               className="header-focus-segment"
               role="group"
@@ -1989,7 +2012,7 @@ export function App() {
         </div>
       )}
 
-      <div className={`layout${workspaceFocus === "resources" ? " resources-focus" : ""}`}>
+      <div className={`layout${workspaceFocus === "scope" ? "" : " resources-focus"}`}>
         {workspaceFocus === "scope" ? (
         <nav className="profiles-rail" aria-label="Profiles">
           <div className="profiles-brand">
@@ -2287,7 +2310,32 @@ export function App() {
         </nav>
         ) : null}
 
-        {workspaceFocus === "resources" ? (
+        {workspaceFocus === "environments" ? (
+          <EnvironmentsWorkspace
+            baseUrl={baseUrl}
+            token={token}
+            projectPath={view === "project" ? projectPath : null}
+            disabled={switching}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
+          />
+        ) : workspaceFocus === "plugins" ? (
+          <PluginsWorkspace
+            baseUrl={baseUrl}
+            token={token}
+            selectedProfile={selectedProfile}
+            disabled={switching}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
+            onProfilesChanged={() => {
+              void refreshProfiles();
+            }}
+          />
+        ) : workspaceFocus === "resources" ? (
           <ResourcesPanel
             baseUrl={baseUrl}
             token={token}
@@ -2307,6 +2355,7 @@ export function App() {
               setEditingProfile(nextName);
             }}
             onMutated={maybeAutoReapplyAfterMutation}
+            onDeleted={clearProfileSelection}
             onRequestCut={
               editingProfile && baseUrl && token
                 ? (name, version) => openCutForProfile(name, version)

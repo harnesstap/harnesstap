@@ -6,11 +6,12 @@ import { registerConfigCommands } from "./cli/commands/config.js";
 import { registerEnvironmentCommands } from "./cli/commands/environment.js";
 import { registerHarnessCommands } from "./cli/commands/harness.js";
 import { registerMarketplaceCommands } from "./cli/commands/marketplace.js";
-import { registerApplyCommand } from "./cli/commands/apply.js";
+import { registerParityCommands } from "./cli/commands/parity-register.js";
 import {
   registerDeprecatedLayerAlias,
   registerPluginCommands,
 } from "./cli/commands/plugin.js";
+import { registerApplyCommand } from "./cli/commands/apply.js";
 import { registerMigrateCommands } from "./cli/commands/migrate.js";
 import { registerProfileCommands } from "./cli/commands/profile.js";
 import { registerResourceCommands } from "./cli/commands/resource.js";
@@ -37,6 +38,7 @@ registerPluginCommands(program);
 registerDeprecatedLayerAlias(program);
 registerMarketplaceCommands(program);
 registerApplyCommand(program);
+registerParityCommands(program);
 registerCommands(program);
 
 export { program } from "./cli/program.js";

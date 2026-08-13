@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Info } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -12,11 +11,10 @@ import {
 import { SelectionList } from "@/components/ui/selection-list";
 import { Switch } from "@/components/ui/switch";
 import {
-  addMarketplace,
   fetchHarnessSettings,
-  fetchMarketplaces,
   saveHarnessSettings,
 } from "../lib/agent-client";
+import { SettingsParitySections } from "./parity/SettingsParitySections";
 import {
   aliasesExcludingMain,
   canSaveHarnessSettings,
@@ -29,7 +27,6 @@ import type {
   HarnessCatalogEntry,
   HarnessSettingsPayload,
   MaterializationStrategy,
-  PluginMarketplaceEntry,
   PutHarnessSettingsInput,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
@@ -123,20 +120,10 @@ export function SettingsDrawer({
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [marketplaces, setMarketplaces] = useState<PluginMarketplaceEntry[]>([]);
-  const [marketplaceUrl, setMarketplaceUrl] = useState("");
-  const [marketplaceName, setMarketplaceName] = useState("");
-  const [marketplaceBusy, setMarketplaceBusy] = useState(false);
-  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
-  const [marketplaceWarning, setMarketplaceWarning] = useState<string | null>(null);
-  const [marketplaceSuccess, setMarketplaceSuccess] = useState<string | null>(null);
   const onSavedRef = useRef(onSaved);
   onSavedRef.current = onSaved;
   const saveGenerationRef = useRef(0);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const marketplaceSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
 
   const clearSuccessTimer = useCallback(() => {
     if (successTimerRef.current !== null) {
@@ -157,25 +144,6 @@ export function SettingsDrawer({
     [clearSuccessTimer],
   );
 
-  const clearMarketplaceSuccessTimer = useCallback(() => {
-    if (marketplaceSuccessTimerRef.current !== null) {
-      clearTimeout(marketplaceSuccessTimerRef.current);
-      marketplaceSuccessTimerRef.current = null;
-    }
-  }, []);
-
-  const flashMarketplaceSuccess = useCallback(
-    (message: string) => {
-      clearMarketplaceSuccessTimer();
-      setMarketplaceSuccess(message);
-      marketplaceSuccessTimerRef.current = setTimeout(() => {
-        setMarketplaceSuccess(null);
-        marketplaceSuccessTimerRef.current = null;
-      }, 3000);
-    },
-    [clearMarketplaceSuccessTimer],
-  );
-
   const resetLocal = useCallback(() => {
     clearSuccessTimer();
     setHarnesses([]);
@@ -189,15 +157,7 @@ export function SettingsDrawer({
     setError(null);
     setWarning(null);
     setSuccess(null);
-    setMarketplaces([]);
-    setMarketplaceUrl("");
-    setMarketplaceName("");
-    setMarketplaceBusy(false);
-    setMarketplaceError(null);
-    setMarketplaceWarning(null);
-    setMarketplaceSuccess(null);
-    clearMarketplaceSuccessTimer();
-  }, [clearMarketplaceSuccessTimer, clearSuccessTimer]);
+  }, [clearSuccessTimer]);
 
   const requestClose = useCallback(() => {
     if (busy) {
@@ -257,45 +217,11 @@ export function SettingsDrawer({
     };
   }, [open, baseUrl, token, projectPath, resetLocal, clearSuccessTimer]);
 
-  const loadMarketplaces = useCallback(async () => {
-    if (!baseUrl || !token) {
-      setMarketplaces([]);
-      return;
-    }
-    try {
-      const result = await fetchMarketplaces(baseUrl, token);
-      setMarketplaces(result.marketplaces);
-      setMarketplaceError(null);
-    } catch (loadError) {
-      setMarketplaces([]);
-      setMarketplaceError(
-        errorMessage(loadError, "Could not load marketplaces."),
-      );
-    }
-  }, [baseUrl, token]);
-
-  useEffect(() => {
-    if (!open || !baseUrl || !token) {
-      if (!open) {
-        setMarketplaceUrl("");
-        setMarketplaceName("");
-        setMarketplaceBusy(false);
-        setMarketplaceError(null);
-        setMarketplaceWarning(null);
-        setMarketplaceSuccess(null);
-        clearMarketplaceSuccessTimer();
-      }
-      return;
-    }
-    void loadMarketplaces();
-  }, [open, baseUrl, token, loadMarketplaces, clearMarketplaceSuccessTimer]);
-
   useEffect(
     () => () => {
       clearSuccessTimer();
-      clearMarketplaceSuccessTimer();
     },
-    [clearSuccessTimer, clearMarketplaceSuccessTimer],
+    [clearSuccessTimer],
   );
 
   const dirty = useMemo(
@@ -342,8 +268,6 @@ export function SettingsDrawer({
   );
 
   const controlsDisabled = disabled || busy || loading;
-  const marketplaceControlsDisabled =
-    !token || marketplaceBusy || disabled || busy || loading;
   const canSave = canSaveHarnessSettings({
     dirty,
     busy,
@@ -468,45 +392,6 @@ export function SettingsDrawer({
     }
   };
 
-  const onAddMarketplace = async () => {
-    if (!baseUrl || !token || marketplaceBusy) {
-      return;
-    }
-    const url = marketplaceUrl.trim();
-    const name = marketplaceName.trim();
-    if (!url || !name) {
-      return;
-    }
-    setMarketplaceBusy(true);
-    setMarketplaceError(null);
-    setMarketplaceWarning(null);
-    setMarketplaceSuccess(null);
-    clearMarketplaceSuccessTimer();
-    try {
-      const result = await addMarketplace(baseUrl, token, { url, name });
-      await loadMarketplaces();
-      setMarketplaceUrl("");
-      setMarketplaceName("");
-      if (!result.refresh.ok) {
-        setMarketplaceWarning(result.refresh.message);
-      } else {
-        flashMarketplaceSuccess(
-          result.status === "already_configured"
-            ? "Marketplace already configured."
-            : "Marketplace added.",
-        );
-      }
-    } catch (addError) {
-      setMarketplaceSuccess(null);
-      clearMarketplaceSuccessTimer();
-      setMarketplaceError(
-        errorMessage(addError, "Could not add marketplace."),
-      );
-    } finally {
-      setMarketplaceBusy(false);
-    }
-  };
-
   if (!open) {
     return null;
   }
@@ -605,91 +490,13 @@ export function SettingsDrawer({
                 />
               </section>
 
-              <section
-                className="settings-section"
-                data-testid="marketplace-settings"
-              >
-                <h3>Plugin marketplaces</h3>
-                {marketplaceError ? (
-                  <div className="banner error" role="alert">
-                    {marketplaceError}
-                  </div>
-                ) : null}
-                {marketplaceWarning ? (
-                  <div className="banner" role="status">
-                    {marketplaceWarning}
-                  </div>
-                ) : null}
-                {marketplaceSuccess ? (
-                  <div className="success-flash" role="status">
-                    {marketplaceSuccess}
-                  </div>
-                ) : null}
-                <ul className="marketplace-list" data-testid="marketplace-list">
-                  {marketplaces.length === 0 ? (
-                    <li className="muted">No marketplaces registered yet.</li>
-                  ) : (
-                    marketplaces.map((entry) => (
-                      <li
-                        key={entry.name}
-                        data-testid={`marketplace-row-${entry.name}`}
-                      >
-                        <span className="marketplace-row-name">{entry.name}</span>
-                        <span className="marketplace-row-url muted">{entry.url}</span>
-                        {entry.platforms.length > 0 ? (
-                          <span className="marketplace-row-platforms muted">
-                            {entry.platforms.join(", ")}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))
-                  )}
-                </ul>
-                <div className="form-field">
-                  <Label htmlFor="marketplace-url">Marketplace URL</Label>
-                  <Input
-                    id="marketplace-url"
-                    data-testid="marketplace-url"
-                    type="url"
-                    value={marketplaceUrl}
-                    onChange={(event) => setMarketplaceUrl(event.target.value)}
-                    placeholder="https://github.com/org/marketplace"
-                    disabled={marketplaceControlsDisabled}
-                  />
-                </div>
-                <div className="form-field">
-                  <Label htmlFor="marketplace-name">Marketplace name</Label>
-                  <Input
-                    id="marketplace-name"
-                    data-testid="marketplace-name"
-                    value={marketplaceName}
-                    onChange={(event) => setMarketplaceName(event.target.value)}
-                    placeholder="my-marketplace"
-                    disabled={marketplaceControlsDisabled}
-                  />
-                </div>
-                <button
-                  className={[
-                    "btn",
-                    "primary",
-                    marketplaceBusy ? "is-busy" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  type="button"
-                  data-testid="marketplace-add"
-                  onClick={() => void onAddMarketplace()}
-                  disabled={
-                    marketplaceControlsDisabled
-                    || !marketplaceUrl.trim()
-                    || !marketplaceName.trim()
-                  }
-                  aria-busy={marketplaceBusy}
-                >
-                  {marketplaceBusy ? <ButtonSpinner size={16} /> : null}
-                  {marketplaceBusy ? "Adding…" : "Add marketplace"}
-                </button>
-              </section>
+              <SettingsParitySections
+                open={open}
+                baseUrl={baseUrl}
+                token={token}
+                projectPath={projectPath}
+                disabled={controlsDisabled}
+              />
 
               <div className="switch-after-create settings-show-all flex items-center gap-2">
                 <Switch
