@@ -52,6 +52,22 @@ describe("scaffoldCompositionPlugin", () => {
       "ht plugin edit my-setup --override instruction:context=a",
       "ht plugin edit my-setup --override instruction:context=b",
     ]);
+    expect(error.actions).toEqual([
+      {
+        id: "override-resource",
+        label: "Use a@1.0.0 for instruction:context",
+        rootName: "my-setup",
+        key: "instruction:context",
+        winnerPluginName: "a",
+      },
+      {
+        id: "override-resource",
+        label: "Use b@1.0.0 for instruction:context",
+        rootName: "my-setup",
+        key: "instruction:context",
+        winnerPluginName: "b",
+      },
+    ]);
   });
 
   it("refuses to overwrite an existing plugin name", async () => {

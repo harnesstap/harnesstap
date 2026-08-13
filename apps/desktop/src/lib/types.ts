@@ -248,7 +248,7 @@ export interface DriftFileChange {
   path: string;
   type: "added" | "modified" | "deleted";
   platform?: string;
-  resource?: { type: string; name: string };
+  resource?: { type: string; name: string; origin_kind?: string | null };
 }
 
 export interface GlobalProfilePanelStatus {
@@ -294,6 +294,7 @@ export interface ProfileApplyPreviewRequest {
 
 export type RecoveryAction =
   | { id: "sync-install"; label: string; pluginName: string; sourceKind?: string }
+  | { id: "create-plugin"; label: string; pluginName: string }
   | {
       id: "override-version";
       label: string;
@@ -301,8 +302,16 @@ export type RecoveryAction =
       versions: string[];
       rootName: string;
     }
+  | {
+      id: "override-resource";
+      label: string;
+      rootName: string;
+      key: string;
+      winnerPluginName: string;
+    }
   | { id: "detach-dependency"; label: string; rootName: string; pluginName: string }
-  | { id: "clear-override"; label: string; rootName: string; pluginName: string };
+  | { id: "clear-override"; label: string; rootName: string; pluginName: string }
+  | { id: "tag-as-profile"; label: string; pluginName: string };
 
 export interface ProfileApplyPreview {
   profile: string;
@@ -387,6 +396,9 @@ export interface OpenPathRequest {
   selector?: string;
   path?: string;
   pathHint?: string | null;
+  profile?: string;
+  scope?: ViewScope;
+  projectPath?: string;
 }
 
 export interface OpenPathResult {

@@ -4,6 +4,7 @@ import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js"
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
+import { listResources } from "../models/resource.js";
 import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
@@ -37,6 +38,7 @@ import type { DriftFileChange } from "./project-drift.js";
 import { detectNotStagedProfileResources } from "./profile-untracked-resources.js";
 import { detectPlatforms } from "./scanner.js";
 import {
+  SingletonConflictError,
   UnsatisfiableConstraintError,
   type RecoveryAction,
 } from "./resolve/types.js";
@@ -82,8 +84,30 @@ function warningFromError(error: unknown): {
       recovery_actions: error.actions,
     };
   }
+  if (error instanceof SingletonConflictError) {
+    return {
+      warning: error.message,
+      recovery_actions: error.actions,
+    };
+  }
   return {
     warning: error instanceof Error ? error.message : String(error),
+  };
+}
+
+function notProfileWarning(pluginName: string): {
+  warning: string;
+  recovery_actions: RecoveryAction[];
+} {
+  return {
+    warning: `plugin "${pluginName}" is not tagged as a profile`,
+    recovery_actions: [
+      {
+        id: "tag-as-profile",
+        label: `Tag ${pluginName} as a profile`,
+        pluginName,
+      },
+    ],
   };
 }
 
@@ -268,9 +292,23 @@ function withUnmanagedMergedContainers(
 }
 
 function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
+  const originsByKey = new Map<string, string>();
+  for (const resource of listResources()) {
+    const key = `${resource.type}:${resource.name}`;
+    if (!originsByKey.has(key)) {
+      originsByKey.set(key, resource.origin_kind);
+    }
+  }
   return changes.map((change) => {
     const mapped = resourceKeyFromManagedPath(change.path);
-    return mapped ? { ...change, resource: mapped } : change;
+    if (!mapped) {
+      return change;
+    }
+    const origin_kind = originsByKey.get(`${mapped.type}:${mapped.name}`);
+    return {
+      ...change,
+      resource: origin_kind ? { ...mapped, origin_kind } : mapped,
+    };
   });
 }
 
@@ -388,7 +426,7 @@ async function collectHomeExpectedManagedFiles(
     return {
       rootPath: homeRoot,
       expectedFiles: [],
-      warning: `plugin "${plugin.name}" is not tagged as a profile`,
+      ...notProfileWarning(plugin.name),
     };
   }
 
@@ -458,7 +496,7 @@ async function collectProjectExpectedManagedFiles(
     return {
       rootPath: resolvedRoot,
       expectedFiles: [],
-      warning: `plugin "${plugin.name}" is not tagged as a profile`,
+      ...notProfileWarning(plugin.name),
     };
   }
 

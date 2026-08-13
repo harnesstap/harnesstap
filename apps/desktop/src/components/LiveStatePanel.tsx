@@ -41,6 +41,7 @@ import {
   type FileChangeHoverRow,
   type FileChangeKind,
   type FileChangeResourceGroup,
+  type InstallGapRow,
   type StackChangeSummaryRow,
   type StackChangeTone,
 } from "../lib/contents-diff";
@@ -765,6 +766,13 @@ function FileChangeRowActions({
   const canAdd = row.canAdd && Boolean(onAddFileChange);
   const canDrop = row.canDrop && Boolean(onDropFileChange);
   if (!canOpen && !canDiff && !canAdd && !canDrop) {
+    if (row.action === "add") {
+      return (
+        <span className="muted" title="Apply writes this missing file">
+          Apply to write
+        </span>
+      );
+    }
     return null;
   }
 
@@ -1194,6 +1202,41 @@ function allItemsFromContents(
   }));
 }
 
+function expandRecoveryActions(actions: RecoveryAction[]): RecoveryAction[] {
+  const expanded: RecoveryAction[] = [];
+  for (const action of actions) {
+    if (action.id === "override-version" && action.versions.length > 1) {
+      for (const version of action.versions) {
+        expanded.push({
+          ...action,
+          label: `Use ${action.pluginName}@${version}`,
+          versions: [version],
+        });
+      }
+      continue;
+    }
+    expanded.push(action);
+  }
+  return expanded;
+}
+
+function installGapSyncAction(row: InstallGapRow): RecoveryAction | null {
+  if (row.kind !== "missing" || row.iconType !== "plugin") {
+    return null;
+  }
+  const raw = row.label.replace(/^plugin\s+/, "");
+  const pluginName = raw.split("@")[0]?.trim() ?? "";
+  if (!pluginName) {
+    return null;
+  }
+  return {
+    id: "sync-install",
+    label: `Sync ${pluginName}`,
+    pluginName,
+    sourceKind: "marketplace",
+  };
+}
+
 /** Mirrors `previewProjectApply` when project drift is `na`. */
 const PROJECT_NOT_TRACKED_WARNING =
   "Project is not tracked yet — bootstrap or apply to create a snapshot";
@@ -1207,6 +1250,8 @@ export interface LiveStatePanelProps {
   applyPreview: ProfileApplyPreview | null;
   applyPreviewLoading: boolean;
   applyPreviewError: string | null;
+  onRetryPreview?: () => void;
+  onDismissPreviewError?: () => void;
   liveHarnesses: Record<string, HarnessLiveStatus> | null | undefined;
   hasFullHarnessSnapshot: boolean;
   baseUrl: string | null;
@@ -1250,6 +1295,8 @@ export function LiveStatePanel({
   applyPreview,
   applyPreviewLoading,
   applyPreviewError,
+  onRetryPreview,
+  onDismissPreviewError,
   liveHarnesses,
   hasFullHarnessSnapshot,
   baseUrl,
@@ -1361,7 +1408,7 @@ export function LiveStatePanel({
     && Boolean(onBootstrap || onCreateProfileFromProject);
   const recoveryActions =
     !showNotTrackedActions && applyPreview?.recovery_actions?.length
-      ? applyPreview.recovery_actions
+      ? expandRecoveryActions(applyPreview.recovery_actions)
       : null;
 
   return (
@@ -1369,6 +1416,28 @@ export function LiveStatePanel({
       {showPreviewError ? (
         <div className="banner error" role="alert">
           <div>{applyPreviewError}</div>
+          {onRetryPreview || onDismissPreviewError ? (
+            <div className="banner-actions">
+              {onDismissPreviewError ? (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={onDismissPreviewError}
+                >
+                  Dismiss
+                </button>
+              ) : null}
+              {onRetryPreview ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={onRetryPreview}
+                >
+                  Retry
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {resourceActionError ? (
@@ -1455,6 +1524,18 @@ export function LiveStatePanel({
                   : activeProfile
                     ? "Could not resolve active profile contents."
                     : "No profile resources yet."}
+                {onEditProfile && activeProfile && !applyPreviewLoading ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={onEditProfile}
+                    >
+                      Edit profile
+                    </button>
+                  </>
+                ) : null}
               </p>
             ) : profileStackEmpty ? (
               onEditProfile ? (
@@ -1699,7 +1780,21 @@ export function LiveStatePanel({
                       label="Target stack summary"
                     />
                   ) : (
-                    <p className="muted">Could not resolve target profile contents.</p>
+                    <p className="muted">
+                      Could not resolve target profile contents.
+                      {onEditProfile ? (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={onEditProfile}
+                          >
+                            Edit profile
+                          </button>
+                        </>
+                      ) : null}
+                    </p>
                   )}
 
                   {applyPreview.files?.expected_count === 0
@@ -1752,7 +1847,9 @@ export function LiveStatePanel({
                       {!hasFullHarnessSnapshot && !applyPreview.harnesses ? (
                         <div className="muted">Checking live installs…</div>
                       ) : (
-                        installGaps.map((row) => (
+                        installGaps.map((row) => {
+                          const syncAction = installGapSyncAction(row);
+                          return (
                           <div
                             className={`diff-row ${row.kind === "missing" ? "update" : "remove"}`}
                             key={row.key}
@@ -1769,8 +1866,21 @@ export function LiveStatePanel({
                               </span>
                               <RelatedHarnessIcons harnessIds={row.harnesses} />
                             </span>
+                            {syncAction && onRecoveryAction ? (
+                              <span className="diff-row-actions">
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  disabled={recoveryBusy}
+                                  onClick={() => onRecoveryAction(syncAction)}
+                                >
+                                  {syncAction.label}
+                                </button>
+                              </span>
+                            ) : null}
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </details>
                   ) : null}

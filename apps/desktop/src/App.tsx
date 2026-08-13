@@ -156,6 +156,7 @@ export function App() {
   const [applyPreview, setApplyPreview] = useState<ProfileApplyPreview | null>(null);
   const [applyPreviewError, setApplyPreviewError] = useState<string | null>(null);
   const [applyPreviewLoading, setApplyPreviewLoading] = useState(false);
+  const [previewRetryKey, setPreviewRetryKey] = useState(0);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [addingResourceKey, setAddingResourceKey] = useState<string | null>(null);
   const [committingManagedChanges, setCommittingManagedChanges] = useState(false);
@@ -619,6 +620,7 @@ export function App() {
     switching,
     token,
     view,
+    previewRetryKey,
   ]);
 
   const handleRecoveryAction = useCallback(
@@ -665,9 +667,8 @@ export function App() {
         });
         setApplyPreview(preview);
         if (preview.warning) {
-          setApplyPreviewError(
-            `Recovery finished, but the constraint is still unsatisfied: ${preview.warning.split("\n")[0]}`,
-          );
+          setSuccessMessage(`Recovered: ${action.label}. Review remaining issues.`);
+          window.setTimeout(() => setSuccessMessage(null), 3000);
         } else {
           setSuccessMessage(`Recovered: ${action.label}`);
           window.setTimeout(() => setSuccessMessage(null), 3000);
@@ -2636,6 +2637,8 @@ export function App() {
                 applyPreview={applyPreview}
                 applyPreviewLoading={applyPreviewLoading}
                 applyPreviewError={applyPreviewError}
+                onRetryPreview={() => setPreviewRetryKey((value) => value + 1)}
+                onDismissPreviewError={() => setApplyPreviewError(null)}
                 liveHarnesses={status?.harnesses}
                 hasFullHarnessSnapshot={hasFullHarnessSnapshot}
                 baseUrl={baseUrl}
@@ -2719,6 +2722,15 @@ export function App() {
             {addResourceError && !switching ? (
               <div className="banner error" role="alert">
                 <div>{addResourceError}</div>
+                <div className="banner-actions">
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => setAddResourceError(null)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
             ) : null}
 

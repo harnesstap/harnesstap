@@ -43,9 +43,13 @@ export function selectVersion(input: {
   const sorted = [...input.available]
     .filter((version) => semver.valid(version) !== null)
     .sort(semver.rcompare);
+  const nonSemver = input.available.filter(
+    (version) => semver.valid(version) === null && version !== "unknown",
+  );
+  const availableForErrors = sorted.length > 0 ? sorted : nonSemver;
 
   if (input.rootOverride) {
-    if (!sorted.includes(input.rootOverride)) {
+    if (!input.available.includes(input.rootOverride)) {
       throw new UnsatisfiableConstraintError({
         pluginName: input.name,
         requirers: [
@@ -55,7 +59,7 @@ export function selectVersion(input: {
             path: [input.rootName],
           },
         ],
-        available: sorted,
+        available: availableForErrors,
         rootName: input.rootName,
         rootOverride: input.rootOverride,
         ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
@@ -77,19 +81,23 @@ export function selectVersion(input: {
   );
   const winner = satisfying[0];
   if (winner === undefined) {
-    // Marketplace installs are validated softly via plugin-pin inventory
-    // (warn by default; --strict-plugin-versions aborts). Prefer the best
-    // installed version so apply can still materialize Claude settings.
-    if (input.sourceKind === "marketplace" && sorted[0]) {
+    // Marketplace installs may be git SHAs (not semver). Unbounded constraints
+    // and marketplace soft-selection can still use those concrete installs.
+    const fallback =
+      (range === ANY ? nonSemver[0] : undefined)
+      ?? (input.sourceKind === "marketplace"
+        ? (sorted[0] ?? nonSemver[0])
+        : undefined);
+    if (fallback) {
       return {
-        version: sorted[0],
+        version: fallback,
         reason: rootDeclared.length > 0 ? "root-constraint" : "mediation",
       };
     }
     throw new UnsatisfiableConstraintError({
       pluginName: input.name,
       requirers: input.constraints,
-      available: sorted,
+      available: availableForErrors,
       rootName: input.rootName,
       ...(input.sourceKind ? { sourceKind: input.sourceKind } : {}),
     });
