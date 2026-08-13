@@ -564,7 +564,7 @@ export function registerProfileCreateSourceOptions(command: Command): Command {
 }
 
 export function registerProfileCreateCommand(profileCmd: Command): void {
-  profileCmd
+  const createCmd = profileCmd
     .command("create")
     .argument("<name>", "Profile plugin name")
     .option("-d, --description <text>", "Profile description")
@@ -597,27 +597,10 @@ export function registerProfileCreateCommand(profileCmd: Command): void {
     .option("--no-pull", "Do not auto-pull missing published dependencies during --use")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--interactive", "Prompt for skill selection when using --from")
-    .option("-y, --yes", "Skip prompts when using --from")
+    .option("-y, --yes", "Skip prompts when using --from");
+  registerProfileCreateSourceOptions(createCmd)
     .description("Create a profile plugin, promote an existing plugin, or import from a skill package")
-    .action(async (name: string, opts: {
-      description?: string;
-      version?: string;
-      from?: string;
-      skill?: string;
-      all?: boolean;
-      excludeCategory?: string[];
-      onConflict?: string;
-      use?: boolean;
-      dryRun?: boolean;
-      harness?: string;
-      onConflictUse?: string;
-      account?: string;
-      baseUrl?: string;
-      pull?: boolean;
-      format?: string;
-      interactive?: boolean;
-      yes?: boolean;
-    }) => {
+    .action(async (name: string, opts: ProfileCreateCommandOpts) => {
       try {
         await handleProfileCreateCommand(name, opts);
       } catch (err) {
