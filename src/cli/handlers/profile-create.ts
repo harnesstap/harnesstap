@@ -1,13 +1,24 @@
 import type { Command } from "commander";
+import inquirer from "inquirer";
 import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
+import { getPlugin, listPlugins } from "../../models/plugin-model.js";
+import { getResource, listResources } from "../../models/resource.js";
 import { createPluginFromSource } from "../../services/plugin-from-source.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
 import {
   promptMaterializationConflict,
   resolveApplyConflictPolicy,
 } from "../../services/materialization-conflicts.js";
+import {
+  commitProfileCreate,
+  previewProfileCreate,
+  type ProfileConflictPolicy,
+  type ProfileCreateInput,
+  type ProfileCreatePreview,
+  type ProfileCreateSource,
+} from "../../services/profile-create.js";
 import {
   createProfileCommand,
   tagProfileCommand,
@@ -43,34 +54,318 @@ function parsePluginSourceConflictPolicy(
   );
 }
 
+export interface ProfileCreateCommandOpts {
+  description?: string;
+  version?: string;
+  from?: string;
+  skill?: string;
+  all?: boolean;
+  excludeCategory?: string[];
+  onConflict?: string;
+  use?: boolean;
+  dryRun?: boolean;
+  harness?: string;
+  format?: string;
+  interactive?: boolean;
+  noInteractive?: boolean;
+  yes?: boolean;
+  onConflictUse?: string;
+  account?: string;
+  baseUrl?: string;
+  pull?: boolean;
+  compose?: boolean;
+  plugins?: string | string[];
+  resources?: string | string[];
+  fromHome?: boolean;
+  fromProject?: string;
+  preview?: boolean;
+}
+
+const SINGLE_SOURCE_MESSAGE =
+  "Pass only one of --from, --compose, --from-home, or --from-project.";
+const PREVIEW_SOURCE_MESSAGE =
+  "--preview applies to --compose, --from-home, and --from-project. Skill-package create uses --dry-run.";
+const PREVIEW_USE_MESSAGE =
+  "Do not combine --preview with --use or --dry-run.";
+const COMPOSE_SELECTION_FLAGS_MESSAGE =
+  "--plugins and --resources are only valid with --compose.";
+const COMPOSE_ON_CONFLICT_MESSAGE =
+  "--on-conflict is only valid with --from, --from-home, or --from-project.";
+
+function flattenSelectors(value: string | string[] | undefined): string[] {
+  const parts = Array.isArray(value) ? value : value ? [value] : [];
+  return parts.flatMap((entry) =>
+    entry.split(",").map((item) => item.trim()).filter(Boolean),
+  );
+}
+
+function selectedCreateSources(opts: ProfileCreateCommandOpts): string[] {
+  const sources: string[] = [];
+  if (opts.from) sources.push("from");
+  if (opts.compose) sources.push("compose");
+  if (opts.fromHome) sources.push("from-home");
+  if (opts.fromProject !== undefined) sources.push("from-project");
+  return sources;
+}
+
+function isLibraryCreateSource(opts: ProfileCreateCommandOpts): boolean {
+  return Boolean(opts.compose || opts.fromHome || opts.fromProject !== undefined);
+}
+
+function assertCreateSourceFlags(opts: ProfileCreateCommandOpts): void {
+  if (selectedCreateSources(opts).length > 1) {
+    throw new Error(SINGLE_SOURCE_MESSAGE);
+  }
+
+  const pluginSelectors = flattenSelectors(opts.plugins);
+  const resourceSelectors = flattenSelectors(opts.resources);
+  if (!opts.compose && (pluginSelectors.length > 0 || resourceSelectors.length > 0)) {
+    throw new Error(COMPOSE_SELECTION_FLAGS_MESSAGE);
+  }
+
+  if (opts.compose && opts.onConflict !== undefined) {
+    throw new Error(COMPOSE_ON_CONFLICT_MESSAGE);
+  }
+
+  if (opts.preview && (opts.use || opts.dryRun)) {
+    throw new Error(PREVIEW_USE_MESSAGE);
+  }
+
+  if (opts.preview && !isLibraryCreateSource(opts)) {
+    throw new Error(PREVIEW_SOURCE_MESSAGE);
+  }
+
+  if ((opts.fromHome || opts.fromProject !== undefined) && opts.onConflict) {
+    if (opts.onConflict !== "skip" && opts.onConflict !== "overwrite") {
+      throw new Error(
+        `Invalid --on-conflict value: ${opts.onConflict}. Use skip or overwrite.`,
+      );
+    }
+  }
+}
+
+function resolvePluginId(selector: string): string {
+  const plugin = getPlugin(selector);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${selector}`);
+  }
+  return plugin.id;
+}
+
+function resolveResourceId(selector: string): string {
+  const resource = getResource(selector);
+  if (!resource) {
+    throw new Error(`Resource not found: ${selector}`);
+  }
+  return resource.id;
+}
+
+function parseHomeProjectConflictPolicy(
+  value: string | undefined,
+): ProfileConflictPolicy {
+  if (!value) return "skip";
+  if (value === "skip" || value === "overwrite") return value;
+  throw new Error(`Invalid --on-conflict value: ${value}. Use skip or overwrite.`);
+}
+
+async function resolveComposeIds(
+  opts: ProfileCreateCommandOpts,
+  format: ReturnType<typeof parseOutputFormat>,
+): Promise<{ pluginIds: string[]; resourceIds: string[] }> {
+  const pluginSelectors = flattenSelectors(opts.plugins);
+  const resourceSelectors = flattenSelectors(opts.resources);
+  if (pluginSelectors.length > 0 || resourceSelectors.length > 0) {
+    return {
+      pluginIds: pluginSelectors.map(resolvePluginId),
+      resourceIds: resourceSelectors.map(resolveResourceId),
+    };
+  }
+
+  const shouldPrompt = shouldUseWizard({
+    noInteractive: opts.noInteractive ?? opts.yes ?? opts.interactive === false,
+    interactive: opts.interactive,
+    format,
+    missingRequiredArgs: true,
+  });
+  if (!shouldPrompt) {
+    throw new Error(
+      "A composed profile requires at least one plugin or resource selection",
+    );
+  }
+
+  return promptComposeSelections();
+}
+
+async function promptComposeSelections(): Promise<{
+  pluginIds: string[];
+  resourceIds: string[];
+}> {
+  const answers = await inquirer.prompt<{
+    pluginIds: string[];
+    resourceIds: string[];
+  }>([
+    {
+      type: "checkbox",
+      name: "pluginIds",
+      message: "Plugins to attach",
+      choices: listPlugins().map((plugin) => ({
+        name: plugin.name,
+        value: plugin.id,
+      })),
+    },
+    {
+      type: "checkbox",
+      name: "resourceIds",
+      message: "Resources to add",
+      choices: listResources().map((resource) => ({
+        name: `${resource.type}: ${resource.name}`,
+        value: resource.id,
+      })),
+    },
+  ]);
+  return {
+    pluginIds: answers.pluginIds ?? [],
+    resourceIds: answers.resourceIds ?? [],
+  };
+}
+
+function conflictLabel(conflict: unknown, index: number): string {
+  if (typeof conflict !== "object" || conflict === null) {
+    return String(conflict);
+  }
+  const row = conflict as Record<string, unknown>;
+  if (typeof row.name === "string") {
+    const type = typeof row.type === "string" ? `${row.type}: ` : "";
+    return `${type}${row.name}`;
+  }
+  if (typeof row.existingResource === "object" && row.existingResource !== null) {
+    const resource = row.existingResource as Record<string, unknown>;
+    if (typeof resource.name === "string") {
+      const type =
+        typeof resource.type === "string" ? `${resource.type}: ` : "";
+      return `${type}${resource.name}`;
+    }
+  }
+  return `Conflict ${index + 1}`;
+}
+
+function sourcePhrase(source: ProfileCreateSource): string {
+  switch (source) {
+    case "compose":
+      return "compose";
+    case "home":
+      return "home";
+    case "project":
+      return "project";
+    default: {
+      const exhaustive: never = source;
+      throw new Error(`Unsupported profile create source: ${String(exhaustive)}`);
+    }
+  }
+}
+
+function printHumanPreview(preview: ProfileCreatePreview): void {
+  ui.success(`Would create profile ${ui.theme.accent(preview.name)} from ${sourcePhrase(preview.source)}`);
+  ui.kvBlock([
+    { key: "Imports", value: String(preview.totalImports) },
+    { key: "Conflicts", value: String(preview.conflicts.length) },
+    { key: "Warnings", value: String(preview.warnings.length) },
+  ]);
+  preview.conflicts.forEach((conflict, index) => {
+    ui.info(conflictLabel(conflict, index));
+  });
+  for (const warning of preview.warnings) {
+    ui.warn(warning);
+  }
+  ui.hint(
+    "Re-run without --preview to create. Use --on-conflict overwrite to replace library copies.",
+  );
+}
+
+async function buildLibraryCreateInput(
+  name: string,
+  opts: ProfileCreateCommandOpts,
+  format: ReturnType<typeof parseOutputFormat>,
+): Promise<ProfileCreateInput> {
+  if (opts.compose) {
+    const selections = await resolveComposeIds(opts, format);
+    return {
+      source: "compose",
+      name,
+      ...(opts.description !== undefined ? { description: opts.description } : {}),
+      pluginIds: selections.pluginIds,
+      resourceIds: selections.resourceIds,
+    };
+  }
+  if (opts.fromHome) {
+    return {
+      source: "home",
+      name,
+      ...(opts.description !== undefined ? { description: opts.description } : {}),
+      conflictPolicy: parseHomeProjectConflictPolicy(opts.onConflict),
+    };
+  }
+  if (opts.fromProject !== undefined) {
+    return {
+      source: "project",
+      name,
+      ...(opts.description !== undefined ? { description: opts.description } : {}),
+      projectPath: opts.fromProject,
+      conflictPolicy: parseHomeProjectConflictPolicy(opts.onConflict),
+    };
+  }
+  throw new Error(SINGLE_SOURCE_MESSAGE);
+}
+
+async function handleLibraryProfileCreate(
+  name: string,
+  opts: ProfileCreateCommandOpts,
+  format: ReturnType<typeof parseOutputFormat>,
+): Promise<"preview" | "committed"> {
+  const input = await buildLibraryCreateInput(name, opts, format);
+  if (opts.preview) {
+    const preview = await previewProfileCreate(input);
+    if (format === "json") {
+      printJson(preview);
+    } else {
+      printHumanPreview(preview);
+    }
+    return "preview";
+  }
+
+  const result = await commitProfileCreate(input);
+  if (format === "json") {
+    if (!opts.use) {
+      printJson(result);
+    }
+    return "committed";
+  }
+  ui.success(
+    `Created profile ${ui.theme.accent(result.profile.name)} ${ui.icons.bullet} ${formatCount(result.imported_count, "imported", "imported")}`,
+  );
+  return "committed";
+}
+
 export async function handleProfileCreateCommand(
   name: string,
-  opts: {
-    description?: string;
-    version?: string;
-    from?: string;
-    skill?: string;
-    all?: boolean;
-    excludeCategory?: string[];
-    onConflict?: string;
-    use?: boolean;
-    dryRun?: boolean;
-    harness?: string;
-    format?: string;
-    interactive?: boolean;
-    yes?: boolean;
-    onConflictUse?: string;
-    account?: string;
-    baseUrl?: string;
-    pull?: boolean;
-  },
+  opts: ProfileCreateCommandOpts,
 ): Promise<void> {
   const format = parseOutputFormat(opts.format);
   const db = getDb();
   initializeSchema(db);
   const version = opts.version ?? "1.0.0";
 
-  if (opts.from) {
+  assertCreateSourceFlags(opts);
+
+  if (isLibraryCreateSource(opts)) {
+    const libraryResult = await handleLibraryProfileCreate(name, opts, format);
+    if (libraryResult === "preview") {
+      return;
+    }
+    if (format === "json" && !opts.use) {
+      return;
+    }
+  } else if (opts.from) {
     const harnesstapDir = getHarnesstapDir();
     const homeRoot = resolveHomeRoot();
     const skillNames = parseCommaSeparatedList(opts.skill);
@@ -247,8 +542,29 @@ export async function handleProfileCreateCommand(
   }
 }
 
+export function registerProfileCreateSourceOptions(command: Command): Command {
+  return command
+    .option("--compose", "Create by attaching library plugins and resources")
+    .option(
+      "--plugins <selectors>",
+      "Compose: plugin names or ids (comma-separated, repeatable)",
+      collectRepeatedOption,
+      [],
+    )
+    .option(
+      "--resources <selectors>",
+      "Compose: resource names or ids (comma-separated, repeatable)",
+      collectRepeatedOption,
+      [],
+    )
+    .option("--from-home", "Import from global home harness files")
+    .option("--from-project <path>", "Import from a project path")
+    .option("--preview", "Print create preview without writing")
+    .option("--no-interactive", "Disable interactive compose picking and enable prompts");
+}
+
 export function registerProfileCreateCommand(profileCmd: Command): void {
-  profileCmd
+  const createCmd = profileCmd
     .command("create")
     .argument("<name>", "Profile plugin name")
     .option("-d, --description <text>", "Profile description")
@@ -281,27 +597,10 @@ export function registerProfileCreateCommand(profileCmd: Command): void {
     .option("--no-pull", "Do not auto-pull missing published dependencies during --use")
     .option("--format <mode>", "Output format: human or json", "human")
     .option("--interactive", "Prompt for skill selection when using --from")
-    .option("-y, --yes", "Skip prompts when using --from")
+    .option("-y, --yes", "Skip prompts when using --from");
+  registerProfileCreateSourceOptions(createCmd)
     .description("Create a profile plugin, promote an existing plugin, or import from a skill package")
-    .action(async (name: string, opts: {
-      description?: string;
-      version?: string;
-      from?: string;
-      skill?: string;
-      all?: boolean;
-      excludeCategory?: string[];
-      onConflict?: string;
-      use?: boolean;
-      dryRun?: boolean;
-      harness?: string;
-      onConflictUse?: string;
-      account?: string;
-      baseUrl?: string;
-      pull?: boolean;
-      format?: string;
-      interactive?: boolean;
-      yes?: boolean;
-    }) => {
+    .action(async (name: string, opts: ProfileCreateCommandOpts) => {
       try {
         await handleProfileCreateCommand(name, opts);
       } catch (err) {
