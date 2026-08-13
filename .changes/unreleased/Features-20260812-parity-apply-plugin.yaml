@@ -1,0 +1,3 @@
+kind: Features
+body: Add desktop Apply plugin drawer and POST /v1/apply for library plugin graphs without profile switch.
+time: 2026-08-12T00:00:00Z
