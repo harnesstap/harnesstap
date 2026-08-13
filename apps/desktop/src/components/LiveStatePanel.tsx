@@ -1092,6 +1092,7 @@ function FileChangeRows({
                 </button>
               ) : null}
               <span className="diff-body">
+                {resource?.type ? <TypeIcon type={resource.type} /> : null}
                 {resource ? (
                   onOpenResource ? (
                     <ResourceNameButton
