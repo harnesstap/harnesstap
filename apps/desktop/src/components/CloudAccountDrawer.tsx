@@ -7,6 +7,13 @@ import {
   pollCloudLogin,
   startCloudLogin,
 } from "../lib/agent-client";
+import { AgentApiError } from "../lib/api/http";
+import {
+  fetchCloudOrgs,
+  filterCloudOrgs,
+  switchCloudOrg,
+  type CloudOrg,
+} from "../lib/api/cloud-orgs";
 import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 
@@ -33,6 +40,82 @@ async function copyText(value: string): Promise<boolean> {
   }
 }
 
+function OrganizationsList({
+  orgs,
+  orgQuery,
+  onOrgQueryChange,
+  orgsLoading,
+  switchingSlug,
+  disabled,
+  busy,
+  onSwitchOrg,
+}: {
+  orgs: CloudOrg[];
+  orgQuery: string;
+  onOrgQueryChange: (value: string) => void;
+  orgsLoading: boolean;
+  switchingSlug: string | null;
+  disabled: boolean;
+  busy: boolean;
+  onSwitchOrg: (org: CloudOrg) => void;
+}) {
+  const controlsLocked = disabled || busy || orgsLoading || switchingSlug !== null;
+  const visible = filterCloudOrgs(orgs, orgQuery);
+
+  return (
+    <section aria-label="Organizations">
+      <h3>Organizations</h3>
+      {orgs.length >= 6 ? (
+        <label className="form-field">
+          <span className="muted">Filter</span>
+          <input
+            type="search"
+            value={orgQuery}
+            onChange={(event) => onOrgQueryChange(event.target.value)}
+            disabled={controlsLocked}
+            placeholder="Filter organizations"
+          />
+        </label>
+      ) : null}
+      {orgsLoading && orgs.length === 0 ? (
+        <p className="muted">Loading organizations…</p>
+      ) : orgs.length === 0 ? (
+        <p className="muted">No organizations.</p>
+      ) : visible.length === 0 ? (
+        <p className="muted">No matching organizations.</p>
+      ) : (
+        <ul className="marketplace-list">
+          {visible.map((org) => {
+            const rowBusy = switchingSlug === org.slug;
+            return (
+              <li key={org.id || org.slug}>
+                <span className="marketplace-row-name">{org.name}</span>
+                <span className="mono">{org.slug}</span>
+                {org.current ? (
+                  <span className="muted">Current</span>
+                ) : (
+                  <button
+                    className={["btn", rowBusy ? "is-busy" : ""]
+                      .filter(Boolean)
+                      .join(" ")}
+                    type="button"
+                    onClick={() => onSwitchOrg(org)}
+                    disabled={controlsLocked}
+                    aria-busy={rowBusy}
+                  >
+                    {rowBusy ? <ButtonSpinner size={16} /> : null}
+                    {rowBusy ? "Switching…" : "Switch"}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function CloudAccountDrawer({
   open,
   baseUrl,
@@ -40,12 +123,17 @@ export function CloudAccountDrawer({
   disabled = false,
   onClose,
   onAuthChange,
+  onOrgSwitched,
 }: CloudAccountDrawerProps) {
   const [status, setStatus] = useState<CloudAuthStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [orgs, setOrgs] = useState<CloudOrg[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+  const [orgQuery, setOrgQuery] = useState("");
+  const [switchingSlug, setSwitchingSlug] = useState<string | null>(null);
   const pollTimer = useRef<number | null>(null);
   const onAuthChangeRef = useRef(onAuthChange);
   onAuthChangeRef.current = onAuthChange;
@@ -132,6 +220,72 @@ export function CloudAccountDrawer({
       clearPoll();
     };
   }, [open, baseUrl, token, applyStatus, clearPoll, runPoll]);
+
+  useEffect(() => {
+    if (!open || !baseUrl || status?.authenticated !== true || status.pendingLogin) {
+      if (!open) {
+        setOrgs([]);
+        setOrgQuery("");
+      }
+      return;
+    }
+    let cancelled = false;
+    setOrgsLoading(true);
+    void fetchCloudOrgs(baseUrl, token)
+      .then((result) => {
+        if (!cancelled) {
+          setOrgs(result.orgs);
+        }
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setError("Could not load organizations.");
+          void loadError;
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setOrgsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, baseUrl, token, status?.authenticated, status?.pendingLogin, status?.orgSlug]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy && !switchingSlug && !disabled) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, busy, switchingSlug, disabled, onClose]);
+
+  const onSwitchOrg = async (org: CloudOrg) => {
+    if (!baseUrl || busy || disabled || orgsLoading || switchingSlug) {
+      return;
+    }
+    setSwitchingSlug(org.slug);
+    setError(null);
+    try {
+      const next = await switchCloudOrg(baseUrl, token, org.slug);
+      applyStatus(next);
+      onOrgSwitched?.(org.slug);
+    } catch (switchError) {
+      const notFound =
+        switchError instanceof AgentApiError && switchError.code === "org_not_found";
+      setError(
+        notFound ? "Organization not found." : "Could not switch organization.",
+      );
+    } finally {
+      setSwitchingSlug(null);
+    }
+  };
 
   const onSignIn = async () => {
     if (!baseUrl || busy) {
@@ -323,6 +477,16 @@ export function CloudAccountDrawer({
                   </>
                 ) : null}
               </dl>
+              <OrganizationsList
+                orgs={orgs}
+                orgQuery={orgQuery}
+                onOrgQueryChange={setOrgQuery}
+                orgsLoading={orgsLoading}
+                switchingSlug={switchingSlug}
+                disabled={disabled}
+                busy={busy}
+                onSwitchOrg={(org) => void onSwitchOrg(org)}
+              />
               <div className="cloud-account-actions">
                 <button
                   className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
