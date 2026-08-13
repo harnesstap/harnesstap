@@ -1,0 +1,3 @@
+kind: Features
+body: Add ht resource directories list/add/remove/rescan to manage remembered library scan roots.
+time: 2026-08-12T00:00:00Z
