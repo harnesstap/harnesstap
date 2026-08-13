@@ -1906,11 +1906,28 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   background: color-mix(in srgb, var(--surface-2) 80%, transparent);
 }
 
+.resource-row-leading {
+  grid-column: 1;
+}
+
 .resource-row-identity {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  grid-column: 2;
   min-width: 0;
+}
+
+.resource-row > .resource-row-desc {
+  grid-column: 2;
+}
+
+.resource-row-meta {
+  grid-column: 3;
+}
+
+.resource-row-trailing {
+  grid-column: 4;
 }
 
 .resource-row-identity-main {

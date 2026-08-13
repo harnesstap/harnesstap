@@ -32,7 +32,7 @@ export function ResourceRowLeading({
   children,
   className,
 }: {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
 }): ReactNode {
   return <div className={cn("resource-row-leading", className)}>{children}</div>;
@@ -85,6 +85,7 @@ export function ResourceRowIdentity({
   );
 }
 
+/** Nest under `ResourceRowIdentity` so the description sits in the identity column. */
 export function ResourceRowDescription({
   children,
   className,
