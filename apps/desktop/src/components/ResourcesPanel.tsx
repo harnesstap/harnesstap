@@ -1,28 +1,20 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  Bot,
-  FileCode2,
-  FileText,
-  FolderDown,
-  FolderInput,
-  Package,
-  Plug,
-  Shield,
-  Sparkles,
-  Terminal,
-  Variable,
-  Webhook,
-  Wrench,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FolderDown, FolderInput } from "lucide-react";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
-import { RelatedHarnessIcons } from "./HarnessIcons";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
 import {
   ResourceDetailPane,
   type ResourceDetailTarget,
 } from "./ResourceDetailPane";
+import { TypeIcon } from "./TypeIcon";
+import {
+  ResourceRowDescription,
+  ResourceRowIdentity,
+  ResourceRowMeta,
+  ResourceRowRoot,
+} from "./ui/resource-row";
 import { fetchLibraryResources } from "../lib/agent-client";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
@@ -32,40 +24,12 @@ import {
   resetResourceFilterState,
   type ResourceFilterState,
 } from "../lib/resource-filters";
+import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import {
   groupLibraryResourcesByType,
   resourceDisplayName,
 } from "../lib/resource-search";
 import type { LibraryResource } from "../lib/types";
-
-const ICON_SIZE = 14;
-
-function TypeIcon({ type }: { type: string }): ReactNode {
-  switch (type) {
-    case "skill":
-      return <Sparkles size={ICON_SIZE} aria-hidden />;
-    case "mcp_server":
-      return <Plug size={ICON_SIZE} aria-hidden />;
-    case "instruction":
-      return <FileText size={ICON_SIZE} aria-hidden />;
-    case "rule":
-      return <FileCode2 size={ICON_SIZE} aria-hidden />;
-    case "agent":
-      return <Bot size={ICON_SIZE} aria-hidden />;
-    case "command":
-      return <Terminal size={ICON_SIZE} aria-hidden />;
-    case "hook":
-      return <Webhook size={ICON_SIZE} aria-hidden />;
-    case "permission":
-      return <Shield size={ICON_SIZE} aria-hidden />;
-    case "env_var":
-      return <Variable size={ICON_SIZE} aria-hidden />;
-    case "plugin_pin":
-      return <Package size={ICON_SIZE} aria-hidden />;
-    default:
-      return <Wrench size={ICON_SIZE} aria-hidden />;
-  }
-}
 
 export interface ResourcesPanelProps {
   baseUrl: string | null;
@@ -240,18 +204,16 @@ export function ResourcesPanel({
                   {group.resources.map((resource) => {
                     const label = resourceDisplayName(resource);
                     return (
-                      <li
-                        className="resources-list-item"
-                        key={resource.id}
-                        data-testid={`resource-row-${label}`}
-                      >
-                        <div className="resources-list-main">
-                          <button
-                            type="button"
-                            className="resource-name-btn resources-list-name"
-                            title={resource.source || undefined}
-                            disabled={disabled}
-                            onClick={() =>
+                      <li className="resources-list-item" key={resource.id}>
+                        <ResourceRowRoot
+                          hover={hoverModelFromLibraryResource(resource)}
+                          testId={`resource-row-${label}`}
+                          disabled={disabled}
+                        >
+                          <ResourceRowIdentity
+                            type={resource.type}
+                            label={label}
+                            onOpen={() =>
                               setDetailTarget({
                                 selector: resource.id,
                                 label,
@@ -259,19 +221,18 @@ export function ResourcesPanel({
                               })
                             }
                           >
-                            {label}
-                          </button>
-                          <RelatedHarnessIcons
+                            {resource.description ? (
+                              <ResourceRowDescription>
+                                {resource.description}
+                              </ResourceRowDescription>
+                            ) : null}
+                          </ResourceRowIdentity>
+                          <ResourceRowMeta
                             harnessIds={relatedHarnessesForResourceType(
                               resource.type,
                             )}
                           />
-                        </div>
-                        {resource.description ? (
-                          <span className="resources-list-desc muted">
-                            {resource.description}
-                          </span>
-                        ) : null}
+                        </ResourceRowRoot>
                       </li>
                     );
                   })}

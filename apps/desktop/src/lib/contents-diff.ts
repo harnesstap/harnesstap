@@ -70,7 +70,7 @@ export const TYPE_LABELS: Record<string, { one: string; other: string }> = {
   plugin_pin: { one: "plugin", other: "plugins" },
 };
 
-function labelForType(type: string, count: number): string {
+export function labelForType(type: string, count: number): string {
   const known = TYPE_LABELS[type];
   if (known) {
     return count === 1 ? known.one : known.other;
@@ -78,54 +78,12 @@ function labelForType(type: string, count: number): string {
   return count === 1 ? type : `${type}s`;
 }
 
-const ORIGIN_HOVER_LABELS: Record<string, string> = {
-  local_snapshot: "local",
-  marketplace_link: "marketplace",
-  manual: "manual",
-  untracked: "untracked",
-};
-
-function inferFileChangeType(path: string): string | undefined {
+export function inferFileChangeType(path: string): string | undefined {
   const normalized = path.replace(/\\/g, "/");
   if (/(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)) {
     return "mcp_server";
   }
   return undefined;
-}
-
-export type FileChangeHoverRow =
-  | { kind: "path"; text: string }
-  | { kind: "type"; text: string; type: string }
-  | { kind: "origin"; text: string; originKind: string }
-  | { kind: "destinations"; text: string };
-
-export function fileChangeHoverRows(input: {
-  path: string;
-  resource?: { type: string; name: string; origin_kind?: string | null };
-}): FileChangeHoverRow[] {
-  const rows: FileChangeHoverRow[] = [{ kind: "path", text: input.path }];
-  const type = input.resource?.type ?? inferFileChangeType(input.path);
-  if (type) {
-    rows.push({ kind: "type", text: labelForType(type, 1), type });
-  }
-  const origin = input.resource?.origin_kind?.trim();
-  if (origin) {
-    rows.push({
-      kind: "origin",
-      text: ORIGIN_HOVER_LABELS[origin] ?? origin.replaceAll("_", " "),
-      originKind: origin,
-    });
-  }
-  return rows;
-}
-
-export function fileChangeHoverTitle(input: {
-  path: string;
-  resource?: { type: string; name: string; origin_kind?: string | null };
-}): string {
-  return fileChangeHoverRows(input)
-    .map((row) => row.text)
-    .join("\n");
 }
 
 function pluginKey(plugin: { id: string; name: string; version: string }): string {
@@ -504,36 +462,6 @@ export function fileChangeDestinationSummary(
   }
 
   return clauses.join(" · ");
-}
-
-export function fileChangeGroupHoverRows(
-  group: FileChangeResourceGroup,
-): FileChangeHoverRow[] {
-  const rows: FileChangeHoverRow[] = [];
-  const firstPath = group.changes[0]?.path ?? "";
-  const type = group.resource?.type ?? inferFileChangeType(firstPath);
-  if (type) {
-    rows.push({ kind: "type", text: labelForType(type, 1), type });
-  }
-  const origin = group.resource?.origin_kind?.trim();
-  if (origin) {
-    rows.push({
-      kind: "origin",
-      text: ORIGIN_HOVER_LABELS[origin] ?? origin.replaceAll("_", " "),
-      originKind: origin,
-    });
-  }
-  const destinations = fileChangeDestinationSummary(group);
-  if (destinations) {
-    rows.push({ kind: "destinations", text: destinations });
-  }
-  return rows;
-}
-
-export function fileChangeGroupHoverTitle(group: FileChangeResourceGroup): string {
-  return fileChangeGroupHoverRows(group)
-    .map((row) => row.text)
-    .join("\n");
 }
 
 export function countFileChangeKindResources(

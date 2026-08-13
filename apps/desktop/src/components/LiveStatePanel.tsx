@@ -1,27 +1,14 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  Bot,
   ChevronDown,
   ChevronRight,
   Diff,
   ExternalLink,
-  FileCode2,
-  FileText,
-  Folder,
   Layers,
   Minus,
-  Package,
   Pencil,
-  Plug,
   Plus,
-  Shield,
-  Sparkles,
-  Store,
-  Terminal,
   Trash2,
-  Variable,
-  Webhook,
-  Wrench,
 } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
 import {
@@ -30,15 +17,12 @@ import {
   diffProfileContents,
   fallbackTypeCounts,
   fileChangeAction,
-  fileChangeGroupHoverRows,
-  fileChangeGroupHoverTitle,
   filterFileChangeGroups,
   groupFileChangesByResource,
   orderedTypeCounts,
   summarizeStackChanges,
   typeCountsFromItems,
   type ContentsDiffItem,
-  type FileChangeHoverRow,
   type FileChangeKind,
   type FileChangeResourceGroup,
   type InstallGapRow,
@@ -47,6 +31,12 @@ import {
 } from "../lib/contents-diff";
 import { fileChangeRowActions } from "../lib/file-change-actions";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import {
+  hoverModelFromContentsDiffItem,
+  hoverModelFromFileChangeChild,
+  hoverModelFromFileChangeGroup,
+  hoverModelFromProfileResource,
+} from "../lib/resource-hover";
 import {
   filterContentsResourcesBySearch,
   LIST_PAGE_SIZE,
@@ -67,6 +57,15 @@ import {
   ResourceDetailPane,
   type ResourceDetailTarget,
 } from "./ResourceDetailPane";
+import { TypeIcon } from "./TypeIcon";
+import {
+  ResourceRowDescription,
+  ResourceRowIdentity,
+  ResourceRowLeading,
+  ResourceRowMeta,
+  ResourceRowRoot,
+  ResourceRowTrailing,
+} from "./ui/resource-row";
 
 const ICON_SIZE = 14;
 
@@ -128,37 +127,6 @@ function ListTruncationControls({
       </button>
     </div>
   );
-}
-
-function TypeIcon({ type }: { type: string }): ReactNode {
-  switch (type) {
-    case "plugin":
-      return <Layers size={ICON_SIZE} aria-hidden />;
-    case "skill":
-      return <Sparkles size={ICON_SIZE} aria-hidden />;
-    case "mcp_server":
-      return <Plug size={ICON_SIZE} aria-hidden />;
-    case "instruction":
-      return <FileText size={ICON_SIZE} aria-hidden />;
-    case "rule":
-      return <FileCode2 size={ICON_SIZE} aria-hidden />;
-    case "agent":
-      return <Bot size={ICON_SIZE} aria-hidden />;
-    case "command":
-      return <Terminal size={ICON_SIZE} aria-hidden />;
-    case "hook":
-      return <Webhook size={ICON_SIZE} aria-hidden />;
-    case "permission":
-      return <Shield size={ICON_SIZE} aria-hidden />;
-    case "env_var":
-      return <Variable size={ICON_SIZE} aria-hidden />;
-    case "model_config":
-      return <Wrench size={ICON_SIZE} aria-hidden />;
-    case "plugin_pin":
-      return <Package size={ICON_SIZE} aria-hidden />;
-    default:
-      return <Wrench size={ICON_SIZE} aria-hidden />;
-  }
 }
 
 function resourceDetailTarget(
@@ -387,36 +355,42 @@ function DiffRow({
   const selector = item.selector;
   const canOpen =
     item.category === "resource" && Boolean(selector) && Boolean(onOpenResource);
+  const detail = item.detail ? (
+    <ResourceRowDescription>{item.detail}</ResourceRowDescription>
+  ) : null;
   return (
-    <div className={`diff-row ${tone}`}>
-      <span className="diff-mark" aria-hidden>
-        {tone === "add" ? "+" : "−"}
-      </span>
-      <span className="diff-body">
-        <TypeIcon type={item.iconType} />
-        {canOpen && selector && onOpenResource ? (
-          <ResourceNameButton
-            label={item.label}
-            path={item.path}
-            onOpen={() =>
-              onOpenResource({
-                selector,
-                label: item.label,
-                pathHint: item.path,
-              })
-            }
-          />
-        ) : (
-          <span className="diff-label" title={item.path || undefined}>
-            {item.label}
-          </span>
-        )}
-        {item.detail ? <span className="diff-detail muted">{item.detail}</span> : null}
-        <RelatedHarnessIcons
-          harnessIds={relatedHarnessesForResourceType(item.iconType)}
-        />
-      </span>
-    </div>
+    <ResourceRowRoot
+      hover={hoverModelFromContentsDiffItem(item)}
+      className={`diff-row ${tone}`}
+    >
+      <ResourceRowLeading>
+        <span className="diff-mark" aria-hidden>
+          {tone === "add" ? "+" : "−"}
+        </span>
+      </ResourceRowLeading>
+      {canOpen && selector && onOpenResource ? (
+        <ResourceRowIdentity
+          type={item.iconType}
+          label={item.label}
+          onOpen={() =>
+            onOpenResource({
+              selector,
+              label: item.label,
+              pathHint: item.path,
+            })
+          }
+        >
+          {detail}
+        </ResourceRowIdentity>
+      ) : (
+        <ResourceRowIdentity type={item.iconType} label={item.label}>
+          {detail}
+        </ResourceRowIdentity>
+      )}
+      <ResourceRowMeta
+        harnessIds={relatedHarnessesForResourceType(item.iconType)}
+      />
+    </ResourceRowRoot>
   );
 }
 
@@ -434,17 +408,17 @@ function UntrackedResourceRow({
   const selector = resource.id ?? `${resource.type}:${resource.name}`;
   const canOpen = Boolean(onOpenResource);
   return (
-    <div
-      className="enabled-row untracked-row"
-      data-testid={`resource-row-${resource.name}`}
+    <ResourceRowRoot
+      hover={hoverModelFromProfileResource(resource)}
+      testId={`resource-row-${resource.name}`}
+      className="untracked-row"
     >
-      <span className="enabled-type">
+      <ResourceRowLeading>
         <TypeIcon type={resource.type} />
-      </span>
+      </ResourceRowLeading>
       {canOpen && onOpenResource ? (
-        <ResourceNameButton
+        <ResourceRowIdentity
           label={resource.name}
-          path={resource.source}
           onOpen={() =>
             onOpenResource({
               selector,
@@ -454,14 +428,12 @@ function UntrackedResourceRow({
           }
         />
       ) : (
-        <span className="enabled-label" title={resource.source || undefined}>
-          {resource.name}
-        </span>
+        <ResourceRowIdentity label={resource.name} />
       )}
-      <span className="enabled-trailing">
-        <RelatedHarnessIcons
-          harnessIds={relatedHarnessesForResourceType(resource.type)}
-        />
+      <ResourceRowMeta
+        harnessIds={relatedHarnessesForResourceType(resource.type)}
+      />
+      <ResourceRowTrailing>
         <button
           type="button"
           className={[
@@ -483,8 +455,8 @@ function UntrackedResourceRow({
             <Plus size={ICON_SIZE} strokeWidth={2} aria-hidden />
           )}
         </button>
-      </span>
-    </div>
+      </ResourceRowTrailing>
+    </ResourceRowRoot>
   );
 }
 
@@ -499,14 +471,16 @@ function EnabledResourceRow({
   const canOpen =
     item.category === "resource" && Boolean(selector) && Boolean(onOpenResource);
   return (
-    <div className="enabled-row" data-testid={`resource-row-${item.label}`}>
-      <span className="enabled-type">
+    <ResourceRowRoot
+      hover={hoverModelFromContentsDiffItem(item)}
+      testId={`resource-row-${item.label}`}
+    >
+      <ResourceRowLeading>
         <TypeIcon type={item.iconType} />
-      </span>
+      </ResourceRowLeading>
       {canOpen && selector && onOpenResource ? (
-        <ResourceNameButton
+        <ResourceRowIdentity
           label={item.label}
-          path={item.path}
           onOpen={() =>
             onOpenResource({
               selector,
@@ -516,17 +490,17 @@ function EnabledResourceRow({
           }
         />
       ) : (
-        <span className="enabled-label" title={item.path || undefined}>
-          {item.label}
-        </span>
+        <ResourceRowIdentity label={item.label} />
       )}
-      <span className="enabled-trailing">
-        <RelatedHarnessIcons
-          harnessIds={relatedHarnessesForResourceType(item.iconType)}
-        />
-        {item.detail ? <span className="enabled-detail muted">{item.detail}</span> : null}
-      </span>
-    </div>
+      <ResourceRowMeta
+        harnessIds={relatedHarnessesForResourceType(item.iconType)}
+      />
+      {item.detail ? (
+        <ResourceRowTrailing>
+          <span className="enabled-detail muted">{item.detail}</span>
+        </ResourceRowTrailing>
+      ) : null}
+    </ResourceRowRoot>
   );
 }
 
@@ -679,66 +653,6 @@ function matchesPinSearch(
     ],
     search,
   ).length > 0;
-}
-
-function OriginHoverIcon({ originKind }: { originKind: string }): ReactNode {
-  switch (originKind) {
-    case "marketplace_link":
-      return <Store size={ICON_SIZE} aria-hidden />;
-    case "local_snapshot":
-      return <Folder size={ICON_SIZE} aria-hidden />;
-    case "manual":
-      return <Pencil size={ICON_SIZE} aria-hidden />;
-    default:
-      return <Package size={ICON_SIZE} aria-hidden />;
-  }
-}
-
-function FileChangeHoverTooltip({
-  rows,
-}: {
-  rows: FileChangeHoverRow[];
-}): ReactNode {
-  if (rows.length === 0) {
-    return null;
-  }
-  return (
-    <div className="file-change-tooltip" role="tooltip">
-      {rows.map((row) => {
-        let icon: ReactNode;
-        switch (row.kind) {
-          case "path":
-            icon = <FileText size={ICON_SIZE} aria-hidden />;
-            break;
-          case "type":
-            icon = <TypeIcon type={row.type} />;
-            break;
-          case "origin":
-            icon = <OriginHoverIcon originKind={row.originKind} />;
-            break;
-          case "destinations":
-            icon = <Folder size={ICON_SIZE} aria-hidden />;
-            break;
-          default: {
-            const neverKind: never = row;
-            return neverKind;
-          }
-        }
-        return (
-          <div className="file-change-tooltip-row" key={`${row.kind}-${row.text}`}>
-            <span className="file-change-tooltip-icon">{icon}</span>
-            <span
-              className={
-                row.kind === "path" ? "mono file-change-tooltip-path" : undefined
-              }
-            >
-              {row.kind === "path" ? row.text.replaceAll("/", "/\u200b") : row.text}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function FileChangeRowActions({
@@ -931,6 +845,17 @@ function groupKindCounts(
   return counts;
 }
 
+function fileChangeGroupAriaLabel(
+  group: FileChangeResourceGroup,
+): string | undefined {
+  const name = group.resource?.name;
+  const type = group.resource?.type;
+  if (name && type) {
+    return `${name} ${type}`;
+  }
+  return undefined;
+}
+
 function FileChangeGroupCounts({
   group,
 }: {
@@ -1070,109 +995,117 @@ function FileChangeRows({
         const resource = group.resource;
         return (
           <div className="file-change-group" key={group.key}>
-            <div
+            <ResourceRowRoot
+              hover={hoverModelFromFileChangeGroup(group)}
               className="diff-row file-change-group-row"
-              aria-label={fileChangeGroupHoverTitle(group)}
+              ariaLabel={fileChangeGroupAriaLabel(group)}
             >
               {!group.singleton ? (
-                <button
-                  type="button"
-                  className="file-change-expand-btn"
-                  aria-expanded={expanded}
-                  aria-label={expanded ? "Collapse file paths" : "Expand file paths"}
-                  onClick={() => {
-                    setExpandedKeys((current) => {
-                      const next = new Set(current);
-                      if (next.has(group.key)) {
-                        next.delete(group.key);
-                      } else {
-                        next.add(group.key);
-                      }
-                      return next;
-                    });
-                  }}
-                >
-                  {expanded ? (
-                    <ChevronDown size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                  ) : (
-                    <ChevronRight size={ICON_SIZE} strokeWidth={2} aria-hidden />
-                  )}
-                </button>
+                <ResourceRowLeading>
+                  <button
+                    type="button"
+                    className="file-change-expand-btn"
+                    aria-expanded={expanded}
+                    aria-label={expanded ? "Collapse file paths" : "Expand file paths"}
+                    onClick={() => {
+                      setExpandedKeys((current) => {
+                        const next = new Set(current);
+                        if (next.has(group.key)) {
+                          next.delete(group.key);
+                        } else {
+                          next.add(group.key);
+                        }
+                        return next;
+                      });
+                    }}
+                  >
+                    {expanded ? (
+                      <ChevronDown size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                    ) : (
+                      <ChevronRight size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                    )}
+                  </button>
+                </ResourceRowLeading>
               ) : null}
-              <span className="diff-body">
-                {resource?.type ? <TypeIcon type={resource.type} /> : null}
-                {resource ? (
-                  onOpenResource ? (
-                    <ResourceNameButton
-                      label={resource.name}
-                      className="diff-label"
-                      onOpen={() =>
-                        onOpenResource({
-                          selector: `${resource.type}:${resource.name}`,
-                          label: resource.name,
-                          pathHint: firstRow?.absolutePath,
-                        })
-                      }
-                    />
-                  ) : (
-                    <span className="diff-label">{resource.name}</span>
-                  )
+              {resource ? (
+                onOpenResource ? (
+                  <ResourceRowIdentity
+                    type={resource.type}
+                    label={resource.name}
+                    onOpen={() =>
+                      onOpenResource({
+                        selector: `${resource.type}:${resource.name}`,
+                        label: resource.name,
+                        pathHint: firstRow?.absolutePath,
+                      })
+                    }
+                  />
                 ) : (
-                  <span className="diff-label mono">
-                    {firstChange?.path ?? group.key}
-                  </span>
-                )}
-                <RelatedHarnessIcons harnessIds={group.platforms} />
-                <FileChangeGroupCounts group={group} />
-              </span>
-              {group.singleton && firstChange && firstRow ? (
-                <FileChangeRowActions
-                  change={firstChange}
-                  row={firstRow}
-                  busy={fileChangeBusyPath === firstChange.path}
-                  busyAction={
-                    fileChangeBusyPath === firstChange.path
-                      ? fileChangeBusyAction
-                      : null
-                  }
-                  onOpenFileChange={onOpenFileChange}
-                  onDiffFileChange={onDiffFileChange}
-                  onAddFileChange={onAddFileChange}
-                  onDropFileChange={onDropFileChange}
+                  <ResourceRowIdentity type={resource.type} label={resource.name} />
+                )
+              ) : (
+                <ResourceRowIdentity
+                  label={firstChange?.path ?? group.key}
+                  className="mono"
                 />
-              ) : null}
-              <FileChangeHoverTooltip rows={fileChangeGroupHoverRows(group)} />
-            </div>
+              )}
+              <ResourceRowMeta harnessIds={group.platforms} />
+              <ResourceRowTrailing>
+                <FileChangeGroupCounts group={group} />
+                {group.singleton && firstChange && firstRow ? (
+                  <FileChangeRowActions
+                    change={firstChange}
+                    row={firstRow}
+                    busy={fileChangeBusyPath === firstChange.path}
+                    busyAction={
+                      fileChangeBusyPath === firstChange.path
+                        ? fileChangeBusyAction
+                        : null
+                    }
+                    onOpenFileChange={onOpenFileChange}
+                    onDiffFileChange={onDiffFileChange}
+                    onAddFileChange={onAddFileChange}
+                    onDropFileChange={onDropFileChange}
+                  />
+                ) : null}
+              </ResourceRowTrailing>
+            </ResourceRowRoot>
             {!group.singleton && expanded
               ? group.changes.map((change, index) => {
                   const row = rowForChange(change);
                   const kind = row.action;
                   const busy = fileChangeBusyPath === change.path;
                   return (
-                    <div
+                    <ResourceRowRoot
+                      hover={hoverModelFromFileChangeChild(change)}
                       className={`diff-row file-change-child ${fileChangeKindClass(kind)}`}
                       key={`${change.type}-${change.path}-${change.platform ?? "na"}-${index}`}
                     >
-                      <span className="diff-mark" aria-hidden>
-                        {fileChangeKindMark(kind)}
-                      </span>
-                      <span className="diff-body">
-                        <span className="diff-label mono">{change.path}</span>
-                        {change.platform ? (
-                          <RelatedHarnessIcons harnessIds={[change.platform]} />
-                        ) : null}
-                      </span>
-                      <FileChangeRowActions
-                        change={change}
-                        row={row}
-                        busy={busy}
-                        busyAction={busy ? fileChangeBusyAction : null}
-                        onOpenFileChange={onOpenFileChange}
-                        onDiffFileChange={onDiffFileChange}
-                        onAddFileChange={onAddFileChange}
-                        onDropFileChange={onDropFileChange}
+                      <ResourceRowLeading>
+                        <span className="diff-mark" aria-hidden>
+                          {fileChangeKindMark(kind)}
+                        </span>
+                      </ResourceRowLeading>
+                      <ResourceRowIdentity
+                        label={change.path}
+                        className="mono"
                       />
-                    </div>
+                      <ResourceRowMeta
+                        harnessIds={change.platform ? [change.platform] : []}
+                      />
+                      <ResourceRowTrailing>
+                        <FileChangeRowActions
+                          change={change}
+                          row={row}
+                          busy={busy}
+                          busyAction={busy ? fileChangeBusyAction : null}
+                          onOpenFileChange={onOpenFileChange}
+                          onDiffFileChange={onDiffFileChange}
+                          onAddFileChange={onAddFileChange}
+                          onDropFileChange={onDropFileChange}
+                        />
+                      </ResourceRowTrailing>
+                    </ResourceRowRoot>
                   );
                 })
               : null}
