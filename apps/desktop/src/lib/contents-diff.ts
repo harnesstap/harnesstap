@@ -70,7 +70,7 @@ export const TYPE_LABELS: Record<string, { one: string; other: string }> = {
   plugin_pin: { one: "plugin", other: "plugins" },
 };
 
-function labelForType(type: string, count: number): string {
+export function labelForType(type: string, count: number): string {
   const known = TYPE_LABELS[type];
   if (known) {
     return count === 1 ? known.one : known.other;
@@ -85,7 +85,7 @@ const ORIGIN_HOVER_LABELS: Record<string, string> = {
   untracked: "untracked",
 };
 
-function inferFileChangeType(path: string): string | undefined {
+export function inferFileChangeType(path: string): string | undefined {
   const normalized = path.replace(/\\/g, "/");
   if (/(^|\/)(\.?mcp\.json|mcp[-_]config\.json)$/i.test(normalized)) {
     return "mcp_server";
