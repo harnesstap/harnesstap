@@ -471,7 +471,9 @@ describe("profile create sources — compose wizard", () => {
   it("prompts for plugins and resources when --compose has no selectors", async () => {
     const context = await createInitializedTestContext("create-src-compose-wizard");
     const previousForce = process.env.HARNESSTAP_FORCE_WIZARD;
+    const previousCi = process.env.CI;
     process.env.HARNESSTAP_FORCE_WIZARD = "1";
+    delete process.env.CI;
     const dependency = createPlugin({ name: "engineering" });
     const previousPrompt = inquirer.prompt;
     const promptCalls: unknown[] = [];
@@ -496,6 +498,11 @@ describe("profile create sources — compose wizard", () => {
         delete process.env.HARNESSTAP_FORCE_WIZARD;
       } else {
         process.env.HARNESSTAP_FORCE_WIZARD = previousForce;
+      }
+      if (previousCi === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = previousCi;
       }
       await context.cleanup();
     }
