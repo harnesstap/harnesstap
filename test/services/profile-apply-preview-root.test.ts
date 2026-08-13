@@ -46,7 +46,11 @@ describe("previewProfileApply files.root_path + resource", () => {
         || c.path === ".claude/skills/manual-skill/SKILL.md",
       );
       expect(change?.type).toBe("modified");
-      expect(change?.resource).toEqual({ type: "skill", name: "manual-skill" });
+      expect(change?.resource).toEqual({
+        type: "skill",
+        name: "manual-skill",
+        origin_kind: "manual",
+      });
     } finally {
       await context.cleanup();
     }
