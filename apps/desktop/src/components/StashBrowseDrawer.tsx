@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Bot,
   ArchiveRestore,
@@ -14,7 +14,19 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import {
+  connectAgent,
+  fetchProfileStash,
+  fetchStatus,
+  popProfileStash,
+} from "../lib/agent-client";
+import {
+  applyProfileStash,
+  stashApplySuccessMessage,
+  stashRestoreDropSuccessMessage,
+} from "../lib/api/stash-apply";
 import type { ProfileContentsResource, ProfileStashEntry } from "../lib/types";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 const ICON_SIZE = 14;
 
@@ -79,31 +91,195 @@ interface StashBrowseDrawerProps {
   open: boolean;
   entries: ProfileStashEntry[];
   onClose: () => void;
+  baseUrl?: string | null;
+  token?: string | null;
+  connected?: boolean;
+  switching?: boolean;
 }
+
+type StashDrawerAction = "apply" | "restore" | null;
 
 export function StashBrowseDrawer({
   open,
   entries,
   onClose,
+  baseUrl,
+  token,
+  connected,
+  switching,
 }: StashBrowseDrawerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [session, setSession] = useState<{
+    baseUrl: string;
+    token: string | null;
+  } | null>(null);
+  const [switchingLive, setSwitchingLive] = useState(false);
+  const [overlayEntries, setOverlayEntries] = useState<ProfileStashEntry[] | null>(null);
+  const [stashAction, setStashAction] = useState<StashDrawerAction>(null);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [bannerSuccess, setBannerSuccess] = useState<string | null>(null);
+
+  const resolvedEntries = overlayEntries ?? entries;
+  const stashBusy = stashAction !== null;
+  const resolvedBaseUrl = baseUrl ?? session?.baseUrl ?? null;
+  const resolvedToken = token ?? session?.token ?? null;
+  const resolvedConnected =
+    connected ?? Boolean(resolvedBaseUrl && resolvedToken);
+  const resolvedSwitching = switching ?? switchingLive;
+  const mutateDisabled =
+    !resolvedConnected
+    || !resolvedBaseUrl
+    || !resolvedToken
+    || resolvedSwitching
+    || stashBusy
+    || resolvedEntries.length === 0;
+
+  useEffect(() => {
+    if (!open) {
+      setOverlayEntries(null);
+      setStashAction(null);
+      setBannerError(null);
+      setBannerSuccess(null);
+      return;
+    }
+    if (baseUrl) {
+      setSession({ baseUrl, token: token ?? null });
+      return;
+    }
+    let cancelled = false;
+    void connectAgent()
+      .then((connection) => {
+        if (!cancelled) {
+          setSession({
+            baseUrl: connection.baseUrl,
+            token: connection.token,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setBannerError(
+            error instanceof Error ? error.message : "Sidecar connection failed",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, baseUrl, token]);
+
+  useEffect(() => {
+    if (!open || !resolvedBaseUrl) {
+      return;
+    }
+    let cancelled = false;
+    void fetchStatus(resolvedBaseUrl, "fast")
+      .then((status) => {
+        if (!cancelled) {
+          setSwitchingLive(Boolean(status.switching));
+        }
+      })
+      .catch(() => {
+        /* rail already owns live status; ignore poll failure */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, resolvedBaseUrl]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setSelectedId(entries[0]?.id ?? null);
-  }, [entries, open]);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !stashBusy) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, stashBusy, onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setSelectedId(resolvedEntries[0]?.id ?? null);
+  }, [resolvedEntries, open]);
 
   const selectedEntry = useMemo(
-    () => entries.find((entry) => entry.id === selectedId) ?? entries[0] ?? null,
-    [entries, selectedId],
+    () => resolvedEntries.find((entry) => entry.id === selectedId) ?? resolvedEntries[0] ?? null,
+    [resolvedEntries, selectedId],
   );
 
   const resourceGroups = useMemo(
     () => groupResourcesByType(selectedEntry?.contents.resources ?? []),
     [selectedEntry],
   );
+
+  const refreshEntries = useCallback(async () => {
+    if (!resolvedBaseUrl) {
+      return [];
+    }
+    const listed = await fetchProfileStash(resolvedBaseUrl, resolvedToken);
+    setOverlayEntries(listed.entries);
+    return listed.entries;
+  }, [resolvedBaseUrl, resolvedToken]);
+
+  const onApplyKeep = useCallback(async () => {
+    if (mutateDisabled || !resolvedBaseUrl || !resolvedToken) {
+      return;
+    }
+    setStashAction("apply");
+    setBannerError(null);
+    setBannerSuccess(null);
+    try {
+      const result = await applyProfileStash(resolvedBaseUrl, resolvedToken);
+      if (result.restored.cancelled) {
+        setBannerError("Restore cancelled");
+        return;
+      }
+      await refreshEntries();
+      setBannerSuccess(
+        stashApplySuccessMessage(result.entry.contents.resources.length),
+      );
+    } catch (error) {
+      setBannerError(
+        error instanceof Error ? error.message : "Could not apply stashed profile",
+      );
+    } finally {
+      setStashAction(null);
+    }
+  }, [mutateDisabled, refreshEntries, resolvedBaseUrl, resolvedToken]);
+
+  const onRestoreDrop = useCallback(async () => {
+    if (mutateDisabled || !resolvedBaseUrl || !resolvedToken) {
+      return;
+    }
+    setStashAction("restore");
+    setBannerError(null);
+    setBannerSuccess(null);
+    try {
+      const result = await popProfileStash(resolvedBaseUrl, resolvedToken);
+      if (result.restored.cancelled) {
+        setBannerError("Restore cancelled");
+        return;
+      }
+      const next = await refreshEntries();
+      setBannerSuccess(
+        stashRestoreDropSuccessMessage(result.entry.contents.resources.length),
+      );
+      if (next.length === 0) {
+        onClose();
+      }
+    } catch (error) {
+      setBannerError(
+        error instanceof Error ? error.message : "Could not restore stashed profile",
+      );
+    } finally {
+      setStashAction(null);
+    }
+  }, [mutateDisabled, onClose, refreshEntries, resolvedBaseUrl, resolvedToken]);
 
   if (!open) {
     return null;
@@ -114,7 +290,7 @@ export function StashBrowseDrawer({
       className="dialog-backdrop create-profile-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
+        if (event.target === event.currentTarget && !stashBusy) {
           onClose();
         }
       }}
@@ -130,7 +306,9 @@ export function StashBrowseDrawer({
           <div>
             <h2 id="stash-browse-title">Stashed profiles</h2>
             <p className="muted stash-browse-subtitle">
-              Stashed untracked resources. Right-click Unstash to browse bundles.
+              Untracked resource bundles. Apply (keep) restores files and leaves
+              the stash. Restore (drop) restores files and removes it. Both use
+              the most recent stash (stash@{"{"}0{"}"}).
             </p>
           </div>
           <button
@@ -138,18 +316,21 @@ export function StashBrowseDrawer({
             className="icon-action"
             aria-label="Close stash browser"
             onClick={onClose}
+            disabled={stashBusy}
           >
             <X size={16} aria-hidden="true" />
           </button>
         </div>
 
         <div className="create-profile-body stash-browse-body">
+          {bannerError ? <div className="banner error">{bannerError}</div> : null}
+          {bannerSuccess ? <div className="success-flash">{bannerSuccess}</div> : null}
           <div className="stash-browser">
             <div className="stash-bundle-list" aria-label="Stash bundles">
-              {entries.length === 0 ? (
+              {resolvedEntries.length === 0 ? (
                 <p className="muted stash-list-message">No stashed profiles.</p>
               ) : (
-                entries.map((entry, index) => {
+                resolvedEntries.map((entry, index) => {
                   const selected = entry.id === selectedEntry?.id;
                   return (
                     <button
@@ -197,6 +378,12 @@ export function StashBrowseDrawer({
                       <p className="muted">{selectedEntry.contents.stack_summary}</p>
                     ) : null}
                   </div>
+                    {selectedEntry.id !== resolvedEntries[0]?.id ? (
+                      <p className="muted">
+                        Apply and Restore always use stash@{"{"}0{"}"} (most
+                        recent), not the selected older bundle.
+                      </p>
+                    ) : null}
 
                   <div className="stash-bundle-resources">
                     {resourceGroups.length === 0 ? (
@@ -261,8 +448,37 @@ export function StashBrowseDrawer({
         </div>
 
         <div className="dialog-actions create-profile-actions">
-          <button className="btn" type="button" onClick={onClose}>
+          <button
+            className="btn"
+            type="button"
+            onClick={onClose}
+            disabled={stashBusy}
+          >
             Close
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={() => void onApplyKeep()}
+            disabled={mutateDisabled}
+            title="Restore files from the most recent stash and keep the stash entry"
+            aria-label="Restore files from the most recent stash and keep the stash entry"
+            aria-busy={stashAction === "apply"}
+          >
+            {stashAction === "apply" ? <ButtonSpinner size={16} /> : null}
+            Apply (keep)
+          </button>
+          <button
+            className="btn primary"
+            type="button"
+            onClick={() => void onRestoreDrop()}
+            disabled={mutateDisabled}
+            title="Restore files from the most recent stash and remove the stash entry"
+            aria-label="Restore files from the most recent stash and remove the stash entry"
+            aria-busy={stashAction === "restore"}
+          >
+            {stashAction === "restore" ? <ButtonSpinner size={16} /> : null}
+            Restore (drop)
           </button>
         </div>
       </div>
