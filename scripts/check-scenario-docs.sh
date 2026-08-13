@@ -15,6 +15,8 @@ FORBIDDEN=(
   '](../portability-limits.md)'
   'layer search'
   'profile search'
+  'layer apply'
+  'layer list'
 )
 
 failures=0

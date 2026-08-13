@@ -2,7 +2,7 @@ Output docs/scenarios/vhs/output/01-existing-repo-adoption.gif
 Source docs/scenarios/vhs/tapes/_shared.tape
 Require ht
 
-Type "ht init"
+Type "ht init --main codex --aliases claude-code,cursor"
 Enter
 Sleep 1500ms
 

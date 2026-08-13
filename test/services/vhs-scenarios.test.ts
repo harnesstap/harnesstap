@@ -72,6 +72,8 @@ describe("VHS scenario manifest", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("01-existing-repo-adoption");
+    expect(result.stdout).toContain("07-preview-apply-plugin");
+    expect(result.stdout).toContain("11-catalog-baseline");
     expect(result.stdout).not.toContain("27-project-sync");
   });
 
@@ -143,7 +145,7 @@ describe("VHS scenario manifest", () => {
       .find((line) => line.startsWith('Type "'));
 
     // First typed command should be ht init
-    expect(firstTypedCommand).toMatch(/^Type "ht init"/);
+    expect(firstTypedCommand).toMatch(/^Type "ht init --main codex --aliases claude-code,cursor"/);
 
     // Tape contains the visible commands from the approved story
     expect(tape).toContain('Type "ht scan ."');
@@ -156,11 +158,20 @@ describe("VHS scenario manifest", () => {
     expect(tape).not.toContain("--format json");
   });
 
+  it("lists every curated walkthrough in the VHS README", () => {
+    const vhsReadme = readFileSync(resolve(repoRoot, "docs/scenarios/vhs/README.md"), "utf-8");
+    expect(vhsReadme).toContain("walkthroughs/01-existing-repo-adoption.md");
+    expect(vhsReadme).toContain("walkthroughs/07-preview-apply-plugin.md");
+    expect(vhsReadme).toContain("walkthroughs/11-catalog-baseline.md");
+  });
+
   it("embeds the single demo GIF in the root README and links to the walkthrough doc", () => {
     const readmePath = resolve(repoRoot, "README.md");
     const readme = readFileSync(readmePath, "utf-8");
     expect(readme).toContain("Existing repo adoption walkthrough");
     expect(readme).toContain("docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md");
+    expect(readme).toContain("ht apply engineering-foundation");
+    expect(readme).not.toContain("harnesstap apply engineering-foundation \\");
   });
 
   it("scenario detail pages do not link to deleted per-scenario VHS output or tapes", () => {
@@ -194,14 +205,17 @@ describe("VHS scenario manifest", () => {
 
     expect(readme).toContain("Agent harness configuration toolkit");
     expect(readme).toContain("ht harness list");
+    expect(readme).toContain("ht profile use default");
     expect(readme).toContain("ht plugin doctor");
     expect(readme).toContain("ht plugin edit my-setup --add research-helper --type skill");
     expect(readme).toContain(
       "ht plugin edit my-setup --add plugin:formatter@my-marketplace --version",
     );
+    expect(readme).toContain("bun run desktop:dev");
     expect(readme).not.toContain("ht platform list");
     expect(readme).not.toContain("ht plugin validate");
     expect(readme).not.toContain("ht plugin pull-plugin");
+    expect(readme).not.toContain("Upgrading from schema v18");
     expect(readme).toContain("```mermaid");
   });
 

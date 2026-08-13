@@ -31,7 +31,7 @@ describe("HarnessTap features SVG", () => {
 
     expect(rootTag).not.toBeNull();
     expect(title?.[2]).toBe("HarnessTap feature map");
-    expect(description?.[2]).toContain("HarnessTap connects");
+    expect(description?.[2]).toContain("HarnessTap CLI and Desktop");
     expect(matchAttribute(rootTag?.[1] ?? "", "aria-labelledby")).toBe("title");
     expect(matchAttribute(rootTag?.[1] ?? "", "aria-describedby")).toBe("desc");
     expect(matchAttribute(title?.[1] ?? "", "id")).toBe("title");
@@ -39,31 +39,31 @@ describe("HarnessTap features SVG", () => {
     expect(countOccurrences(svg, "Agent harnesses")).toBe(1);
     expect(countOccurrences(svg, 'class="panel"')).toBe(1);
     expect(countOccurrences(svg, 'class="chipText"')).toBe(7);
-    expect(svg).toContain("Export libraries, harness prefs, and config across machines.");
+    expect(svg).toContain("Export the library,");
     expect(svg).toContain("Catalog baselines,");
     expect(svg).toContain("env cascade");
     expect(svg).toContain("plugin deps");
+    expect(svg).not.toContain("deck");
 
     const requiredLabels = [
       "HarnessTap",
-      "Agent harness configuration toolkit",
+      "CLI and Desktop",
       "Agent harnesses",
       "Claude Code",
       "Cursor",
       "Codex",
-      "GitHub Copilot",
-      "25+ more CLIs",
+      "Goose",
+      "Grok Build",
+      "30+ more CLIs",
       "Scan",
       "Library",
-      "Compose",
-      "Apply",
-      "Snapshots",
-      "Drift",
       "Plugins",
+      "Apply",
+      "Profiles",
       "Cloud",
       "Migrate",
     ];
-    const removedLabels = ["Future Harnesses"];
+    const removedLabels = ["Future Harnesses", "25+ more CLIs"];
     const textContent = decodeXmlText(svg.replace(/<[^>]+>/g, " "));
 
     for (const label of requiredLabels) {

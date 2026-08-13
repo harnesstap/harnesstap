@@ -263,11 +263,11 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a plugin. |
-| `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, **apply**, composition attach/detach, cloud catalog workflows, diff, and doctor. |
-| `harnesstap migrate ...` | Exports or imports workspace archives, plugin/resource/environment TOML (offline sharing). |
+| `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, and doctor. |
+| `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. |
+| `harnesstap migrate ...` | Exports or imports workspace archives and Agent Plugins packages (offline sharing). |
 | `harnesstap resource ...` | Lists, shows, deletes, and syncs canonical resources. |
 | `harnesstap marketplace ...` | Registers and browses plugin marketplace sources. |
-| `harnesstap plugin ...` | Searches marketplaces and attaches `plugin_pin` refs to plugins. |
 | `harnesstap scan`, `mirror`, `status`, `history`, `revert` | Scans, mirrors, reports status/drift, and manages snapshots for git-backed projects. |
 | `harnesstap use` | Switches to a profile/environment declared in `.harnesstap/config.toml`. |
 | `harnesstap config ...` | Shows, validates, or initializes project profile config (`.harnesstap/config.toml`). |

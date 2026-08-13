@@ -359,7 +359,7 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource list` shows material resources plus `plugin` resources; `plugin` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
 - `plugin edit` selectors accept `type:name@namespace` for compose-safe resolution
-- There is no top-level `plugin` command group; use `resource sync`, `plugin show`, `plugin doctor`, `plugin fork`, and `apply --strict-plugin-versions` for plugin workflows
+- Host plugin pins are `plugin` resources; use `resource sync`, `plugin show`, `plugin doctor`, `plugin fork`, and `apply --strict-plugin-versions` for pin workflows
 
 ## environment (`e`)
 

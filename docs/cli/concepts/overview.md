@@ -23,7 +23,6 @@ flowchart TB
     Resources[Canonical resources in SQLite]
     Plugins[Plugins — the what]
     Envs[Environments — the how]
-    Plugins[Configured plugins]
     Packages[Agent Plugins packages]
   end
 
@@ -39,7 +38,6 @@ flowchart TB
   Cloud --> Plugins
   BuiltIn --> Plugins
   Resources --> Plugins
-  Plugins --> Plugins
   Envs --> Plugins
   Plugins --> Packages
   Plugins --> Claude
@@ -65,7 +63,7 @@ sequenceDiagram
   User->>CLI: ht apply plugin --harness ...
   CLI->>Project: Snapshot tracked files
   CLI->>Project: Write platform-specific configuration
-  User->>CLI: ht status / drift / revert
+  User->>CLI: ht status / revert
   CLI->>Project: Compare or restore snapshots
 ```
 
@@ -76,9 +74,9 @@ HarnessTap separates **context-side** configuration (skills, MCP, hooks, rules �
 | Concept | Role |
 | --- | --- |
 | **Resource** | Atomic instruction, skill, rule, MCP server, hook, agent, command, etc. |
-| **Plugin** | Bundle of *what* resources plus Claude config and a `needs` contract |
+| **Plugin** | Versioned package of *what* resources plus a `needs` contract |
 | **Environment** | Named *how* values (and secret refs) — prod, staging, personal |
-| **Plugin** | One or more plugins plus an optional default environment |
+| **Profile** | A plugin tagged for machine-wide switching (`ht work`, `profile use`) |
 | **Workspace** | Local library of plugins, resources, and environments at `~/.harnesstap` |
 
 A **plugin** is the versioned context package you apply to projects or profiles. **Plugin pins** and nested **plugin** refs are dependencies attached during composition.
@@ -90,8 +88,7 @@ flowchart LR
   A[Init local toolkit state] --> B[Scan repo and home defaults]
   B --> C[Store canonical resources]
   C --> D[Plugins and environments]
-  D --> E[Configured plugins]
-  E --> F[Apply with environment cascade]
+  D --> E[Apply with environment cascade]
 ```
 
 ## Two apply surfaces
@@ -109,7 +106,7 @@ Profiles answer "what stack runs on this machine by default?" Projects answer "w
 
 | Topic | Page |
 | --- | --- |
-| Plugins, plugins, pins, catalog | [Plugins](./plugins.md) |
+| Plugins, pins, catalog | [Plugins](./plugins.md) |
 | Scan, import, canonical library | [Resources](./resources.md) |
 | Machine-wide home harness state | [Profiles](./profiles.md) |
 | Env vars, secret refs, MCP auth limits | [Environments](./environments.md) |

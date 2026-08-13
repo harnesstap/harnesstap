@@ -1,209 +1,159 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title" aria-describedby="desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title" aria-describedby="desc">
   <title id="title">HarnessTap feature map</title>
-  <desc id="desc">HarnessTap connects Claude Code, Cursor, Codex, GitHub Copilot, and other coding harnesses through scan, canonical SQLite library storage, plugins, portable decks, apply with environment cascade, sync and mirror, snapshots, drift detection, plugin pins, plugin dependencies, catalog baselines, cloud catalogs, and machine migration.</desc>
+  <desc id="desc">HarnessTap CLI and Desktop share one local library. Scan harness files into canonical SQLite resources, compose plugins and profiles, apply with environment cascade, then use Cloud catalogs or migrate the library across machines. Targets include Claude Code, Cursor, Codex, Copilot, Goose, Grok Build, and 30+ more CLIs.</desc>
   <defs>
-    <radialGradient id="bg" cx="50%" cy="28%" r="88%">
-      <stop offset="0%" stop-color="#24316d"/>
-      <stop offset="48%" stop-color="#101833"/>
-      <stop offset="100%" stop-color="#050814"/>
+    <radialGradient id="bg" cx="50%" cy="22%" r="88%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="52%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
     </radialGradient>
     <linearGradient id="panel" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#182449" stop-opacity="0.96"/>
-      <stop offset="100%" stop-color="#0b1227" stop-opacity="0.92"/>
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.94"/>
     </linearGradient>
     <linearGradient id="card" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#172445" stop-opacity="0.98"/>
-      <stop offset="100%" stop-color="#0c1329" stop-opacity="0.95"/>
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.98"/>
+      <stop offset="100%" stop-color="#0b1220" stop-opacity="0.96"/>
     </linearGradient>
     <linearGradient id="accent" x1="0" x2="1">
-      <stop offset="0%" stop-color="#36f3ff"/>
-      <stop offset="52%" stop-color="#9f7aea"/>
-      <stop offset="100%" stop-color="#ff6bcb"/>
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
     </linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="10" result="blur"/>
-      <feColorMatrix in="blur" values="0 0 0 0 0.33 0 0 0 0 0.82 0 0 0 0 1 0 0 0 0.72 0"/>
-      <feMerge>
-        <feMergeNode/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="shadowBlur"/>
-      <feOffset in="shadowBlur" dy="18" result="shadowOffset"/>
-      <feFlood flood-color="#00051a" flood-opacity="0.5" result="shadowColor"/>
-      <feComposite in="shadowColor" in2="shadowOffset" operator="in" result="shadow"/>
-      <feMerge>
-        <feMergeNode in="shadow"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
     <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#8aa0ff" stroke-opacity="0.08" stroke-width="1"/>
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#94a3b8" stroke-opacity="0.08" stroke-width="1"/>
     </pattern>
     <style>
-      .title { fill: #f8fbff; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 68px; font-weight: 820; letter-spacing: -1.8px; }
-      .subtitle { fill: #bfd0ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 24px; font-weight: 520; }
-      .sectionTitle { fill: #f7fbff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 28px; font-weight: 800; }
-      .sectionCopy { fill: #b8c9ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: 520; }
-      .chipText { fill: #edf6ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: 760; text-anchor: middle; dominant-baseline: middle; }
-      .hubTitle { fill: #ffffff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 36px; font-weight: 860; letter-spacing: -0.8px; }
-      .hubCopy { fill: #d7e4ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 560; }
-      .label { fill: #f7fbff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 21px; font-weight: 800; }
-      .small { fill: #b9c8ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 520; }
-      .tiny { fill: #d7e3ff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 650; letter-spacing: 0.2px; }
-      .card { fill: url(#card); stroke: #7a8dff; stroke-opacity: 0.32; stroke-width: 1.4; }
-      .panel { fill: url(#panel); stroke: #7a8dff; stroke-opacity: 0.24; stroke-width: 1.4; }
-      .iconCircle { fill: #101835; stroke: url(#accent); stroke-width: 2; }
-      .connector { fill: none; stroke: url(#accent); stroke-width: 3; stroke-linecap: round; stroke-opacity: 0.7; }
-      .flow { fill: none; stroke: #74fbff; stroke-width: 2; stroke-dasharray: 6 10; stroke-linecap: round; stroke-opacity: 0.55; }
+      .subtitle { fill: #cbd5e1; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 22px; font-weight: 600; }
+      .sectionTitle { fill: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 26px; font-weight: 750; }
+      .sectionCopy { fill: #94a3b8; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 500; }
+      .chipText { fill: #f1f5f9; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 700; text-anchor: middle; }
+      .hubTitle { fill: #ffffff; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 32px; font-weight: 750; letter-spacing: -0.6px; }
+      .hubCopy { fill: #cbd5e1; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 17px; font-weight: 550; }
+      .label { fill: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 750; }
+      .small { fill: #94a3b8; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 500; }
+      .tiny { fill: #cbd5e1; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 15px; font-weight: 600; }
+      .card { fill: url(#card); stroke: #64748b; stroke-opacity: 0.35; stroke-width: 1.4; }
+      .panel { fill: url(#panel); stroke: #64748b; stroke-opacity: 0.28; stroke-width: 1.4; }
+      .iconCircle { fill: #0f172a; stroke: url(#accent); stroke-width: 2; }
+      .connector { fill: none; stroke: url(#accent); stroke-width: 2.6; stroke-linecap: round; stroke-opacity: 0.7; }
     </style>
   </defs>
 
-  <rect width="1600" height="1000" fill="url(#bg)"/>
-  <rect width="1600" height="1000" fill="url(#grid)"/>
-  <circle cx="260" cy="180" r="220" fill="#36f3ff" opacity="0.09"/>
-  <circle cx="1310" cy="170" r="240" fill="#ff6bcb" opacity="0.08"/>
-  <circle cx="800" cy="760" r="360" fill="#8b5cf6" opacity="0.08"/>
+  <rect width="1600" height="980" fill="url(#bg)"/>
+  <rect width="1600" height="980" fill="url(#grid)"/>
+  <circle cx="220" cy="160" r="200" fill="#14B8A6" opacity="0.07"/>
+  <circle cx="1380" cy="150" r="220" fill="#8B5CF6" opacity="0.08"/>
+  <circle cx="800" cy="820" r="280" fill="#3B82F6" opacity="0.07"/>
 
-  <text x="800" y="92" class="title" text-anchor="middle">HarnessTap</text>
-  <text x="800" y="130" class="subtitle" text-anchor="middle">Agent harness configuration toolkit</text>
+  <text x="800" y="64" class="subtitle" text-anchor="middle">CLI and Desktop · one local library</text>
 
-  <g filter="url(#softShadow)">
-    <rect class="panel" x="122" y="172" width="1356" height="160" rx="34"/>
-    <text x="172" y="226" class="sectionTitle">Agent harnesses</text>
-    <text x="172" y="254" class="sectionCopy">Apply plugins and decks to every target without scattering configuration.</text>
+  <g>
+    <rect class="panel" x="56" y="92" width="1488" height="148" rx="28"/>
+    <text x="88" y="136" class="sectionTitle">Agent harnesses</text>
+    <text x="88" y="164" class="sectionCopy">Apply plugins to every target without scattering configuration.</text>
 
-    <g>
-      <rect x="172" y="274" width="168" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
-      <text x="256" y="296" class="chipText">Claude Code</text>
+    <rect x="88" y="182" width="168" height="40" rx="20" fill="#0f172a" stroke="#14B8A6" stroke-opacity="0.55"/>
+    <text x="172" y="208" class="chipText">Claude Code</text>
 
-      <rect x="380" y="274" width="124" height="42" rx="21" fill="#101835" stroke="#9f7aea" stroke-opacity="0.52"/>
-      <text x="442" y="296" class="chipText">Cursor</text>
+    <rect x="268" y="182" width="124" height="40" rx="20" fill="#0f172a" stroke="#3B82F6" stroke-opacity="0.55"/>
+    <text x="330" y="208" class="chipText">Cursor</text>
 
-      <rect x="544" y="274" width="118" height="42" rx="21" fill="#101835" stroke="#ff6bcb" stroke-opacity="0.52"/>
-      <text x="603" y="296" class="chipText">Codex</text>
+    <rect x="404" y="182" width="118" height="40" rx="20" fill="#0f172a" stroke="#8B5CF6" stroke-opacity="0.55"/>
+    <text x="463" y="208" class="chipText">Codex</text>
 
-      <rect x="702" y="274" width="196" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
-      <text x="800" y="296" class="chipText">GitHub Copilot</text>
+    <rect x="534" y="182" width="132" height="40" rx="20" fill="#0f172a" stroke="#14B8A6" stroke-opacity="0.55"/>
+    <text x="600" y="208" class="chipText">Copilot</text>
 
-      <rect x="938" y="274" width="142" height="42" rx="21" fill="#101835" stroke="#9f7aea" stroke-opacity="0.52"/>
-      <text x="1009" y="296" class="chipText">Copilot CLI</text>
+    <rect x="678" y="182" width="118" height="40" rx="20" fill="#0f172a" stroke="#3B82F6" stroke-opacity="0.55"/>
+    <text x="737" y="208" class="chipText">Goose</text>
 
-      <rect x="1120" y="274" width="132" height="42" rx="21" fill="#101835" stroke="#ff6bcb" stroke-opacity="0.52"/>
-      <text x="1186" y="296" class="chipText">Windsurf</text>
+    <rect x="808" y="182" width="150" height="40" rx="20" fill="#0f172a" stroke="#8B5CF6" stroke-opacity="0.55"/>
+    <text x="883" y="208" class="chipText">Grok Build</text>
 
-      <rect x="1292" y="274" width="186" height="42" rx="21" fill="#101835" stroke="#53efff" stroke-opacity="0.52"/>
-      <text x="1385" y="296" class="chipText">25+ more CLIs</text>
-    </g>
+    <rect x="970" y="182" width="154" height="40" rx="20" fill="#0f172a" stroke="#14B8A6" stroke-opacity="0.55"/>
+    <text x="1047" y="208" class="chipText">30+ more CLIs</text>
   </g>
 
-  <g opacity="0.82">
-    <path class="connector" d="M800 332 V388"/>
-    <path class="flow" d="M570 388 H1030"/>
-    <path class="connector" d="M800 500 V536"/>
+  <path class="connector" d="M800 240 V284"/>
+
+  <g>
+    <rect x="400" y="284" width="800" height="96" rx="28" fill="#0f172a" stroke="url(#accent)" stroke-width="2.2"/>
+    <circle cx="468" cy="332" r="28" fill="#020617" stroke="url(#accent)" stroke-width="2.2"/>
+    <path d="M456 332 H480 M468 320 V344" stroke="#14B8A6" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="516" y="326" class="hubTitle">HarnessTap</text>
+    <text x="516" y="356" class="hubCopy">scan · plugin · profile · apply · CLI · Desktop</text>
   </g>
 
-  <g filter="url(#softShadow)">
-    <rect x="470" y="390" width="660" height="110" rx="34" fill="#0b1227" stroke="url(#accent)" stroke-width="2.2"/>
-    <circle cx="548" cy="445" r="34" fill="#091022" stroke="url(#accent)" stroke-width="2.4" filter="url(#glow)"/>
-    <path d="M532 445 H564 M548 429 V461" stroke="#071026" stroke-width="8" stroke-linecap="round"/>
-    <text x="606" y="438" class="hubTitle">HarnessTap</text>
-    <text x="606" y="468" class="hubCopy">scan · plugin · deck · apply · sync · mirror</text>
+  <path class="connector" d="M800 380 V408"/>
+
+  <g transform="translate(56 408)">
+    <rect class="card" width="354" height="176" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <path d="M38 46 h20 M48 36 v20" stroke="#14B8A6" stroke-width="4" stroke-linecap="round"/>
+    <text x="82" y="54" class="label">Scan</text>
+    <text x="24" y="100" class="small">Find repo and home</text>
+    <text x="24" y="124" class="small">assistant config.</text>
   </g>
 
-  <g filter="url(#softShadow)">
-    <!-- Row 1: x=122,469,816,1163 | width=315 | gap=32 -->
-    <g transform="translate(122 548)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M40 48 h20 M50 38 v20" stroke="#74fbff" stroke-width="4.5" stroke-linecap="round"/>
-      <text x="84" y="52" class="label">Scan</text>
-      <text x="24" y="96" class="small">Find repo and home</text>
-      <text x="24" y="118" class="small">assistant defaults.</text>
-    </g>
-
-    <g transform="translate(469 548)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <ellipse cx="50" cy="40" rx="15" ry="7" fill="none" stroke="#b48cff" stroke-width="3"/>
-      <path d="M35 40 v18 c0 4 6.5 8 15 8 s15 -4 15 -8 V40" fill="none" stroke="#b48cff" stroke-width="3"/>
-      <text x="84" y="52" class="label">Library</text>
-      <text x="24" y="96" class="small">Canonical SQLite</text>
-      <text x="24" y="118" class="small">resource store.</text>
-    </g>
-
-    <g transform="translate(816 548)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M38 40 h24 M38 49 h24 M38 58 h16" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
-      <text x="84" y="52" class="label">Compose</text>
-      <text x="24" y="96" class="small">Plugins, environments,</text>
-      <text x="24" y="118" class="small">plugins, and decks.</text>
-    </g>
-
-    <g transform="translate(1163 548)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M37 48 h26 M50 39 l13 9 -13 9" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="84" y="52" class="label">Apply</text>
-      <text x="24" y="96" class="small">Materialize with env</text>
-      <text x="24" y="118" class="small">cascade to harnesses.</text>
-    </g>
-
-    <!-- Row 2: y=548+162+36=746 -->
-    <g transform="translate(122 746)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M38 54 h24 M38 42 h16 M38 42 l0 12 10 0" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="84" y="52" class="label">Snapshots</text>
-      <text x="24" y="96" class="small">Capture before writes.</text>
-      <text x="24" y="118" class="small">Revert with confidence.</text>
-    </g>
-
-    <g transform="translate(469 746)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M36 57 C42 42 52 42 60 33" fill="none" stroke="#b48cff" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="37" cy="58" r="4" fill="#b48cff"/>
-      <circle cx="47" cy="47" r="4" fill="#b48cff"/>
-      <circle cx="60" cy="34" r="4" fill="#b48cff"/>
-      <text x="84" y="52" class="label">Drift</text>
-      <text x="24" y="96" class="small">Compare tracked state</text>
-      <text x="24" y="118" class="small">after apply or mirror.</text>
-    </g>
-
-    <g transform="translate(816 746)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M38 56 h24 M38 48 h18 M38 40 h24" stroke="#ff6bcb" stroke-width="4" stroke-linecap="round"/>
-      <text x="84" y="52" class="label">Plugins</text>
-      <text x="24" y="96" class="small">Marketplace sync,</text>
-      <text x="24" y="118" class="small">pins, and plugin deps.</text>
-    </g>
-
-    <g transform="translate(1163 746)">
-      <rect class="card" width="315" height="162" rx="26"/>
-      <circle class="iconCircle" cx="50" cy="48" r="24"/>
-      <path d="M36 52 C41 40 53 40 58 52 C53 64 41 64 36 52 Z" fill="none" stroke="#74fbff" stroke-width="3.5"/>
-      <path d="M50 30 v44 M28 52 h44" stroke="#74fbff" stroke-width="2.8" stroke-linecap="round" opacity="0.45"/>
-      <text x="84" y="52" class="label">Cloud</text>
-      <text x="24" y="96" class="small">Catalog baselines,</text>
-      <text x="24" y="118" class="small">search, pull, publish.</text>
-    </g>
-
-    <!-- Bottom bar: y=746+162+36=944 -->
-    <g transform="translate(122 944)">
-      <rect class="card" width="1356" height="54" rx="24"/>
-      <circle class="iconCircle" cx="50" cy="27" r="20"/>
-      <path d="M38 27 h24 M56 15 l12 12 -12 12" fill="none" stroke="#74fbff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="84" y="32" class="label">Migrate</text>
-      <text x="800" y="32" class="small" text-anchor="middle">Export libraries, harness prefs, and config across machines.</text>
-    </g>
+  <g transform="translate(434 408)">
+    <rect class="card" width="354" height="176" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <ellipse cx="48" cy="38" rx="14" ry="6" fill="none" stroke="#3B82F6" stroke-width="3"/>
+    <path d="M34 38 v16 c0 4 6 7 14 7 s14 -3 14 -7 V38" fill="none" stroke="#3B82F6" stroke-width="3"/>
+    <text x="82" y="54" class="label">Library</text>
+    <text x="24" y="100" class="small">Canonical SQLite</text>
+    <text x="24" y="124" class="small">resource store.</text>
   </g>
 
-  <g transform="translate(350 518)">
-    <rect width="900" height="32" rx="16" fill="#071026" opacity="0.72" stroke="#ffffff" stroke-opacity="0.12"/>
-    <text x="450" y="21" class="tiny" text-anchor="middle">Agent Plugins · env cascade · plugin deps · doctor · diffs · from-project</text>
+  <g transform="translate(812 408)">
+    <rect class="card" width="354" height="176" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <path d="M36 38 h24 M36 47 h24 M36 56 h16" stroke="#8B5CF6" stroke-width="3.6" stroke-linecap="round"/>
+    <text x="82" y="54" class="label">Plugins</text>
+    <text x="24" y="100" class="small">Versioned packages,</text>
+    <text x="24" y="124" class="small">deps, and environments.</text>
+  </g>
+
+  <g transform="translate(1190 408)">
+    <rect class="card" width="354" height="176" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <path d="M36 46 h24 M48 37 l12 9 -12 9" fill="none" stroke="#14B8A6" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="82" y="54" class="label">Apply</text>
+    <text x="24" y="100" class="small">Materialize with env</text>
+    <text x="24" y="124" class="small">cascade to harnesses.</text>
+  </g>
+
+  <g transform="translate(56 612)">
+    <rect class="card" width="480" height="156" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <path d="M40 52 h16 M40 40 h12 M40 40 v12 h8" fill="none" stroke="#14B8A6" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="82" y="54" class="label">Profiles</text>
+    <text x="24" y="100" class="small">Switch machine-wide setups.</text>
+    <text x="24" y="124" class="small">ht work · profile use</text>
+  </g>
+
+  <g transform="translate(560 612)">
+    <rect class="card" width="480" height="156" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <path d="M34 50 C39 38 51 38 56 50 C51 62 39 62 34 50 Z" fill="none" stroke="#3B82F6" stroke-width="3.2"/>
+    <path d="M48 30 v40 M28 50 h40" stroke="#3B82F6" stroke-width="2.4" stroke-linecap="round" opacity="0.45"/>
+    <text x="82" y="54" class="label">Cloud</text>
+    <text x="24" y="100" class="small">Catalog baselines,</text>
+    <text x="24" y="124" class="small">search, pull, publish.</text>
+  </g>
+
+  <g transform="translate(1064 612)">
+    <rect class="card" width="480" height="156" rx="24"/>
+    <circle class="iconCircle" cx="48" cy="46" r="22"/>
+    <path d="M36 46 h24 M54 34 l12 12 -12 12" fill="none" stroke="#8B5CF6" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="82" y="54" class="label">Migrate</text>
+    <text x="24" y="100" class="small">Export the library,</text>
+    <text x="24" y="124" class="small">harness prefs, and config.</text>
+  </g>
+
+  <g transform="translate(56 796)">
+    <rect class="card" width="1488" height="64" rx="22"/>
+    <text x="744" y="40" class="tiny" text-anchor="middle">41 harnesses · snapshots and drift · Agent Plugins packages · env cascade · plugin deps</text>
   </g>
 </svg>

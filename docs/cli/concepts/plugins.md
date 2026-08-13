@@ -6,7 +6,7 @@ description: Versioned context packages you create, diff, export, publish, and a
 
 A **plugin** is HarnessTap's versioned context package: the unit you create, diff, export, publish, and apply. Plugins compose resources, **plugin dependencies** (marketplace, local, git, or catalog), and an optional default environment.
 
-## Plugins and plugins
+## What a plugin contains
 
 | Piece | Role |
 | --- | --- |
