@@ -171,13 +171,12 @@ Initialise HarnessTap, scan an existing repository, browse catalog plugins, appl
 [Full walkthrough →](docs/scenarios/vhs/walkthroughs/01-existing-repo-adoption.md)
 
 ```bash
-harnesstap init --main codex --aliases claude-code,cursor
-harnesstap scan .                    # detect existing resources
-harnesstap resource list                     # review discovered resources
-harnesstap plugin list --search foundation --remote-only  # browse catalog plugins
-harnesstap apply engineering-foundation \
-  --project .                                 # apply a catalog baseline
-harnesstap status .                  # confirm the final state
+ht init --main codex --aliases claude-code,cursor
+ht scan .                    # detect existing resources
+ht resource list             # review discovered resources
+ht plugin list --search foundation --remote-only
+ht apply engineering-foundation --project .
+ht status .                  # confirm the final state
 ```
 
 ---
