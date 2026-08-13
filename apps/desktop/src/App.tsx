@@ -1796,6 +1796,7 @@ export function App() {
               }}
               onProfilesChanged={() => {
                 void refreshProfiles();
+                void refreshStatus("full");
               }}
             />
             <div
@@ -2341,6 +2342,17 @@ export function App() {
             token={token}
             reloadKey={libraryReloadKey}
             disabled={switching}
+            projectPath={view === "project" ? projectPath : null}
+            selectedProfile={selectedProfile}
+            onImported={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+              setLibraryReloadKey((value) => value + 1);
+            }}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
           />
         ) : editingProfile ? (
           <EditProfilePane
@@ -2686,6 +2698,13 @@ export function App() {
                     : undefined
                 }
                 recoveryBusy={recoveryBusy}
+                onSuccess={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                }}
+                onLibraryChanged={() => {
+                  setLibraryReloadKey((value) => value + 1);
+                }}
               />
             )}
 

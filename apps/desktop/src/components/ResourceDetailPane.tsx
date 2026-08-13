@@ -19,6 +19,8 @@ export interface ResourceDetailPaneProps {
   baseUrl: string | null;
   token: string | null;
   onClose: () => void;
+  onSuccess?: (message: string) => void;
+  onLibraryChanged?: () => void;
 }
 
 function displayName(resource: LibraryResourceDetail): string {
@@ -41,6 +43,8 @@ export function ResourceDetailPane({
   baseUrl,
   token,
   onClose,
+  onSuccess: _onSuccess,
+  onLibraryChanged: _onLibraryChanged,
 }: ResourceDetailPaneProps) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);

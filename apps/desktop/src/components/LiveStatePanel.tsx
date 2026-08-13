@@ -1237,6 +1237,8 @@ export interface LiveStatePanelProps {
   onDismissResourceActionError?: () => void;
   onRecoveryAction?: (action: RecoveryAction) => void;
   recoveryBusy?: boolean;
+  onSuccess?: (message: string) => void;
+  onLibraryChanged?: () => void;
 }
 
 export function LiveStatePanel({
@@ -1274,6 +1276,8 @@ export function LiveStatePanel({
   onDismissResourceActionError,
   onRecoveryAction,
   recoveryBusy = false,
+  onSuccess,
+  onLibraryChanged,
 }: LiveStatePanelProps) {
   const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
     null,
@@ -1840,6 +1844,8 @@ export function LiveStatePanel({
         baseUrl={baseUrl}
         token={token}
         onClose={closeResource}
+        onSuccess={onSuccess}
+        onLibraryChanged={onLibraryChanged}
       />
     </>
   );

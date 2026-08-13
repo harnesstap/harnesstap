@@ -70,6 +70,10 @@ export interface ResourcesPanelProps {
   /** Bump to force a library reload (e.g. after header refresh rescans tracked dirs). */
   reloadKey?: number;
   disabled?: boolean;
+  projectPath?: string | null;
+  selectedProfile?: string | null;
+  onImported?: (message: string) => void;
+  onSuccess?: (message: string) => void;
 }
 
 export function ResourcesPanel({
@@ -77,6 +81,10 @@ export function ResourcesPanel({
   token,
   reloadKey = 0,
   disabled = false,
+  projectPath: _projectPath = null,
+  selectedProfile: _selectedProfile = null,
+  onImported: _onImported,
+  onSuccess,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -252,6 +260,8 @@ export function ResourcesPanel({
         baseUrl={baseUrl}
         token={token}
         onClose={() => setDetailTarget(null)}
+        onSuccess={onSuccess}
+        onLibraryChanged={() => setResourcesReloadKey((value) => value + 1)}
       />
 
       <ResourceTrackedDirectoriesModal

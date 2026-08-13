@@ -29,6 +29,7 @@ export function ParityChrome({
   workspaceFocus,
   onWorkspaceFocus,
   onSuccess,
+  onProfilesChanged,
 }: ParityChromeProps) {
   const [applyOpen, setApplyOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -69,6 +70,7 @@ export function ParityChrome({
       <button
         type="button"
         className="header-focus-btn"
+        data-testid="open-project-history"
         onClick={() => setHistoryOpen(true)}
         disabled={chromeDisabled || !projectPath}
         aria-label="History"
@@ -89,10 +91,13 @@ export function ParityChrome({
         open={historyOpen}
         baseUrl={baseUrl}
         token={token}
+        connected={connected}
+        switching={switching}
         projectPath={projectPath}
         disabled={chromeDisabled}
         onClose={() => setHistoryOpen(false)}
         onSuccess={onSuccess}
+        onProfilesChanged={onProfilesChanged}
       />
     </>
   );
