@@ -4,7 +4,6 @@ import { isEmptyBuiltinProfile, isProfilePlugin } from "../constants/profile.js"
 import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
 import { resolvePluginSelector } from "../models/plugin-model.js";
-import { listResources } from "../models/resource.js";
 import type { Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { getActiveProfileName } from "./active-profile.js";
@@ -292,23 +291,9 @@ function withUnmanagedMergedContainers(
 }
 
 function withMappedResources(changes: DriftFileChange[]): DriftFileChange[] {
-  const originsByKey = new Map<string, string>();
-  for (const resource of listResources()) {
-    const key = `${resource.type}:${resource.name}`;
-    if (!originsByKey.has(key)) {
-      originsByKey.set(key, resource.origin_kind);
-    }
-  }
   return changes.map((change) => {
     const mapped = resourceKeyFromManagedPath(change.path);
-    if (!mapped) {
-      return change;
-    }
-    const origin_kind = originsByKey.get(`${mapped.type}:${mapped.name}`);
-    return {
-      ...change,
-      resource: origin_kind ? { ...mapped, origin_kind } : mapped,
-    };
+    return mapped ? { ...change, resource: mapped } : change;
   });
 }
 
