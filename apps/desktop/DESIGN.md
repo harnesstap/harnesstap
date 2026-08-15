@@ -46,3 +46,4 @@ Dark dense ops chrome. Reference wireframe: split pane with profiles rail (~220p
 - Package Apply (Library → Packages detail) writes the plugin graph (`ht apply`) without using profile switch. Rail Apply remains profile switch / re-apply.
 - Library remembers the last Items/Packages tab for the session.
 - Global apply of a profile-tagged package via package Apply still records the active profile (CLI `ht apply --global`); everyday switches belong on the rail.
+- Library Items header: Import (accent primary, labeled) and Tracked directories (labeled secondary) are grouped as a compact action cluster on the right of the Items title. Not icon-only, not spread as separate `space-between` siblings.
