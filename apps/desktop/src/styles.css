@@ -659,6 +659,25 @@ button:focus-visible,
   overflow: hidden;
 }
 
+.library-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.library-workspace .library-tabs {
+  flex-shrink: 0;
+  margin: 0.75rem 0.75rem 0;
+  max-width: 16rem;
+}
+
+.library-workspace .resources-panel {
+  flex: 1;
+}
+
 .edit-profile-pane {
   background: var(--surface);
   display: flex;

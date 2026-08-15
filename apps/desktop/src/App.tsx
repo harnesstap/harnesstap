@@ -19,6 +19,7 @@ import { ParityChrome } from "./components/parity/ParityChrome";
 import { PluginsWorkspace } from "./components/parity/PluginsWorkspace";
 import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
+import { LibraryWorkspace, type LibraryTab } from "./components/LibraryWorkspace";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
 import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
@@ -73,7 +74,7 @@ import type {
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 
-type WorkspaceFocus = "resources" | "scope" | "environments" | "plugins";
+type WorkspaceFocus = "library" | "scope" | "environments";
 
 const HEADER_ICON_SIZE = 18;
 const RAIL_ICON_SIZE = 15;
@@ -175,6 +176,7 @@ export function App() {
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
+  const [libraryTab, setLibraryTab] = useState<LibraryTab>("items");
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
@@ -1773,38 +1775,24 @@ export function App() {
           <div className="header-focus-controls">
             <button
               type="button"
-              className={`header-focus-btn${workspaceFocus === "resources" ? " on" : ""}`}
+              className={`header-focus-btn${workspaceFocus === "library" ? " on" : ""}`}
               onClick={() => {
                 setEditingProfile(null);
-                setWorkspaceFocus("resources");
+                setWorkspaceFocus("library");
               }}
               disabled={switching}
-              aria-label="Resources"
-              title="Resources"
+              aria-label="Library"
+              title="Library"
             >
               <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
             </button>
             <ParityChrome
-              baseUrl={baseUrl}
-              token={token}
-              connected={connected}
-              switching={switching}
-              projectPath={view === "project" ? projectPath : null}
-              selectedProfile={selectedProfile}
               workspaceFocus={workspaceFocus}
               onWorkspaceFocus={(focus) => {
                 setEditingProfile(null);
                 setWorkspaceFocus(focus);
               }}
-              onSuccess={(message) => {
-                setSuccessMessage(message);
-                window.setTimeout(() => setSuccessMessage(null), 3000);
-              }}
-              onProfilesChanged={() => {
-                void refreshProfiles();
-                void refreshStatus("full");
-              }}
-              onBusyChange={setPluginApplyBusy}
+              switching={switching}
             />
             <div
               className="header-focus-segment"
@@ -2331,37 +2319,47 @@ export function App() {
               window.setTimeout(() => setSuccessMessage(null), 3000);
             }}
           />
-        ) : workspaceFocus === "plugins" ? (
-          <PluginsWorkspace
-            baseUrl={baseUrl}
-            token={token}
-            selectedProfile={selectedProfile}
+        ) : workspaceFocus === "library" ? (
+          <LibraryWorkspace
+            tab={libraryTab}
+            onTabChange={setLibraryTab}
             disabled={switching}
-            onSuccess={(message) => {
-              setSuccessMessage(message);
-              window.setTimeout(() => setSuccessMessage(null), 3000);
-            }}
-            onProfilesChanged={() => {
-              void refreshProfiles();
-            }}
-          />
-        ) : workspaceFocus === "resources" ? (
-          <ResourcesPanel
-            baseUrl={baseUrl}
-            token={token}
-            reloadKey={libraryReloadKey}
-            disabled={switching}
-            projectPath={view === "project" ? projectPath : null}
-            selectedProfile={selectedProfile}
-            onImported={(message) => {
-              setSuccessMessage(message);
-              window.setTimeout(() => setSuccessMessage(null), 3000);
-              setLibraryReloadKey((value) => value + 1);
-            }}
-            onSuccess={(message) => {
-              setSuccessMessage(message);
-              window.setTimeout(() => setSuccessMessage(null), 3000);
-            }}
+            items={
+              <ResourcesPanel
+                baseUrl={baseUrl}
+                token={token}
+                reloadKey={libraryReloadKey}
+                disabled={switching}
+                projectPath={view === "project" ? projectPath : null}
+                selectedProfile={selectedProfile}
+                onImported={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                  setLibraryReloadKey((value) => value + 1);
+                }}
+                onSuccess={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                }}
+              />
+            }
+            packages={
+              <PluginsWorkspace
+                baseUrl={baseUrl}
+                token={token}
+                selectedProfile={selectedProfile}
+                disabled={switching}
+                projectPath={projectPath || null}
+                onBusyChange={setPluginApplyBusy}
+                onSuccess={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                }}
+                onProfilesChanged={() => {
+                  void refreshProfiles();
+                }}
+              />
+            }
           />
         ) : editingProfile ? (
           <EditProfilePane

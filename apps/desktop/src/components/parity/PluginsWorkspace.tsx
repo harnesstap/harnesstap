@@ -45,6 +45,8 @@ export interface PluginsWorkspaceProps {
   token: string | null;
   selectedProfile: string | null;
   disabled?: boolean;
+  projectPath?: string | null;
+  onBusyChange?: (busy: boolean) => void;
   onSuccess: (message: string) => void;
   onProfilesChanged: () => void;
 }
@@ -69,6 +71,8 @@ export function PluginsWorkspace({
   token,
   selectedProfile: _selectedProfile,
   disabled = false,
+  projectPath: _projectPath,
+  onBusyChange: _onBusyChange,
   onSuccess,
   onProfilesChanged,
 }: PluginsWorkspaceProps) {
@@ -500,7 +504,7 @@ export function PluginsWorkspace({
     || catalogPlugins.length === 0;
 
   return (
-    <main className="resources-panel" aria-label="Plugins">
+    <main className="resources-panel" aria-label="Packages">
       <div className="resources-panel-layout">
         <aside className="profiles-rail" aria-label="Plugin list">
           <div className="profiles-filter-row">
