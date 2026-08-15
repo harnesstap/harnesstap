@@ -1,5 +1,5 @@
 /**
- * Line-oriented unified diff (git-style +/-) between expected snapshot and live content.
+ * Line-oriented unified diff (git-style +/-) from live content to after-apply content.
  */
 
 export type UnifiedDiffLineKind = "meta" | "hunk" | "context" | "add" | "remove";
@@ -86,19 +86,18 @@ function advanceLine(op: Op, oldLine: number, newLine: number): {
 }
 
 /**
- * Build unified-diff lines: expected (a/) → current (b/).
- * Missing current is treated as an empty file.
+ * Build unified-diff lines: live (from) → after-apply (to).
  */
 export function buildUnifiedDiffLines(
   path: string,
-  expected: string,
-  current: string | null,
+  from: string,
+  to: string,
   contextLines = 3,
 ): UnifiedDiffLine[] {
-  const ops = computeOps(splitLines(expected), splitLines(current ?? ""));
+  const ops = computeOps(splitLines(from), splitLines(to));
   const result: UnifiedDiffLine[] = [
-    { kind: "meta", text: `--- a/${path}` },
-    { kind: "meta", text: `+++ b/${path}` },
+    { kind: "meta", text: `--- live/${path}` },
+    { kind: "meta", text: `+++ after-apply/${path}` },
   ];
 
   if (ops.every((op) => op.kind === "equal")) {
@@ -187,4 +186,31 @@ export function buildUnifiedDiffLines(
   }
 
   return result;
+}
+
+export function countUnifiedDiffChanges(lines: UnifiedDiffLine[]): {
+  added: number;
+  removed: number;
+} {
+  let added = 0;
+  let removed = 0;
+  for (const line of lines) {
+    switch (line.kind) {
+      case "add":
+        added++;
+        break;
+      case "remove":
+        removed++;
+        break;
+      case "meta":
+      case "hunk":
+      case "context":
+        break;
+      default: {
+        const _never: never = line.kind;
+        return _never;
+      }
+    }
+  }
+  return { added, removed };
 }

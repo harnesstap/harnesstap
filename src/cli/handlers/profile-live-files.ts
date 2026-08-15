@@ -297,6 +297,6 @@ export async function handleProfileFileDiffCommand(
     });
     return;
   }
-  const lines = buildUnifiedDiffLines(diff.path, diff.expected, diff.current);
+  const lines = buildUnifiedDiffLines(diff.path, diff.current ?? "", diff.expected);
   console.log(lines.map((line) => line.text).join("\n"));
 }

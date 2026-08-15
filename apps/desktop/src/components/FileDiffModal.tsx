@@ -4,7 +4,7 @@ import {
   fetchProfileFileDiff,
 } from "../lib/agent-client";
 import type { ProfileFileDiffResult, ViewScope } from "../lib/types";
-import { buildUnifiedDiffLines } from "../lib/unified-diff";
+import { buildUnifiedDiffLines, countUnifiedDiffChanges } from "../lib/unified-diff";
 
 export interface FileDiffModalProps {
   open: boolean;
@@ -103,8 +103,11 @@ export function FileDiffModal({
     if (!diff) {
       return [];
     }
-    return buildUnifiedDiffLines(diff.path, diff.expected, diff.current);
+    return buildUnifiedDiffLines(diff.path, diff.current ?? "", diff.expected);
   }, [diff]);
+
+  const changeCounts = useMemo(() => countUnifiedDiffChanges(lines), [lines]);
+  const showDiffChrome = !loading && !error && diff !== null;
 
   if (!open || !path) {
     return null;
@@ -125,10 +128,23 @@ export function FileDiffModal({
       >
         <div className="file-diff-header">
           <div>
-            <div className="eyebrow">Diff vs snapshot</div>
+            <div className="file-diff-header-row">
+              <div className="eyebrow">Live → after apply</div>
+              {showDiffChrome ? (
+                <span className="file-diff-counts mono" aria-label="Change counts">
+                  <span className="file-diff-count-add">+{changeCounts.added}</span>
+                  <span className="file-diff-count-remove">−{changeCounts.removed}</span>
+                </span>
+              ) : null}
+            </div>
             <h2 id={titleId} className="mono">
               {path}
             </h2>
+            {showDiffChrome ? (
+              <p className="muted file-diff-legend">
+                Green = would add · Red = would remove
+              </p>
+            ) : null}
           </div>
           <button
             ref={closeRef}
@@ -149,7 +165,7 @@ export function FileDiffModal({
               <div>{error}</div>
             </div>
           ) : (
-            <pre className="file-diff-content" aria-label={`Diff for ${path}`}>
+            <pre className="file-diff-content" aria-label={`Live to after-apply diff for ${path}`}>
               {lines.map((line, index) => (
                 <span
                   key={`${line.kind}-${index}`}

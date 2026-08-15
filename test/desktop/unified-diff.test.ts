@@ -2,15 +2,15 @@ import { describe, expect, it } from "bun:test";
 import { buildUnifiedDiffLines } from "../../apps/desktop/src/lib/unified-diff.ts";
 
 describe("buildUnifiedDiffLines", () => {
-  it("emits git-style +/- lines for a simple change", () => {
+  it("labels sides as live → after-apply", () => {
     const lines = buildUnifiedDiffLines(
       "file.txt",
       "alpha\nbeta\ngamma\n",
       "alpha\nBETA\ngamma\n",
     );
     const texts = lines.map((line) => line.text);
-    expect(texts[0]).toBe("--- a/file.txt");
-    expect(texts[1]).toBe("+++ b/file.txt");
+    expect(texts[0]).toBe("--- live/file.txt");
+    expect(texts[1]).toBe("+++ after-apply/file.txt");
     expect(texts.some((text) => text.startsWith("@@ "))).toBe(true);
     expect(texts).toContain("-beta");
     expect(texts).toContain("+BETA");
@@ -18,12 +18,12 @@ describe("buildUnifiedDiffLines", () => {
     expect(texts).toContain(" gamma");
   });
 
-  it("treats missing current as empty file", () => {
-    const lines = buildUnifiedDiffLines("gone.txt", "one\ntwo\n", null);
+  it("treats empty live content as a create (all additions)", () => {
+    const lines = buildUnifiedDiffLines("gone.txt", "", "one\ntwo\n");
     const texts = lines.map((line) => line.text);
-    expect(texts).toContain("-one");
-    expect(texts).toContain("-two");
-    expect(texts.every((text) => !text.startsWith("+") || text.startsWith("+++"))).toBe(
+    expect(texts).toContain("+one");
+    expect(texts).toContain("+two");
+    expect(texts.every((text) => !text.startsWith("-") || text.startsWith("---"))).toBe(
       true,
     );
   });

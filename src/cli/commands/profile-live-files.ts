@@ -86,7 +86,7 @@ function assignLiveFileHelp(): void {
     ],
   };
   COMMAND_HELP_REGISTRY["profile.file-diff"] = {
-    description: "Show expected snapshot vs live content as a unified diff",
+    description: "Show live content vs after-apply (profile) as a unified diff",
     examples: [
       "profile file-diff work --path .claude/skills/foo/SKILL.md --scope home",
       "profile file-diff work --path .claude/skills/foo/SKILL.md --scope home --format json",
@@ -155,7 +155,7 @@ export function registerProfileLiveFileCommands(profileCmd: Command): void {
       .command("file-diff")
       .argument("<name>", "Profile plugin name or selector")
       .requiredOption("--path <path>", "Managed relative path")
-      .description("Show expected snapshot vs live content as a unified diff"),
+      .description("Show live content vs after-apply (profile) as a unified diff"),
   ).action(async (name: string, opts) => {
     await runLiveAction(() => handleProfileFileDiffCommand(name, opts));
   });

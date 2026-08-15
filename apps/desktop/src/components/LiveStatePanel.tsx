@@ -548,14 +548,16 @@ function EnabledPluginGroup({
         ) : (
           (plugin.resources ?? []).map((resource) => {
             const resourceKey = `${resource.type}:${resource.name}`;
+            const typeLabel = resource.type.replaceAll("_", " ");
             return (
               <div
                 className="enabled-row enabled-nested-row"
                 key={resourceKey}
                 data-testid={`resource-row-${resource.name}`}
               >
-                <span className="enabled-type">
+                <span className="enabled-type" title={typeLabel}>
                   <TypeIcon type={resource.type} />
+                  <span className="sr-only">{typeLabel}</span>
                 </span>
                 <ResourceNameButton
                   label={resource.name}
@@ -574,9 +576,6 @@ function EnabledPluginGroup({
                     onOpenInEditor={onOpenInEditor}
                     onRemoveFromProfile={onRemoveFromProfile}
                   />
-                  <span className="enabled-detail muted">
-                    {resource.type.replaceAll("_", " ")}
-                  </span>
                 </span>
               </div>
             );
@@ -732,7 +731,7 @@ function FileChangeRowActions({
           type="button"
           className="icon-action file-change-diff-btn"
           aria-label={`Show diff for ${change.path}`}
-          title="Show diff vs snapshot"
+          title="Show what apply would change"
           disabled={busy}
           onClick={() => onDiffFileChange(change)}
         >
