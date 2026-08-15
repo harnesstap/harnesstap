@@ -49,3 +49,4 @@ Dark dense ops chrome. Reference wireframe: split pane with profiles rail (~220p
 - Library Items filters: type stays as badges and updated as a segment; namespace and origin are searchable select fields (type to filter the option list).
 - Resource row hover cards sit at the pointer, not the row center, and close as soon as the pointer leaves so they cannot linger across rows.
 - Global apply of a profile-tagged package via package Apply still records the active profile (CLI `ht apply --global`); everyday switches belong on the rail.
+- Library Items header: Import (accent primary, labeled) and Tracked directories (labeled secondary) are grouped as a compact action cluster on the right of the Items title. Not icon-only, not spread as separate `space-between` siblings.

@@ -129,26 +129,30 @@ export function ResourcesPanel({
               All registered resources
             </span>
           </div>
-          <button
-            type="button"
-            className="icon-action"
-            aria-label="Import into library"
-            title="Import into library"
-            disabled={disabled || !baseUrl}
-            onClick={() => setImportOpen(true)}
-          >
-            <FolderDown size={16} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="icon-action resources-panel-tracked-dirs-btn"
-            aria-label="Tracked directories"
-            title="Show tracked directories for resources"
-            disabled={disabled || !baseUrl}
-            onClick={() => setTrackedDirsOpen(true)}
-          >
-            <FolderInput size={16} aria-hidden />
-          </button>
+          <div className="resources-panel-header-actions">
+            <button
+              type="button"
+              className="btn primary"
+              aria-label="Import into library"
+              title="Import into library"
+              disabled={disabled || !baseUrl}
+              onClick={() => setImportOpen(true)}
+            >
+              <FolderDown size={16} aria-hidden />
+              Import
+            </button>
+            <button
+              type="button"
+              className="btn"
+              aria-label="Tracked directories"
+              title="Show tracked directories for resources"
+              disabled={disabled || !baseUrl}
+              onClick={() => setTrackedDirsOpen(true)}
+            >
+              <FolderInput size={16} aria-hidden />
+              Tracked directories
+            </button>
+          </div>
         </div>
       </div>
 

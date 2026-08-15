@@ -821,11 +821,19 @@ button:focus-visible,
   gap: 0.5rem;
 }
 
-.resources-panel-tracked-dirs-btn {
-  width: 28px;
-  height: 28px;
+.resources-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   flex-shrink: 0;
-  margin-top: 0.05rem;
+}
+
+.resources-panel-header-actions .btn {
+  width: auto;
+  min-height: 32px;
+  padding: 0.3rem 0.6rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .resources-panel-title {
