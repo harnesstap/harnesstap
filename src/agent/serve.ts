@@ -1,5 +1,6 @@
 import { getDb } from "../db/connection.js";
 import { initializeSchema } from "../db/schema.js";
+import { ensureDefaultEnvironment } from "../services/ensure-default-environment.js";
 import { ensureDefaultProfilePlugin } from "../services/ensure-default-profile.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
 import { createAgentFetchHandler } from "./routes.js";
@@ -54,9 +55,10 @@ function isAddressInUseError(error: unknown): boolean {
 function bootAgentDatabase(): void {
   const db = getDb();
   initializeSchema(db);
-  // Fresh desktop installs never run `ht init`; seed a default profile so the
-  // rail and project bootstrap are never blocked on a CLI detour.
+  // Fresh desktop installs never run `ht init`; seed a default profile and
+  // environment so the rail and environment picker are never empty.
   ensureDefaultProfilePlugin();
+  ensureDefaultEnvironment();
 }
 
 function listenForAgent(

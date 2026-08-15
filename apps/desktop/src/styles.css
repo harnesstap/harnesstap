@@ -205,12 +205,13 @@ button:focus-visible,
 
 .project-picker {
   position: relative;
-  flex: 1 1 240px;
-  max-width: 420px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .header-focus {
+  --header-focus-size: 36px;
+  --header-focus-icon: 18px;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -218,9 +219,20 @@ button:focus-visible,
   min-width: 0;
 }
 
+.header-project-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 240px;
+  max-width: 420px;
+  min-width: 0;
+}
+
+.header-project-row .header-focus-btn {
+  flex: 0 0 auto;
+}
+
 .header-focus-controls {
-  --header-focus-size: 36px;
-  --header-focus-icon: 18px;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -281,7 +293,8 @@ button:focus-visible,
   background: transparent;
 }
 
-.header-focus-controls svg {
+.header-focus-controls svg,
+.header-project-row svg {
   display: block;
   width: var(--header-focus-icon);
   height: var(--header-focus-icon);

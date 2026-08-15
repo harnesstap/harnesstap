@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "tsup",
-    "build:sidecar": "bun build --compile src/agent/entry.ts --outfile dist/sidecar/ht-agent",
+    "build:sidecar": "bash scripts/build-sidecar.sh",
     "desktop:cleanup": "bash apps/desktop/scripts/cleanup-stale-dev.sh",
     "desktop:prepare-sidecar": "bash apps/desktop/scripts/prepare-sidecar.sh",
     "desktop:watch-sidecar": "bun apps/desktop/scripts/watch-sidecar.ts",
@@ -40,7 +40,7 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write --unsafe .",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist && find . -maxdepth 1 -name '*.bun-build' -delete",
     "preflight": "bun run lint && bun run typecheck && bun run test:run && bun run build",
     "prepublishOnly": "bun run build",
     "docs:vhs": "bash scripts/generate-vhs-scenarios.sh",

@@ -36,6 +36,10 @@ describe("CLI init", () => {
         ),
       ) as { name: string };
       expect(activeProfile.name).toBe("default");
+      const environmentModel = await import("../../src/models/environment.ts");
+      expect(environmentModel.listEnvironments()).toEqual([
+        expect.objectContaining({ name: "default" }),
+      ]);
     } finally {
       await context.cleanup();
     }
