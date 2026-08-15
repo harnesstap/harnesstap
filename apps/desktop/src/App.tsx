@@ -1867,6 +1867,9 @@ export function App() {
           className="header-status"
           data-testid={connected ? "agent-connected" : undefined}
         >
+          {successMessage ? (
+            <div className="success-flash">{successMessage}</div>
+          ) : null}
           <button
             className={[
               "icon-action",
@@ -2357,6 +2360,7 @@ export function App() {
                 }}
                 onProfilesChanged={() => {
                   void refreshProfiles();
+                  void refreshStatus("full");
                 }}
               />
             }
@@ -2580,10 +2584,6 @@ export function App() {
                 </div>
               </div>
             )}
-
-            {successMessage ? (
-              <div className="success-flash">{successMessage}</div>
-            ) : null}
 
             {statusError && (
               <div className="banner error">

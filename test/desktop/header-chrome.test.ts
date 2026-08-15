@@ -41,6 +41,14 @@ describe("desktop header chrome", () => {
     expect(paritySource).not.toContain("ApplyPluginDrawer");
     expect(paritySource).toContain('aria-label="Environments"');
   });
+
+  test("refreshes live status after package Apply and shows success in the header", () => {
+    const refreshOnProfiles =
+      appSource.match(/void refreshProfiles\(\);\s*void refreshStatus\("full"\);/g) ?? [];
+    expect(refreshOnProfiles.length).toBeGreaterThanOrEqual(2);
+    expect(appSource).toContain("header-status");
+    expect(appSource).toContain("success-flash");
+  });
 });
 
 describe("desktop library workspace", () => {
