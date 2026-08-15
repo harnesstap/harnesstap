@@ -2,13 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Tag, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AgentApiError,
@@ -30,11 +23,8 @@ import type {
   PluginMarketplaceEntry,
   ProfileDetail,
 } from "../lib/types";
-import {
-  ResourceSelectionList,
-  SelectionList,
-} from "./CompositionPickers";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
+import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 
 export interface EditProfilePaneProps {
   profileName: string;
@@ -520,114 +510,35 @@ export function EditProfilePane({
             </div>
           </details>
 
-          <section className="edit-profile-section" aria-label="Marketplace plugins">
-            <h3>Marketplace plugins</h3>
-            {marketplaceLoading ? (
-              <p className="muted">Loading marketplaces…</p>
-            ) : marketplaceError ? (
-              <div className="banner error">{marketplaceError}</div>
-            ) : marketplaces.length === 0 ? (
-              <p className="muted">
-                No marketplaces registered. Add one in Settings.
-              </p>
-            ) : (
-              <div className="edit-plugin-pin">
-                {marketplaces.length > 1 ? (
-                  <div className="form-field gap-1.5">
-                    <Label htmlFor="edit-plugin-marketplace">Marketplace</Label>
-                    <Select
-                      value={marketplaceName}
-                      onValueChange={setMarketplaceName}
-                      disabled={controlsDisabled || pluginsLoading}
-                    >
-                      <SelectTrigger
-                        id="edit-plugin-marketplace"
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="Select a marketplace…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {marketplaces.map((entry) => (
-                          <SelectItem key={entry.name} value={entry.name}>
-                            {entry.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : null}
-                <div className="form-field gap-1.5">
-                  <Label htmlFor="edit-plugin-ref">Plugin</Label>
-                  {pluginsLoading ? (
-                    <p className="muted">Loading plugins…</p>
-                  ) : catalogPlugins.length === 0 ? (
-                    <p className="muted">No plugins in this marketplace.</p>
-                  ) : (
-                    <Select
-                      value={pluginRef}
-                      onValueChange={setPluginRef}
-                      disabled={controlsDisabled}
-                    >
-                      <SelectTrigger
-                        id="edit-plugin-ref"
-                        className="w-full"
-                        data-testid="edit-plugin-ref"
-                      >
-                        <SelectValue placeholder="Select a plugin…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {catalogPlugins.map((plugin) => (
-                          <SelectItem key={plugin.ref} value={plugin.ref}>
-                            {plugin.name}
-                            {plugin.version ? ` @ ${plugin.version}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="btn primary"
-                  data-testid="edit-plugin-add"
-                  onClick={addPluginPin}
-                  disabled={pluginControlsDisabled}
-                >
-                  Pin plugin
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section className="edit-profile-section" aria-label="Composition">
-            <h3>Composition</h3>
-            <div className="compose-library">
-              {libraryLoading ? (
-                <p className="muted">Loading local library…</p>
-              ) : libraryError ? (
-                <div className="banner error">{libraryError}</div>
-              ) : (
-                <>
-                  <SelectionList
-                    title="Plugins"
-                    emptyLabel="No plugins available."
-                    rows={pluginRows}
-                    selectedIds={selectedPluginIds}
-                    disabled={controlsDisabled}
-                    onToggle={togglePlugin}
-                  />
-                  <ResourceSelectionList
-                    resources={composeResources}
-                    filter={resourceFilter}
-                    onFilterChange={setResourceFilter}
-                    selectedIds={selectedResourceIds}
-                    disabled={controlsDisabled}
-                    onToggle={toggleResource}
-                  />
-                </>
-              )}
-            </div>
-          </section>
+          <PluginCompositionFields
+            showMarketplace={true}
+            marketplaceLoading={marketplaceLoading}
+            marketplaceError={marketplaceError}
+            marketplaces={marketplaces}
+            marketplaceName={marketplaceName}
+            onMarketplaceName={setMarketplaceName}
+            catalogPlugins={catalogPlugins}
+            pluginsLoading={pluginsLoading}
+            pluginRef={pluginRef}
+            onPluginRef={setPluginRef}
+            onPin={addPluginPin}
+            pinDisabled={pluginControlsDisabled}
+            marketplaceSelectId="edit-plugin-marketplace"
+            pluginSelectId="edit-plugin-ref"
+            pluginRefTestId="edit-plugin-ref"
+            pinTestId="edit-plugin-add"
+            libraryLoading={libraryLoading}
+            libraryError={libraryError}
+            pluginRows={pluginRows}
+            selectedPluginIds={selectedPluginIds}
+            onTogglePlugin={togglePlugin}
+            resources={composeResources}
+            resourceFilter={resourceFilter}
+            onResourceFilter={setResourceFilter}
+            selectedResourceIds={selectedResourceIds}
+            onToggleResource={toggleResource}
+            disabled={controlsDisabled}
+          />
           <EditProfileParitySlots
             profileName={profileName}
             profileVersion={detail?.profile.version}
