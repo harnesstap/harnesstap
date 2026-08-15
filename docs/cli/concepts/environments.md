@@ -4,7 +4,7 @@ description: Named how-values, secret refs, environment cascade, and MCP authent
 
 # Environments
 
-An **environment** is a named bundle of *how* values — env vars, model defaults, permission overrides, and secret references — that plugins and profiles satisfy at apply time. Environments do not replace plugins; they parameterize the same context stack for different machines, accounts, or deployment targets.
+An **environment** is a named bundle of *how* values — env vars, model defaults, permission overrides, and secret references — that plugins and profiles satisfy at apply time. Environments do not replace plugins; they parameterize the same context stack for different machines, accounts, or deployment targets. Fresh `ht init` and desktop agent boot seed a `default` environment when the library has none.
 
 ## Context vs environment
 

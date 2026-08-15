@@ -21,6 +21,7 @@ import {
 import { getAllPlatforms } from "../../platforms/registry.js";
 import { addSkillPackage } from "../../services/add-package.js";
 import { setActiveProfileName } from "../../services/active-profile.js";
+import { ensureDefaultEnvironment } from "../../services/ensure-default-environment.js";
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
 import { maybePromptInitCatalogInstall } from "../../services/init-catalog-prompt.js";
@@ -260,6 +261,7 @@ async function handleInitCommand(opts: {
   const hadExistingStore = existsSync(dbPath);
   const db = getDb();
   initializeSchema(db);
+  ensureDefaultEnvironment();
   const format = parseOutputFormat(opts.format);
   if (format === "human" && hadExistingStore) {
     const preference = getHarnessPreference();

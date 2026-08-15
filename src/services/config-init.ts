@@ -1,5 +1,6 @@
 import { listProfilePlugins } from "../constants/profile.js";
 import { getActiveProfileName } from "./active-profile.js";
+import { ensureDefaultEnvironment } from "./ensure-default-environment.js";
 import { ensureDefaultProfilePlugin } from "./ensure-default-profile.js";
 import { writeStarterProjectConfig } from "./project-config-write.js";
 import { promptForChoice, shouldUseWizard } from "./wizards/shared.js";
@@ -112,6 +113,7 @@ export async function executeConfigInit(
 ): Promise<ConfigInitResult> {
   const projectPath = options.project ?? process.cwd();
   ensureDefaultProfilePlugin();
+  ensureDefaultEnvironment();
   const availableNames = listProfilePlugins().map((plugin) => plugin.name);
   if (availableNames.length === 0) {
     throw new Error("Failed to ensure a default profile plugin.");

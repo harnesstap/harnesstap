@@ -17,6 +17,7 @@ import { EditProfilePane } from "./components/EditProfilePane";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
 import { ParityChrome } from "./components/parity/ParityChrome";
 import { PluginsWorkspace } from "./components/parity/PluginsWorkspace";
+import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
@@ -1845,12 +1846,31 @@ export function App() {
             </div>
           </div>
           {workspaceFocus === "scope" && view === "project" ? (
-            <ProjectPicker
-              projectPath={projectPath}
-              disabled={switching}
-              onSelect={selectProject}
-              onBrowse={() => void browseProject()}
-            />
+            <div className="header-project-row">
+              <ProjectPicker
+                projectPath={projectPath}
+                disabled={switching}
+                onSelect={selectProject}
+                onBrowse={() => void browseProject()}
+              />
+              {projectPath ? (
+                <ProjectHistoryControl
+                  baseUrl={baseUrl}
+                  token={token}
+                  connected={connected}
+                  switching={switching}
+                  projectPath={projectPath}
+                  onSuccess={(message) => {
+                    setSuccessMessage(message);
+                    window.setTimeout(() => setSuccessMessage(null), 3000);
+                  }}
+                  onProfilesChanged={() => {
+                    void refreshProfiles();
+                    void refreshStatus("full");
+                  }}
+                />
+              ) : null}
+            </div>
           ) : (
             <div className="header-focus-spacer" aria-hidden />
           )}

@@ -28,9 +28,8 @@ describe("agent environment routes", () => {
     return server;
   }
 
-  it("GET /v1/environments requires auth and lists environments", async () => {
+  it("GET /v1/environments requires auth and lists the seeded default", async () => {
     const server = withServer();
-    createEnvironment({ name: "staging", description: "stg" });
 
     const unauth = await fetch(`${server.url}/v1/environments`);
     expect(unauth.status).toBe(401);
@@ -43,9 +42,34 @@ describe("agent environment routes", () => {
     expect(body.environments).toEqual([
       expect.objectContaining({
         id: expect.any(String),
-        name: "staging",
-        description: "stg",
+        name: "default",
+        description: "Default environment",
       }),
     ]);
+  });
+
+  it("GET /v1/environments includes environments created after boot", async () => {
+    const server = withServer();
+    createEnvironment({ name: "staging", description: "stg" });
+
+    const response = await fetch(`${server.url}/v1/environments`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: expect.any(String),
+          name: "default",
+          description: "Default environment",
+        }),
+        expect.objectContaining({
+          id: expect.any(String),
+          name: "staging",
+          description: "stg",
+        }),
+      ]),
+    );
   });
 });
