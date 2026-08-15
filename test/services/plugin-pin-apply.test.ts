@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createTestContext } from "../helpers/db.ts";
 import { findPluginResourceByPin } from "../../src/services/plugin-composition.ts";
@@ -36,6 +37,67 @@ describe("syncPluginPinsForApply", () => {
       expect(result.installs[0]?.status).toBe("already_installed");
       expect(result.unresolvedPins).toEqual([]);
       const upstream = getPluginByName("formatter", "1.2.3");
+      expect(upstream).toBeDefined();
+      expect(getPluginOrigin(upstream!.id)).toBe("upstream");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("resolves a git SHA install when plugin.json has no version", async () => {
+    const context = await createTestContext("plugin-apply-sync-sha");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+      const sha = "4a4211102f36";
+      const installPath = join(
+        context.homeDir,
+        ".claude/plugins/cache/teads-plugins/design-doc",
+        sha,
+      );
+      mkdirSync(join(installPath, ".claude-plugin"), { recursive: true });
+      mkdirSync(join(installPath, "skills/design-doc"), { recursive: true });
+      writeFileSync(
+        join(installPath, ".claude-plugin/plugin.json"),
+        JSON.stringify({ name: "design-doc", description: "Scaffold design documents" }),
+      );
+      writeFileSync(
+        join(installPath, "skills/design-doc/SKILL.md"),
+        "---\nname: design-doc\ndescription: Write design docs\n---\n\n# Design doc\n",
+      );
+      mkdirSync(join(context.homeDir, ".claude/plugins"), { recursive: true });
+      writeFileSync(
+        join(context.homeDir, ".claude/plugins/installed_plugins.json"),
+        JSON.stringify({
+          version: 2,
+          plugins: {
+            "design-doc@teads-plugins": [
+              {
+                scope: "user",
+                installPath,
+                version: sha,
+                gitCommitSha: "4a4211102f3625cad9c344aa5fabe2b6f2a9a42d",
+              },
+            ],
+          },
+        }),
+      );
+
+      const plugin = createPlugin({ name: "Teads (Default)", version: "1.0.1" });
+      attachPluginPinToPlugin(plugin.id, "design-doc@teads-plugins", "*");
+
+      const result = await syncPluginPinsForApply({
+        pins: [{ ref: "design-doc@teads-plugins", version_constraint: "*" }],
+        homeRoot: context.homeDir,
+        projectRoot: context.projectDir,
+        scope: "user",
+      });
+
+      const synced = findPluginResourceByPin("design-doc@teads-plugins");
+      expect((synced?.metadata as { resolved_version?: string }).resolved_version).toBe(
+        sha,
+      );
+      expect(result.unresolvedPins).toEqual([]);
+      const upstream = getPluginByName("design-doc", sha);
       expect(upstream).toBeDefined();
       expect(getPluginOrigin(upstream!.id)).toBe("upstream");
     } finally {

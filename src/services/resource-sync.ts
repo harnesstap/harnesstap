@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { getDb } from "../db/connection.js";
 import {
@@ -12,6 +12,7 @@ import {
 import { getPluginByName } from "../models/plugin-model.js";
 import type { PluginDependencyMetadata, PluginPinMetadata, Resource } from "../types.js";
 import {
+  isPluginInstallRoot,
   readPluginVersionFromInstallRoot,
   scanPluginSource,
 } from "./plugin-source-import.js";
@@ -43,6 +44,27 @@ export interface SyncLinkedResourcesResult {
 
 function defaultClaudePluginsRoot(homeRoot: string): string {
   return join(homeRoot, ".claude", "plugins");
+}
+
+function resolveExistingInstallRoot(candidate: string): string | undefined {
+  if (!existsSync(candidate)) {
+    return undefined;
+  }
+  if (isPluginInstallRoot(candidate)) {
+    return candidate;
+  }
+  try {
+    for (const entry of readdirSync(candidate, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const childPath = join(candidate, entry.name);
+      if (isPluginInstallRoot(childPath)) {
+        return childPath;
+      }
+    }
+  } catch {
+    return candidate;
+  }
+  return candidate;
 }
 
 function resolveInstallRoot(
@@ -82,7 +104,13 @@ function resolveInstallRoot(
     candidates.unshift(join(process.cwd(), originRef));
   }
 
-  return candidates.find((candidate) => existsSync(candidate));
+  for (const candidate of candidates) {
+    const resolved = resolveExistingInstallRoot(candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+  return undefined;
 }
 
 function isPinned(resource: Resource): boolean {

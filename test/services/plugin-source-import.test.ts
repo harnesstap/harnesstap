@@ -388,4 +388,35 @@ developer_instructions = "Design contracts."
       cleanupDir(pluginRoot);
     }
   });
+
+  it("uses the git SHA cache directory as version when plugin.json has none", async () => {
+    const root = createTempDir("sha-plugin-version");
+    const pluginRoot = join(root, "4a4211102f36");
+    try {
+      writeTextFile(
+        join(pluginRoot, ".claude-plugin/plugin.json"),
+        JSON.stringify({
+          name: "design-doc",
+          description: "Scaffold design documents",
+        }),
+      );
+      writeTextFile(
+        join(pluginRoot, "skills/design-doc/SKILL.md"),
+        [
+          "---",
+          "name: design-doc",
+          "description: Write design docs",
+          "---",
+          "",
+          "# Design doc",
+        ].join("\n"),
+      );
+
+      const entries = await scanPluginSource(pluginRoot);
+      expect(entries[0]?.plugin_name).toBe("design-doc");
+      expect(entries[0]?.plugin_version).toBe("4a4211102f36");
+    } finally {
+      cleanupDir(root);
+    }
+  });
 });

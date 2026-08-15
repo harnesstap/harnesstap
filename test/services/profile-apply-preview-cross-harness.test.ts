@@ -28,10 +28,18 @@ describe("omitTransparentCrossHarnessAdds", () => {
         { path: ".claude/skills/pair-agent/SKILL.md", content: "# pair-agent\n" },
         { path: ".cursor/skills/pair-agent/SKILL.md", content: "# pair-agent\n" },
         { path: ".copilot/skills/pair-agent/SKILL.md", content: "# pair-agent\n" },
+        {
+          path: ".config/opencode/skills/pair-agent/SKILL.md",
+          content: "# pair-agent\n",
+        },
       ];
       const changes: DriftFileChange[] = [
         { path: ".cursor/skills/pair-agent/SKILL.md", type: "deleted" },
         { path: ".copilot/skills/pair-agent/SKILL.md", type: "deleted" },
+        {
+          path: ".config/opencode/skills/pair-agent/SKILL.md",
+          type: "deleted",
+        },
       ];
 
       expect(omitTransparentCrossHarnessAdds(root, expected, changes)).toEqual([]);

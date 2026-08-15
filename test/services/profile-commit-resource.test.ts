@@ -30,6 +30,63 @@ describe("profile-commit-resource", () => {
     expect(isMcpConfigManagedPath("opencode.json")).toBe(true);
   });
 
+  it("maps OpenCode and other registry harness skill paths", () => {
+    const skill = { type: "skill", name: "capsule-handover" };
+    expect(
+      resourceKeyFromManagedPath(
+        ".config/opencode/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath(
+        "~/.config/opencode/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath(
+        ".opencode/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath(
+        ".gemini/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath(
+        ".codeium/windsurf/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath(
+        ".grok/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath(
+        ".config/crush/skills/capsule-handover/SKILL.md",
+      ),
+    ).toEqual(skill);
+    expect(
+      resourceKeyFromManagedPath("opencode.json"),
+    ).toBeNull();
+  });
+
+  it("maps OpenCode agent and command paths from the registry", () => {
+    expect(
+      resourceKeyFromManagedPath(".opencode/agents/helper.md"),
+    ).toEqual({ type: "agent", name: "helper" });
+    expect(
+      resourceKeyFromManagedPath(".config/opencode/agents/helper.md"),
+    ).toEqual({ type: "agent", name: "helper" });
+    expect(
+      resourceKeyFromManagedPath(".opencode/commands/test.md"),
+    ).toEqual({ type: "command", name: "test" });
+    expect(
+      resourceKeyFromManagedPath(".opencode/command/ponytail.md"),
+    ).toEqual({ type: "command", name: "ponytail" });
+  });
+
   it("commits modified managed skill content from live disk into the library", async () => {
     const context = await createInitializedTestContext("profile-commit-managed");
     try {

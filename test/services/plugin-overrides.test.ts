@@ -59,4 +59,10 @@ describe("listPluginVersions", () => {
   it("returns an empty array for an unknown name", () => {
     expect(listPluginVersions("nope")).toEqual([]);
   });
+
+  it("includes git SHA marketplace versions after semver ones", () => {
+    createPlugin({ name: "design-doc", version: "1.0.0" });
+    createPlugin({ name: "design-doc", version: "4a4211102f36" });
+    expect(listPluginVersions("design-doc")).toEqual(["1.0.0", "4a4211102f36"]);
+  });
 });

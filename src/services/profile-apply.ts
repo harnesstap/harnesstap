@@ -486,17 +486,20 @@ export async function applyProfilePlugin(
   );
   const homeRoot = resolveHomeRoot();
   const rootPluginPins = collectPluginPinsForPrepare([profilePlugin.id]);
-  const skipPluginSync = options.dryRun || rootPluginPins.length === 0;
+  const skipPluginSync = rootPluginPins.length === 0;
 
   // Marketplace/git pins on the profile root must be materialized before the
-  // first composition resolve can walk them as upstream plugins.
+  // first composition resolve can walk them as upstream plugins. Dry-run skips
+  // host install CLI calls but still syncs from trees that are already installed.
   await preparePluginPinsForApply({
     pins: rootPluginPins,
     baseResources: [],
     projectRoot: homeRoot,
+    homeRoot,
     claudeConfig: mergePluginsById([profilePlugin.id]).claude,
     scope: "user",
     skipSync: skipPluginSync,
+    ignoreMissingInstall: Boolean(options.dryRun),
   });
 
   let resolution = resolveComposition({ rootSelectors: [profilePlugin.name] });

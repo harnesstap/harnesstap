@@ -850,10 +850,14 @@ export function listPluginVersions(name: string): string[] {
   const rows = db
     .prepare("SELECT version FROM plugins WHERE name = ?")
     .all(name) as Array<{ version: string }>;
-  return rows
+  const versions = rows
     .map((row) => row.version)
+    .filter((version) => version.length > 0 && version !== "unknown");
+  const semverVersions = versions
     .filter((version) => semver.valid(version) !== null)
     .sort(semver.rcompare);
+  const nonSemver = versions.filter((version) => semver.valid(version) === null);
+  return [...semverVersions, ...nonSemver];
 }
 
 // Transitional aliases — Task 4 rewrites call sites; then remove these.

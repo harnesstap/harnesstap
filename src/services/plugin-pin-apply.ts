@@ -20,7 +20,7 @@ import {
   type PluginValidationIssue,
 } from "./plugin-apply-validation.js";
 import { materializeUpstreamPlugin } from "./upstream-plugin.js";
-import { listResources } from "../models/resource.js";
+import { getResource, listResources } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
 import type { DependencySourceKind } from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
@@ -223,7 +223,10 @@ export async function syncPluginPinsForApply(
     options.progress?.onSyncComplete?.(pin.ref);
 
     resource =
-      findPluginResourceByPin(pin.ref, pin.version_constraint) ?? resource;
+      findPluginResourceByPin(pin.ref, pin.version_constraint) ??
+      findPluginResourceByPin(pin.ref) ??
+      (resource.id ? getResource(resource.id) : undefined) ??
+      resource;
     const syncedMetadata = (resource.metadata ?? {}) as PluginPinMetadata;
     const parsed = parseDependencyRef(pin.ref);
     if (syncedMetadata.resolved_version) {

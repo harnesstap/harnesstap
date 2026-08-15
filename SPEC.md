@@ -753,9 +753,9 @@ For `apply`, when no `--harness` list is passed, platforms are detected from the
 
 For `type=plugin_pin` resources:
 
-1. Resolve marketplace or local install path.
+1. Resolve marketplace or local install path (including git-SHA cache directories such as `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>`).
 2. Fetch or re-scan via `plugin-source-import`.
-3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`).
+3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`). When `plugin.json` has no version, `resolved_version` is the cache directory git SHA so the install can participate in composition.
 4. Diff and upsert child resources in the plugin namespace.
 5. On conflict, prompt on TTY or honor `--on-conflict overwrite|ignore|fail` (default `fail` when non-interactive).
 

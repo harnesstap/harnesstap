@@ -309,13 +309,32 @@ function resolvePluginRoot(sourcePath: string): {
   };
 }
 
+const GIT_SHA_DIR = /^[0-9a-f]{7,40}$/i;
+
+function versionFromInstallDirectory(installRoot: string): string | undefined {
+  const dirName = basename(installRoot);
+  return GIT_SHA_DIR.test(dirName) ? dirName : undefined;
+}
+
+export function isPluginInstallRoot(sourcePath: string): boolean {
+  try {
+    resolvePluginRoot(sourcePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function readPluginVersionFromInstallRoot(
   installRoot: string,
 ): string | undefined {
   try {
-    return resolvePluginRoot(installRoot).manifest.version;
+    return (
+      resolvePluginRoot(installRoot).manifest.version ??
+      versionFromInstallDirectory(installRoot)
+    );
   } catch {
-    return undefined;
+    return versionFromInstallDirectory(installRoot);
   }
 }
 
@@ -808,7 +827,7 @@ function scanPluginRootAt(
   const pluginName = manifest.name;
   const sourceKind = opts?.sourceKind ?? sourcePluginKind;
   const sourceLabel = opts?.sourceLabel ?? pluginName;
-  const pluginVersion = manifest.version;
+  const pluginVersion = manifest.version ?? versionFromInstallDirectory(rootPath);
   const metadata: ImportedSnapshotMetadata = {
     manifest_path: manifestPath,
     root_path: rootPath,

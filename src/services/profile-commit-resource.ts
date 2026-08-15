@@ -49,30 +49,130 @@ function profileHasResource(
   );
 }
 
+type ManagedDirKind = "skills" | "agents" | "commands" | "rules";
+
+interface ManagedDirPrefix {
+  prefix: string;
+  kind: ManagedDirKind;
+}
+
+const SKILL_REMAINDER = /^([^/]+)\/SKILL\.md$/i;
+const MARKDOWN_REMAINDER = /^([^/]+)\.md$/i;
+const RULE_REMAINDER = /^([^/]+)\.(md|mdc)$/i;
+
+function toManagedDirPrefix(raw: string | undefined): string | null {
+  if (!raw) {
+    return null;
+  }
+  const stripped = raw.replace(/^~\//, "");
+  if (!stripped.endsWith("/")) {
+    return null;
+  }
+  return stripped;
+}
+
+function collectManagedDirPrefixes(): ManagedDirPrefix[] {
+  const seen = new Set<string>();
+  const entries: ManagedDirPrefix[] = [];
+
+  const add = (raw: string | undefined, kind: ManagedDirKind) => {
+    const prefix = toManagedDirPrefix(raw);
+    if (!prefix) {
+      return;
+    }
+    const key = `${kind}:${prefix.toLowerCase()}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    entries.push({ prefix, kind });
+  };
+
+  for (const platform of getAllPlatforms()) {
+    for (const paths of [platform.projectPaths, platform.globalPaths]) {
+      add(paths.skills, "skills");
+      add(paths.agents, "agents");
+      add(paths.commands, "commands");
+      add(paths.rules, "rules");
+      for (const alternate of paths.pathAlternates?.skills ?? []) {
+        add(alternate, "skills");
+      }
+      for (const alternate of paths.pathAlternates?.commands ?? []) {
+        add(alternate, "commands");
+      }
+      for (const alternate of paths.pathAlternates?.rules ?? []) {
+        add(alternate, "rules");
+      }
+    }
+  }
+
+  return entries.sort((left, right) => right.prefix.length - left.prefix.length);
+}
+
+const MANAGED_DIR_PREFIXES = collectManagedDirPrefixes();
+
+function remainderAfterManagedDir(
+  normalized: string,
+  prefix: string,
+): string | null {
+  const lower = normalized.toLowerCase();
+  const prefixLower = prefix.toLowerCase();
+  if (lower.startsWith(prefixLower)) {
+    return normalized.slice(prefix.length);
+  }
+  const embedded = `/${prefixLower}`;
+  const index = lower.indexOf(embedded);
+  if (index === -1) {
+    return null;
+  }
+  return normalized.slice(index + embedded.length);
+}
+
+function resourceKeyFromDirRemainder(
+  kind: ManagedDirKind,
+  remainder: string,
+): { type: string; name: string } | null {
+  switch (kind) {
+    case "skills": {
+      const match = remainder.match(SKILL_REMAINDER);
+      return match?.[1] ? { type: "skill", name: match[1] } : null;
+    }
+    case "agents": {
+      const match = remainder.match(MARKDOWN_REMAINDER);
+      return match?.[1] ? { type: "agent", name: match[1] } : null;
+    }
+    case "commands": {
+      const match = remainder.match(MARKDOWN_REMAINDER);
+      return match?.[1] ? { type: "command", name: match[1] } : null;
+    }
+    case "rules": {
+      const match = remainder.match(RULE_REMAINDER);
+      return match?.[1] ? { type: "rule", name: match[1] } : null;
+    }
+    default: {
+      const neverKind: never = kind;
+      return neverKind;
+    }
+  }
+}
+
 /**
  * Map a managed harness path to a material resource identity when the mapping is 1:1.
+ * Directory prefixes come from the platform registry so every harness groups together.
  */
 export function resourceKeyFromManagedPath(
   path: string,
   rootPath?: string,
 ): { type: string; name: string } | null {
   const normalized = normalizeManagedPath(path, rootPath);
-  const patterns: Array<{ re: RegExp; type: string }> = [
-    { re: /(?:^|\/)\.claude\/skills\/([^/]+)\/SKILL\.md$/i, type: "skill" },
-    { re: /(?:^|\/)\.cursor\/skills\/([^/]+)\/SKILL\.md$/i, type: "skill" },
-    { re: /(?:^|\/)\.copilot\/skills\/([^/]+)\/SKILL\.md$/i, type: "skill" },
-    { re: /(?:^|\/)\.agents\/skills\/([^/]+)\/SKILL\.md$/i, type: "skill" },
-    { re: /(?:^|\/)\.claude\/rules\/([^/]+)\.md$/i, type: "rule" },
-    { re: /(?:^|\/)\.cursor\/rules\/([^/]+)\.mdc$/i, type: "rule" },
-    { re: /(?:^|\/)\.claude\/commands\/([^/]+)\.md$/i, type: "command" },
-    { re: /(?:^|\/)\.cursor\/commands\/([^/]+)\.md$/i, type: "command" },
-    { re: /(?:^|\/)\.claude\/agents\/([^/]+)\.md$/i, type: "agent" },
-    { re: /(?:^|\/)\.cursor\/agents\/([^/]+)\.md$/i, type: "agent" },
-  ];
-  for (const pattern of patterns) {
-    const match = normalized.match(pattern.re);
-    if (match?.[1]) {
-      return { type: pattern.type, name: match[1] };
+  for (const { prefix, kind } of MANAGED_DIR_PREFIXES) {
+    const remainder = remainderAfterManagedDir(normalized, prefix);
+    if (!remainder) {
+      continue;
+    }
+    const mapped = resourceKeyFromDirRemainder(kind, remainder);
+    if (mapped) {
+      return mapped;
     }
   }
   return null;

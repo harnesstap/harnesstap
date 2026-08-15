@@ -3,6 +3,7 @@ import { createInitializedTestContext } from "../../helpers/db.ts";
 import type { TestContext } from "../../helpers/db.ts";
 import { createPlugin, getPluginByName } from "../../../src/models/plugin-model.ts";
 import { addPluginAttachment } from "../../../src/services/plugin-composition.ts";
+import { addDependency } from "../../../src/services/plugin-dependency.ts";
 import { walkDependencyGraph } from "../../../src/services/resolve/dependency-graph.ts";
 import { UnsatisfiableConstraintError } from "../../../src/services/resolve/types.ts";
 import { setPluginVersionOverride } from "../../../src/services/plugin-overrides.ts";
@@ -109,6 +110,17 @@ describe("walkDependencyGraph", () => {
       "b",
       "root",
     ]);
+  });
+
+  it("selects a git SHA marketplace install when that is the only local version", async () => {
+    createPlugin({ name: "design-doc", version: "4a4211102f36" });
+    const root = createPlugin({ name: "Teads (Default)", version: "1.0.1" });
+    addDependency(root.id, "design-doc@teads-plugins", { versionConstraint: "*" });
+
+    const walk = walkDependencyGraph({ rootPluginId: root.id });
+    const selected = walk.selected.find((entry) => entry.name === "design-doc");
+    expect(selected?.version).toBe("4a4211102f36");
+    expect(selected?.source).toBe("marketplace");
   });
 
   it("assigns declaration indexes in first-encounter order", async () => {
