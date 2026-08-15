@@ -86,6 +86,7 @@ export function ApplyPluginDrawer({
     setError(null);
     setProfilePreview(null);
     setDryRunPreview(null);
+    setOverwriteOpen(false);
     const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
     return () => window.clearTimeout(timer);
   }, [open, pluginName]);
