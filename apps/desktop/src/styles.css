@@ -142,19 +142,6 @@ button:focus-visible,
   flex: 0 0 auto;
 }
 
-.connection-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: var(--red);
-}
-
-.connection-indicator.connected {
-  color: var(--green);
-}
-
 .icon-action {
   display: inline-flex;
   align-items: center;

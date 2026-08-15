@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Settings, Tag, Unplug, Upload, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -1875,27 +1875,10 @@ export function App() {
             <div className="header-focus-spacer" aria-hidden />
           )}
         </div>
-        <div className="header-status" aria-live="polite">
-          {connected ? (
-            <span
-              className="connection-indicator connected"
-              data-testid="agent-connected"
-              title="Connected"
-              aria-label="Connected"
-              role="img"
-            >
-              <Plug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            </span>
-          ) : (
-            <span
-              className="connection-indicator"
-              title="Disconnected"
-              aria-label="Disconnected"
-              role="img"
-            >
-              <Unplug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            </span>
-          )}
+        <div
+          className="header-status"
+          data-testid={connected ? "agent-connected" : undefined}
+        >
           <button
             className={[
               "icon-action",
