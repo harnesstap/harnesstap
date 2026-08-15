@@ -39,6 +39,7 @@ import {
   ResourceSelectionList,
   SelectionList,
 } from "../CompositionPickers";
+import { ApplyPluginDrawer } from "./ApplyPluginDrawer";
 
 export interface PluginsWorkspaceProps {
   baseUrl: string | null;
@@ -71,8 +72,8 @@ export function PluginsWorkspace({
   token,
   selectedProfile: _selectedProfile,
   disabled = false,
-  projectPath: _projectPath,
-  onBusyChange: _onBusyChange,
+  projectPath = null,
+  onBusyChange,
   onSuccess,
   onProfilesChanged,
 }: PluginsWorkspaceProps) {
@@ -106,6 +107,7 @@ export function PluginsWorkspace({
   const [doctorReport, setDoctorReport] = useState<PluginDoctorReport | null>(null);
   const [doctorBusy, setDoctorBusy] = useState(false);
 
+  const [applyOpen, setApplyOpen] = useState(false);
   const [cutOpen, setCutOpen] = useState(false);
   const [cutVersion, setCutVersion] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -605,9 +607,10 @@ export function PluginsWorkspace({
                 <div className="edit-profile-header-actions">
                   <button
                     type="button"
-                    className="btn"
-                    disabled
-                    title="Apply is provided by the apply-plugin slice"
+                    className="btn primary"
+                    data-testid="apply-package"
+                    disabled={controlsDisabled}
+                    onClick={() => setApplyOpen(true)}
                   >
                     Apply
                   </button>
@@ -814,6 +817,22 @@ export function PluginsWorkspace({
           )}
         </div>
       </div>
+
+      {detail ? (
+        <ApplyPluginDrawer
+          open={applyOpen}
+          onClose={() => setApplyOpen(false)}
+          pluginName={detail.plugin.name}
+          isProfile={detail.plugin.tags.includes("profile")}
+          baseUrl={baseUrl}
+          token={token}
+          projectPath={projectPath ?? null}
+          disabled={disabled}
+          onBusyChange={onBusyChange}
+          onSuccess={onSuccess}
+          onProfilesChanged={onProfilesChanged}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={cutOpen}
