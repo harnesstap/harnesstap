@@ -311,8 +311,10 @@ describe("CLI profile live files", () => {
         "--scope", "home",
         "--harness", "claude-code",
       ]);
-      expect(diffHuman.stdout).toContain("--- a/");
-      expect(diffHuman.stdout).toContain("+++ b/");
+      expect(diffHuman.stdout).toContain("--- live/");
+      expect(diffHuman.stdout).toContain("+++ after-apply/");
+      expect(diffHuman.stdout).toContain("-# drifted");
+      expect(diffHuman.stdout).toContain("+# original");
 
       const diffJson = await runCli([
         "profile", "file-diff", "work",

@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
+import { useEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { fetchApplyPreview, fetchLibraryPlugins } from "../../lib/agent-client";
-import type { LibraryPlugin, ProfileApplyPreview } from "../../lib/types";
+import { fetchApplyPreview } from "../../lib/agent-client";
+import type { ProfileApplyPreview } from "../../lib/types";
+import {
+  applyPluginDialogTitle,
+  applyPluginHelperCopy,
+  applyPluginProfileGlobalWarning,
+  applyPluginProjectMissing,
+} from "../../lib/apply-plugin-confirm";
 import {
   AgentApiError,
   postApply,
@@ -14,20 +19,18 @@ import {
 } from "../../lib/api/apply-plugin";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { SelectionList } from "../CompositionPickers";
 
 export interface ApplyPluginDrawerProps {
   open: boolean;
   onClose: () => void;
+  pluginName: string;
+  isProfile: boolean;
   baseUrl: string | null;
   token: string | null;
-  connected?: boolean;
-  switching?: boolean;
   projectPath: string | null;
   onSuccess: (message: string) => void;
   onProfilesChanged?: () => void;
   onBusyChange?: (busy: boolean) => void;
-  /** Coordination currently passes this instead of connected/switching. */
   disabled?: boolean;
 }
 
@@ -35,27 +38,13 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-function isProfileShaped(plugins: LibraryPlugin[], selectedIds: string[]): boolean {
-  if (selectedIds.length !== 1) {
-    return false;
-  }
-  const selected = plugins.find((plugin) => plugin.id === selectedIds[0]);
-  return Boolean(selected?.tags.includes("profile"));
-}
-
-function selectedNames(plugins: LibraryPlugin[], selectedIds: string[]): string[] {
-  return plugins
-    .filter((plugin) => selectedIds.includes(plugin.id))
-    .map((plugin) => plugin.name);
-}
-
 export function ApplyPluginDrawer({
   open,
   onClose,
+  pluginName,
+  isProfile,
   baseUrl,
   token,
-  connected,
-  switching,
   projectPath,
   onSuccess,
   onProfilesChanged,
@@ -63,25 +52,26 @@ export function ApplyPluginDrawer({
   disabled,
 }: ApplyPluginDrawerProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
-  const [filter, setFilter] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [scope, setScope] = useState<ApplyPluginScope>("home");
   const [onConflict, setOnConflict] = useState<ApplyOnConflict>("replace");
   const [busy, setBusy] = useState(false);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [libraryError, setLibraryError] = useState<string | null>(null);
   const [profilePreview, setProfilePreview] = useState<ProfileApplyPreview | null>(null);
   const [dryRunPreview, setDryRunPreview] = useState<ApplyPluginResult | null>(null);
   const [overwriteOpen, setOverwriteOpen] = useState(false);
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const skipOverwriteRef = useRef(false);
 
-  const chromeBlocked = disabled ?? (!connected || Boolean(switching));
-  const disconnected = !baseUrl || !token || chromeBlocked;
-  const applyLocked = Boolean(switching) || busy || Boolean(disabled);
-  const controlsDisabled = disconnected || applyLocked;
+  const applyLocked = Boolean(disabled) || busy;
+  const projectMissing = applyPluginProjectMissing(scope, projectPath);
+  const canApply =
+    Boolean(baseUrl)
+    && Boolean(token)
+    && pluginName.trim().length > 0
+    && !applyLocked
+    && !projectMissing;
+  const profileGlobalWarning = applyPluginProfileGlobalWarning(isProfile, scope);
 
   useEffect(() => {
     skipOverwriteRef.current = skipOverwritePrompt;
@@ -91,38 +81,15 @@ export function ApplyPluginDrawer({
     if (!open) {
       return;
     }
-    setFilter("");
-    setSelectedIds([]);
     setScope("home");
     setOnConflict("replace");
     setError(null);
     setProfilePreview(null);
     setDryRunPreview(null);
+    setOverwriteOpen(false);
     const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
     return () => window.clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || !baseUrl) {
-      return;
-    }
-    let cancelled = false;
-    void fetchLibraryPlugins(baseUrl, token)
-      .then((rows) => {
-        if (!cancelled) {
-          setPlugins(rows);
-          setLibraryError(null);
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) {
-          setLibraryError(errorMessage(loadError, "Could not load library plugins"));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, open, token]);
+  }, [open, pluginName]);
 
   useEffect(() => {
     if (!open) {
@@ -137,30 +104,8 @@ export function ApplyPluginDrawer({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [busy, onClose, open, overwriteOpen]);
 
-  const filtered = useMemo(() => {
-    const query = filter.trim().toLowerCase();
-    if (!query) {
-      return plugins;
-    }
-    return plugins.filter((plugin) => {
-      const haystack = `${plugin.name} ${plugin.description ?? ""}`.toLowerCase();
-      return haystack.includes(query);
-    });
-  }, [filter, plugins]);
-
-  const names = selectedNames(plugins, selectedIds);
-  const globalTooMany = scope === "home" && selectedIds.length > 1;
-  const projectMissingPath = scope === "project" && !projectPath;
-  const profileOnGlobal =
-    scope === "home" && isProfileShaped(plugins, selectedIds);
-  const canApply =
-    !controlsDisabled
-    && names.length > 0
-    && !globalTooMany
-    && !projectMissingPath;
-
   const runApply = async (confirmOwnedOverwrite: boolean) => {
-    if (!baseUrl || !token || names.length === 0) {
+    if (!baseUrl || !token || !pluginName.trim()) {
       return;
     }
     setBusy(true);
@@ -168,7 +113,7 @@ export function ApplyPluginDrawer({
     setError(null);
     try {
       const result = await postApply(baseUrl, token, {
-        plugins: names,
+        plugins: [pluginName],
         scope,
         onConflict,
         dryRun: false,
@@ -180,7 +125,7 @@ export function ApplyPluginDrawer({
         return;
       }
       const where = scope === "home" ? "Global" : "Project";
-      onSuccess(`Applied ${names.join(", ")} to ${where}`);
+      onSuccess(`Applied ${pluginName} to ${where}`);
       onProfilesChanged?.();
       onClose();
     } catch (applyError: unknown) {
@@ -207,7 +152,7 @@ export function ApplyPluginDrawer({
   };
 
   const onPreview = async () => {
-    if (!baseUrl || !token || names.length === 0) {
+    if (!baseUrl || !token || !pluginName.trim()) {
       return;
     }
     setPreviewBusy(true);
@@ -215,9 +160,9 @@ export function ApplyPluginDrawer({
     setProfilePreview(null);
     setDryRunPreview(null);
     try {
-      if (isProfileShaped(plugins, selectedIds) && names[0]) {
+      if (isProfile) {
         const preview = await fetchApplyPreview(baseUrl, token, {
-          profile: names[0],
+          profile: pluginName,
           scope: scope === "home" ? "home" : "project",
           ...(scope === "project" && projectPath ? { projectPath } : {}),
         });
@@ -225,7 +170,7 @@ export function ApplyPluginDrawer({
         return;
       }
       const result = await postApply(baseUrl, token, {
-        plugins: names,
+        plugins: [pluginName],
         scope,
         onConflict,
         dryRun: true,
@@ -262,11 +207,8 @@ export function ApplyPluginDrawer({
         >
           <div className="create-profile-header">
             <div>
-              <h2 id="apply-plugin-title">Apply plugin</h2>
-              <p className="muted">
-                Materialize a library plugin graph without switching the active profile.
-                Profile switch stays on Apply in the profiles list.
-              </p>
+              <h2 id="apply-plugin-title">{applyPluginDialogTitle(pluginName)}</h2>
+              <p className="muted">{applyPluginHelperCopy()}</p>
             </div>
             <button
               ref={closeRef}
@@ -286,50 +228,13 @@ export function ApplyPluginDrawer({
                 {error}
               </div>
             ) : null}
-            {libraryError ? (
-              <div className="banner error" role="alert">
-                {libraryError}
-              </div>
-            ) : null}
-
-            <div className="form-field gap-1.5">
-              <Label htmlFor="apply-plugin-filter">Filter plugins…</Label>
-              <Input
-                id="apply-plugin-filter"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-                disabled={controlsDisabled}
-                placeholder="Filter plugins…"
-              />
-            </div>
-
-            <SelectionList
-              title="Library plugins"
-              emptyLabel="No matching plugins"
-              rows={filtered.map((plugin) => ({
-                id: plugin.id,
-                name: plugin.name,
-                description: plugin.description,
-              }))}
-              selectedIds={selectedIds}
-              disabled={controlsDisabled}
-              onToggle={(id) => {
-                setSelectedIds((current) =>
-                  current.includes(id)
-                    ? current.filter((row) => row !== id)
-                    : [...current, id],
-                );
-                setProfilePreview(null);
-                setDryRunPreview(null);
-              }}
-            />
 
             <fieldset className="form-field gap-1.5">
               <legend>Scope</legend>
               <RadioGroup
                 value={scope}
                 onValueChange={(value) => setScope(value as ApplyPluginScope)}
-                disabled={controlsDisabled}
+                disabled={applyLocked}
               >
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="home" id="apply-scope-home" />
@@ -347,7 +252,7 @@ export function ApplyPluginDrawer({
               <RadioGroup
                 value={onConflict}
                 onValueChange={(value) => setOnConflict(value as ApplyOnConflict)}
-                disabled={controlsDisabled}
+                disabled={applyLocked}
               >
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="replace" id="apply-conflict-replace" />
@@ -360,18 +265,11 @@ export function ApplyPluginDrawer({
               </RadioGroup>
             </fieldset>
 
-            {globalTooMany ? (
-              <p className="muted">Global apply accepts exactly one plugin.</p>
-            ) : null}
-            {projectMissingPath ? (
+            {projectMissing ? (
               <p className="muted">Choose a project directory to apply to a project.</p>
             ) : null}
-            {profileOnGlobal ? (
-              <p className="muted">
-                This plugin is tagged profile. Applying it to Global records it as the
-                active profile (same as CLI ht apply --global). Prefer Apply in the
-                profiles list for everyday switches.
-              </p>
+            {profileGlobalWarning ? (
+              <p className="muted">{profileGlobalWarning}</p>
             ) : null}
 
             {profilePreview ? (
@@ -383,7 +281,7 @@ export function ApplyPluginDrawer({
             ) : null}
             {dryRunPreview ? (
               <p className="muted">
-                Preview: {(dryRunPreview.plugins ?? names).join(", ")}
+                Preview: {(dryRunPreview.plugins ?? [pluginName]).join(", ")}
                 {dryRunPreview.platforms
                   ? ` — ${dryRunPreview.platforms
                       .map((row) => `${row.platform} (${row.files?.length ?? 0})`)

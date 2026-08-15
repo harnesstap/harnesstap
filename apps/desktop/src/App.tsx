@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plug, Plus, RefreshCw, Settings, Tag, Unplug, Upload, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import { ParityChrome } from "./components/parity/ParityChrome";
 import { PluginsWorkspace } from "./components/parity/PluginsWorkspace";
 import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
+import { LibraryWorkspace, type LibraryTab } from "./components/LibraryWorkspace";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
 import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
@@ -73,7 +74,7 @@ import type {
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 
-type WorkspaceFocus = "resources" | "scope" | "environments" | "plugins";
+type WorkspaceFocus = "library" | "scope" | "environments";
 
 const HEADER_ICON_SIZE = 18;
 const RAIL_ICON_SIZE = 15;
@@ -175,6 +176,7 @@ export function App() {
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
+  const [libraryTab, setLibraryTab] = useState<LibraryTab>("items");
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
@@ -1773,38 +1775,24 @@ export function App() {
           <div className="header-focus-controls">
             <button
               type="button"
-              className={`header-focus-btn${workspaceFocus === "resources" ? " on" : ""}`}
+              className={`header-focus-btn${workspaceFocus === "library" ? " on" : ""}`}
               onClick={() => {
                 setEditingProfile(null);
-                setWorkspaceFocus("resources");
+                setWorkspaceFocus("library");
               }}
               disabled={switching}
-              aria-label="Resources"
-              title="Resources"
+              aria-label="Library"
+              title="Library"
             >
               <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
             </button>
             <ParityChrome
-              baseUrl={baseUrl}
-              token={token}
-              connected={connected}
-              switching={switching}
-              projectPath={view === "project" ? projectPath : null}
-              selectedProfile={selectedProfile}
               workspaceFocus={workspaceFocus}
               onWorkspaceFocus={(focus) => {
                 setEditingProfile(null);
                 setWorkspaceFocus(focus);
               }}
-              onSuccess={(message) => {
-                setSuccessMessage(message);
-                window.setTimeout(() => setSuccessMessage(null), 3000);
-              }}
-              onProfilesChanged={() => {
-                void refreshProfiles();
-                void refreshStatus("full");
-              }}
-              onBusyChange={setPluginApplyBusy}
+              switching={switching}
             />
             <div
               className="header-focus-segment"
@@ -1875,27 +1863,13 @@ export function App() {
             <div className="header-focus-spacer" aria-hidden />
           )}
         </div>
-        <div className="header-status" aria-live="polite">
-          {connected ? (
-            <span
-              className="connection-indicator connected"
-              data-testid="agent-connected"
-              title="Connected"
-              aria-label="Connected"
-              role="img"
-            >
-              <Plug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            </span>
-          ) : (
-            <span
-              className="connection-indicator"
-              title="Disconnected"
-              aria-label="Disconnected"
-              role="img"
-            >
-              <Unplug size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-            </span>
-          )}
+        <div
+          className="header-status"
+          data-testid={connected ? "agent-connected" : undefined}
+        >
+          {successMessage ? (
+            <div className="success-flash">{successMessage}</div>
+          ) : null}
           <button
             className={[
               "icon-action",
@@ -2348,37 +2322,48 @@ export function App() {
               window.setTimeout(() => setSuccessMessage(null), 3000);
             }}
           />
-        ) : workspaceFocus === "plugins" ? (
-          <PluginsWorkspace
-            baseUrl={baseUrl}
-            token={token}
-            selectedProfile={selectedProfile}
+        ) : workspaceFocus === "library" ? (
+          <LibraryWorkspace
+            tab={libraryTab}
+            onTabChange={setLibraryTab}
             disabled={switching}
-            onSuccess={(message) => {
-              setSuccessMessage(message);
-              window.setTimeout(() => setSuccessMessage(null), 3000);
-            }}
-            onProfilesChanged={() => {
-              void refreshProfiles();
-            }}
-          />
-        ) : workspaceFocus === "resources" ? (
-          <ResourcesPanel
-            baseUrl={baseUrl}
-            token={token}
-            reloadKey={libraryReloadKey}
-            disabled={switching}
-            projectPath={view === "project" ? projectPath : null}
-            selectedProfile={selectedProfile}
-            onImported={(message) => {
-              setSuccessMessage(message);
-              window.setTimeout(() => setSuccessMessage(null), 3000);
-              setLibraryReloadKey((value) => value + 1);
-            }}
-            onSuccess={(message) => {
-              setSuccessMessage(message);
-              window.setTimeout(() => setSuccessMessage(null), 3000);
-            }}
+            items={
+              <ResourcesPanel
+                baseUrl={baseUrl}
+                token={token}
+                reloadKey={libraryReloadKey}
+                disabled={switching}
+                projectPath={view === "project" ? projectPath : null}
+                selectedProfile={selectedProfile}
+                onImported={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                  setLibraryReloadKey((value) => value + 1);
+                }}
+                onSuccess={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                }}
+              />
+            }
+            packages={
+              <PluginsWorkspace
+                baseUrl={baseUrl}
+                token={token}
+                selectedProfile={selectedProfile}
+                disabled={switching}
+                projectPath={projectPath || null}
+                onBusyChange={setPluginApplyBusy}
+                onSuccess={(message) => {
+                  setSuccessMessage(message);
+                  window.setTimeout(() => setSuccessMessage(null), 3000);
+                }}
+                onProfilesChanged={() => {
+                  void refreshProfiles();
+                  void refreshStatus("full");
+                }}
+              />
+            }
           />
         ) : editingProfile ? (
           <EditProfilePane
@@ -2599,10 +2584,6 @@ export function App() {
                 </div>
               </div>
             )}
-
-            {successMessage ? (
-              <div className="success-flash">{successMessage}</div>
-            ) : null}
 
             {statusError && (
               <div className="banner error">

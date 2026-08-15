@@ -142,19 +142,6 @@ button:focus-visible,
   flex: 0 0 auto;
 }
 
-.connection-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: var(--red);
-}
-
-.connection-indicator.connected {
-  color: var(--green);
-}
-
 .icon-action {
   display: inline-flex;
   align-items: center;
@@ -670,6 +657,25 @@ button:focus-visible,
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.library-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.library-workspace .library-tabs {
+  flex-shrink: 0;
+  margin: 0.75rem 0.75rem 0;
+  max-width: 16rem;
+}
+
+.library-workspace .resources-panel {
+  flex: 1;
 }
 
 .edit-profile-pane {
@@ -2055,6 +2061,32 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   gap: 0.75rem;
 }
 
+.file-diff-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.file-diff-counts {
+  display: inline-flex;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+}
+
+.file-diff-count-add {
+  color: var(--green);
+}
+
+.file-diff-count-remove {
+  color: var(--red);
+}
+
+.file-diff-legend {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+}
+
 .file-diff-header h2 {
   margin: 0.15rem 0 0;
   font-size: 1rem;
@@ -2109,11 +2141,52 @@ fieldset.resource-filter-section > legend.resource-filter-section-label {
   flex-wrap: wrap;
 }
 
+.enabled-nested-row .enabled-trailing {
+  display: inline-grid;
+  justify-items: end;
+  align-items: center;
+}
+
+.enabled-nested-row .enabled-trailing > .harness-icon-row,
+.enabled-nested-row .enabled-trailing > .enabled-row-actions {
+  grid-area: 1 / 1;
+}
+
 .enabled-row-actions {
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
   flex-shrink: 0;
+}
+
+.enabled-nested-row .enabled-row-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.enabled-nested-row:is(:hover, :focus-within):has(.enabled-row-actions) .harness-icon-row,
+.enabled-nested-row:has(.enabled-row-actions .is-busy) .harness-icon-row {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.enabled-nested-row:is(:hover, :focus-within) .enabled-row-actions,
+.enabled-nested-row .enabled-row-actions:has(.is-busy) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .enabled-nested-row .enabled-trailing {
+    display: inline-flex;
+  }
+
+  .enabled-nested-row .enabled-trailing > .harness-icon-row,
+  .enabled-nested-row .enabled-trailing > .enabled-row-actions {
+    grid-area: auto;
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .profile-resource-open-btn,

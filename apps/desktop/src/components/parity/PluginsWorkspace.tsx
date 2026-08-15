@@ -3,8 +3,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -35,16 +33,16 @@ import type {
 } from "../../lib/types";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ConfirmDialog } from "../ConfirmDialog";
-import {
-  ResourceSelectionList,
-  SelectionList,
-} from "../CompositionPickers";
+import { ApplyPluginDrawer } from "./ApplyPluginDrawer";
+import { PluginCompositionFields } from "./PluginCompositionFields";
 
 export interface PluginsWorkspaceProps {
   baseUrl: string | null;
   token: string | null;
   selectedProfile: string | null;
   disabled?: boolean;
+  projectPath?: string | null;
+  onBusyChange?: (busy: boolean) => void;
   onSuccess: (message: string) => void;
   onProfilesChanged: () => void;
 }
@@ -69,6 +67,8 @@ export function PluginsWorkspace({
   token,
   selectedProfile: _selectedProfile,
   disabled = false,
+  projectPath = null,
+  onBusyChange,
   onSuccess,
   onProfilesChanged,
 }: PluginsWorkspaceProps) {
@@ -102,6 +102,7 @@ export function PluginsWorkspace({
   const [doctorReport, setDoctorReport] = useState<PluginDoctorReport | null>(null);
   const [doctorBusy, setDoctorBusy] = useState(false);
 
+  const [applyOpen, setApplyOpen] = useState(false);
   const [cutOpen, setCutOpen] = useState(false);
   const [cutVersion, setCutVersion] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -500,7 +501,7 @@ export function PluginsWorkspace({
     || catalogPlugins.length === 0;
 
   return (
-    <main className="resources-panel" aria-label="Plugins">
+    <main className="resources-panel" aria-label="Packages">
       <div className="resources-panel-layout">
         <aside className="profiles-rail" aria-label="Plugin list">
           <div className="profiles-filter-row">
@@ -601,9 +602,10 @@ export function PluginsWorkspace({
                 <div className="edit-profile-header-actions">
                   <button
                     type="button"
-                    className="btn"
-                    disabled
-                    title="Apply is provided by the apply-plugin slice"
+                    className="btn primary"
+                    data-testid="apply-package"
+                    disabled={controlsDisabled}
+                    onClick={() => setApplyOpen(true)}
                   >
                     Apply
                   </button>
@@ -652,115 +654,34 @@ export function PluginsWorkspace({
                 </Select>
               </div>
 
-              {authored ? (
-                <section className="edit-profile-section" aria-label="Marketplace plugins">
-                  <h3>Marketplace plugins</h3>
-                  {marketplaceLoading ? (
-                    <p className="muted">Loading marketplaces…</p>
-                  ) : marketplaceError ? (
-                    <div className="banner error">{marketplaceError}</div>
-                  ) : marketplaces.length === 0 ? (
-                    <p className="muted">
-                      No marketplaces registered. Add one in Settings.
-                    </p>
-                  ) : (
-                    <div className="edit-plugin-pin">
-                      {marketplaces.length > 1 ? (
-                        <div className="form-field gap-1.5">
-                          <Label htmlFor="plugin-marketplace">Marketplace</Label>
-                          <Select
-                            value={marketplaceName}
-                            onValueChange={setMarketplaceName}
-                            disabled={pickersDisabled || pluginsLoading}
-                          >
-                            <SelectTrigger
-                              id="plugin-marketplace"
-                              className="w-full"
-                            >
-                              <SelectValue placeholder="Select a marketplace…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {marketplaces.map((entry) => (
-                                <SelectItem key={entry.name} value={entry.name}>
-                                  {entry.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : null}
-                      <div className="form-field gap-1.5">
-                        <Label htmlFor="plugin-ref">Plugin</Label>
-                        {pluginsLoading ? (
-                          <p className="muted">Loading plugins…</p>
-                        ) : catalogPlugins.length === 0 ? (
-                          <p className="muted">No plugins in this marketplace.</p>
-                        ) : (
-                          <Select
-                            value={pluginRef}
-                            onValueChange={setPluginRef}
-                            disabled={pickersDisabled}
-                          >
-                            <SelectTrigger
-                              id="plugin-ref"
-                              className="w-full"
-                            >
-                              <SelectValue placeholder="Select a plugin…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {catalogPlugins.map((plugin) => (
-                                <SelectItem key={plugin.ref} value={plugin.ref}>
-                                  {plugin.name}
-                                  {plugin.version ? ` @ ${plugin.version}` : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="btn primary"
-                        onClick={pinMarketplacePlugin}
-                        disabled={pluginControlsDisabled}
-                      >
-                        {busy ? <ButtonSpinner size={14} /> : null}
-                        Pin plugin
-                      </button>
-                    </div>
-                  )}
-                </section>
-              ) : null}
-
-              <section className="edit-profile-section" aria-label="Composition">
-                <h3>Composition</h3>
-                <div className="compose-library">
-                  {libraryLoading ? (
-                    <p className="muted">Loading local library…</p>
-                  ) : libraryError ? (
-                    <div className="banner error">{libraryError}</div>
-                  ) : (
-                    <>
-                      <SelectionList
-                        title="Plugins"
-                        emptyLabel="No plugins available."
-                        rows={pluginRows}
-                        selectedIds={selectedPluginIds}
-                        disabled={pickersDisabled}
-                        onToggle={togglePlugin}
-                      />
-                      <ResourceSelectionList
-                        resources={composeResources}
-                        filter={resourceFilter}
-                        onFilterChange={setResourceFilter}
-                        selectedIds={selectedResourceIds}
-                        disabled={pickersDisabled}
-                        onToggle={toggleResource}
-                      />
-                    </>
-                  )}
-                </div>
-              </section>
+              <PluginCompositionFields
+                showMarketplace={Boolean(authored)}
+                marketplaceLoading={marketplaceLoading}
+                marketplaceError={marketplaceError}
+                marketplaces={marketplaces}
+                marketplaceName={marketplaceName}
+                onMarketplaceName={setMarketplaceName}
+                catalogPlugins={catalogPlugins}
+                pluginsLoading={pluginsLoading}
+                pluginRef={pluginRef}
+                onPluginRef={setPluginRef}
+                onPin={pinMarketplacePlugin}
+                pinDisabled={pluginControlsDisabled}
+                pinBusy={busy}
+                marketplaceSelectId="plugin-marketplace"
+                pluginSelectId="plugin-ref"
+                libraryLoading={libraryLoading}
+                libraryError={libraryError}
+                pluginRows={pluginRows}
+                selectedPluginIds={selectedPluginIds}
+                onTogglePlugin={togglePlugin}
+                resources={composeResources}
+                resourceFilter={resourceFilter}
+                onResourceFilter={setResourceFilter}
+                selectedResourceIds={selectedResourceIds}
+                onToggleResource={toggleResource}
+                disabled={pickersDisabled}
+              />
 
               <section className="edit-profile-section" aria-label="Doctor">
                 <h3>Doctor</h3>
@@ -810,6 +731,22 @@ export function PluginsWorkspace({
           )}
         </div>
       </div>
+
+      {detail ? (
+        <ApplyPluginDrawer
+          open={applyOpen}
+          onClose={() => setApplyOpen(false)}
+          pluginName={detail.plugin.name}
+          isProfile={detail.plugin.tags.includes("profile")}
+          baseUrl={baseUrl}
+          token={token}
+          projectPath={projectPath ?? null}
+          disabled={disabled}
+          onBusyChange={onBusyChange}
+          onSuccess={onSuccess}
+          onProfilesChanged={onProfilesChanged}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={cutOpen}

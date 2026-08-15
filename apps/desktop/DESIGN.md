@@ -29,9 +29,11 @@ Dark dense ops chrome. Reference wireframe: split pane with profiles rail (~220p
 
 ## Layout
 
-- Variant A: profiles left rail, live state right
-- Below ~720px: stack rail above live pane
-- Landmarks: `nav` (profiles), `main` (live)
+- Variant A: profiles left rail, live state right — used for **Global | Project**
+- **Library** (header): list+detail split, no profile rail. Tabs: Items (canonical resources) | Packages (versioned plugins)
+- **Environments**: full-width workspace, no profile rail
+- Below ~720px: stack rail above live pane (scope layout only)
+- Landmarks: `nav` (profiles, scope layout), `main` (live or library)
 
 ## Interaction locks
 
@@ -40,3 +42,7 @@ Dark dense ops chrome. Reference wireframe: split pane with profiles rail (~220p
 - Profiles enabled in home appear in Home; profiles in project config appear in Project; enabled in both appear in both views.
 - Right pane is always machine live state; target preview is a separate drawer
 - Switching mode: yellow panel, ordered steps, cancel disabled during apply step
+- Header destinations: Library | Environments | Global | Project. No header Plugins or Apply plugin control.
+- Package Apply (Library → Packages detail) writes the plugin graph (`ht apply`) without using profile switch. Rail Apply remains profile switch / re-apply.
+- Library remembers the last Items/Packages tab for the session.
+- Global apply of a profile-tagged package via package Apply still records the active profile (CLI `ht apply --global`); everyday switches belong on the rail.

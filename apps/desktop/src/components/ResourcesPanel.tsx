@@ -120,11 +120,11 @@ export function ResourcesPanel({
   );
 
   return (
-    <main className="resources-panel" aria-label="Resources">
+    <main className="resources-panel" aria-label="Items">
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
           <div className="resources-panel-title">
-            <span>Resources</span>
+            <span>Items</span>
             <span className="muted resources-panel-scope">
               All registered resources
             </span>
