@@ -22,6 +22,18 @@ describe("profile-commit-resource", () => {
     expect(
       resourceKeyFromManagedPath("~/.claude/skills/manual-skill/SKILL.md"),
     ).toEqual({ type: "skill", name: "manual-skill" });
+    expect(
+      resourceKeyFromManagedPath(".cursor/skills/manual-skill/SKILL.md"),
+    ).toEqual({ type: "skill", name: "manual-skill" });
+    expect(
+      resourceKeyFromManagedPath(".agents/skills/manual-skill/SKILL.md"),
+    ).toEqual({ type: "skill", name: "manual-skill" });
+    expect(
+      resourceKeyFromManagedPath(".claude/agents/helper.md"),
+    ).toEqual({ type: "agent", name: "helper" });
+    expect(
+      resourceKeyFromManagedPath(".cursor/rules/always.mdc"),
+    ).toEqual({ type: "rule", name: "always" });
     expect(isMcpConfigManagedPath(".cursor/mcp.json")).toBe(true);
     expect(isMcpConfigManagedPath(".mcp.json")).toBe(true);
     expect(isMcpConfigManagedPath(".copilot/mcp-config.json")).toBe(true);
