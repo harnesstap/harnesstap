@@ -9,6 +9,10 @@ import {
   listPluginDependencies,
   listPlugins,
   resolvePluginSelector,
+  setPluginDefaultEnvironment,
+  setPluginTags,
+  updatePluginDescription,
+  updatePluginName,
 } from "../../models/plugin-model.js";
 import {
   PluginAttachmentHintError,
@@ -375,6 +379,55 @@ export async function tryHandle(
       return notFound(matched.selector);
     }
     return jsonResponse(buildPluginDetail(plugin));
+  }
+
+  if (method === "PATCH" && matched.rest === "") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readJsonBody(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (!isRecord(parsed.value)) {
+      return jsonResponse({ error: "invalid_body" }, { status: 400 });
+    }
+    const plugin = resolvePluginSelector(matched.selector);
+    if (!plugin) {
+      return notFound(matched.selector);
+    }
+    try {
+      assertAuthored(plugin.id, "edit");
+      if (typeof parsed.value.name === "string" && parsed.value.name.trim()) {
+        const nextName = parsed.value.name.trim();
+        if (nextName !== plugin.name && getPluginByName(nextName)) {
+          return jsonResponse(
+            { error: "plugin_exists", message: `Plugin ${nextName} already exists.` },
+            { status: 409 },
+          );
+        }
+        updatePluginName(plugin.id, nextName);
+      }
+      if (typeof parsed.value.description === "string") {
+        updatePluginDescription(plugin.id, parsed.value.description);
+      }
+      if (Array.isArray(parsed.value.tags) && parsed.value.tags.every((tag): tag is string => typeof tag === "string")) {
+        setPluginTags(plugin.id, parsed.value.tags);
+      }
+      if (parsed.value.default_environment_id === null) {
+        setPluginDefaultEnvironment(plugin.id, null);
+      } else if (typeof parsed.value.default_environment_id === "string") {
+        setPluginDefaultEnvironment(plugin.id, parsed.value.default_environment_id);
+      }
+      const refreshed = getPluginById(plugin.id);
+      if (!refreshed) {
+        return notFound(matched.selector);
+      }
+      return jsonResponse(buildPluginDetail(refreshed));
+    } catch (error) {
+      return patchErrorResponse(error);
+    }
   }
 
   if (method === "PATCH" && matched.rest === "/attachments") {

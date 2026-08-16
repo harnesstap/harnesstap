@@ -152,6 +152,36 @@ describe("GET /v1/library/plugins/:selector", () => {
   });
 });
 
+describe("PATCH /v1/library/plugins/:selector", () => {
+  it("patches authored name, description, tags, and default environment", async () => {
+    const plugin = createPlugin({ name: "eng", description: "old" });
+    const response = await handle("PATCH", `/v1/library/plugins/${plugin.name}`, {
+      body: {
+        name: "eng2",
+        description: "new",
+        tags: ["profile"],
+        default_environment_id: null,
+      },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { plugin: { name: string; description: string; tags: string[] } };
+    expect(body.plugin.name).toBe("eng2");
+    expect(body.plugin.description).toBe("new");
+    expect(body.plugin.tags).toEqual(["profile"]);
+  });
+
+  it("rejects upstream plugins", async () => {
+    const upstream = createPlugin({ name: "web-search", origin: "upstream" });
+    setPluginOrigin(upstream.id, "upstream");
+    const response = await handle("PATCH", "/v1/library/plugins/web-search", {
+      body: { description: "nope" },
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("not_authored");
+  });
+});
+
 describe("PATCH /v1/library/plugins/:selector/attachments", () => {
   it("adds and removes on authored plugins", async () => {
     const plugin = createPlugin({ name: "eng" });
@@ -416,6 +446,7 @@ describe("mutating routes auth", () => {
     createPlugin({ name: "eng" });
     const routes: Array<[string, string]> = [
       ["DELETE", "/v1/library/plugins/eng"],
+      ["PATCH", "/v1/library/plugins/eng"],
       ["PATCH", "/v1/library/plugins/eng/attachments"],
       ["POST", "/v1/library/plugins/eng/cut"],
       ["POST", "/v1/library/plugins/eng/doctor"],
