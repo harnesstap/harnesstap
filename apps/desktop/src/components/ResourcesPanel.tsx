@@ -16,7 +16,17 @@ import {
   ResourceRowRoot,
 } from "./ui/resource-row";
 import { fetchLibraryResources } from "../lib/agent-client";
+import {
+  fetchLibraryPluginHeads,
+  type LibraryPluginHead,
+} from "../lib/api/library-plugins";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
+import {
+  libraryRowBadge,
+  mergeLibraryList,
+  type LibraryListEntry,
+} from "../lib/library-list";
+import type { LibraryPane } from "../lib/library-pane";
 import {
   applyLibraryResourceFilters,
   defaultResourceFilterState,
@@ -29,7 +39,6 @@ import {
   groupLibraryResourcesByType,
   resourceDisplayName,
 } from "../lib/resource-search";
-import type { LibraryPane } from "../lib/library-pane";
 import type { LibraryResource } from "../lib/types";
 
 export interface ResourcesPanelProps {
@@ -57,12 +66,13 @@ export function ResourcesPanel({
   selectedProfile,
   onImported,
   onSuccess,
-  focusPluginName: _focusPluginName,
-  onFocusPluginConsumed: _onFocusPluginConsumed,
+  focusPluginName,
+  onFocusPluginConsumed,
   onBusyChange: _onBusyChange,
   onProfilesChanged: _onProfilesChanged,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
+  const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterState, setFilterState] = useState<ResourceFilterState>(
@@ -74,7 +84,7 @@ export function ResourcesPanel({
   const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
   const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
-  const [, setPane] = useState<LibraryPane>({ mode: "list" });
+  const [pane, setPane] = useState<LibraryPane>({ mode: "list" });
   const resolvedProjectPath =
     (projectPath && projectPath.trim())
     || loadRecentProjects()[0]?.path
@@ -84,15 +94,20 @@ export function ResourcesPanel({
   useEffect(() => {
     if (!baseUrl) {
       setResources([]);
+      setPlugins([]);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void fetchLibraryResources(baseUrl, token)
-      .then((next) => {
+    void Promise.all([
+      fetchLibraryResources(baseUrl, token),
+      fetchLibraryPluginHeads(baseUrl, token),
+    ])
+      .then(([nextResources, nextPlugins]) => {
         if (!cancelled) {
-          setResources(next);
+          setResources(nextResources);
+          setPlugins(nextPlugins);
         }
       })
       .catch((loadError: unknown) => {
@@ -119,18 +134,72 @@ export function ResourcesPanel({
     return () => window.clearTimeout(timer);
   }, []);
 
-  const filteredResources = useMemo(
-    () => applyLibraryResourceFilters(resources, filterState),
-    [filterState, resources],
+  useEffect(() => {
+    if (!focusPluginName) {
+      return;
+    }
+    setPane({
+      mode: "detail",
+      target: { kind: "plugin-package", selector: focusPluginName },
+    });
+    onFocusPluginConsumed?.();
+  }, [focusPluginName, onFocusPluginConsumed]);
+
+  const entries = useMemo(
+    () => mergeLibraryList(resources, plugins),
+    [resources, plugins],
+  );
+
+  const filteredEntries = useMemo(
+    () => applyLibraryResourceFilters(entries, filterState),
+    [filterState, entries],
   );
 
   const groups = useMemo(
-    () => groupLibraryResourcesByType(filteredResources),
-    [filteredResources],
+    () => groupLibraryResourcesByType(filteredEntries),
+    [filteredEntries],
   );
 
+  const libraryEmpty = resources.length === 0 && plugins.length === 0;
+
+  function openLibraryRow(entry: LibraryListEntry): void {
+    const label = resourceDisplayName(entry);
+    switch (entry.listKind) {
+      case "plugin-package":
+        setPane({
+          mode: "detail",
+          target: { kind: "plugin-package", selector: entry.name },
+        });
+        return;
+      case "resource":
+        setPane({
+          mode: "detail",
+          target: {
+            kind: "resource",
+            selector: entry.id,
+            label,
+            pathHint: entry.source,
+          },
+        });
+        setDetailTarget({
+          selector: entry.id,
+          label,
+          pathHint: entry.source,
+        });
+        return;
+      default: {
+        const _exhaustive: never = entry.listKind;
+        return _exhaustive;
+      }
+    }
+  }
+
   return (
-    <main className="resources-panel" aria-label="Library">
+    <main
+      className="resources-panel"
+      aria-label="Library"
+      data-library-pane={pane.mode}
+    >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
           <div className="resources-panel-title">
@@ -182,7 +251,7 @@ export function ResourcesPanel({
 
       <div className="resources-panel-layout">
         <ResourceFilterSidebar
-          resources={resources}
+          resources={entries}
           state={filterState}
           onChange={setFilterState}
           onClear={() => setFilterState(resetResourceFilterState())}
@@ -196,24 +265,36 @@ export function ResourcesPanel({
             </div>
           ) : loading ? (
             <p className="muted">Loading resources…</p>
-          ) : filteredResources.length === 0 ? (
+          ) : filteredEntries.length === 0 ? (
             <div className="empty-state">
               <p className="muted">
-                {resources.length === 0
-                  ? "No registered resources yet."
+                {libraryEmpty
+                  ? "No registered resources yet. Import items or create a plugin."
                   : isResourceFilterStateActive(filterState)
                     ? "No matches."
                     : "No resources to show."}
               </p>
-              {resources.length === 0 ? (
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={disabled || !baseUrl}
-                  onClick={() => setImportOpen(true)}
-                >
-                  Import into library
-                </button>
+              {libraryEmpty ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={disabled || !baseUrl}
+                    onClick={() => setImportOpen(true)}
+                  >
+                    Import into library
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={disabled || !baseUrl}
+                    onClick={() =>
+                      setPane({ mode: "create-draft", name: "", description: "" })
+                    }
+                  >
+                    Create plugin
+                  </button>
+                </>
               ) : null}
             </div>
           ) : (
@@ -230,34 +311,32 @@ export function ResourcesPanel({
                 </h3>
                 <ul className="resources-list">
                   {group.resources.map((resource) => {
-                    const label = resourceDisplayName(resource);
+                    const entry = resource as LibraryListEntry;
+                    const label = resourceDisplayName(entry);
+                    const badge = libraryRowBadge(entry);
                     return (
-                      <li className="resources-list-item" key={resource.id}>
+                      <li className="resources-list-item" key={entry.id}>
                         <ResourceRowRoot
-                          hover={hoverModelFromLibraryResource(resource)}
+                          hover={hoverModelFromLibraryResource(entry)}
                           testId={`resource-row-${label}`}
                           disabled={disabled}
                         >
                           <ResourceRowIdentity
-                            type={resource.type}
+                            type={entry.type}
                             label={label}
-                            onOpen={() =>
-                              setDetailTarget({
-                                selector: resource.id,
-                                label,
-                                pathHint: resource.source,
-                              })
-                            }
+                            onOpen={() => openLibraryRow(entry)}
                           >
-                            {resource.description ? (
+                            {badge || entry.description ? (
                               <ResourceRowDescription>
-                                {resource.description}
+                                {badge}
+                                {badge && entry.description ? " · " : null}
+                                {entry.description}
                               </ResourceRowDescription>
                             ) : null}
                           </ResourceRowIdentity>
                           <ResourceRowMeta
                             harnessIds={relatedHarnessesForResourceType(
-                              resource.type,
+                              entry.type,
                             )}
                           />
                         </ResourceRowRoot>

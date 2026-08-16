@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import {
   isPluginRefRow,
@@ -8,6 +10,11 @@ import {
 import { applyLibraryResourceFilters, defaultResourceFilterState } from "../../apps/desktop/src/lib/resource-filters.ts";
 import type { LibraryPluginHead } from "../../apps/desktop/src/lib/api/library-plugins.ts";
 import type { LibraryResource } from "../../apps/desktop/src/lib/types.ts";
+
+const panelSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ResourcesPanel.tsx"),
+  "utf8",
+);
 
 const skill: LibraryResource = {
   id: "res-1",
@@ -77,4 +84,10 @@ describe("mergeLibraryList", () => {
     });
     expect(hits.map((row) => row.id)).toEqual(["pkg-1"]);
   });
+});
+
+test("ResourcesPanel merges plugin heads into the list", () => {
+  expect(panelSource).toContain("mergeLibraryList");
+  expect(panelSource).toContain("fetchLibraryPluginHeads");
+  expect(panelSource).toContain("libraryRowBadge");
 });
