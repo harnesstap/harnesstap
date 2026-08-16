@@ -46,20 +46,33 @@ const headerRow = sliceBetween(
 );
 
 describe("library items header actions", () => {
-  test("clusters Import and Tracked directories instead of spreading them as siblings", () => {
+  test("clusters Create plugin, Import, and Tracked directories instead of spreading them as siblings", () => {
     expect(headerRow).toContain('className="resources-panel-header-actions"');
     const clusterIdx = headerRow.indexOf("resources-panel-header-actions");
-    const importIdx = headerRow.indexOf('className="btn primary"');
-    const trackedIdx = headerRow.indexOf('className="btn"\n');
-    expect(importIdx).toBeGreaterThan(clusterIdx);
+    const createIdx = headerRow.indexOf('className="btn primary"');
+    const importIdx = headerRow.indexOf('className="btn"\n');
+    const trackedIdx = headerRow.indexOf(
+      'className="btn"\n',
+      importIdx === -1 ? 0 : importIdx + 1,
+    );
+    expect(createIdx).toBeGreaterThan(clusterIdx);
+    expect(importIdx).toBeGreaterThan(createIdx);
     expect(trackedIdx).toBeGreaterThan(importIdx);
     expect(headerRow).not.toContain("icon-action");
   });
 
-  test("renders Import as a labeled accent primary action", () => {
+  test("renders Create plugin as a labeled accent primary action", () => {
+    expect(headerRow).toContain('data-testid="library-create-plugin"');
+    expect(headerRow).toContain('aria-label="Create plugin"');
+    expect(headerRow).toContain('className="btn primary"');
+    expect(headerRow).toMatch(/<Plus[\s\S]*\/>\s*Create plugin\s*</);
+    expect(headerRow).toContain('setPane({ mode: "create-draft"');
+  });
+
+  test("renders Import as a labeled secondary action", () => {
     expect(headerRow).toContain('aria-label="Import into library"');
     expect(headerRow).toContain('title="Import into library"');
-    expect(headerRow).toContain('className="btn primary"');
+    expect(headerRow).toMatch(/className="btn"\s*\n\s*aria-label="Import into library"/);
     expect(headerRow).toMatch(/<FolderDown[\s\S]*\/>\s*Import\s*</);
     expect(headerRow).toContain("setImportOpen(true)");
   });
@@ -111,8 +124,8 @@ describe("library items header action styles", () => {
 });
 
 describe("library items header design lock", () => {
-  test("documents the Items header action cluster", () => {
-    expect(designSource).toContain("Library Items header");
-    expect(designSource).toContain("compact action cluster");
+  test("documents the Library header action cluster", () => {
+    expect(designSource).toContain("**Create plugin** (accent");
+    expect(designSource).toContain("Header cluster");
   });
 });

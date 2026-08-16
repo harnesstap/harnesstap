@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FolderDown, FolderInput } from "lucide-react";
+import { FolderDown, FolderInput, Plus } from "lucide-react";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
@@ -29,6 +29,7 @@ import {
   groupLibraryResourcesByType,
   resourceDisplayName,
 } from "../lib/resource-search";
+import type { LibraryPane } from "../lib/library-pane";
 import type { LibraryResource } from "../lib/types";
 
 export interface ResourcesPanelProps {
@@ -41,6 +42,10 @@ export interface ResourcesPanelProps {
   selectedProfile?: string | null;
   onImported?: (message: string) => void;
   onSuccess?: (message: string) => void;
+  focusPluginName?: string | null;
+  onFocusPluginConsumed?: () => void;
+  onBusyChange?: (busy: boolean) => void;
+  onProfilesChanged?: () => void;
 }
 
 export function ResourcesPanel({
@@ -52,6 +57,10 @@ export function ResourcesPanel({
   selectedProfile,
   onImported,
   onSuccess,
+  focusPluginName: _focusPluginName,
+  onFocusPluginConsumed: _onFocusPluginConsumed,
+  onBusyChange: _onBusyChange,
+  onProfilesChanged: _onProfilesChanged,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,6 +74,7 @@ export function ResourcesPanel({
   const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
   const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
+  const [, setPane] = useState<LibraryPane>({ mode: "list" });
   const resolvedProjectPath =
     (projectPath && projectPath.trim())
     || loadRecentProjects()[0]?.path
@@ -120,19 +130,33 @@ export function ResourcesPanel({
   );
 
   return (
-    <main className="resources-panel" aria-label="Items">
+    <main className="resources-panel" aria-label="Library">
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
           <div className="resources-panel-title">
-            <span>Items</span>
+            <span>Library</span>
             <span className="muted resources-panel-scope">
-              All registered resources
+              All registered resources and plugins
             </span>
           </div>
           <div className="resources-panel-header-actions">
             <button
               type="button"
               className="btn primary"
+              data-testid="library-create-plugin"
+              aria-label="Create plugin"
+              title="Create plugin"
+              disabled={disabled || !baseUrl}
+              onClick={() =>
+                setPane({ mode: "create-draft", name: "", description: "" })
+              }
+            >
+              <Plus size={16} aria-hidden />
+              Create plugin
+            </button>
+            <button
+              type="button"
+              className="btn"
               aria-label="Import into library"
               title="Import into library"
               disabled={disabled || !baseUrl}

@@ -10,13 +10,6 @@ const paritySource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/components/parity/ParityChrome.tsx"),
   "utf8",
 );
-const librarySource = readFileSync(
-  join(
-    import.meta.dir,
-    "../../apps/desktop/src/components/LibraryWorkspace.tsx",
-  ),
-  "utf8",
-);
 
 describe("desktop header chrome", () => {
   test("does not render a sidecar connected glyph", () => {
@@ -52,11 +45,10 @@ describe("desktop header chrome", () => {
 });
 
 describe("desktop library workspace", () => {
-  test("defaults to Items and offers Packages", () => {
-    expect(appSource).toContain('useState<LibraryTab>("items")');
-    expect(librarySource).toContain(">Items<");
-    expect(librarySource).toContain(">Packages<");
-    expect(librarySource).toContain('data-testid="library-tab-items"');
-    expect(librarySource).toContain('data-testid="library-tab-packages"');
+  test("does not render Items or Packages library tabs", () => {
+    expect(appSource).not.toContain("LibraryTab");
+    expect(appSource).not.toContain("LibraryWorkspace");
+    expect(appSource).toContain("ResourcesPanel");
+    expect(appSource).not.toContain('setLibraryTab("packages")');
   });
 });

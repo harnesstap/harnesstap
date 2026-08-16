@@ -77,7 +77,7 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("link-btn");
     expect(workspaceSource).toContain("onOpenPlugin");
     expect(appSource).toContain("setLibraryFocusPlugin");
-    expect(appSource).toContain("focusName={libraryFocusPlugin}");
+    expect(appSource).toContain("focusPluginName={libraryFocusPlugin}");
   });
 
   it("puts icon apply, edit, and delete in the detail header, not the sidebar", () => {
