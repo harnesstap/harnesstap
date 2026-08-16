@@ -12,7 +12,7 @@ const drawerSource = readFileSync(
 const packagesSource = readFileSync(
   join(
     import.meta.dir,
-    "../../apps/desktop/src/components/parity/PluginsWorkspace.tsx",
+    "../../apps/desktop/src/components/PluginPackageDetail.tsx",
   ),
   "utf8",
 );

@@ -1,8 +1,9 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { FolderDown, FolderInput, Plus } from "lucide-react";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
+import { PluginPackageDetail } from "./PluginPackageDetail";
 import { ResourceDetailBody } from "./ResourceDetailBody";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
@@ -70,8 +71,8 @@ export function ResourcesPanel({
   onSuccess,
   focusPluginName,
   onFocusPluginConsumed,
-  onBusyChange: _onBusyChange,
-  onProfilesChanged: _onProfilesChanged,
+  onBusyChange,
+  onProfilesChanged,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
@@ -164,10 +165,7 @@ export function ResourcesPanel({
   );
 
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
-  const resourceDetail =
-    pane.mode === "detail" && pane.target.kind === "resource"
-      ? pane.target
-      : null;
+  const inDetail = pane.mode === "detail";
 
   function leaveToList(): void {
     if (document.activeElement instanceof HTMLElement) {
@@ -180,7 +178,7 @@ export function ResourcesPanel({
   }
 
   function applyFilterChange(next: ResourceFilterState): void {
-    if (!resourceDetail) {
+    if (!inDetail) {
       setFilterState(next);
       return;
     }
@@ -206,7 +204,7 @@ export function ResourcesPanel({
   }
 
   useEffect(() => {
-    if (!resourceDetail) {
+    if (!inDetail) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -225,7 +223,7 @@ export function ResourcesPanel({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [resourceDetail, fieldEditing, confirmOpen, detailBusy]);
+  }, [inDetail, fieldEditing, confirmOpen, detailBusy]);
 
   function openLibraryRow(entry: LibraryListEntry): void {
     const label = resourceDisplayName(entry);
@@ -249,6 +247,78 @@ export function ResourcesPanel({
         return;
       default: {
         const _exhaustive: never = entry.listKind;
+        return _exhaustive;
+      }
+    }
+  }
+
+  function handleDetailBusy(nextBusy: boolean): void {
+    setDetailBusy(nextBusy);
+    onBusyChange?.(nextBusy);
+  }
+
+  function reloadLibrary(): void {
+    setResourcesReloadKey((value) => value + 1);
+  }
+
+  function renderDetail(): ReactNode {
+    if (pane.mode !== "detail") {
+      return null;
+    }
+    switch (pane.target.kind) {
+      case "resource":
+        return (
+          <ResourceDetailBody
+            chrome="pane"
+            Chrome={LibraryDetailChrome}
+            target={{
+              selector: pane.target.selector,
+              label: pane.target.label,
+              pathHint: pane.target.pathHint,
+            }}
+            baseUrl={baseUrl}
+            token={token}
+            disabled={disabled}
+            titleId={detailTitleId}
+            onBack={leaveToList}
+            onDeleted={leaveToList}
+            onSuccess={onSuccess}
+            onLibraryChanged={reloadLibrary}
+            onFieldEditingChange={setFieldEditing}
+            onConfirmOpenChange={setConfirmOpen}
+            onBusyChange={handleDetailBusy}
+          />
+        );
+      case "plugin-package":
+        return (
+          <PluginPackageDetail
+            selector={pane.target.selector}
+            baseUrl={baseUrl}
+            token={token}
+            disabled={disabled}
+            projectPath={resolvedProjectPath || null}
+            onBusyChange={handleDetailBusy}
+            onSuccess={(message) => onSuccess?.(message)}
+            onProfilesChanged={() => onProfilesChanged?.()}
+            onDeleted={() => {
+              reloadLibrary();
+              leaveToList();
+            }}
+            onBack={leaveToList}
+            onNameCommit={async (name) => {
+              setPane({
+                mode: "detail",
+                target: { kind: "plugin-package", selector: name },
+              });
+              reloadLibrary();
+            }}
+            onFieldEditingChange={setFieldEditing}
+            onConfirmOpenChange={setConfirmOpen}
+            onLibraryChanged={reloadLibrary}
+          />
+        );
+      default: {
+        const _exhaustive: never = pane.target;
         return _exhaustive;
       }
     }
@@ -319,29 +389,8 @@ export function ResourcesPanel({
           searchInputRef={filterRef}
         />
         <div className="resources-panel-body">
-          {resourceDetail ? (
-            <ResourceDetailBody
-              chrome="pane"
-              Chrome={LibraryDetailChrome}
-              target={{
-                selector: resourceDetail.selector,
-                label: resourceDetail.label,
-                pathHint: resourceDetail.pathHint,
-              }}
-              baseUrl={baseUrl}
-              token={token}
-              disabled={disabled}
-              titleId={detailTitleId}
-              onBack={leaveToList}
-              onDeleted={leaveToList}
-              onSuccess={onSuccess}
-              onLibraryChanged={() =>
-                setResourcesReloadKey((value) => value + 1)
-              }
-              onFieldEditingChange={setFieldEditing}
-              onConfirmOpenChange={setConfirmOpen}
-              onBusyChange={setDetailBusy}
-            />
+          {inDetail ? (
+            renderDetail()
           ) : error ? (
             <div className="empty-state">
               <p>{error}</p>

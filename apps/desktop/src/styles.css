@@ -2100,6 +2100,9 @@ button:focus-visible,
 }
 
 .library-detail-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
   font-family: var(--font, "IBM Plex Sans", "Segoe UI", sans-serif);
   font-weight: 500;
   font-size: 1.25rem;
@@ -2109,7 +2112,9 @@ button:focus-visible,
 }
 
 .library-detail-title-input {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
   font: inherit;
   font-weight: 500;
   font-size: 1.25rem;
@@ -2118,6 +2123,13 @@ button:focus-visible,
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.2rem 0.4rem;
+}
+
+.library-detail-version {
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 13px;
+  font-weight: 400;
+  flex-shrink: 0;
 }
 
 .library-detail-type {
@@ -2195,6 +2207,19 @@ button:focus-visible,
   margin: 0.25rem 0 0;
   color: var(--red);
   font-size: 13px;
+}
+
+.library-tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.library-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .library-field-tooltip {

@@ -236,9 +236,15 @@ export function ResourceDetailBody({
     };
   }, [target.selector, target.pathHint, baseUrl, token]);
 
-  function startEdit(field: ResourceDetailEditingField): void {
+  async function startEdit(field: ResourceDetailEditingField): Promise<void> {
     if (!detail || fieldsReadOnly) {
       return;
+    }
+    if (editingField && editingField !== field) {
+      const committed = await commitField(editingField, draft);
+      if (!committed) {
+        return;
+      }
     }
     const nextDraft = draftForField(field, detail);
     setEditingField(field);
@@ -258,21 +264,21 @@ export function ResourceDetailBody({
   async function commitField(
     field: ResourceDetailEditingField,
     value: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!baseUrl || !target || !detail || editingField !== field) {
-      return;
+      return false;
     }
     const trimmedName = field === "name" ? value.trim() : value;
     const original = draftForField(field, detail);
     if (field === "name" && trimmedName.length === 0) {
       setFieldError("Name is required");
-      return;
+      return false;
     }
     const nextValue = field === "name" ? trimmedName : value;
     if (nextValue === original) {
       setEditingField(null);
       setFieldError(null);
-      return;
+      return true;
     }
     setMutating(true);
     setFieldError(null);
@@ -291,8 +297,10 @@ export function ResourceDetailBody({
       setEditingField((current) => (current === field ? null : current));
       setFieldError(null);
       onLibraryChanged?.();
+      return true;
     } catch (patchError: unknown) {
       setFieldError(errorMessage(patchError, "Could not update resource"));
+      return false;
     } finally {
       setMutating(false);
     }
@@ -302,7 +310,9 @@ export function ResourceDetailBody({
     field: ResourceDetailEditingField,
     event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ): void {
-    const action = fieldKeyAction(event.key);
+    const action = fieldKeyAction(event.key, {
+      multiline: event.currentTarget.tagName === "TEXTAREA",
+    });
     if (action === "commit") {
       event.preventDefault();
       void commitField(field, event.currentTarget.value);
@@ -432,7 +442,7 @@ export function ResourceDetailBody({
       <span
         onDoubleClick={() => {
           if (chrome === "pane") {
-            startEdit("name");
+            void startEdit("name");
           }
         }}
       >
@@ -507,7 +517,7 @@ export function ResourceDetailBody({
         placeholder="No description"
         editing={editingField === "description"}
         error={editingField === "description" ? fieldError : null}
-        onStartEdit={() => startEdit("description")}
+        onStartEdit={() => void startEdit("description")}
       >
         {renderEditor("description", descriptionMultiline)}
       </LibraryFieldRow>
@@ -556,7 +566,7 @@ export function ResourceDetailBody({
         placeholder="No content"
         editing={editingField === "content"}
         error={editingField === "content" ? fieldError : null}
-        onStartEdit={() => startEdit("content")}
+        onStartEdit={() => void startEdit("content")}
       >
         {renderEditor("content", true)}
       </LibraryFieldRow>

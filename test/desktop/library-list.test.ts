@@ -98,6 +98,22 @@ test("library resource detail is a pane, not a library modal", () => {
   expect(panelSource).not.toContain("ResourceDetailPane");
 });
 
+test("ResourcesPanel opens plugin packages in PluginPackageDetail", () => {
+  expect(panelSource).toContain("PluginPackageDetail");
+  expect(panelSource).not.toContain("PluginsWorkspace");
+});
+
+test("starting another field commits the open field first", () => {
+  const bodySource = readFileSync(
+    join(
+      import.meta.dir,
+      "../../apps/desktop/src/components/ResourceDetailBody.tsx",
+    ),
+    "utf8",
+  );
+  expect(bodySource).toMatch(/await commitField\(/);
+});
+
 test("LiveState and Stash resource detail remains a dialog", () => {
   const paneSource = readFileSync(
     join(import.meta.dir, "../../apps/desktop/src/components/ResourceDetailPane.tsx"),

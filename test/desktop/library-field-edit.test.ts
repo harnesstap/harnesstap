@@ -7,4 +7,9 @@ describe("fieldKeyAction", () => {
     expect(fieldKeyAction("Escape")).toBe("cancel");
     expect(fieldKeyAction("Tab")).toBe(null);
   });
+
+  test("Enter does not commit in a textarea", () => {
+    expect(fieldKeyAction("Enter", { multiline: true })).toBe(null);
+    expect(fieldKeyAction("Escape", { multiline: true })).toBe("cancel");
+  });
 });

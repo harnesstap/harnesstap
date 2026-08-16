@@ -29,6 +29,7 @@ export interface ComboboxProps {
   disabled?: boolean;
   placeholder?: string;
   emptyLabel?: string;
+  allowCustom?: boolean;
   onValueChange: (value: string) => void;
 }
 
@@ -39,6 +40,7 @@ export function Combobox({
   disabled = false,
   placeholder,
   emptyLabel = "No matches.",
+  allowCustom = false,
   onValueChange,
 }: ComboboxProps) {
   const generatedId = useId();
@@ -59,6 +61,23 @@ export function Combobox({
     () => (edited ? filterComboboxOptions(options, query) : options),
     [edited, options, query],
   );
+  const visible = useMemo(() => {
+    if (!allowCustom || !edited) {
+      return filtered;
+    }
+    const custom = query.trim();
+    if (
+      custom.length === 0 ||
+      filtered.some(
+        (option) =>
+          option.value === custom ||
+          option.label.toLowerCase() === custom.toLowerCase(),
+      )
+    ) {
+      return filtered;
+    }
+    return [{ value: custom, label: custom }, ...filtered];
+  }, [allowCustom, edited, filtered, query]);
 
   useLayoutEffect(() => {
     if (!open || !anchorRef.current) {
@@ -71,9 +90,9 @@ export function Combobox({
     if (!open) {
       return;
     }
-    const selectedIndex = filtered.findIndex((option) => option.value === value);
+    const selectedIndex = visible.findIndex((option) => option.value === value);
     setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
-  }, [filtered, open, value]);
+  }, [visible, open, value]);
 
   useEffect(() => {
     if (!open) {
@@ -123,11 +142,11 @@ export function Combobox({
           openMenu();
           return;
         }
-        if (filtered.length === 0) {
+        if (visible.length === 0) {
           return;
         }
         setHighlightedIndex((current) =>
-          current >= filtered.length - 1 ? 0 : current + 1,
+          current >= visible.length - 1 ? 0 : current + 1,
         );
         return;
       }
@@ -137,16 +156,16 @@ export function Combobox({
           openMenu();
           return;
         }
-        if (filtered.length === 0) {
+        if (visible.length === 0) {
           return;
         }
         setHighlightedIndex((current) =>
-          current <= 0 ? filtered.length - 1 : current - 1,
+          current <= 0 ? visible.length - 1 : current - 1,
         );
         return;
       }
       case "Home": {
-        if (!open || filtered.length === 0) {
+        if (!open || visible.length === 0) {
           return;
         }
         event.preventDefault();
@@ -154,11 +173,11 @@ export function Combobox({
         return;
       }
       case "End": {
-        if (!open || filtered.length === 0) {
+        if (!open || visible.length === 0) {
           return;
         }
         event.preventDefault();
-        setHighlightedIndex(filtered.length - 1);
+        setHighlightedIndex(visible.length - 1);
         return;
       }
       case "Enter": {
@@ -166,7 +185,7 @@ export function Combobox({
           return;
         }
         event.preventDefault();
-        const option = filtered[highlightedIndex];
+        const option = visible[highlightedIndex];
         if (option) {
           commit(option);
         }
@@ -184,7 +203,7 @@ export function Combobox({
         if (!open) {
           return;
         }
-        const option = filtered[highlightedIndex];
+        const option = visible[highlightedIndex];
         if (option) {
           commit(option);
         } else {
@@ -197,7 +216,7 @@ export function Combobox({
     }
   };
 
-  const highlighted = filtered[highlightedIndex];
+  const highlighted = visible[highlightedIndex];
   const activeDescendant =
     open && highlighted ? `${listId}-option-${highlightedIndex}` : undefined;
   const inputValue = open ? query : selectedLabel;
@@ -268,11 +287,11 @@ export function Combobox({
           }
         }}
       >
-        {filtered.length === 0 ? (
+        {visible.length === 0 ? (
           <p className="px-2 py-1.5 text-muted-foreground">{emptyLabel}</p>
         ) : (
           <ul id={listId} role="listbox" className="max-h-56 overflow-auto">
-            {filtered.map((option, index) => {
+            {visible.map((option, index) => {
               const selectedOption = option.value === value;
               const active = index === highlightedIndex;
               return (
