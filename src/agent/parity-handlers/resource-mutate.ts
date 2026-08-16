@@ -408,7 +408,22 @@ async function handlePatch(
     return ambiguousResponse(trimmed, resolved.matches);
   }
 
-  const updated = updateResource(resolved.resource.id, patch);
+  let updated: Resource | undefined;
+  try {
+    updated = updateResource(resolved.resource.id, patch);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "resource_exists"
+    ) {
+      return jsonResponse(
+        { error: "resource_exists", message: error.message },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
   if (!updated) {
     return jsonResponse(
       { error: "not_found", message: `Resource not found: ${trimmed}` },
