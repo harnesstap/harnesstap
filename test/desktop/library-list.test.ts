@@ -1,0 +1,80 @@
+import { describe, expect, test } from "bun:test";
+import {
+  isPluginRefRow,
+  libraryRowBadge,
+  mergeLibraryList,
+  type LibraryListEntry,
+} from "../../apps/desktop/src/lib/library-list.ts";
+import { applyLibraryResourceFilters, defaultResourceFilterState } from "../../apps/desktop/src/lib/resource-filters.ts";
+import type { LibraryPluginHead } from "../../apps/desktop/src/lib/api/library-plugins.ts";
+import type { LibraryResource } from "../../apps/desktop/src/lib/types.ts";
+
+const skill: LibraryResource = {
+  id: "res-1",
+  name: "guide",
+  type: "skill",
+  namespace: "ns",
+  description: "A skill",
+};
+
+const pluginRef: LibraryResource = {
+  id: "res-2",
+  name: "baseline",
+  type: "plugin",
+  namespace: null,
+  description: "nested plugin ref",
+};
+
+const head: LibraryPluginHead = {
+  id: "pkg-1",
+  name: "eng",
+  version: "1.2.0",
+  tags: ["profile", "team"],
+  description: "Engineering",
+  origin: "authored",
+  dirty: true,
+};
+
+describe("mergeLibraryList", () => {
+  test("adds plugin packages as plugin type rows beside resources", () => {
+    const rows = mergeLibraryList([skill, pluginRef], [head]);
+    expect(rows.map((row) => row.id).sort()).toEqual(["pkg-1", "res-1", "res-2"]);
+    const pkg = rows.find((row) => row.id === "pkg-1") as LibraryListEntry;
+    expect(pkg.listKind).toBe("plugin-package");
+    expect(pkg.type).toBe("plugin");
+    expect(pkg.origin_kind).toBeNull();
+  });
+
+  test("labels composition refs as plugin ref and packages with version", () => {
+    const rows = mergeLibraryList([pluginRef], [head]);
+    const ref = rows.find((row) => row.id === "res-2") as LibraryListEntry;
+    const pkg = rows.find((row) => row.id === "pkg-1") as LibraryListEntry;
+    expect(isPluginRefRow(ref)).toBe(true);
+    expect(isPluginRefRow(pkg)).toBe(false);
+    expect(libraryRowBadge(ref)).toBe("plugin ref");
+    expect(libraryRowBadge(pkg)).toBe("1.2.0*");
+  });
+
+  test("type filter plugin includes packages and refs; origin filter drops packages", () => {
+    const rows = mergeLibraryList([skill, pluginRef], [head]);
+    const pluginOnly = applyLibraryResourceFilters(rows, {
+      ...defaultResourceFilterState(),
+      type: "plugin",
+    });
+    expect(pluginOnly.map((row) => row.id).sort()).toEqual(["pkg-1", "res-2"]);
+    const localOnly = applyLibraryResourceFilters(rows, {
+      ...defaultResourceFilterState(),
+      originKind: "local",
+    });
+    expect(localOnly.map((row) => row.id)).toEqual([]);
+  });
+
+  test("search matches plugin package tags", () => {
+    const rows = mergeLibraryList([], [head]);
+    const hits = applyLibraryResourceFilters(rows, {
+      ...defaultResourceFilterState(),
+      search: "team",
+    });
+    expect(hits.map((row) => row.id)).toEqual(["pkg-1"]);
+  });
+});

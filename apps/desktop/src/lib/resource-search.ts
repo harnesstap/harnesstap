@@ -90,12 +90,7 @@ export function filterLibraryResourcesBySearch(
     ) {
       return false;
     }
-    const haystack = [
-      resource.name,
-      resource.description ?? "",
-      displayName(resource),
-      resource.namespace ?? "",
-    ].join(" ");
+    const haystack = `${displayName(resource)} ${resource.description ?? ""} ${resource.namespace ?? ""} ${resource.tags?.join(" ") ?? ""}`;
     return matchesListSearchQuery(haystack, textQuery);
   });
 }

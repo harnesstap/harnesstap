@@ -33,6 +33,7 @@ export interface LibraryResource {
   source?: string | null;
   updated_at?: string | null;
   origin_kind?: string | null;
+  tags?: string[];
 }
 
 export interface ResourceTrackedFolderEntry {
