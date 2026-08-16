@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
+  commitCustomOnClose,
+  customComboboxOption,
   filterComboboxOptions,
   type ComboboxOption,
 } from "@/lib/combobox";
@@ -53,6 +55,7 @@ export function Combobox({
   const [edited, setEdited] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [menuWidth, setMenuWidth] = useState<number>();
+  const skipDismissCommitRef = useRef(false);
 
   const selected = options.find((option) => option.value === value);
   const selectedLabel = selected?.label ?? value;
@@ -65,18 +68,8 @@ export function Combobox({
     if (!allowCustom || !edited) {
       return filtered;
     }
-    const custom = query.trim();
-    if (
-      custom.length === 0 ||
-      filtered.some(
-        (option) =>
-          option.value === custom ||
-          option.label.toLowerCase() === custom.toLowerCase(),
-      )
-    ) {
-      return filtered;
-    }
-    return [{ value: custom, label: custom }, ...filtered];
+    const custom = customComboboxOption(filtered, query);
+    return custom ? [custom, ...filtered] : filtered;
   }, [allowCustom, edited, filtered, query]);
 
   useLayoutEffect(() => {
@@ -102,21 +95,40 @@ export function Combobox({
     document.getElementById(optionId)?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex, listId, open]);
 
-  const close = (nextLabel = selectedLabel) => {
+  const close = (
+    nextLabel = selectedLabel,
+    closeOptions?: { cancelled?: boolean; alreadyCommitted?: boolean },
+  ) => {
+    skipDismissCommitRef.current = true;
+    let label = nextLabel;
+    if (!closeOptions?.cancelled && !closeOptions?.alreadyCommitted) {
+      const custom = commitCustomOnClose({
+        allowCustom,
+        query,
+        cancelled: false,
+        currentValue: value,
+      });
+      if (custom !== null) {
+        onValueChange(custom);
+        const known = options.find((option) => option.value === custom);
+        label = known?.label ?? custom;
+      }
+    }
     setOpen(false);
     setEdited(false);
-    setQuery(nextLabel);
+    setQuery(label);
   };
 
   const commit = (option: ComboboxOption) => {
     onValueChange(option.value);
-    close(option.label);
+    close(option.label, { alreadyCommitted: true });
   };
 
   const openMenu = () => {
     if (disabled) {
       return;
     }
+    skipDismissCommitRef.current = false;
     setQuery(selectedLabel);
     setEdited(false);
     setOpen(true);
@@ -126,6 +138,10 @@ export function Combobox({
   const handleOpenChange = (next: boolean) => {
     if (next) {
       openMenu();
+      return;
+    }
+    if (skipDismissCommitRef.current) {
+      skipDismissCommitRef.current = false;
       return;
     }
     close();
@@ -196,7 +212,7 @@ export function Combobox({
           return;
         }
         event.preventDefault();
-        close();
+        close(selectedLabel, { cancelled: true });
         return;
       }
       case "Tab": {

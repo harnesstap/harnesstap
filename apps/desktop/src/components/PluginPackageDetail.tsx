@@ -204,6 +204,7 @@ export function PluginPackageDetail({
   );
   const [draft, setDraft] = useState("");
   const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [draftEnvId, setDraftEnvId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
 
@@ -533,6 +534,7 @@ export function PluginPackageDetail({
       onLibraryChanged?.();
       return true;
     } catch (patchError: unknown) {
+      setDraftTags(detail.plugin.tags);
       setFieldError(errorMessage(patchError, "Could not update plugin"));
       return false;
     } finally {
@@ -558,6 +560,7 @@ export function PluginPackageDetail({
         default_environment_id: nextId,
       });
       setDetail(next);
+      setDraftEnvId(next.plugin.default_environment_id);
       setEditingField((current) =>
         current === "default_environment" ? null : current,
       );
@@ -583,6 +586,9 @@ export function PluginPackageDetail({
       case "tags":
         return commitTags(draftTags, true);
       case "default_environment":
+        if (fieldError) {
+          return commitEnvironment(draftEnvId);
+        }
         setEditingField(null);
         setFieldError(null);
         return true;
@@ -619,6 +625,7 @@ export function PluginPackageDetail({
         setDraftTags([...detail.plugin.tags]);
         return;
       case "default_environment":
+        setDraftEnvId(detail.plugin.default_environment_id);
         return;
       default: {
         const _exhaustive: never = field;
@@ -631,6 +638,7 @@ export function PluginPackageDetail({
     setEditingField(null);
     setDraft("");
     setDraftTags(detail?.plugin.tags ?? []);
+    setDraftEnvId(detail?.plugin.default_environment_id ?? null);
     setFieldError(null);
   }
 
@@ -1044,7 +1052,6 @@ export function PluginPackageDetail({
                   disabled={anyBusy}
                   onClick={() => {
                     const next = draftTags.filter((entry) => entry !== tag);
-                    setDraftTags(next);
                     void commitTags(next);
                   }}
                 >
@@ -1065,7 +1072,6 @@ export function PluginPackageDetail({
                 return;
               }
               const next = [...draftTags, tag];
-              setDraftTags(next);
               void commitTags(next);
             }}
           />
@@ -1091,12 +1097,14 @@ export function PluginPackageDetail({
           }}
         >
           <Combobox
-            value={detail.plugin.default_environment_id ?? NONE_ENV}
+            value={draftEnvId ?? NONE_ENV}
             options={environmentOptions}
             disabled={anyBusy}
             placeholder="None"
             onValueChange={(value) => {
-              void commitEnvironment(value === NONE_ENV ? null : value);
+              const nextId = value === NONE_ENV ? null : value;
+              setDraftEnvId(nextId);
+              void commitEnvironment(nextId);
             }}
           />
         </div>

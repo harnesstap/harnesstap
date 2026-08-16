@@ -36,4 +36,22 @@ describe("plugin composition fields", () => {
   test("authored tags combobox allows free text", () => {
     expect(packagesSource).toContain("allowCustom");
   });
+
+  test("tag chips do not stay optimistic after a failed PATCH", () => {
+    expect(packagesSource).not.toMatch(
+      /setDraftTags\(next\);\s*void commitTags\(next\)/,
+    );
+    expect(packagesSource).toMatch(
+      /catch[\s\S]*setDraftTags\(detail\.plugin\.tags\)/,
+    );
+  });
+
+  test("failed default-environment PATCH is retried when leaving the field", () => {
+    const commitCurrent = packagesSource.slice(
+      packagesSource.indexOf("async function commitCurrent"),
+      packagesSource.indexOf("async function startEdit"),
+    );
+    expect(commitCurrent).toContain("fieldError");
+    expect(commitCurrent).toContain("commitEnvironment");
+  });
 });
