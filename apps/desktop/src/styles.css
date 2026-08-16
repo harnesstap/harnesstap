@@ -2091,6 +2091,123 @@ button:focus-visible,
   font-size: 0.8rem;
 }
 
+.library-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.library-detail-title {
+  font-family: var(--font, "IBM Plex Sans", "Segoe UI", sans-serif);
+  font-weight: 500;
+  font-size: 1.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.library-detail-title-input {
+  width: 100%;
+  font: inherit;
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+}
+
+.library-detail-type {
+  font-size: 13px;
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+
+.library-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.library-detail-actions .btn {
+  width: auto;
+  min-height: 32px;
+  padding: 0.3rem 0.6rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.library-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.library-field-icon {
+  display: inline-flex;
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.library-field-row .library-field-value {
+  font-size: 16px;
+  min-width: 0;
+  flex: 1;
+}
+
+.library-field-row .library-field-value.mono,
+.library-field-row .library-field-value .mono {
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.library-field-display.is-editable {
+  cursor: text;
+}
+
+.library-field-editor {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.library-field-editor-content {
+  min-height: 12rem;
+  font-family: var(--mono, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.library-field-error {
+  margin: 0.25rem 0 0;
+  color: var(--red);
+  font-size: 13px;
+}
+
+.library-field-tooltip {
+  z-index: 40;
+  padding: 0.25rem 0.45rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
 .file-diff-backdrop {
   z-index: 40;
 }

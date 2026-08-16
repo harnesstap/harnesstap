@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FolderDown, FolderInput, Plus } from "lucide-react";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
+import { LibraryDetailChrome } from "./LibraryDetailChrome";
+import { ResourceDetailBody } from "./ResourceDetailBody";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
-import {
-  ResourceDetailPane,
-  type ResourceDetailTarget,
-} from "./ResourceDetailPane";
 import { TypeIcon } from "./TypeIcon";
 import {
   ResourceRowDescription,
@@ -26,7 +24,11 @@ import {
   mergeLibraryList,
   type LibraryListEntry,
 } from "../lib/library-list";
-import type { LibraryPane } from "../lib/library-pane";
+import {
+  escapeAction,
+  sidebarChangeAction,
+  type LibraryPane,
+} from "../lib/library-pane";
 import {
   applyLibraryResourceFilters,
   defaultResourceFilterState,
@@ -78,10 +80,11 @@ export function ResourcesPanel({
   const [filterState, setFilterState] = useState<ResourceFilterState>(
     defaultResourceFilterState,
   );
-  const [detailTarget, setDetailTarget] = useState<ResourceDetailTarget | null>(
-    null,
-  );
   const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
+  const [fieldEditing, setFieldEditing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [detailBusy, setDetailBusy] = useState(false);
+  const detailTitleId = useId();
   const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
   const [pane, setPane] = useState<LibraryPane>({ mode: "list" });
@@ -161,6 +164,68 @@ export function ResourcesPanel({
   );
 
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
+  const resourceDetail =
+    pane.mode === "detail" && pane.target.kind === "resource"
+      ? pane.target
+      : null;
+
+  function leaveToList(): void {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    setPane({ mode: "list" });
+    setFieldEditing(false);
+    setConfirmOpen(false);
+    setDetailBusy(false);
+  }
+
+  function applyFilterChange(next: ResourceFilterState): void {
+    if (!resourceDetail) {
+      setFilterState(next);
+      return;
+    }
+    const action = sidebarChangeAction({
+      busy: detailBusy,
+      confirmOpen,
+      draftTyped: false,
+    });
+    switch (action) {
+      case "block":
+        return;
+      case "leave-and-apply":
+        leaveToList();
+        setFilterState(next);
+        return;
+      case "confirm-discard":
+        return;
+      default: {
+        const _exhaustive: never = action;
+        return _exhaustive;
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!resourceDetail) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (detailBusy) {
+        return;
+      }
+      const action = escapeAction({ fieldEditing, confirmOpen });
+      if (action !== "leave-pane") {
+        return;
+      }
+      event.preventDefault();
+      leaveToList();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [resourceDetail, fieldEditing, confirmOpen, detailBusy]);
 
   function openLibraryRow(entry: LibraryListEntry): void {
     const label = resourceDisplayName(entry);
@@ -180,11 +245,6 @@ export function ResourcesPanel({
             label,
             pathHint: entry.source,
           },
-        });
-        setDetailTarget({
-          selector: entry.id,
-          label,
-          pathHint: entry.source,
         });
         return;
       default: {
@@ -253,13 +313,36 @@ export function ResourcesPanel({
         <ResourceFilterSidebar
           resources={entries}
           state={filterState}
-          onChange={setFilterState}
-          onClear={() => setFilterState(resetResourceFilterState())}
+          onChange={applyFilterChange}
+          onClear={() => applyFilterChange(resetResourceFilterState())}
           disabled={disabled || loading || Boolean(error)}
           searchInputRef={filterRef}
         />
         <div className="resources-panel-body">
-          {error ? (
+          {resourceDetail ? (
+            <ResourceDetailBody
+              chrome="pane"
+              Chrome={LibraryDetailChrome}
+              target={{
+                selector: resourceDetail.selector,
+                label: resourceDetail.label,
+                pathHint: resourceDetail.pathHint,
+              }}
+              baseUrl={baseUrl}
+              token={token}
+              disabled={disabled}
+              titleId={detailTitleId}
+              onBack={leaveToList}
+              onDeleted={leaveToList}
+              onSuccess={onSuccess}
+              onLibraryChanged={() =>
+                setResourcesReloadKey((value) => value + 1)
+              }
+              onFieldEditingChange={setFieldEditing}
+              onConfirmOpenChange={setConfirmOpen}
+              onBusyChange={setDetailBusy}
+            />
+          ) : error ? (
             <div className="empty-state">
               <p>{error}</p>
             </div>
@@ -349,16 +432,6 @@ export function ResourcesPanel({
           )}
         </div>
       </div>
-
-      <ResourceDetailPane
-        open={detailTarget !== null}
-        target={detailTarget}
-        baseUrl={baseUrl}
-        token={token}
-        onClose={() => setDetailTarget(null)}
-        onSuccess={onSuccess}
-        onLibraryChanged={() => setResourcesReloadKey((value) => value + 1)}
-      />
 
       <ResourceTrackedDirectoriesModal
         open={trackedDirsOpen}

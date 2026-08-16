@@ -91,3 +91,17 @@ test("ResourcesPanel merges plugin heads into the list", () => {
   expect(panelSource).toContain("fetchLibraryPluginHeads");
   expect(panelSource).toContain("libraryRowBadge");
 });
+
+test("library resource detail is a pane, not a library modal", () => {
+  expect(panelSource).toContain("LibraryDetailChrome");
+  expect(panelSource).toContain("ResourceDetailBody");
+  expect(panelSource).not.toContain("ResourceDetailPane");
+});
+
+test("LiveState and Stash resource detail remains a dialog", () => {
+  const paneSource = readFileSync(
+    join(import.meta.dir, "../../apps/desktop/src/components/ResourceDetailPane.tsx"),
+    "utf8",
+  );
+  expect(paneSource).toContain("aria-modal");
+});
