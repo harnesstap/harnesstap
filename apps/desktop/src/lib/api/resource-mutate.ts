@@ -78,3 +78,24 @@ export async function deleteLibraryResource(
   }
   return (await response.json()) as ResourceDeleteResult;
 }
+
+export async function patchLibraryResource(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  input: { name?: string; description?: string; content?: string },
+): Promise<void> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not update resource");
+  }
+}
