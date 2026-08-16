@@ -23,7 +23,7 @@ import {
 } from "../../services/environment-commands.js";
 import { runEnvironmentCreate } from "../../services/environment-create.js";
 import { getGlobalActiveEnvironmentName } from "../../services/environment-session.js";
-import { detectEnvironmentStatus } from "../../services/environment-status.js";
+import { detectEnvironmentStatus, detectNamedEnvironmentDrift } from "../../services/environment-status.js";
 import type { EnvironmentSecretProvider, PermissionMetadata } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
@@ -123,7 +123,12 @@ function handleList(): Response {
 }
 
 function handleShow(name: string): Response {
-  return jsonResponse(showEnvironmentCommand(name));
+  const payload = showEnvironmentCommand(name);
+  const detectedDrift = detectNamedEnvironmentDrift(payload.environment.id);
+  return jsonResponse({
+    ...payload,
+    has_detected_drift: detectedDrift.length > 0,
+  });
 }
 
 function mapEnvironmentError(error: unknown): Response {

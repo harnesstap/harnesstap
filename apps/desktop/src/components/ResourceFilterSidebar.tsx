@@ -1,5 +1,12 @@
-import { useMemo, type Ref } from "react";
+import { useMemo, type ReactNode, type Ref } from "react";
 import { FilterX } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LISTABLE_FILTER_RESOURCE_TYPES,
   buildNamespaceFacetOptions,
@@ -7,6 +14,7 @@ import {
   formatOriginKindLabel,
   isResourceFilterStateActive,
   isUpdatedFilterValid,
+  type NamespaceFacetOption,
   type NamespaceSelection,
   type ResourceFilterState,
   type UpdatedPreset,
@@ -34,6 +42,101 @@ const UPDATED_SEGMENT_PRESETS: Array<{
 ];
 
 const CUSTOM_DATE_RANGE_HINT_ID = "resource-filter-custom-date-hint";
+const NAMESPACE_ALL = "all";
+const NAMESPACE_UNNAMED = "unnamed";
+const NAMESPACE_NAMED_PREFIX = "named:";
+const ORIGIN_ALL = "all";
+
+function namespaceSelectValue(selection: NamespaceSelection): string {
+  switch (selection.mode) {
+    case "all":
+      return NAMESPACE_ALL;
+    case "unnamed":
+      return NAMESPACE_UNNAMED;
+    case "named":
+      return `${NAMESPACE_NAMED_PREFIX}${selection.value}`;
+    default: {
+      const _exhaustive: never = selection;
+      return _exhaustive;
+    }
+  }
+}
+
+function namespaceFromSelectValue(value: string): NamespaceSelection {
+  if (value === NAMESPACE_ALL) {
+    return { mode: "all" };
+  }
+  if (value === NAMESPACE_UNNAMED) {
+    return { mode: "unnamed" };
+  }
+  if (value.startsWith(NAMESPACE_NAMED_PREFIX)) {
+    return { mode: "named", value: value.slice(NAMESPACE_NAMED_PREFIX.length) };
+  }
+  return { mode: "named", value };
+}
+
+function originSelectValue(originKind: string | null): string {
+  return originKind ?? ORIGIN_ALL;
+}
+
+function originFromSelectValue(value: string): string | null {
+  return value === ORIGIN_ALL ? null : value;
+}
+
+function withCurrentNamespaceOption(
+  options: NamespaceFacetOption[],
+  selection: NamespaceSelection,
+): NamespaceFacetOption[] {
+  if (selection.mode !== "named") {
+    return options;
+  }
+  const present = options.some(
+    (option) => option.mode === "named" && option.value === selection.value,
+  );
+  return present ? options : [...options, { mode: "named", value: selection.value }];
+}
+
+function withCurrentOriginOption(
+  options: string[],
+  originKind: string | null,
+): string[] {
+  if (originKind === null || options.includes(originKind)) {
+    return options;
+  }
+  return [...options, originKind];
+}
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  disabled,
+  onValueChange,
+  children,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  disabled: boolean;
+  onValueChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="resource-filter-section">
+      <label className="resource-filter-section-label" htmlFor={id}>
+        {label}
+      </label>
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper" align="start">
+          {children}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 function typeCounts(resources: LibraryResource[]): Map<string, number> {
   const counts = new Map<string, number>();
@@ -53,10 +156,21 @@ export function ResourceFilterSidebar({
 }: ResourceFilterSidebarProps) {
   const counts = useMemo(() => typeCounts(resources), [resources]);
   const namespaces = useMemo(
-    () => buildNamespaceFacetOptions(resources),
-    [resources],
+    () =>
+      withCurrentNamespaceOption(
+        buildNamespaceFacetOptions(resources),
+        state.namespace,
+      ),
+    [resources, state.namespace],
   );
-  const origins = useMemo(() => buildOriginFacetOptions(resources), [resources]);
+  const origins = useMemo(
+    () =>
+      withCurrentOriginOption(
+        buildOriginFacetOptions(resources),
+        state.originKind,
+      ),
+    [resources, state.originKind],
+  );
   const dirty = isResourceFilterStateActive(state);
   const customInvalid =
     state.updated.preset === "custom" && !isUpdatedFilterValid(state.updated);
@@ -221,80 +335,46 @@ export function ResourceFilterSidebar({
         ) : null}
       </div>
 
-      <fieldset className="resource-filter-section">
-        <legend className="resource-filter-section-label">Namespace</legend>
-        <label
-          className={`resource-filter-option${state.namespace.mode === "all" ? " selected" : ""}`}
-        >
-          <input
-            type="radio"
-            name="resource-filter-namespace"
-            checked={state.namespace.mode === "all"}
-            disabled={disabled}
-            onChange={() => onChange({ ...state, namespace: { mode: "all" } })}
-          />
-          <span>All</span>
-        </label>
+      <FilterSelect
+        id="resource-filter-namespace"
+        label="Namespace"
+        value={namespaceSelectValue(state.namespace)}
+        disabled={disabled}
+        onValueChange={(value) =>
+          onChange({ ...state, namespace: namespaceFromSelectValue(value) })
+        }
+      >
+        <SelectItem value={NAMESPACE_ALL}>All</SelectItem>
         {namespaces.map((option) => {
-          const selected =
-            option.mode === "unnamed"
-              ? state.namespace.mode === "unnamed"
-              : state.namespace.mode === "named" &&
-                state.namespace.value === option.value;
           const selection: NamespaceSelection =
             option.mode === "unnamed"
               ? { mode: "unnamed" }
               : { mode: "named", value: option.value };
-          const key =
-            option.mode === "unnamed" ? "unnamed" : `named:${option.value}`;
+          const value = namespaceSelectValue(selection);
           return (
-            <label
-              key={key}
-              className={`resource-filter-option${selected ? " selected" : ""}`}
-            >
-              <input
-                type="radio"
-                name="resource-filter-namespace"
-                checked={selected}
-                disabled={disabled}
-                onChange={() => onChange({ ...state, namespace: selection })}
-              />
-              <span>{option.mode === "unnamed" ? "None" : option.value}</span>
-            </label>
+            <SelectItem key={value} value={value}>
+              {option.mode === "unnamed" ? "None" : option.value}
+            </SelectItem>
           );
         })}
-      </fieldset>
+      </FilterSelect>
 
-      <fieldset className="resource-filter-section">
-        <legend className="resource-filter-section-label">Origin</legend>
-        <label
-          className={`resource-filter-option${state.originKind === null ? " selected" : ""}`}
-        >
-          <input
-            type="radio"
-            name="resource-filter-origin"
-            checked={state.originKind === null}
-            disabled={disabled}
-            onChange={() => onChange({ ...state, originKind: null })}
-          />
-          <span>All</span>
-        </label>
+      <FilterSelect
+        id="resource-filter-origin"
+        label="Origin"
+        value={originSelectValue(state.originKind)}
+        disabled={disabled}
+        onValueChange={(value) =>
+          onChange({ ...state, originKind: originFromSelectValue(value) })
+        }
+      >
+        <SelectItem value={ORIGIN_ALL}>All</SelectItem>
         {origins.map((origin) => (
-          <label
-            key={origin}
-            className={`resource-filter-option${state.originKind === origin ? " selected" : ""}`}
-          >
-            <input
-              type="radio"
-              name="resource-filter-origin"
-              checked={state.originKind === origin}
-              disabled={disabled}
-              onChange={() => onChange({ ...state, originKind: origin })}
-            />
-            <span>{formatOriginKindLabel(origin)}</span>
-          </label>
+          <SelectItem key={origin} value={origin}>
+            {formatOriginKindLabel(origin)}
+          </SelectItem>
         ))}
-      </fieldset>
+      </FilterSelect>
     </aside>
   );
 }

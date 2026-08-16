@@ -177,6 +177,7 @@ export function App() {
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
   const [libraryTab, setLibraryTab] = useState<LibraryTab>("items");
+  const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
@@ -2317,6 +2318,11 @@ export function App() {
             token={token}
             projectPath={view === "project" ? projectPath : null}
             disabled={switching}
+            onOpenPlugin={(pluginName) => {
+              setLibraryFocusPlugin(pluginName);
+              setLibraryTab("packages");
+              setWorkspaceFocus("library");
+            }}
             onSuccess={(message) => {
               setSuccessMessage(message);
               window.setTimeout(() => setSuccessMessage(null), 3000);
@@ -2353,6 +2359,7 @@ export function App() {
                 selectedProfile={selectedProfile}
                 disabled={switching}
                 projectPath={projectPath || null}
+                focusName={libraryFocusPlugin}
                 onBusyChange={setPluginApplyBusy}
                 onSuccess={(message) => {
                   setSuccessMessage(message);

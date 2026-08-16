@@ -1,0 +1,3 @@
+kind: Changed
+body: Show the active environment as a list-row badge in the desktop Environments workspace instead of a sidecar-sync header marker.
+time: 2026-08-15T20:05:00Z

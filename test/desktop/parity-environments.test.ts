@@ -1,11 +1,29 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   canSubmitEnvironmentCreate,
+  environmentApplyAvailable,
   environmentDeleteNeedsForce,
   filterEnvironmentsByQuery,
-  sidecarStatusCopy,
   type EnvironmentListRow,
 } from "../../apps/desktop/src/lib/api/environments.ts";
+
+const workspaceSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/parity/EnvironmentsWorkspace.tsx",
+  ),
+  "utf8",
+);
+const stylesSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
+  "utf8",
+);
+const appSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/App.tsx"),
+  "utf8",
+);
 
 const rows: EnvironmentListRow[] = [
   {
@@ -39,33 +57,55 @@ describe("filterEnvironmentsByQuery", () => {
   });
 });
 
-describe("sidecarStatusCopy", () => {
-  it("labels sidecar sync, drift count, and none", () => {
-    expect(
-      sidecarStatusCopy({
-        global_environment: "staging",
-        has_drift: false,
-        drift: [],
-      }),
-    ).toEqual({
-      kind: "sync",
-      text: "Sidecar in sync with staging",
-    });
-    expect(
-      sidecarStatusCopy({
-        global_environment: "staging",
-        has_drift: true,
-        drift: [{}, {}],
-      }),
-    ).toEqual({
-      kind: "drift",
-      text: "2 keys out of sync with staging",
-    });
-    expect(sidecarStatusCopy({ global_environment: null, has_drift: false, drift: [] })).toEqual({
-      kind: "none",
-      text: "No active environment.",
-      hint: "Use an environment to set it globally.",
-    });
+describe("environments workspace chrome", () => {
+  it("marks the active environment on the list, not as a header sidecar status", () => {
+    expect(workspaceSource).toContain("row.is_global_active");
+    expect(workspaceSource).toContain('<span className="badge">active</span>');
+    expect(workspaceSource).not.toContain("sidecarStatusCopy");
+    expect(workspaceSource).not.toContain("Sidecar in sync");
+    expect(workspaceSource).not.toContain("edit-active-badge");
+    expect(workspaceSource).not.toContain("fetchEnvironmentStatus");
+    expect(stylesSource).toContain(".resources-list-name .badge");
+  });
+
+  it("keeps plugin references in details, not the sidebar inventory line", () => {
+    expect(workspaceSource).toContain(
+      "{row.value_count} values · {row.secret_ref_count} secrets",
+    );
+    expect(workspaceSource).not.toContain("{row.reference_count} plugins");
+    expect(workspaceSource).toContain("Plugins referencing this environment");
+    expect(workspaceSource).toContain("link-btn");
+    expect(workspaceSource).toContain("onOpenPlugin");
+    expect(appSource).toContain("setLibraryFocusPlugin");
+    expect(appSource).toContain("focusName={libraryFocusPlugin}");
+  });
+
+  it("puts icon apply, edit, and delete in the detail header, not the sidebar", () => {
+    expect(workspaceSource).not.toContain("Use globally");
+    expect(workspaceSource).not.toContain("CirclePlay");
+    expect(workspaceSource).toContain("edit-profile-header-actions");
+    expect(workspaceSource).toContain('data-testid="apply-environment"');
+    expect(workspaceSource).toContain("environmentApplyAvailable");
+    expect(workspaceSource).toContain("Pencil");
+    expect(workspaceSource).toContain("Trash2");
+    expect(workspaceSource).toContain("<Check");
+    expect(workspaceSource).not.toContain("{busy ? \"Applying…\" : \"Apply\"}");
+    expect(workspaceSource).toContain("useEnvironmentGlobally");
+  });
+
+  it("uses keyed detail layout and selected list chrome", () => {
+    expect(workspaceSource).toContain("resource-detail-kv");
+    expect(workspaceSource).toContain("harness-block");
+    expect(workspaceSource).toContain("aria-current");
+    expect(workspaceSource).toContain("is-selected");
+    expect(stylesSource).toContain(".resources-list-env");
+  });
+});
+
+describe("environmentApplyAvailable", () => {
+  it("shows Apply only when detected values drifted from this environment", () => {
+    expect(environmentApplyAvailable({ has_detected_drift: false })).toBe(false);
+    expect(environmentApplyAvailable({ has_detected_drift: true })).toBe(true);
   });
 });
 

@@ -25,6 +25,7 @@ export interface EnvironmentShowPayload {
   };
   secret_refs: Record<string, { provider: string; ref: string }>;
   references: { plugins: Array<{ id: string; name: string }> };
+  has_detected_drift?: boolean;
 }
 
 export interface EnvironmentStatusPayload {
@@ -75,30 +76,14 @@ export function filterEnvironmentsByQuery(
   });
 }
 
-export function sidecarStatusCopy(status: {
-  global_environment: string | null;
-  has_drift: boolean;
-  drift: unknown[];
-}): { kind: "sync" | "drift" | "none"; text: string; hint?: string } {
-  const name = status.global_environment;
-  if (!name) {
-    return {
-      kind: "none",
-      text: "No active environment.",
-      hint: "Use an environment to set it globally.",
-    };
-  }
-  if (status.has_drift) {
-    return {
-      kind: "drift",
-      text: `${status.drift.length} keys out of sync with ${name}`,
-    };
-  }
-  return { kind: "sync", text: `Sidecar in sync with ${name}` };
-}
-
 export function environmentDeleteNeedsForce(row: EnvironmentListRow): boolean {
   return row.reference_count > 0;
+}
+
+export function environmentApplyAvailable(payload: {
+  has_detected_drift?: boolean;
+}): boolean {
+  return payload.has_detected_drift === true;
 }
 
 export function canSubmitEnvironmentCreate(input: {

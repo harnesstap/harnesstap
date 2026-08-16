@@ -1,25 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CirclePlay, Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ButtonSpinner } from "../ButtonSpinner";
 import {
   deleteEnvironment,
+  environmentApplyAvailable,
   environmentDeleteNeedsForce,
   fetchEnvironment,
-  fetchEnvironmentStatus,
   filterEnvironmentsByQuery,
   listEnvironments,
-  sidecarStatusCopy,
   useEnvironmentGlobally,
   type EnvironmentListRow,
   type EnvironmentShowPayload,
-  type EnvironmentStatusPayload,
 } from "../../lib/api/environments";
 import { EnvironmentDrawer } from "./EnvironmentDrawer";
 
-const ICON_SIZE = 14;
+const ACTION_ICON_SIZE = 16;
 
 export interface EnvironmentsWorkspaceProps {
   baseUrl: string | null;
@@ -29,6 +27,7 @@ export interface EnvironmentsWorkspaceProps {
   projectPath: string | null;
   disabled?: boolean;
   onSuccess: (message: string) => void;
+  onOpenPlugin?: (pluginName: string) => void;
 }
 
 export function EnvironmentsWorkspace({
@@ -39,13 +38,13 @@ export function EnvironmentsWorkspace({
   projectPath,
   disabled = false,
   onSuccess,
+  onOpenPlugin,
 }: EnvironmentsWorkspaceProps) {
   const connected = connectedProp ?? Boolean(baseUrl && token);
   const switching = switchingProp ?? disabled;
   const controlsDisabled = switching || !connected || disabled;
 
   const [rows, setRows] = useState<EnvironmentListRow[]>([]);
-  const [status, setStatus] = useState<EnvironmentStatusPayload | null>(null);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -66,20 +65,15 @@ export function EnvironmentsWorkspace({
   useEffect(() => {
     if (!baseUrl) {
       setRows([]);
-      setStatus(null);
       return;
     }
     let cancelled = false;
-    void Promise.all([
-      listEnvironments(baseUrl, token),
-      fetchEnvironmentStatus(baseUrl, token),
-    ])
-      .then(([nextRows, nextStatus]) => {
+    void listEnvironments(baseUrl, token)
+      .then((nextRows) => {
         if (cancelled) {
           return;
         }
         setRows(nextRows);
-        setStatus(nextStatus);
         setError(null);
       })
       .catch((loadError: unknown) => {
@@ -126,9 +120,6 @@ export function EnvironmentsWorkspace({
     () => filterEnvironmentsByQuery(rows, query),
     [query, rows],
   );
-  const statusCopy = status
-    ? sidecarStatusCopy(status)
-    : { kind: "none" as const, text: "No active environment.", hint: "Use an environment to set it globally." };
   const needsForce = deleteTarget ? environmentDeleteNeedsForce(deleteTarget) : false;
   const referencedNames = detail?.references.plugins.map((plugin) => plugin.name) ?? [];
 
@@ -193,23 +184,9 @@ export function EnvironmentsWorkspace({
               setDrawerOpen(true);
             }}
           >
-            <Plus size={16} aria-hidden />
+            <Plus size={ACTION_ICON_SIZE} aria-hidden />
           </button>
         </div>
-        <p
-          className={
-            statusCopy.kind === "sync"
-              ? "edit-active-badge"
-              : statusCopy.kind === "drift"
-                ? "banner"
-                : "muted"
-          }
-        >
-          {statusCopy.text}
-        </p>
-        {statusCopy.kind === "none" && statusCopy.hint ? (
-          <p className="muted">{statusCopy.hint}</p>
-        ) : null}
         <input
           className="resources-panel-filter"
           type="search"
@@ -230,64 +207,36 @@ export function EnvironmentsWorkspace({
           ) : (
             <ul className="resources-list">
               {filtered.map((row) => {
-                const rowBusy = busyName === row.name;
+                const selected = selectedName === row.name;
                 return (
                   <li className="resources-list-item" key={row.id}>
-                    <div className="resources-list-main">
-                      <button
-                        type="button"
-                        className="resource-name-btn resources-list-name"
-                        disabled={controlsDisabled}
-                        onClick={() => setSelectedName(row.name)}
-                      >
+                    <button
+                      type="button"
+                      className={[
+                        "resources-list-env",
+                        selected ? "is-selected" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      disabled={controlsDisabled}
+                      aria-current={selected ? "true" : undefined}
+                      onClick={() => setSelectedName(row.name)}
+                    >
+                      <span className="resources-list-name">
                         {row.name}
-                        {row.is_global_active ? <span className="badge">Active</span> : null}
-                      </button>
-                      <button
-                        type="button"
-                        className={["icon-action", rowBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
-                        aria-label={`Use ${row.name} globally`}
-                        title="Use globally"
-                        disabled={controlsDisabled || rowBusy}
-                        onClick={() => void onUse(row.name)}
-                      >
-                        {rowBusy ? <ButtonSpinner size={ICON_SIZE} /> : <CirclePlay size={ICON_SIZE} aria-hidden />}
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-action"
-                        aria-label={`Edit ${row.name}`}
-                        title="Edit"
-                        disabled={controlsDisabled}
-                        onClick={() => {
-                          setDrawerMode("edit");
-                          setEditName(row.name);
-                          setDrawerOpen(true);
-                        }}
-                      >
-                        <Pencil size={ICON_SIZE} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-action"
-                        aria-label={`Delete ${row.name}`}
-                        title="Delete"
-                        disabled={controlsDisabled}
-                        onClick={() => {
-                          setSelectedName(row.name);
-                          setDeleteTarget(row);
-                          setForceChecked(false);
-                        }}
-                      >
-                        <Trash2 size={ICON_SIZE} aria-hidden />
-                      </button>
-                    </div>
-                    {row.description ? (
-                      <span className="resources-list-desc muted">{row.description}</span>
-                    ) : null}
-                    <span className="resources-list-desc muted">
-                      {row.value_count} values · {row.secret_ref_count} secrets · {row.reference_count} plugins
-                    </span>
+                        {row.is_global_active ? (
+                          <span className="badge">active</span>
+                        ) : null}
+                      </span>
+                      {row.description ? (
+                        <span className="resources-list-desc muted">
+                          {row.description}
+                        </span>
+                      ) : null}
+                      <span className="resources-list-desc muted">
+                        {row.value_count} values · {row.secret_ref_count} secrets
+                      </span>
+                    </button>
                   </li>
                 );
               })}
@@ -296,7 +245,26 @@ export function EnvironmentsWorkspace({
         </div>
         <div className="resources-panel-body">
           {detail ? (
-            <EnvironmentDetail payload={detail} />
+            <EnvironmentDetail
+              payload={detail}
+              busy={busyName === detail.environment.name}
+              controlsDisabled={controlsDisabled}
+              onApply={() => void onUse(detail.environment.name)}
+              onEdit={() => {
+                setDrawerMode("edit");
+                setEditName(detail.environment.name);
+                setDrawerOpen(true);
+              }}
+              onDelete={() => {
+                const row = rows.find((item) => item.name === detail.environment.name);
+                if (!row) {
+                  return;
+                }
+                setDeleteTarget(row);
+                setForceChecked(false);
+              }}
+              onOpenPlugin={onOpenPlugin}
+            />
           ) : (
             <p className="muted">Select an environment to inspect it.</p>
           )}
@@ -354,90 +322,185 @@ export function EnvironmentsWorkspace({
   );
 }
 
-function EnvironmentDetail({ payload }: { payload: EnvironmentShowPayload }) {
+function EnvironmentInventoryBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="harness-block">
+      <h3 className="harness-header">{title}</h3>
+      <div className="harness-body">{children}</div>
+    </section>
+  );
+}
+
+function EnvironmentDetail({
+  payload,
+  busy,
+  controlsDisabled,
+  onApply,
+  onEdit,
+  onDelete,
+  onOpenPlugin,
+}: {
+  payload: EnvironmentShowPayload;
+  busy: boolean;
+  controlsDisabled: boolean;
+  onApply: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onOpenPlugin?: (pluginName: string) => void;
+}) {
   const envVars = Object.entries(payload.values.env_vars);
   const secrets = Object.entries(payload.secret_refs);
   const models = payload.values.model_configs;
   const permissions = payload.values.permissions;
   const plugins = payload.references.plugins;
+  const showApply = environmentApplyAvailable(payload);
+  const hasInventory =
+    envVars.length > 0
+    || secrets.length > 0
+    || models.length > 0
+    || permissions.length > 0;
+  const empty = !hasInventory && plugins.length === 0;
 
   return (
     <div className="edit-profile-body">
-      <section>
-        <h3>Description</h3>
-        <p className={payload.environment.description ? undefined : "muted"}>
-          {payload.environment.description || "None"}
-        </p>
-      </section>
-      <section>
-        <h3>Env vars</h3>
-        {envVars.length === 0 ? (
-          <p className="muted">None</p>
-        ) : (
-          <ul>
-            {envVars.map(([key, value]) => (
-              <li key={key}>
-                <code>{key}</code>={value}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h3>Secret refs</h3>
-        {secrets.length === 0 ? (
-          <p className="muted">None</p>
-        ) : (
-          <ul>
-            {secrets.map(([key, secret]) => (
-              <li key={key}>
-                <code>{key}</code> {secret.provider} {secret.ref}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h3>Model configs</h3>
-        {models.length === 0 ? (
-          <p className="muted">None</p>
-        ) : (
-          <ul>
-            {models.map((model) => (
-              <li key={model.name}>
-                {model.name}: {model.model}
-                {model.provider ? ` (${model.provider})` : ""}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h3>Permissions</h3>
-        {permissions.length === 0 ? (
-          <p className="muted">None</p>
-        ) : (
-          <ul>
-            {permissions.map((permission) => (
-              <li key={`${permission.action}:${permission.pattern}`}>
-                {permission.action}:{permission.pattern}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h3>Plugins</h3>
-        {plugins.length === 0 ? (
-          <p className="muted">None</p>
-        ) : (
-          <ul>
+      <div className="edit-profile-header">
+        <div className="edit-profile-title">
+          <h2>{payload.environment.name}</h2>
+          {payload.environment.description ? (
+            <p className="muted">{payload.environment.description}</p>
+          ) : null}
+        </div>
+        <div className="edit-profile-header-actions">
+          {showApply ? (
+            <button
+              type="button"
+              className={["icon-action", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              data-testid="apply-environment"
+              disabled={controlsDisabled || busy}
+              aria-busy={busy}
+              aria-label={`Apply ${payload.environment.name} globally`}
+              title="Detected values differ from this environment"
+              onClick={onApply}
+            >
+              {busy ? (
+                <ButtonSpinner size={ACTION_ICON_SIZE} />
+              ) : (
+                <Check size={ACTION_ICON_SIZE} aria-hidden />
+              )}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="icon-action"
+            disabled={controlsDisabled}
+            aria-label={`Edit ${payload.environment.name}`}
+            title="Edit environment"
+            onClick={onEdit}
+          >
+            <Pencil size={ACTION_ICON_SIZE} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="icon-action"
+            disabled={controlsDisabled}
+            aria-label={`Delete ${payload.environment.name}`}
+            title="Delete environment"
+            onClick={onDelete}
+          >
+            <Trash2 size={ACTION_ICON_SIZE} aria-hidden />
+          </button>
+        </div>
+      </div>
+      {empty ? (
+        <p className="muted">No values or secrets yet.</p>
+      ) : hasInventory ? (
+        <dl className="resource-detail-kv">
+          {envVars.length > 0 ? (
+            <div>
+              <dt>Env vars</dt>
+              <dd>
+                <ul className="environment-kv-list">
+                  {envVars.map(([key, value]) => (
+                    <li key={key}>
+                      <code>{key}</code>={value}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          ) : null}
+          {secrets.length > 0 ? (
+            <div>
+              <dt>Secret refs</dt>
+              <dd>
+                <ul className="environment-kv-list">
+                  {secrets.map(([key, secret]) => (
+                    <li key={key}>
+                      <code>{key}</code> {secret.provider} {secret.ref}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          ) : null}
+          {models.length > 0 ? (
+            <div>
+              <dt>Model configs</dt>
+              <dd>
+                <ul className="environment-kv-list">
+                  {models.map((model) => (
+                    <li key={model.name}>
+                      {model.name}: {model.model}
+                      {model.provider ? ` (${model.provider})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          ) : null}
+          {permissions.length > 0 ? (
+            <div>
+              <dt>Permissions</dt>
+              <dd>
+                <ul className="environment-kv-list">
+                  {permissions.map((permission) => (
+                    <li key={`${permission.action}:${permission.pattern}`}>
+                      {permission.action}:{permission.pattern}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+      {plugins.length > 0 ? (
+        <EnvironmentInventoryBlock title="Plugins referencing this environment">
+          <ul className="environment-kv-list">
             {plugins.map((plugin) => (
-              <li key={plugin.id}>{plugin.name}</li>
+              <li key={plugin.id}>
+                {onOpenPlugin ? (
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => onOpenPlugin(plugin.name)}
+                  >
+                    {plugin.name}
+                  </button>
+                ) : (
+                  plugin.name
+                )}
+              </li>
             ))}
           </ul>
-        )}
-      </section>
+        </EnvironmentInventoryBlock>
+      ) : null}
     </div>
   );
 }

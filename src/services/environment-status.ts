@@ -73,6 +73,12 @@ function detectVarDrift(expectedVars: Record<string, string>): EnvironmentVarDri
   return drift;
 }
 
+export function detectNamedEnvironmentDrift(environmentId: string): EnvironmentVarDrift[] {
+  const fragment = fragmentFromEnvironmentId(environmentId);
+  const { resolved } = resolveSecretRefsBestEffort(fragment.secretRefs);
+  return detectVarDrift({ ...fragment.vars, ...resolved });
+}
+
 export function detectEnvironmentStatus(input: {
   configuredPluginIds?: string[];
 } = {}): EnvironmentStatusPayload {

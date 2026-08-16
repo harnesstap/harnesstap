@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   groupFileChangesByResource,
   type ContentsDiffItem,
 } from "../../apps/desktop/src/lib/contents-diff";
 import {
+  cursorAnchorStyle,
   formatHoverPath,
   hoverModelFromContentsDiffItem,
   hoverModelFromFileChangeChild,
@@ -174,5 +177,38 @@ describe("resource hover model", () => {
 
   it("inserts break opportunities after slashes", () => {
     expect(formatHoverPath("a/b/c")).toBe("a/\u200bb/\u200bc");
+  });
+
+  it("places a zero-size fixed anchor at the pointer", () => {
+    expect(cursorAnchorStyle({ x: 140, y: 88 })).toEqual({
+      position: "fixed",
+      left: 140,
+      top: 88,
+      width: 0,
+      height: 0,
+      pointerEvents: "none",
+    });
+  });
+});
+
+describe("resource hover card chrome", () => {
+  const hoverCardSource = readFileSync(
+    join(
+      import.meta.dir,
+      "../../apps/desktop/src/components/ui/resource-hover-card.tsx",
+    ),
+    "utf8",
+  );
+
+  it("anchors the card to a pointer-sized trigger, not the row box", () => {
+    expect(hoverCardSource).toContain("cursorAnchorStyle");
+    expect(hoverCardSource).toContain("resource-hover-cursor-anchor");
+    expect(hoverCardSource).not.toContain("alignOffset");
+    expect(hoverCardSource).not.toContain("cursorAlignOffset");
+  });
+
+  it("closes immediately when leaving a row so prior cards cannot linger", () => {
+    expect(hoverCardSource).not.toContain("CLOSE_DELAY");
+    expect(hoverCardSource).not.toMatch(/setTimeout\(\s*\(\)\s*=>\s*\{\s*setOpen\(false\)/);
   });
 });

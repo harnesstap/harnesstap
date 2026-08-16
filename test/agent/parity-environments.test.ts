@@ -118,10 +118,32 @@ describe("tryHandle environments", () => {
     };
     expect(shown.environment.name).toBe("staging");
     expect(shown.values.env_vars).toEqual({});
+    expect(shown).toHaveProperty("has_detected_drift", false);
 
     const missing = await handle("GET", "/v1/environments/nope");
     expect(missing?.status).toBe(404);
     await expect(missing!.json()).resolves.toMatchObject({ error: "not_found" });
+  });
+
+  it("flags detected drift on show when process env differs", async () => {
+    const key = "HT_ENV_SHOW_DRIFT_REGION";
+    const previous = process.env[key];
+    const staging = createEnvironment({ name: "staging" });
+    setEnvironmentVarCommand(staging.id, key, "eu");
+    delete process.env[key];
+    try {
+      const response = await handle("GET", "/v1/environments/staging");
+      expect(response?.status).toBe(200);
+      await expect(response!.json()).resolves.toMatchObject({
+        has_detected_drift: true,
+      });
+    } finally {
+      if (previous === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = previous;
+      }
+    }
   });
 });
 

@@ -45,6 +45,7 @@ export interface PluginsWorkspaceProps {
   onBusyChange?: (busy: boolean) => void;
   onSuccess: (message: string) => void;
   onProfilesChanged: () => void;
+  focusName?: string | null;
 }
 
 function matchesFilter(plugin: LibraryPluginHead, query: string): boolean {
@@ -71,6 +72,7 @@ export function PluginsWorkspace({
   onBusyChange,
   onSuccess,
   onProfilesChanged,
+  focusName = null,
 }: PluginsWorkspaceProps) {
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
   const [filter, setFilter] = useState("");
@@ -111,6 +113,12 @@ export function PluginsWorkspace({
   const [confirmBusy, setConfirmBusy] = useState(false);
 
   const controlsDisabled = disabled || busy;
+
+  useEffect(() => {
+    if (focusName) {
+      setSelectedName(focusName);
+    }
+  }, [focusName]);
 
   useEffect(() => {
     if (!baseUrl) {

@@ -43,6 +43,9 @@ Dark dense ops chrome. Reference wireframe: split pane with profiles rail (~220p
 - Right pane is always machine live state; target preview is a separate drawer
 - Switching mode: yellow panel, ordered steps, cancel disabled during apply step
 - Header destinations: Library | Environments | Global | Project. No header Plugins or Apply plugin control.
+- Environments: the globally active environment is a list-row `active` badge, not a header sidecar-status marker. Sidebar inventory is values and secrets only; plugins that set this environment as their default appear in details as “Plugins referencing this environment” and link to Library → Packages. Detail uses a keyed definition list and harness blocks for populated inventories. Apply, edit, and delete are icon-actions in the detail header. Apply (`environment use`) appears only when detected process env values drifted from this environment.
 - Package Apply (Library → Packages detail) writes the plugin graph (`ht apply`) without using profile switch. Rail Apply remains profile switch / re-apply.
 - Library remembers the last Items/Packages tab for the session.
+- Library Items filters: type stays as badges and updated as a segment; namespace and origin are single-select fields.
+- Resource row hover cards sit at the pointer, not the row center, and close as soon as the pointer leaves so they cannot linger across rows.
 - Global apply of a profile-tagged package via package Apply still records the active profile (CLI `ht apply --global`); everyday switches belong on the rail.

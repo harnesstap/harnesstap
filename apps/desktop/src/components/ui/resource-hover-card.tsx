@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type FocusEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react";
 import { FileText, Folder, Package, Pencil, Store } from "lucide-react";
@@ -12,6 +13,7 @@ import { labelForType } from "../../lib/contents-diff";
 import { harnessDisplayName } from "../../lib/harness-meta";
 import { formatOriginKindLabel } from "../../lib/resource-filters";
 import {
+  cursorAnchorStyle,
   formatHoverPath,
   resourceHoverCardHasContent,
   type ResourceHoverExtra,
@@ -22,8 +24,10 @@ import { TypeIcon } from "../TypeIcon";
 
 const ICON_SIZE = 14;
 const OPEN_DELAY_MS = 400;
-const CLOSE_DELAY_MS = 150;
+const SKIP_DELAY_MS = 300;
 const COLLISION_PADDING = 8;
+
+let lastHoverCloseAt = 0;
 
 function OriginHoverIcon({ originKind }: { originKind: string }): ReactNode {
   switch (originKind) {
@@ -76,55 +80,110 @@ export function ResourceHoverCard({
   disabled?: boolean;
 }): ReactNode {
   const [open, setOpen] = useState(false);
-  const closeTimerRef = useRef(0);
+  const [point, setPoint] = useState({ x: 0, y: 0 });
+  const pointRef = useRef({ x: 0, y: 0 });
+  const pointerInRowRef = useRef(false);
+  const openTimerRef = useRef(0);
   const showTooltip = !disabled && resourceHoverCardHasContent(model);
 
-  const cancelClose = useCallback(() => {
-    window.clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = 0;
+  const clearOpenTimer = useCallback(() => {
+    window.clearTimeout(openTimerRef.current);
+    openTimerRef.current = 0;
   }, []);
+
+  const capturePoint = useCallback((event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === "touch") {
+      return;
+    }
+    pointRef.current = { x: event.clientX, y: event.clientY };
+  }, []);
+
+  const closeNow = useCallback(() => {
+    clearOpenTimer();
+    setOpen((wasOpen) => {
+      if (wasOpen) {
+        lastHoverCloseAt = Date.now();
+      }
+      return false;
+    });
+  }, [clearOpenTimer]);
+
+  const handlePointerEnter = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      pointerInRowRef.current = true;
+      capturePoint(event);
+      clearOpenTimer();
+      const delay =
+        Date.now() - lastHoverCloseAt < SKIP_DELAY_MS ? 0 : OPEN_DELAY_MS;
+      openTimerRef.current = window.setTimeout(() => {
+        setPoint(pointRef.current);
+        setOpen(true);
+      }, delay);
+    },
+    [capturePoint, clearOpenTimer],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      capturePoint(event);
+    },
+    [capturePoint],
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    pointerInRowRef.current = false;
+    closeNow();
+  }, [closeNow]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      cancelClose();
       if (next) {
+        setPoint(pointRef.current);
         setOpen(true);
         return;
       }
-      closeTimerRef.current = window.setTimeout(() => {
-        setOpen(false);
-        closeTimerRef.current = 0;
-      }, CLOSE_DELAY_MS);
+      if (!pointerInRowRef.current) {
+        closeNow();
+      }
     },
-    [cancelClose],
+    [closeNow],
   );
 
-  const handleFocusCapture = useCallback(
-    (event: FocusEvent<HTMLElement>) => {
-      if (!(event.target instanceof HTMLElement)) {
-        return;
-      }
-      if (!event.target.matches(":focus-visible")) {
-        return;
-      }
-      cancelClose();
-      setOpen(true);
-    },
-    [cancelClose],
-  );
+  const handleFocusCapture = useCallback((event: FocusEvent<HTMLElement>) => {
+    if (!(event.target instanceof HTMLElement)) {
+      return;
+    }
+    if (!event.target.matches(":focus-visible")) {
+      return;
+    }
+    pointerInRowRef.current = true;
+    const rect = event.target.getBoundingClientRect();
+    pointRef.current = { x: rect.left, y: rect.bottom };
+    setPoint(pointRef.current);
+    setOpen(true);
+  }, []);
+
+  const handleBlur = useCallback((event: FocusEvent<HTMLElement>) => {
+    const next = event.relatedTarget;
+    if (next instanceof Node && event.currentTarget.contains(next)) {
+      return;
+    }
+    pointerInRowRef.current = false;
+    closeNow();
+  }, [closeNow]);
 
   useEffect(() => {
     return () => {
-      window.clearTimeout(closeTimerRef.current);
+      window.clearTimeout(openTimerRef.current);
     };
   }, []);
 
   useEffect(() => {
     if (!showTooltip) {
-      cancelClose();
-      setOpen(false);
+      pointerInRowRef.current = false;
+      closeNow();
     }
-  }, [cancelClose, showTooltip]);
+  }, [closeNow, showTooltip]);
 
   if (!showTooltip) {
     return children;
@@ -136,19 +195,36 @@ export function ResourceHoverCard({
     <Tooltip.Root
       open={open}
       onOpenChange={handleOpenChange}
-      delayDuration={OPEN_DELAY_MS}
+      delayDuration={0}
       disableHoverableContent
     >
-      <Tooltip.Trigger asChild onFocusCapture={handleFocusCapture}>
+      <div
+        className="resource-hover-card-host"
+        onPointerEnter={handlePointerEnter}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onFocusCapture={handleFocusCapture}
+        onBlur={handleBlur}
+      >
         {children}
+      </div>
+      <Tooltip.Trigger asChild>
+        <span
+          className="resource-hover-cursor-anchor"
+          style={cursorAnchorStyle(point)}
+          aria-hidden
+          tabIndex={-1}
+        />
       </Tooltip.Trigger>
       <Tooltip.Portal container={document.body}>
         <Tooltip.Content
           className="resource-hover-card"
           role="tooltip"
-          side="top"
+          side="bottom"
+          align="start"
           collisionPadding={COLLISION_PADDING}
-          sideOffset={6}
+          sideOffset={12}
+          updatePositionStrategy="always"
         >
           {model.type !== undefined ? (
             <HoverCardRow

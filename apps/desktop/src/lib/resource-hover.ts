@@ -30,6 +30,24 @@ export function formatHoverPath(path: string): string {
   return path.replaceAll("/", "/\u200b");
 }
 
+export function cursorAnchorStyle(point: { x: number; y: number }): {
+  position: "fixed";
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  pointerEvents: "none";
+} {
+  return {
+    position: "fixed",
+    left: point.x,
+    top: point.y,
+    width: 0,
+    height: 0,
+    pointerEvents: "none",
+  };
+}
+
 export function resourceHoverCardHasContent(model: ResourceHoverModel): boolean {
   if (model.type !== undefined) {
     return true;
