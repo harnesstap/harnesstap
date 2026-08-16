@@ -96,6 +96,11 @@ describe("tryHandle resource-mutate", () => {
       headers: {},
     });
     expect(del?.status).toBe(401);
+    const patch = await handle("PATCH", "/v1/library/resources/skill%3Aship", {
+      headers: {},
+      body: { name: "nope" },
+    });
+    expect(patch?.status).toBe(401);
   });
 
   it("DELETE returns 200 then the row is gone", async () => {
@@ -275,5 +280,50 @@ describe("tryHandle resource-mutate", () => {
     );
     expect(response?.status).toBe(200);
     expect(getResource(before.id)?.content).toContain("shared team review checklist");
+  });
+});
+
+describe("PATCH /v1/library/resources/:selector", () => {
+  it("updates name, description, and content", async () => {
+    await withHome("parity-mutate-patch");
+    const resource = createResource({
+      type: "skill",
+      name: "guide",
+      description: "old",
+      content: "# old",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle("PATCH", `/v1/library/resources/${resource.id}`, {
+      body: { name: "guide-2", description: "new", content: "# new" },
+    });
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as { resource: { name: string; description: string; content: string } };
+    expect(body.resource.name).toBe("guide-2");
+    expect(getResource(resource.id)?.content).toBe("# new");
+  });
+
+  it("rejects type and origin fields", async () => {
+    await withHome("parity-mutate-patch-reject");
+    const resource = createResource({
+      type: "skill",
+      name: "guide",
+      description: "",
+      content: "# x",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle("PATCH", `/v1/library/resources/${resource.id}`, {
+      body: { type: "rule" },
+    });
+    expect(response?.status).toBe(400);
+  });
+
+  it("returns 404 for untracked selectors", async () => {
+    await withHome("parity-mutate-patch-untracked");
+    const response = await handle("PATCH", "/v1/library/resources/untracked:skill:ghost", {
+      body: { name: "nope" },
+    });
+    expect(response?.status).toBe(404);
   });
 });
