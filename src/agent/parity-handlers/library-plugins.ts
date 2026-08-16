@@ -332,6 +332,34 @@ export async function tryHandle(
     });
   }
 
+  if (method === "POST" && pathname === "/v1/library/plugins") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readJsonBody(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (!isRecord(parsed.value) || typeof parsed.value.name !== "string" || !parsed.value.name.trim()) {
+      return jsonResponse(
+        { error: "invalid_body", message: "name is required" },
+        { status: 400 },
+      );
+    }
+    const name = parsed.value.name.trim();
+    if (getPluginByName(name)) {
+      return jsonResponse(
+        { error: "plugin_exists", message: `Plugin ${name} already exists.` },
+        { status: 409 },
+      );
+    }
+    const description =
+      typeof parsed.value.description === "string" ? parsed.value.description : undefined;
+    const plugin = createPlugin({ name, description, origin: "authored" });
+    return jsonResponse({ plugin: toPluginHead(plugin) });
+  }
+
   const matched = matchSelectorPath(pathname);
   if (!matched) {
     return null;

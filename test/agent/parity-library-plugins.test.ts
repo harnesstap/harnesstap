@@ -430,3 +430,33 @@ describe("mutating routes auth", () => {
     }
   });
 });
+
+describe("POST /v1/library/plugins", () => {
+  it("creates an authored plugin", async () => {
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: { name: "eng", description: "Engineering" },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      plugin: { name: string; origin: string; description: string };
+    };
+    expect(body.plugin.name).toBe("eng");
+    expect(body.plugin.origin).toBe("authored");
+    expect(getPluginByName("eng")?.description).toBe("Engineering");
+  });
+
+  it("returns 409 when the name exists", async () => {
+    createPlugin({ name: "eng" });
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: { name: "eng" },
+    });
+    expect(response.status).toBe(409);
+  });
+
+  it("returns 400 when name is missing", async () => {
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: { description: "nope" },
+    });
+    expect(response.status).toBe(400);
+  });
+});
