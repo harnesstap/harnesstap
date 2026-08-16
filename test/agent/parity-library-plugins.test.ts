@@ -420,6 +420,7 @@ describe("mutating routes auth", () => {
       ["POST", "/v1/library/plugins/eng/cut"],
       ["POST", "/v1/library/plugins/eng/doctor"],
       ["POST", "/v1/library/plugins/eng/fork"],
+      ["POST", "/v1/library/plugins"],
     ];
     for (const [method, path] of routes) {
       const response = await handle(method, path, {
