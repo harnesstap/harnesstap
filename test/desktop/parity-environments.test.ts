@@ -100,6 +100,15 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("is-selected");
     expect(stylesSource).toContain(".resources-list-env");
   });
+
+  it("puts the name filter in the list sidebar, not the panel header", () => {
+    const layoutPos = workspaceSource.indexOf("resources-panel-layout");
+    const filterPos = workspaceSource.indexOf('aria-label="Filter environments"');
+    expect(layoutPos).toBeGreaterThan(-1);
+    expect(filterPos).toBeGreaterThan(layoutPos);
+    expect(workspaceSource).toContain('aria-label="Environment list"');
+    expect(stylesSource).toContain(".environment-list-sidebar");
+  });
 });
 
 describe("environmentApplyAvailable", () => {

@@ -994,6 +994,21 @@ button:focus-visible,
   gap: 0.75rem;
 }
 
+.environment-list-sidebar {
+  overflow: hidden;
+}
+
+.environment-list-sidebar .resource-filter-section {
+  flex-shrink: 0;
+}
+
+.environment-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
 .resource-filter-section {
   display: flex;
   flex-direction: column;

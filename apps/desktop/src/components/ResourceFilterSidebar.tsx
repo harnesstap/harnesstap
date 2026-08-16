@@ -1,12 +1,7 @@
-import { useMemo, type ReactNode, type Ref } from "react";
+import { useMemo, type Ref } from "react";
 import { FilterX } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
+import type { ComboboxOption } from "../lib/combobox";
 import {
   LISTABLE_FILTER_RESOURCE_TYPES,
   buildNamespaceFacetOptions,
@@ -106,34 +101,34 @@ function withCurrentOriginOption(
   return [...options, originKind];
 }
 
-function FilterSelect({
+function FilterCombobox({
   id,
   label,
   value,
+  options,
   disabled,
   onValueChange,
-  children,
 }: {
   id: string;
   label: string;
   value: string;
+  options: ComboboxOption[];
   disabled: boolean;
   onValueChange: (value: string) => void;
-  children: ReactNode;
 }) {
   return (
     <div className="resource-filter-section">
       <label className="resource-filter-section-label" htmlFor={id}>
         {label}
       </label>
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent position="popper" align="start">
-          {children}
-        </SelectContent>
-      </Select>
+      <Combobox
+        id={id}
+        value={value}
+        options={options}
+        disabled={disabled}
+        placeholder={label}
+        onValueChange={onValueChange}
+      />
     </div>
   );
 }
@@ -155,22 +150,39 @@ export function ResourceFilterSidebar({
   searchInputRef,
 }: ResourceFilterSidebarProps) {
   const counts = useMemo(() => typeCounts(resources), [resources]);
-  const namespaces = useMemo(
-    () =>
-      withCurrentNamespaceOption(
-        buildNamespaceFacetOptions(resources),
-        state.namespace,
+  const namespaceOptions = useMemo((): ComboboxOption[] => {
+    const facets = withCurrentNamespaceOption(
+      buildNamespaceFacetOptions(resources),
+      state.namespace,
+    );
+    return [
+      { value: NAMESPACE_ALL, label: "All" },
+      ...facets.map((option) =>
+        option.mode === "unnamed"
+          ? { value: NAMESPACE_UNNAMED, label: "None" }
+          : {
+              value: namespaceSelectValue({
+                mode: "named",
+                value: option.value,
+              }),
+              label: option.value,
+            },
       ),
-    [resources, state.namespace],
-  );
-  const origins = useMemo(
-    () =>
-      withCurrentOriginOption(
-        buildOriginFacetOptions(resources),
-        state.originKind,
-      ),
-    [resources, state.originKind],
-  );
+    ];
+  }, [resources, state.namespace]);
+  const originOptions = useMemo((): ComboboxOption[] => {
+    const kinds = withCurrentOriginOption(
+      buildOriginFacetOptions(resources),
+      state.originKind,
+    );
+    return [
+      { value: ORIGIN_ALL, label: "All" },
+      ...kinds.map((origin) => ({
+        value: origin,
+        label: formatOriginKindLabel(origin),
+      })),
+    ];
+  }, [resources, state.originKind]);
   const dirty = isResourceFilterStateActive(state);
   const customInvalid =
     state.updated.preset === "custom" && !isUpdatedFilterValid(state.updated);
@@ -335,46 +347,27 @@ export function ResourceFilterSidebar({
         ) : null}
       </div>
 
-      <FilterSelect
+      <FilterCombobox
         id="resource-filter-namespace"
         label="Namespace"
         value={namespaceSelectValue(state.namespace)}
+        options={namespaceOptions}
         disabled={disabled}
         onValueChange={(value) =>
           onChange({ ...state, namespace: namespaceFromSelectValue(value) })
         }
-      >
-        <SelectItem value={NAMESPACE_ALL}>All</SelectItem>
-        {namespaces.map((option) => {
-          const selection: NamespaceSelection =
-            option.mode === "unnamed"
-              ? { mode: "unnamed" }
-              : { mode: "named", value: option.value };
-          const value = namespaceSelectValue(selection);
-          return (
-            <SelectItem key={value} value={value}>
-              {option.mode === "unnamed" ? "None" : option.value}
-            </SelectItem>
-          );
-        })}
-      </FilterSelect>
+      />
 
-      <FilterSelect
+      <FilterCombobox
         id="resource-filter-origin"
         label="Origin"
         value={originSelectValue(state.originKind)}
+        options={originOptions}
         disabled={disabled}
         onValueChange={(value) =>
           onChange({ ...state, originKind: originFromSelectValue(value) })
         }
-      >
-        <SelectItem value={ORIGIN_ALL}>All</SelectItem>
-        {origins.map((origin) => (
-          <SelectItem key={origin} value={origin}>
-            {formatOriginKindLabel(origin)}
-          </SelectItem>
-        ))}
-      </FilterSelect>
+      />
     </aside>
   );
 }

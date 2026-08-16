@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, FilterX, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -187,62 +187,85 @@ export function EnvironmentsWorkspace({
             <Plus size={ACTION_ICON_SIZE} aria-hidden />
           </button>
         </div>
-        <input
-          className="resources-panel-filter"
-          type="search"
-          placeholder="Filter environments"
-          aria-label="Filter environments"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          disabled={controlsDisabled}
-        />
       </div>
 
       {error ? <div className="banner error">{error}</div> : null}
 
       <div className="resources-panel-layout">
-        <div className="resource-filter-sidebar">
-          {filtered.length === 0 ? (
-            <p className="muted">No environments yet.</p>
-          ) : (
-            <ul className="resources-list">
-              {filtered.map((row) => {
-                const selected = selectedName === row.name;
-                return (
-                  <li className="resources-list-item" key={row.id}>
-                    <button
-                      type="button"
-                      className={[
-                        "resources-list-env",
-                        selected ? "is-selected" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      disabled={controlsDisabled}
-                      aria-current={selected ? "true" : undefined}
-                      onClick={() => setSelectedName(row.name)}
-                    >
-                      <span className="resources-list-name">
-                        {row.name}
-                        {row.is_global_active ? (
-                          <span className="badge">active</span>
-                        ) : null}
-                      </span>
-                      {row.description ? (
-                        <span className="resources-list-desc muted">
-                          {row.description}
+        <aside
+          className="resource-filter-sidebar environment-list-sidebar"
+          aria-label="Environment list"
+        >
+          <div className="resource-filter-section">
+            <div className="resource-filter-search-row">
+              <input
+                className="resources-panel-filter"
+                type="search"
+                placeholder="Filter environments"
+                aria-label="Filter environments"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                disabled={controlsDisabled}
+              />
+              <button
+                type="button"
+                className="icon-action resource-filter-clear"
+                aria-label="Clear filter"
+                title="Clear filter"
+                disabled={controlsDisabled || query.trim() === ""}
+                onClick={() => setQuery("")}
+              >
+                <FilterX size={ACTION_ICON_SIZE} aria-hidden />
+              </button>
+            </div>
+          </div>
+          <div className="environment-list-scroll">
+            {filtered.length === 0 ? (
+              <p className="muted">
+                {rows.length === 0
+                  ? "No environments yet."
+                  : "No matches."}
+              </p>
+            ) : (
+              <ul className="resources-list">
+                {filtered.map((row) => {
+                  const selected = selectedName === row.name;
+                  return (
+                    <li className="resources-list-item" key={row.id}>
+                      <button
+                        type="button"
+                        className={[
+                          "resources-list-env",
+                          selected ? "is-selected" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        disabled={controlsDisabled}
+                        aria-current={selected ? "true" : undefined}
+                        onClick={() => setSelectedName(row.name)}
+                      >
+                        <span className="resources-list-name">
+                          {row.name}
+                          {row.is_global_active ? (
+                            <span className="badge">active</span>
+                          ) : null}
                         </span>
-                      ) : null}
-                      <span className="resources-list-desc muted">
-                        {row.value_count} values · {row.secret_ref_count} secrets
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+                        {row.description ? (
+                          <span className="resources-list-desc muted">
+                            {row.description}
+                          </span>
+                        ) : null}
+                        <span className="resources-list-desc muted">
+                          {row.value_count} values · {row.secret_ref_count} secrets
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </aside>
         <div className="resources-panel-body">
           {detail ? (
             <EnvironmentDetail
