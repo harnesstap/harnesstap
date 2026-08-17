@@ -22,6 +22,7 @@ import {
 import {
   AgentApiError,
   fetchLibraryResourceDetail,
+  openResourcePath,
 } from "../lib/agent-client";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import {
@@ -42,6 +43,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
+import { PluginRefResourceList } from "./PluginRefResourceList";
 
 export interface ResourceDetailTarget {
   /** Prefer id when known; otherwise `type:name` (optional `@namespace`). */
@@ -174,6 +176,7 @@ export function ResourceDetailBody({
   const [draft, setDraft] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
+  const [openingPath, setOpeningPath] = useState<string | null>(null);
 
   const busy = mutating;
   const actionsLocked = disabled || !baseUrl || loading || busy;
@@ -208,6 +211,7 @@ export function ResourceDetailBody({
       setConfirm(null);
       setEditingField(null);
       setFieldError(null);
+      setOpeningPath(null);
       return;
     }
 
@@ -218,6 +222,7 @@ export function ResourceDetailBody({
     setPreview(null);
     setEditingField(null);
     setFieldError(null);
+    setOpeningPath(null);
     void fetchLibraryResourceDetail(baseUrl, token, target.selector, {
       pathHint: target.pathHint,
     })
@@ -380,6 +385,21 @@ export function ResourceDetailBody({
       setError(errorMessage(deleteError, "Could not delete resource"));
     } finally {
       setMutating(false);
+    }
+  }
+
+  async function openContainedPath(path: string): Promise<void> {
+    if (!baseUrl || openingPath) {
+      return;
+    }
+    setOpeningPath(path);
+    setError(null);
+    try {
+      await openResourcePath(baseUrl, token, { path });
+    } catch (openError: unknown) {
+      setError(errorMessage(openError, "Could not open file in editor"));
+    } finally {
+      setOpeningPath(null);
     }
   }
 
@@ -554,6 +574,12 @@ export function ResourceDetailBody({
             display={formatLibraryTimestamp(detail.updated_at)}
             editing={false}
             onStartEdit={() => undefined}
+          />
+          <PluginRefResourceList
+            resources={detail.contained_resources}
+            openingPath={openingPath}
+            disabled={disabled || !baseUrl || loading}
+            onOpen={(path) => void openContainedPath(path)}
           />
         </>
       ) : (
