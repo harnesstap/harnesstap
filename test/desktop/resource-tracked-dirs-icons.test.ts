@@ -84,3 +84,45 @@ describe("tracked directories parent title icons", () => {
     expect(title).toContain("gap: 0.45rem");
   });
 });
+
+const folderLabel = sliceBetween(
+  modalSource,
+  'className="resource-tracked-dirs-folder-label"',
+  "resource-tracked-dirs-path",
+);
+
+const folderMeta = sliceBetween(
+  modalSource,
+  "folder.platform_ids.length > 0",
+  "resource-tracked-dirs-open",
+);
+
+describe("tracked directories nested folder icons", () => {
+  test("renders icons after the folder name", () => {
+    const labelIdx = folderLabel.indexOf("{folder.label}");
+    const iconsIdx = folderLabel.indexOf("RelatedHarnessIcons");
+    expect(labelIdx).toBeGreaterThan(-1);
+    expect(iconsIdx).toBeGreaterThan(labelIdx);
+    expect(folderLabel).toContain(
+      "<RelatedHarnessIcons harnessIds={folder.platform_ids} />",
+    );
+    expect(folderLabel).not.toContain("folder.platform_ids.length");
+  });
+
+  test("keeps comma-separated slugs on the folder meta line", () => {
+    expect(folderMeta).toContain("folder.platform_ids.join(\", \")");
+  });
+
+  test("folder label row matches parent title flex alignment", () => {
+    const label = cssBlock(
+      stylesSource,
+      ".resource-tracked-dirs-folder-label",
+    );
+    expect(label).toContain("display: flex");
+    expect(label).toContain("align-items: center");
+    expect(label).toContain("flex-wrap: wrap");
+    expect(label).toContain("gap: 0.45rem");
+    expect(label).toContain("font-size: 12px");
+    expect(label).toContain("font-weight: 600");
+  });
+});

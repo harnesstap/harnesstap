@@ -334,9 +334,10 @@ export function ResourceTrackedDirectoriesModal({
                               key={folder.path}
                             >
                               <div className="resource-tracked-dirs-folder-main">
-                                <span className="resource-tracked-dirs-folder-label">
-                                  {folder.label}
-                                </span>
+                                <div className="resource-tracked-dirs-folder-label">
+                                  <span>{folder.label}</span>
+                                  <RelatedHarnessIcons harnessIds={folder.platform_ids} />
+                                </div>
                                 <span className="mono resource-tracked-dirs-path muted">
                                   {folder.path}
                                 </span>
