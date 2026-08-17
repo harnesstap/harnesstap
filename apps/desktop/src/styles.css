@@ -1021,6 +1021,10 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  min-width: 0;
 }
 
 .resource-filter-section-label {
@@ -1028,6 +1032,32 @@ button:focus-visible,
   font-weight: 600;
   text-transform: lowercase;
   color: var(--muted);
+}
+
+.resource-filter-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.resource-filter-option.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.resource-filter-option:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.resource-filter-option input {
+  margin-top: 0.15rem;
 }
 
 .resource-filter-type-badges {

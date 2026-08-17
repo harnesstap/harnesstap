@@ -118,6 +118,22 @@ describe("applyLibraryResourceFilters", () => {
     ).toEqual(["3"]);
   });
 
+  it("groups manual and local_snapshot as Local", () => {
+    expect(
+      applyLibraryResourceFilters(rows, {
+        ...defaultResourceFilterState(),
+        originKind: "local",
+      }).map((r) => r.id),
+    ).toEqual(["1", "2"]);
+
+    expect(
+      applyLibraryResourceFilters(rows, {
+        ...defaultResourceFilterState(),
+        originKind: "manual",
+      }).map((r) => r.id),
+    ).toEqual(["1", "2"]);
+  });
+
   it("filters updated_at with 7d preset using injected now", () => {
     const now = new Date(2026, 7, 8, 12, 0, 0); // local Aug 8, 2026
     const filtered = applyLibraryResourceFilters(
@@ -199,16 +215,17 @@ describe("facet options", () => {
 
   it("builds origin options sorted from full library", () => {
     expect(buildOriginFacetOptions(rows)).toEqual([
-      "local_snapshot",
-      "manual",
+      "local",
       "marketplace_link",
     ]);
   });
 
   it("formats origin kinds as human-readable labels", () => {
-    expect(formatOriginKindLabel("local_snapshot")).toBe("Local snapshot");
+    expect(formatOriginKindLabel("local")).toBe("Local");
+    expect(formatOriginKindLabel("local_snapshot")).toBe("Local");
+    expect(formatOriginKindLabel("manual")).toBe("Local");
     expect(formatOriginKindLabel("marketplace_link")).toBe("Marketplace");
-    expect(formatOriginKindLabel("manual")).toBe("Manual");
+    expect(formatOriginKindLabel("untracked")).toBe("Untracked");
     expect(formatOriginKindLabel("other_kind")).toBe("other kind");
   });
 });

@@ -1,7 +1,6 @@
 import { useMemo, type Ref } from "react";
 import { FilterX } from "lucide-react";
-import { Combobox } from "@/components/ui/combobox";
-import type { ComboboxOption } from "../lib/combobox";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
   LISTABLE_FILTER_RESOURCE_TYPES,
   buildNamespaceFacetOptions,
@@ -9,6 +8,7 @@ import {
   formatOriginKindLabel,
   isResourceFilterStateActive,
   isUpdatedFilterValid,
+  originFilterValue,
   type NamespaceFacetOption,
   type NamespaceSelection,
   type ResourceFilterState,
@@ -71,11 +71,7 @@ function namespaceFromSelectValue(value: string): NamespaceSelection {
 }
 
 function originSelectValue(originKind: string | null): string {
-  return originKind ?? ORIGIN_ALL;
-}
-
-function originFromSelectValue(value: string): string | null {
-  return value === ORIGIN_ALL ? null : value;
+  return originKind === null ? ORIGIN_ALL : originFilterValue(originKind);
 }
 
 function withCurrentNamespaceOption(
@@ -95,10 +91,14 @@ function withCurrentOriginOption(
   options: string[],
   originKind: string | null,
 ): string[] {
-  if (originKind === null || options.includes(originKind)) {
+  if (originKind === null) {
     return options;
   }
-  return [...options, originKind];
+  const grouped = originFilterValue(originKind);
+  if (options.includes(grouped)) {
+    return options;
+  }
+  return [...options, grouped];
 }
 
 function FilterCombobox({
@@ -170,19 +170,14 @@ export function ResourceFilterSidebar({
       ),
     ];
   }, [resources, state.namespace]);
-  const originOptions = useMemo((): ComboboxOption[] => {
-    const kinds = withCurrentOriginOption(
-      buildOriginFacetOptions(resources),
-      state.originKind,
-    );
-    return [
-      { value: ORIGIN_ALL, label: "All" },
-      ...kinds.map((origin) => ({
-        value: origin,
-        label: formatOriginKindLabel(origin),
-      })),
-    ];
-  }, [resources, state.originKind]);
+  const origins = useMemo(
+    () =>
+      withCurrentOriginOption(
+        buildOriginFacetOptions(resources),
+        state.originKind,
+      ),
+    [resources, state.originKind],
+  );
   const dirty = isResourceFilterStateActive(state);
   const customInvalid =
     state.updated.preset === "custom" && !isUpdatedFilterValid(state.updated);
@@ -358,16 +353,39 @@ export function ResourceFilterSidebar({
         }
       />
 
-      <FilterCombobox
-        id="resource-filter-origin"
-        label="Origin"
-        value={originSelectValue(state.originKind)}
-        options={originOptions}
-        disabled={disabled}
-        onValueChange={(value) =>
-          onChange({ ...state, originKind: originFromSelectValue(value) })
-        }
-      />
+      <fieldset className="resource-filter-section">
+        <legend className="resource-filter-section-label">Origin</legend>
+        <label
+          className={`resource-filter-option${state.originKind === null ? " selected" : ""}`}
+        >
+          <input
+            type="radio"
+            name="resource-filter-origin"
+            checked={state.originKind === null}
+            disabled={disabled}
+            onChange={() => onChange({ ...state, originKind: null })}
+          />
+          <span>All</span>
+        </label>
+        {origins.map((origin) => {
+          const selected = originSelectValue(state.originKind) === origin;
+          return (
+            <label
+              key={origin}
+              className={`resource-filter-option${selected ? " selected" : ""}`}
+            >
+              <input
+                type="radio"
+                name="resource-filter-origin"
+                checked={selected}
+                disabled={disabled}
+                onChange={() => onChange({ ...state, originKind: origin })}
+              />
+              <span>{formatOriginKindLabel(origin)}</span>
+            </label>
+          );
+        })}
+      </fieldset>
     </aside>
   );
 }

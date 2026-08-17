@@ -170,7 +170,10 @@ export function applyLibraryResourceFilters(
   }
 
   if (state.originKind !== null) {
-    next = next.filter((resource) => resource.origin_kind === state.originKind);
+    const wanted = originFilterValue(state.originKind);
+    next = next.filter(
+      (resource) => originFilterValue(resource.origin_kind ?? "") === wanted,
+    );
   }
 
   const bounds = resolveUpdatedAtBounds(state.updated, now);
@@ -209,23 +212,32 @@ export function buildNamespaceFacetOptions(
   return hasUnnamed ? [{ mode: "unnamed" }, ...named] : named;
 }
 
+const LOCAL_ORIGIN_KINDS = new Set(["local", "local_snapshot", "manual"]);
+
+export function originFilterValue(originKind: string): string {
+  if (LOCAL_ORIGIN_KINDS.has(originKind)) {
+    return "local";
+  }
+  return originKind;
+}
+
 export function buildOriginFacetOptions(resources: LibraryResource[]): string[] {
   const kinds = new Set<string>();
   for (const resource of resources) {
     if (resource.origin_kind) {
-      kinds.add(resource.origin_kind);
+      kinds.add(originFilterValue(resource.origin_kind));
     }
   }
   return [...kinds].sort((a, b) => a.localeCompare(b));
 }
 
 const ORIGIN_KIND_LABELS: Record<string, string> = {
-  local_snapshot: "Local snapshot",
+  local: "Local",
   marketplace_link: "Marketplace",
-  manual: "Manual",
   untracked: "Untracked",
 };
 
 export function formatOriginKindLabel(originKind: string): string {
-  return ORIGIN_KIND_LABELS[originKind] ?? originKind.replaceAll("_", " ");
+  const grouped = originFilterValue(originKind);
+  return ORIGIN_KIND_LABELS[grouped] ?? grouped.replaceAll("_", " ");
 }

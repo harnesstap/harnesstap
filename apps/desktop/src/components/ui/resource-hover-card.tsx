@@ -7,11 +7,14 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { FileText, Folder, Package, Pencil, Store } from "lucide-react";
+import { FileText, Folder, Package, Store } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { labelForType } from "../../lib/contents-diff";
 import { harnessDisplayName } from "../../lib/harness-meta";
-import { formatOriginKindLabel } from "../../lib/resource-filters";
+import {
+  formatOriginKindLabel,
+  originFilterValue,
+} from "../../lib/resource-filters";
 import {
   cursorAnchorStyle,
   formatHoverPath,
@@ -30,13 +33,11 @@ const COLLISION_PADDING = 8;
 let lastHoverCloseAt = 0;
 
 function OriginHoverIcon({ originKind }: { originKind: string }): ReactNode {
-  switch (originKind) {
+  switch (originFilterValue(originKind)) {
     case "marketplace_link":
       return <Store size={ICON_SIZE} aria-hidden />;
-    case "local_snapshot":
+    case "local":
       return <Folder size={ICON_SIZE} aria-hidden />;
-    case "manual":
-      return <Pencil size={ICON_SIZE} aria-hidden />;
     default:
       return <Package size={ICON_SIZE} aria-hidden />;
   }
