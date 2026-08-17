@@ -1,9 +1,25 @@
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
+import { parse, stringify } from "yaml";
 import { BaseSerializer } from "./base-serializer.js";
+import {
+  hooksBridgeInsertItem,
+  mergeCordisPatch,
+  mergeSettingsYaml,
+  mcpResourceToInsertItem,
+  parseCordisMcpServers,
+  parseSettingsResources,
+  resolveDshHome,
+  sanitizePresetId,
+  type CordisInsertItem,
+  type SettingsOverlay,
+} from "./deepseek-harness-home.js";
 import { getPlatform } from "./registry.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import type {
   HookMetadata,
+  McpServerMetadata,
+  ModelConfigMetadata,
+  PermissionMetadata,
   PlatformDefinition,
   Resource,
   ResourceCreateInput,
@@ -17,6 +33,9 @@ const PROJECT_INSTRUCTION_CANDIDATES = [
   "AGENTS.local.md",
   "CLAUDE.local.md",
 ] as const;
+
+const PERSONA_PLUGIN_NAME = "@deepseek-ai/dsh-persona";
+const LEGAL_PERMISSION_PRESETS = new Set(["workspace-write", "danger-full-access"]);
 
 function instructionResourceName(path: string): string {
   if (path.endsWith(".local.md")) {
@@ -32,9 +51,45 @@ function hooksOutputPath(hooksPath: string): string {
   return hooksPath;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function personaTextFromCordis(content: string): string | undefined {
+  try {
+    const parsed: unknown = parse(content);
+    if (!Array.isArray(parsed)) return undefined;
+    for (const item of parsed) {
+      if (!isRecord(item) || item.name !== PERSONA_PLUGIN_NAME) continue;
+      if (!isRecord(item.config) || typeof item.config.text !== "string") continue;
+      return item.config.text;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function presetDescription(content: string | undefined): string {
+  if (!content) return "";
+  try {
+    const parsed: unknown = parse(content);
+    if (isRecord(parsed) && typeof parsed.description === "string") {
+      return parsed.description;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function dshRelative(projectRoot: string, dshHome: string, subpath: string): string {
+  return relative(projectRoot, join(dshHome, subpath)).split(sep).join("/");
+}
+
 /**
  * Native serializer for DeepSeek Harness (`.dsh/` layout).
- * Project scan/apply only; global scan/serialize is stubbed for a later task.
+ * Project scan/apply writes portable files; global scan/apply owns `$DSH_HOME`.
  */
 export class DeepSeekHarnessSerializer extends BaseSerializer {
   readonly platformId = "deepseek-harness";
@@ -113,17 +168,70 @@ export class DeepSeekHarnessSerializer extends BaseSerializer {
     return resources;
   }
 
-  async scanGlobal(_homeRoot: string): Promise<ResourceCreateInput[]> {
-    return [];
+  async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
+    const resources: ResourceCreateInput[] = [];
+    const dshHome = resolveDshHome(homeRoot);
+
+    const instructions = this.readFile(join(dshHome, "AGENTS.md"));
+    if (instructions && instructions.trim().length > 0) {
+      resources.push(
+        this.makeResource(
+          "instruction",
+          "deepseek-harness-instructions",
+          instructions,
+          "~/.dsh/AGENTS.md",
+        ),
+      );
+    }
+
+    for (const resource of this.scanSkillsDirAt(join(dshHome, "skills"), "~/.dsh/skills")) {
+      if (resource.type !== "skill") continue;
+      resources.push(resource);
+    }
+
+    const patchContent = this.readFile(join(dshHome, "cordis.patch.yml"));
+    if (patchContent) {
+      resources.push(...parseCordisMcpServers(patchContent, "~/.dsh/cordis.patch.yml"));
+    }
+
+    resources.push(...this.scanHooksDir(join(dshHome, "hooks"), "~/.dsh/hooks/"));
+
+    const settingsContent = this.readFile(join(dshHome, "settings.yaml"));
+    if (settingsContent) {
+      resources.push(...parseSettingsResources(settingsContent, "~/.dsh/settings.yaml"));
+    }
+
+    const presetsRoot = join(dshHome, ".agent-presets");
+    for (const entry of this.listDir(presetsRoot)) {
+      const presetDir = join(presetsRoot, entry);
+      if (!this.isDirectory(presetDir)) continue;
+      const description = presetDescription(this.readFile(join(presetDir, "preset.yml")));
+      const cordisYml = this.readFile(join(presetDir, "agent.cordis.yml"));
+      const personaText = cordisYml ? personaTextFromCordis(cordisYml) : undefined;
+      resources.push(
+        this.makeResource(
+          "agent",
+          entry,
+          personaText ?? description,
+          `~/.dsh/.agent-presets/${entry}`,
+          {},
+          description,
+        ),
+      );
+    }
+
+    return resources;
   }
 
   async serialize(
     resources: Resource[],
-    _projectRoot: string,
+    projectRoot: string,
     options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const target = options.target ?? "project";
-    if (target === "global") return [];
+    if (target === "global") {
+      return this.serializeGlobal(resources, projectRoot, options);
+    }
 
     const files: SerializedFile[] = [];
     const targetPaths = this.getTargetPaths(target);
@@ -167,6 +275,126 @@ export class DeepSeekHarnessSerializer extends BaseSerializer {
           null,
           2,
         ),
+      });
+    }
+
+    return files;
+  }
+
+  private serializeGlobal(
+    resources: Resource[],
+    projectRoot: string,
+    options: SerializeOptions,
+  ): SerializedFile[] {
+    const dshHome = resolveDshHome(projectRoot);
+    const rel = (subpath: string) => dshRelative(projectRoot, dshHome, subpath);
+
+    const mcpServers = this.mcpServersForTarget(
+      resources,
+      this.platform.globalPaths.mcp,
+    );
+    const hooks = resources.filter((r) => r.type === "hook");
+    const rows: CordisInsertItem[] = [];
+    for (const server of mcpServers) {
+      const item = mcpResourceToInsertItem(
+        server.name,
+        server.metadata as McpServerMetadata,
+      );
+      if (item) rows.push(item);
+    }
+    if (hooks.length > 0) {
+      rows.push(hooksBridgeInsertItem(join(dshHome, "hooks/harnesstap.json")));
+    }
+
+    let patchYaml: string | undefined;
+    if (rows.length > 0) {
+      patchYaml = mergeCordisPatch(
+        this.readFile(join(dshHome, "cordis.patch.yml")),
+        rows,
+      );
+    }
+
+    const modelConfig = resources.find((r) => r.type === "model_config");
+    const permissionPreset = resources
+      .filter((r) => r.type === "permission")
+      .map((r) => (r.metadata as PermissionMetadata).pattern)
+      .find((pattern) => LEGAL_PERMISSION_PRESETS.has(pattern));
+
+    let settingsYaml: string | undefined;
+    if (modelConfig || permissionPreset) {
+      const overlay: SettingsOverlay = {};
+      if (modelConfig) {
+        const meta = modelConfig.metadata as ModelConfigMetadata;
+        overlay.model = { model: meta.model, provider: meta.provider };
+      }
+      if (permissionPreset) overlay.permissionPreset = permissionPreset;
+      settingsYaml = mergeSettingsYaml(
+        this.readFile(join(dshHome, "settings.yaml")),
+        overlay,
+      );
+    }
+
+    const files: SerializedFile[] = [];
+
+    const instructions = resources.filter((r) => r.type === "instruction");
+    if (instructions.length > 0) {
+      files.push({
+        path: rel("AGENTS.md"),
+        content: instructions.map((r) => r.content).join("\n\n"),
+      });
+    }
+
+    for (const r of resources.filter((r) => r.type === "skill")) {
+      files.push(
+        ...this.emitSkillWithAuxiliary(r, rel(`skills/${r.name}/SKILL.md`), options),
+      );
+    }
+
+    if (patchYaml !== undefined) {
+      files.push({ path: rel("cordis.patch.yml"), content: patchYaml });
+    }
+
+    if (hooks.length > 0) {
+      files.push({
+        path: rel("hooks/harnesstap.json"),
+        content: JSON.stringify(
+          buildHooksJson(
+            hooks.map((r) => ({
+              ...(r.metadata as HookMetadata),
+              name: r.name,
+            })),
+          ),
+          null,
+          2,
+        ),
+      });
+    }
+
+    if (settingsYaml !== undefined) {
+      files.push({ path: rel("settings.yaml"), content: settingsYaml });
+    }
+
+    const agentsById = new Map<string, Resource>();
+    for (const r of resources.filter((r) => r.type === "agent")) {
+      agentsById.set(sanitizePresetId(r.name), r);
+    }
+    for (const [id, r] of agentsById) {
+      files.push({
+        path: rel(`.agent-presets/${id}/preset.yml`),
+        content: stringify({
+          name: r.description || r.name,
+          description: r.description ?? "",
+        }),
+      });
+      files.push({
+        path: rel(`.agent-presets/${id}/agent.cordis.yml`),
+        content: stringify([
+          {
+            id: "persona",
+            name: PERSONA_PLUGIN_NAME,
+            config: { text: r.content, complete: false },
+          },
+        ]),
       });
     }
 

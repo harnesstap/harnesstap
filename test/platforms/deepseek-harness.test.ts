@@ -100,3 +100,203 @@ describe("DeepSeekHarnessSerializer project", () => {
     );
   });
 });
+
+describe("DeepSeekHarnessSerializer global", () => {
+  it("scans home patch MCP, hooks, settings, and user presets", async () => {
+    const homeDir = createTempDir("dsh-home-scan");
+    try {
+      writeTextFile(join(homeDir, ".dsh/AGENTS.md"), "# Home\n");
+      writeTextFile(
+        join(homeDir, ".dsh/skills/home-skill/SKILL.md"),
+        "---\nname: home-skill\ndescription: Home\n---\nBody.\n",
+      );
+      writeTextFile(
+        join(homeDir, ".dsh/cordis.patch.yml"),
+        `
+- insert:
+    - id: user-memory
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: memory
+        transport: stdio
+        command: memory-mcp
+    - id: harnesstap-mcp-linear
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: linear
+        transport: streamable-http
+        url: https://mcp.linear.app/mcp
+`,
+      );
+      writeTextFile(
+        join(homeDir, ".dsh/hooks/harnesstap.json"),
+        JSON.stringify({
+          hooks: {
+            PreToolUse: [
+              { matcher: "Bash", hooks: [{ type: "command", command: "bin/check.sh" }] },
+            ],
+          },
+        }),
+      );
+      writeTextFile(
+        join(homeDir, ".dsh/settings.yaml"),
+        "agent-default-model:\n  provider: deepseek\n  model: deepseek-chat\npermission:\n  defaultPreset: workspace-write\n",
+      );
+      writeTextFile(
+        join(homeDir, ".dsh/.agent-presets/explorer/preset.yml"),
+        "name: Explorer\ndescription: Explore the repo\n",
+      );
+      writeTextFile(
+        join(homeDir, ".dsh/.agent-presets/explorer/agent.cordis.yml"),
+        "- id: persona\n  name: '@deepseek-ai/dsh-persona'\n  config:\n    text: Search thoroughly.\n    complete: false\n",
+      );
+
+      const resources = await new DeepSeekHarnessSerializer().scanGlobal(homeDir);
+      expect(resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "instruction", source: "~/.dsh/AGENTS.md" }),
+          expect.objectContaining({ type: "skill", name: "home-skill" }),
+          expect.objectContaining({
+            type: "mcp_server",
+            name: "memory",
+            metadata: expect.objectContaining({ transport: "stdio", command: "memory-mcp" }),
+          }),
+          expect.objectContaining({
+            type: "mcp_server",
+            name: "linear",
+            metadata: expect.objectContaining({
+              transport: "http",
+              url: "https://mcp.linear.app/mcp",
+            }),
+          }),
+          expect.objectContaining({ type: "hook" }),
+          expect.objectContaining({
+            type: "model_config",
+            metadata: expect.objectContaining({ model: "deepseek-chat" }),
+          }),
+          expect.objectContaining({
+            type: "permission",
+            metadata: expect.objectContaining({ pattern: "workspace-write" }),
+          }),
+          expect.objectContaining({
+            type: "agent",
+            name: "explorer",
+            content: expect.stringContaining("Search thoroughly."),
+          }),
+        ]),
+      );
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
+  it("merges harnesstap rows into an existing home patch on global apply", async () => {
+    const homeDir = createTempDir("dsh-home-apply");
+    try {
+      writeTextFile(
+        join(homeDir, ".dsh/cordis.patch.yml"),
+        "- insert:\n    - id: user-memory\n      name: '@deepseek-ai/dsh-mcp-client'\n      config:\n        serverName: memory\n        transport: stdio\n        command: memory-mcp\n",
+      );
+      writeTextFile(join(homeDir, ".dsh/settings.yaml"), "llm-pi-ai:\n  keep: true\n");
+
+      const files = await new DeepSeekHarnessSerializer().serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "docs",
+            metadata: { transport: "stdio", command: "docs-mcp" },
+          }),
+          makeResource({
+            type: "hook",
+            name: "PreToolUse-Bash",
+            content: "bin/check.sh",
+            metadata: { event: "PreToolUse", script: "bin/check.sh", matcher: "Bash" },
+          }),
+          makeResource({
+            type: "model_config",
+            name: "default",
+            metadata: { model: "deepseek-chat", provider: "deepseek" },
+          }),
+          makeResource({
+            type: "permission",
+            name: "default",
+            metadata: { action: "allow", pattern: "workspace-write" },
+          }),
+          makeResource({
+            type: "agent",
+            name: "explorer",
+            description: "Explore",
+            content: "Search thoroughly.",
+          }),
+          makeResource({
+            type: "permission",
+            name: "deny-bash",
+            metadata: { action: "deny", pattern: "Bash(*)" },
+          }),
+        ],
+        homeDir,
+        { target: "global" },
+      );
+
+      const patch = files.find((file) => file.path.endsWith("cordis.patch.yml"));
+      expect(patch).toBeDefined();
+      expect(patch?.content).toContain("user-memory");
+      expect(patch?.content).toContain("harnesstap-mcp-docs");
+      expect(patch?.content).toContain("harnesstap-hooks-claude-code");
+      expect(patch?.content).toContain("docs-mcp");
+
+      expect(files.map((file) => file.path)).toEqual(
+        expect.arrayContaining([
+          ".dsh/hooks/harnesstap.json",
+          ".dsh/settings.yaml",
+          ".dsh/.agent-presets/explorer/preset.yml",
+          ".dsh/.agent-presets/explorer/agent.cordis.yml",
+        ]),
+      );
+      const settings = files.find((file) => file.path.endsWith("settings.yaml"));
+      expect(settings?.content).toContain("keep: true");
+      expect(settings?.content).toContain("deepseek-chat");
+      expect(settings?.content).toContain("workspace-write");
+      expect(settings?.content).not.toContain("Bash(*)");
+
+      const again = await new DeepSeekHarnessSerializer().serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "docs",
+            metadata: { transport: "stdio", command: "docs-mcp" },
+          }),
+        ],
+        homeDir,
+        { target: "global" },
+      );
+      const patchAgain = again.find((file) => file.path.endsWith("cordis.patch.yml"));
+      expect(patchAgain?.content.match(/harnesstap-mcp-docs/g)?.length).toBe(1);
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
+  it("throws on invalid home patch and emits no files", async () => {
+    const homeDir = createTempDir("dsh-bad-patch");
+    try {
+      writeTextFile(join(homeDir, ".dsh/cordis.patch.yml"), "not-a-list: true\n");
+      await expect(
+        new DeepSeekHarnessSerializer().serialize(
+          [
+            makeResource({
+              type: "mcp_server",
+              name: "docs",
+              metadata: { transport: "stdio", command: "docs-mcp" },
+            }),
+            makeResource({ type: "skill", name: "review", content: "# Review" }),
+          ],
+          homeDir,
+          { target: "global" },
+        ),
+      ).rejects.toThrow(/list of patch operations/);
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+});
