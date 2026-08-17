@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, FilterX, Pencil, Plus, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,8 @@ export interface EnvironmentsWorkspaceProps {
   switching?: boolean;
   projectPath: string | null;
   disabled?: boolean;
+  /** Bump while mounted to clear the name filter and deselect (header re-click). */
+  homeResetNonce?: number;
   onSuccess: (message: string) => void;
   onOpenPlugin?: (pluginName: string) => void;
 }
@@ -37,6 +39,7 @@ export function EnvironmentsWorkspace({
   switching: switchingProp,
   projectPath,
   disabled = false,
+  homeResetNonce = 0,
   onSuccess,
   onOpenPlugin,
 }: EnvironmentsWorkspaceProps) {
@@ -48,6 +51,16 @@ export function EnvironmentsWorkspace({
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const homeResetNonceSeen = useRef(homeResetNonce);
+
+  useEffect(() => {
+    if (homeResetNonceSeen.current === homeResetNonce) {
+      return;
+    }
+    homeResetNonceSeen.current = homeResetNonce;
+    setQuery("");
+    setSelectedName(null);
+  }, [homeResetNonce]);
   const [detail, setDetail] = useState<EnvironmentShowPayload | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");

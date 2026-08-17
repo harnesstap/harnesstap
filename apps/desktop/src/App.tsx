@@ -7,6 +7,11 @@ import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { shouldAutoReapply, shouldShowReapply } from "./lib/reapply";
+import {
+  activeHeaderDestination,
+  headerClickIntent,
+  type HeaderDestination,
+} from "./lib/header-destination";
 import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
@@ -174,6 +179,7 @@ export function App() {
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
+  const [homeResetNonce, setHomeResetNonce] = useState(0);
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
@@ -1604,6 +1610,48 @@ export function App() {
     })();
   };
 
+  const activeDestination = activeHeaderDestination(workspaceFocus, view);
+
+  const onHeaderDestinationClick = (clicked: HeaderDestination): void => {
+    if (headerClickIntent(activeDestination, clicked) === "reset") {
+      switch (clicked) {
+        case "library":
+        case "environments":
+          setHomeResetNonce((value) => value + 1);
+          return;
+        case "home":
+        case "project":
+          setProfileFilter("");
+          setEditingProfile(null);
+          return;
+        default: {
+          const neverClicked: never = clicked;
+          return neverClicked;
+        }
+      }
+    }
+    switch (clicked) {
+      case "library":
+        setEditingProfile(null);
+        setWorkspaceFocus("library");
+        return;
+      case "environments":
+        setEditingProfile(null);
+        setWorkspaceFocus("environments");
+        return;
+      case "home":
+        onSelectView("home");
+        return;
+      case "project":
+        onSelectView("project");
+        return;
+      default: {
+        const neverClicked: never = clicked;
+        return neverClicked;
+      }
+    }
+  };
+
   const onApplyClick = () => {
     if (showReapply) {
       if (!activeProfile) {
@@ -1774,10 +1822,7 @@ export function App() {
             <button
               type="button"
               className={`header-focus-btn${workspaceFocus === "library" ? " on" : ""}`}
-              onClick={() => {
-                setEditingProfile(null);
-                setWorkspaceFocus("library");
-              }}
+              onClick={() => onHeaderDestinationClick("library")}
               disabled={switching}
               aria-label="Library"
               title="Library"
@@ -1786,9 +1831,8 @@ export function App() {
             </button>
             <ParityChrome
               workspaceFocus={workspaceFocus}
-              onWorkspaceFocus={(focus) => {
-                setEditingProfile(null);
-                setWorkspaceFocus(focus);
+              onWorkspaceFocus={() => {
+                onHeaderDestinationClick("environments");
               }}
               switching={switching}
             />
@@ -1803,7 +1847,7 @@ export function App() {
                   workspaceFocus === "scope" && view === "home" ? "on" : ""
                 }
                 data-testid="view-home"
-                onClick={() => onSelectView("home")}
+                onClick={() => onHeaderDestinationClick("home")}
                 disabled={switching || bootstrapBusy}
                 aria-label="Global"
                 title="Global"
@@ -1816,7 +1860,7 @@ export function App() {
                   workspaceFocus === "scope" && view === "project" ? "on" : ""
                 }
                 data-testid="view-project"
-                onClick={() => onSelectView("project")}
+                onClick={() => onHeaderDestinationClick("project")}
                 disabled={switching || bootstrapBusy}
                 aria-label="Project"
                 title={
@@ -2315,6 +2359,7 @@ export function App() {
             token={token}
             projectPath={view === "project" ? projectPath : null}
             disabled={switching}
+            homeResetNonce={homeResetNonce}
             onOpenPlugin={(pluginName) => {
               setLibraryFocusPlugin(pluginName);
               setWorkspaceFocus("library");
@@ -2330,6 +2375,7 @@ export function App() {
             token={token}
             reloadKey={libraryReloadKey}
             disabled={switching}
+            homeResetNonce={homeResetNonce}
             projectPath={view === "project" ? projectPath : null}
             selectedProfile={selectedProfile}
             focusPluginName={libraryFocusPlugin}
