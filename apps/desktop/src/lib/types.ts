@@ -75,6 +75,13 @@ export interface ResourceTrackedDirectoriesRescanResult {
   imported_count: number;
 }
 
+export interface PluginContainedResource {
+  type: string;
+  name: string;
+  path: string;
+  relative_path: string;
+}
+
 export interface LibraryResourceDetail {
   id: string;
   type: string;
@@ -87,6 +94,9 @@ export interface LibraryResourceDetail {
   updated_at: string;
   content: string;
   content_truncated: boolean;
+  install_path?: string | null;
+  marketplace_url?: string | null;
+  contained_resources?: PluginContainedResource[];
 }
 
 export type ProfileCreateSource = "compose" | "home" | "project";

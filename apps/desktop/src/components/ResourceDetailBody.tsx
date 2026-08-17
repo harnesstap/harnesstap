@@ -14,6 +14,7 @@ import {
   FileCode2,
   Folder,
   Hash,
+  Link,
   MapPin,
   RefreshCw,
   Trash2,
@@ -21,6 +22,7 @@ import {
 import {
   AgentApiError,
   fetchLibraryResourceDetail,
+  openResourcePath,
 } from "../lib/agent-client";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import {
@@ -30,12 +32,18 @@ import {
   syncLibraryResource,
   type ResourceSyncResult,
 } from "../lib/api/resource-mutate";
+import { formatLibraryTimestamp } from "../lib/library-timestamp";
+import {
+  isPluginTypeResource,
+  pluginRefShowsMarketplaceUrl,
+} from "../lib/plugin-ref-detail";
 import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import type { LibraryDetailChromeProps } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
+import { PluginRefResourceList } from "./PluginRefResourceList";
 
 export interface ResourceDetailTarget {
   /** Prefer id when known; otherwise `type:name` (optional `@namespace`). */
@@ -82,10 +90,10 @@ function displayName(resource: LibraryResourceDetail): string {
 
 function originLabel(resource: LibraryResourceDetail): string {
   const kind = formatOriginKindLabel(resource.origin_kind);
-  if (resource.origin_ref) {
-    return `${kind} (${resource.origin_ref})`;
+  if (isPluginTypeResource(resource.type) || !resource.origin_ref) {
+    return kind;
   }
-  return kind;
+  return `${kind} (${resource.origin_ref})`;
 }
 
 function isUntrackedDetail(resource: LibraryResourceDetail): boolean {
@@ -158,6 +166,7 @@ export function ResourceDetailBody({
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [detail, setDetail] = useState<LibraryResourceDetail | null>(null);
   const [preview, setPreview] = useState<ResourceSyncResult | null>(null);
   const [mutating, setMutating] = useState(false);
@@ -168,6 +177,7 @@ export function ResourceDetailBody({
   const [draft, setDraft] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
+  const [openingPath, setOpeningPath] = useState<string | null>(null);
 
   const busy = mutating;
   const actionsLocked = disabled || !baseUrl || loading || busy;
@@ -197,21 +207,25 @@ export function ResourceDetailBody({
     if (!target || !baseUrl) {
       setDetail(null);
       setError(null);
+      setActionError(null);
       setLoading(false);
       setPreview(null);
       setConfirm(null);
       setEditingField(null);
       setFieldError(null);
+      setOpeningPath(null);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setActionError(null);
     setDetail(null);
     setPreview(null);
     setEditingField(null);
     setFieldError(null);
+    setOpeningPath(null);
     void fetchLibraryResourceDetail(baseUrl, token, target.selector, {
       pathHint: target.pathHint,
     })
@@ -330,7 +344,7 @@ export function ResourceDetailBody({
       return;
     }
     setMutating(true);
-    setError(null);
+    setActionError(null);
     try {
       const result = await syncLibraryResource(baseUrl, token, target.selector, {
         dry_run: dryRun,
@@ -352,7 +366,7 @@ export function ResourceDetailBody({
         setConfirm("overwrite");
         return;
       }
-      setError(errorMessage(syncError, "Could not sync resource"));
+      setActionError(errorMessage(syncError, "Could not sync resource"));
     } finally {
       setMutating(false);
     }
@@ -363,7 +377,7 @@ export function ResourceDetailBody({
       return;
     }
     setMutating(true);
-    setError(null);
+    setActionError(null);
     try {
       await deleteLibraryResource(baseUrl, token, target.selector);
       onSuccess?.(`Deleted ${quoteResource(detail)}`);
@@ -371,9 +385,24 @@ export function ResourceDetailBody({
       setConfirm(null);
       onDeleted?.();
     } catch (deleteError: unknown) {
-      setError(errorMessage(deleteError, "Could not delete resource"));
+      setActionError(errorMessage(deleteError, "Could not delete resource"));
     } finally {
       setMutating(false);
+    }
+  }
+
+  async function openContainedPath(path: string): Promise<void> {
+    if (!baseUrl || openingPath) {
+      return;
+    }
+    setOpeningPath(path);
+    setActionError(null);
+    try {
+      await openResourcePath(baseUrl, token, { path });
+    } catch (openError: unknown) {
+      setActionError(errorMessage(openError, "Could not open file in editor"));
+    } finally {
+      setOpeningPath(null);
     }
   }
 
@@ -495,7 +524,7 @@ export function ResourceDetailBody({
 
   const fields: ReactNode = loading ? (
     <p className="muted">Loading details…</p>
-  ) : error ? (
+  ) : !detail && error ? (
     <div className="banner error" role="alert">
       <div>{error}</div>
       {target.pathHint ? (
@@ -506,75 +535,131 @@ export function ResourceDetailBody({
     </div>
   ) : detail ? (
     <>
+      {actionError ? (
+        <div className="banner error" role="alert">
+          <div>{actionError}</div>
+        </div>
+      ) : null}
       {chrome === "pane" && editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
       ) : null}
-      <LibraryFieldRow
-        icon={<AlignLeft size={16} aria-hidden />}
-        fieldName="Description"
-        readOnly={fieldsReadOnly}
-        display={detail.description}
-        placeholder="No description"
-        editing={editingField === "description"}
-        error={editingField === "description" ? fieldError : null}
-        onStartEdit={() => void startEdit("description")}
-      >
-        {renderEditor("description", descriptionMultiline)}
-      </LibraryFieldRow>
-      {detail.namespace ? (
-        <LibraryFieldRow
-          icon={<Hash size={16} aria-hidden />}
-          fieldName="Namespace"
-          readOnly
-          display={detail.namespace}
-          editing={false}
-          onStartEdit={() => undefined}
-        />
-      ) : null}
-      <LibraryFieldRow
-        icon={<Folder size={16} aria-hidden />}
-        fieldName="Path"
-        readOnly
-        mono
-        display={detail.source || "—"}
-        editing={false}
-        onStartEdit={() => undefined}
-      />
-      <LibraryFieldRow
-        icon={<MapPin size={16} aria-hidden />}
-        fieldName="Origin"
-        readOnly
-        display={originLabel(detail)}
-        editing={false}
-        onStartEdit={() => undefined}
-      />
-      <LibraryFieldRow
-        icon={<Clock size={16} aria-hidden />}
-        fieldName="Updated"
-        readOnly
-        mono
-        display={detail.updated_at}
-        editing={false}
-        onStartEdit={() => undefined}
-      />
-      <LibraryFieldRow
-        icon={<FileCode2 size={16} aria-hidden />}
-        fieldName="Content"
-        readOnly={fieldsReadOnly}
-        mono
-        display={detail.content}
-        placeholder="No content"
-        editing={editingField === "content"}
-        error={editingField === "content" ? fieldError : null}
-        onStartEdit={() => void startEdit("content")}
-      >
-        {renderEditor("content", true)}
-      </LibraryFieldRow>
-      {detail.content_truncated ? (
-        <p className="muted resource-detail-truncated">
-          Content truncated for preview.
-        </p>
-      ) : null}
+      {isPluginTypeResource(detail.type) ? (
+        <>
+          <LibraryFieldRow
+            icon={<MapPin size={16} aria-hidden />}
+            fieldName="Origin"
+            readOnly
+            display={originLabel(detail)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          {pluginRefShowsMarketplaceUrl(detail) ? (
+            <LibraryFieldRow
+              icon={<Link size={16} aria-hidden />}
+              fieldName="Marketplace URL"
+              readOnly
+              mono
+              display={detail.marketplace_url}
+              editing={false}
+              onStartEdit={() => undefined}
+            />
+          ) : null}
+          <LibraryFieldRow
+            icon={<Folder size={16} aria-hidden />}
+            fieldName="Path"
+            readOnly
+            mono
+            display={detail.install_path ?? ""}
+            placeholder="Install path not found"
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<Clock size={16} aria-hidden />}
+            fieldName="Updated"
+            readOnly
+            mono
+            display={formatLibraryTimestamp(detail.updated_at)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <PluginRefResourceList
+            resources={detail.contained_resources}
+            openingPath={openingPath}
+            disabled={disabled || !baseUrl || loading}
+            onOpen={(path) => void openContainedPath(path)}
+          />
+        </>
+      ) : (
+        <>
+          <LibraryFieldRow
+            icon={<AlignLeft size={16} aria-hidden />}
+            fieldName="Description"
+            readOnly={fieldsReadOnly}
+            display={detail.description}
+            placeholder="No description"
+            editing={editingField === "description"}
+            error={editingField === "description" ? fieldError : null}
+            onStartEdit={() => void startEdit("description")}
+          >
+            {renderEditor("description", descriptionMultiline)}
+          </LibraryFieldRow>
+          {detail.namespace ? (
+            <LibraryFieldRow
+              icon={<Hash size={16} aria-hidden />}
+              fieldName="Namespace"
+              readOnly
+              display={detail.namespace}
+              editing={false}
+              onStartEdit={() => undefined}
+            />
+          ) : null}
+          <LibraryFieldRow
+            icon={<Folder size={16} aria-hidden />}
+            fieldName="Path"
+            readOnly
+            mono
+            display={detail.source || "—"}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<MapPin size={16} aria-hidden />}
+            fieldName="Origin"
+            readOnly
+            display={originLabel(detail)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<Clock size={16} aria-hidden />}
+            fieldName="Updated"
+            readOnly
+            mono
+            display={formatLibraryTimestamp(detail.updated_at)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<FileCode2 size={16} aria-hidden />}
+            fieldName="Content"
+            readOnly={fieldsReadOnly}
+            mono
+            display={detail.content}
+            placeholder="No content"
+            editing={editingField === "content"}
+            error={editingField === "content" ? fieldError : null}
+            onStartEdit={() => void startEdit("content")}
+          >
+            {renderEditor("content", true)}
+          </LibraryFieldRow>
+          {detail.content_truncated ? (
+            <p className="muted resource-detail-truncated">
+              Content truncated for preview.
+            </p>
+          ) : null}
+        </>
+      )}
       {preview ? (
         <div className="resource-detail-sync-preview">
           <p className="muted">

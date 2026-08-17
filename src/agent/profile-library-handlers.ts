@@ -1,5 +1,6 @@
 import { listPlugins } from "../models/plugin-model.js";
 import { listResources, resolveResource } from "../models/resource.js";
+import { pluginResourceShowExtras } from "../services/plugin-resource-show.js";
 import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
@@ -109,6 +110,7 @@ export function handleLibraryResourceDetail(
   }
 
   const resource = result.resource;
+  const extras = pluginResourceShowExtras(resource);
   return jsonResponse({
     resource: {
       id: resource.id,
@@ -122,6 +124,7 @@ export function handleLibraryResourceDetail(
       updated_at: resource.updated_at,
       content: truncateResourceContent(resource.content, 80),
       content_truncated: resource.content.split("\n").length > 80,
+      ...(extras ?? {}),
     },
   });
 }
