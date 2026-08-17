@@ -20,7 +20,18 @@ export interface LibraryPluginDetailPlugin {
   tags: string[];
   origin: PluginOrigin;
   dirty: boolean;
+  frozen_at: string | null;
   default_environment_id: string | null;
+}
+
+export interface LibraryPluginVersionRow {
+  id: string;
+  name: string;
+  version: string;
+  dirty: boolean;
+  frozen_at: string | null;
+  is_head: boolean;
+  updated_at: string;
 }
 
 export interface LibraryPluginDetail {
@@ -182,6 +193,45 @@ export async function deleteLibraryPlugin(
     name: string;
     version: string;
   };
+}
+
+export async function fetchLibraryPluginVersions(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+): Promise<LibraryPluginVersionRow[]> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    pluginPath(selector, "/versions"),
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not load plugin versions");
+  }
+  const body = (await response.json()) as { versions: LibraryPluginVersionRow[] };
+  return body.versions;
+}
+
+export async function rollbackLibraryPlugin(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  version: string,
+): Promise<LibraryPluginDetail> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    pluginPath(selector, "/rollback"),
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version }),
+    },
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not restore plugin version");
+  }
+  return (await response.json()) as LibraryPluginDetail;
 }
 
 export async function cutLibraryPlugin(

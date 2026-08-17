@@ -11,6 +11,7 @@ import {
 import {
   AlignLeft,
   GitFork,
+  History,
   MapPin,
   Play,
   Scissors,
@@ -36,14 +37,25 @@ import {
   cutLibraryPlugin,
   deleteLibraryPlugin,
   fetchLibraryPluginDetail,
+  fetchLibraryPluginVersions,
   forkLibraryPlugin,
   patchLibraryPlugin,
   patchLibraryPluginAttachments,
+  rollbackLibraryPlugin,
   runLibraryPluginDoctor,
   type LibraryPluginDetail,
+  type LibraryPluginVersionRow,
   type PluginDoctorReport,
   type PluginOrigin,
 } from "../lib/api/library-plugins";
+import {
+  formatPluginRollbackConfirmMessage,
+  pluginHistoryBackLabel,
+  pluginPackageActions,
+  pluginPackageBackTarget,
+  type PluginDetailMode,
+  type PluginPackageAction,
+} from "../lib/plugin-history";
 import type {
   CatalogPlugin,
   LibraryEnvironment,
@@ -55,6 +67,7 @@ import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
+import { PluginVersionHistoryList } from "./PluginVersionHistoryList";
 import { ApplyPluginDrawer } from "./parity/ApplyPluginDrawer";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
 
@@ -73,6 +86,12 @@ export interface PluginPackageDetailProps {
   onFieldEditingChange: (editing: boolean) => void;
   onConfirmOpenChange?: (open: boolean) => void;
   onLibraryChanged?: () => void;
+  historyMode?: PluginDetailMode;
+  frozenVersion?: string | null;
+  onHistoryModeChange: (
+    mode: PluginDetailMode,
+    frozenVersion?: string | null,
+  ) => void;
 }
 
 type PluginEditingField =
@@ -91,6 +110,10 @@ const FORK_TOOLTIP =
   "Copy this catalog or upstream plugin into a new local authored plugin you can edit.";
 const DOCTOR_TOOLTIP =
   "Run health checks on this plugin’s composition and pins.";
+const HISTORY_TOOLTIP =
+  "Browse frozen versions. Restore copies one onto the working head and does not apply.";
+const FROZEN_BANNER =
+  "Frozen version — read-only. Restore copies this snapshot onto the working head.";
 const NONE_ENV = "";
 
 function originArticle(origin: PluginOrigin): string {
@@ -160,6 +183,9 @@ export function PluginPackageDetail({
   onFieldEditingChange,
   onConfirmOpenChange,
   onLibraryChanged,
+  historyMode = "head",
+  frozenVersion = null,
+  onHistoryModeChange,
 }: PluginPackageDetailProps) {
   const titleId = useId();
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -198,6 +224,16 @@ export function PluginPackageDetail({
   const [forkOpen, setForkOpen] = useState(false);
   const [forkName, setForkName] = useState("");
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [rollbackBusy, setRollbackBusy] = useState(false);
+  const [versions, setVersions] = useState<LibraryPluginVersionRow[]>([]);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [frozenDetail, setFrozenDetail] = useState<LibraryPluginDetail | null>(
+    null,
+  );
+  const [frozenError, setFrozenError] = useState<string | null>(null);
+  const [frozenLoading, setFrozenLoading] = useState(false);
 
   const [editingField, setEditingField] = useState<PluginEditingField | null>(
     null,
@@ -208,19 +244,24 @@ export function PluginPackageDetail({
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
 
-  const anyBusy = busy || doctorBusy || confirmBusy || applyBusy;
+  const anyBusy = busy || doctorBusy || confirmBusy || applyBusy || rollbackBusy;
   const actionsLocked = disabled || !baseUrl || detailLoading || anyBusy;
   const authored = detail?.plugin.origin === "authored";
-  const fieldsReadOnly = !authored || disabled || !baseUrl;
-  const pickersDisabled = actionsLocked || !authored;
+  const fieldsReadOnly =
+    !authored || disabled || !baseUrl || historyMode !== "head";
+  const pickersDisabled = actionsLocked || !authored || historyMode !== "head";
+  const viewDetail =
+    historyMode === "frozen" && frozenDetail ? frozenDetail : detail;
 
   useEffect(() => {
     onFieldEditingChange(editingField !== null);
   }, [editingField, onFieldEditingChange]);
 
   useEffect(() => {
-    onConfirmOpenChange?.(applyOpen || cutOpen || deleteOpen || forkOpen);
-  }, [applyOpen, cutOpen, deleteOpen, forkOpen, onConfirmOpenChange]);
+    onConfirmOpenChange?.(
+      applyOpen || cutOpen || deleteOpen || forkOpen || restoreOpen,
+    );
+  }, [applyOpen, cutOpen, deleteOpen, forkOpen, restoreOpen, onConfirmOpenChange]);
 
   useEffect(() => {
     onBusyChange?.(anyBusy);
@@ -265,6 +306,84 @@ export function PluginPackageDetail({
       cancelled = true;
     };
   }, [baseUrl, token, selector, detailEpoch]);
+
+  useEffect(() => {
+    if (!baseUrl || historyMode !== "history") {
+      return;
+    }
+    const headName = detail?.plugin.name ?? selector;
+    let cancelled = false;
+    setVersionsLoading(true);
+    setVersionsError(null);
+    void fetchLibraryPluginVersions(baseUrl, token, headName)
+      .then((next) => {
+        if (!cancelled) {
+          setVersions(next);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setVersionsError(errorMessage(error, "Could not load plugin versions"));
+          setVersions([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setVersionsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, historyMode, selector, detail?.plugin.name]);
+
+  useEffect(() => {
+    if (!baseUrl || historyMode !== "frozen" || !frozenVersion) {
+      if (historyMode !== "frozen") {
+        setFrozenDetail(null);
+        setFrozenError(null);
+        setFrozenLoading(false);
+      }
+      return;
+    }
+    const headName = detail?.plugin.name ?? selector;
+    let cancelled = false;
+    setFrozenLoading(true);
+    setFrozenError(null);
+    void fetchLibraryPluginDetail(
+      baseUrl,
+      token,
+      `${headName}@${frozenVersion}`,
+    )
+      .then((next) => {
+        if (!cancelled) {
+          setFrozenDetail(next);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setFrozenError(
+            errorMessage(error, "Could not load frozen plugin version"),
+          );
+          setFrozenDetail(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFrozenLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    baseUrl,
+    token,
+    historyMode,
+    frozenVersion,
+    selector,
+    detail?.plugin.name,
+  ]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -399,12 +518,12 @@ export function PluginPackageDetail({
   );
 
   const selectedPluginIds = useMemo(() => {
-    if (!detail) {
+    if (!viewDetail) {
       return [];
     }
     const byName = new Map(libraryPlugins.map((plugin) => [plugin.name, plugin.id]));
     const ids: string[] = [];
-    for (const dep of detail.dependencies) {
+    for (const dep of viewDetail.dependencies) {
       const fromMap = byName.get(dep.dependency_name);
       if (fromMap) {
         ids.push(fromMap);
@@ -413,11 +532,11 @@ export function PluginPackageDetail({
       }
     }
     return ids;
-  }, [detail, libraryPlugins]);
+  }, [viewDetail, libraryPlugins]);
 
   const selectedResourceIds = useMemo(
-    () => detail?.resources.map((resource) => resource.id) ?? [],
-    [detail],
+    () => viewDetail?.resources.map((resource) => resource.id) ?? [],
+    [viewDetail],
   );
 
   const composeResources = useMemo(
@@ -432,13 +551,13 @@ export function PluginPackageDetail({
         tags.add(tag);
       }
     }
-    for (const tag of detail?.plugin.tags ?? []) {
+    for (const tag of viewDetail?.plugin.tags ?? []) {
       tags.add(tag);
     }
     return [...tags]
       .sort((left, right) => left.localeCompare(right))
       .map((tag) => ({ value: tag, label: tag }));
-  }, [libraryPlugins, detail]);
+  }, [libraryPlugins, viewDetail]);
 
   const environmentOptions = useMemo(
     () => [
@@ -829,6 +948,30 @@ export function PluginPackageDetail({
     }
   };
 
+  const confirmRestore = async () => {
+    if (!baseUrl || !detail || !frozenVersion || rollbackBusy) {
+      return;
+    }
+    setRollbackBusy(true);
+    setFrozenError(null);
+    try {
+      const name = detail.plugin.name;
+      const head = detail.plugin.version;
+      const frozen = frozenVersion;
+      await rollbackLibraryPlugin(baseUrl, token, name, frozen);
+      setRestoreOpen(false);
+      onHistoryModeChange("head");
+      setDetailEpoch((value) => value + 1);
+      onLibraryChanged?.();
+      onSuccess(`Restored ${name}@${frozen} onto ${head}*`);
+    } catch (error: unknown) {
+      setFrozenError(errorMessage(error, "Could not restore plugin version"));
+      setRestoreOpen(false);
+    } finally {
+      setRollbackBusy(false);
+    }
+  };
+
   const pluginControlsDisabled =
     pickersDisabled
     || !token
@@ -837,9 +980,26 @@ export function PluginPackageDetail({
     || !pluginRef.trim()
     || catalogPlugins.length === 0;
 
-  const versionSuffix = detail
-    ? `@${detail.plugin.version}${detail.plugin.dirty ? "*" : ""}`
-    : "";
+  const versionSuffix = (() => {
+    switch (historyMode) {
+      case "frozen": {
+        const frozen = frozenDetail?.plugin ?? null;
+        if (frozen) {
+          return `@${frozen.version}`;
+        }
+        return frozenVersion ? `@${frozenVersion}` : "";
+      }
+      case "history":
+      case "head":
+        return detail
+          ? `@${detail.plugin.version}${detail.plugin.dirty ? "*" : ""}`
+          : "";
+      default: {
+        const _exhaustive: never = historyMode;
+        return _exhaustive;
+      }
+    }
+  })();
 
   const nameEditor =
     editingField === "name" ? (
@@ -861,7 +1021,9 @@ export function PluginPackageDetail({
       <>
         <span
           onDoubleClick={() => {
-            void startEdit("name");
+            if (authored && historyMode === "head") {
+              void startEdit("name");
+            }
           }}
         >
           {detail?.plugin.name ?? selector}
@@ -908,87 +1070,216 @@ export function PluginPackageDetail({
     );
   }
 
-  const actionButtons = detail ? (
-    <>
-      <button
-        type="button"
-        className="btn primary"
-        data-testid="apply-package"
-        disabled={actionsLocked}
-        title={APPLY_TOOLTIP}
-        aria-label={APPLY_TOOLTIP}
-        onClick={() => setApplyOpen(true)}
-      >
-        <Play size={14} aria-hidden />
-        Apply
-      </button>
-      {authored ? (
-        <button
-          type="button"
-          className="btn"
-          disabled={actionsLocked}
-          title={CUT_TOOLTIP}
-          aria-label={CUT_TOOLTIP}
-          onClick={() => {
-            setCutVersion("");
-            setCutOpen(true);
-          }}
-        >
-          <Scissors size={14} aria-hidden />
-          Cut version
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="btn"
-          disabled={actionsLocked}
-          title={FORK_TOOLTIP}
-          aria-label={FORK_TOOLTIP}
-          onClick={() => {
-            setForkName(`${detail.plugin.name}-fork`);
-            setForkOpen(true);
-          }}
-        >
-          <GitFork size={14} aria-hidden />
-          Fork
-        </button>
-      )}
-      <button
-        type="button"
-        className="btn"
-        disabled={actionsLocked}
-        title={DOCTOR_TOOLTIP}
-        aria-label={DOCTOR_TOOLTIP}
-        onClick={() => {
-          void runDoctor();
-        }}
-      >
-        {doctorBusy ? <ButtonSpinner size={14} /> : <Stethoscope size={14} aria-hidden />}
-        Doctor
-      </button>
-      <button
-        type="button"
-        className="btn"
-        disabled={actionsLocked}
-        title={DELETE_TOOLTIP}
-        aria-label={DELETE_TOOLTIP}
-        onClick={() => setDeleteOpen(true)}
-      >
-        <Trash2 size={14} aria-hidden />
-        Delete
-      </button>
-    </>
-  ) : null;
+  function renderPackageAction(action: PluginPackageAction): ReactNode {
+    if (!detail) {
+      return null;
+    }
+    switch (action) {
+      case "apply":
+        return (
+          <button
+            key="apply"
+            type="button"
+            className="btn primary"
+            data-testid="apply-package"
+            disabled={actionsLocked}
+            title={APPLY_TOOLTIP}
+            aria-label={APPLY_TOOLTIP}
+            onClick={() => setApplyOpen(true)}
+          >
+            <Play size={14} aria-hidden />
+            Apply
+          </button>
+        );
+      case "history":
+        return (
+          <button
+            key="history"
+            type="button"
+            className="btn"
+            disabled={actionsLocked}
+            title={HISTORY_TOOLTIP}
+            aria-label={HISTORY_TOOLTIP}
+            onClick={() => onHistoryModeChange("history")}
+          >
+            <History size={14} aria-hidden />
+            History
+          </button>
+        );
+      case "cut":
+        return (
+          <button
+            key="cut"
+            type="button"
+            className="btn"
+            disabled={actionsLocked}
+            title={CUT_TOOLTIP}
+            aria-label={CUT_TOOLTIP}
+            onClick={() => {
+              setCutVersion("");
+              setCutOpen(true);
+            }}
+          >
+            <Scissors size={14} aria-hidden />
+            Cut version
+          </button>
+        );
+      case "fork":
+        return (
+          <button
+            key="fork"
+            type="button"
+            className="btn"
+            disabled={actionsLocked}
+            title={FORK_TOOLTIP}
+            aria-label={FORK_TOOLTIP}
+            onClick={() => {
+              setForkName(`${detail.plugin.name}-fork`);
+              setForkOpen(true);
+            }}
+          >
+            <GitFork size={14} aria-hidden />
+            Fork
+          </button>
+        );
+      case "doctor":
+        return (
+          <button
+            key="doctor"
+            type="button"
+            className="btn"
+            disabled={actionsLocked}
+            title={DOCTOR_TOOLTIP}
+            aria-label={DOCTOR_TOOLTIP}
+            onClick={() => {
+              void runDoctor();
+            }}
+          >
+            {doctorBusy ? (
+              <ButtonSpinner size={14} />
+            ) : (
+              <Stethoscope size={14} aria-hidden />
+            )}
+            Doctor
+          </button>
+        );
+      case "delete":
+        return (
+          <button
+            key="delete"
+            type="button"
+            className="btn"
+            disabled={actionsLocked}
+            title={DELETE_TOOLTIP}
+            aria-label={DELETE_TOOLTIP}
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 size={14} aria-hidden />
+            Delete
+          </button>
+        );
+      case "restore":
+        return (
+          <button
+            key="restore"
+            type="button"
+            className="btn primary"
+            disabled={actionsLocked || !frozenVersion}
+            onClick={() => setRestoreOpen(true)}
+          >
+            Restore
+          </button>
+        );
+      default: {
+        const _exhaustive: never = action;
+        return _exhaustive;
+      }
+    }
+  }
 
-  const fields: ReactNode = detailLoading && !detail ? (
-    <p className="muted">Loading plugin…</p>
-  ) : detailError && !detail ? (
-    <div className="banner error" role="alert">
-      {detailError}
-    </div>
-  ) : detail ? (
+  const packageActions = detail
+    ? pluginPackageActions({
+        origin: detail.plugin.origin,
+        mode: historyMode,
+        frozen: historyMode === "frozen",
+      })
+    : [];
+  const actionButtons =
+    !detail || packageActions.length === 0
+      ? undefined
+      : <>{packageActions.map((action) => renderPackageAction(action))}</>;
+
+  const record = viewDetail;
+
+  const fields: ReactNode = (() => {
+    switch (historyMode) {
+      case "history":
+        if (versionsLoading && versions.length === 0 && !versionsError) {
+          return <p className="muted">Loading versions…</p>;
+        }
+        return (
+          <PluginVersionHistoryList
+            pluginName={detail?.plugin.name ?? selector}
+            headVersion={detail?.plugin.version ?? ""}
+            headDirty={detail?.plugin.dirty ?? false}
+            versions={versions}
+            error={versionsError}
+            onSelectHead={() => onHistoryModeChange("head")}
+            onSelectFrozen={(version) => onHistoryModeChange("frozen", version)}
+          />
+        );
+      case "frozen":
+        if (frozenLoading && !frozenDetail) {
+          return (
+            <>
+              {frozenError ? (
+                <div className="banner error" role="alert">
+                  {frozenError}
+                </div>
+              ) : null}
+              <p className="muted">Loading frozen version…</p>
+            </>
+          );
+        }
+        if (frozenError && !frozenDetail) {
+          return (
+            <div className="banner error" role="alert">
+              {frozenError}
+            </div>
+          );
+        }
+        break;
+      case "head":
+        break;
+      default: {
+        const _exhaustive: never = historyMode;
+        return _exhaustive;
+      }
+    }
+    if (historyMode === "head" && detailLoading && !detail) {
+      return <p className="muted">Loading plugin…</p>;
+    }
+    if (historyMode === "head" && detailError && !detail) {
+      return (
+        <div className="banner error" role="alert">
+          {detailError}
+        </div>
+      );
+    }
+    if (!record) {
+      return <p className="muted">Detail for {selector}</p>;
+    }
+    return (
     <>
-      {detailError ? (
+      {historyMode === "frozen" ? (
+        <div className="banner">{FROZEN_BANNER}</div>
+      ) : null}
+      {historyMode === "frozen" && frozenError ? (
+        <div className="banner error" role="alert">
+          {frozenError}
+        </div>
+      ) : null}
+      {historyMode === "head" && detailError ? (
         <div className="banner error" role="alert">
           {detailError}
         </div>
@@ -996,9 +1287,9 @@ export function PluginPackageDetail({
       {editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
       ) : null}
-      {!authored ? (
+      {historyMode === "head" && !authored ? (
         <div className="banner">
-          {detail.plugin.name} is {originArticle(detail.plugin.origin)} plugin
+          {record.plugin.name} is {originArticle(record.plugin.origin)} plugin
           and cannot be edited directly.
         </div>
       ) : null}
@@ -1006,7 +1297,7 @@ export function PluginPackageDetail({
         icon={<AlignLeft size={16} aria-hidden />}
         fieldName="Description"
         readOnly={fieldsReadOnly}
-        display={detail.plugin.description}
+        display={record.plugin.description}
         placeholder="No description"
         editing={editingField === "description"}
         error={editingField === "description" ? fieldError : null}
@@ -1018,7 +1309,7 @@ export function PluginPackageDetail({
         icon={<MapPin size={16} aria-hidden />}
         fieldName="Origin"
         readOnly
-        display={detail.plugin.origin}
+        display={record.plugin.origin}
         editing={false}
         onStartEdit={() => undefined}
       />
@@ -1026,7 +1317,7 @@ export function PluginPackageDetail({
         icon={<Tag size={16} aria-hidden />}
         fieldName="Tags"
         readOnly={fieldsReadOnly}
-        display={detail.plugin.tags.join(", ")}
+        display={record.plugin.tags.join(", ")}
         placeholder="No tags"
         editing={editingField === "tags"}
         error={editingField === "tags" ? fieldError : null}
@@ -1081,7 +1372,7 @@ export function PluginPackageDetail({
         icon={<Variable size={16} aria-hidden />}
         fieldName="Default environment"
         readOnly={fieldsReadOnly}
-        display={environmentLabel(detail.plugin.default_environment_id)}
+        display={environmentLabel(record.plugin.default_environment_id)}
         placeholder="None"
         editing={editingField === "default_environment"}
         error={editingField === "default_environment" ? fieldError : null}
@@ -1137,7 +1428,7 @@ export function PluginPackageDetail({
         onToggleResource={toggleResource}
         disabled={pickersDisabled}
       />
-      {doctorReport ? (
+      {historyMode === "head" && doctorReport ? (
         <section className="edit-profile-section" aria-label="Doctor">
           <h3>Doctor</h3>
           <table className="data-table">
@@ -1169,9 +1460,27 @@ export function PluginPackageDetail({
         </section>
       ) : null}
     </>
-  ) : (
-    <p className="muted">Detail for {selector}</p>
-  );
+    );
+  })();
+
+  function handleChromeBack(): void {
+    const target = pluginPackageBackTarget(historyMode);
+    switch (target) {
+      case "history":
+        onHistoryModeChange("history");
+        return;
+      case "head":
+        onHistoryModeChange("head");
+        return;
+      case "list":
+        onBack();
+        return;
+      default: {
+        const _exhaustive: never = target;
+        return _exhaustive;
+      }
+    }
+  }
 
   return (
     <>
@@ -1179,8 +1488,9 @@ export function PluginPackageDetail({
         titleId={titleId}
         title={nameEditor}
         typeLabel="plugin"
-        onBack={onBack}
+        onBack={handleChromeBack}
         backDisabled={anyBusy}
+        backLabel={pluginHistoryBackLabel(historyMode)}
         actions={actionButtons}
       >
         <div className="library-detail-body">{fields}</div>
@@ -1286,6 +1596,30 @@ export function PluginPackageDetail({
           />
         </div>
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={restoreOpen}
+        title="Restore plugin version"
+        description={
+          detail && frozenVersion
+            ? formatPluginRollbackConfirmMessage({
+                headVersion: detail.plugin.version,
+                frozenVersion,
+                dirty: detail.plugin.dirty,
+              })
+            : ""
+        }
+        confirmLabel="Restore"
+        confirmBusy={rollbackBusy}
+        onConfirm={() => {
+          void confirmRestore();
+        }}
+        onCancel={() => {
+          if (!rollbackBusy) {
+            setRestoreOpen(false);
+          }
+        }}
+      />
     </>
   );
 }

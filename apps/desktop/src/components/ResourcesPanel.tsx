@@ -39,6 +39,10 @@ import {
   type LibraryPane,
 } from "../lib/library-pane";
 import {
+  pluginPackageEscapeAction,
+  type PluginDetailMode,
+} from "../lib/plugin-history";
+import {
   applyLibraryResourceFilters,
   defaultResourceFilterState,
   isResourceFilterStateActive,
@@ -109,6 +113,11 @@ export function ResourcesPanel({
   const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
   const [pane, setPane] = useState<LibraryPane>({ mode: "list" });
+  const [pluginHistoryMode, setPluginHistoryMode] =
+    useState<PluginDetailMode>("head");
+  const [pluginFrozenVersion, setPluginFrozenVersion] = useState<string | null>(
+    null,
+  );
   const [pendingFilter, setPendingFilter] = useState<ResourceFilterState | null>(
     null,
   );
@@ -181,6 +190,8 @@ export function ResourcesPanel({
       mode: "detail",
       target: { kind: "plugin-package", selector: focusPluginName },
     });
+    setPluginHistoryMode("head");
+    setPluginFrozenVersion(null);
     onFocusPluginConsumed?.();
   }, [focusPluginName, onFocusPluginConsumed]);
 
@@ -250,6 +261,8 @@ export function ResourcesPanel({
       document.activeElement.blur();
     }
     setPane({ mode: "list" });
+    setPluginHistoryMode("head");
+    setPluginFrozenVersion(null);
     setFieldEditing(false);
     setConfirmOpen(false);
     setDetailBusy(false);
@@ -385,6 +398,8 @@ export function ResourcesPanel({
         mode: "detail",
         target: { kind: "plugin-package", selector: created.name },
       });
+      setPluginHistoryMode("head");
+      setPluginFrozenVersion(null);
       setDraftNameError(null);
       reloadLibrary();
     } catch (createError: unknown) {
@@ -473,6 +488,37 @@ export function ResourcesPanel({
       if (event.key !== "Escape") {
         return;
       }
+      const current = paneRef.current;
+      if (current.mode === "detail" && current.target.kind === "plugin-package") {
+        const nested = pluginPackageEscapeAction({
+          mode: pluginHistoryMode,
+          fieldEditing,
+          confirmOpen: paneConfirmOpen,
+          busy: detailBusy,
+        });
+        switch (nested) {
+          case "cancel-field":
+          case "dismiss-confirm":
+          case "noop":
+            return;
+          case "list":
+            leaveToList();
+            return;
+          case "head":
+            event.preventDefault();
+            setPluginHistoryMode("head");
+            setPluginFrozenVersion(null);
+            return;
+          case "history":
+            event.preventDefault();
+            setPluginHistoryMode("history");
+            return;
+          default: {
+            const _exhaustive: never = nested;
+            return _exhaustive;
+          }
+        }
+      }
       if (detailBusy) {
         return;
       }
@@ -500,7 +546,7 @@ export function ResourcesPanel({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pane.mode, fieldEditing, paneConfirmOpen, detailBusy]);
+  }, [pane.mode, fieldEditing, paneConfirmOpen, detailBusy, pluginHistoryMode]);
 
   function openLibraryRow(entry: LibraryListEntry): void {
     const label = resourceDisplayName(entry);
@@ -510,6 +556,8 @@ export function ResourcesPanel({
           mode: "detail",
           target: { kind: "plugin-package", selector: entry.name },
         });
+        setPluginHistoryMode("head");
+        setPluginFrozenVersion(null);
         return;
       case "resource":
         setPane({
@@ -592,6 +640,12 @@ export function ResourcesPanel({
             onFieldEditingChange={setFieldEditing}
             onConfirmOpenChange={setConfirmOpen}
             onLibraryChanged={reloadLibrary}
+            historyMode={pluginHistoryMode}
+            frozenVersion={pluginFrozenVersion}
+            onHistoryModeChange={(mode, nextFrozenVersion) => {
+              setPluginHistoryMode(mode);
+              setPluginFrozenVersion(nextFrozenVersion ?? null);
+            }}
           />
         );
       default: {
