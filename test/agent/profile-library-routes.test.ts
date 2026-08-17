@@ -99,4 +99,49 @@ describe("agent library routes", () => {
     expect(detailBody.resource.origin_kind).toBe("untracked");
     expect(detailBody.resource.content).toContain("# claude instructions");
   });
+
+  it("omits plugin extras on skill detail and includes them on plugin detail", async () => {
+    const server = withServer();
+    createResource({
+      type: "skill",
+      name: "ship",
+      description: "Ship skill",
+      content: "# ship",
+      metadata: {},
+      source: "manual",
+    });
+    createResource({
+      type: "plugin",
+      name: "demo",
+      namespace: "team-mkt",
+      description: "Plugin pin: demo@team-mkt",
+      content: "{}",
+      metadata: {},
+      source: "composition:plugin",
+      origin_kind: "marketplace_link",
+      origin_ref: "demo@team-mkt",
+    });
+
+    const skill = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("skill:ship")}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(skill.status).toBe(200);
+    const skillBody = await skill.json();
+    expect(skillBody.resource).not.toHaveProperty("install_path");
+    expect(skillBody.resource).not.toHaveProperty("marketplace_url");
+    expect(skillBody.resource).not.toHaveProperty("contained_resources");
+    expect(skillBody.resource.content).toContain("# ship");
+
+    const plugin = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("plugin:demo@team-mkt")}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(plugin.status).toBe(200);
+    const pluginBody = await plugin.json();
+    expect(pluginBody.resource).toHaveProperty("install_path");
+    expect(pluginBody.resource).toHaveProperty("marketplace_url");
+    expect(pluginBody.resource).toHaveProperty("contained_resources");
+    expect(Array.isArray(pluginBody.resource.contained_resources)).toBe(true);
+  });
 });
