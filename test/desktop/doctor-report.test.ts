@@ -72,4 +72,53 @@ describe("summarizeDoctorReport", () => {
       { label: "1 warning", tone: "warn" },
     ]);
   });
+
+  it("uses plural labels for multiple errors and warnings", () => {
+    const summary = summarizeDoctorReport(
+      report([
+        { check: "empty-plugin", severity: "error", message: "Plugin has no resources" },
+        {
+          check: "duplicate-resources",
+          severity: "error",
+          message: "Duplicate resource in plugin: instruction:shared-doc",
+        },
+        {
+          check: "empty-content",
+          severity: "warn",
+          message: "Resource has empty definition: mcp_server:broken",
+        },
+        {
+          check: "plugin-metadata",
+          severity: "warn",
+          message: "Plugin ref must include marketplace: formatter",
+        },
+      ]),
+    );
+    expect(doctorStatusPills(summary)).toEqual([
+      { label: "2 errors", tone: "bad" },
+      { label: "2 warnings", tone: "warn" },
+    ]);
+  });
+
+  it("orders groups by report.checks even when reversed", () => {
+    const summary = summarizeDoctorReport({
+      checks: ["plugin-metadata", "empty-content"],
+      results: [
+        {
+          check: "empty-content",
+          severity: "warn",
+          message: "Resource has empty definition: mcp_server:broken",
+        },
+        {
+          check: "plugin-metadata",
+          severity: "error",
+          message: "Plugin ref must include marketplace: formatter",
+        },
+      ],
+    });
+    expect(summary.groups.map((group) => group.check)).toEqual([
+      "plugin-metadata",
+      "empty-content",
+    ]);
+  });
 });
