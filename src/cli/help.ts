@@ -40,14 +40,22 @@ export function resolveCommandDescription(command: Command): string {
   return command.description() || getCommandHelpEntry(command)?.description || "";
 }
 
+/** Commands that run a default action while also hosting subcommands. */
+export function commandKeepsDefaultAction(command: Command): boolean {
+  return command.name() === "init";
+}
+
 function isLeafHelpCommand(command: Command): boolean {
-  return command.commands.every((sub) => isHiddenHelpCommand(sub));
+  return (
+    commandKeepsDefaultAction(command)
+    || command.commands.every((sub) => isHiddenHelpCommand(sub))
+  );
 }
 
 function isCommandGroup(command: Command): boolean {
   // `init` keeps a default action (`ht init`) while hosting `init completion`.
   // Keep it under PROJECT rather than COMMAND GROUPS.
-  if (command.name() === "init") {
+  if (commandKeepsDefaultAction(command)) {
     return false;
   }
   return command.commands.some((sub) => !isHiddenHelpCommand(sub));

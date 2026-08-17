@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { Command } from "commander";
+import { commandKeepsDefaultAction } from "../../src/cli/help.ts";
 import {
   COMMAND_HELP_REGISTRY,
   getCommandHelpEntry,
@@ -35,6 +36,10 @@ function walkLeafCommands(root: Command): Command[] {
     if (isLeafCommand(command)) {
       leaves.push(command);
       return;
+    }
+
+    if (commandKeepsDefaultAction(command)) {
+      leaves.push(command);
     }
 
     for (const child of command.commands) {
