@@ -35,7 +35,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Focus: 2px `--accent` outline, 2px offset.
 - Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace switcher, refresh, settings), never for Library or Environments record actions.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
-- Overlays: drawers for preview / apply / import. Confirm dialogs only for destructive or discard. Library record detail is a full-panel document, not a modal.
+- Overlays: drawers for preview / apply / import. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. Library record detail is a full-panel document, not a modal.
 
 ## Layout
 
