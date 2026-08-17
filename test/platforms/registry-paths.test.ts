@@ -105,6 +105,30 @@ describe("registry path detection", () => {
     }
   });
 
+  it("does not detect deepseek-harness from CLAUDE.local.md alone", () => {
+    const projectDir = createTempDir("deepseek-harness-claude-local");
+
+    try {
+      writeTextFile(join(projectDir, "CLAUDE.local.md"), "# Local overlay\n");
+
+      expect(detectPlatforms(projectDir)).not.toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects deepseek-harness from .dsh/hooks", () => {
+    const projectDir = createTempDir("deepseek-harness-hooks");
+
+    try {
+      writeTextFile(join(projectDir, ".dsh/hooks/harnesstap.json"), '{"version":1}\n');
+
+      expect(detectPlatforms(projectDir)).toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects cline from legacy .clinerules file", () => {
     const projectDir = createTempDir("cline-legacy-rules");
 

@@ -133,7 +133,6 @@ describe("platform registry", () => {
     expect(dsh?.projectPaths.pathAlternates?.instructions).toEqual([
       "CLAUDE.md",
       "AGENTS.local.md",
-      "CLAUDE.local.md",
     ]);
     expect(dsh?.globalPaths.mcp).toBe("~/.dsh/cordis.patch.yml");
     expect(dsh?.globalPaths.settings).toBe("~/.dsh/settings.yaml");
