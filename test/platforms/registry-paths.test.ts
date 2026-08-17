@@ -74,6 +74,37 @@ describe("registry path detection", () => {
     }
   });
 
+  it("detects deepseek-harness from .dsh/skills", () => {
+    const projectDir = createTempDir("deepseek-harness-skills");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".dsh/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review code\n---\nReview carefully.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("does not detect deepseek-harness from AGENTS.md or .agents/skills alone", () => {
+    const projectDir = createTempDir("deepseek-harness-shared-only");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Shared\n");
+      writeTextFile(
+        join(projectDir, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).not.toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects cline from legacy .clinerules file", () => {
     const projectDir = createTempDir("cline-legacy-rules");
 

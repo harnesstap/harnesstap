@@ -366,6 +366,32 @@ const PLATFORMS: PlatformDefinition[] = [
     },
   }),
 
+  def("deepseek-harness", "DeepSeek Harness", [
+    "instructions",
+    "skills",
+    "mcp",
+    "permissions",
+    "hooks",
+    "agents",
+    "model_config",
+  ], {
+    instructions: "AGENTS.md",
+    skills: ".dsh/skills/",
+    hooks: ".dsh/hooks/",
+    pathAlternates: {
+      instructions: ["CLAUDE.md", "AGENTS.local.md", "CLAUDE.local.md"],
+      skills: [".agents/skills/"],
+    },
+  }, {
+    instructions: "~/.dsh/AGENTS.md",
+    skills: "~/.dsh/skills/",
+    hooks: "~/.dsh/hooks/",
+    mcp: "~/.dsh/cordis.patch.yml",
+    settings: "~/.dsh/settings.yaml",
+    agents: "~/.dsh/.agent-presets/",
+    plugins: "~/.dsh/profiles/web/",
+  }),
+
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],
