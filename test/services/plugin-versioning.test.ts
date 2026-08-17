@@ -15,6 +15,7 @@ import {
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
+import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
 import {
   assertPluginsCleanForShare,
   cutPluginVersion,
@@ -336,6 +337,67 @@ describe("plugin versioning", () => {
       expect(getPluginResources(frozen11!.id).map((resource) => resource.name)).toEqual([
         "skill-a",
       ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback of catalog plugins", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-origin");
+    try {
+      const plugin = createPlugin({ name: "cat", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      const head = getPluginByName("cat", "1.1.0")!;
+      setPluginOrigin(head.id, "catalog");
+      expect(() => rollbackPluginVersion({ selector: "cat", toVersion: "1.0.0" })).toThrowError(
+        expect.objectContaining({ name: "PluginProvenanceError" }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback when the target version is missing", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-missing");
+    try {
+      createPlugin({ name: "miss", version: "1.0.0" });
+      expect(() =>
+        rollbackPluginVersion({ selector: "miss", toVersion: "9.9.9" }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PluginVersionError>>({ code: "not_found" }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback when --to is the working head", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-head");
+    try {
+      const plugin = createPlugin({ name: "hd", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      expect(() =>
+        rollbackPluginVersion({ selector: "hd", toVersion: "1.1.0" }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PluginVersionError>>({
+          code: "version_not_frozen",
+        }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback when the selector is a frozen row", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-frozen-selector");
+    try {
+      const plugin = createPlugin({ name: "fr", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      expect(() =>
+        rollbackPluginVersion({ selector: "fr@1.0.0", toVersion: "1.0.0" }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PluginVersionError>>({ code: "frozen_plugin" }),
+      );
     } finally {
       await context.cleanup();
     }
