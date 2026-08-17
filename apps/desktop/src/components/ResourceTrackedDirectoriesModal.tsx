@@ -9,6 +9,7 @@ import {
 } from "../lib/agent-client";
 import type { ResourceTrackedDirectoryEntry } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { RelatedHarnessIcons } from "./HarnessIcons";
 
 interface ResourceTrackedDirectoriesModalProps {
   open: boolean;
@@ -282,6 +283,7 @@ export function ResourceTrackedDirectoriesModal({
                   <div className="resource-tracked-dirs-item-main">
                     <div className="resource-tracked-dirs-item-title">
                       <span>{entry.label}</span>
+                      <RelatedHarnessIcons harnessIds={entry.platform_ids} />
                       <span className="resource-tracked-dirs-kind muted">
                         {kindLabel(entry.kind)}
                       </span>
