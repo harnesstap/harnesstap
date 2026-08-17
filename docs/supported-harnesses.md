@@ -1,6 +1,6 @@
 # Supported harnesses
 
-HarnessTap registers **41 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
+HarnessTap registers **42 agent harnesses** today. Each harness declares which **resource types** it can scan, compose in plugins, and materialize on disk, plus default **project** and **global** paths. The registry in `src/platforms/registry.ts` is the source of truth; `ht harness list` prints the same set at runtime.
 
 For portability caveats (hooks with `${*_PLUGIN_ROOT}`, OpenCode server plugins, instruction-only skill emission, and mirror warnings), see [Portability limits](portability-limits.md).
 
@@ -52,6 +52,7 @@ All harnesses whose serializer **emits MCP config** still receive **MCP `${VAR}`
 | **cursor** | Yes (`.cursor/mcp.json`) | No | Yes |
 | **copilot-cli**, **github-copilot** | Yes | No | Yes |
 | **opencode**, **goose**, **grok-build**, **antigravity**, **amazon-q**, generic | Yes | No | Yes |
+| **deepseek-harness** | Yes (`~/.dsh/cordis.patch.yml` home patch) | No | Yes |
 
 ## Plugin manifest layouts
 
@@ -79,6 +80,7 @@ During `apply`, HarnessTap can **install** and **sync** plugins from host instal
 | **cursor** | Inventory + git check/update; marketplace ensure via `agent plugin marketplace add` (install remains Cursor Customize / `/plugin` — no `agent plugin install`) | `~/.cursor/plugins/` |
 | **goose** | `goose plugin install` (git-backed Open Plugins) | `~/.agents/plugins/` |
 | **copilot-cli** | Copilot CLI marketplace / `copilot plugin` | `~/.copilot/installed-plugins/` |
+| **deepseek-harness** | `dsh plugin --profile web add` | `$DSH_HOME/profiles/web/` |
 
 Claude Code and Copilot CLI **home scan** also import installed marketplace plugins as `plugin_pin` library resources (pins only; use `resource sync` to materialize children). Claude reads `~/.claude/plugins/installed_plugins.json`. Copilot CLI reads `~/.copilot/installed-plugins/<marketplace>/<plugin>/` when `~/.copilot/settings.json` or that install tree is present.
 
@@ -90,7 +92,7 @@ Claude **plugin pins** and marketplace metadata (`plugin show` → `claude` bloc
 
 | Tier | Harnesses | Notes |
 | ---- | --------- | ----- |
-| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build` | Dedicated scan/serialize logic |
+| **Native** | `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, `deepseek-harness` | Dedicated scan/serialize logic |
 | **Generic** | All other registered harnesses | Path-driven serializer driven by registry `projectPaths` / `globalPaths` |
 
 Filter native harnesses at the CLI:
@@ -159,6 +161,7 @@ Legend for the **Resources** column: `instr` instructions · `skill` skills · `
 | `jules` | Jules | Generic | instr, skill | Native skills | — |
 | `cody` | Sourcegraph Cody | Generic | instr, mcp | — | — |
 | `grok-build` | Grok Build | Native | instr, skill, mcp, perm, hook, agent, cmd, model | Native skills | — |
+| `deepseek-harness` | DeepSeek Harness | Native | instr, skill, mcp, perm, hook, agent, model | Native skills | Yes |
 | `amp` | Amp | Generic | instr, skill | Native skills | — |
 | `kilo` | Kilo Code | Generic | instr, skill | Native skills | — |
 | `augment` | Augment | Generic | instr, skill | Native skills | — |
@@ -198,6 +201,7 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` | — | — | — | — | — |
 | **devin** | `AGENTS.md` (+ `AGENTS.local.md`) | `.agents/skills/` | — | — | — | — | `.devin/config.json` |
 | **grok-build** | `AGENTS.md` (+ `AGENT.md`) | `.grok/skills/` | — | `.grok/config.toml` | `.grok/agents/` | `.agents/commands/` | `.grok/config.toml` |
+| **deepseek-harness** | `AGENTS.md` (+ `CLAUDE.md`) | `.dsh/skills/` | — | `~/.dsh/cordis.patch.yml` (global) | `~/.dsh/.agent-presets/` | — | `~/.dsh/settings.yaml` |
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
 Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) but never imports or applies them.
@@ -239,6 +243,20 @@ Grok Build’s native layout under `.grok/` maps as follows:
 | **Commands** (`.agents/commands/`, `~/.agents/commands/`) | `command` resources (skills also appear as slash commands at runtime) |
 | **Default model** (`[models] default` in `~/.grok/config.toml`) | `model_config` on **global** apply only — project `.grok/config.toml` cannot carry `[models]` |
 | **Personas / roles / plugins / sandbox.toml** | Runtime/config-only — not plugin resources today |
+
+### DeepSeek Harness notes
+
+DeepSeek Harness is a developer preview; the Cordis patch schema can change. `$DSH_HOME` is `process.env.DSH_HOME` if set, otherwise `~/.dsh`. Detection uses distinctive `.dsh/skills/` or `.dsh/hooks/` — not `AGENTS.md` alone.
+
+| DeepSeek surface | HarnessTap support |
+| ---------------- | ------------------- |
+| **AGENTS.md** (`CLAUDE.md`) | `instruction` resources |
+| **Skills** (`.dsh/skills/`) | Native `skill` resources |
+| **MCP** (`$DSH_HOME/cordis.patch.yml` home patch) | Live MCP is global only — not project |
+| **Hooks** (`$DSH_HOME/cordis.patch.yml` + one process-level `configPath`) | Claude command subset via `@deepseek-ai/dsh-hooks-claude-code`; project `.dsh/hooks/` is inventory-only |
+| **Agent presets** (`$DSH_HOME/.agent-presets/`) | Persona-only user presets — not a copy of shipped `standard` |
+| **Permissions** | Named presets `workspace-write` and `danger-full-access` only |
+| **Plugin install** | `dsh plugin --profile web add` (`$DSH_HOME/profiles/web/`) — web profile only |
 
 ## Related commands
 

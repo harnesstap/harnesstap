@@ -222,6 +222,15 @@ Name collisions between host-managed built-ins and user/profile skills appear as
 panel reason `cursor_host_skill_collision` (yellow) and do not flip
 `has_drift` / `--check`.
 
+### DeepSeek Harness
+
+DeepSeek Harness is a developer preview; the Cordis patch schema can change.
+
+- Live MCP is applied via `$DSH_HOME/cordis.patch.yml` only — not project MCP files.
+- Hooks use one process-level `configPath`; project `.dsh/hooks/` JSON is inventory only.
+- User agent presets are persona-only and do not include shipped `standard` tools.
+- Plugin npm install is `web` profile only (`dsh plugin --profile web add`).
+
 ## Workarounds
 
 When auto-bridging hits a limit, combine these patterns:
