@@ -103,6 +103,13 @@ test("ResourcesPanel opens plugin packages in PluginPackageDetail", () => {
   expect(panelSource).not.toContain("PluginsWorkspace");
 });
 
+test("create plugin is a local draft until name commit", () => {
+  expect(panelSource).toContain("createLibraryPlugin");
+  expect(panelSource).toContain("Discard this plugin?");
+  expect(panelSource).toContain("draftHasTypedContent");
+  expect(panelSource).toContain("PluginCreateDraft");
+});
+
 test("starting another field commits the open field first", () => {
   const bodySource = readFileSync(
     join(

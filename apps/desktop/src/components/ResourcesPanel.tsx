@@ -2,7 +2,9 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { FolderDown, FolderInput, Plus } from "lucide-react";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
+import { PluginCreateDraft } from "./PluginCreateDraft";
 import { PluginPackageDetail } from "./PluginPackageDetail";
 import { ResourceDetailBody } from "./ResourceDetailBody";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
@@ -14,8 +16,9 @@ import {
   ResourceRowMeta,
   ResourceRowRoot,
 } from "./ui/resource-row";
-import { fetchLibraryResources } from "../lib/agent-client";
+import { AgentApiError, fetchLibraryResources } from "../lib/agent-client";
 import {
+  createLibraryPlugin,
   fetchLibraryPluginHeads,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
@@ -26,6 +29,7 @@ import {
   type LibraryListEntry,
 } from "../lib/library-list";
 import {
+  draftHasTypedContent,
   escapeAction,
   sidebarChangeAction,
   type LibraryPane,
@@ -43,6 +47,18 @@ import {
   resourceDisplayName,
 } from "../lib/resource-search";
 import type { LibraryResource } from "../lib/types";
+
+type DraftDiscardIntent = "list" | "fresh-draft";
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof AgentApiError) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+}
 
 export interface ResourcesPanelProps {
   baseUrl: string | null;
@@ -89,6 +105,20 @@ export function ResourcesPanel({
   const [resourcesReloadKey, setResourcesReloadKey] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
   const [pane, setPane] = useState<LibraryPane>({ mode: "list" });
+  const [pendingFilter, setPendingFilter] = useState<ResourceFilterState | null>(
+    null,
+  );
+  const [filterStateBeforeDraftLeave, setFilterStateBeforeDraftLeave] =
+    useState<ResourceFilterState | null>(null);
+  const [draftDiscardOpen, setDraftDiscardOpen] = useState(false);
+  const [draftDiscardIntent, setDraftDiscardIntent] =
+    useState<DraftDiscardIntent>("list");
+  const [draftNameError, setDraftNameError] = useState<string | null>(null);
+  const paneRef = useRef(pane);
+  paneRef.current = pane;
+  const discardingDraftRef = useRef(false);
+  const createInFlightRef = useRef(false);
+  const suppressDraftCommitRef = useRef(false);
   const resolvedProjectPath =
     (projectPath && projectPath.trim())
     || loadRecentProjects()[0]?.path
@@ -165,7 +195,8 @@ export function ResourcesPanel({
   );
 
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
-  const inDetail = pane.mode === "detail";
+  const paneConfirmOpen = confirmOpen || draftDiscardOpen;
+  const emptyDraft = { mode: "create-draft" as const, name: "", description: "" };
 
   function leaveToList(): void {
     if (document.activeElement instanceof HTMLElement) {
@@ -175,26 +206,172 @@ export function ResourcesPanel({
     setFieldEditing(false);
     setConfirmOpen(false);
     setDetailBusy(false);
+    setDraftDiscardOpen(false);
+    setDraftNameError(null);
+  }
+
+  function openEmptyDraft(): void {
+    discardingDraftRef.current = false;
+    suppressDraftCommitRef.current = false;
+    setPane(emptyDraft);
+    setFieldEditing(false);
+    setConfirmOpen(false);
+    setDraftDiscardOpen(false);
+    setDraftNameError(null);
+    setPendingFilter(null);
+    setFilterStateBeforeDraftLeave(null);
+  }
+
+  function closeDraftDiscard(): void {
+    setDraftDiscardOpen(false);
+    setPendingFilter(null);
+    setFilterStateBeforeDraftLeave(null);
+  }
+
+  function confirmDraftDiscard(): void {
+    const intent = draftDiscardIntent;
+    const nextFilter = pendingFilter;
+    discardingDraftRef.current = true;
+    closeDraftDiscard();
+    switch (intent) {
+      case "fresh-draft":
+        openEmptyDraft();
+        return;
+      case "list":
+        leaveToList();
+        if (nextFilter) {
+          setFilterState(nextFilter);
+        }
+        return;
+      default: {
+        const _exhaustive: never = intent;
+        return _exhaustive;
+      }
+    }
+  }
+
+  function cancelDraftDiscard(): void {
+    const previousFilter = filterStateBeforeDraftLeave;
+    suppressDraftCommitRef.current = false;
+    closeDraftDiscard();
+    if (previousFilter) {
+      setFilterState(previousFilter);
+    }
+  }
+
+  function requestLeaveDraft(intent: DraftDiscardIntent): void {
+    const current = paneRef.current;
+    if (current.mode !== "create-draft") {
+      return;
+    }
+    suppressDraftCommitRef.current = true;
+    if (!draftHasTypedContent(current)) {
+      discardingDraftRef.current = true;
+      switch (intent) {
+        case "fresh-draft":
+          openEmptyDraft();
+          return;
+        case "list":
+          leaveToList();
+          if (pendingFilter) {
+            setFilterState(pendingFilter);
+            setPendingFilter(null);
+          }
+          return;
+        default: {
+          const _exhaustive: never = intent;
+          return _exhaustive;
+        }
+      }
+    }
+    setDraftDiscardIntent(intent);
+    setDraftDiscardOpen(true);
+  }
+
+  async function commitDraftName(): Promise<void> {
+    const current = paneRef.current;
+    if (current.mode !== "create-draft" || discardingDraftRef.current) {
+      return;
+    }
+    if (suppressDraftCommitRef.current) {
+      return;
+    }
+    const name = current.name.trim();
+    if (!name || !baseUrl || createInFlightRef.current) {
+      return;
+    }
+    createInFlightRef.current = true;
+    setDetailBusy(true);
+    onBusyChange?.(true);
+    setDraftNameError(null);
+    try {
+      const description = current.description.trim();
+      const created = await createLibraryPlugin(baseUrl, token, {
+        name,
+        ...(description ? { description } : {}),
+      });
+      setPane({
+        mode: "detail",
+        target: { kind: "plugin-package", selector: created.name },
+      });
+      setDraftNameError(null);
+      reloadLibrary();
+    } catch (createError: unknown) {
+      setDraftNameError(errorMessage(createError, "Could not create plugin"));
+    } finally {
+      createInFlightRef.current = false;
+      setDetailBusy(false);
+      onBusyChange?.(false);
+    }
+  }
+
+  function requestCreatePlugin(): void {
+    const current = paneRef.current;
+    if (current.mode === "create-draft" && draftHasTypedContent(current)) {
+      suppressDraftCommitRef.current = true;
+      setDraftDiscardIntent("fresh-draft");
+      setDraftDiscardOpen(true);
+      return;
+    }
+    if (current.mode === "detail") {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+    if (current.mode === "create-draft") {
+      discardingDraftRef.current = true;
+    }
+    openEmptyDraft();
   }
 
   function applyFilterChange(next: ResourceFilterState): void {
-    if (!inDetail) {
+    const current = paneRef.current;
+    if (current.mode === "list") {
       setFilterState(next);
       return;
     }
+    const draftTyped =
+      current.mode === "create-draft" && draftHasTypedContent(current);
     const action = sidebarChangeAction({
       busy: detailBusy,
-      confirmOpen,
-      draftTyped: false,
+      confirmOpen: paneConfirmOpen,
+      draftTyped,
     });
     switch (action) {
       case "block":
         return;
       case "leave-and-apply":
+        discardingDraftRef.current = current.mode === "create-draft";
+        suppressDraftCommitRef.current = current.mode === "create-draft";
         leaveToList();
         setFilterState(next);
         return;
       case "confirm-discard":
+        suppressDraftCommitRef.current = true;
+        setPendingFilter(next);
+        setFilterStateBeforeDraftLeave(filterState);
+        setDraftDiscardIntent("list");
+        setDraftDiscardOpen(true);
         return;
       default: {
         const _exhaustive: never = action;
@@ -204,7 +381,8 @@ export function ResourcesPanel({
   }
 
   useEffect(() => {
-    if (!inDetail) {
+    if (pane.mode === "list") {
+      discardingDraftRef.current = false;
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -214,16 +392,31 @@ export function ResourcesPanel({
       if (detailBusy) {
         return;
       }
-      const action = escapeAction({ fieldEditing, confirmOpen });
-      if (action !== "leave-pane") {
-        return;
+      const action = escapeAction({
+        fieldEditing,
+        confirmOpen: paneConfirmOpen,
+      });
+      switch (action) {
+        case "cancel-field":
+        case "dismiss-confirm":
+          return;
+        case "leave-pane":
+          event.preventDefault();
+          if (paneRef.current.mode === "create-draft") {
+            requestLeaveDraft("list");
+          } else {
+            leaveToList();
+          }
+          return;
+        default: {
+          const _exhaustive: never = action;
+          return _exhaustive;
+        }
       }
-      event.preventDefault();
-      leaveToList();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [inDetail, fieldEditing, confirmOpen, detailBusy]);
+  }, [pane.mode, fieldEditing, paneConfirmOpen, detailBusy]);
 
   function openLibraryRow(entry: LibraryListEntry): void {
     const label = resourceDisplayName(entry);
@@ -324,6 +517,144 @@ export function ResourcesPanel({
     }
   }
 
+  function renderCreateDraft(): ReactNode {
+    if (pane.mode !== "create-draft") {
+      return null;
+    }
+    return (
+      <PluginCreateDraft
+        titleId={detailTitleId}
+        name={pane.name}
+        description={pane.description}
+        nameError={draftNameError}
+        disabled={disabled || !baseUrl}
+        busy={detailBusy}
+        onDraftChange={(next) => {
+          setPane({
+            mode: "create-draft",
+            name: next.name,
+            description: next.description,
+          });
+          setDraftNameError(null);
+        }}
+        onNameCommit={() => {
+          void commitDraftName();
+        }}
+        onBack={() => requestLeaveDraft("list")}
+        onFieldEditingChange={setFieldEditing}
+      />
+    );
+  }
+
+  function renderList(): ReactNode {
+    if (error) {
+      return (
+        <div className="empty-state">
+          <p>{error}</p>
+        </div>
+      );
+    }
+    if (loading) {
+      return <p className="muted">Loading resources…</p>;
+    }
+    if (filteredEntries.length === 0) {
+      return (
+        <div className="empty-state">
+          <p className="muted">
+            {libraryEmpty
+              ? "No registered resources yet. Import items or create a plugin."
+              : isResourceFilterStateActive(filterState)
+                ? "No matches."
+                : "No resources to show."}
+          </p>
+          {libraryEmpty ? (
+            <>
+              <button
+                type="button"
+                className="btn"
+                disabled={disabled || !baseUrl}
+                onClick={() => setImportOpen(true)}
+              >
+                Import into library
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={disabled || !baseUrl}
+                onClick={() => requestCreatePlugin()}
+              >
+                Create plugin
+              </button>
+            </>
+          ) : null}
+        </div>
+      );
+    }
+    return groups.map((group) => (
+      <section
+        className="resources-type-group"
+        key={group.type}
+        aria-label={group.type}
+      >
+        <h3 className="resources-type-heading">
+          <TypeIcon type={group.type} />
+          <span>{group.type}</span>
+          <span className="muted">{group.resources.length}</span>
+        </h3>
+        <ul className="resources-list">
+          {group.resources.map((resource) => {
+            const entry = resource as LibraryListEntry;
+            const label = resourceDisplayName(entry);
+            const badge = libraryRowBadge(entry);
+            return (
+              <li className="resources-list-item" key={entry.id}>
+                <ResourceRowRoot
+                  hover={hoverModelFromLibraryResource(entry)}
+                  testId={`resource-row-${label}`}
+                  disabled={disabled}
+                >
+                  <ResourceRowIdentity
+                    type={entry.type}
+                    label={label}
+                    onOpen={() => openLibraryRow(entry)}
+                  >
+                    {badge || entry.description ? (
+                      <ResourceRowDescription>
+                        {badge}
+                        {badge && entry.description ? " · " : null}
+                        {entry.description}
+                      </ResourceRowDescription>
+                    ) : null}
+                  </ResourceRowIdentity>
+                  <ResourceRowMeta
+                    harnessIds={relatedHarnessesForResourceType(
+                      entry.type,
+                    )}
+                  />
+                </ResourceRowRoot>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ));
+  }
+
+  function renderMainPane(): ReactNode {
+    switch (pane.mode) {
+      case "create-draft":
+        return renderCreateDraft();
+      case "detail":
+        return renderDetail();
+      case "list":
+        return renderList();
+      default: {
+        const _exhaustive: never = pane;
+        return _exhaustive;
+      }
+    }
+  }
+
   return (
     <main
       className="resources-panel"
@@ -346,9 +677,36 @@ export function ResourcesPanel({
               aria-label="Create plugin"
               title="Create plugin"
               disabled={disabled || !baseUrl}
-              onClick={() =>
-                setPane({ mode: "create-draft", name: "", description: "" })
-              }
+              onClick={() => {
+                const current = paneRef.current;
+                if (
+                  current.mode === "create-draft"
+                  && draftHasTypedContent(current)
+                ) {
+                  suppressDraftCommitRef.current = true;
+                  setDraftDiscardIntent("fresh-draft");
+                  setDraftDiscardOpen(true);
+                  return;
+                }
+                if (current.mode === "detail") {
+                  if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                  }
+                }
+                if (current.mode === "create-draft") {
+                  discardingDraftRef.current = true;
+                  suppressDraftCommitRef.current = true;
+                }
+                setPane({ mode: "create-draft", name: "", description: "" });
+                setFieldEditing(false);
+                setConfirmOpen(false);
+                setDraftDiscardOpen(false);
+                setDraftNameError(null);
+                setPendingFilter(null);
+                setFilterStateBeforeDraftLeave(null);
+                discardingDraftRef.current = false;
+                suppressDraftCommitRef.current = false;
+              }}
             >
               <Plus size={16} aria-hidden />
               Create plugin
@@ -389,98 +747,18 @@ export function ResourcesPanel({
           searchInputRef={filterRef}
         />
         <div className="resources-panel-body">
-          {inDetail ? (
-            renderDetail()
-          ) : error ? (
-            <div className="empty-state">
-              <p>{error}</p>
-            </div>
-          ) : loading ? (
-            <p className="muted">Loading resources…</p>
-          ) : filteredEntries.length === 0 ? (
-            <div className="empty-state">
-              <p className="muted">
-                {libraryEmpty
-                  ? "No registered resources yet. Import items or create a plugin."
-                  : isResourceFilterStateActive(filterState)
-                    ? "No matches."
-                    : "No resources to show."}
-              </p>
-              {libraryEmpty ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={disabled || !baseUrl}
-                    onClick={() => setImportOpen(true)}
-                  >
-                    Import into library
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={disabled || !baseUrl}
-                    onClick={() =>
-                      setPane({ mode: "create-draft", name: "", description: "" })
-                    }
-                  >
-                    Create plugin
-                  </button>
-                </>
-              ) : null}
-            </div>
-          ) : (
-            groups.map((group) => (
-              <section
-                className="resources-type-group"
-                key={group.type}
-                aria-label={group.type}
-              >
-                <h3 className="resources-type-heading">
-                  <TypeIcon type={group.type} />
-                  <span>{group.type}</span>
-                  <span className="muted">{group.resources.length}</span>
-                </h3>
-                <ul className="resources-list">
-                  {group.resources.map((resource) => {
-                    const entry = resource as LibraryListEntry;
-                    const label = resourceDisplayName(entry);
-                    const badge = libraryRowBadge(entry);
-                    return (
-                      <li className="resources-list-item" key={entry.id}>
-                        <ResourceRowRoot
-                          hover={hoverModelFromLibraryResource(entry)}
-                          testId={`resource-row-${label}`}
-                          disabled={disabled}
-                        >
-                          <ResourceRowIdentity
-                            type={entry.type}
-                            label={label}
-                            onOpen={() => openLibraryRow(entry)}
-                          >
-                            {badge || entry.description ? (
-                              <ResourceRowDescription>
-                                {badge}
-                                {badge && entry.description ? " · " : null}
-                                {entry.description}
-                              </ResourceRowDescription>
-                            ) : null}
-                          </ResourceRowIdentity>
-                          <ResourceRowMeta
-                            harnessIds={relatedHarnessesForResourceType(
-                              entry.type,
-                            )}
-                          />
-                        </ResourceRowRoot>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))
-          )}
+          {renderMainPane()}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={draftDiscardOpen}
+        title="Discard this plugin?"
+        description="This plugin has not been created yet. Typed name and description will be lost."
+        confirmLabel="Discard"
+        onConfirm={() => confirmDraftDiscard()}
+        onCancel={() => cancelDraftDiscard()}
+      />
 
       <ResourceTrackedDirectoriesModal
         open={trackedDirsOpen}
