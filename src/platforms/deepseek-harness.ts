@@ -1,4 +1,4 @@
-import { join, relative, sep } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { parse, stringify } from "yaml";
 import { BaseSerializer } from "./base-serializer.js";
 import {
@@ -39,10 +39,10 @@ const PERSONA_PLUGIN_NAME = "@deepseek-ai/dsh-persona";
 const LEGAL_PERMISSION_PRESETS = new Set(["workspace-write", "danger-full-access"]);
 
 function instructionResourceName(path: string): string {
-  if (path.endsWith(".local.md")) {
-    return `${path.slice(0, -".md".length)}-instructions`;
+  if (path === "AGENTS.md") {
+    return "deepseek-harness-instructions";
   }
-  return "deepseek-harness-instructions";
+  return `${path.slice(0, -".md".length)}-instructions`;
 }
 
 function hooksOutputPath(hooksPath: string): string {
@@ -84,8 +84,12 @@ function presetDescription(content: string | undefined): string {
   return "";
 }
 
-function dshRelative(projectRoot: string, dshHome: string, subpath: string): string {
-  return relative(projectRoot, join(dshHome, subpath)).split(sep).join("/");
+function dshRelative(homeRoot: string, dshHome: string, subpath: string): string {
+  const rel = relative(homeRoot, join(dshHome, subpath));
+  if (isAbsolute(rel) || rel.startsWith("..")) {
+    throw new Error("$DSH_HOME must be inside the home directory for apply");
+  }
+  return rel.split(sep).join("/");
 }
 
 /**
@@ -303,18 +307,23 @@ export class DeepSeekHarnessSerializer extends BaseSerializer {
         server.name,
         server.metadata as McpServerMetadata,
       );
-      if (item) rows.push(item);
+      if (item) {
+        rows.push(item);
+      } else {
+        console.warn(
+          `Skipping MCP server "${server.name}": serverName must match [A-Za-z0-9_-]{1,32}`,
+        );
+      }
     }
     if (hooks.length > 0) {
       rows.push(hooksBridgeInsertItem(join(dshHome, "hooks/harnesstap.json")));
     }
 
+    const patchPath = join(dshHome, "cordis.patch.yml");
+    const existingPatch = this.readFile(patchPath);
     let patchYaml: string | undefined;
-    if (rows.length > 0) {
-      patchYaml = mergeCordisPatch(
-        this.readFile(join(dshHome, "cordis.patch.yml")),
-        rows,
-      );
+    if (rows.length > 0 || this.fileExists(patchPath)) {
+      patchYaml = mergeCordisPatch(existingPatch, rows);
     }
 
     const modelConfig = resources.find((r) => r.type === "model_config");
@@ -323,6 +332,8 @@ export class DeepSeekHarnessSerializer extends BaseSerializer {
       .map((r) => (r.metadata as PermissionMetadata).pattern)
       .find((pattern) => LEGAL_PERMISSION_PRESETS.has(pattern));
 
+    const settingsPath = join(dshHome, "settings.yaml");
+    const existingSettings = this.readFile(settingsPath);
     let settingsYaml: string | undefined;
     if (modelConfig || permissionPreset) {
       const overlay: SettingsOverlay = {};
@@ -331,10 +342,9 @@ export class DeepSeekHarnessSerializer extends BaseSerializer {
         overlay.model = { model: meta.model, provider: meta.provider };
       }
       if (permissionPreset) overlay.permissionPreset = permissionPreset;
-      settingsYaml = mergeSettingsYaml(
-        this.readFile(join(dshHome, "settings.yaml")),
-        overlay,
-      );
+      settingsYaml = mergeSettingsYaml(existingSettings, overlay);
+    } else if (this.fileExists(settingsPath)) {
+      settingsYaml = existingSettings ?? "";
     }
 
     const files: SerializedFile[] = [];

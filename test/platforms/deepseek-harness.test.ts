@@ -56,6 +56,34 @@ describe("DeepSeekHarnessSerializer project", () => {
     }
   });
 
+  it("names distinct instruction files uniquely when AGENTS.md and CLAUDE.md differ", async () => {
+    const projectDir = createTempDir("dsh-scan-instructions");
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Agents body\n");
+      writeTextFile(join(projectDir, "CLAUDE.md"), "# Claude body\n");
+
+      const resources = await new DeepSeekHarnessSerializer().scan(projectDir);
+      const instructions = resources.filter((r) => r.type === "instruction");
+      expect(instructions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "deepseek-harness-instructions",
+            source: "AGENTS.md",
+            content: expect.stringContaining("# Agents body"),
+          }),
+          expect.objectContaining({
+            name: "CLAUDE-instructions",
+            source: "CLAUDE.md",
+            content: expect.stringContaining("# Claude body"),
+          }),
+        ]),
+      );
+      expect(instructions).toHaveLength(2);
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("serializes project files without a home patch", async () => {
     const files = await new DeepSeekHarnessSerializer().serialize(
       [
@@ -282,6 +310,80 @@ describe("DeepSeekHarnessSerializer global", () => {
       );
       const patchAgain = again.find((file) => file.path.endsWith("cordis.patch.yml"));
       expect(patchAgain?.content.match(/harnesstap-mcp-docs/g)?.length).toBe(1);
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
+  it("keeps an existing home patch when global apply has no MCP or hooks", async () => {
+    const homeDir = createTempDir("dsh-home-keep-patch");
+    try {
+      writeTextFile(
+        join(homeDir, ".dsh/cordis.patch.yml"),
+        "- insert:\n    - id: user-memory\n      name: '@deepseek-ai/dsh-mcp-client'\n      config:\n        serverName: memory\n        transport: stdio\n        command: memory-mcp\n",
+      );
+      writeTextFile(join(homeDir, ".dsh/settings.yaml"), "llm-pi-ai:\n  keep: true\n");
+
+      const files = await new DeepSeekHarnessSerializer().serialize(
+        [makeResource({ type: "skill", name: "review", content: "# Review" })],
+        homeDir,
+        { target: "global" },
+      );
+
+      const patch = files.find((file) => file.path.endsWith("cordis.patch.yml"));
+      expect(patch).toBeDefined();
+      expect(patch?.content).toContain("user-memory");
+      expect(patch?.content).not.toContain("harnesstap-");
+      const settings = files.find((file) => file.path.endsWith("settings.yaml"));
+      expect(settings?.content).toContain("keep: true");
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
+  it("throws when $DSH_HOME is outside the home directory", async () => {
+    const homeDir = createTempDir("dsh-home-inside");
+    const outsideDir = createTempDir("dsh-home-outside");
+    const previous = process.env.DSH_HOME;
+    process.env.DSH_HOME = outsideDir;
+    try {
+      await expect(
+        new DeepSeekHarnessSerializer().serialize(
+          [makeResource({ type: "skill", name: "review", content: "# Review" })],
+          homeDir,
+          { target: "global" },
+        ),
+      ).rejects.toThrow(/\$DSH_HOME must be inside the home directory for apply/);
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME;
+      else process.env.DSH_HOME = previous;
+      cleanupDir(homeDir);
+      cleanupDir(outsideDir);
+    }
+  });
+
+  it("skips MCP servers with invalid serverName and keeps valid ones", async () => {
+    const homeDir = createTempDir("dsh-bad-mcp-name");
+    try {
+      const files = await new DeepSeekHarnessSerializer().serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "bad.name",
+            metadata: { transport: "stdio", command: "bad-mcp" },
+          }),
+          makeResource({
+            type: "mcp_server",
+            name: "docs",
+            metadata: { transport: "stdio", command: "docs-mcp" },
+          }),
+        ],
+        homeDir,
+        { target: "global" },
+      );
+      const patch = files.find((file) => file.path.endsWith("cordis.patch.yml"));
+      expect(patch?.content).toContain("harnesstap-mcp-docs");
+      expect(patch?.content).not.toContain("bad.name");
     } finally {
       cleanupDir(homeDir);
     }

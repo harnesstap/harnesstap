@@ -230,6 +230,7 @@ DeepSeek Harness is a developer preview; the Cordis patch schema can change.
 - Live hooks are the home-patch `configPath` (`$DSH_HOME/hooks/harnesstap.json`); project `.dsh/hooks/` is scanned and written but not wired into Cordis.
 - User agent presets are persona-only and do not include shipped `standard` tools.
 - Plugin npm install is `web` profile only (`dsh plugin --profile web add`).
+- HarnessTap round-trips `cordis.patch.yml` as plain YAML (`parse`/`stringify`) and does not evaluate `!!js`; tags on user rows may be dropped on the next apply.
 
 ## Workarounds
 
