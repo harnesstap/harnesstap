@@ -4,6 +4,7 @@ import {
   PLUGIN_REF_EMPTY_RESOURCES_COPY,
   groupContainedResources,
   isPluginTypeResource,
+  pluginRefShowsMarketplaceUrl,
 } from "../../apps/desktop/src/lib/plugin-ref-detail.ts";
 
 describe("plugin-ref detail helpers", () => {
@@ -69,5 +70,36 @@ describe("plugin-ref detail helpers", () => {
     expect(PLUGIN_REF_EMPTY_RESOURCES_COPY).toBe(
       "Sync to load resources from the install tree.",
     );
+  });
+
+  it("shows marketplace URL only for marketplace plugin refs with a URL", () => {
+    expect(
+      pluginRefShowsMarketplaceUrl({
+        type: "plugin",
+        origin_kind: "marketplace_link",
+        marketplace_url: "https://github.com/acme/team-plugins",
+      }),
+    ).toBe(true);
+    expect(
+      pluginRefShowsMarketplaceUrl({
+        type: "plugin",
+        origin_kind: "manual",
+        marketplace_url: "https://github.com/acme/team-plugins",
+      }),
+    ).toBe(false);
+    expect(
+      pluginRefShowsMarketplaceUrl({
+        type: "plugin",
+        origin_kind: "marketplace_link",
+        marketplace_url: null,
+      }),
+    ).toBe(false);
+    expect(
+      pluginRefShowsMarketplaceUrl({
+        type: "skill",
+        origin_kind: "marketplace_link",
+        marketplace_url: "https://github.com/acme/team-plugins",
+      }),
+    ).toBe(false);
   });
 });

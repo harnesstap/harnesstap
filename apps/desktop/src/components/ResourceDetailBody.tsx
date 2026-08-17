@@ -14,6 +14,7 @@ import {
   FileCode2,
   Folder,
   Hash,
+  Link,
   MapPin,
   RefreshCw,
   Trash2,
@@ -30,6 +31,11 @@ import {
   syncLibraryResource,
   type ResourceSyncResult,
 } from "../lib/api/resource-mutate";
+import { formatLibraryTimestamp } from "../lib/library-timestamp";
+import {
+  isPluginTypeResource,
+  pluginRefShowsMarketplaceUrl,
+} from "../lib/plugin-ref-detail";
 import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
@@ -82,10 +88,10 @@ function displayName(resource: LibraryResourceDetail): string {
 
 function originLabel(resource: LibraryResourceDetail): string {
   const kind = formatOriginKindLabel(resource.origin_kind);
-  if (resource.origin_ref) {
-    return `${kind} (${resource.origin_ref})`;
+  if (isPluginTypeResource(resource.type) || !resource.origin_ref) {
+    return kind;
   }
-  return kind;
+  return `${kind} (${resource.origin_ref})`;
 }
 
 function isUntrackedDetail(resource: LibraryResourceDetail): boolean {
@@ -509,19 +515,21 @@ export function ResourceDetailBody({
       {chrome === "pane" && editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
       ) : null}
-      <LibraryFieldRow
-        icon={<AlignLeft size={16} aria-hidden />}
-        fieldName="Description"
-        readOnly={fieldsReadOnly}
-        display={detail.description}
-        placeholder="No description"
-        editing={editingField === "description"}
-        error={editingField === "description" ? fieldError : null}
-        onStartEdit={() => void startEdit("description")}
-      >
-        {renderEditor("description", descriptionMultiline)}
-      </LibraryFieldRow>
-      {detail.namespace ? (
+      {!isPluginTypeResource(detail.type) ? (
+        <LibraryFieldRow
+          icon={<AlignLeft size={16} aria-hidden />}
+          fieldName="Description"
+          readOnly={fieldsReadOnly}
+          display={detail.description}
+          placeholder="No description"
+          editing={editingField === "description"}
+          error={editingField === "description" ? fieldError : null}
+          onStartEdit={() => void startEdit("description")}
+        >
+          {renderEditor("description", descriptionMultiline)}
+        </LibraryFieldRow>
+      ) : null}
+      {!isPluginTypeResource(detail.type) && detail.namespace ? (
         <LibraryFieldRow
           icon={<Hash size={16} aria-hidden />}
           fieldName="Namespace"
@@ -536,7 +544,14 @@ export function ResourceDetailBody({
         fieldName="Path"
         readOnly
         mono
-        display={detail.source || "—"}
+        display={
+          isPluginTypeResource(detail.type)
+            ? (detail.install_path ?? "")
+            : (detail.source || "—")
+        }
+        placeholder={
+          isPluginTypeResource(detail.type) ? "Install path not found" : undefined
+        }
         editing={false}
         onStartEdit={() => undefined}
       />
@@ -548,29 +563,42 @@ export function ResourceDetailBody({
         editing={false}
         onStartEdit={() => undefined}
       />
+      {pluginRefShowsMarketplaceUrl(detail) ? (
+        <LibraryFieldRow
+          icon={<Link size={16} aria-hidden />}
+          fieldName="Marketplace URL"
+          readOnly
+          mono
+          display={detail.marketplace_url}
+          editing={false}
+          onStartEdit={() => undefined}
+        />
+      ) : null}
       <LibraryFieldRow
         icon={<Clock size={16} aria-hidden />}
         fieldName="Updated"
         readOnly
         mono
-        display={detail.updated_at}
+        display={formatLibraryTimestamp(detail.updated_at)}
         editing={false}
         onStartEdit={() => undefined}
       />
-      <LibraryFieldRow
-        icon={<FileCode2 size={16} aria-hidden />}
-        fieldName="Content"
-        readOnly={fieldsReadOnly}
-        mono
-        display={detail.content}
-        placeholder="No content"
-        editing={editingField === "content"}
-        error={editingField === "content" ? fieldError : null}
-        onStartEdit={() => void startEdit("content")}
-      >
-        {renderEditor("content", true)}
-      </LibraryFieldRow>
-      {detail.content_truncated ? (
+      {!isPluginTypeResource(detail.type) ? (
+        <LibraryFieldRow
+          icon={<FileCode2 size={16} aria-hidden />}
+          fieldName="Content"
+          readOnly={fieldsReadOnly}
+          mono
+          display={detail.content}
+          placeholder="No content"
+          editing={editingField === "content"}
+          error={editingField === "content" ? fieldError : null}
+          onStartEdit={() => void startEdit("content")}
+        >
+          {renderEditor("content", true)}
+        </LibraryFieldRow>
+      ) : null}
+      {!isPluginTypeResource(detail.type) && detail.content_truncated ? (
         <p className="muted resource-detail-truncated">
           Content truncated for preview.
         </p>

@@ -1,4 +1,7 @@
-import { LISTABLE_FILTER_RESOURCE_TYPES } from "./resource-filters";
+import {
+  LISTABLE_FILTER_RESOURCE_TYPES,
+  formatOriginKindLabel,
+} from "./resource-filters";
 import type { PluginContainedResource } from "./types";
 
 export const PLUGIN_REF_EMPTY_RESOURCES_COPY =
@@ -6,6 +9,18 @@ export const PLUGIN_REF_EMPTY_RESOURCES_COPY =
 
 export function isPluginTypeResource(type: string): boolean {
   return type === "plugin";
+}
+
+export function pluginRefShowsMarketplaceUrl(detail: {
+  type: string;
+  origin_kind: string;
+  marketplace_url?: string | null;
+}): boolean {
+  return (
+    isPluginTypeResource(detail.type) &&
+    formatOriginKindLabel(detail.origin_kind) === "Marketplace" &&
+    Boolean(detail.marketplace_url)
+  );
 }
 
 const TYPE_ORDER = LISTABLE_FILTER_RESOURCE_TYPES.filter(
