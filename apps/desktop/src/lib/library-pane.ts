@@ -76,6 +76,16 @@ export function isIncidentalDraftLeaveTarget(
   );
 }
 
+export function isOutsideLibraryDetail(target: EventTarget | null): boolean {
+  if (target == null || typeof target !== "object") {
+    return true;
+  }
+  const candidate = target as {
+    closest?: (selector: string) => unknown;
+  };
+  return candidate.closest?.(".library-detail") == null;
+}
+
 export function shouldCommitDraftName(input: {
   leaving: boolean;
   name: string;

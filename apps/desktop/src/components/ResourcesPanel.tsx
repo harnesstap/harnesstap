@@ -31,6 +31,7 @@ import {
 import {
   draftHasTypedContent,
   escapeAction,
+  isOutsideLibraryDetail,
   shouldCommitDraftName,
   sidebarChangeAction,
   type LibraryPane,
@@ -210,6 +211,21 @@ export function ResourcesPanel({
       discardingDraftRef.current = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (pane.mode !== "create-draft") {
+      return;
+    }
+    function onWindowPointerDownCapture(event: PointerEvent): void {
+      if (isOutsideLibraryDetail(event.target)) {
+        beginDraftLeave();
+      }
+    }
+    window.addEventListener("pointerdown", onWindowPointerDownCapture, true);
+    return () => {
+      window.removeEventListener("pointerdown", onWindowPointerDownCapture, true);
+    };
+  }, [pane.mode]);
 
   function onHeaderDraftLeavePointerDown(): void {
     if (paneRef.current.mode === "create-draft") {

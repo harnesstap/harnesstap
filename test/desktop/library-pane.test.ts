@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   draftHasTypedContent,
   escapeAction,
+  isOutsideLibraryDetail,
   shouldCommitDraftName,
   sidebarChangeAction,
 } from "../../apps/desktop/src/lib/library-pane.ts";
@@ -98,5 +99,19 @@ describe("library pane navigation", () => {
         connected: false,
       }),
     ).toBe(false);
+  });
+
+  test("pointer outside library-detail is a draft leave; inside is not", () => {
+    const outside = {
+      closest: (selector: string) =>
+        selector === ".library-detail" ? null : null,
+    };
+    const inside = {
+      closest: (selector: string) =>
+        selector === ".library-detail" ? inside : null,
+    };
+    expect(isOutsideLibraryDetail(outside as EventTarget)).toBe(true);
+    expect(isOutsideLibraryDetail(inside as EventTarget)).toBe(false);
+    expect(isOutsideLibraryDetail(null)).toBe(true);
   });
 });

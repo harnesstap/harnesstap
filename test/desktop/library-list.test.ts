@@ -149,6 +149,10 @@ test("leaving a create draft does not post the typed name", () => {
   expect(panelSource).toMatch(
     /return \(\) => \{\s*suppressDraftCommitRef\.current = true/,
   );
+  expect(panelSource).toContain("isOutsideLibraryDetail");
+  expect(panelSource).toMatch(
+    /addEventListener\("pointerdown",[\s\S]*true\)/,
+  );
   expect(draftSource).not.toContain("setTimeout");
   expect(draftSource).toContain("relatedTarget");
   expect(draftSource).toContain("isConnected");
