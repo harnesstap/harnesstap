@@ -76,7 +76,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 **Library**
 
-- Client-merged list of resources and plugin packages. Composition-ref rows (`resources.type = plugin`) display as **plugin ref**; type filter `plugin` includes both.
+- Client-merged list of resources and plugin packages. Plugin packages are type **plugin**; composition-ref rows (`resources.type = plugin`) are type **plugin ref**. Type filters and list groups are separate.
 - Main pane is list XOR full-panel detail. Back (top left) and Esc return to the list. Esc while editing a field cancels that edit only. Sidebar filter changes return to the list (blocked while a confirm is open or an action is in flight).
 - Filters: type as badges; updated as a segment; namespace as a searchable select; origin as a radio list. Origin groups `manual` and `local_snapshot` as **Local**; `marketplace_link` as **Marketplace**. Same labels on hover and detail. Storage `origin_kind` is unchanged.
 - Detail: title is the name (double-click to rename). Other fields are icon + value; icon tooltip names the field. Double-click to edit. Default environment is only the field-row combobox.

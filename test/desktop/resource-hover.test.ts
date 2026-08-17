@@ -39,6 +39,21 @@ describe("resource hover model", () => {
     });
   });
 
+  it("labels composition-ref resources as plugin_ref", () => {
+    const pluginRef: LibraryResource = {
+      id: "plugin:nested",
+      name: "devx@teads-plugins",
+      type: "plugin",
+      namespace: null,
+      description: "Plugin pin: devx@teads-plugins",
+    };
+    expect(hoverModelFromLibraryResource(pluginRef)).toMatchObject({
+      type: "plugin_ref",
+      name: "devx@teads-plugins",
+      harnessIds: ["claude-code", "cursor"],
+    });
+  });
+
   it("uses namespace display name and omits empty path/origin", () => {
     const resource: LibraryResource = {
       id: "rule:x",

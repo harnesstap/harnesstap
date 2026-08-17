@@ -20,6 +20,8 @@ export function TypeIcon({ type }: { type: string }): ReactNode {
   switch (type) {
     case "plugin":
       return <Layers size={ICON_SIZE} aria-hidden />;
+    case "plugin_ref":
+      return <Package size={ICON_SIZE} aria-hidden />;
     case "skill":
       return <Sparkles size={ICON_SIZE} aria-hidden />;
     case "mcp_server":

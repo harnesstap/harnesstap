@@ -5,6 +5,7 @@ import {
   type FileChangeResourceGroup,
 } from "./contents-diff";
 import { relatedHarnessesForResourceType } from "./harness-meta";
+import { libraryFilterType } from "./library-list";
 import { resourceDisplayName } from "./resource-search";
 import type {
   DriftFileChange,
@@ -70,10 +71,11 @@ export function resourceHoverCardHasContent(model: ResourceHoverModel): boolean 
 export function hoverModelFromLibraryResource(
   resource: LibraryResource,
 ): ResourceHoverModel {
+  const filterType = libraryFilterType(resource);
   const model: ResourceHoverModel = {
-    type: resource.type,
+    type: filterType,
     name: resourceDisplayName(resource),
-    harnessIds: [...relatedHarnessesForResourceType(resource.type)],
+    harnessIds: [...relatedHarnessesForResourceType(filterType)],
     extra: [],
   };
   const path = resource.source?.trim();

@@ -1,0 +1,3 @@
+kind: Changed
+body: Split Library type filters and list groups into plugin packages and plugin refs.
+time: 2026-08-16T16:00:00Z

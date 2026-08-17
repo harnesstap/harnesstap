@@ -24,6 +24,8 @@ import {
 } from "../lib/api/library-plugins";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
+  groupLibraryListByFilterType,
+  libraryFilterType,
   libraryRowBadge,
   mergeLibraryList,
   type LibraryListEntry,
@@ -44,10 +46,7 @@ import {
   type ResourceFilterState,
 } from "../lib/resource-filters";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
-import {
-  groupLibraryResourcesByType,
-  resourceDisplayName,
-} from "../lib/resource-search";
+import { resourceDisplayName } from "../lib/resource-search";
 import type { LibraryResource } from "../lib/types";
 
 type DraftDiscardIntent = "list" | "fresh-draft";
@@ -196,7 +195,7 @@ export function ResourcesPanel({
   );
 
   const groups = useMemo(
-    () => groupLibraryResourcesByType(filteredEntries),
+    () => groupLibraryListByFilterType(filteredEntries),
     [filteredEntries],
   );
 
@@ -682,18 +681,18 @@ export function ResourcesPanel({
       <section
         className="resources-type-group"
         key={group.type}
-        aria-label={group.type}
+        aria-label={group.label}
       >
         <h3 className="resources-type-heading">
           <TypeIcon type={group.type} />
-          <span>{group.type}</span>
+          <span>{group.label}</span>
           <span className="muted">{group.resources.length}</span>
         </h3>
         <ul className="resources-list">
-          {group.resources.map((resource) => {
-            const entry = resource as LibraryListEntry;
+          {group.resources.map((entry) => {
             const label = resourceDisplayName(entry);
             const badge = libraryRowBadge(entry);
+            const filterType = libraryFilterType(entry);
             return (
               <li className="resources-list-item" key={entry.id}>
                 <ResourceRowRoot
@@ -702,7 +701,7 @@ export function ResourcesPanel({
                   disabled={disabled}
                 >
                   <ResourceRowIdentity
-                    type={entry.type}
+                    type={filterType}
                     label={label}
                     onOpen={() => openLibraryRow(entry)}
                   >
@@ -716,7 +715,7 @@ export function ResourcesPanel({
                   </ResourceRowIdentity>
                   <ResourceRowMeta
                     harnessIds={relatedHarnessesForResourceType(
-                      entry.type,
+                      filterType,
                     )}
                   />
                 </ResourceRowRoot>

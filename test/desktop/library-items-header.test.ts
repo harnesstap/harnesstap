@@ -134,5 +134,8 @@ describe("library items header design lock", () => {
     expect(designSource).toContain("Create plugin (accent primary");
     expect(designSource).toContain("Sync on a library row is `resource sync`");
     expect(designSource).toContain("plugin ref");
+    expect(designSource).toContain(
+      "Type filters and list groups are separate",
+    );
   });
 });

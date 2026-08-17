@@ -57,8 +57,12 @@ const rows: LibraryResource[] = [
 ];
 
 describe("LISTABLE_FILTER_RESOURCE_TYPES", () => {
-  it("includes plugin and excludes plugin_pin", () => {
+  it("includes plugin and plugin_ref, excludes plugin_pin", () => {
     expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("plugin");
+    expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("plugin_ref");
+    expect(LISTABLE_FILTER_RESOURCE_TYPES.indexOf("plugin_ref")).toBe(
+      LISTABLE_FILTER_RESOURCE_TYPES.indexOf("plugin") + 1,
+    );
     expect(LISTABLE_FILTER_RESOURCE_TYPES).not.toContain("plugin_pin");
     expect(LISTABLE_FILTER_RESOURCE_TYPES).toContain("skill");
   });
@@ -202,6 +206,51 @@ describe("applyLibraryResourceFilters", () => {
       new Date(2026, 7, 8, 12, 0, 0),
     );
     expect(filtered.map((r) => r.id)).not.toContain("4");
+  });
+
+  it("splits plugin packages from plugin ref resources", () => {
+    const mixed = [
+      {
+        ...resource({ id: "pkg", type: "plugin", name: "devx" }),
+        listKind: "plugin-package" as const,
+        version: "1.0.0",
+      },
+      {
+        ...resource({ id: "ref", type: "plugin", name: "devx@teads-plugins" }),
+        listKind: "resource" as const,
+      },
+      resource({ id: "skill", type: "skill", name: "ship" }),
+    ];
+
+    expect(
+      applyLibraryResourceFilters(mixed, {
+        ...defaultResourceFilterState(),
+        type: "plugin",
+      }).map((r) => r.id),
+    ).toEqual(["pkg"]);
+
+    expect(
+      applyLibraryResourceFilters(mixed, {
+        ...defaultResourceFilterState(),
+        type: "plugin_ref",
+      }).map((r) => r.id),
+    ).toEqual(["ref"]);
+  });
+
+  it("treats storage-type plugin resources without listKind as plugin refs", () => {
+    const refs = [resource({ id: "ref", type: "plugin", name: "nested" })];
+    expect(
+      applyLibraryResourceFilters(refs, {
+        ...defaultResourceFilterState(),
+        type: "plugin",
+      }),
+    ).toEqual([]);
+    expect(
+      applyLibraryResourceFilters(refs, {
+        ...defaultResourceFilterState(),
+        type: "plugin_ref",
+      }).map((r) => r.id),
+    ).toEqual(["ref"]);
   });
 });
 

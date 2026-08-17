@@ -57,6 +57,7 @@ const TYPE_ORDER = [
 
 export const TYPE_LABELS: Record<string, { one: string; other: string }> = {
   plugin: { one: "plugin", other: "plugins" },
+  plugin_ref: { one: "plugin ref", other: "plugin refs" },
   skill: { one: "skill", other: "skills" },
   mcp_server: { one: "MCP", other: "MCP" },
   instruction: { one: "instruction", other: "instructions" },

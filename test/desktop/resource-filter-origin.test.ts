@@ -24,6 +24,11 @@ function cssBlock(source: string, selector: string): string {
 }
 
 describe("library origin filter chrome", () => {
+  test("labels the plugin ref type badge explicitly", () => {
+    expect(sidebarSource).toContain("libraryFilterTypeLabel(type)");
+    expect(sidebarSource).toContain("libraryFilterType(resource)");
+  });
+
   test("renders origin as a radio list, not a combobox", () => {
     expect(sidebarSource).toContain('name="resource-filter-origin"');
     expect(sidebarSource).toContain('type="radio"');

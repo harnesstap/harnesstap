@@ -64,10 +64,10 @@ function displayName(resource: LibraryResource): string {
  * CLI-compatible resource filter: `skill:dbt` limits to type + text;
  * plain text matches name, description, and namespace display form.
  */
-export function filterLibraryResourcesBySearch(
-  resources: LibraryResource[],
+export function filterLibraryResourcesBySearch<T extends LibraryResource>(
+  resources: T[],
   search: string,
-): LibraryResource[] {
+): T[] {
   const parsed = parseListSearchQuery(search);
   if (parsed.raw.length === 0) {
     return resources;

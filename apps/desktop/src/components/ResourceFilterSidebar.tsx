@@ -2,6 +2,10 @@ import { useMemo, type Ref } from "react";
 import { FilterX } from "lucide-react";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import {
+  libraryFilterType,
+  libraryFilterTypeLabel,
+} from "../lib/library-list";
+import {
   LISTABLE_FILTER_RESOURCE_TYPES,
   buildNamespaceFacetOptions,
   buildOriginFacetOptions,
@@ -136,7 +140,8 @@ function FilterCombobox({
 function typeCounts(resources: LibraryResource[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const resource of resources) {
-    counts.set(resource.type, (counts.get(resource.type) ?? 0) + 1);
+    const key = libraryFilterType(resource);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return counts;
 }
@@ -235,7 +240,7 @@ export function ResourceFilterSidebar({
                 disabled={disabled}
                 onClick={() => onChange({ ...state, type })}
               >
-                {type}
+                {libraryFilterTypeLabel(type)}
               </button>
             );
           })}

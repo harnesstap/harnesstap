@@ -1,3 +1,4 @@
+import { libraryFilterType } from "./library-list";
 import { filterLibraryResourcesBySearch } from "./resource-search";
 import type { LibraryResource } from "./types";
 
@@ -13,6 +14,7 @@ export const LISTABLE_FILTER_RESOURCE_TYPES = [
   "env_var",
   "model_config",
   "plugin",
+  "plugin_ref",
 ] as const;
 
 export type UpdatedPreset = "all" | "1d" | "7d" | "30d" | "90d" | "custom";
@@ -154,15 +156,15 @@ function matchesNamespace(
   }
 }
 
-export function applyLibraryResourceFilters(
-  resources: LibraryResource[],
+export function applyLibraryResourceFilters<T extends LibraryResource>(
+  resources: T[],
   state: ResourceFilterState,
   now: Date = new Date(),
-): LibraryResource[] {
+): T[] {
   let next = filterLibraryResourcesBySearch(resources, state.search);
 
   if (state.type !== null) {
-    next = next.filter((resource) => resource.type === state.type);
+    next = next.filter((resource) => libraryFilterType(resource) === state.type);
   }
 
   if (state.namespace.mode !== "all") {
