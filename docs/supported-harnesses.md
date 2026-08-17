@@ -246,14 +246,14 @@ Grok Build’s native layout under `.grok/` maps as follows:
 
 ### DeepSeek Harness notes
 
-DeepSeek Harness is a developer preview; the Cordis patch schema can change. `$DSH_HOME` is `process.env.DSH_HOME` if set, otherwise `~/.dsh`. Detection uses distinctive `.dsh/skills/` or `.dsh/hooks/` — not `AGENTS.md` alone.
+DeepSeek Harness is a developer preview; the Cordis patch schema can change. Home files live under `$DSH_HOME` if set, otherwise `~/.dsh`. Detection uses distinctive `.dsh/skills/` or `.dsh/hooks/` — not `AGENTS.md` alone.
 
 | DeepSeek surface | HarnessTap support |
 | ---------------- | ------------------- |
 | **AGENTS.md** (`CLAUDE.md`) | `instruction` resources |
 | **Skills** (`.dsh/skills/`) | Native `skill` resources |
 | **MCP** (`$DSH_HOME/cordis.patch.yml` home patch) | Live MCP is global only — not project |
-| **Hooks** (`$DSH_HOME/cordis.patch.yml` + one process-level `configPath`) | Claude command subset via `@deepseek-ai/dsh-hooks-claude-code`; project `.dsh/hooks/` is inventory-only |
+| **Hooks** (`$DSH_HOME/cordis.patch.yml` `configPath`) | Live hooks are `$DSH_HOME/hooks/harnesstap.json` (Claude command subset via `@deepseek-ai/dsh-hooks-claude-code`); project `.dsh/hooks/` is scanned and written but not wired into Cordis |
 | **Agent presets** (`$DSH_HOME/.agent-presets/`) | Persona-only user presets — not a copy of shipped `standard` |
 | **Permissions** | Named presets `workspace-write` and `danger-full-access` only |
 | **Plugin install** | `dsh plugin --profile web add` (`$DSH_HOME/profiles/web/`) — web profile only |

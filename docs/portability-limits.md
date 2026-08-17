@@ -227,7 +227,7 @@ panel reason `cursor_host_skill_collision` (yellow) and do not flip
 DeepSeek Harness is a developer preview; the Cordis patch schema can change.
 
 - Live MCP is applied via `$DSH_HOME/cordis.patch.yml` only — not project MCP files.
-- Hooks use one process-level `configPath`; project `.dsh/hooks/` JSON is inventory only.
+- Live hooks are the home-patch `configPath` (`$DSH_HOME/hooks/harnesstap.json`); project `.dsh/hooks/` is scanned and written but not wired into Cordis.
 - User agent presets are persona-only and do not include shipped `standard` tools.
 - Plugin npm install is `web` profile only (`dsh plugin --profile web add`).
 
