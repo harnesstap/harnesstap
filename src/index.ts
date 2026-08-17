@@ -1,7 +1,3 @@
-import {
-  registerAgentCommands,
-  registerUiDebugCommand,
-} from "./cli/commands/agent.js";
 import { registerConfigCommands } from "./cli/commands/config.js";
 import { registerEnvironmentCommands } from "./cli/commands/environment.js";
 import { registerHarnessCommands } from "./cli/commands/harness.js";
@@ -25,8 +21,6 @@ import { renderCliError, runHarnesstapCli } from "./cli/runtime.js";
 import { isPromptCancellationError } from "./services/wizards/shared.js";
 
 registerEnvironmentCommands(program);
-registerAgentCommands(program);
-registerUiDebugCommand(program);
 registerMigrateCommands(program);
 registerResourceCommands(program);
 registerProjectCommandsBeforeConfig(program);

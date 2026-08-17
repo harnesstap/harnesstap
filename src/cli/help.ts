@@ -40,18 +40,35 @@ export function resolveCommandDescription(command: Command): string {
   return command.description() || getCommandHelpEntry(command)?.description || "";
 }
 
+/** Commands that run a default action while also hosting subcommands. */
+export function commandKeepsDefaultAction(command: Command): boolean {
+  return command.name() === "init";
+}
+
 function isLeafHelpCommand(command: Command): boolean {
-  return command.commands.every((sub) => isHiddenHelpCommand(sub));
+  return (
+    commandKeepsDefaultAction(command)
+    || command.commands.every((sub) => isHiddenHelpCommand(sub))
+  );
 }
 
 function isCommandGroup(command: Command): boolean {
+  // `init` keeps a default action (`ht init`) while hosting `init completion`.
+  // Keep it under PROJECT rather than COMMAND GROUPS.
+  if (commandKeepsDefaultAction(command)) {
+    return false;
+  }
   return command.commands.some((sub) => !isHiddenHelpCommand(sub));
+}
+
+function byCommandName(a: Command, b: Command): number {
+  return a.name().localeCompare(b.name());
 }
 
 function renderTopLevelCommandHelp(cmd: Command): string {
   const commands = cmd.commands.filter((command) => !isHiddenHelpCommand(command));
-  const groups = commands.filter(isCommandGroup);
-  const direct = commands.filter((command) => !isCommandGroup(command));
+  const groups = commands.filter(isCommandGroup).sort(byCommandName);
+  const direct = commands.filter((command) => !isCommandGroup(command)).sort(byCommandName);
 
   const sections = [
     renderCommandSection("COMMAND GROUPS", groups),

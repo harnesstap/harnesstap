@@ -38,7 +38,7 @@ cd apps/desktop && bun install && bun run dev
 In another terminal, start the agent manually:
 
 ```bash
-bun run start -- agent serve
+bun src/agent/entry.ts
 ```
 
 Set `VITE_AGENT_URL=http://127.0.0.1:7474` and `VITE_AGENT_TOKEN=$(cat ~/.harnesstap/agent-token)` when testing mutating routes in the browser.

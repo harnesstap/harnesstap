@@ -186,9 +186,12 @@ describe("CLI harness", () => {
     try {
       const prompted = await runCli(["init"], {
         isTTY: true,
+        env: { SHELL: "/bin/zsh" },
         promptResponses: [
           { main_harness: "claude-code" },
           { alias_harnesses: ["cursor"] },
+          // Decline interactive tab-completion install during init.
+          { value: false },
         ],
       });
 

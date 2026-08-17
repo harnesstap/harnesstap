@@ -25,7 +25,9 @@ import { ensureDefaultEnvironment } from "../../services/ensure-default-environm
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
 import { maybePromptInitCatalogInstall } from "../../services/init-catalog-prompt.js";
+import { maybePromptInitCompletionInstall } from "../../services/init-completion-install.js";
 import { scanAndPersistHomeDefaults } from "../../services/scanner.js";
+import { renderShellCompletion } from "../../services/shell-completion.js";
 import {
   resolveSkillPackageCheckout,
 } from "../../services/skill-package-resolve.js";
@@ -94,7 +96,7 @@ function printQuickStartGuide(): void {
     `  ${formatCommand(`apply ${CANONICAL_CATALOG_BASELINE}`)}`,
   );
   console.log(`  ${formatCommand("help")}`);
-  ui.dim(`Enable tab completion: ${formatCommand("completion zsh >> ~/.zshrc")}`);
+  ui.dim(`Enable tab completion: ${formatCommand("init completion zsh >> ~/.zshrc")}`);
 }
 
 async function handleAddCommand(
@@ -414,6 +416,25 @@ async function handleInitCommand(opts: {
 
   printQuickStartGuide();
 
+  const canPromptCompletion =
+    format === "human"
+    && !opts.noInteractive
+    && !process.argv.includes("--no-interactive")
+    && Boolean(process.stdin.isTTY && process.stdout.isTTY)
+    && !["1", "true", "yes"].includes(process.env.CI?.trim().toLowerCase() ?? "")
+    && (opts.interactive === true || useWizard);
+
+  if (canPromptCompletion) {
+    try {
+      await maybePromptInitCompletionInstall({
+        format,
+        interactive: true,
+      });
+    } catch (err) {
+      if (!isPromptCancellationError(err)) throw err;
+    }
+  }
+
   const canPromptCatalog =
     format === "human"
     && !opts.noInteractive
@@ -439,7 +460,7 @@ async function handleInitCommand(opts: {
 }
 
 export function registerInitCommands(root: Command): void {
-  root
+  const initCmd = root
     .command("init")
     .description("Initialize the harnesstap database and config directory")
     .option("--format <mode>", "Output format: human or json", "human")
@@ -458,6 +479,21 @@ export function registerInitCommands(root: Command): void {
       defaultProfile?: boolean;
     }) => {
       await handleInitCommand(opts);
+    });
+
+  initCmd
+    .command("completion")
+    .argument("<shell>", "Target shell: bash, zsh, or fish (must match your interactive shell)")
+    .description(
+      "Print shell completion script to stdout (redirect into ~/.bashrc, ~/.zshrc, or fish completions)",
+    )
+    .action((shell: string) => {
+      try {
+        process.stdout.write(renderShellCompletion(shell, root));
+      } catch (err) {
+        process.exitCode = 1;
+        ui.danger(err instanceof Error ? err.message : String(err));
+      }
     });
 
   root

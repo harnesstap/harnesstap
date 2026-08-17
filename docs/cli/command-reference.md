@@ -35,26 +35,6 @@ ht help scenario 11
 ht help scenario 7 --format json
 ```
 
-## completion
-
-Generate shell completion scripts for bash, zsh, or fish. After installation, Tab completes:
-
-- subcommands and flags for every `ht` command
-- dynamic values such as local plugin, profile plugin, and resource names
-- harness slugs, cloud accounts, and catalog plugins (when authenticated) for supported commands
-
-Install by appending or saving the script for your shell:
-
-```bash
-ht completion bash >> ~/.bashrc
-ht completion zsh >> ~/.zshrc
-ht completion fish > ~/.config/fish/completions/ht.fish
-```
-
-Restart your shell or source the file, then try `ht plugin show <Tab>` to list local plugins.
-
-Both `ht` and `harnesstap` invocations are supported.
-
 ## init
 
 Initialize local HarnessTap state.
@@ -74,6 +54,26 @@ Key options:
 - `--format <mode>` — `human` or `json`
 
 `init` seeds a local `default` profile plugin (tagged `profile`) and writes `active-profile.json` unless `--no-default-profile` is passed. Global apply does **not** run automatically — run `ht profile use default` to materialize home harness files.
+
+### init completion
+
+Generate shell completion scripts for bash, zsh, or fish. After installation, Tab completes:
+
+- subcommands and flags for every `ht` command
+- dynamic values such as local plugin, profile plugin, and resource names
+- harness slugs, cloud accounts, and catalog plugins (when authenticated) for supported commands
+
+Install by appending or saving the script for your shell:
+
+```bash
+ht init completion bash >> ~/.bashrc
+ht init completion zsh >> ~/.zshrc
+ht init completion fish > ~/.config/fish/completions/ht.fish
+```
+
+Restart your shell or source the file, then try `ht plugin show <Tab>` to list local plugins.
+
+Both `ht` and `harnesstap` invocations are supported.
 
 ## add
 

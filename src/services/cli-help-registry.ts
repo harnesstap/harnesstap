@@ -14,21 +14,21 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
     description: "Show a numbered scenario playbook from the docs",
     examples: ["help scenario 11", "help scenario 7 --format json"],
   },
-  completion: {
-    description:
-      "Generate shell completion scripts for bash, zsh, or fish",
-    examples: [
-      "completion bash >> ~/.bashrc",
-      "completion zsh >> ~/.zshrc",
-      "completion fish > ~/.config/fish/completions/ht.fish",
-    ],
-  },
   init: {
     description: "Initialize local HarnessTap state",
     examples: [
       "init",
       "init --main claude-code --aliases cursor,codex",
       "init --format json",
+    ],
+  },
+  "init.completion": {
+    description:
+      "Generate shell completion scripts for bash, zsh, or fish",
+    examples: [
+      "init completion bash >> ~/.bashrc",
+      "init completion zsh >> ~/.zshrc",
+      "init completion fish > ~/.config/fish/completions/ht.fish",
     ],
   },
   add: {
@@ -39,10 +39,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "add mattpocock/skills --list",
       "add mattpocock/skills --skill caveman,grill-me --global --yes",
     ],
-  },
-  "agent.serve": {
-    description: "Start the loopback agent HTTP server (engineering debug)",
-    examples: ["agent serve", "agent serve --port 7474"],
   },
   scan: {
     description:
@@ -61,10 +57,6 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "mirror . --dry-run",
       "mirror --reference auto --format json",
     ],
-  },
-  ui: {
-    description: "HarnessTap desktop UI entry (engineering debug)",
-    examples: ["ui --serve", "ui --serve --port 7474"],
   },
   use: {
     description:

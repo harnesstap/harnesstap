@@ -5,7 +5,6 @@ import {
   loadScenarioGuide,
   parseScenarioId,
 } from "../../services/scenario-guide.js";
-import { renderShellCompletion } from "../../services/shell-completion.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
 import { formatCommand, GUIDE_SCENARIOS_URL } from "../shared.js";
@@ -86,18 +85,5 @@ export function registerHelpCommands(root: Command): void {
     .description(false as unknown as string)
     .action(async (shell: string, line: string[]) => {
       await runCompleteCommand(shell, line, root);
-    });
-
-  root
-    .command("completion")
-    .argument("<shell>", "Target shell: bash, zsh, or fish (must match your interactive shell)")
-    .description("Print shell completion script to stdout (redirect into ~/.bashrc, ~/.zshrc, or fish completions)")
-    .action((shell: string) => {
-      try {
-        process.stdout.write(renderShellCompletion(shell, root));
-      } catch (err) {
-        process.exitCode = 1;
-        ui.danger(err instanceof Error ? err.message : String(err));
-      }
     });
 }
