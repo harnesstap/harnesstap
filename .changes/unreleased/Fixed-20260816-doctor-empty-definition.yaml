@@ -1,0 +1,3 @@
+kind: Fixed
+body: Stop plugin doctor from warning on metadata-only resources that have a complete definition.
+time: 2026-08-16T00:00:00Z

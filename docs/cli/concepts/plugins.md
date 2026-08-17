@@ -24,7 +24,7 @@ ht plugin edit team-stack --add plugin:shared-baseline --version "^1.2.0"
 ht plugin show my-setup
 ```
 
-`plugin doctor` checks for duplicate resources, empty content, or invalid plugin metadata. `plugin diff` compares plugin metadata and contents against another plugin or a TOML bundle. `plugin from-project` scans a repository and turns imported resources into a new plugin.
+`plugin doctor` checks for duplicate resources, empty definition, or invalid plugin metadata. `plugin diff` compares plugin metadata and contents against another plugin or a TOML bundle. `plugin from-project` scans a repository and turns imported resources into a new plugin.
 
 ## Provenance (origin)
 

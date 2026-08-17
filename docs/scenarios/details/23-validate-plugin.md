@@ -14,5 +14,5 @@ harnesstap plugin doctor --list-checks
 harnesstap plugin doctor my-setup --check plugin-metadata
 ```
 
-Doctor checks cover empty plugins, duplicate resources, empty content, and
+Doctor checks cover empty plugins, duplicate resources, empty definition, and
 plugin metadata. JSON mode exits with code `1` when the plugin is invalid.
