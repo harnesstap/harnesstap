@@ -2,8 +2,9 @@ import { existsSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import { listResources } from "../models/resource.js";
-import type { Resource } from "../types.js";
+import type { PluginDependencyMetadata, Resource } from "../types.js";
 import { listMarketplaces } from "./marketplace-registry.js";
+import { parseDependencyRef } from "./plugin-dependency.js";
 import { resolveInstallRoot } from "./resource-sync.js";
 
 export interface PluginContainedResource {
@@ -34,10 +35,15 @@ export function pluginResourceShowExtras(
         join(options.homeRoot, ".claude", "plugins"),
       )
     : resolveInstallRoot(originRef);
+  const marketplaceName =
+    (resource.metadata as PluginDependencyMetadata).marketplace_name ||
+    parseDependencyRef(originRef).namespace ||
+    resource.namespace?.split("#")[0] ||
+    "";
   const marketplaceUrl =
-    resource.origin_kind === "marketplace_link" && resource.namespace
+    resource.origin_kind === "marketplace_link" && marketplaceName
       ? (listMarketplaces(options?.harnesstapDir ?? getHarnesstapDir()).find(
-          (entry) => entry.name === resource.namespace,
+          (entry) => entry.name === marketplaceName,
         )?.url ?? null)
       : null;
   if (!installPath) {
@@ -79,7 +85,7 @@ function containedFile(
   if (!source.trim()) {
     return null;
   }
-  const absolute = resolve(source);
+  const absolute = resolve(installPath, source);
   const root = resolve(installPath);
   const rel = relative(root, absolute);
   if (!rel || rel.startsWith("..")) {

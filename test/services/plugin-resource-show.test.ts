@@ -167,4 +167,87 @@ describe("pluginResourceShowExtras", () => {
       await ctx.cleanup();
     }
   });
+
+  it("resolves contained files from tree-relative child sources", async () => {
+    const ctx = await createInitializedTestContext("plugin-show-relative");
+    try {
+      addMarketplace(getHarnesstapDir(), {
+        name: "team-mkt",
+        url: "https://github.com/acme/team-plugins",
+        platforms: ["claude-code"],
+      });
+      const installRoot = join(
+        ctx.homeDir,
+        ".claude",
+        "plugins",
+        "cache",
+        "team-mkt",
+        "demo",
+      );
+      mkdirSync(join(installRoot, ".."), { recursive: true });
+      cpSync(FIXTURE, installRoot, { recursive: true });
+      const skillPath = join(installRoot, "skills", "team", "SKILL.md");
+      const pin = createResource({
+        type: "plugin",
+        name: "demo",
+        namespace: "team-mkt",
+        description: "Plugin pin: demo@team-mkt",
+        content: "{}",
+        metadata: {},
+        source: "composition:plugin",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@team-mkt",
+      });
+      createResource({
+        type: "skill",
+        name: "team",
+        namespace: "demo",
+        description: "Team skill",
+        content: "# team",
+        metadata: {},
+        source: "skills/team/SKILL.md",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@team-mkt",
+      });
+
+      const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
+      expect(extras?.contained_resources).toEqual([
+        {
+          type: "skill",
+          name: "team",
+          path: skillPath,
+          relative_path: "skills/team/SKILL.md",
+        },
+      ]);
+    } finally {
+      await ctx.cleanup();
+    }
+  });
+
+  it("resolves marketplace URL when namespace includes a version constraint", async () => {
+    const ctx = await createInitializedTestContext("plugin-show-constraint");
+    try {
+      addMarketplace(getHarnesstapDir(), {
+        name: "team-mkt",
+        url: "https://github.com/acme/team-plugins",
+        platforms: ["claude-code"],
+      });
+      const pin = createResource({
+        type: "plugin",
+        name: "demo",
+        namespace: "team-mkt#^1.0.0",
+        description: "Plugin pin: demo@team-mkt",
+        content: "{}",
+        metadata: {},
+        source: "composition:plugin",
+        origin_kind: "marketplace_link",
+        origin_ref: "demo@team-mkt",
+      });
+
+      const extras = pluginResourceShowExtras(pin, { homeRoot: ctx.homeDir });
+      expect(extras?.marketplace_url).toBe("https://github.com/acme/team-plugins");
+    } finally {
+      await ctx.cleanup();
+    }
+  });
 });
