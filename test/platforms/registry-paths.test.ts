@@ -74,6 +74,85 @@ describe("registry path detection", () => {
     }
   });
 
+  it("detects deepseek-harness from .dsh/skills", () => {
+    const projectDir = createTempDir("deepseek-harness-skills");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".dsh/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review code\n---\nReview carefully.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("does not detect deepseek-harness from AGENTS.md or .agents/skills alone", () => {
+    const projectDir = createTempDir("deepseek-harness-shared-only");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Shared\n");
+      writeTextFile(
+        join(projectDir, ".agents/skills/review/SKILL.md"),
+        "---\nname: review\ndescription: Review\n---\nBody.\n",
+      );
+
+      expect(detectPlatforms(projectDir)).not.toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("does not detect deepseek-harness from CLAUDE.local.md alone", () => {
+    const projectDir = createTempDir("deepseek-harness-claude-local");
+
+    try {
+      writeTextFile(join(projectDir, "CLAUDE.local.md"), "# Local overlay\n");
+
+      expect(detectPlatforms(projectDir)).not.toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects deepseek-harness from .dsh/hooks", () => {
+    const projectDir = createTempDir("deepseek-harness-hooks");
+
+    try {
+      writeTextFile(join(projectDir, ".dsh/hooks/harnesstap.json"), '{"version":1}\n');
+
+      expect(detectPlatforms(projectDir)).toContain("deepseek-harness");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects claude-code from CLAUDE.md alone", () => {
+    const projectDir = createTempDir("claude-code-claude-md");
+
+    try {
+      writeTextFile(join(projectDir, "CLAUDE.md"), "# Claude instructions\n");
+
+      expect(detectPlatforms(projectDir)).toContain("claude-code");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects devin from AGENTS.local.md alone", () => {
+    const projectDir = createTempDir("devin-agents-local");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.local.md"), "# Devin local\n");
+
+      expect(detectPlatforms(projectDir)).toContain("devin");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects cline from legacy .clinerules file", () => {
     const projectDir = createTempDir("cline-legacy-rules");
 

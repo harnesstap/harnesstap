@@ -34,6 +34,7 @@ describe("CLI harness", () => {
         "gemini-cli",
         "goose",
         "grok-build",
+        "deepseek-harness",
       ]);
 
       const pluginList = await runCli(["l", "ls", "--local-only", "--format", "json"], {

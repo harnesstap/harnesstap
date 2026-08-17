@@ -125,7 +125,25 @@ describe("platform registry", () => {
     expect(grok?.supports.has("commands")).toBe(true);
     expect(grok?.supports.has("model_config")).toBe(true);
 
-    expect(registry.getAllPlatforms().length).toBe(41);
+    const dsh = registry.getPlatform("deepseek-harness");
+    expect(dsh?.name).toBe("DeepSeek Harness");
+    expect(dsh?.projectPaths.skills).toBe(".dsh/skills/");
+    expect(dsh?.projectPaths.hooks).toBe(".dsh/hooks/");
+    expect(dsh?.projectPaths.pathAlternates?.skills).toEqual([".agents/skills/"]);
+    expect(dsh?.projectPaths.pathAlternates?.instructions).toBeUndefined();
+    expect(dsh?.globalPaths.mcp).toBe("~/.dsh/cordis.patch.yml");
+    expect(dsh?.globalPaths.settings).toBe("~/.dsh/settings.yaml");
+    expect(dsh?.globalPaths.agents).toBe("~/.dsh/.agent-presets/");
+    expect(dsh?.globalPaths.plugins).toBe("~/.dsh/profiles/web/");
+    expect(dsh?.supports.has("mcp")).toBe(true);
+    expect(dsh?.supports.has("hooks")).toBe(true);
+    expect(dsh?.supports.has("agents")).toBe(true);
+    expect(dsh?.supports.has("permissions")).toBe(true);
+    expect(dsh?.supports.has("model_config")).toBe(true);
+    expect(dsh?.supports.has("commands")).toBe(false);
+    expect(dsh?.supports.has("rules")).toBe(false);
+
+    expect(registry.getAllPlatforms().length).toBe(42);
   });
 
   it("detectPlatforms returns empty array (stub)", async () => {

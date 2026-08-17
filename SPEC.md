@@ -683,7 +683,7 @@ Not every host surface round-trips through apply or mirror. Static resources (sk
 
 ### Native serializers
 
-Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, and `grok-build`. Remaining registered harnesses use the generic serializer.
+Dedicated serializers exist for `claude-code`, `codex`, `cursor`, `goose`, `opencode`, `github-copilot`, `copilot-cli`, `gemini-cli`, `grok-build`, and `deepseek-harness`. Remaining registered harnesses use the generic serializer.
 
 ### Generic serializer
 
@@ -691,7 +691,7 @@ Other registered harnesses use the generic serializer with registry-declared pat
 
 ### Registered harnesses
 
-`harness list` is the executable source of truth (**41** harness IDs at time of writing). `harness list --supported` filters to the nine native serializers. `harness status` and `harness project status` report configured main and alias harness selection. See [docs/supported-harnesses.md](docs/supported-harnesses.md) for the full capability matrix.
+`harness list` is the executable source of truth (**42** harness IDs at time of writing). `harness list --supported` filters to the ten native serializers. `harness status` and `harness project status` report configured main and alias harness selection. See [docs/supported-harnesses.md](docs/supported-harnesses.md) for the full capability matrix.
 
 ## Scan, apply, import, and sync behavior
 
@@ -861,7 +861,7 @@ bun run build
 
 ## Known gaps and non-goals
 
-- Remaining registered harnesses (beyond the nine dedicated serializers) use path-driven generic serialization.
+- Remaining registered harnesses (beyond the ten dedicated serializers) use path-driven generic serialization.
 - `migrate export --plugin` / `migrate import` operate on plugin TOML bundles; full workspace handoff uses archive paths (`.tar.gz`).
 - HarnessTap does not host a plugin marketplace. CLI `marketplace` / `plugin search|add` browse configured marketplace URLs and pin plugins onto plugins; host install/ensure runs through providers when the target profile is active (or on apply/use). Cursor marketplace ensure uses `agent plugin marketplace add`; Cursor plugin install remains IDE / `/plugin` (no `agent plugin install`). Uninstall/disable remains out of scope.
 - Desktop (`apps/desktop`) and `agent serve` / `ui` are engineering/control-plane surfaces; the published npm package remains the CLI.

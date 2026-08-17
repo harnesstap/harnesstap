@@ -6,6 +6,7 @@ import { OpenCodeSerializer } from "../platforms/opencode.js";
 import { CopilotSerializer } from "../platforms/copilot.js";
 import { GeminiCliSerializer } from "../platforms/gemini-cli.js";
 import { GrokBuildSerializer } from "../platforms/grok-build.js";
+import { DeepSeekHarnessSerializer } from "../platforms/deepseek-harness.js";
 import { GenericAgentsSerializer } from "../platforms/generic-agents.js";
 import type { PlatformSerializer } from "../types.js";
 
@@ -19,6 +20,7 @@ export const DEDICATED_SERIALIZER_PLATFORM_IDS = [
   "copilot-cli",
   "gemini-cli",
   "grok-build",
+  "deepseek-harness",
 ] as const;
 
 const dedicatedSerializerPlatformIds = new Set<string>(
@@ -49,6 +51,8 @@ export function getPlatformSerializer(platformId: string): PlatformSerializer {
       return new GeminiCliSerializer();
     case "grok-build":
       return new GrokBuildSerializer();
+    case "deepseek-harness":
+      return new DeepSeekHarnessSerializer();
     default:
       return new GenericAgentsSerializer(platformId);
   }
