@@ -539,22 +539,17 @@ export function ResourceDetailBody({
           onStartEdit={() => undefined}
         />
       ) : null}
-      <LibraryFieldRow
-        icon={<Folder size={16} aria-hidden />}
-        fieldName="Path"
-        readOnly
-        mono
-        display={
-          isPluginTypeResource(detail.type)
-            ? (detail.install_path ?? "")
-            : (detail.source || "—")
-        }
-        placeholder={
-          isPluginTypeResource(detail.type) ? "Install path not found" : undefined
-        }
-        editing={false}
-        onStartEdit={() => undefined}
-      />
+      {!isPluginTypeResource(detail.type) ? (
+        <LibraryFieldRow
+          icon={<Folder size={16} aria-hidden />}
+          fieldName="Path"
+          readOnly
+          mono
+          display={detail.source || "—"}
+          editing={false}
+          onStartEdit={() => undefined}
+        />
+      ) : null}
       <LibraryFieldRow
         icon={<MapPin size={16} aria-hidden />}
         fieldName="Origin"
@@ -570,6 +565,18 @@ export function ResourceDetailBody({
           readOnly
           mono
           display={detail.marketplace_url}
+          editing={false}
+          onStartEdit={() => undefined}
+        />
+      ) : null}
+      {isPluginTypeResource(detail.type) ? (
+        <LibraryFieldRow
+          icon={<Folder size={16} aria-hidden />}
+          fieldName="Path"
+          readOnly
+          mono
+          display={detail.install_path ?? ""}
+          placeholder="Install path not found"
           editing={false}
           onStartEdit={() => undefined}
         />
