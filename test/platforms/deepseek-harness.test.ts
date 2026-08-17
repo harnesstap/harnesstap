@@ -150,6 +150,15 @@ describe("DeepSeekHarnessSerializer global", () => {
         join(homeDir, ".dsh/.agent-presets/explorer/agent.cordis.yml"),
         "- id: persona\n  name: '@deepseek-ai/dsh-persona'\n  config:\n    text: Search thoroughly.\n    complete: false\n",
       );
+      writeTextFile(
+        join(homeDir, ".dsh/profiles/web/node_modules/turtle-ui/package.json"),
+        JSON.stringify({
+          name: "turtle-ui",
+          version: "1.2.3",
+          description: "Turtle UI",
+          dsh: { bundle: { patch: "./cordis.patch.yml" } },
+        }),
+      );
 
       const resources = await new DeepSeekHarnessSerializer().scanGlobal(homeDir);
       expect(resources).toEqual(
@@ -183,6 +192,7 @@ describe("DeepSeekHarnessSerializer global", () => {
             name: "explorer",
             content: expect.stringContaining("Search thoroughly."),
           }),
+          expect.objectContaining({ type: "plugin", name: "turtle-ui" }),
         ]),
       );
     } finally {

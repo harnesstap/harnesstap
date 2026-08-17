@@ -13,6 +13,7 @@ import {
   type CordisInsertItem,
   type SettingsOverlay,
 } from "./deepseek-harness-home.js";
+import { listDshBundlePluginPinInputs } from "../plugins/providers/deepseek-harness.js";
 import { getPlatform } from "./registry.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
 import type {
@@ -219,6 +220,8 @@ export class DeepSeekHarnessSerializer extends BaseSerializer {
         ),
       );
     }
+
+    resources.push(...listDshBundlePluginPinInputs(homeRoot));
 
     return resources;
   }
