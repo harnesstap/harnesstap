@@ -128,4 +128,11 @@ describe("library items header design lock", () => {
     expect(designSource).toContain("**Create plugin** (accent");
     expect(designSource).toContain("Header cluster");
   });
+
+  test("documents unified library list and detail", () => {
+    expect(designSource).toContain("No Items/Packages tabs");
+    expect(designSource).toContain("Create plugin (accent primary");
+    expect(designSource).toContain("Sync on a library row is `resource sync`");
+    expect(designSource).toContain("plugin ref");
+  });
 });
