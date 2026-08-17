@@ -53,6 +53,13 @@ Landmarks: `nav` (profiles rail, scope layout only), `main` (live, library, or e
 
 Durable contracts only. Screen recipes belong in the feature spec that introduced them.
 
+**Header destinations**
+
+- Re-clicking an already-active header destination (Library, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
+- Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
+- Environments re-click clears the name filter and deselects. Create/edit drawer stays if open.
+- Global and Project re-click clear the profile rail search and close edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
+
 **Scope (Global / Project)**
 
 - Clicking a profile selects it; **Switch** commits. No “Both” view. Switch applies to the current view only.
