@@ -17,6 +17,7 @@ import {
   assertPluginsCleanForShare,
   cutPluginVersion,
   formatPluginVersionLabel,
+  listPluginVersionHistory,
   PluginVersionError,
   markPluginDirty,
 } from "../../src/services/plugin-versioning.ts";
@@ -206,6 +207,39 @@ describe("plugin versioning", () => {
       const plugin = createPlugin({ name: "fresh", version: "1.0.0" });
       expect(plugin.dirty).toBe(false);
       expect(getPluginById(plugin.id)?.dirty).toBe(false);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("lists head and frozen versions newest first", async () => {
+    const context = await createInitializedTestContext("plugin-version-history-list");
+    try {
+      const plugin = createPlugin({ name: "hist", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      const head = getPluginByName("hist", "1.1.0");
+      cutPluginVersion({ pluginId: head!.id, newVersion: "1.2.0" });
+
+      const rows = listPluginVersionHistory("hist");
+      expect(rows.map((row) => row.version)).toEqual(["1.2.0", "1.1.0", "1.0.0"]);
+      expect(rows[0]).toMatchObject({
+        version: "1.2.0",
+        dirty: false,
+        frozen_at: null,
+        is_head: true,
+      });
+      expect(rows[1]?.is_head).toBe(false);
+      expect(rows[1]?.frozen_at).toBeTruthy();
+      expect(rows[2]?.version).toBe("1.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("listPluginVersionHistory returns empty for an unknown name", async () => {
+    const context = await createInitializedTestContext("plugin-version-history-missing");
+    try {
+      expect(listPluginVersionHistory("missing")).toEqual([]);
     } finally {
       await context.cleanup();
     }

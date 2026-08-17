@@ -241,6 +241,46 @@ export function formatPluginVersionLabel(version: string, dirty: boolean): strin
   return dirty ? `${version}*` : version;
 }
 
+export interface PluginVersionHistoryEntry {
+  id: string;
+  name: string;
+  version: string;
+  dirty: boolean;
+  frozen_at: string | null;
+  is_head: boolean;
+  updated_at: string;
+}
+
+export function listPluginVersionHistory(name: string): PluginVersionHistoryEntry[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM plugins WHERE name = ?")
+    .all(name) as PluginRow[];
+  const versions = rows.map((row) => row.version);
+  const semverVersions = versions
+    .filter((version) => semver.valid(version) !== null)
+    .sort(semver.rcompare);
+  const nonSemver = versions.filter((version) => semver.valid(version) === null);
+  const ordered = [...semverVersions, ...nonSemver];
+  return ordered.flatMap((version) => {
+    const row = rows.find((candidate) => candidate.version === version);
+    if (!row) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        name: row.name,
+        version: row.version,
+        dirty: row.dirty === 1,
+        frozen_at: row.frozen_at,
+        is_head: row.frozen_at == null,
+        updated_at: row.updated_at,
+      },
+    ];
+  });
+}
+
 export function markPluginDirty(pluginId: string): void {
   const row = getPluginRowById(pluginId);
   if (!row) {
