@@ -129,6 +129,30 @@ describe("registry path detection", () => {
     }
   });
 
+  it("detects claude-code from CLAUDE.md alone", () => {
+    const projectDir = createTempDir("claude-code-claude-md");
+
+    try {
+      writeTextFile(join(projectDir, "CLAUDE.md"), "# Claude instructions\n");
+
+      expect(detectPlatforms(projectDir)).toContain("claude-code");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("detects devin from AGENTS.local.md alone", () => {
+    const projectDir = createTempDir("devin-agents-local");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.local.md"), "# Devin local\n");
+
+      expect(detectPlatforms(projectDir)).toContain("devin");
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("detects cline from legacy .clinerules file", () => {
     const projectDir = createTempDir("cline-legacy-rules");
 

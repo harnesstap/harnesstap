@@ -130,10 +130,7 @@ describe("platform registry", () => {
     expect(dsh?.projectPaths.skills).toBe(".dsh/skills/");
     expect(dsh?.projectPaths.hooks).toBe(".dsh/hooks/");
     expect(dsh?.projectPaths.pathAlternates?.skills).toEqual([".agents/skills/"]);
-    expect(dsh?.projectPaths.pathAlternates?.instructions).toEqual([
-      "CLAUDE.md",
-      "AGENTS.local.md",
-    ]);
+    expect(dsh?.projectPaths.pathAlternates?.instructions).toBeUndefined();
     expect(dsh?.globalPaths.mcp).toBe("~/.dsh/cordis.patch.yml");
     expect(dsh?.globalPaths.settings).toBe("~/.dsh/settings.yaml");
     expect(dsh?.globalPaths.agents).toBe("~/.dsh/.agent-presets/");

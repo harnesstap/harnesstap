@@ -379,7 +379,6 @@ const PLATFORMS: PlatformDefinition[] = [
     skills: ".dsh/skills/",
     hooks: ".dsh/hooks/",
     pathAlternates: {
-      instructions: ["CLAUDE.md", "AGENTS.local.md"],
       skills: [".agents/skills/"],
     },
   }, {
