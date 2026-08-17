@@ -31,7 +31,9 @@ import {
 } from "../../services/plugin-origin.js";
 import {
   cutPluginVersion,
+  listPluginVersionHistory,
   PluginVersionError,
+  rollbackPluginVersion,
 } from "../../services/plugin-versioning.js";
 import { toContentsResource } from "../../services/profile-contents.js";
 import type { Plugin, Resource } from "../../types.js";
@@ -109,6 +111,7 @@ export function buildPluginDetail(plugin: Plugin) {
       tags: plugin.tags,
       origin: getPluginOrigin(plugin.id),
       dirty: plugin.dirty,
+      frozen_at: plugin.frozen_at ?? null,
       default_environment_id: plugin.default_environment_id ?? null,
     },
     dependencies: listPluginDependencies(plugin.id).map((dep) => ({
@@ -367,6 +370,60 @@ export async function tryHandle(
   const matched = matchSelectorPath(pathname);
   if (!matched) {
     return null;
+  }
+
+  if (method === "GET" && matched.rest === "/versions") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const plugin = resolvePluginSelector(matched.selector);
+    if (!plugin) {
+      return notFound(matched.selector);
+    }
+    return jsonResponse({ versions: listPluginVersionHistory(plugin.name) });
+  }
+
+  if (method === "POST" && matched.rest === "/rollback") {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    const parsed = await readJsonBody(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+    if (!isRecord(parsed.value)) {
+      return jsonResponse({ error: "invalid_body" }, { status: 400 });
+    }
+    const version = parsed.value.version;
+    if (typeof version !== "string" || !version.trim()) {
+      return jsonResponse(
+        { error: "invalid_body", message: "version is required" },
+        { status: 400 },
+      );
+    }
+    try {
+      const head = rollbackPluginVersion({
+        selector: matched.selector,
+        toVersion: version.trim(),
+      });
+      return jsonResponse(buildPluginDetail(head));
+    } catch (error) {
+      if (error instanceof PluginProvenanceError) {
+        return provenanceResponse(error);
+      }
+      if (error instanceof PluginVersionError) {
+        return pluginVersionErrorResponse(error);
+      }
+      return jsonResponse(
+        {
+          error: "invalid_body",
+          message: error instanceof Error ? error.message : "rollback failed",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   if (method === "GET" && matched.rest === "") {
