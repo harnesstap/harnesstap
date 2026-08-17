@@ -166,6 +166,51 @@ describe("CLI help and command organization", () => {
     }
   });
 
+  it("lists command groups and project commands alphabetically", async () => {
+    const result = await runCli(["--no-color", "--help"]);
+    const groupsSection = result.stdout
+      .split("COMMAND GROUPS\n")[1]
+      ?.split("\n\nPROJECT\n")[0] ?? "";
+    const projectSection = result.stdout
+      .split("\nPROJECT\n")[1]
+      ?.split("\n\n")[0] ?? "";
+
+    const groups = groupsSection
+      .split("\n")
+      .filter((line) => line.startsWith("  "))
+      .map((line) => line.trim().split(/\s+/)[0]?.replace(/\(.*$/, "") ?? "");
+    const project = projectSection
+      .split("\n")
+      .filter((line) => line.startsWith("  "))
+      .map((line) => line.trim().split(/\s+/)[0]?.replace(/\[.*$/, "") ?? "");
+
+    expect(groups).toEqual([...groups].sort((a, b) => a.localeCompare(b)));
+    expect(project).toEqual([...project].sort((a, b) => a.localeCompare(b)));
+    expect(groups).toEqual([
+      "auth",
+      "config",
+      "environment",
+      "harness",
+      "help",
+      "layer",
+      "marketplace",
+      "migrate",
+      "plugin",
+      "profile",
+      "resource",
+    ]);
+    expect(project).toEqual([
+      "add",
+      "history",
+      "init",
+      "mirror",
+      "revert",
+      "scan",
+      "status",
+      "use",
+    ]);
+  });
+
   it("shows project-local verbs in top-level help", async () => {
     const help = await runCli(["-h"]);
     const pluginHelp = await runCli(["plugin", "-h"]);
@@ -244,7 +289,8 @@ describe("CLI help and command organization", () => {
   it("shows help in top-level help", async () => {
     const result = await runCli(["--help"]);
     expect(result.stdout).toContain("help");
-    expect(result.stdout).toContain("completion");
+    expect(result.stdout).toContain("init");
+    expect(result.stdout).not.toMatch(/\n {2}completion /);
     expect(result.stdout).not.toMatch(/\n {2}concepts/);
     expect(result.stdout).not.toMatch(/\n {2}guide/);
     expect(result.stdout).not.toMatch(/\n {2}scenario /);
@@ -275,8 +321,8 @@ describe("CLI help and command organization", () => {
     );
   });
 
-  it("generates bash completion", async () => {
-    const result = await runCli(["completion", "bash"]);
+  it("generates bash completion via init completion", async () => {
+    const result = await runCli(["init", "completion", "bash"]);
     expect(result.stdout).toContain("complete -F _harnesstap_completions");
     expect(result.stdout).toContain("ht __complete bash");
     expect(result.stdout).toContain("ht harnesstap");
@@ -300,5 +346,20 @@ describe("CLI help and command organization", () => {
     const result = await runCli(["profile", "-h"]);
     expect(result.stdout).toMatch(/list \(ls\).*List local profile/);
     expect(result.stdout).toMatch(/use \[name\].*Switch the active profile/);
+  });
+
+  it("hides agent and ui debug commands from top-level help", async () => {
+    const result = await runCli(["--help"]);
+    expect(result.stdout).not.toMatch(/\n {2}agent\b/);
+    expect(result.stdout).not.toMatch(/\n {2}ui\b/);
+  });
+
+  it("removes agent and ui commands", async () => {
+    await expect(runCli(["agent", "serve"])).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+    });
+    await expect(runCli(["ui", "--serve"])).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+    });
   });
 });
