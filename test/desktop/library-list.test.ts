@@ -129,6 +129,7 @@ test("leaving a create draft does not post the typed name", () => {
   expect(panelSource).toContain("onPointerDownCapture");
   expect(panelSource).toMatch(/mode === "create-draft"[\s\S]*suppressDraftCommitRef/);
   expect(draftSource).not.toContain("setTimeout");
+  expect(draftSource).toContain("relatedTarget");
   expect(chromeSource).toContain("onBackPointerDown");
   expect(panelSource).toContain("draftGeneration");
   expect(panelSource).toMatch(/<PluginCreateDraft[\s\S]*key=\{draftGeneration\}/);

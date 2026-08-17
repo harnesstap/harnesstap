@@ -19,7 +19,7 @@ export interface PluginCreateDraftProps {
   disabled?: boolean;
   busy?: boolean;
   onDraftChange: (next: { name: string; description: string }) => void;
-  onNameCommit: (reason: "enter" | "blur") => void;
+  onNameCommit: (reason: "enter" | "blur", relatedTarget?: EventTarget | null) => void;
   onBack: () => void;
   onLeavePointerDown: () => void;
   onFieldEditingChange: (editing: boolean) => void;
@@ -184,7 +184,7 @@ export function PluginCreateDraft({
           onChange={(event) =>
             onDraftChange({ name: event.target.value, description })
           }
-          onBlur={() => onNameCommit("blur")}
+          onBlur={(event) => onNameCommit("blur", event.relatedTarget)}
           onKeyDown={onNameKeyDown}
         />
       }

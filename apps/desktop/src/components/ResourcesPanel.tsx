@@ -298,7 +298,10 @@ export function ResourcesPanel({
     setDraftDiscardOpen(true);
   }
 
-  async function commitDraftName(reason: "enter" | "blur"): Promise<void> {
+  async function commitDraftName(
+    reason: "enter" | "blur",
+    relatedTarget?: EventTarget | null,
+  ): Promise<void> {
     const current = paneRef.current;
     if (current.mode !== "create-draft" || discardingDraftRef.current) {
       return;
@@ -317,7 +320,11 @@ export function ResourcesPanel({
       }
     }
     if (
-      !shouldCommitDraftName({ leaving, name: current.name })
+      !shouldCommitDraftName({
+        leaving,
+        name: current.name,
+        relatedTarget: reason === "blur" ? relatedTarget : null,
+      })
       || !baseUrl
       || createInFlightRef.current
     ) {
@@ -564,8 +571,8 @@ export function ResourcesPanel({
           });
           setDraftNameError(null);
         }}
-        onNameCommit={(reason) => {
-          void commitDraftName(reason);
+        onNameCommit={(reason, relatedTarget) => {
+          void commitDraftName(reason, relatedTarget);
         }}
         onBack={() => requestLeaveDraft("list")}
         onLeavePointerDown={beginDraftLeave}

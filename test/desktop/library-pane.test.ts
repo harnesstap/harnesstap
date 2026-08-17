@@ -33,4 +33,32 @@ describe("library pane navigation", () => {
     expect(shouldCommitDraftName({ leaving: false, name: "  " })).toBe(false);
     expect(shouldCommitDraftName({ leaving: false, name: "eng" })).toBe(true);
   });
+
+  test("draft name blur to back does not commit; blur to description and enter do", () => {
+    const back = {
+      getAttribute: (name: string) =>
+        name === "aria-label" ? "Back to library list" : null,
+      closest: (selector: string) =>
+        selector === '[aria-label="Back to library list"]' ? back : null,
+    };
+    const description = {
+      getAttribute: () => "Description",
+      closest: () => null,
+    };
+    expect(
+      shouldCommitDraftName({
+        leaving: false,
+        name: "eng",
+        relatedTarget: back as EventTarget,
+      }),
+    ).toBe(false);
+    expect(
+      shouldCommitDraftName({
+        leaving: false,
+        name: "eng",
+        relatedTarget: description as EventTarget,
+      }),
+    ).toBe(true);
+    expect(shouldCommitDraftName({ leaving: false, name: "eng" })).toBe(true);
+  });
 });
