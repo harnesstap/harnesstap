@@ -103,6 +103,13 @@ test("ResourcesPanel opens plugin packages in PluginPackageDetail", () => {
   expect(panelSource).not.toContain("PluginsWorkspace");
 });
 
+test("environment plugin deep link opens plugin-package detail", () => {
+  expect(panelSource).toContain("focusPluginName");
+  expect(panelSource).toMatch(
+    /setPane\(\{\s*mode: "detail",\s*target: \{ kind: "plugin-package", selector: focusPluginName \},\s*\}\)/,
+  );
+});
+
 test("create plugin is a local draft until name commit", () => {
   expect(panelSource).toContain("createLibraryPlugin");
   expect(panelSource).toContain("Discard this plugin?");
