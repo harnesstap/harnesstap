@@ -6,6 +6,8 @@ export interface LibraryDetailChromeProps {
   title: ReactNode;
   typeLabel: string;
   onBack: () => void;
+  onBackPointerDown?: () => void;
+  preserveFocusOnBack?: boolean;
   backDisabled?: boolean;
   actions?: ReactNode;
   children?: ReactNode;
@@ -16,6 +18,8 @@ export function LibraryDetailChrome({
   title,
   typeLabel,
   onBack,
+  onBackPointerDown,
+  preserveFocusOnBack = false,
   backDisabled = false,
   actions,
   children,
@@ -28,6 +32,12 @@ export function LibraryDetailChrome({
           className="icon-action"
           aria-label="Back to library list"
           title="Back to library list"
+          onPointerDown={(event) => {
+            if (preserveFocusOnBack) {
+              event.preventDefault();
+            }
+            onBackPointerDown?.();
+          }}
           onClick={onBack}
           disabled={backDisabled}
         >

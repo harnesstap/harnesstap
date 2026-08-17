@@ -38,6 +38,16 @@ export function draftHasTypedContent(input: {
   return input.name.trim().length > 0 || input.description.trim().length > 0;
 }
 
+export function shouldCommitDraftName(input: {
+  leaving: boolean;
+  name: string;
+}): boolean {
+  if (input.leaving) {
+    return false;
+  }
+  return input.name.trim().length > 0;
+}
+
 export type LibraryDetailTarget =
   | {
       kind: "resource";

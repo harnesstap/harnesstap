@@ -19,8 +19,9 @@ export interface PluginCreateDraftProps {
   disabled?: boolean;
   busy?: boolean;
   onDraftChange: (next: { name: string; description: string }) => void;
-  onNameCommit: () => void;
+  onNameCommit: (reason: "enter" | "blur") => void;
   onBack: () => void;
+  onLeavePointerDown: () => void;
   onFieldEditingChange: (editing: boolean) => void;
 }
 
@@ -38,6 +39,7 @@ export function PluginCreateDraft({
   onDraftChange,
   onNameCommit,
   onBack,
+  onLeavePointerDown,
   onFieldEditingChange,
 }: PluginCreateDraftProps) {
   const nameRef = useRef<HTMLInputElement>(null);
@@ -94,7 +96,7 @@ export function PluginCreateDraft({
     switch (action) {
       case "commit":
         event.preventDefault();
-        onNameCommit();
+        onNameCommit("enter");
         return;
       case "cancel":
       case null:
@@ -168,6 +170,8 @@ export function PluginCreateDraft({
       titleId={titleId}
       typeLabel="plugin"
       onBack={onBack}
+      onBackPointerDown={onLeavePointerDown}
+      preserveFocusOnBack
       backDisabled={busy}
       title={
         <input
@@ -180,9 +184,7 @@ export function PluginCreateDraft({
           onChange={(event) =>
             onDraftChange({ name: event.target.value, description })
           }
-          onBlur={() => {
-            window.setTimeout(() => onNameCommit(), 0);
-          }}
+          onBlur={() => onNameCommit("blur")}
           onKeyDown={onNameKeyDown}
         />
       }

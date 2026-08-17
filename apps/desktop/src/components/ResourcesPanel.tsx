@@ -31,6 +31,7 @@ import {
 import {
   draftHasTypedContent,
   escapeAction,
+  shouldCommitDraftName,
   sidebarChangeAction,
   type LibraryPane,
 } from "../lib/library-pane";
@@ -114,6 +115,7 @@ export function ResourcesPanel({
   const [draftDiscardIntent, setDraftDiscardIntent] =
     useState<DraftDiscardIntent>("list");
   const [draftNameError, setDraftNameError] = useState<string | null>(null);
+  const [draftGeneration, setDraftGeneration] = useState(0);
   const paneRef = useRef(pane);
   paneRef.current = pane;
   const discardingDraftRef = useRef(false);
@@ -198,7 +200,14 @@ export function ResourcesPanel({
   const paneConfirmOpen = confirmOpen || draftDiscardOpen;
   const emptyDraft = { mode: "create-draft" as const, name: "", description: "" };
 
+  function beginDraftLeave(): void {
+    suppressDraftCommitRef.current = true;
+  }
+
   function leaveToList(): void {
+    if (paneRef.current.mode === "create-draft") {
+      beginDraftLeave();
+    }
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -213,6 +222,7 @@ export function ResourcesPanel({
   function openEmptyDraft(): void {
     discardingDraftRef.current = false;
     suppressDraftCommitRef.current = false;
+    setDraftGeneration((value) => value + 1);
     setPane(emptyDraft);
     setFieldEditing(false);
     setConfirmOpen(false);
@@ -264,7 +274,7 @@ export function ResourcesPanel({
     if (current.mode !== "create-draft") {
       return;
     }
-    suppressDraftCommitRef.current = true;
+    beginDraftLeave();
     if (!draftHasTypedContent(current)) {
       discardingDraftRef.current = true;
       switch (intent) {
@@ -288,16 +298,29 @@ export function ResourcesPanel({
     setDraftDiscardOpen(true);
   }
 
-  async function commitDraftName(): Promise<void> {
+  async function commitDraftName(reason: "enter" | "blur"): Promise<void> {
     const current = paneRef.current;
     if (current.mode !== "create-draft" || discardingDraftRef.current) {
       return;
     }
-    if (suppressDraftCommitRef.current) {
-      return;
+    let leaving = false;
+    switch (reason) {
+      case "enter":
+        leaving = false;
+        break;
+      case "blur":
+        leaving = suppressDraftCommitRef.current;
+        break;
+      default: {
+        const _exhaustive: never = reason;
+        return _exhaustive;
+      }
     }
-    const name = current.name.trim();
-    if (!name || !baseUrl || createInFlightRef.current) {
+    if (
+      !shouldCommitDraftName({ leaving, name: current.name })
+      || !baseUrl
+      || createInFlightRef.current
+    ) {
       return;
     }
     createInFlightRef.current = true;
@@ -305,6 +328,7 @@ export function ResourcesPanel({
     onBusyChange?.(true);
     setDraftNameError(null);
     try {
+      const name = current.name.trim();
       const description = current.description.trim();
       const created = await createLibraryPlugin(baseUrl, token, {
         name,
@@ -328,7 +352,7 @@ export function ResourcesPanel({
   function requestCreatePlugin(): void {
     const current = paneRef.current;
     if (current.mode === "create-draft" && draftHasTypedContent(current)) {
-      suppressDraftCommitRef.current = true;
+      beginDraftLeave();
       setDraftDiscardIntent("fresh-draft");
       setDraftDiscardOpen(true);
       return;
@@ -346,6 +370,9 @@ export function ResourcesPanel({
 
   function applyFilterChange(next: ResourceFilterState): void {
     const current = paneRef.current;
+    if (current.mode === "create-draft") {
+      beginDraftLeave();
+    }
     if (current.mode === "list") {
       setFilterState(next);
       return;
@@ -362,12 +389,10 @@ export function ResourcesPanel({
         return;
       case "leave-and-apply":
         discardingDraftRef.current = current.mode === "create-draft";
-        suppressDraftCommitRef.current = current.mode === "create-draft";
         leaveToList();
         setFilterState(next);
         return;
       case "confirm-discard":
-        suppressDraftCommitRef.current = true;
         setPendingFilter(next);
         setFilterStateBeforeDraftLeave(filterState);
         setDraftDiscardIntent("list");
@@ -523,6 +548,7 @@ export function ResourcesPanel({
     }
     return (
       <PluginCreateDraft
+        key={draftGeneration}
         titleId={detailTitleId}
         name={pane.name}
         description={pane.description}
@@ -530,6 +556,7 @@ export function ResourcesPanel({
         disabled={disabled || !baseUrl}
         busy={detailBusy}
         onDraftChange={(next) => {
+          suppressDraftCommitRef.current = false;
           setPane({
             mode: "create-draft",
             name: next.name,
@@ -537,10 +564,11 @@ export function ResourcesPanel({
           });
           setDraftNameError(null);
         }}
-        onNameCommit={() => {
-          void commitDraftName();
+        onNameCommit={(reason) => {
+          void commitDraftName(reason);
         }}
         onBack={() => requestLeaveDraft("list")}
+        onLeavePointerDown={beginDraftLeave}
         onFieldEditingChange={setFieldEditing}
       />
     );
@@ -677,13 +705,24 @@ export function ResourcesPanel({
               aria-label="Create plugin"
               title="Create plugin"
               disabled={disabled || !baseUrl}
+              onPointerDown={() => {
+                if (paneRef.current.mode === "create-draft") {
+                  beginDraftLeave();
+                }
+              }}
+              onMouseDown={(event) => {
+                if (paneRef.current.mode === "create-draft") {
+                  event.preventDefault();
+                  beginDraftLeave();
+                }
+              }}
               onClick={() => {
                 const current = paneRef.current;
                 if (
                   current.mode === "create-draft"
                   && draftHasTypedContent(current)
                 ) {
-                  suppressDraftCommitRef.current = true;
+                  beginDraftLeave();
                   setDraftDiscardIntent("fresh-draft");
                   setDraftDiscardOpen(true);
                   return;
@@ -695,9 +734,10 @@ export function ResourcesPanel({
                 }
                 if (current.mode === "create-draft") {
                   discardingDraftRef.current = true;
-                  suppressDraftCommitRef.current = true;
+                  beginDraftLeave();
                 }
                 setPane({ mode: "create-draft", name: "", description: "" });
+                setDraftGeneration((value) => value + 1);
                 setFieldEditing(false);
                 setConfirmOpen(false);
                 setDraftDiscardOpen(false);
@@ -738,14 +778,22 @@ export function ResourcesPanel({
       </div>
 
       <div className="resources-panel-layout">
-        <ResourceFilterSidebar
-          resources={entries}
-          state={filterState}
-          onChange={applyFilterChange}
-          onClear={() => applyFilterChange(resetResourceFilterState())}
-          disabled={disabled || loading || Boolean(error)}
-          searchInputRef={filterRef}
-        />
+        <div
+          onPointerDownCapture={() => {
+            if (paneRef.current.mode === "create-draft") {
+              beginDraftLeave();
+            }
+          }}
+        >
+          <ResourceFilterSidebar
+            resources={entries}
+            state={filterState}
+            onChange={applyFilterChange}
+            onClear={() => applyFilterChange(resetResourceFilterState())}
+            disabled={disabled || loading || Boolean(error)}
+            searchInputRef={filterRef}
+          />
+        </div>
         <div className="resources-panel-body">
           {renderMainPane()}
         </div>

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   draftHasTypedContent,
   escapeAction,
+  shouldCommitDraftName,
   sidebarChangeAction,
 } from "../../apps/desktop/src/lib/library-pane.ts";
 
@@ -24,5 +25,12 @@ describe("library pane navigation", () => {
     expect(draftHasTypedContent({ name: "  ", description: "" })).toBe(false);
     expect(draftHasTypedContent({ name: "eng", description: "" })).toBe(true);
     expect(draftHasTypedContent({ name: "", description: "x" })).toBe(true);
+  });
+
+  test("draft name commit is skipped while leaving or when the name is empty", () => {
+    expect(shouldCommitDraftName({ leaving: true, name: "eng" })).toBe(false);
+    expect(shouldCommitDraftName({ leaving: false, name: "" })).toBe(false);
+    expect(shouldCommitDraftName({ leaving: false, name: "  " })).toBe(false);
+    expect(shouldCommitDraftName({ leaving: false, name: "eng" })).toBe(true);
   });
 });

@@ -110,6 +110,30 @@ test("create plugin is a local draft until name commit", () => {
   expect(panelSource).toContain("PluginCreateDraft");
 });
 
+test("leaving a create draft does not post the typed name", () => {
+  const draftSource = readFileSync(
+    join(
+      import.meta.dir,
+      "../../apps/desktop/src/components/PluginCreateDraft.tsx",
+    ),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    join(
+      import.meta.dir,
+      "../../apps/desktop/src/components/LibraryDetailChrome.tsx",
+    ),
+    "utf8",
+  );
+  expect(panelSource).toContain("shouldCommitDraftName");
+  expect(panelSource).toContain("onPointerDownCapture");
+  expect(panelSource).toMatch(/mode === "create-draft"[\s\S]*suppressDraftCommitRef/);
+  expect(draftSource).not.toContain("setTimeout");
+  expect(chromeSource).toContain("onBackPointerDown");
+  expect(panelSource).toContain("draftGeneration");
+  expect(panelSource).toMatch(/<PluginCreateDraft[\s\S]*key=\{draftGeneration\}/);
+});
+
 test("starting another field commits the open field first", () => {
   const bodySource = readFileSync(
     join(
