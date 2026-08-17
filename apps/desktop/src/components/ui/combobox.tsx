@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
+  comboboxEscapeAction,
   commitCustomOnClose,
   customComboboxOption,
   filterComboboxOptions,
@@ -208,10 +209,14 @@ export function Combobox({
         return;
       }
       case "Escape": {
-        if (!open) {
+        const action = comboboxEscapeAction(open);
+        if (!action.close) {
           return;
         }
         event.preventDefault();
+        if (action.stopPropagation) {
+          event.stopPropagation();
+        }
         close(selectedLabel, { cancelled: true });
         return;
       }

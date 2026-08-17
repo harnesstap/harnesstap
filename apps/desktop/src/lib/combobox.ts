@@ -51,3 +51,13 @@ export function commitCustomOnClose(input: {
   }
   return custom;
 }
+
+export function comboboxEscapeAction(open: boolean): {
+  close: boolean;
+  stopPropagation: boolean;
+} {
+  if (!open) {
+    return { close: false, stopPropagation: false };
+  }
+  return { close: true, stopPropagation: true };
+}

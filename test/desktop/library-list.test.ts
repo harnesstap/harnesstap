@@ -135,8 +135,23 @@ test("leaving a create draft does not post the typed name", () => {
   expect(panelSource).toContain("shouldCommitDraftName");
   expect(panelSource).toContain("onPointerDownCapture");
   expect(panelSource).toMatch(/mode === "create-draft"[\s\S]*suppressDraftCommitRef/);
+  expect(panelSource).toContain("onHeaderDraftLeavePointerDown");
+  expect(panelSource).toContain("onHeaderDraftLeaveMouseDown");
+  expect(panelSource).toMatch(
+    /aria-label="Import into library"[\s\S]*onPointerDown=\{onHeaderDraftLeavePointerDown\}[\s\S]*onMouseDown=\{onHeaderDraftLeaveMouseDown\}/,
+  );
+  expect(panelSource).toMatch(
+    /aria-label="Tracked directories"[\s\S]*onPointerDown=\{onHeaderDraftLeavePointerDown\}[\s\S]*onMouseDown=\{onHeaderDraftLeaveMouseDown\}/,
+  );
+  expect(panelSource).toMatch(
+    /function onHeaderDraftLeaveMouseDown[\s\S]*preventDefault/,
+  );
+  expect(panelSource).toMatch(
+    /return \(\) => \{\s*suppressDraftCommitRef\.current = true/,
+  );
   expect(draftSource).not.toContain("setTimeout");
   expect(draftSource).toContain("relatedTarget");
+  expect(draftSource).toContain("isConnected");
   expect(chromeSource).toContain("onBackPointerDown");
   expect(panelSource).toContain("draftGeneration");
   expect(panelSource).toMatch(/<PluginCreateDraft[\s\S]*key=\{draftGeneration\}/);

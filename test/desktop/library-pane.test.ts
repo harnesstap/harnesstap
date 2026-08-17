@@ -42,7 +42,8 @@ describe("library pane navigation", () => {
         selector === '[aria-label="Back to library list"]' ? back : null,
     };
     const description = {
-      getAttribute: () => "Description",
+      getAttribute: (name: string) =>
+        name === "aria-label" ? "Description" : null,
       closest: () => null,
     };
     expect(
@@ -60,5 +61,42 @@ describe("library pane navigation", () => {
       }),
     ).toBe(true);
     expect(shouldCommitDraftName({ leaving: false, name: "eng" })).toBe(true);
+  });
+
+  test("draft name blur to Import or Tracked directories does not commit", () => {
+    const importBtn = {
+      getAttribute: (name: string) =>
+        name === "aria-label" ? "Import into library" : null,
+      closest: () => null,
+    };
+    const trackedBtn = {
+      getAttribute: (name: string) =>
+        name === "aria-label" ? "Tracked directories" : null,
+      closest: () => null,
+    };
+    expect(
+      shouldCommitDraftName({
+        leaving: false,
+        name: "eng",
+        relatedTarget: importBtn as EventTarget,
+      }),
+    ).toBe(false);
+    expect(
+      shouldCommitDraftName({
+        leaving: false,
+        name: "eng",
+        relatedTarget: trackedBtn as EventTarget,
+      }),
+    ).toBe(false);
+  });
+
+  test("draft name blur while unmounting does not commit", () => {
+    expect(
+      shouldCommitDraftName({
+        leaving: false,
+        name: "eng",
+        connected: false,
+      }),
+    ).toBe(false);
   });
 });

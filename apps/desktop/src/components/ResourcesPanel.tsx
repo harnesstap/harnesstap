@@ -204,6 +204,26 @@ export function ResourcesPanel({
     suppressDraftCommitRef.current = true;
   }
 
+  useEffect(() => {
+    return () => {
+      suppressDraftCommitRef.current = true;
+      discardingDraftRef.current = true;
+    };
+  }, []);
+
+  function onHeaderDraftLeavePointerDown(): void {
+    if (paneRef.current.mode === "create-draft") {
+      beginDraftLeave();
+    }
+  }
+
+  function onHeaderDraftLeaveMouseDown(event: { preventDefault(): void }): void {
+    if (paneRef.current.mode === "create-draft") {
+      event.preventDefault();
+      beginDraftLeave();
+    }
+  }
+
   function leaveToList(): void {
     if (paneRef.current.mode === "create-draft") {
       beginDraftLeave();
@@ -301,6 +321,7 @@ export function ResourcesPanel({
   async function commitDraftName(
     reason: "enter" | "blur",
     relatedTarget?: EventTarget | null,
+    connected?: boolean,
   ): Promise<void> {
     const current = paneRef.current;
     if (current.mode !== "create-draft" || discardingDraftRef.current) {
@@ -324,6 +345,7 @@ export function ResourcesPanel({
         leaving,
         name: current.name,
         relatedTarget: reason === "blur" ? relatedTarget : null,
+        connected: reason === "blur" ? connected : true,
       })
       || !baseUrl
       || createInFlightRef.current
@@ -571,8 +593,8 @@ export function ResourcesPanel({
           });
           setDraftNameError(null);
         }}
-        onNameCommit={(reason, relatedTarget) => {
-          void commitDraftName(reason, relatedTarget);
+        onNameCommit={(reason, relatedTarget, connected) => {
+          void commitDraftName(reason, relatedTarget, connected);
         }}
         onBack={() => requestLeaveDraft("list")}
         onLeavePointerDown={beginDraftLeave}
@@ -712,17 +734,8 @@ export function ResourcesPanel({
               aria-label="Create plugin"
               title="Create plugin"
               disabled={disabled || !baseUrl}
-              onPointerDown={() => {
-                if (paneRef.current.mode === "create-draft") {
-                  beginDraftLeave();
-                }
-              }}
-              onMouseDown={(event) => {
-                if (paneRef.current.mode === "create-draft") {
-                  event.preventDefault();
-                  beginDraftLeave();
-                }
-              }}
+              onPointerDown={onHeaderDraftLeavePointerDown}
+              onMouseDown={onHeaderDraftLeaveMouseDown}
               onClick={() => {
                 const current = paneRef.current;
                 if (
@@ -764,6 +777,8 @@ export function ResourcesPanel({
               aria-label="Import into library"
               title="Import into library"
               disabled={disabled || !baseUrl}
+              onPointerDown={onHeaderDraftLeavePointerDown}
+              onMouseDown={onHeaderDraftLeaveMouseDown}
               onClick={() => setImportOpen(true)}
             >
               <FolderDown size={16} aria-hidden />
@@ -775,6 +790,8 @@ export function ResourcesPanel({
               aria-label="Tracked directories"
               title="Show tracked directories for resources"
               disabled={disabled || !baseUrl}
+              onPointerDown={onHeaderDraftLeavePointerDown}
+              onMouseDown={onHeaderDraftLeaveMouseDown}
               onClick={() => setTrackedDirsOpen(true)}
             >
               <FolderInput size={16} aria-hidden />

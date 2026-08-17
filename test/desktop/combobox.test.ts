@@ -1,9 +1,17 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import {
+  comboboxEscapeAction,
   commitCustomOnClose,
   customComboboxOption,
   filterComboboxOptions,
 } from "../../apps/desktop/src/lib/combobox.ts";
+
+const comboboxSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/components/ui/combobox.tsx"),
+  "utf8",
+);
 
 const options = [
   { value: "profile", label: "profile" },
@@ -36,6 +44,29 @@ describe("customComboboxOption", () => {
     expect(customComboboxOption(options, "   ")).toBeNull();
     expect(customComboboxOption(options, "profile")).toBeNull();
     expect(customComboboxOption(options, "TEAM")).toBeNull();
+  });
+});
+
+describe("comboboxEscapeAction", () => {
+  test("open menu consumes Escape and stops it reaching parent listeners", () => {
+    expect(comboboxEscapeAction(true)).toEqual({
+      close: true,
+      stopPropagation: true,
+    });
+  });
+
+  test("closed menu lets Escape bubble", () => {
+    expect(comboboxEscapeAction(false)).toEqual({
+      close: false,
+      stopPropagation: false,
+    });
+  });
+
+  test("Escape handler stops propagation when the menu is open", () => {
+    expect(comboboxSource).toContain("comboboxEscapeAction");
+    expect(comboboxSource).toMatch(
+      /case "Escape":[\s\S]*stopPropagation/,
+    );
   });
 });
 
