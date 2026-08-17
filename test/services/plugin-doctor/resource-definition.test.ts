@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { makeResource } from "../../helpers/resources.ts";
 import { isResourceDefinitionEmpty } from "../../../src/services/plugin-doctor/resource-definition.ts";
+import { makeResource } from "../../helpers/resources.ts";
 
 describe("isResourceDefinitionEmpty", () => {
   it("treats whitespace-only content as empty for content-bearing types", () => {
