@@ -166,6 +166,7 @@ export function ResourceDetailBody({
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [detail, setDetail] = useState<LibraryResourceDetail | null>(null);
   const [preview, setPreview] = useState<ResourceSyncResult | null>(null);
   const [mutating, setMutating] = useState(false);
@@ -206,6 +207,7 @@ export function ResourceDetailBody({
     if (!target || !baseUrl) {
       setDetail(null);
       setError(null);
+      setActionError(null);
       setLoading(false);
       setPreview(null);
       setConfirm(null);
@@ -218,6 +220,7 @@ export function ResourceDetailBody({
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setActionError(null);
     setDetail(null);
     setPreview(null);
     setEditingField(null);
@@ -341,7 +344,7 @@ export function ResourceDetailBody({
       return;
     }
     setMutating(true);
-    setError(null);
+    setActionError(null);
     try {
       const result = await syncLibraryResource(baseUrl, token, target.selector, {
         dry_run: dryRun,
@@ -363,7 +366,7 @@ export function ResourceDetailBody({
         setConfirm("overwrite");
         return;
       }
-      setError(errorMessage(syncError, "Could not sync resource"));
+      setActionError(errorMessage(syncError, "Could not sync resource"));
     } finally {
       setMutating(false);
     }
@@ -374,7 +377,7 @@ export function ResourceDetailBody({
       return;
     }
     setMutating(true);
-    setError(null);
+    setActionError(null);
     try {
       await deleteLibraryResource(baseUrl, token, target.selector);
       onSuccess?.(`Deleted ${quoteResource(detail)}`);
@@ -382,7 +385,7 @@ export function ResourceDetailBody({
       setConfirm(null);
       onDeleted?.();
     } catch (deleteError: unknown) {
-      setError(errorMessage(deleteError, "Could not delete resource"));
+      setActionError(errorMessage(deleteError, "Could not delete resource"));
     } finally {
       setMutating(false);
     }
@@ -393,11 +396,11 @@ export function ResourceDetailBody({
       return;
     }
     setOpeningPath(path);
-    setError(null);
+    setActionError(null);
     try {
       await openResourcePath(baseUrl, token, { path });
     } catch (openError: unknown) {
-      setError(errorMessage(openError, "Could not open file in editor"));
+      setActionError(errorMessage(openError, "Could not open file in editor"));
     } finally {
       setOpeningPath(null);
     }
@@ -521,7 +524,7 @@ export function ResourceDetailBody({
 
   const fields: ReactNode = loading ? (
     <p className="muted">Loading details…</p>
-  ) : error ? (
+  ) : !detail && error ? (
     <div className="banner error" role="alert">
       <div>{error}</div>
       {target.pathHint ? (
@@ -532,6 +535,11 @@ export function ResourceDetailBody({
     </div>
   ) : detail ? (
     <>
+      {actionError ? (
+        <div className="banner error" role="alert">
+          <div>{actionError}</div>
+        </div>
+      ) : null}
       {chrome === "pane" && editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
       ) : null}
