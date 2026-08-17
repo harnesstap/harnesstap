@@ -16,10 +16,8 @@ import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
 import { EditProfilePane } from "./components/EditProfilePane";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
 import { ParityChrome } from "./components/parity/ParityChrome";
-import { PluginsWorkspace } from "./components/parity/PluginsWorkspace";
 import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
-import { LibraryWorkspace, type LibraryTab } from "./components/LibraryWorkspace";
 import { LiveStatePanel } from "./components/LiveStatePanel";
 import { MigrateExportDrawer } from "./components/MigrateExportDrawer";
 import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
@@ -176,7 +174,6 @@ export function App() {
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
-  const [libraryTab, setLibraryTab] = useState<LibraryTab>("items");
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
@@ -2320,7 +2317,6 @@ export function App() {
             disabled={switching}
             onOpenPlugin={(pluginName) => {
               setLibraryFocusPlugin(pluginName);
-              setLibraryTab("packages");
               setWorkspaceFocus("library");
             }}
             onSuccess={(message) => {
@@ -2329,48 +2325,29 @@ export function App() {
             }}
           />
         ) : workspaceFocus === "library" ? (
-          <LibraryWorkspace
-            tab={libraryTab}
-            onTabChange={setLibraryTab}
+          <ResourcesPanel
+            baseUrl={baseUrl}
+            token={token}
+            reloadKey={libraryReloadKey}
             disabled={switching}
-            items={
-              <ResourcesPanel
-                baseUrl={baseUrl}
-                token={token}
-                reloadKey={libraryReloadKey}
-                disabled={switching}
-                projectPath={view === "project" ? projectPath : null}
-                selectedProfile={selectedProfile}
-                onImported={(message) => {
-                  setSuccessMessage(message);
-                  window.setTimeout(() => setSuccessMessage(null), 3000);
-                  setLibraryReloadKey((value) => value + 1);
-                }}
-                onSuccess={(message) => {
-                  setSuccessMessage(message);
-                  window.setTimeout(() => setSuccessMessage(null), 3000);
-                }}
-              />
-            }
-            packages={
-              <PluginsWorkspace
-                baseUrl={baseUrl}
-                token={token}
-                selectedProfile={selectedProfile}
-                disabled={switching}
-                projectPath={projectPath || null}
-                focusName={libraryFocusPlugin}
-                onBusyChange={setPluginApplyBusy}
-                onSuccess={(message) => {
-                  setSuccessMessage(message);
-                  window.setTimeout(() => setSuccessMessage(null), 3000);
-                }}
-                onProfilesChanged={() => {
-                  void refreshProfiles();
-                  void refreshStatus("full");
-                }}
-              />
-            }
+            projectPath={view === "project" ? projectPath : null}
+            selectedProfile={selectedProfile}
+            focusPluginName={libraryFocusPlugin}
+            onFocusPluginConsumed={() => setLibraryFocusPlugin(null)}
+            onBusyChange={setPluginApplyBusy}
+            onProfilesChanged={() => {
+              void refreshProfiles();
+              void refreshStatus("full");
+            }}
+            onImported={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+              setLibraryReloadKey((value) => value + 1);
+            }}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
           />
         ) : editingProfile ? (
           <EditProfilePane

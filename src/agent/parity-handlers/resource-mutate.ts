@@ -4,6 +4,7 @@ import {
   deleteResource,
   listLinkedResources,
   resolveResource,
+  updateResource,
   type ImportConflictPolicy,
 } from "../../models/resource.js";
 import { PluginProvenanceError } from "../../services/plugin-origin.js";
@@ -32,6 +33,9 @@ export async function tryHandle(
   }
   if (request.method === "DELETE" && deleteMatch) {
     return handleDelete(request, token, decodeSelector(deleteMatch[1] ?? ""));
+  }
+  if (request.method === "PATCH" && deleteMatch) {
+    return handlePatch(request, token, decodeSelector(deleteMatch[1] ?? ""));
   }
   return null;
 }
@@ -305,5 +309,133 @@ async function handleDelete(
   return jsonResponse({
     deleted: true,
     resource: resourceSummary(resolved.resource),
+  });
+}
+
+function optionalPatchString(
+  value: unknown,
+): { ok: true; value: string | undefined } | { ok: false } {
+  if (value === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (typeof value !== "string") {
+    return { ok: false };
+  }
+  return { ok: true, value };
+}
+
+async function handlePatch(
+  request: Request,
+  token: string,
+  selector: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  const trimmed = selector.trim();
+  if (!trimmed) {
+    return jsonResponse(
+      { error: "invalid_selector", message: "Resource selector is required" },
+      { status: 400 },
+    );
+  }
+
+  if (parseUntrackedResourceSelector(trimmed)) {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+
+  const parsedBody = await readJsonObject(request);
+  if (!parsedBody.ok) {
+    return parsedBody.response;
+  }
+  const body = parsedBody.body;
+
+  if (
+    "type" in body ||
+    "origin_kind" in body ||
+    "origin_ref" in body ||
+    "source" in body
+  ) {
+    return jsonResponse(
+      {
+        error: "invalid_body",
+        message: "type, origin, and path cannot be changed",
+      },
+      { status: 400 },
+    );
+  }
+
+  const name = optionalPatchString(body.name);
+  const description = optionalPatchString(body.description);
+  const content = optionalPatchString(body.content);
+  if (!name.ok || !description.ok || !content.ok) {
+    return jsonResponse(
+      { error: "invalid_body", message: "name, description, and content must be strings" },
+      { status: 400 },
+    );
+  }
+
+  const patch: { name?: string; description?: string; content?: string } = {};
+  if (name.value !== undefined) {
+    patch.name = name.value;
+  }
+  if (description.value !== undefined) {
+    patch.description = description.value;
+  }
+  if (content.value !== undefined) {
+    patch.content = content.value;
+  }
+  if (Object.keys(patch).length === 0) {
+    return jsonResponse(
+      { error: "invalid_body", message: "No updatable fields were provided" },
+      { status: 400 },
+    );
+  }
+
+  const resolved = resolveResource(trimmed);
+  if (resolved.status === "not_found") {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+  if (resolved.status === "ambiguous") {
+    return ambiguousResponse(trimmed, resolved.matches);
+  }
+
+  let updated: Resource | undefined;
+  try {
+    updated = updateResource(resolved.resource.id, patch);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "resource_exists"
+    ) {
+      return jsonResponse(
+        { error: "resource_exists", message: error.message },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
+  if (!updated) {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+
+  return jsonResponse({
+    resource: {
+      ...resourceSummary(updated),
+      description: updated.description,
+      content: updated.content,
+    },
   });
 }

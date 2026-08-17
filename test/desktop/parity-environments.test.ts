@@ -77,7 +77,13 @@ describe("environments workspace chrome", () => {
     expect(workspaceSource).toContain("link-btn");
     expect(workspaceSource).toContain("onOpenPlugin");
     expect(appSource).toContain("setLibraryFocusPlugin");
-    expect(appSource).toContain("focusName={libraryFocusPlugin}");
+    expect(appSource).toContain("focusPluginName={libraryFocusPlugin}");
+  });
+
+  it("opens a library plugin detail without a Packages tab", () => {
+    expect(appSource).toContain("setLibraryFocusPlugin");
+    expect(appSource).toContain('setWorkspaceFocus("library")');
+    expect(appSource).not.toContain('setLibraryTab("packages")');
   });
 
   it("puts icon apply, edit, and delete in the detail header, not the sidebar", () => {

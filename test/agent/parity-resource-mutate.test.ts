@@ -84,7 +84,7 @@ describe("tryHandle resource-mutate", () => {
     expect(await handle("GET", "/v1/health")).toBeNull();
   });
 
-  it("returns 401 without bearer on POST sync and DELETE", async () => {
+  it("returns 401 without bearer on POST sync, DELETE, and PATCH", async () => {
     await withHome("parity-mutate-401");
     const sync = await handle(
       "POST",
@@ -96,6 +96,11 @@ describe("tryHandle resource-mutate", () => {
       headers: {},
     });
     expect(del?.status).toBe(401);
+    const patch = await handle("PATCH", "/v1/library/resources/skill%3Aship", {
+      headers: {},
+      body: { name: "nope" },
+    });
+    expect(patch?.status).toBe(401);
   });
 
   it("DELETE returns 200 then the row is gone", async () => {
@@ -275,5 +280,98 @@ describe("tryHandle resource-mutate", () => {
     );
     expect(response?.status).toBe(200);
     expect(getResource(before.id)?.content).toContain("shared team review checklist");
+  });
+});
+
+describe("PATCH /v1/library/resources/:selector", () => {
+  it("updates name, description, and content", async () => {
+    await withHome("parity-mutate-patch");
+    const resource = createResource({
+      type: "skill",
+      name: "guide",
+      description: "old",
+      content: "# old",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle("PATCH", `/v1/library/resources/${resource.id}`, {
+      body: { name: "guide-2", description: "new", content: "# new" },
+    });
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as { resource: { name: string; description: string; content: string } };
+    expect(body.resource.name).toBe("guide-2");
+    expect(getResource(resource.id)?.content).toBe("# new");
+  });
+
+  it("rejects type and origin fields", async () => {
+    await withHome("parity-mutate-patch-reject");
+    const resource = createResource({
+      type: "skill",
+      name: "guide",
+      description: "",
+      content: "# x",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle("PATCH", `/v1/library/resources/${resource.id}`, {
+      body: { type: "rule" },
+    });
+    expect(response?.status).toBe(400);
+  });
+
+  it("returns 404 for untracked selectors", async () => {
+    await withHome("parity-mutate-patch-untracked");
+    const response = await handle("PATCH", "/v1/library/resources/untracked:skill:ghost", {
+      body: { name: "nope" },
+    });
+    expect(response?.status).toBe(404);
+  });
+
+  it("updates content_hash when content changes", async () => {
+    await withHome("parity-mutate-patch-hash");
+    const resource = createResource({
+      type: "skill",
+      name: "guide",
+      description: "old",
+      content: "# old",
+      metadata: {},
+      source: "manual",
+    });
+    const beforeHash = getResource(resource.id)?.content_hash;
+    expect(beforeHash).toBeTruthy();
+    const response = await handle("PATCH", `/v1/library/resources/${resource.id}`, {
+      body: { content: "# new" },
+    });
+    expect(response?.status).toBe(200);
+    const after = getResource(resource.id);
+    expect(after?.content).toBe("# new");
+    expect(after?.content_hash).toBeTruthy();
+    expect(after?.content_hash).not.toBe(beforeHash);
+  });
+
+  it("returns 409 when renaming onto an existing same-type name", async () => {
+    await withHome("parity-mutate-patch-exists");
+    createResource({
+      type: "skill",
+      name: "taken",
+      description: "",
+      content: "# taken",
+      metadata: {},
+      source: "manual",
+    });
+    const resource = createResource({
+      type: "skill",
+      name: "guide",
+      description: "",
+      content: "# guide",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle("PATCH", `/v1/library/resources/${resource.id}`, {
+      body: { name: "taken" },
+    });
+    expect(response?.status).toBe(409);
+    const body = (await response?.json()) as { error: string };
+    expect(body.error).toBe("resource_exists");
   });
 });

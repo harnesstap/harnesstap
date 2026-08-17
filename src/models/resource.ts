@@ -479,6 +479,17 @@ export function updateResource(
   const sets: string[] = [];
   const params: unknown[] = [];
 
+  if (input.name !== undefined && input.name !== resource.name) {
+    const existing = findExistingResource(
+      resource.type,
+      input.name,
+      resource.namespace ?? "",
+    );
+    if (existing && existing.id !== resource.id) {
+      throw Object.assign(new Error("Resource already exists"), { code: "resource_exists" });
+    }
+  }
+
   if (input.name !== undefined) {
     sets.push("name = ?");
     params.push(input.name);
@@ -488,8 +499,22 @@ export function updateResource(
     params.push(input.description);
   }
   if (input.content !== undefined) {
+    const contentHash = hashResourceBody({
+      type: resource.type,
+      content: input.content,
+      metadata: input.metadata ?? resource.metadata,
+    });
+    const { inlineContent, contentBlobRef } = persistContent(
+      getHarnesstapDir(),
+      contentHash,
+      input.content,
+    );
     sets.push("content = ?");
-    params.push(input.content);
+    params.push(inlineContent);
+    sets.push("content_hash = ?");
+    params.push(contentHash);
+    sets.push("content_blob_ref = ?");
+    params.push(contentBlobRef);
   }
   if (input.metadata !== undefined) {
     sets.push("metadata = ?");

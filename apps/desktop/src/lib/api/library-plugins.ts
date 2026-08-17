@@ -90,6 +90,45 @@ export async function fetchLibraryPluginHeads(
   return body.plugins;
 }
 
+export async function createLibraryPlugin(
+  baseUrl: string,
+  token: string | null,
+  input: { name: string; description?: string },
+): Promise<LibraryPluginHead> {
+  const response = await agentFetch(baseUrl, token, "/v1/library/plugins", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not create plugin");
+  }
+  const body = (await response.json()) as { plugin: LibraryPluginHead };
+  return body.plugin;
+}
+
+export async function patchLibraryPlugin(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+  input: {
+    name?: string;
+    description?: string;
+    tags?: string[];
+    default_environment_id?: string | null;
+  },
+): Promise<LibraryPluginDetail> {
+  const response = await agentFetch(baseUrl, token, pluginPath(selector), {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not update plugin");
+  }
+  return (await response.json()) as LibraryPluginDetail;
+}
+
 export async function fetchLibraryPluginDetail(
   baseUrl: string,
   token: string | null,

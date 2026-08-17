@@ -65,6 +65,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Rail Apply = profile switch / re-apply.
 - Library plugin Apply = `ht apply` (plugin graph). Does not use profile switch. Global apply of a profile-tagged package still records the active profile (`ht apply --global`).
 - Library Sync = `resource sync` (refresh the library copy from its install source). Never means Apply.
+- Sync on a library row is `resource sync`.
 
 **Library**
 
@@ -72,7 +73,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Main pane is list XOR full-panel detail. Back (top left) and Esc return to the list. Esc while editing a field cancels that edit only. Sidebar filter changes return to the list (blocked while a confirm is open or an action is in flight).
 - Filters: type as badges; updated as a segment; namespace as a searchable select; origin as a radio list. Origin groups `manual` and `local_snapshot` as **Local**; `marketplace_link` as **Marketplace**. Same labels on hover and detail. Storage `origin_kind` is unchanged.
 - Detail: title is the name (double-click to rename). Other fields are icon + value; icon tooltip names the field. Double-click to edit. Default environment is only the field-row combobox.
-- Header cluster (right of the Library title): **Create plugin** (accent), **Import**, **Tracked directories**. Labeled, compact, not icon-only.
+- Header cluster (right of the Library title): **Create plugin** (accent), **Import**, **Tracked directories**. Labeled, compact, not icon-only. Create plugin (accent primary).
 
 **Environments**
 
