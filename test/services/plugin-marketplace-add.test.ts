@@ -281,4 +281,61 @@ describe("addPluginFromMarketplace", () => {
       await context.cleanup();
     }
   });
+
+  it("registers cursor marketplaces with agent when the plugin is the active profile", async () => {
+    const context = await createTestContext("plugin-marketplace-add-cursor-ensure");
+    try {
+      context.schema.initializeSchema(context.connection.getDb());
+
+      const harnesstapDir = harnesstapDirFromContext(context);
+      addMarketplace(harnesstapDir, {
+        name: "cursor-marketplace",
+        url: "https://github.com/acme/cursor-plugins",
+        platforms: ["cursor"],
+      });
+
+      const plugin = createPlugin({ name: "cursor-active", tags: ["profile"] });
+      setActiveProfileName(plugin.name);
+
+      const cursorEnsureCalls: unknown[] = [];
+      const result = await addPluginFromMarketplace({
+        harnesstapDir,
+        homeRoot: context.homeDir,
+        projectRoot: context.projectDir,
+        ref: "formatter@cursor-marketplace",
+        pluginName: plugin.name,
+        versionConstraint: "2.0.0",
+        install: async (opts) => ({
+          ref: opts.ref,
+          platformId: opts.installPlatformId ?? "cursor",
+          scope: opts.scope,
+          status: "unsupported",
+          message: "ok",
+        }),
+        ensureCursorMarketplaces: (entries, options) => {
+          cursorEnsureCalls.push({ entries, options });
+          return { added: entries.map((entry) => entry.name), skipped: [] };
+        },
+      });
+
+      expect(result.status).toBe("attached");
+      expect(result.install?.platformId).toBe("cursor");
+      expect(cursorEnsureCalls).toEqual([
+        {
+          entries: [
+            {
+              name: "cursor-marketplace",
+              url: "https://github.com/acme/cursor-plugins",
+            },
+          ],
+          options: {
+            homeRoot: context.homeDir,
+            projectRoot: context.projectDir,
+          },
+        },
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });

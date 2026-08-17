@@ -101,4 +101,20 @@ describe("CursorPluginProvider", () => {
     expect(demo?.refreshSkipped).toBe(true);
     expect(demo?.status).toBe("unknown");
   });
+
+  it("does not install plugins; Cursor has no agent plugin install command", async () => {
+    const provider = new CursorPluginProvider();
+    const result = await provider.install(
+      {
+        projectRoot: ".",
+        homeRoot: fixtureHome,
+        harnesstapDir: "/tmp/ht",
+      },
+      { ref: "superpowers@superpowers-dev" },
+    );
+
+    expect(result.status).toBe("unsupported");
+    expect(result.message).toMatch(/agent plugin marketplace/i);
+    expect(result.message).toMatch(/IDE|Customize|\/plugin/i);
+  });
 });

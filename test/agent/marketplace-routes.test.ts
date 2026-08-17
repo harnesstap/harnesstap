@@ -157,7 +157,7 @@ describe("agent marketplace routes", () => {
     expect(add.status).toBe(400);
     await expect(add.json()).resolves.toEqual({
       error: "invalid_platform",
-      message: "Each platform must be claude-code, cursor, or goose",
+      message: "Each platform must be claude-code, cursor, goose, or copilot-cli",
     });
   });
 });

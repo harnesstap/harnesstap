@@ -76,10 +76,11 @@ During `apply`, HarnessTap can **install** and **sync** plugins from host instal
 | Harness | Provider | Typical install location |
 | ------- | -------- | ------------------------ |
 | **claude-code** | Claude Code marketplace / `claude plugin` | `~/.claude/plugins/` |
-| **cursor** | Cursor plugin cache/local (best-effort enablement via MCP / recently-used signals; recognizes `.cursor-plugin` and Agent Plugins root `plugin.json`) | `~/.cursor/plugins/` |
+| **cursor** | Inventory + git check/update; marketplace ensure via `agent plugin marketplace add` (install remains Cursor Customize / `/plugin` — no `agent plugin install`) | `~/.cursor/plugins/` |
 | **goose** | `goose plugin install` (git-backed Open Plugins) | `~/.agents/plugins/` |
+| **copilot-cli** | Copilot CLI marketplace / `copilot plugin` | `~/.copilot/installed-plugins/` |
 
-Claude Code **home scan** also imports installed marketplace plugins from `~/.claude/plugins/installed_plugins.json` as `plugin_pin` library resources (pins only; use `resource sync` to materialize children).
+Claude Code and Copilot CLI **home scan** also import installed marketplace plugins as `plugin_pin` library resources (pins only; use `resource sync` to materialize children). Claude reads `~/.claude/plugins/installed_plugins.json`. Copilot CLI reads `~/.copilot/installed-plugins/<marketplace>/<plugin>/` when `~/.copilot/settings.json` or that install tree is present.
 
 Other harnesses still benefit from plugin-source **scan** and **resource sync** when you point at an install tree or plugin repo, but do not have an automated install provider yet.
 
@@ -200,6 +201,8 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **cody** | `AGENTS.md` | — | — | (global `~/.config/sourcegraph/cody.json`) | — | — | `cody.json` |
 
 Cursor global user skills live under `~/.cursor/skills/`. Cursor also maintains app-managed built-ins under `~/.cursor/skills-cursor/` — HarnessTap inventories those on `profile status` / apply-preview (`host_managed.cursor`) but never imports or applies them.
+
+Copilot CLI home state lives under `~/.copilot/`. Detection uses `~/.copilot/settings.json` and `~/.copilot/installed-plugins/` in addition to `~/.copilot/skills/` and `~/.copilot/mcp-config.json`. Installed plugins are imported as pins from `~/.copilot/installed-plugins/<marketplace>/<plugin>/`.
 
 Generic harnesses in the skills-only tier use harness-specific skill roots such as `.kilocode/skills/`, `.crush/skills/`, or `.factory/skills/` with `AGENTS.md` instructions — see the registry for the full list.
 

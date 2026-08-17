@@ -562,7 +562,11 @@ export interface ProfileDetail {
   resources: ProfileDetailResource[];
 }
 
-export type PluginMarketplacePlatform = "claude-code" | "cursor" | "goose";
+export type PluginMarketplacePlatform =
+  | "claude-code"
+  | "cursor"
+  | "goose"
+  | "copilot-cli";
 
 export interface PluginMarketplaceEntry {
   name: string;

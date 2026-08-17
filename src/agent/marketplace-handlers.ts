@@ -12,6 +12,7 @@ const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
   "claude-code",
   "cursor",
   "goose",
+  "copilot-cli",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,7 +29,7 @@ function parsePlatforms(value: unknown): PluginMarketplacePlatform[] | Response 
       return jsonResponse(
         {
           error: "invalid_platform",
-          message: "Each platform must be claude-code, cursor, or goose",
+          message: "Each platform must be claude-code, cursor, goose, or copilot-cli",
         },
         { status: 400 },
       );

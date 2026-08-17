@@ -96,7 +96,7 @@ function resolveManifest(
       return { manifestPath, platform: candidate.platform };
     }
 
-    if (platforms.includes("claude-code")) {
+    if (platforms.includes("claude-code") || platforms.includes("copilot-cli")) {
       return { manifestPath, platform: "claude-code" };
     }
     if (platforms.includes("cursor")) {
@@ -113,6 +113,8 @@ function parseManifest(
 ): ParsedMarketplaceCatalog {
   switch (platform) {
     case "claude-code":
+      return parseClaudeMarketplaceManifest(raw);
+    case "copilot-cli":
       return parseClaudeMarketplaceManifest(raw);
     case "cursor":
       return parseCursorMarketplaceManifest(raw);

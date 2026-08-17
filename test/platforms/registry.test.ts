@@ -55,6 +55,10 @@ describe("platform registry", () => {
     expect(copilotCli).toBeDefined();
     expect(copilotCli?.projectPaths.instructions).toBe("AGENTS.md");
     expect(copilotCli?.projectPaths.mcp).toBe(".copilot/mcp-config.json");
+    expect(copilotCli?.globalPaths.plugins).toBe("~/.copilot/installed-plugins/");
+    expect(copilotCli?.globalPaths.pathAlternates?.settings).toEqual([
+      "~/.copilot/settings.json",
+    ]);
   });
 
   it("includes kiro and pi harness entries", async () => {

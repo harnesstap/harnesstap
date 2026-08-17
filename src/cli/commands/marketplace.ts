@@ -25,6 +25,7 @@ const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
   "claude-code",
   "cursor",
   "goose",
+  "copilot-cli",
 ]);
 
 function parsePlatforms(platforms: string[] | undefined): PluginMarketplacePlatform[] {
@@ -33,7 +34,7 @@ function parsePlatforms(platforms: string[] | undefined): PluginMarketplacePlatf
   for (const id of ids) {
     if (!VALID_PLATFORMS.has(id as PluginMarketplacePlatform)) {
       throw new Error(
-        `Invalid --platform value: ${id}. Use claude-code, cursor, or goose.`,
+        `Invalid --platform value: ${id}. Use claude-code, cursor, goose, or copilot-cli.`,
       );
     }
     parsed.push(id as PluginMarketplacePlatform);

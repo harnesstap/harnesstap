@@ -1,4 +1,4 @@
-import { getDb } from "../db/connection.js";
+import { getDb, getHarnesstapDir } from "../db/connection.js";
 import {
   ensurePluginResource,
   findPluginResourceByPin,
@@ -21,15 +21,23 @@ import {
 } from "./plugin-apply-validation.js";
 import { materializeUpstreamPlugin } from "./upstream-plugin.js";
 import { getResource, listResources } from "../models/resource.js";
-import { MATERIAL_RESOURCE_TYPES } from "../types.js";
-import type { DependencySourceKind } from "../types.js";
+import {
+  MATERIAL_RESOURCE_TYPES,
+  type ClaudePluginConfig,
+  type DependencySourceKind,
+  type PluginPinMetadata,
+  type Resource,
+} from "../types.js";
 import type { PluginScope } from "../plugins/types.js";
-import type { PluginPinMetadata, Resource } from "../types.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import {
   ensureClaudeMarketplacesFromConfig,
 } from "./claude-marketplace-bootstrap.js";
-import type { ClaudePluginConfig } from "../types.js";
+import {
+  ensureCursorMarketplaces,
+  selectCursorMarketplacesToEnsure,
+} from "./cursor-marketplace-bootstrap.js";
+import { listMarketplaces } from "./marketplace-registry.js";
 
 export type { PluginConstraintPin, PluginValidationIssue };
 
@@ -336,6 +344,15 @@ export async function preparePluginPinsForApply(
   }
 
   if (!options.skipSync && options.pins.length > 0) {
+    const cursorEntries = selectCursorMarketplacesToEnsure(
+      listMarketplaces(getHarnesstapDir()),
+      options.pins.map((pin) => pin.ref),
+    );
+    ensureCursorMarketplaces(cursorEntries, {
+      homeRoot: options.homeRoot ?? resolveHomeRoot(),
+      projectRoot: options.projectRoot,
+    });
+
     syncResult = await syncPluginPinsForApply({
       pins: options.pins,
       syncAll: options.syncAll,

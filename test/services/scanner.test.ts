@@ -357,6 +357,83 @@ describe("scanner services", () => {
     }
   });
 
+  it("detects copilot-cli from mcp-config.json without installed plugins", async () => {
+    const context = await createInitializedTestContext("scanner-home-copilot-mcp");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.copilot/mcp-config.json`,
+        JSON.stringify({ mcpServers: { alpha: { url: "https://example.com" } } }),
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const platformIds = scanner.detectHomePlatforms().map((result) => result.platformId);
+
+      expect(platformIds).toContain("copilot-cli");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("detects copilot-cli from installed plugins and imports plugin pins", async () => {
+    const context = await createInitializedTestContext("scanner-home-copilot-plugins");
+
+    try {
+      writeTextFile(
+        `${context.homeDir}/.copilot/settings.json`,
+        JSON.stringify({
+          extraKnownMarketplaces: {
+            "claude-code-skills": {
+              source: { source: "github", repo: "borghei/Claude-Skills" },
+            },
+          },
+          enabledPlugins: {
+            "business-growth-skills@claude-code-skills": true,
+          },
+        }),
+      );
+      writeTextFile(
+        `${context.homeDir}/.copilot/installed-plugins/claude-code-skills/business-growth-skills/.claude-plugin/plugin.json`,
+        JSON.stringify({
+          name: "business-growth-skills",
+          version: "1.0.0",
+          description: "Business and growth skills",
+        }),
+      );
+
+      const scanner = await import("../../src/services/scanner.ts");
+      const detected = scanner.detectHomePlatforms();
+      const copilotCli = detected.find(
+        (result) => result.platformId === "copilot-cli",
+      );
+
+      expect(copilotCli?.discoveredPaths).toEqual(
+        expect.arrayContaining([
+          "~/.copilot/installed-plugins/",
+          "~/.copilot/settings.json",
+        ]),
+      );
+
+      const results = await scanner.scanHomeDefaults();
+      const homeCopilot = results.find(
+        (result) => result.platformId === "copilot-cli",
+      );
+      const pin = homeCopilot?.resources.find(
+        (resource) => resource.type === "plugin",
+      );
+
+      expect(pin).toMatchObject({
+        name: "business-growth-skills",
+        namespace: "claude-code-skills",
+        origin_kind: "marketplace_link",
+        origin_ref: "business-growth-skills@claude-code-skills",
+        source: "~/.copilot/installed-plugins/",
+      });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("does not import overlapping home defaults on later runs", async () => {
     const context = await createInitializedTestContext("scanner-home-dedup");
 

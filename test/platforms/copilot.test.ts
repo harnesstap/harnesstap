@@ -78,6 +78,59 @@ describe("CopilotSerializer", () => {
     expect(mcpNames).toContain("http-server");
   });
 
+  it("scans copilot-cli global plugin pins from installed-plugins", async () => {
+    const homeDir = createTempDir("copilot-cli-global-pins");
+
+    try {
+      writeTextFile(
+        join(
+          homeDir,
+          ".copilot/installed-plugins/claude-code-skills/business-growth-skills/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({
+          name: "business-growth-skills",
+          version: "1.0.0",
+        }),
+      );
+
+      const serializer = new CopilotSerializer("copilot-cli");
+      const resources = await serializer.scanGlobal(homeDir);
+      const pin = resources.find((resource) => resource.type === "plugin");
+
+      expect(pin).toMatchObject({
+        name: "business-growth-skills",
+        namespace: "claude-code-skills",
+        origin_ref: "business-growth-skills@claude-code-skills",
+      });
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
+  it("does not import Copilot plugin pins for github-copilot home scan", async () => {
+    const homeDir = createTempDir("github-copilot-no-pins");
+
+    try {
+      writeTextFile(
+        join(
+          homeDir,
+          ".copilot/installed-plugins/claude-code-skills/business-growth-skills/.claude-plugin/plugin.json",
+        ),
+        JSON.stringify({
+          name: "business-growth-skills",
+          version: "1.0.0",
+        }),
+      );
+
+      const serializer = new CopilotSerializer("github-copilot");
+      const resources = await serializer.scanGlobal(homeDir);
+
+      expect(resources.find((resource) => resource.type === "plugin")).toBeUndefined();
+    } finally {
+      cleanupDir(homeDir);
+    }
+  });
+
   it("serializes github-copilot resources", async () => {
     const serializer = new CopilotSerializer("github-copilot");
     const files = await serializer.serialize(

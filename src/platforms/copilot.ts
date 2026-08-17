@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import { listInstalledCopilotPluginPinCreateInputs } from "../plugins/copilot-installed.js";
 import {
   canonicalAgentFromResource,
   emitMarkdownAgent,
@@ -146,6 +147,10 @@ export class CopilotSerializer extends BaseSerializer {
           // ignore invalid JSON
         }
       }
+    }
+
+    if (this.platform.globalPaths.plugins) {
+      resources.push(...listInstalledCopilotPluginPinCreateInputs(homeRoot));
     }
 
     return resources;

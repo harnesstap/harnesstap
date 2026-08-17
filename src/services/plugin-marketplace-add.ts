@@ -18,6 +18,9 @@ import {
   type EnsureMarketplacesOptions,
 } from "./claude-marketplace-bootstrap.js";
 import {
+  ensureCursorMarketplaces as defaultEnsureCursorMarketplaces,
+} from "./cursor-marketplace-bootstrap.js";
+import {
   installPluginPinAsync,
   resolveDefaultPluginInstallScope,
   type InstallPluginPinResult,
@@ -32,6 +35,7 @@ export interface AddPluginFromMarketplaceInput {
   versionConstraint?: string;
   install?: typeof installPluginPinAsync;
   ensureMarketplaces?: typeof ensureClaudeMarketplacesFromConfig;
+  ensureCursorMarketplaces?: typeof defaultEnsureCursorMarketplaces;
 }
 
 export interface AddPluginFromMarketplaceResult {
@@ -139,6 +143,18 @@ export async function addPluginFromMarketplace(
       projectRoot: input.projectRoot,
     };
     ensureMarketplaces(refreshed.claude, ensureOptions);
+
+    if (marketplace.platforms.includes("cursor")) {
+      const ensureCursor =
+        input.ensureCursorMarketplaces ?? defaultEnsureCursorMarketplaces;
+      ensureCursor(
+        [{ name: marketplace.name, url: marketplace.url }],
+        {
+          homeRoot: input.homeRoot,
+          projectRoot: input.projectRoot,
+        },
+      );
+    }
 
     const install = input.install ?? installPluginPinAsync;
     installResult = await install({

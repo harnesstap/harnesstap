@@ -1,5 +1,6 @@
 import type { PluginProvider } from "./types.js";
 import { ClaudeCodePluginProvider } from "./providers/claude-code.js";
+import { CopilotPluginProvider } from "./providers/copilot-cli.js";
 import { CursorPluginProvider } from "./providers/cursor.js";
 import { GoosePluginProvider } from "./providers/goose.js";
 
@@ -7,6 +8,7 @@ const providers = new Map<string, PluginProvider>([
   ["claude-code", new ClaudeCodePluginProvider()],
   ["cursor", new CursorPluginProvider()],
   ["goose", new GoosePluginProvider()],
+  ["copilot-cli", new CopilotPluginProvider()],
 ]);
 
 export function getPluginProvider(platformId: string): PluginProvider | undefined {

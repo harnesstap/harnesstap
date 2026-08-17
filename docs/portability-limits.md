@@ -261,10 +261,13 @@ harnesstap mirror . --reference plugin
 `--reference auto` tries the main harness first, then plugin source, then
 shared `AGENTS.md` instruction resources.
 
+### Cursor plugin marketplaces
+
+HarnessTap registers Cursor marketplaces with `agent plugin marketplace add` during apply and when `plugin add` targets the active profile. `agent plugin` has no install command; install from Cursor Customize or `/plugin`, then inventory `~/.cursor/plugins/`. Missing `agent` auth or a failed `marketplace list` skips host registration instead of failing apply.
+
 ### Copilot plugin install
 
-For GitHub Copilot plugin-packaged commands and hooks, install through Copilot's
-plugin mechanism after apply:
+HarnessTap's Copilot CLI provider runs `copilot plugin install` / `copilot plugin update` against `~/.copilot/installed-plugins/`. You can also install through Copilot directly, then sync:
 
 ```bash
 copilot plugin install <source>

@@ -17,6 +17,7 @@ import {
   scanPluginSource,
 } from "./plugin-source-import.js";
 import { getInstalledPluginInstallPath } from "../plugins/claude-installed.js";
+import { getInstalledCopilotPluginInstallPath } from "../plugins/copilot-installed.js";
 import { resolveClaudeInstallRefCandidates } from "../plugins/claude-plugin-ref.js";
 import { resolveHomeRoot } from "../utils/home-root.js";
 import { formatPluginRef } from "./plugin-composition.js";
@@ -81,6 +82,10 @@ function resolveInstallRoot(
     originRef,
     installRefCandidates,
   );
+  const copilotInstalledPath = getInstalledCopilotPluginInstallPath(
+    homeRoot,
+    originRef,
+  );
   const cacheCandidates = installRefCandidates.flatMap((ref) => {
     const [, resolvedMarketplace] = ref.split("@");
     if (!resolvedMarketplace) {
@@ -90,6 +95,7 @@ function resolveInstallRoot(
   });
   const candidates = [
     ...(installedPath ? [installedPath] : []),
+    ...(copilotInstalledPath ? [copilotInstalledPath] : []),
     ...cacheCandidates,
     join(claudePluginsRoot, "cache", marketplace ?? plugin, plugin),
     join(claudePluginsRoot, "CACHE", plugin),

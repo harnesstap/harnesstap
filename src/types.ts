@@ -465,6 +465,7 @@ export interface PlatformPaths {
     rules: string[];
     instructions: string[];
     skills: string[];
+    settings: string[];
   }>;
 }
 

@@ -123,7 +123,7 @@ Use this table to disambiguate overlapping words.
 | Term | Meaning | CLI / storage |
 | --- | --- | --- |
 | **Plugin** | Versioned context package (material resources + deps + optional default environment) | `ht plugin …`, `apply <plugin>` · `plugins` + `plugin_resources` |
-| **Host plugin** | Claude/Cursor/Codex installable bundle (manifest + tree) | Host commands (`claude plugin install`, …) — not a HarnessTap row |
+| **Host plugin** | Claude/Cursor/Codex/Copilot installable bundle (manifest + tree) | Host commands (`claude plugin install`, `copilot plugin install`, …) — not a HarnessTap row |
 | **`plugin_pin`** | Dependency on a host plugin attached to a plugin | `plugin edit --add plugin_pin:ref@mp`, `resource sync plugin_pin:…` · `resources.type=plugin_pin` |
 | **`plugin` ref** | Dependency on another HarnessTap plugin (catalog/local) | `plugin edit --add plugin:name@^1.0` · `resources.type=plugin` |
 | **Profile** | Plugin tagged `profile`; global switch preset | `ht profile use <name>` · `plugins.tags` includes `profile` |
@@ -345,7 +345,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 
 | Command | Current behavior |
 | --- | --- |
-| `marketplace add <url>` | Registers a plugin marketplace URL in toolkit config. |
+| `marketplace add <url>` | Registers a plugin marketplace URL in toolkit config. Cursor-platform entries are pushed to the host with `agent plugin marketplace add` on apply / active `plugin add`. |
 | `marketplace list` | Lists configured marketplace sources. |
 | `marketplace remove <name>` | Removes a marketplace registration. |
 | `marketplace show <name>` | Lists or interactively browses plugins from a marketplace catalog. |
@@ -754,7 +754,7 @@ For `apply`, when no `--harness` list is passed, platforms are detected from the
 
 For `type=plugin_pin` resources:
 
-1. Resolve marketplace or local install path (including git-SHA cache directories such as `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>`).
+1. Resolve marketplace or local install path (including git-SHA cache directories such as `~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>`, and Copilot CLI trees at `~/.copilot/installed-plugins/<marketplace>/<plugin>`).
 2. Fetch or re-scan via `plugin-source-import`.
 3. Update plugin metadata (`resolved_version`, `manifests`, `sync_status`). When `plugin.json` has no version, `resolved_version` is the cache directory git SHA so the install can participate in composition.
 4. Diff and upsert child resources in the plugin namespace.
@@ -863,6 +863,6 @@ bun run build
 
 - Remaining registered harnesses (beyond the nine dedicated serializers) use path-driven generic serialization.
 - `migrate export --plugin` / `migrate import` operate on plugin TOML bundles; full workspace handoff uses archive paths (`.tar.gz`).
-- HarnessTap does not host a plugin marketplace. CLI `marketplace` / `plugin search|add` browse configured marketplace URLs and pin plugins onto plugins; host install/ensure runs through providers when the target profile is active (or on apply/use). Uninstall/disable remains out of scope.
+- HarnessTap does not host a plugin marketplace. CLI `marketplace` / `plugin search|add` browse configured marketplace URLs and pin plugins onto plugins; host install/ensure runs through providers when the target profile is active (or on apply/use). Cursor marketplace ensure uses `agent plugin marketplace add`; Cursor plugin install remains IDE / `/plugin` (no `agent plugin install`). Uninstall/disable remains out of scope.
 - Desktop (`apps/desktop`) and `agent serve` / `ui` are engineering/control-plane surfaces; the published npm package remains the CLI.
 - Project profile config (`ht use`) applies selected stacks to **home** harness paths today — it does not replace `apply` for repository working-tree baselines.

@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export type PluginMarketplacePlatform = "claude-code" | "cursor" | "goose";
+export type PluginMarketplacePlatform =
+  | "claude-code"
+  | "cursor"
+  | "goose"
+  | "copilot-cli";
 
 export interface PluginMarketplaceEntry {
   name: string;
@@ -21,6 +25,7 @@ const VALID_PLATFORMS = new Set<PluginMarketplacePlatform>([
   "claude-code",
   "cursor",
   "goose",
+  "copilot-cli",
 ]);
 
 const DEFAULTS: HarnesstapSettings = {

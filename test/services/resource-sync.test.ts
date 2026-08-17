@@ -131,6 +131,48 @@ describe("resource-sync dry-run classification", () => {
     }
   });
 
+  it("resolves Copilot CLI installed-plugins trees for sync", async () => {
+    const context = await createInitializedTestContext("resource-sync-copilot-plugins");
+    try {
+      const { syncLinkedResources } = await import("../../src/services/resource-sync.ts");
+      const installRoot = join(
+        context.homeDir,
+        ".copilot",
+        "installed-plugins",
+        "claude-code-skills",
+        "business-growth-skills",
+      );
+      mkdirSync(installRoot, { recursive: true });
+      cpSync(join(pluginImportFixtureRoot, "copilot-ponytail"), installRoot, {
+        recursive: true,
+      });
+      const pin = createResource({
+        type: "plugin",
+        name: "business-growth-skills",
+        namespace: "claude-code-skills",
+        description: "pin",
+        content: "{}",
+        metadata: {
+          source_kind: "marketplace",
+          marketplace_name: "claude-code-skills",
+          sync_status: "never_synced",
+        },
+        source: "~/.copilot/installed-plugins/",
+        origin_kind: "marketplace_link",
+        origin_ref: "business-growth-skills@claude-code-skills",
+      });
+      const result = await syncLinkedResources({
+        selector: pin.id,
+        dryRun: true,
+        homeRoot: context.homeDir,
+      });
+      expect(result.stale).toEqual([]);
+      expect(result.checked).toBeGreaterThan(0);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("skips pinned rows without force", async () => {
     const context = await createInitializedTestContext("resource-sync-pinned");
     try {

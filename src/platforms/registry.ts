@@ -153,6 +153,10 @@ const PLATFORMS: PlatformDefinition[] = [
   }, {
     skills: "~/.copilot/skills/",
     settings: "~/.copilot/mcp-config.json",
+    plugins: "~/.copilot/installed-plugins/",
+    pathAlternates: {
+      settings: ["~/.copilot/settings.json"],
+    },
   }),
 
   def("gemini-cli", "Gemini CLI", ["instructions", "skills", "commands"], {

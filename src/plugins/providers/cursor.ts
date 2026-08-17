@@ -428,7 +428,7 @@ export class CursorPluginProvider implements PluginProvider {
       scope: opts.scope ?? "user",
       status: "unsupported",
       message:
-        "Cursor plugins are installed from the IDE marketplace; HarnessTap materializes skills from Claude install trees on apply",
+        "Cursor has no `agent plugin install` command. Register the marketplace with `agent plugin marketplace add`, then install from Cursor Customize or /plugin.",
     };
   }
 }

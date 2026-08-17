@@ -47,6 +47,27 @@ function configuredProjectPaths(paths: PlatformPaths): string[] {
   return result;
 }
 
+/**
+ * Primary global paths used to decide whether a harness is "shared-path only".
+ * Plugin inventory and path alternates are optional evidence: they can detect a
+ * harness when present, but they must not block detection of shared MCP/skills.
+ */
+function configuredRequiredGlobalPaths(paths: PlatformPaths): string[] {
+  const result: string[] = [];
+  for (const [key, value] of Object.entries(paths)) {
+    if (
+      key === "pathAlternates"
+      || key === "plugins"
+      || typeof value !== "string"
+      || !value
+    ) {
+      continue;
+    }
+    result.push(value);
+  }
+  return result;
+}
+
 function existingPaths(paths: PlatformPaths, rootPath: string): string[] {
   return configuredProjectPaths(paths).filter((configuredPath) =>
     existsSync(resolveConfiguredPath(rootPath, configuredPath)),
@@ -162,7 +183,7 @@ export function detectHomePlatforms(
 
   return getAllPlatforms()
     .map((platform) => {
-      const configured = configuredProjectPaths(platform.globalPaths);
+      const configured = configuredRequiredGlobalPaths(platform.globalPaths);
       const discoveredPaths = existingPaths(platform.globalPaths, homeRoot);
       if (discoveredPaths.length === 0) {
         return { platformId: platform.id, discoveredPaths: [] };
