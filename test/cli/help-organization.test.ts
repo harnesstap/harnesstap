@@ -192,7 +192,6 @@ describe("CLI help and command organization", () => {
       "environment",
       "harness",
       "help",
-      "layer",
       "marketplace",
       "migrate",
       "plugin",
@@ -201,9 +200,11 @@ describe("CLI help and command organization", () => {
     ]);
     expect(project).toEqual([
       "add",
+      "apply",
       "history",
       "init",
       "mirror",
+      "open",
       "revert",
       "scan",
       "status",
