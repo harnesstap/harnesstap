@@ -1,0 +1,3 @@
+kind: Changed
+body: Re-clicking an active desktop header destination returns that view to its entrypoint and clears its filters.
+time: 2026-08-16T07:30:00Z

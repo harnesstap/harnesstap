@@ -67,6 +67,8 @@ export interface ResourcesPanelProps {
   token: string | null;
   /** Bump to force a library reload (e.g. after header refresh rescans tracked dirs). */
   reloadKey?: number;
+  /** Bump while mounted to return to the unfiltered list (header re-click). */
+  homeResetNonce?: number;
   disabled?: boolean;
   projectPath?: string | null;
   selectedProfile?: string | null;
@@ -82,6 +84,7 @@ export function ResourcesPanel({
   baseUrl,
   token,
   reloadKey = 0,
+  homeResetNonce = 0,
   disabled = false,
   projectPath,
   selectedProfile,
@@ -449,6 +452,18 @@ export function ResourcesPanel({
       }
     }
   }
+
+  const applyFilterChangeRef = useRef(applyFilterChange);
+  applyFilterChangeRef.current = applyFilterChange;
+  const homeResetNonceSeen = useRef(homeResetNonce);
+
+  useEffect(() => {
+    if (homeResetNonceSeen.current === homeResetNonce) {
+      return;
+    }
+    homeResetNonceSeen.current = homeResetNonce;
+    applyFilterChangeRef.current(defaultResourceFilterState());
+  }, [homeResetNonce]);
 
   useEffect(() => {
     if (pane.mode === "list") {
