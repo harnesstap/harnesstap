@@ -244,6 +244,25 @@ describe("POST /v1/library/plugins/:selector/rollback", () => {
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe("version_not_frozen");
   });
+
+  it("returns 404 when plugin is missing", async () => {
+    const response = await handle("POST", "/v1/library/plugins/missing/rollback", {
+      body: { version: "1.0.0" },
+    });
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("not_found");
+  });
+
+  it("returns 404 when target version is missing", async () => {
+    createPlugin({ name: "eng", version: "1.2.0" });
+    const response = await handle("POST", "/v1/library/plugins/eng/rollback", {
+      body: { version: "9.9.9" },
+    });
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("not_found");
+  });
 });
 
 describe("PATCH /v1/library/plugins/:selector", () => {

@@ -403,6 +403,10 @@ export async function tryHandle(
         { status: 400 },
       );
     }
+    const plugin = resolvePluginSelector(matched.selector);
+    if (!plugin) {
+      return notFound(matched.selector);
+    }
     try {
       const head = rollbackPluginVersion({
         selector: matched.selector,
@@ -412,6 +416,9 @@ export async function tryHandle(
     } catch (error) {
       if (error instanceof PluginProvenanceError) {
         return provenanceResponse(error);
+      }
+      if (error instanceof PluginVersionError && error.code === "not_found") {
+        return jsonResponse({ error: "not_found", message: error.message }, { status: 404 });
       }
       if (error instanceof PluginVersionError) {
         return pluginVersionErrorResponse(error);
