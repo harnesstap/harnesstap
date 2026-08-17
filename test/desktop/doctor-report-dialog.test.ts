@@ -48,6 +48,14 @@ describe("doctor report dialog", () => {
     expect(dialogSource).not.toContain("onConfirm");
   });
 
+  test("dialog announces busy and error states", () => {
+    expect(dialogSource).toContain("Running…");
+    expect(dialogSource).toContain("aria-busy");
+    expect(dialogSource).toContain('role="status"');
+    expect(dialogSource).toContain('role="alert"');
+    expect(dialogSource).toContain("banner error");
+  });
+
   test("DESIGN.md allows report dialogs for Doctor", () => {
     expect(designSource).toContain("Report dialogs for Doctor");
   });

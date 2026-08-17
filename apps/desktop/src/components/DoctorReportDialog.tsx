@@ -79,23 +79,33 @@ export function DoctorReportDialog({
             </span>
           ))}
         </div>
-        {busy ? <ButtonSpinner /> : null}
-        {error ? <p className="muted">{error}</p> : null}
-        {report && summary && summary.groups.length > 0
-          ? summary.groups.map((group) => (
-              <div key={group.check} className="doctor-report-group">
-                <h3>{group.check}</h3>
-                <ul>
-                  {group.messages.map((message, index) => (
-                    <li key={`${group.check}-${index}`}>{message}</li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          : null}
-        {report && summary && summary.groups.length === 0 && !busy && !error ? (
-          <p className="muted">No issues found.</p>
-        ) : null}
+        <div aria-busy={busy}>
+          {busy ? (
+            <p className="muted" role="status">
+              <ButtonSpinner /> Running…
+            </p>
+          ) : null}
+          {error ? (
+            <div className="banner error" role="alert">
+              {error}
+            </div>
+          ) : null}
+          {report && summary && summary.groups.length > 0
+            ? summary.groups.map((group) => (
+                <div key={group.check} className="doctor-report-group">
+                  <h3>{group.check}</h3>
+                  <ul>
+                    {group.messages.map((message, index) => (
+                      <li key={`${group.check}-${index}`}>{message}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            : null}
+          {report && summary && summary.groups.length === 0 && !busy && !error ? (
+            <p className="muted">No issues found.</p>
+          ) : null}
+        </div>
         <div className="dialog-actions">
           <button
             ref={closeRef}
