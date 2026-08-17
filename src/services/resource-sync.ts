@@ -68,10 +68,10 @@ function resolveExistingInstallRoot(candidate: string): string | undefined {
   return candidate;
 }
 
-function resolveInstallRoot(
+export function resolveInstallRoot(
   originRef: string,
-  homeRoot: string,
-  claudePluginsRoot: string,
+  homeRoot: string = resolveHomeRoot(),
+  claudePluginsRoot: string = defaultClaudePluginsRoot(homeRoot),
 ): string | undefined {
   const [plugin, marketplace] = originRef.split("@");
   if (!plugin) return undefined;
