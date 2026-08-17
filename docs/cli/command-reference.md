@@ -169,6 +169,8 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin delete [name]`
 - Prefer top-level `apply [plugin...]` (see above). The old `plugin apply` / `l apply` spelling was removed when apply moved to the root.
 - `plugin cut <plugin> --version <semver>` — cut a new local version from the working head
+- `plugin versions <plugin>` — list local versions (head + frozen)
+- `plugin rollback <plugin> --to <semver>` — copy a frozen version onto the working head
 - `plugin fork <plugin>` — copy an upstream or catalog plugin into an editable authored plugin (default name `<plugin>-fork`)
 - `plugin pull <selector>` — download a remote plugin bundle and import it
 - `plugin catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
@@ -237,6 +239,9 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin why --format json`
 - `plugin cut --version <semver>` — required new version (must differ from the current head)
 - `plugin cut --format json`
+- `plugin versions --format json`
+- `plugin rollback --to <semver>` — frozen version to copy onto the working head
+- `plugin rollback --yes` — skip confirm (required when non-interactive)
 - `plugin fork --as <name>` — name for the authored fork (default `<plugin>-fork`)
 - `plugin fork --format json`
 - `plugin diff --format json`
