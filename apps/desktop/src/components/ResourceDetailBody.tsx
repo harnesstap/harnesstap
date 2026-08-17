@@ -515,101 +515,117 @@ export function ResourceDetailBody({
       {chrome === "pane" && editingField === "name" && fieldError ? (
         <p className="library-field-error">{fieldError}</p>
       ) : null}
-      {!isPluginTypeResource(detail.type) ? (
-        <LibraryFieldRow
-          icon={<AlignLeft size={16} aria-hidden />}
-          fieldName="Description"
-          readOnly={fieldsReadOnly}
-          display={detail.description}
-          placeholder="No description"
-          editing={editingField === "description"}
-          error={editingField === "description" ? fieldError : null}
-          onStartEdit={() => void startEdit("description")}
-        >
-          {renderEditor("description", descriptionMultiline)}
-        </LibraryFieldRow>
-      ) : null}
-      {!isPluginTypeResource(detail.type) && detail.namespace ? (
-        <LibraryFieldRow
-          icon={<Hash size={16} aria-hidden />}
-          fieldName="Namespace"
-          readOnly
-          display={detail.namespace}
-          editing={false}
-          onStartEdit={() => undefined}
-        />
-      ) : null}
-      {!isPluginTypeResource(detail.type) ? (
-        <LibraryFieldRow
-          icon={<Folder size={16} aria-hidden />}
-          fieldName="Path"
-          readOnly
-          mono
-          display={detail.source || "—"}
-          editing={false}
-          onStartEdit={() => undefined}
-        />
-      ) : null}
-      <LibraryFieldRow
-        icon={<MapPin size={16} aria-hidden />}
-        fieldName="Origin"
-        readOnly
-        display={originLabel(detail)}
-        editing={false}
-        onStartEdit={() => undefined}
-      />
-      {pluginRefShowsMarketplaceUrl(detail) ? (
-        <LibraryFieldRow
-          icon={<Link size={16} aria-hidden />}
-          fieldName="Marketplace URL"
-          readOnly
-          mono
-          display={detail.marketplace_url}
-          editing={false}
-          onStartEdit={() => undefined}
-        />
-      ) : null}
       {isPluginTypeResource(detail.type) ? (
-        <LibraryFieldRow
-          icon={<Folder size={16} aria-hidden />}
-          fieldName="Path"
-          readOnly
-          mono
-          display={detail.install_path ?? ""}
-          placeholder="Install path not found"
-          editing={false}
-          onStartEdit={() => undefined}
-        />
-      ) : null}
-      <LibraryFieldRow
-        icon={<Clock size={16} aria-hidden />}
-        fieldName="Updated"
-        readOnly
-        mono
-        display={formatLibraryTimestamp(detail.updated_at)}
-        editing={false}
-        onStartEdit={() => undefined}
-      />
-      {!isPluginTypeResource(detail.type) ? (
-        <LibraryFieldRow
-          icon={<FileCode2 size={16} aria-hidden />}
-          fieldName="Content"
-          readOnly={fieldsReadOnly}
-          mono
-          display={detail.content}
-          placeholder="No content"
-          editing={editingField === "content"}
-          error={editingField === "content" ? fieldError : null}
-          onStartEdit={() => void startEdit("content")}
-        >
-          {renderEditor("content", true)}
-        </LibraryFieldRow>
-      ) : null}
-      {!isPluginTypeResource(detail.type) && detail.content_truncated ? (
-        <p className="muted resource-detail-truncated">
-          Content truncated for preview.
-        </p>
-      ) : null}
+        <>
+          <LibraryFieldRow
+            icon={<MapPin size={16} aria-hidden />}
+            fieldName="Origin"
+            readOnly
+            display={originLabel(detail)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          {pluginRefShowsMarketplaceUrl(detail) ? (
+            <LibraryFieldRow
+              icon={<Link size={16} aria-hidden />}
+              fieldName="Marketplace URL"
+              readOnly
+              mono
+              display={detail.marketplace_url}
+              editing={false}
+              onStartEdit={() => undefined}
+            />
+          ) : null}
+          <LibraryFieldRow
+            icon={<Folder size={16} aria-hidden />}
+            fieldName="Path"
+            readOnly
+            mono
+            display={detail.install_path ?? ""}
+            placeholder="Install path not found"
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<Clock size={16} aria-hidden />}
+            fieldName="Updated"
+            readOnly
+            mono
+            display={formatLibraryTimestamp(detail.updated_at)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+        </>
+      ) : (
+        <>
+          <LibraryFieldRow
+            icon={<AlignLeft size={16} aria-hidden />}
+            fieldName="Description"
+            readOnly={fieldsReadOnly}
+            display={detail.description}
+            placeholder="No description"
+            editing={editingField === "description"}
+            error={editingField === "description" ? fieldError : null}
+            onStartEdit={() => void startEdit("description")}
+          >
+            {renderEditor("description", descriptionMultiline)}
+          </LibraryFieldRow>
+          {detail.namespace ? (
+            <LibraryFieldRow
+              icon={<Hash size={16} aria-hidden />}
+              fieldName="Namespace"
+              readOnly
+              display={detail.namespace}
+              editing={false}
+              onStartEdit={() => undefined}
+            />
+          ) : null}
+          <LibraryFieldRow
+            icon={<Folder size={16} aria-hidden />}
+            fieldName="Path"
+            readOnly
+            mono
+            display={detail.source || "—"}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<MapPin size={16} aria-hidden />}
+            fieldName="Origin"
+            readOnly
+            display={originLabel(detail)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<Clock size={16} aria-hidden />}
+            fieldName="Updated"
+            readOnly
+            mono
+            display={formatLibraryTimestamp(detail.updated_at)}
+            editing={false}
+            onStartEdit={() => undefined}
+          />
+          <LibraryFieldRow
+            icon={<FileCode2 size={16} aria-hidden />}
+            fieldName="Content"
+            readOnly={fieldsReadOnly}
+            mono
+            display={detail.content}
+            placeholder="No content"
+            editing={editingField === "content"}
+            error={editingField === "content" ? fieldError : null}
+            onStartEdit={() => void startEdit("content")}
+          >
+            {renderEditor("content", true)}
+          </LibraryFieldRow>
+          {detail.content_truncated ? (
+            <p className="muted resource-detail-truncated">
+              Content truncated for preview.
+            </p>
+          ) : null}
+        </>
+      )}
       {preview ? (
         <div className="resource-detail-sync-preview">
           <p className="muted">
