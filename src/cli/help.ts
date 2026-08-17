@@ -15,6 +15,8 @@ const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
   "import",
   "add",
   "cut",
+  "versions",
+  "rollback",
   "diff",
   "doctor",
   "why",

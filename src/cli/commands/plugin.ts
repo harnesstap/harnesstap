@@ -9,6 +9,8 @@ import {
 import { formatCount, formatPluginLabel } from "../formatting.js";
 import { parseCommaSeparatedList } from "../handlers/parse-flags.js";
 import { handlePluginForkCommand } from "../handlers/plugin-fork.js";
+import { handlePluginRollbackCommand } from "../handlers/plugin-rollback.js";
+import { handlePluginVersionsCommand } from "../handlers/plugin-versions.js";
 import { handlePluginInstallCommand } from "../handlers/plugin-install.js";
 import {
   handlePluginPublishCommand,
@@ -2759,6 +2761,31 @@ pluginCmd
   .action((plugin: string, opts: { version: string; format?: string }) => {
     handlePluginCutCommand(plugin, opts);
   });
+
+pluginCmd
+  .command("versions")
+  .argument("<plugin>", "Plugin name")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("List local frozen versions and the working head")
+  .action((plugin: string, opts: { format?: string }) => {
+    handlePluginVersionsCommand(plugin, opts);
+  });
+
+pluginCmd
+  .command("rollback")
+  .argument("<plugin>", "Plugin name, name@version, or id")
+  .requiredOption("--to <semver>", "Frozen version to copy onto the working head")
+  .option("-y, --yes", "Skip the confirmation prompt")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Restore a frozen version onto the working head")
+  .action(
+    async (
+      plugin: string,
+      opts: { to: string; yes?: boolean; format?: string },
+    ) => {
+      await handlePluginRollbackCommand(plugin, opts);
+    },
+  );
 
 pluginCmd
   .command("diff")
