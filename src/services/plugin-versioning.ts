@@ -6,8 +6,10 @@ import {
   deletePlugin,
   getPluginByPublishedIdentity,
   getPluginResources,
+  resolvePluginSelector,
 } from "../models/plugin-model.js";
 import type { ClaudePluginConfig, Plugin } from "../types.js";
+import { assertAuthored } from "./plugin-origin.js";
 import { resolveComposition } from "./resolve/index.js";
 
 export type PluginVersionErrorCode =
@@ -16,7 +18,8 @@ export type PluginVersionErrorCode =
   | "version_exists"
   | "dirty_plugins"
   | "not_found"
-  | "frozen_plugin";
+  | "frozen_plugin"
+  | "version_not_frozen";
 
 export class PluginVersionError extends Error {
   readonly code: PluginVersionErrorCode;
@@ -241,6 +244,46 @@ export function formatPluginVersionLabel(version: string, dirty: boolean): strin
   return dirty ? `${version}*` : version;
 }
 
+export interface PluginVersionHistoryEntry {
+  id: string;
+  name: string;
+  version: string;
+  dirty: boolean;
+  frozen_at: string | null;
+  is_head: boolean;
+  updated_at: string;
+}
+
+export function listPluginVersionHistory(name: string): PluginVersionHistoryEntry[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM plugins WHERE name = ?")
+    .all(name) as PluginRow[];
+  const versions = rows.map((row) => row.version);
+  const semverVersions = versions
+    .filter((version) => semver.valid(version) !== null)
+    .sort(semver.rcompare);
+  const nonSemver = versions.filter((version) => semver.valid(version) === null);
+  const ordered = [...semverVersions, ...nonSemver];
+  return ordered.flatMap((version) => {
+    const row = rows.find((candidate) => candidate.version === version);
+    if (!row) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        name: row.name,
+        version: row.version,
+        dirty: row.dirty === 1,
+        frozen_at: row.frozen_at,
+        is_head: row.frozen_at == null,
+        updated_at: row.updated_at,
+      },
+    ];
+  });
+}
+
 export function markPluginDirty(pluginId: string): void {
   const row = getPluginRowById(pluginId);
   if (!row) {
@@ -409,4 +452,98 @@ export function getFrozenResolvedSet(
     frozen_resolved_set?: Array<{ name: string; version: string }>;
   };
   return parsed.frozen_resolved_set ?? [];
+}
+
+export function formatPluginRollbackConfirmMessage(input: {
+  headVersion: string;
+  frozenVersion: string;
+  dirty: boolean;
+}): string {
+  if (input.dirty) {
+    return (
+      `Replace unpublished edits on ${input.headVersion}* with version ${input.frozenVersion}? ` +
+      `The working head stays ${input.headVersion} and is marked dirty. This does not apply the plugin.`
+    );
+  }
+  return (
+    `Replace the working head ${input.headVersion} with version ${input.frozenVersion}? ` +
+    `The working head stays ${input.headVersion} and is marked dirty. This does not apply the plugin.`
+  );
+}
+
+export function rollbackPluginVersion(input: {
+  selector: string;
+  toVersion: string;
+}): Plugin {
+  const resolved = resolvePluginSelector(input.selector);
+  if (!resolved) {
+    throw new PluginVersionError("not_found", `Plugin not found: ${input.selector}`);
+  }
+  const headRow = getPluginRowById(resolved.id);
+  if (!headRow) {
+    throw new PluginVersionError("not_found", `Plugin not found: ${input.selector}`);
+  }
+  if (headRow.frozen_at) {
+    throw new PluginVersionError(
+      "frozen_plugin",
+      `Plugin ${headRow.name}@${headRow.version} is frozen and cannot be rolled back onto`,
+    );
+  }
+  assertAuthored(headRow.id, "edit");
+
+  const frozen = resolvePluginSelector(`${headRow.name}@${input.toVersion}`);
+  if (!frozen) {
+    throw new PluginVersionError(
+      "not_found",
+      `Plugin not found: ${headRow.name}@${input.toVersion}`,
+    );
+  }
+  if (frozen.name !== headRow.name || frozen.frozen_at == null || frozen.id === headRow.id) {
+    throw new PluginVersionError(
+      "version_not_frozen",
+      `Plugin ${headRow.name}@${input.toVersion} is not a frozen version of ${headRow.name}`,
+    );
+  }
+  const frozenRow = getPluginRowById(frozen.id);
+  if (!frozenRow) {
+    throw new PluginVersionError(
+      "not_found",
+      `Plugin not found: ${headRow.name}@${input.toVersion}`,
+    );
+  }
+
+  const db = getDb();
+  const rolled = db.transaction(() => {
+    if (headRow.dirty === 0) {
+      captureWorkingSnapshot(headRow.id);
+    }
+    const resourceIds = getPluginResources(frozenRow.id).map((resource) => resource.id);
+    db.prepare("DELETE FROM plugin_resources WHERE plugin_id = ?").run(headRow.id);
+    copySnapshotAttachments(headRow.id, resourceIds);
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE plugins
+       SET description = ?, tags = ?, claude_config = ?, needs_config = ?,
+           default_environment_id = ?, dirty = 1, updated_at = ?
+       WHERE id = ?`,
+    ).run(
+      frozenRow.description,
+      frozenRow.tags,
+      frozenRow.claude_config,
+      frozenRow.needs_config,
+      frozenRow.default_environment_id,
+      now,
+      headRow.id,
+    );
+    const updated = getPluginRowById(headRow.id);
+    if (!updated) {
+      throw new PluginVersionError(
+        "not_found",
+        `Plugin not found after rollback: ${headRow.id}`,
+      );
+    }
+    return updated;
+  })();
+
+  return rowToPlugin(rolled);
 }

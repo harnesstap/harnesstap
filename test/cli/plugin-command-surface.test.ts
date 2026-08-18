@@ -24,6 +24,8 @@ describe("ht plugin command surface", () => {
       "show",
       "edit",
       "cut",
+      "versions",
+      "rollback",
       "publish",
       "pull",
       "fork",

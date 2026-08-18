@@ -10,15 +10,21 @@ import {
   getPluginByName,
   getPluginResources,
   listPlugins,
+  setPluginTags,
+  updatePluginDescription,
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { addPluginAttachment } from "../../src/services/plugin-composition.ts";
+import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
 import {
   assertPluginsCleanForShare,
   cutPluginVersion,
+  formatPluginRollbackConfirmMessage,
   formatPluginVersionLabel,
+  listPluginVersionHistory,
   PluginVersionError,
   markPluginDirty,
+  rollbackPluginVersion,
 } from "../../src/services/plugin-versioning.ts";
 
 function writeHistoryLimit(context: { homeDir: string }, limit: number): void {
@@ -209,5 +215,212 @@ describe("plugin versioning", () => {
     } finally {
       await context.cleanup();
     }
+  });
+
+  it("lists head and frozen versions newest first", async () => {
+    const context = await createInitializedTestContext("plugin-version-history-list");
+    try {
+      const plugin = createPlugin({ name: "hist", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      const head = getPluginByName("hist", "1.1.0");
+      cutPluginVersion({ pluginId: head!.id, newVersion: "1.2.0" });
+
+      const rows = listPluginVersionHistory("hist");
+      expect(rows.map((row) => row.version)).toEqual(["1.2.0", "1.1.0", "1.0.0"]);
+      expect(rows[0]).toMatchObject({
+        version: "1.2.0",
+        dirty: false,
+        frozen_at: null,
+        is_head: true,
+      });
+      expect(rows[1]?.is_head).toBe(false);
+      expect(rows[1]?.frozen_at).toBeTruthy();
+      expect(rows[2]?.version).toBe("1.0.0");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("listPluginVersionHistory returns empty for an unknown name", async () => {
+    const context = await createInitializedTestContext("plugin-version-history-missing");
+    try {
+      expect(listPluginVersionHistory("missing")).toEqual([]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rollback copies frozen snapshot onto the head and marks dirty", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-copy");
+    try {
+      const plugin = createPlugin({ name: "rb", version: "1.0.0", description: "first" });
+      const resourceA = createResource(makeResourceInput({ name: "skill-a" }));
+      const resourceB = createResource(makeResourceInput({ name: "skill-b" }));
+      addResourceToPlugin(plugin.id, resourceA.id);
+      setPluginTags(plugin.id, ["alpha"]);
+
+      const headAfterCut = cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      addResourceToPlugin(headAfterCut.id, resourceB.id);
+      updatePluginDescription(headAfterCut.id, "second");
+      setPluginTags(headAfterCut.id, ["beta"]);
+      markPluginDirty(headAfterCut.id);
+
+      const frozen = getPluginByName("rb", "1.0.0");
+      expect(frozen?.frozen_at).toBeDefined();
+
+      const rolled = rollbackPluginVersion({ selector: "rb", toVersion: "1.0.0" });
+      expect(rolled.id).toBe(headAfterCut.id);
+      expect(rolled.version).toBe("1.1.0");
+      expect(rolled.dirty).toBe(true);
+      expect(rolled.frozen_at).toBeUndefined();
+      expect(rolled.description).toBe("first");
+      expect(rolled.tags).toEqual(["alpha"]);
+      expect(getPluginResources(rolled.id).map((resource) => resource.name)).toEqual([
+        "skill-a",
+      ]);
+
+      const frozenAfter = getPluginByName("rb", "1.0.0");
+      expect(frozenAfter?.frozen_at).toBe(frozen?.frozen_at);
+      expect(getPluginResources(frozenAfter!.id).map((resource) => resource.name)).toEqual([
+        "skill-a",
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rollback on a clean head snapshots pre-rollback composition for the next cut", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-cow");
+    try {
+      const plugin = createPlugin({ name: "cow-rb", version: "1.0.0" });
+      const resourceA = createResource(makeResourceInput({ name: "skill-a" }));
+      const resourceB = createResource(makeResourceInput({ name: "skill-b" }));
+      addResourceToPlugin(plugin.id, resourceA.id);
+      const head = cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      addResourceToPlugin(head.id, resourceB.id);
+
+      rollbackPluginVersion({ selector: "cow-rb", toVersion: "1.0.0" });
+      const next = cutPluginVersion({ pluginId: head.id, newVersion: "1.2.0" });
+      expect(next.version).toBe("1.2.0");
+      expect(getPluginResources(next.id).map((resource) => resource.name)).toEqual([
+        "skill-a",
+      ]);
+
+      const frozen11 = getPluginByName("cow-rb", "1.1.0");
+      expect(frozen11?.frozen_at).toBeDefined();
+      expect(getPluginResources(frozen11!.id).map((resource) => resource.name)).toEqual([
+        "skill-a",
+        "skill-b",
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rollback on a dirty head keeps the existing working snapshot", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-dirty-snapshot");
+    try {
+      const plugin = createPlugin({ name: "dirty-rb", version: "1.0.0" });
+      const resourceA = createResource(makeResourceInput({ name: "skill-a" }));
+      const resourceB = createResource(makeResourceInput({ name: "skill-b" }));
+      const resourceC = createResource(makeResourceInput({ name: "skill-c" }));
+      addResourceToPlugin(plugin.id, resourceA.id);
+      const head = cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      markPluginDirty(head.id);
+      addResourceToPlugin(head.id, resourceB.id);
+
+      rollbackPluginVersion({ selector: "dirty-rb", toVersion: "1.0.0" });
+      addResourceToPlugin(head.id, resourceC.id);
+      cutPluginVersion({ pluginId: head.id, newVersion: "1.2.0" });
+
+      const frozen11 = getPluginByName("dirty-rb", "1.1.0");
+      expect(getPluginResources(frozen11!.id).map((resource) => resource.name)).toEqual([
+        "skill-a",
+      ]);
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback of catalog plugins", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-origin");
+    try {
+      const plugin = createPlugin({ name: "cat", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      const head = getPluginByName("cat", "1.1.0")!;
+      setPluginOrigin(head.id, "catalog");
+      expect(() => rollbackPluginVersion({ selector: "cat", toVersion: "1.0.0" })).toThrowError(
+        expect.objectContaining({ name: "PluginProvenanceError" }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback when the target version is missing", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-missing");
+    try {
+      createPlugin({ name: "miss", version: "1.0.0" });
+      expect(() =>
+        rollbackPluginVersion({ selector: "miss", toVersion: "9.9.9" }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PluginVersionError>>({ code: "not_found" }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback when --to is the working head", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-head");
+    try {
+      const plugin = createPlugin({ name: "hd", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      expect(() =>
+        rollbackPluginVersion({ selector: "hd", toVersion: "1.1.0" }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PluginVersionError>>({
+          code: "version_not_frozen",
+        }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("rejects rollback when the selector is a frozen row", async () => {
+    const context = await createInitializedTestContext("plugin-version-rollback-frozen-selector");
+    try {
+      const plugin = createPlugin({ name: "fr", version: "1.0.0" });
+      cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+      expect(() =>
+        rollbackPluginVersion({ selector: "fr@1.0.0", toVersion: "1.0.0" }),
+      ).toThrowError(
+        expect.objectContaining<Partial<PluginVersionError>>({ code: "frozen_plugin" }),
+      );
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("formatPluginRollbackConfirmMessage matches dirty and clean copy", () => {
+    expect(
+      formatPluginRollbackConfirmMessage({
+        headVersion: "1.2.0",
+        frozenVersion: "1.0.0",
+        dirty: true,
+      }),
+    ).toBe(
+      "Replace unpublished edits on 1.2.0* with version 1.0.0? The working head stays 1.2.0 and is marked dirty. This does not apply the plugin.",
+    );
+    expect(
+      formatPluginRollbackConfirmMessage({
+        headVersion: "1.2.0",
+        frozenVersion: "1.0.0",
+        dirty: false,
+      }),
+    ).toBe(
+      "Replace the working head 1.2.0 with version 1.0.0? The working head stays 1.2.0 and is marked dirty. This does not apply the plugin.",
+    );
   });
 });

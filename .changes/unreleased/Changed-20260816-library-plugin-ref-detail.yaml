@@ -1,0 +1,3 @@
+kind: Changed
+body: Show plugin-ref install path, marketplace URL, and contained files in Library detail instead of synthetic metadata and empty JSON.
+time: 2026-08-16T16:00:00Z

@@ -154,6 +154,13 @@ ht plugin cut my-setup --version 1.3.0
 
 The previous head is frozen in place (copy-on-write); the new head starts clean at the requested version. Frozen versions cannot be edited or cut again.
 
+List retained versions and restore a frozen snapshot onto the working head (same semver, marked dirty). This does not apply the plugin:
+
+```bash
+ht plugin versions my-setup
+ht plugin rollback my-setup --to 1.0.0
+```
+
 HarnessTap keeps at most `pluginVersionHistoryLimit` versions per plugin name (head included). Oldest frozen versions are pruned on cut when over the limit. Configure in `~/.harnesstap/config.jsonc` (default `10`):
 
 ```jsonc
@@ -279,6 +286,7 @@ Requests carry `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`. A CLI 
 | Explain a resolve decision | `plugin why` / `apply --explain` |
 | Compare versions | `plugin diff` |
 | Cut a new semver | `plugin cut --version` |
+| Restore a frozen cut | `plugin rollback --to` |
 | Infer from a repo | `plugin from-project` |
 | Apply to a project | `apply` / `apply --update` |
 | Check lock drift | `status --check` |

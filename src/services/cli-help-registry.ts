@@ -248,6 +248,23 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin cut my-plugin --version 1.3.0 --format json",
     ],
   },
+  "plugin.versions": {
+    description: "List local frozen versions and the working head",
+    examples: [
+      "plugin versions my-plugin",
+      "plugin versions my-plugin --format json",
+    ],
+  },
+  "plugin.rollback": {
+    description: "Restore a frozen version onto the working head",
+    details:
+      "Copies the frozen snapshot onto the current semver and marks the head dirty. " +
+      "Does not apply the plugin. Non-interactive use requires --yes.",
+    examples: [
+      "plugin rollback my-plugin --to 1.0.0 --yes",
+      "plugin rollback my-plugin --to 1.0.0 --yes --format json",
+    ],
+  },
   "plugin.why": {
     description:
       "Explain why a version was selected, or which plugin won a resource",

@@ -6,6 +6,7 @@ import {
   getPluginByName,
   getPluginResources,
   listPlugins,
+  updatePluginDescription,
 } from "../../src/models/plugin-model.ts";
 import { createResource, getResource } from "../../src/models/resource.ts";
 import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
@@ -149,6 +150,118 @@ describe("GET /v1/library/plugins/:selector", () => {
     expect(body.plugin.default_environment_id).toBeNull();
     expect(body.resources.some((row) => row.name === "ship")).toBe(true);
     expect(Array.isArray(body.dependencies)).toBe(true);
+  });
+});
+
+describe("GET /v1/library/plugins/:selector includes frozen_at", () => {
+  it("returns null frozen_at on the working head", async () => {
+    createPlugin({ name: "eng", version: "1.2.0" });
+    const response = await handle("GET", "/v1/library/plugins/eng");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { plugin: { frozen_at: string | null } };
+    expect(body.plugin.frozen_at).toBeNull();
+  });
+
+  it("returns frozen_at on name@version", async () => {
+    const plugin = createPlugin({ name: "eng", version: "1.2.0" });
+    cutPluginVersion({ pluginId: plugin.id, newVersion: "1.3.0" });
+    const response = await handle("GET", "/v1/library/plugins/eng@1.2.0");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { plugin: { frozen_at: string | null; version: string } };
+    expect(body.plugin.version).toBe("1.2.0");
+    expect(body.plugin.frozen_at).toBeTruthy();
+  });
+});
+
+describe("GET /v1/library/plugins/:selector/versions", () => {
+  it("lists head and frozen versions", async () => {
+    const plugin = createPlugin({ name: "eng", version: "1.2.0" });
+    cutPluginVersion({ pluginId: plugin.id, newVersion: "1.3.0" });
+    const response = await handle("GET", "/v1/library/plugins/eng/versions");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      versions: Array<{ version: string; is_head: boolean; frozen_at: string | null }>;
+    };
+    expect(body.versions[0]).toMatchObject({
+      version: "1.3.0",
+      is_head: true,
+      frozen_at: null,
+    });
+    expect(body.versions[1]?.version).toBe("1.2.0");
+  });
+
+  it("returns 404 when missing", async () => {
+    const response = await handle("GET", "/v1/library/plugins/missing/versions");
+    expect(response.status).toBe(404);
+  });
+
+  it("GET versions returns 401 without bearer", async () => {
+    createPlugin({ name: "eng" });
+    const response = await handle("GET", "/v1/library/plugins/eng/versions", {
+      token: null,
+    });
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("POST /v1/library/plugins/:selector/rollback", () => {
+  it("restores a frozen version onto the head", async () => {
+    const plugin = createPlugin({ name: "eng", version: "1.2.0", description: "old" });
+    const head = cutPluginVersion({ pluginId: plugin.id, newVersion: "1.3.0" });
+    updatePluginDescription(head.id, "new");
+    const response = await handle("POST", "/v1/library/plugins/eng/rollback", {
+      body: { version: "1.2.0" },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      plugin: { version: string; dirty: boolean; description: string; frozen_at: string | null };
+    };
+    expect(body.plugin.version).toBe("1.3.0");
+    expect(body.plugin.dirty).toBe(true);
+    expect(body.plugin.description).toBe("old");
+    expect(body.plugin.frozen_at).toBeNull();
+  });
+
+  it("returns not_authored for upstream", async () => {
+    const plugin = createPlugin({ name: "web-search", version: "1.0.0" });
+    cutPluginVersion({ pluginId: plugin.id, newVersion: "1.1.0" });
+    const head = getPluginByName("web-search", "1.1.0")!;
+    setPluginOrigin(head.id, "upstream");
+    const response = await handle("POST", "/v1/library/plugins/web-search/rollback", {
+      body: { version: "1.0.0" },
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("not_authored");
+  });
+
+  it("maps version_not_frozen when --to is the head", async () => {
+    createPlugin({ name: "eng", version: "1.2.0" });
+    const response = await handle("POST", "/v1/library/plugins/eng/rollback", {
+      body: { version: "1.2.0" },
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("version_not_frozen");
+  });
+
+  it("returns 404 when plugin is missing", async () => {
+    const response = await handle("POST", "/v1/library/plugins/missing/rollback", {
+      body: { version: "1.0.0" },
+    });
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("not_found");
+  });
+
+  it("returns 404 when target version is missing", async () => {
+    createPlugin({ name: "eng", version: "1.2.0" });
+    const response = await handle("POST", "/v1/library/plugins/eng/rollback", {
+      body: { version: "9.9.9" },
+    });
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("not_found");
   });
 });
 
@@ -449,6 +562,7 @@ describe("mutating routes auth", () => {
       ["PATCH", "/v1/library/plugins/eng"],
       ["PATCH", "/v1/library/plugins/eng/attachments"],
       ["POST", "/v1/library/plugins/eng/cut"],
+      ["POST", "/v1/library/plugins/eng/rollback"],
       ["POST", "/v1/library/plugins/eng/doctor"],
       ["POST", "/v1/library/plugins/eng/fork"],
       ["POST", "/v1/library/plugins"],
