@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { PluginDoctorReport } from "../../apps/desktop/src/lib/api/library-plugins.ts";
-import {
-  doctorStatusPills,
-  summarizeDoctorReport,
-} from "../../apps/desktop/src/lib/doctor-report.ts";
+import { summarizeDoctorReport } from "../../apps/desktop/src/lib/doctor-report.ts";
 
 const CHECKS = [
   "empty-plugin",
@@ -39,8 +36,10 @@ describe("summarizeDoctorReport", () => {
         },
       ]),
     );
-    expect(summary.errorCount).toBe(1);
-    expect(summary.warnCount).toBe(2);
+    expect(summary.pills).toEqual([
+      { label: "1 error", tone: "bad" },
+      { label: "2 warnings", tone: "warn" },
+    ]);
     expect(summary.groups.map((group) => group.check)).toEqual([
       "empty-content",
       "plugin-metadata",
@@ -50,10 +49,8 @@ describe("summarizeDoctorReport", () => {
 
   it("treats empty results as no issues", () => {
     const summary = summarizeDoctorReport(report([]));
-    expect(summary.errorCount).toBe(0);
-    expect(summary.warnCount).toBe(0);
     expect(summary.groups).toEqual([]);
-    expect(doctorStatusPills(summary)).toEqual([{ label: "valid", tone: "ok" }]);
+    expect(summary.pills).toEqual([{ label: "valid", tone: "ok" }]);
   });
 
   it("labels errors and warnings with text", () => {
@@ -67,7 +64,7 @@ describe("summarizeDoctorReport", () => {
         },
       ]),
     );
-    expect(doctorStatusPills(summary)).toEqual([
+    expect(summary.pills).toEqual([
       { label: "1 error", tone: "bad" },
       { label: "1 warning", tone: "warn" },
     ]);
@@ -94,7 +91,7 @@ describe("summarizeDoctorReport", () => {
         },
       ]),
     );
-    expect(doctorStatusPills(summary)).toEqual([
+    expect(summary.pills).toEqual([
       { label: "2 errors", tone: "bad" },
       { label: "2 warnings", tone: "warn" },
     ]);

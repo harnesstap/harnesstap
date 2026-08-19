@@ -4,10 +4,12 @@ import type { TestContext } from "../helpers/db.ts";
 import { createPlugin } from "../../src/models/plugin-model.ts";
 import {
   addDependency,
+  dependenciesFromResources,
   listDependencies,
   parseDependencyRef,
   removeDependency,
 } from "../../src/services/plugin-dependency.ts";
+import { makeResource } from "../helpers/resources.ts";
 
 let ctx: TestContext;
 
@@ -96,5 +98,34 @@ describe("dependency attachment", () => {
     addDependency(root.id, "b");
     addDependency(root.id, "c");
     expect(listDependencies(root.id).map((d) => d.name)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("dependenciesFromResources", () => {
+  it("maps plugin resources from an already-loaded list and ignores other types", () => {
+    const pinned = makeResource({
+      type: "plugin",
+      name: "formatter",
+      origin_ref: "formatter@acme",
+      metadata: {
+        source_kind: "marketplace",
+        version_constraint: "^1.0.0",
+      },
+    });
+    const skill = makeResource({
+      id: "resource-2",
+      type: "skill",
+      name: "alpha",
+    });
+    expect(dependenciesFromResources([skill, pinned])).toEqual([
+      {
+        name: "formatter",
+        source_kind: "marketplace",
+        ref: "formatter@acme",
+        version_constraint: "^1.0.0",
+        embed_on_export: false,
+        resource: pinned,
+      },
+    ]);
   });
 });

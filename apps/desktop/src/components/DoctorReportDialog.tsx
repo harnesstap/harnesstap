@@ -1,55 +1,96 @@
-import { useEffect, useId, useRef } from "react";
-import type { PluginDoctorReport } from "../lib/api/library-plugins";
+import { useEffect, useId, useState } from "react";
+import { AgentApiError } from "../lib/agent-client";
 import {
-  doctorStatusPills,
-  summarizeDoctorReport,
-} from "../lib/doctor-report";
+  runLibraryPluginDoctor,
+  type PluginDoctorReport,
+} from "../lib/api/library-plugins";
+import {
+  shouldCloseDialogOnBackdrop,
+  useDialogDismiss,
+} from "../lib/dialog-dismiss";
+import { summarizeDoctorReport } from "../lib/doctor-report";
 import { ButtonSpinner } from "./ButtonSpinner";
 
 export interface DoctorReportDialogProps {
   open: boolean;
   pluginName: string;
-  busy: boolean;
-  error: string | null;
-  report: PluginDoctorReport | null;
+  selector: string;
+  baseUrl: string | null;
+  token: string | null;
   onClose: () => void;
+  onBusyChange?: (busy: boolean) => void;
+  onSuccess: (message: string) => void;
+}
+
+function loadErrorMessage(error: unknown): string {
+  if (error instanceof AgentApiError || error instanceof Error) {
+    return error.message;
+  }
+  return "Could not run plugin doctor";
 }
 
 export function DoctorReportDialog({
   open,
   pluginName,
-  busy,
-  error,
-  report,
+  selector,
+  baseUrl,
+  token,
   onClose,
+  onBusyChange,
+  onSuccess,
 }: DoctorReportDialogProps) {
   const titleId = useId();
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const summary = report ? summarizeDoctorReport(report) : null;
-  const showStatus = Boolean(report) && !busy && !error;
-  const pills = showStatus && summary ? doctorStatusPills(summary) : [];
+  const closeRef = useDialogDismiss(open, onClose);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [report, setReport] = useState<PluginDoctorReport | null>(null);
+  const summary = report && !busy && !error ? summarizeDoctorReport(report) : null;
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !baseUrl || !selector) {
+      setReport(null);
+      setError(null);
+      setBusy(false);
+      onBusyChange?.(false);
       return;
     }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
+
+    let cancelled = false;
+    setBusy(true);
+    setError(null);
+    setReport(null);
+    onBusyChange?.(true);
+    void runLibraryPluginDoctor(baseUrl, token, selector)
+      .then((next) => {
+        if (cancelled) {
+          return;
+        }
+        setReport(next);
+        onSuccess(
+          next.valid
+            ? `Doctor: ${next.plugin} valid`
+            : `Doctor: ${next.plugin} invalid`,
+        );
+      })
+      .catch((loadError: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setError(loadErrorMessage(loadError));
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+        setBusy(false);
+        onBusyChange?.(false);
+      });
+
+    return () => {
+      cancelled = true;
+      onBusyChange?.(false);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [open]);
+  }, [open, baseUrl, token, selector]);
 
   if (!open) {
     return null;
@@ -60,7 +101,7 @@ export function DoctorReportDialog({
       className="dialog-backdrop"
       role="presentation"
       onClick={(event) => {
-        if (event.target === event.currentTarget) {
+        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget)) {
           onClose();
         }
       }}
@@ -73,7 +114,7 @@ export function DoctorReportDialog({
       >
         <div className="doctor-report-header">
           <h2 id={titleId}>{pluginName}</h2>
-          {pills.map((pill) => (
+          {summary?.pills.map((pill) => (
             <span key={pill.label} className={`pill ${pill.tone}`}>
               {pill.label}
             </span>
@@ -90,7 +131,7 @@ export function DoctorReportDialog({
               {error}
             </div>
           ) : null}
-          {report && summary && summary.groups.length > 0
+          {summary && summary.groups.length > 0
             ? summary.groups.map((group) => (
                 <div key={group.check} className="doctor-report-group">
                   <h3>{group.check}</h3>
@@ -102,7 +143,7 @@ export function DoctorReportDialog({
                 </div>
               ))
             : null}
-          {report && summary && summary.groups.length === 0 && !busy && !error ? (
+          {summary && summary.groups.length === 0 ? (
             <p className="muted">No issues found.</p>
           ) : null}
         </div>

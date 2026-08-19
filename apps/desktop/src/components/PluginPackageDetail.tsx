@@ -42,10 +42,8 @@ import {
   patchLibraryPlugin,
   patchLibraryPluginAttachments,
   rollbackLibraryPlugin,
-  runLibraryPluginDoctor,
   type LibraryPluginDetail,
   type LibraryPluginVersionRow,
-  type PluginDoctorReport,
   type PluginOrigin,
 } from "../lib/api/library-plugins";
 import {
@@ -63,7 +61,6 @@ import type {
   LibraryResource,
   PluginMarketplaceEntry,
 } from "../lib/types";
-import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
@@ -190,7 +187,6 @@ export function PluginPackageDetail({
 }: PluginPackageDetailProps) {
   const titleId = useId();
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const doctorRequestId = useRef(0);
   const [detail, setDetail] = useState<LibraryPluginDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -214,12 +210,8 @@ export function PluginPackageDetail({
   const [environments, setEnvironments] = useState<LibraryEnvironment[]>([]);
   const [busy, setBusy] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
-  const [doctorReport, setDoctorReport] = useState<PluginDoctorReport | null>(
-    null,
-  );
   const [doctorBusy, setDoctorBusy] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
-  const [doctorError, setDoctorError] = useState<string | null>(null);
 
   const [applyOpen, setApplyOpen] = useState(false);
   const [cutOpen, setCutOpen] = useState(false);
@@ -249,7 +241,7 @@ export function PluginPackageDetail({
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
 
   const anyBusy = busy || doctorBusy || confirmBusy || applyBusy || rollbackBusy;
-  const actionsLocked = disabled || !baseUrl || detailLoading || anyBusy;
+  const actionsLocked = disabled || !baseUrl || detailLoading || anyBusy || doctorOpen;
   const authored = detail?.plugin.origin === "authored";
   const fieldsReadOnly =
     !authored || disabled || !baseUrl || historyMode !== "head";
@@ -290,12 +282,12 @@ export function PluginPackageDetail({
     }
   }, [editingField]);
 
-  useEffect(() => {
-    doctorRequestId.current += 1;
+  const closeDoctor = () => {
     setDoctorOpen(false);
-    setDoctorError(null);
-    setDoctorReport(null);
-    setDoctorBusy(false);
+  };
+
+  useEffect(() => {
+    closeDoctor();
     if (!baseUrl || !selector) {
       setDetail(null);
       return;
@@ -868,46 +860,6 @@ export function PluginPackageDetail({
     });
   };
 
-  const closeDoctor = () => {
-    doctorRequestId.current += 1;
-    setDoctorOpen(false);
-    setDoctorReport(null);
-    setDoctorError(null);
-    setDoctorBusy(false);
-  };
-
-  const runDoctor = async () => {
-    if (!baseUrl || !selector || doctorBusy || disabled) {
-      return;
-    }
-    const requestId = ++doctorRequestId.current;
-    setDoctorOpen(true);
-    setDoctorReport(null);
-    setDoctorError(null);
-    setDoctorBusy(true);
-    try {
-      const report = await runLibraryPluginDoctor(baseUrl, token, selector);
-      if (requestId !== doctorRequestId.current) {
-        return;
-      }
-      setDoctorReport(report);
-      onSuccess(
-        report.valid
-          ? `Doctor: ${report.plugin} valid`
-          : `Doctor: ${report.plugin} invalid`,
-      );
-    } catch (error: unknown) {
-      if (requestId !== doctorRequestId.current) {
-        return;
-      }
-      setDoctorError(errorMessage(error, "Could not run plugin doctor"));
-    } finally {
-      if (requestId === doctorRequestId.current) {
-        setDoctorBusy(false);
-      }
-    }
-  };
-
   const cutErrors = detail
     ? validateCutRows([
         {
@@ -1191,14 +1143,10 @@ export function PluginPackageDetail({
             title={DOCTOR_TOOLTIP}
             aria-label={DOCTOR_TOOLTIP}
             onClick={() => {
-              void runDoctor();
+              setDoctorOpen(true);
             }}
           >
-            {doctorBusy ? (
-              <ButtonSpinner size={14} />
-            ) : (
-              <Stethoscope size={14} aria-hidden />
-            )}
+            <Stethoscope size={14} aria-hidden />
             Doctor
           </button>
         );
@@ -1507,10 +1455,12 @@ export function PluginPackageDetail({
       <DoctorReportDialog
         open={doctorOpen}
         pluginName={detail?.plugin.name ?? selector}
-        busy={doctorBusy}
-        error={doctorError}
-        report={doctorReport}
+        selector={selector}
+        baseUrl={baseUrl}
+        token={token}
         onClose={closeDoctor}
+        onBusyChange={setDoctorBusy}
+        onSuccess={onSuccess}
       />
 
       {detail ? (
