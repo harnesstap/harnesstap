@@ -1,7 +1,11 @@
 import { getPlugin, getPluginResources } from "../models/plugin-model.js";
-import { listDependencies } from "./plugin-dependency.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
+import { listDependencies } from "./plugin-dependency.js";
+import {
+  emptyDefinitionMessage,
+  isResourceDefinitionEmpty,
+} from "./plugin-doctor/resource-definition.js";
 
 export interface PluginValidationIssue {
   severity: "error" | "warning";
@@ -55,11 +59,11 @@ export function validatePlugin(nameOrId: string): PluginValidationReport {
       });
     }
     seen.add(key);
-    if (!resource.content.trim()) {
+    if (isResourceDefinitionEmpty(resource)) {
       issues.push({
         severity: "warning",
         code: "empty_content",
-        message: `Resource has empty content: ${key}`,
+        message: emptyDefinitionMessage(resource.type, resource.name),
       });
     }
   }

@@ -65,6 +65,7 @@ import type {
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DoctorReportDialog } from "./DoctorReportDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import { PluginVersionHistoryList } from "./PluginVersionHistoryList";
@@ -189,6 +190,7 @@ export function PluginPackageDetail({
 }: PluginPackageDetailProps) {
   const titleId = useId();
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const doctorRequestId = useRef(0);
   const [detail, setDetail] = useState<LibraryPluginDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -216,6 +218,8 @@ export function PluginPackageDetail({
     null,
   );
   const [doctorBusy, setDoctorBusy] = useState(false);
+  const [doctorOpen, setDoctorOpen] = useState(false);
+  const [doctorError, setDoctorError] = useState<string | null>(null);
 
   const [applyOpen, setApplyOpen] = useState(false);
   const [cutOpen, setCutOpen] = useState(false);
@@ -259,9 +263,22 @@ export function PluginPackageDetail({
 
   useEffect(() => {
     onConfirmOpenChange?.(
-      applyOpen || cutOpen || deleteOpen || forkOpen || restoreOpen,
+      applyOpen ||
+        cutOpen ||
+        deleteOpen ||
+        forkOpen ||
+        restoreOpen ||
+        doctorOpen,
     );
-  }, [applyOpen, cutOpen, deleteOpen, forkOpen, restoreOpen, onConfirmOpenChange]);
+  }, [
+    applyOpen,
+    cutOpen,
+    deleteOpen,
+    forkOpen,
+    restoreOpen,
+    doctorOpen,
+    onConfirmOpenChange,
+  ]);
 
   useEffect(() => {
     onBusyChange?.(anyBusy);
@@ -274,15 +291,18 @@ export function PluginPackageDetail({
   }, [editingField]);
 
   useEffect(() => {
+    doctorRequestId.current += 1;
+    setDoctorOpen(false);
+    setDoctorError(null);
+    setDoctorReport(null);
+    setDoctorBusy(false);
     if (!baseUrl || !selector) {
       setDetail(null);
-      setDoctorReport(null);
       return;
     }
     let cancelled = false;
     setDetailLoading(true);
     setDetailError(null);
-    setDoctorReport(null);
     setEditingField(null);
     setFieldError(null);
     void fetchLibraryPluginDetail(baseUrl, token, selector)
@@ -848,14 +868,28 @@ export function PluginPackageDetail({
     });
   };
 
+  const closeDoctor = () => {
+    doctorRequestId.current += 1;
+    setDoctorOpen(false);
+    setDoctorReport(null);
+    setDoctorError(null);
+    setDoctorBusy(false);
+  };
+
   const runDoctor = async () => {
     if (!baseUrl || !selector || doctorBusy || disabled) {
       return;
     }
+    const requestId = ++doctorRequestId.current;
+    setDoctorOpen(true);
+    setDoctorReport(null);
+    setDoctorError(null);
     setDoctorBusy(true);
-    setDetailError(null);
     try {
       const report = await runLibraryPluginDoctor(baseUrl, token, selector);
+      if (requestId !== doctorRequestId.current) {
+        return;
+      }
       setDoctorReport(report);
       onSuccess(
         report.valid
@@ -863,9 +897,14 @@ export function PluginPackageDetail({
           : `Doctor: ${report.plugin} invalid`,
       );
     } catch (error: unknown) {
-      setDetailError(errorMessage(error, "Could not run plugin doctor"));
+      if (requestId !== doctorRequestId.current) {
+        return;
+      }
+      setDoctorError(errorMessage(error, "Could not run plugin doctor"));
     } finally {
-      setDoctorBusy(false);
+      if (requestId === doctorRequestId.current) {
+        setDoctorBusy(false);
+      }
     }
   };
 
@@ -1428,37 +1467,6 @@ export function PluginPackageDetail({
         onToggleResource={toggleResource}
         disabled={pickersDisabled}
       />
-      {historyMode === "head" && doctorReport ? (
-        <section className="edit-profile-section" aria-label="Doctor">
-          <h3>Doctor</h3>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>check</th>
-                <th>result</th>
-                <th>message</th>
-              </tr>
-            </thead>
-            <tbody>
-              {doctorReport.results.map((row, index) => {
-                const resultClass =
-                  row.severity === "ok"
-                    ? "muted"
-                    : row.severity === "error"
-                      ? "banner error"
-                      : "banner";
-                return (
-                  <tr key={`${row.check}-${index}`}>
-                    <td>{row.check}</td>
-                    <td className={resultClass}>{row.severity}</td>
-                    <td>{row.message}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
     </>
     );
   })();
@@ -1495,6 +1503,15 @@ export function PluginPackageDetail({
       >
         <div className="library-detail-body">{fields}</div>
       </LibraryDetailChrome>
+
+      <DoctorReportDialog
+        open={doctorOpen}
+        pluginName={detail?.plugin.name ?? selector}
+        busy={doctorBusy}
+        error={doctorError}
+        report={doctorReport}
+        onClose={closeDoctor}
+      />
 
       {detail ? (
         <ApplyPluginDrawer

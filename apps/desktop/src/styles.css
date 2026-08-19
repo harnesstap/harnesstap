@@ -2764,6 +2764,39 @@ button:focus-visible,
   margin-top: 1rem;
 }
 
+.dialog.doctor-report-dialog {
+  width: min(36rem, 100%);
+  max-height: min(80vh, 40rem);
+  overflow: auto;
+}
+
+.doctor-report-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.doctor-report-header h2 {
+  margin: 0;
+}
+
+.doctor-report-group {
+  margin: 0.75rem 0 0;
+}
+
+.doctor-report-group h3 {
+  margin: 0 0 0.35rem;
+  font-size: 13px;
+  font-family: var(--mono);
+}
+
+.doctor-report-group ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
 .confirm-dialog-body {
   margin: 0;
 }
