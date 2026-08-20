@@ -3,7 +3,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerCatalog } from "../lib/api/publish";
 import { connectCatalogOrgApi } from "../lib/api/sources";
+import { connectCatalogDraftIsDirty } from "../lib/sources-panels";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type ConnectCatalogMode = "register" | "org";
 
@@ -34,6 +36,7 @@ export function ConnectCatalogPanel({
   const [org, setOrg] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -45,6 +48,7 @@ export function ConnectCatalogPanel({
     setOrg("");
     setBusy(false);
     setError(null);
+    setDiscardOpen(false);
   }, [open]);
 
   if (!open) {
@@ -54,6 +58,21 @@ export function ConnectCatalogPanel({
   const controlsDisabled = disabled || busy || !baseUrl;
   const canSubmit =
     mode === "register" ? Boolean(selector.trim()) : Boolean(org.trim());
+  const dirty = connectCatalogDraftIsDirty({ selector, account, org });
+
+  const requestClose = () => {
+    if (busy) {
+      return;
+    }
+    if (discardOpen) {
+      return;
+    }
+    if (dirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    onClose();
+  };
 
   const onSubmit = async () => {
     if (!baseUrl || !canSubmit || busy) {
@@ -104,7 +123,7 @@ export function ConnectCatalogPanel({
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
+          requestClose();
         }
       }}
     >
@@ -123,7 +142,7 @@ export function ConnectCatalogPanel({
             className="icon-btn"
             type="button"
             aria-label="Close connect catalog drawer"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={controlsDisabled}
           >
             ×
@@ -206,7 +225,7 @@ export function ConnectCatalogPanel({
           <button
             className="btn"
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={controlsDisabled}
           >
             Cancel
@@ -231,6 +250,17 @@ export function ConnectCatalogPanel({
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={discardOpen}
+        title="Discard changes?"
+        description="Typed fields will be lost."
+        confirmLabel="Discard"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          onClose();
+        }}
+        onCancel={() => setDiscardOpen(false)}
+      />
     </div>
   );
 }

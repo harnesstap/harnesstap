@@ -4,11 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addMarketplace } from "../lib/agent-client";
 import { patchMarketplace } from "../lib/api/sources";
+import {
+  marketplaceDraftIsDirty,
+  marketplaceSubmitCloseAction,
+} from "../lib/sources-panels";
 import type {
   PluginMarketplaceEntry,
   PluginMarketplacePlatform,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
   "claude-code",
@@ -16,6 +21,8 @@ const MARKETPLACE_PLATFORMS: PluginMarketplacePlatform[] = [
   "goose",
   "copilot-cli",
 ];
+
+const DEFAULT_PLATFORMS: PluginMarketplacePlatform[] = ["claude-code"];
 
 export function deriveMarketplaceNameFromUrl(url: string): string {
   const trimmed = url.trim();
@@ -54,6 +61,7 @@ export interface MarketplaceEditPanelProps {
   disabled?: boolean;
   onClose: () => void;
   onSaved: (message: string) => void;
+  onListed?: () => void;
 }
 
 export function MarketplaceEditPanel({
@@ -65,35 +73,51 @@ export function MarketplaceEditPanel({
   disabled = false,
   onClose,
   onSaved,
+  onListed,
 }: MarketplaceEditPanelProps) {
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
   const [platforms, setPlatforms] = useState<PluginMarketplacePlatform[]>([
-    "claude-code",
+    ...DEFAULT_PLATFORMS,
   ]);
+  const [baselineUrl, setBaselineUrl] = useState("");
+  const [baselineName, setBaselineName] = useState("");
+  const [baselinePlatforms, setBaselinePlatforms] = useState<
+    PluginMarketplacePlatform[]
+  >([...DEFAULT_PLATFORMS]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     if (mode === "edit" && entry) {
+      const nextPlatforms =
+        entry.platforms.length > 0 ? [...entry.platforms] : [...DEFAULT_PLATFORMS];
       setUrl(entry.url);
       setName(entry.name);
       setNameTouched(true);
-      setPlatforms(
-        entry.platforms.length > 0 ? [...entry.platforms] : ["claude-code"],
-      );
+      setPlatforms(nextPlatforms);
+      setBaselineUrl(entry.url);
+      setBaselineName(entry.name);
+      setBaselinePlatforms(nextPlatforms);
     } else {
       setUrl("");
       setName("");
       setNameTouched(false);
-      setPlatforms(["claude-code"]);
+      setPlatforms([...DEFAULT_PLATFORMS]);
+      setBaselineUrl("");
+      setBaselineName("");
+      setBaselinePlatforms([...DEFAULT_PLATFORMS]);
     }
     setBusy(false);
     setError(null);
+    setWarning(null);
+    setDiscardOpen(false);
   }, [open, mode, entry]);
 
   if (!open) {
@@ -104,6 +128,14 @@ export function MarketplaceEditPanel({
   const resolvedName = name.trim() || deriveMarketplaceNameFromUrl(url);
   const canSubmit =
     Boolean(url.trim()) && Boolean(resolvedName) && platforms.length > 0;
+  const dirty = marketplaceDraftIsDirty({
+    url,
+    name,
+    platforms,
+    baselineUrl,
+    baselineName,
+    baselinePlatforms,
+  });
 
   const onUrlChange = (nextUrl: string) => {
     setUrl(nextUrl);
@@ -112,37 +144,83 @@ export function MarketplaceEditPanel({
     }
   };
 
+  const markClean = (nextUrl: string, nextName: string) => {
+    setBaselineUrl(nextUrl);
+    setBaselineName(nextName);
+    setBaselinePlatforms([...platforms]);
+  };
+
+  const requestClose = () => {
+    if (busy) {
+      return;
+    }
+    if (discardOpen) {
+      return;
+    }
+    if (dirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    onClose();
+  };
+
+  const applyRefreshOutcome = (
+    refresh: { ok: boolean; message: string } | undefined,
+    successMessage: string,
+    nextUrl: string,
+    nextName: string,
+  ): boolean => {
+    if (marketplaceSubmitCloseAction(refresh) === "stay-warning" && refresh) {
+      setWarning(refresh.message);
+      markClean(nextUrl, nextName);
+      onListed?.();
+      return true;
+    }
+    onSaved(successMessage);
+    onClose();
+    return false;
+  };
+
   const onSubmit = async () => {
     if (!baseUrl || !canSubmit || busy) {
       return;
     }
     setBusy(true);
     setError(null);
+    setWarning(null);
+    const nextUrl = url.trim();
+    const nextName = resolvedName;
     try {
       if (mode === "add") {
         const result = await addMarketplace(baseUrl, token, {
-          url: url.trim(),
-          name: resolvedName,
+          url: nextUrl,
+          name: nextName,
           platforms,
         });
-        onSaved(
+        applyRefreshOutcome(
+          result.refresh,
           result.status === "already_configured"
             ? "Marketplace already configured."
             : "Marketplace added.",
+          nextUrl,
+          nextName,
         );
-        onClose();
         return;
       }
       if (!entry) {
         return;
       }
-      await patchMarketplace(baseUrl, token, entry.name, {
-        name: resolvedName,
-        url: url.trim(),
+      const result = await patchMarketplace(baseUrl, token, entry.name, {
+        name: nextName,
+        url: nextUrl,
         platforms,
       });
-      onSaved("Marketplace updated.");
-      onClose();
+      applyRefreshOutcome(
+        result.refresh,
+        "Marketplace updated.",
+        nextUrl,
+        nextName,
+      );
     } catch (saveError: unknown) {
       setError(
         errorMessage(
@@ -166,7 +244,7 @@ export function MarketplaceEditPanel({
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
+          requestClose();
         }
       }}
     >
@@ -185,7 +263,7 @@ export function MarketplaceEditPanel({
             className="icon-btn"
             type="button"
             aria-label="Close marketplace drawer"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={controlsDisabled}
           >
             ×
@@ -196,6 +274,11 @@ export function MarketplaceEditPanel({
           {error ? (
             <div className="banner error" role="alert">
               {error}
+            </div>
+          ) : null}
+          {warning ? (
+            <div className="banner" role="status">
+              {warning}
             </div>
           ) : null}
           <div className="form-field gap-1.5">
@@ -250,7 +333,7 @@ export function MarketplaceEditPanel({
           <button
             className="btn"
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={controlsDisabled}
           >
             Cancel
@@ -269,6 +352,17 @@ export function MarketplaceEditPanel({
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={discardOpen}
+        title="Discard changes?"
+        description="Typed fields will be lost."
+        confirmLabel="Discard"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          onClose();
+        }}
+        onCancel={() => setDiscardOpen(false)}
+      />
     </div>
   );
 }

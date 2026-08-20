@@ -27,6 +27,27 @@ const compositionSource = readFileSync(
   ),
   "utf8",
 );
+const sidebarSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/SourceSidebar.tsx",
+  ),
+  "utf8",
+);
+const marketplacePanelSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/MarketplaceEditPanel.tsx",
+  ),
+  "utf8",
+);
+const catalogPanelSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/ConnectCatalogPanel.tsx",
+  ),
+  "utf8",
+);
 
 describe("sources workspace chrome", () => {
   test("SourcesWorkspace is rendered from App when workspaceFocus is sources", () => {
@@ -49,5 +70,28 @@ describe("sources workspace chrome", () => {
   test("plugin-detail Pin plugin still exists", () => {
     expect(pluginDetailSource).toContain("onPin={pinMarketplacePlugin}");
     expect(compositionSource).toContain("Pin plugin");
+  });
+
+  test("keeps the marketplace panel open and shows a warning when refresh fails", () => {
+    expect(marketplacePanelSource).toContain("marketplaceSubmitCloseAction");
+    expect(marketplacePanelSource).toContain('className="banner"');
+    expect(marketplacePanelSource).toContain("role=\"status\"");
+    expect(marketplacePanelSource).toContain("onListed");
+    expect(marketplacePanelSource).toContain("stay-warning");
+  });
+
+  test("blocks sidebar search and checks while a confirm is open", () => {
+    expect(sidebarSource).toContain("sourcesSidebarChangeAction");
+    expect(sidebarSource).toContain("confirmOpen");
+    expect(sidebarSource).toContain('"block"');
+  });
+
+  test("confirms discard of dirty marketplace and connect-catalog panels", () => {
+    expect(marketplacePanelSource).toContain("marketplaceDraftIsDirty");
+    expect(marketplacePanelSource).toContain("Discard");
+    expect(marketplacePanelSource).toContain("ConfirmDialog");
+    expect(catalogPanelSource).toContain("connectCatalogDraftIsDirty");
+    expect(catalogPanelSource).toContain("Discard");
+    expect(catalogPanelSource).toContain("ConfirmDialog");
   });
 });

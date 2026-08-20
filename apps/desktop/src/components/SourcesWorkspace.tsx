@@ -270,6 +270,7 @@ export function SourcesWorkspace({
           onSuccess?.(message);
           refresh();
         }}
+        onListed={refresh}
       />
       <ConnectCatalogPanel
         open={catalogOpen}

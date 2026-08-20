@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FilterX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { sourcesSidebarChangeAction } from "../lib/sources-pane";
 import type { SourceRow } from "../lib/sources-sidebar";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -73,7 +74,16 @@ export function SourceSidebar({
   onUnregisterCatalog,
 }: SourceSidebarProps) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
-  const controlsDisabled = disabled || busy;
+  const confirmOpen = pending !== null;
+  const sidebarChange = sourcesSidebarChangeAction({ busy, confirmOpen });
+  const controlsDisabled = disabled || sidebarChange === "block";
+
+  const applySidebarChange = (apply: () => void): void => {
+    if (sourcesSidebarChangeAction({ busy, confirmOpen }) === "block") {
+      return;
+    }
+    apply();
+  };
 
   const onConfirm = () => {
     if (!pending || busy) {
@@ -107,7 +117,10 @@ export function SourceSidebar({
             placeholder="Search sources"
             aria-label="Search sources"
             value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              applySidebarChange(() => onQueryChange(next));
+            }}
             disabled={controlsDisabled}
           />
           <button
@@ -116,7 +129,7 @@ export function SourceSidebar({
             aria-label="Clear search"
             title="Clear search"
             disabled={controlsDisabled || query.trim() === ""}
-            onClick={() => onQueryChange("")}
+            onClick={() => applySidebarChange(() => onQueryChange(""))}
           >
             <FilterX size={ACTION_ICON_SIZE} aria-hidden />
           </button>
@@ -134,7 +147,7 @@ export function SourceSidebar({
             row={row}
             checked={checkedIds.includes(row.id)}
             disabled={controlsDisabled}
-            onToggle={() => onToggle(row.id)}
+            onToggle={() => applySidebarChange(() => onToggle(row.id))}
             onEditMarketplace={onEditMarketplace}
             onRequestRemoveMarketplace={(name) =>
               setPending({ kind: "marketplace", name })
