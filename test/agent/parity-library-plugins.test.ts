@@ -99,6 +99,32 @@ describe("GET /v1/library/plugins/heads", () => {
     expect(authored.id).toBeString();
   });
 
+  it("returns org_slug and catalog_slug on working heads", async () => {
+    createPlugin({
+      name: "team",
+      origin: "catalog",
+      org_slug: "acme",
+      catalog_slug: "default",
+    });
+
+    const response = await handle("GET", "/v1/library/plugins/heads");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      plugins: Array<{
+        name: string;
+        origin: string;
+        org_slug: string;
+        catalog_slug: string;
+      }>;
+    };
+    const team = body.plugins.find((row) => row.name === "team");
+    expect(team).toMatchObject({
+      origin: "catalog",
+      org_slug: "acme",
+      catalog_slug: "default",
+    });
+  });
+
   it("returns null for unrelated paths", async () => {
     const result = await tryHandle(
       request("GET", "/v1/health"),

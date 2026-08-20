@@ -247,8 +247,42 @@ describe("sources install panels and Cloud browse retirement", () => {
     );
     expect(workspaceSource).toContain("if (pinOpen)");
     expect(workspaceSource).toContain("setPinOpen(false)");
-    expect(workspaceSource).toContain("sidebarConfirmOpen || marketplaceOpen || catalogOpen");
     expect(pinPanelSource).toContain('"Escape"');
+  });
+
+  test("Esc closes marketplace and catalog panels without treating them as confirmOpen", () => {
+    expect(marketplacePanelSource).toContain('"Escape"');
+    expect(catalogPanelSource).toContain('"Escape"');
+    expect(workspaceSource).toContain("if (marketplaceOpen)");
+    expect(workspaceSource).toContain("setMarketplaceOpen(false)");
+    expect(workspaceSource).toContain("if (catalogOpen)");
+    expect(workspaceSource).toContain("setCatalogOpen(false)");
+    expect(workspaceSource).not.toContain(
+      "sidebarConfirmOpen || marketplaceOpen || catalogOpen",
+    );
+    expect(workspaceSource).toContain("confirmOpen: sidebarConfirmOpen");
+  });
+
+  test("registers Esc on the list pane when overlay panels are open", () => {
+    expect(workspaceSource).toContain("sourcesPaneHasPrevious(pane)");
+    expect(workspaceSource).toContain(
+      "marketplaceOpen || catalogOpen || pinOpen",
+    );
+  });
+
+  test("retries Cloud search after sign-in", () => {
+    expect(appSource).toContain("cloudAuthenticated=");
+    expect(appSource).toContain("cloudAuth?.authenticated");
+    expect(workspaceSource).toContain("cloudAuthenticated");
+    expect(workspaceSource).toContain("setCloudAuthRequired(false)");
+    expect(workspaceSource).toContain(
+      "[baseUrl, token, query, checkedRows, cloudAuthenticated]",
+    );
+  });
+
+  test("keeps this-session Cloud pulls in_library until heads refresh", () => {
+    expect(workspaceSource).toContain("cloudHitIsInLibrary");
+    expect(workspaceSource).toContain("pulledCloudKeys");
   });
 
   test("pin/attach failure closes the panel and surfaces actionError on the tree", () => {

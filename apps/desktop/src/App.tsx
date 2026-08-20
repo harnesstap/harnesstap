@@ -2439,6 +2439,7 @@ export function App() {
             token={token}
             disabled={switching}
             homeResetNonce={homeResetNonce}
+            cloudAuthenticated={Boolean(cloudAuth?.authenticated)}
             onSignIn={() => setCloudAccountOpen(true)}
             onOpenInLibrary={(selector) => {
               if (selector.includes(":")) {

@@ -35,6 +35,8 @@ import {
   type SourcesPane,
 } from "../lib/sources-pane";
 import {
+  cloudHitIsInLibrary,
+  cloudSelectorKey,
   mergeSourcesHits,
   sourcesHitFetchKey,
   type CloudPluginInput,
@@ -148,6 +150,7 @@ export interface SourcesWorkspaceProps {
   onSuccess?: (message: string) => void;
   onSignIn?: () => void;
   onOpenInLibrary?: (selector: string) => void;
+  cloudAuthenticated?: boolean;
 }
 
 export function SourcesWorkspace({
@@ -158,6 +161,7 @@ export function SourcesWorkspace({
   onSuccess,
   onSignIn,
   onOpenInLibrary,
+  cloudAuthenticated = false,
 }: SourcesWorkspaceProps) {
   const [query, setQuery] = useState("");
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
@@ -198,6 +202,9 @@ export function SourcesWorkspace({
   >([]);
   const [cloudRequestError, setCloudRequestError] = useState<string | null>(null);
   const [cloudAuthRequired, setCloudAuthRequired] = useState(false);
+  const [pulledCloudKeys, setPulledCloudKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [librarySearching, setLibrarySearching] = useState(false);
   const [cloudSearching, setCloudSearching] = useState(false);
   const [activeHit, setActiveHit] = useState<SourcesHit | null>(null);
@@ -401,6 +408,10 @@ export function SourcesWorkspace({
       return;
     }
 
+    if (cloudAuthenticated) {
+      setCloudAuthRequired(false);
+    }
+
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setCloudSearching(true);
@@ -446,7 +457,7 @@ export function SourcesWorkspace({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [baseUrl, token, query, checkedRows]);
+  }, [baseUrl, token, query, checkedRows, cloudAuthenticated]);
 
   const sourceOrder = useMemo(
     () => checkedRows.map((row) => row.id),
@@ -488,13 +499,28 @@ export function SourcesWorkspace({
       cloud: cloudInputs,
       libraryHeads: localHeads,
       libraryResources: localResources,
-    });
+    }).map((group) => ({
+      ...group,
+      hits: group.hits.map((hit) => {
+        const identity = hit.identity.cloud;
+        if (!identity) {
+          return hit;
+        }
+        return {
+          ...hit,
+          presence: cloudHitIsInLibrary(identity, localHeads, [
+            ...pulledCloudKeys,
+          ]),
+        };
+      }),
+    }));
   }, [
     checkedRows,
     cloudPlugins,
     localHeads,
     localResources,
     marketplaceHits,
+    pulledCloudKeys,
     query,
     sourceOrder,
   ]);
@@ -645,7 +671,8 @@ export function SourcesWorkspace({
   }, [baseUrl, pane.mode, paneHitId, paneFilePath, openFetchKey, token]);
 
   useEffect(() => {
-    if (!sourcesPaneHasPrevious(pane)) {
+    const overlayOpen = marketplaceOpen || catalogOpen || pinOpen;
+    if (!sourcesPaneHasPrevious(pane) && !overlayOpen) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -657,8 +684,22 @@ export function SourcesWorkspace({
         setPinOpen(false);
         return;
       }
+      if (marketplaceOpen) {
+        event.preventDefault();
+        setMarketplaceOpen(false);
+        setEditingMarketplace(null);
+        return;
+      }
+      if (catalogOpen) {
+        event.preventDefault();
+        setCatalogOpen(false);
+        return;
+      }
+      if (!sourcesPaneHasPrevious(pane)) {
+        return;
+      }
       const action = sourcesEscapeAction({
-        confirmOpen: sidebarConfirmOpen || marketplaceOpen || catalogOpen,
+        confirmOpen: sidebarConfirmOpen,
       });
       switch (action) {
         case "dismiss-confirm":
@@ -824,6 +865,14 @@ export function SourcesWorkspace({
       ...current,
       [hit.id]: { ...current[hit.id], pulledName: result.plugin.name },
     }));
+    const identity = hit.identity.cloud;
+    if (identity) {
+      setPulledCloudKeys((current) => {
+        const next = new Set(current);
+        next.add(cloudSelectorKey(identity));
+        return next;
+      });
+    }
     setPullCollision(false);
     setPullAsName("");
     return result.plugin.name;

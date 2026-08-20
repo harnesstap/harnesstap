@@ -10,6 +10,8 @@ export interface LibraryPluginHead {
   description: string | null;
   origin: PluginOrigin;
   dirty: boolean;
+  org_slug: string;
+  catalog_slug: string;
 }
 
 export interface LibraryPluginDetailPlugin {

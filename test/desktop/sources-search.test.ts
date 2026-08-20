@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  cloudHitIsInLibrary,
   isStandaloneResourceType,
   matchQuery,
   mergeSourcesHits,
@@ -81,6 +82,72 @@ describe("presenceForCloud", () => {
             catalog: "default",
           },
         ],
+      ),
+    ).toBe("in_library");
+  });
+
+  test("matches org_slug and catalog_slug when the head name equals the slug", () => {
+    expect(
+      presenceForCloud(
+        { org: "acme", catalog: "default", name: "team" },
+        [
+          {
+            name: "team",
+            origin: "catalog",
+            org_slug: "acme",
+            catalog_slug: "default",
+          },
+        ],
+      ),
+    ).toBe("in_library");
+  });
+
+  test("does not treat a renamed catalog head as in_library from org and catalog alone", () => {
+    expect(
+      presenceForCloud(
+        { org: "acme", catalog: "default", name: "team" },
+        [
+          {
+            name: "team-from-cloud",
+            origin: "catalog",
+            org_slug: "acme",
+            catalog_slug: "default",
+          },
+        ],
+      ),
+    ).toBe("remote_only");
+  });
+});
+
+describe("cloudHitIsInLibrary", () => {
+  const identity = { org: "acme", catalog: "default", name: "team" };
+  const renamedHead = {
+    name: "team-from-cloud",
+    origin: "catalog",
+    org_slug: "acme",
+    catalog_slug: "default",
+  };
+
+  test("is in_library when a pulled key matches org/catalog/name", () => {
+    expect(cloudHitIsInLibrary(identity, [renamedHead], ["acme/default/team"])).toBe(
+      "in_library",
+    );
+  });
+
+  test("falls back to head matching when the hit was not pulled this session", () => {
+    expect(cloudHitIsInLibrary(identity, [renamedHead], [])).toBe("remote_only");
+    expect(
+      cloudHitIsInLibrary(
+        identity,
+        [
+          {
+            name: "team",
+            origin: "catalog",
+            org_slug: "acme",
+            catalog_slug: "default",
+          },
+        ],
+        [],
       ),
     ).toBe("in_library");
   });

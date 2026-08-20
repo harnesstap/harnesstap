@@ -30,6 +30,8 @@ const pluginHead: LibraryPluginHead = {
   description: "Upstream plugin",
   origin: "upstream",
   dirty: false,
+  org_slug: "",
+  catalog_slug: "",
 };
 
 function entryOfKind(

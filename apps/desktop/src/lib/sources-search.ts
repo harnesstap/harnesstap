@@ -154,6 +154,17 @@ export function matchQuery(haystack: string, query: string): boolean {
   return haystack.toLowerCase().includes(normalizedQuery);
 }
 
+function presentSlug(value: string | undefined): string | undefined {
+  if (value === undefined || value === "") {
+    return undefined;
+  }
+  return value;
+}
+
+export function cloudSelectorKey(identity: CloudIdentity): string {
+  return `${identity.org}/${identity.catalog}/${identity.name}`;
+}
+
 export function presenceForCloud(
   identity: CloudIdentity,
   heads: CloudPresenceHead[],
@@ -162,8 +173,8 @@ export function presenceForCloud(
     if (head.origin !== "catalog" || head.name !== identity.name) {
       return false;
     }
-    const headOrg = head.org ?? head.org_slug;
-    const headCatalog = head.catalog ?? head.catalog_slug;
+    const headOrg = presentSlug(head.org ?? head.org_slug);
+    const headCatalog = presentSlug(head.catalog ?? head.catalog_slug);
     if (headOrg !== undefined && headOrg !== identity.org) {
       return false;
     }
@@ -173,6 +184,17 @@ export function presenceForCloud(
     return true;
   });
   return inLibrary ? "in_library" : "remote_only";
+}
+
+export function cloudHitIsInLibrary(
+  identity: CloudIdentity,
+  heads: CloudPresenceHead[],
+  pulledKeys: string[],
+): Presence {
+  if (pulledKeys.includes(cloudSelectorKey(identity))) {
+    return "in_library";
+  }
+  return presenceForCloud(identity, heads);
 }
 
 function marketplaceQualifiedName(
