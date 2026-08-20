@@ -10,6 +10,7 @@ import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
   fetchLibraryPluginDetail,
   fetchLibraryPluginHeads,
+  type LibraryPluginHead,
 } from "../lib/api/library-plugins";
 import {
   disconnectCatalogOrgApi,
@@ -32,6 +33,7 @@ import {
 } from "../lib/sources-pane";
 import {
   mergeSourcesHits,
+  sourcesHitFetchKey,
   type CloudPluginInput,
   type MarketplaceSourceInput,
   type SourcesHit,
@@ -75,6 +77,7 @@ function toCloudPluginInput(plugin: CatalogPluginSearchHit): CloudPluginInput {
     catalogSlug: plugin.catalogSlug,
     ...(plugin.version ? { version: plugin.version } : {}),
     ...(plugin.description ? { description: plugin.description } : {}),
+    ...(plugin.tags && plugin.tags.length > 0 ? { tags: plugin.tags } : {}),
   };
 }
 
@@ -159,15 +162,7 @@ export function SourcesWorkspace({
     useState<PluginMarketplaceEntry | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [sidebarConfirmOpen, setSidebarConfirmOpen] = useState(false);
-  const [localHeads, setLocalHeads] = useState<
-    Array<{
-      name: string;
-      version?: string;
-      description?: string | null;
-      origin?: string;
-      id?: string;
-    }>
-  >([]);
+  const [localHeads, setLocalHeads] = useState<LibraryPluginHead[]>([]);
   const [localResources, setLocalResources] = useState<LibraryResource[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
   const [marketplaceHits, setMarketplaceHits] = useState<
@@ -544,13 +539,24 @@ export function SourcesWorkspace({
     return map;
   }, [groups]);
 
+  const paneHitId = pane.mode === "list" ? null : pane.hitId;
+  const paneFilePath = pane.mode === "preview" ? pane.filePath : undefined;
   const resolvedHit =
-    (pane.mode === "plugin-tree" || pane.mode === "preview")
-      ? (hitById.get(pane.hitId) ?? activeHit)
-      : null;
+    pane.mode === "list"
+      ? null
+      : activeHit?.id === pane.hitId
+        ? activeHit
+        : (hitById.get(pane.hitId) ?? null);
+  const openFetchKey = resolvedHit ? sourcesHitFetchKey(resolvedHit) : "";
+  const resolvedHitRef = useRef(resolvedHit);
+  resolvedHitRef.current = resolvedHit;
 
   useEffect(() => {
-    if (pane.mode !== "plugin-tree" || !resolvedHit || !baseUrl) {
+    if (pane.mode !== "plugin-tree" || !paneHitId || !baseUrl || !openFetchKey) {
+      return;
+    }
+    const hit = resolvedHitRef.current;
+    if (!hit) {
       return;
     }
     let cancelled = false;
@@ -558,7 +564,7 @@ export function SourcesWorkspace({
     setTreeError(null);
     setTreeAuthRequired(false);
     setTreeFiles([]);
-    void loadPluginTree(baseUrl, token, resolvedHit)
+    void loadPluginTree(baseUrl, token, hit)
       .then((files) => {
         if (!cancelled) {
           setTreeFiles(files);
@@ -579,10 +585,14 @@ export function SourcesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, pane, resolvedHit, token]);
+  }, [baseUrl, pane.mode, paneHitId, openFetchKey, token]);
 
   useEffect(() => {
-    if (pane.mode !== "preview" || !resolvedHit || !baseUrl) {
+    if (pane.mode !== "preview" || !paneHitId || !baseUrl || !openFetchKey) {
+      return;
+    }
+    const hit = resolvedHitRef.current;
+    if (!hit) {
       return;
     }
     let cancelled = false;
@@ -590,7 +600,7 @@ export function SourcesWorkspace({
     setPreviewError(null);
     setPreviewAuthRequired(false);
     setPreviewContentState(null);
-    void loadPreview(baseUrl, token, resolvedHit, pane.filePath)
+    void loadPreview(baseUrl, token, hit, paneFilePath)
       .then((content) => {
         if (!cancelled) {
           setPreviewContentState(content);
@@ -611,7 +621,7 @@ export function SourcesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, pane, resolvedHit, token]);
+  }, [baseUrl, pane.mode, paneHitId, paneFilePath, openFetchKey, token]);
 
   useEffect(() => {
     if (!sourcesPaneHasPrevious(pane)) {

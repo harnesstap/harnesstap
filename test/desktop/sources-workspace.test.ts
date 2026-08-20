@@ -173,4 +173,13 @@ describe("sources search list and preview", () => {
       || workspaceSource.includes("Sign in from the Cloud account control");
     expect(signInCopy).toBe(true);
   });
+
+  test("tree and preview fetches key on pane fields and stable identity, not rebuilt hits", () => {
+    expect(workspaceSource).toContain("sourcesHitFetchKey");
+    expect(workspaceSource).toContain("pane.mode");
+    expect(workspaceSource).toContain("pane.hitId");
+    expect(workspaceSource).toContain("pane.filePath");
+    expect(workspaceSource).not.toContain("[baseUrl, pane, resolvedHit, token]");
+    expect(workspaceSource).toContain("activeHit?.id === pane.hitId");
+  });
 });

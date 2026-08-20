@@ -5,6 +5,7 @@ import {
   mergeSourcesHits,
   presenceForCloud,
   presenceForMarketplace,
+  sourcesHitFetchKey,
 } from "../../apps/desktop/src/lib/sources-search.ts";
 
 describe("isStandaloneResourceType", () => {
@@ -323,6 +324,69 @@ describe("mergeSourcesHits", () => {
     ).toEqual(["Focus"]);
   });
 
+  test("keeps a cloud plugin when the query matches tags but not name or description", () => {
+    const groups = mergeSourcesHits({
+      query: "ci",
+      sourceOrder: ["org:acme"],
+      cloud: [
+        {
+          sourceId: "org:acme",
+          sourceLabel: "acme",
+          plugins: [
+            {
+              selector: "acme/default/focus@2.0.0",
+              name: "Focus",
+              orgSlug: "acme",
+              catalogSlug: "default",
+              description: "A focused profile",
+              tags: ["ci", "profile"],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(groups.flatMap((group) => group.hits).map((hit) => hit.name)).toEqual([
+      "Focus",
+    ]);
+  });
+
+  test("standalone query matches type and namespace when name and description do not", () => {
+    const input = {
+      sourceOrder: ["local"],
+      local: {
+        sourceId: "local",
+        sourceLabel: "Local",
+        heads: [],
+        resources: [
+          {
+            name: "ship",
+            type: "skill",
+            namespace: "acme",
+            description: "Deploy",
+          },
+          {
+            name: "lint",
+            type: "rule",
+            namespace: "other",
+            description: "Style",
+          },
+        ],
+      },
+    };
+
+    expect(
+      mergeSourcesHits({ ...input, query: "skill" })
+        .flatMap((group) => group.hits)
+        .map((hit) => hit.name),
+    ).toEqual(["ship"]);
+    expect(
+      mergeSourcesHits({ ...input, query: "acme" })
+        .flatMap((group) => group.hits)
+        .map((hit) => hit.name),
+    ).toEqual(["ship"]);
+  });
+
   test("dedupes cloud org and registered catalog hits with the same org/catalog/slug", () => {
     const groups = mergeSourcesHits({
       sourceOrder: ["org:acme", "cat:acme/default"],
@@ -415,5 +479,52 @@ describe("mergeSourcesHits", () => {
       "standalone",
       "standalone",
     ]);
+  });
+});
+
+describe("sourcesHitFetchKey", () => {
+  test("is stable across rebuilt hit objects with the same identity", () => {
+    const groups = mergeSourcesHits({
+      sourceOrder: ["org:acme"],
+      cloud: [
+        {
+          sourceId: "org:acme",
+          sourceLabel: "acme",
+          plugins: [
+            {
+              selector: "acme/default/focus@2.0.0",
+              name: "Focus",
+              orgSlug: "acme",
+              catalogSlug: "default",
+            },
+          ],
+        },
+      ],
+    });
+    const rebuilt = mergeSourcesHits({
+      sourceOrder: ["org:acme"],
+      cloud: [
+        {
+          sourceId: "org:acme",
+          sourceLabel: "acme",
+          plugins: [
+            {
+              selector: "acme/default/focus@3.0.0",
+              name: "Focus",
+              orgSlug: "acme",
+              catalogSlug: "default",
+              description: "newer copy",
+            },
+          ],
+        },
+      ],
+    });
+    const first = groups[0]?.hits[0];
+    const second = rebuilt[0]?.hits[0];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    expect(first === second).toBe(false);
+    expect(sourcesHitFetchKey(first!)).toBe(sourcesHitFetchKey(second!));
+    expect(sourcesHitFetchKey(first!)).toBe("cloud:acme/default/focus");
   });
 });

@@ -16,6 +16,7 @@ export interface SourcesHit {
   typeLabel: string;
   version?: string;
   description?: string;
+  tags?: string[];
   sourceId: string;
   sourceLabel: string;
   presence: Presence;
@@ -49,6 +50,7 @@ export interface LocalPluginHeadInput {
   description?: string | null;
   origin?: string;
   id?: string;
+  tags?: string[];
 }
 
 export interface LocalResourceInput {
@@ -58,6 +60,7 @@ export interface LocalResourceInput {
   namespace?: string | null;
   origin_kind?: string | null;
   id?: string;
+  tags?: string[];
 }
 
 export interface MarketplaceSourceInput {
@@ -68,6 +71,7 @@ export interface MarketplaceSourceInput {
     name: string;
     version?: string;
     description?: string;
+    tags?: string[];
   }>;
 }
 
@@ -78,6 +82,7 @@ export interface CloudPluginInput {
   catalogSlug: string;
   version?: string;
   description?: string | null;
+  tags?: string[];
 }
 
 export interface CloudSourceInput {
@@ -105,6 +110,23 @@ export interface SourcesHitGroup {
   sourceId: string;
   sourceLabel: string;
   hits: SourcesHit[];
+}
+
+export function sourcesHitFetchKey(hit: SourcesHit): string {
+  const { identity } = hit;
+  if (identity.marketplace) {
+    return `marketplace:${identity.marketplace.marketplace}/${identity.marketplace.plugin}`;
+  }
+  if (identity.cloud) {
+    return `cloud:${identity.cloud.org}/${identity.cloud.catalog}/${identity.cloud.name}`;
+  }
+  if (identity.localPluginName) {
+    return `local-plugin:${identity.localPluginName}`;
+  }
+  if (identity.localSelector) {
+    return `local:${identity.localSelector}`;
+  }
+  return hit.id;
 }
 
 export function presenceLabel(presence: Presence): string {
@@ -309,6 +331,7 @@ function localPluginHit(
     typeLabel: "plugin",
     ...(head.version !== undefined ? { version: head.version } : {}),
     ...(head.description ? { description: head.description } : {}),
+    ...(head.tags && head.tags.length > 0 ? { tags: head.tags } : {}),
     sourceId: source.sourceId,
     sourceLabel: source.sourceLabel,
     presence: "in_library",
@@ -326,6 +349,7 @@ function localStandaloneHit(
     name: resource.name,
     typeLabel: resource.type,
     ...(resource.description ? { description: resource.description } : {}),
+    ...(resource.tags && resource.tags.length > 0 ? { tags: resource.tags } : {}),
     sourceId: source.sourceId,
     sourceLabel: source.sourceLabel,
     presence: "in_library",
@@ -335,7 +359,7 @@ function localStandaloneHit(
 
 function marketplacePluginHit(
   source: MarketplaceSourceInput,
-  plugin: { name: string; version?: string; description?: string },
+  plugin: { name: string; version?: string; description?: string; tags?: string[] },
   resources: MarketplacePresenceResource[],
 ): SourcesHit {
   return {
@@ -345,6 +369,7 @@ function marketplacePluginHit(
     typeLabel: "plugin",
     ...(plugin.version !== undefined ? { version: plugin.version } : {}),
     ...(plugin.description ? { description: plugin.description } : {}),
+    ...(plugin.tags && plugin.tags.length > 0 ? { tags: plugin.tags } : {}),
     sourceId: source.sourceId,
     sourceLabel: source.sourceLabel,
     presence: presenceForMarketplace(
@@ -374,6 +399,7 @@ function cloudPluginHit(
     typeLabel: "plugin",
     ...(plugin.version !== undefined ? { version: plugin.version } : {}),
     ...(plugin.description ? { description: plugin.description } : {}),
+    ...(plugin.tags && plugin.tags.length > 0 ? { tags: plugin.tags } : {}),
     sourceId: source.sourceId,
     sourceLabel: source.sourceLabel,
     presence: presenceForCloud(identity, heads),
@@ -382,6 +408,23 @@ function cloudPluginHit(
 }
 
 function hitMatchesQuery(hit: SourcesHit, query: string): boolean {
-  const haystack = `${hit.name} ${hit.description ?? ""}`;
-  return matchQuery(haystack, query);
+  const parts = [hit.name, hit.description ?? "", ...(hit.tags ?? [])];
+  switch (hit.kind) {
+    case "plugin":
+      break;
+    case "standalone": {
+      parts.push(hit.typeLabel);
+      const selector = hit.identity.localSelector ?? "";
+      const at = selector.lastIndexOf("@");
+      if (at >= 0) {
+        parts.push(selector.slice(at + 1));
+      }
+      break;
+    }
+    default: {
+      const neverKind: never = hit.kind;
+      return neverKind;
+    }
+  }
+  return matchQuery(parts.join(" "), query);
 }
