@@ -92,9 +92,18 @@ describe("presenceForMarketplace", () => {
         { name: "ship", type: "skill", origin_kind: "marketplace_link" },
       ]),
     ).toBe("in_library");
+    expect(
+      presenceForMarketplace("ship", "teads", [
+        {
+          name: "ship@teads",
+          type: "skill",
+          origin_kind: "marketplace_link",
+        },
+      ]),
+    ).toBe("in_library");
   });
 
-  test("is in_library for plugin or plugin_pin names that include @marketplace", () => {
+  test("is in_library for plugin or plugin_pin names that equal plugin or plugin@marketplace", () => {
     expect(
       presenceForMarketplace("ship", "teads", [
         { name: "ship@teads", type: "plugin", origin_kind: "manual" },
@@ -105,6 +114,28 @@ describe("presenceForMarketplace", () => {
         { name: "ship", type: "plugin_pin" },
       ]),
     ).toBe("in_library");
+  });
+
+  test("does not treat a different plugin from the same marketplace as in_library", () => {
+    expect(
+      presenceForMarketplace("ship", "teads", [
+        { name: "other@teads", type: "plugin", origin_kind: "manual" },
+      ]),
+    ).toBe("remote_only");
+    expect(
+      presenceForMarketplace("ship", "teads", [
+        { name: "other@teads", type: "plugin_pin" },
+      ]),
+    ).toBe("remote_only");
+    expect(
+      presenceForMarketplace("ship", "teads", [
+        {
+          name: "other@teads",
+          type: "skill",
+          origin_kind: "marketplace_link",
+        },
+      ]),
+    ).toBe("remote_only");
   });
 
   test("is remote_only when nothing matches", () => {
