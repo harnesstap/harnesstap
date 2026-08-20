@@ -1,19 +1,10 @@
-import { MarketplaceSettingsSection } from "./MarketplaceSettingsSection";
 import { ProjectConfigInspect } from "./ProjectConfigInspect";
-import { PublishCatalogsSettings } from "./PublishCatalogsSettings";
 import { ResolveOrderSettings } from "./ResolveOrderSettings";
 
-export type SettingsTab =
-  | "harnesses"
-  | "marketplaces"
-  | "publish"
-  | "project"
-  | "advanced";
+export type SettingsTab = "harnesses" | "project" | "advanced";
 
 export const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
   { id: "harnesses", label: "Harnesses" },
-  { id: "marketplaces", label: "Marketplaces" },
-  { id: "publish", label: "Publish catalogs" },
   { id: "project", label: "Project" },
   { id: "advanced", label: "Advanced" },
 ];
@@ -30,23 +21,6 @@ export function SettingsParitySections(props: {
   onBrowseProject: () => void;
 }) {
   switch (props.tab) {
-    case "marketplaces":
-      return (
-        <MarketplaceSettingsSection
-          open={props.open}
-          baseUrl={props.baseUrl}
-          token={props.token}
-          disabled={props.disabled}
-        />
-      );
-    case "publish":
-      return (
-        <PublishCatalogsSettings
-          baseUrl={props.baseUrl}
-          token={props.token}
-          disabled={props.disabled}
-        />
-      );
     case "project":
       return (
         <ProjectConfigInspect

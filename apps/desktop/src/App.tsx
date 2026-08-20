@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, PackageSearch, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
   activeHeaderDestination,
   headerClickIntent,
   type HeaderDestination,
+  type HeaderWorkspaceFocus,
 } from "./lib/header-destination";
 import {
   canPopScreenHistory,
@@ -35,6 +36,7 @@ import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SettingsDrawer } from "./components/SettingsDrawer";
+import { SourcesWorkspace } from "./components/SourcesWorkspace";
 import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
 import { WorkspaceBackButton } from "./components/WorkspaceBackButton";
 import {
@@ -84,7 +86,7 @@ import type {
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 
-type WorkspaceFocus = "library" | "scope" | "environments";
+type WorkspaceFocus = HeaderWorkspaceFocus;
 
 const HEADER_ICON_SIZE = 18;
 const RAIL_ICON_SIZE = 15;
@@ -1647,9 +1649,14 @@ export function App() {
 
   const applyHeaderDestination = (clicked: HeaderDestination): void => {
     switch (clicked) {
+    switch (clicked) {
       case "library":
         setEditingProfile(null);
         setWorkspaceFocus("library");
+        return;
+      case "sources":
+        setEditingProfile(null);
+        setWorkspaceFocus("sources");
         return;
       case "environments":
         setEditingProfile(null);
@@ -1688,6 +1695,7 @@ export function App() {
     if (headerClickIntent(activeDestination, clicked) === "reset") {
       switch (clicked) {
         case "library":
+        case "sources":
         case "environments":
           setHomeResetNonce((value) => value + 1);
           return;
@@ -1882,6 +1890,16 @@ export function App() {
             >
               <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
               Library
+            </button>
+            <button
+              type="button"
+              className={`header-focus-btn${workspaceFocus === "sources" ? " on" : ""}`}
+              onClick={() => onHeaderDestinationClick("sources")}
+              disabled={switching}
+              aria-label="Sources"
+              title="Sources"
+            >
+              <PackageSearch size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
             </button>
             <ParityChrome
               workspaceFocus={workspaceFocus}
@@ -2434,6 +2452,17 @@ export function App() {
             }}
             canWorkspaceBack={canWorkspaceBack}
             onWorkspaceBack={onWorkspaceBack}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
+          />
+        ) : workspaceFocus === "sources" ? (
+          <SourcesWorkspace
+            baseUrl={baseUrl}
+            token={token}
+            disabled={switching}
+            homeResetNonce={homeResetNonce}
             onSuccess={(message) => {
               setSuccessMessage(message);
               window.setTimeout(() => setSuccessMessage(null), 3000);

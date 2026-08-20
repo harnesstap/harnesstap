@@ -33,22 +33,23 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Harness inventories are bordered sections / definition lists, not a card mosaic.
 - Motion: status color transitions and in-progress switch-step highlight only.
 - Focus: 2px `--accent` outline, 2px offset.
-- Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library or Environments record actions. Header destinations show icon plus name.
+- Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library, Sources, or Environments record actions. Header destinations show icon plus name.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
 - Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, history, and resource inspect. Back (top left) and Esc leave the panel. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. Library record detail is a full-panel document in the workspace, not a modal.
 - Settings: labeled tabs **Harnesses | Marketplaces | Publish catalogs | Project | Advanced**. One tab visible at a time. Project tab uses the project directory picker (recent + Browse) to inspect `.harnesstap/config.toml`.
 
 ## Layout
 
-Header destinations: **Library | Environments | Global | Project**. No header Plugins tab. No header Apply-plugin control.
+Header destinations: **Library | Sources | Environments | Global | Project**. No header Plugins tab. No header Apply-plugin control.
 
 | Workspace | Shell |
 | --- | --- |
 | Global / Project | Profiles rail (~220px) + live-state `main`. Below ~720px, stack rail above the pane. |
 | Library | Filter sidebar + one main pane (list **or** detail). No profile rail. No Items/Packages tabs. |
+| Sources | Source sidebar + one main pane (list **or** plugin-tree **or** preview). No profile rail. |
 | Environments | Full-width list + detail. No profile rail. |
 
-Landmarks: `nav` (profiles rail, scope layout only), `main` (live, library, or environments).
+Landmarks: `nav` (profiles rail, scope layout only), `main` (live, library, sources, or environments).
 
 ## Interaction locks
 
@@ -56,9 +57,10 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 **Header destinations**
 
-- Re-clicking an already-active header destination (Library, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
+- Re-clicking an already-active header destination (Library, Sources, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
 - Back icon to the left of the panel title (Library, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history / draft, or edit-profile), then the previous header destination. The control deactivates when there is no previous screen.
 - Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
+- Sources re-click clears the search query, checks all sources, and returns to the list. Add/edit panels stay if open.
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.
 - Global and Project re-click clear the profile rail search and close edit-profile; the selected profile stays. Project re-click does not reopen the directory picker.
 
@@ -88,6 +90,11 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Detail: title is the name (double-click to rename). Other fields are icon + value; icon tooltip names the field. Double-click to edit. Default environment is only the field-row combobox. Updated is locale absolute date with relative time in parentheses. Plugin-type rows (`resources.type = plugin`) omit Description, Namespace, and Content; Origin is Local / Marketplace only (no `origin_ref`); Marketplace URL shows for Marketplace origin when the registry has a URL; Path is the install directory. Contained files are grouped relative paths with an icon-only open-in-editor control (the only Library icon-only record action).
 - Header cluster (right of the Library title): **Create plugin** (accent), **Import**, **Tracked directories**. Labeled, compact, not icon-only. Create plugin (accent primary).
 - Delete confirm: list profiles and plugins that still attach this selector. Offer **Remove from active profile** as a tertiary action when it is enabled there. Primary action is **Delete from library + disk**; secondary is **Delete from library**. Load a delete plan before opening the dialog; group locations by global / project / source; show **Protected** blockers and disable only the disk-inclusive action when blockers exist.
+
+**Sources**
+
+- Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Sources, not Settings.
+- Header cluster (right of the Sources title): **Add marketplace** (accent), **Connect catalog**. Labeled, compact, not icon-only. Add marketplace is the only accent control in this cluster.
 
 **Environments**
 

@@ -53,6 +53,7 @@ const settingsTabsSource = readFileSync(
   ),
   "utf8",
 );
+const settingsParitySource = settingsTabsSource;
 
 function sliceBetween(
   source: string,
@@ -81,6 +82,32 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain('setWorkspaceFocus("library")');
     expect(appSource).not.toContain('setWorkspaceFocus("resources")');
     expect(appSource).not.toContain('setWorkspaceFocus("plugins")');
+  });
+
+  test("exposes Sources as a workspace destination after Library", () => {
+    expect(appSource).toContain('aria-label="Sources"');
+    expect(appSource).toContain('onHeaderDestinationClick("sources")');
+    expect(appSource).toContain('setWorkspaceFocus("sources")');
+    const libraryIdx = appSource.indexOf('aria-label="Library"');
+    const sourcesIdx = appSource.indexOf('aria-label="Sources"');
+    const parityIdx = appSource.indexOf("<ParityChrome");
+    expect(libraryIdx).toBeGreaterThan(-1);
+    expect(sourcesIdx).toBeGreaterThan(libraryIdx);
+    expect(parityIdx).toBeGreaterThan(sourcesIdx);
+  });
+
+  test("DESIGN.md lists Sources in header destinations and the layout table", () => {
+    expect(designSource).toContain(
+      "Header destinations: **Library | Sources | Environments | Global | Project**",
+    );
+    expect(designSource).toMatch(/\|\s*Sources\s*\|/);
+  });
+
+  test("SettingsParitySections no longer renders marketplace or publish catalog sections", () => {
+    expect(settingsParitySource).not.toContain("MarketplaceSettingsSection");
+    expect(settingsParitySource).not.toContain("PublishCatalogsSettings");
+    expect(settingsParitySource).toContain("ProjectConfigInspect");
+    expect(settingsParitySource).toContain("ResolveOrderSettings");
   });
 
   test("does not put Plugins or Apply plugin in the header", () => {
@@ -117,14 +144,23 @@ describe("header re-click home", () => {
     expect(appSource).toContain("headerClickIntent");
     expect(appSource).toContain("onHeaderDestinationClick");
     expect(appSource).toContain('onClick={() => onHeaderDestinationClick("library")}');
+    expect(appSource).toContain('onClick={() => onHeaderDestinationClick("sources")}');
     expect(appSource).toContain('onClick={() => onHeaderDestinationClick("home")}');
     expect(appSource).toContain('onClick={() => onHeaderDestinationClick("project")}');
     expect(appSource).toContain("onHeaderDestinationClick(\"environments\")");
   });
 
-  test("Library and Environments re-click bump homeResetNonce", () => {
+  test("Library, Sources, and Environments re-click bump homeResetNonce", () => {
     expect(appSource).toContain("setHomeResetNonce");
     expect(appSource).toContain("homeResetNonce={homeResetNonce}");
+    const resetBlock = sliceBetween(
+      appSource,
+      'headerClickIntent(activeDestination, clicked) === "reset"',
+      "setWorkspaceFocus(\"library\")",
+    );
+    expect(resetBlock).toContain('case "library"');
+    expect(resetBlock).toContain('case "sources"');
+    expect(resetBlock).toContain('case "environments"');
   });
 
   test("Global and Project re-click clear profile search and close edit without changing selection", () => {
