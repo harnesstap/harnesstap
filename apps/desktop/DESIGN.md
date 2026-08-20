@@ -35,7 +35,7 @@ Dark dense ops chrome. One accent (blue) for selection and primary actions. Stat
 - Focus: 2px `--accent` outline, 2px offset.
 - Labeled `btn primary` for the one accent action in a cluster; labeled `btn` for secondary. Icon-only is for header and rail chrome (workspace back, refresh, settings, History), never for Library, Sources, or Environments record actions. Header destinations show icon plus name.
 - Action clusters: flex, gap ≥ `0.4rem`, never flush, never `space-between` siblings for two or three related buttons.
-- Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, history, and resource inspect. Back (top left) and Esc leave the panel. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. Library record detail is a full-panel document in the workspace, not a modal.
+- Overlays: full-screen panels (not side drawers) for settings, create/edit, import, apply, browse, migrate, account, stash, history, and resource inspect. Back (top left) and Esc leave the panel. Confirm dialogs only for destructive or discard. Report dialogs for Doctor. Library record detail is a full-panel document in the workspace, not a modal. Cloud browse overlay is gone.
 - Settings: labeled tabs **Harnesses | Marketplaces | Publish catalogs | Project | Advanced**. One tab visible at a time. Project tab uses the project directory picker (recent + Browse) to inspect `.harnesstap/config.toml`.
 
 ## Layout
@@ -94,7 +94,10 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Sources**
 
 - Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Sources, not Settings.
+- Sources re-click clears the search query, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
 - Header cluster (right of the Sources title): **Add marketplace** (accent), **Connect catalog**. Labeled, compact, not icon-only. Add marketplace is the only accent control in this cluster.
+- Record actions on the plugin tree (preview inherits parent plugin actions) are labeled: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Not icon-only.
+- Cloud catalog discovery lives in Sources. The Cloud browse overlay is gone; the Cloud header control is account-only.
 
 **Environments**
 

@@ -4,6 +4,10 @@ import { presenceLabel } from "../lib/sources-search";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import { SourcesSignInPrompt } from "./SourcesListPane";
+import {
+  SourcesRecordActions,
+  type SourcesRecordActionsProps,
+} from "./SourcesRecordActions";
 
 export interface SourcesTreeFile {
   path: string;
@@ -20,6 +24,7 @@ export interface SourcesPluginTreeProps {
   onBack: () => void;
   onOpenFile: (path: string) => void;
   onSignIn?: () => void;
+  recordActions?: SourcesRecordActionsProps;
 }
 
 export function SourcesPluginTree({
@@ -32,6 +37,7 @@ export function SourcesPluginTree({
   onBack,
   onOpenFile,
   onSignIn,
+  recordActions,
 }: SourcesPluginTreeProps) {
   return (
     <LibraryDetailChrome
@@ -73,6 +79,7 @@ export function SourcesPluginTree({
           editing={false}
           onStartEdit={() => undefined}
         />
+        {recordActions ? <SourcesRecordActions {...recordActions} /> : null}
         {authRequired ? (
           <SourcesSignInPrompt onSignIn={onSignIn} disabled={disabled} />
         ) : error ? (

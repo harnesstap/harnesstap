@@ -10,6 +10,7 @@ import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
   fetchLibraryPluginDetail,
   fetchLibraryPluginHeads,
+  patchLibraryPluginAttachments,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
 import {
@@ -19,6 +20,8 @@ import {
   fetchMarketplacePluginPreview,
   isCloudAuthError,
   isCloudAuthMessage,
+  isNameCollisionError,
+  pullCatalogPlugin,
   searchCatalogPlugins,
   type CatalogPluginSearchHit,
   type CatalogScope,
@@ -40,6 +43,11 @@ import {
   type SourcesHitGroup,
 } from "../lib/sources-search";
 import {
+  sourcesAttachmentAdd,
+  sourcesHitActions,
+  type SourcesInstallState,
+} from "../lib/sources-record-actions";
+import {
   buildSourceRows,
   defaultCheckedSourceIds,
   type SourceRow,
@@ -47,10 +55,12 @@ import {
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
+import { PinToPluginPanel } from "./PinToPluginPanel";
 import { SourceSidebar } from "./SourceSidebar";
 import { SourcesListPane, type SourcesGroupError } from "./SourcesListPane";
 import { SourcesPluginTree, type SourcesTreeFile } from "./SourcesPluginTree";
 import { SourcesPreviewPane } from "./SourcesPreviewPane";
+import type { SourcesRecordActionsProps } from "./SourcesRecordActions";
 
 const FALLBACK_DEFAULT_ORG = "harnesstap-cloud";
 const SEARCH_DEBOUNCE_MS = 250;
@@ -137,6 +147,7 @@ export interface SourcesWorkspaceProps {
   homeResetNonce?: number;
   onSuccess?: (message: string) => void;
   onSignIn?: () => void;
+  onOpenInLibrary?: (selector: string) => void;
 }
 
 export function SourcesWorkspace({
@@ -146,6 +157,7 @@ export function SourcesWorkspace({
   homeResetNonce = 0,
   onSuccess,
   onSignIn,
+  onOpenInLibrary,
 }: SourcesWorkspaceProps) {
   const [query, setQuery] = useState("");
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
@@ -161,6 +173,14 @@ export function SourcesWorkspace({
   const [editingMarketplace, setEditingMarketplace] =
     useState<PluginMarketplaceEntry | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinMode, setPinMode] = useState<"pin" | "attach">("pin");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pullCollision, setPullCollision] = useState(false);
+  const [pullAsName, setPullAsName] = useState("");
+  const [installByHit, setInstallByHit] = useState<
+    Record<string, SourcesInstallState>
+  >({});
   const [sidebarConfirmOpen, setSidebarConfirmOpen] = useState(false);
   const [localHeads, setLocalHeads] = useState<LibraryPluginHead[]>([]);
   const [localResources, setLocalResources] = useState<LibraryResource[]>([]);
@@ -362,7 +382,7 @@ export function SourcesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [baseUrl, token, checkedRows]);
+  }, [baseUrl, token, checkedRows, reloadKey]);
 
   useEffect(() => {
     if (!baseUrl) {
@@ -632,7 +652,8 @@ export function SourcesWorkspace({
         return;
       }
       const action = sourcesEscapeAction({
-        confirmOpen: sidebarConfirmOpen || marketplaceOpen || catalogOpen,
+        confirmOpen:
+          sidebarConfirmOpen || marketplaceOpen || catalogOpen || pinOpen,
       });
       switch (action) {
         case "dismiss-confirm":
@@ -649,7 +670,7 @@ export function SourcesWorkspace({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [catalogOpen, marketplaceOpen, pane, sidebarConfirmOpen]);
+  }, [catalogOpen, marketplaceOpen, pane, pinOpen, sidebarConfirmOpen]);
 
   const applyListQueryOrChecks = (apply: () => void): void => {
     const current = paneRef.current;
@@ -659,7 +680,7 @@ export function SourcesWorkspace({
     }
     const action = sourcesSidebarChangeAction({
       busy,
-      confirmOpen: sidebarConfirmOpen,
+      confirmOpen: sidebarConfirmOpen || pinOpen,
     });
     switch (action) {
       case "block":
@@ -739,6 +760,7 @@ export function SourcesWorkspace({
 
   const openHit = (hit: SourcesHit) => {
     setActiveHit(hit);
+    resetActionState();
     switch (hit.kind) {
       case "plugin":
         setPane({ mode: "plugin-tree", hitId: hit.id });
@@ -751,6 +773,145 @@ export function SourcesWorkspace({
         return neverKind;
       }
     }
+  };
+
+  const resetActionState = () => {
+    setActionError(null);
+    setPullCollision(false);
+    setPullAsName("");
+  };
+
+  const runPull = async (hit: SourcesHit): Promise<string | null> => {
+    if (!baseUrl) {
+      return null;
+    }
+    const selector = cloudSelectorForHit(hit);
+    if (!selector) {
+      setActionError("Missing catalog selector.");
+      return null;
+    }
+    const as = pullCollision ? pullAsName.trim() : "";
+    const result = await pullCatalogPlugin(baseUrl, token, {
+      selector,
+      ...(as ? { as } : {}),
+    });
+    setInstallByHit((current) => ({
+      ...current,
+      [hit.id]: { ...current[hit.id], pulledName: result.plugin.name },
+    }));
+    setPullCollision(false);
+    setPullAsName("");
+    return result.plugin.name;
+  };
+
+  const onPull = async (hit: SourcesHit) => {
+    if (!baseUrl || busy) {
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    try {
+      const name = await runPull(hit);
+      if (name) {
+        onSuccess?.(`Pulled ${name}.`);
+        refresh();
+      }
+    } catch (pullError: unknown) {
+      if (isNameCollisionError(pullError)) {
+        setPullCollision(true);
+        setActionError(
+          errorMessage(
+            pullError,
+            "A local plugin with that name already exists.",
+          ),
+        );
+      } else {
+        setActionError(errorMessage(pullError, "Could not pull plugin."));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPinConfirm = async (targetName: string) => {
+    const hit = resolvedHitRef.current;
+    if (!baseUrl || !hit || busy) {
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    try {
+      if (
+        hit.identity.cloud
+        && hit.presence === "remote_only"
+        && !installByHit[hit.id]?.pulledName
+      ) {
+        const pulled = await runPull(hit);
+        if (!pulled) {
+          return;
+        }
+      }
+      await patchLibraryPluginAttachments(baseUrl, token, targetName, {
+        add: [sourcesAttachmentAdd(hit)],
+      });
+      setInstallByHit((current) => ({
+        ...current,
+        [hit.id]: { ...current[hit.id], pinnedTargetName: targetName },
+      }));
+      setPinOpen(false);
+      onSuccess?.(
+        hit.kind === "standalone"
+          ? `Attached to ${targetName}.`
+          : `Pinned to ${targetName}.`,
+      );
+      refresh();
+    } catch (pinError: unknown) {
+      if (isNameCollisionError(pinError)) {
+        setPullCollision(true);
+        setActionError(
+          errorMessage(
+            pinError,
+            "A local plugin with that name already exists.",
+          ),
+        );
+        setPinOpen(false);
+      } else {
+        setActionError(errorMessage(pinError, "Could not update plugin."));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const recordActionsProps = (hit: SourcesHit): SourcesRecordActionsProps => {
+    const actions = sourcesHitActions(hit, installByHit[hit.id]);
+    return {
+      actions,
+      busy,
+      disabled: controlsDisabled,
+      error: actionError,
+      collision: pullCollision,
+      asName: pullAsName,
+      onAsNameChange: setPullAsName,
+      onPull: () => void onPull(hit),
+      onPinToPlugin: () => {
+        resetActionState();
+        setPinMode("pin");
+        setPinOpen(true);
+      },
+      onAttachToPlugin: () => {
+        resetActionState();
+        setPinMode("attach");
+        setPinOpen(true);
+      },
+      onOpenInLibrary: () => {
+        const selector = actions.openInLibrarySelector;
+        if (!selector) {
+          return;
+        }
+        onOpenInLibrary?.(selector);
+      },
+    };
   };
 
   const controlsDisabled = disabled || !baseUrl;
@@ -785,6 +946,7 @@ export function SourcesWorkspace({
             error={treeError}
             authRequired={treeAuthRequired}
             disabled={controlsDisabled}
+            recordActions={recordActionsProps(resolvedHit)}
             onBack={() => setPane(popSourcesPane(pane))}
             onOpenFile={(filePath) => {
               setPane({ mode: "preview", hitId: resolvedHit.id, filePath });
@@ -809,6 +971,7 @@ export function SourcesWorkspace({
             error={previewError}
             authRequired={previewAuthRequired}
             disabled={controlsDisabled}
+            recordActions={recordActionsProps(resolvedHit)}
             onBack={() => setPane(popSourcesPane(pane))}
             onSignIn={onSignIn}
           />
@@ -919,6 +1082,26 @@ export function SourcesWorkspace({
         onSaved={(message) => {
           onSuccess?.(message);
           refresh();
+        }}
+      />
+      <PinToPluginPanel
+        open={pinOpen}
+        mode={pinMode}
+        heads={localHeads}
+        excludeName={resolvedHit?.identity.localPluginName}
+        baseUrl={baseUrl}
+        token={token}
+        disabled={controlsDisabled}
+        confirming={busy}
+        onClose={() => setPinOpen(false)}
+        onConfirm={(pluginName) => void onPinConfirm(pluginName)}
+        onCreated={(plugin) => {
+          setLocalHeads((current) => {
+            if (current.some((head) => head.id === plugin.id)) {
+              return current;
+            }
+            return [...current, plugin];
+          });
         }}
       />
     </main>

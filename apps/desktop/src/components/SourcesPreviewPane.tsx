@@ -4,6 +4,10 @@ import { presenceLabel } from "../lib/sources-search";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
 import { SourcesSignInPrompt } from "./SourcesListPane";
+import {
+  SourcesRecordActions,
+  type SourcesRecordActionsProps,
+} from "./SourcesRecordActions";
 
 export interface SourcesPreviewPaneProps {
   hit: SourcesHit;
@@ -15,6 +19,7 @@ export interface SourcesPreviewPaneProps {
   disabled?: boolean;
   onBack: () => void;
   onSignIn?: () => void;
+  recordActions?: SourcesRecordActionsProps;
 }
 
 export function SourcesPreviewPane({
@@ -27,6 +32,7 @@ export function SourcesPreviewPane({
   disabled = false,
   onBack,
   onSignIn,
+  recordActions,
 }: SourcesPreviewPaneProps) {
   const fromPlugin = filePath !== undefined;
   return (
@@ -66,6 +72,7 @@ export function SourcesPreviewPane({
           editing={false}
           onStartEdit={() => undefined}
         />
+        {recordActions ? <SourcesRecordActions {...recordActions} /> : null}
         {filePath ? (
           <LibraryFieldRow
             icon={<Folder size={16} aria-hidden />}

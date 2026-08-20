@@ -202,3 +202,34 @@ export async function fetchCatalogPluginPreview(
   }
   return (await response.json()) as SourcePreviewResult;
 }
+
+export interface CatalogPluginPullResult {
+  plugin: { name: string; id: string };
+  tagged: boolean;
+}
+
+export function isNameCollisionError(error: unknown): boolean {
+  return (
+    error instanceof AgentApiError
+    && (error.status === 409 || error.code === "name_collision")
+  );
+}
+
+export async function pullCatalogPlugin(
+  baseUrl: string,
+  token: string | null,
+  input: { selector: string; as?: string },
+): Promise<CatalogPluginPullResult> {
+  const response = await agentFetch(baseUrl, token, "/v1/catalogs/plugins/pull", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      selector: input.selector,
+      ...(input.as ? { as: input.as } : {}),
+    }),
+  });
+  if (!response.ok) {
+    return throwAgentError(response, "Could not pull catalog plugin");
+  }
+  return (await response.json()) as CatalogPluginPullResult;
+}

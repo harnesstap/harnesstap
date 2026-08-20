@@ -83,6 +83,8 @@ export interface ResourcesPanelProps {
   onSuccess?: (message: string) => void;
   focusPluginName?: string | null;
   onFocusPluginConsumed?: () => void;
+  focusResourceSelector?: string | null;
+  onFocusResourceConsumed?: () => void;
   onBusyChange?: (busy: boolean) => void;
   onProfilesChanged?: () => void;
   canWorkspaceBack?: boolean;
@@ -101,6 +103,8 @@ export function ResourcesPanel({
   onSuccess,
   focusPluginName,
   onFocusPluginConsumed,
+  focusResourceSelector,
+  onFocusResourceConsumed,
   onBusyChange,
   onProfilesChanged,
   canWorkspaceBack = false,
@@ -202,6 +206,21 @@ export function ResourcesPanel({
     setPluginFrozenVersion(null);
     onFocusPluginConsumed?.();
   }, [focusPluginName, onFocusPluginConsumed]);
+
+  useEffect(() => {
+    if (!focusResourceSelector) {
+      return;
+    }
+    setPane({
+      mode: "detail",
+      target: {
+        kind: "resource",
+        selector: focusResourceSelector,
+        label: focusResourceSelector,
+      },
+    });
+    onFocusResourceConsumed?.();
+  }, [focusResourceSelector, onFocusResourceConsumed]);
 
   const entries = useMemo(
     () => mergeLibraryList(resources, plugins),

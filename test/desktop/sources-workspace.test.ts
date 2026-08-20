@@ -69,6 +69,13 @@ const previewPaneSource = readFileSync(
   ),
   "utf8",
 );
+const recordActionsSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/SourcesRecordActions.tsx",
+  ),
+  "utf8",
+);
 const sourcesApiSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/src/lib/api/sources.ts"),
   "utf8",
@@ -181,5 +188,67 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("pane.filePath");
     expect(workspaceSource).not.toContain("[baseUrl, pane, resolvedHit, token]");
     expect(workspaceSource).toContain("activeHit?.id === pane.hitId");
+  });
+
+  test("pulls Cloud plugins via POST /v1/catalogs/plugins/pull, not profiles/cloud/pull", () => {
+    expect(sourcesApiSource).toContain("export async function pullCatalogPlugin");
+    expect(sourcesApiSource).toContain("/v1/catalogs/plugins/pull");
+    expect(sourcesApiSource).not.toContain("/v1/profiles/cloud/pull");
+    expect(workspaceSource).toContain("pullCatalogPlugin");
+    expect(workspaceSource).not.toContain("/v1/profiles/cloud/pull");
+    expect(pluginTreeSource).not.toContain("/v1/profiles/cloud/pull");
+    expect(previewPaneSource).not.toContain("/v1/profiles/cloud/pull");
+  });
+
+  test("plugin tree and preview expose labeled Pull, pin/attach, and Open in Library", () => {
+    expect(recordActionsSource).toContain("Pull");
+    expect(recordActionsSource).toContain("Pin to plugin");
+    expect(recordActionsSource).toContain("Attach to plugin");
+    expect(recordActionsSource).toContain("Open in Library");
+    expect(pluginTreeSource).toContain("SourcesRecordActions");
+    expect(previewPaneSource).toContain("SourcesRecordActions");
+    expect(workspaceSource).toContain("onOpenInLibrary");
+    expect(appSource).toContain("onOpenInLibrary=");
+    expect(appSource).toContain("setLibraryFocusPlugin");
+  });
+});
+
+describe("sources install panels and Cloud browse retirement", () => {
+  test("App.tsx does not render CloudBrowseDrawer or Browse Cloud", () => {
+    expect(appSource).not.toContain("CloudBrowseDrawer");
+    expect(appSource).not.toContain("Browse Cloud");
+    expect(appSource).toContain("CloudAccountDrawer");
+  });
+
+  test("PinToPluginPanel lists authored heads only and can create a plugin", () => {
+    const pinPanelSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/PinToPluginPanel.tsx",
+      ),
+      "utf8",
+    );
+    expect(pinPanelSource).toContain("export function PinToPluginPanel");
+    expect(pinPanelSource).toContain('origin === "authored"');
+    expect(pinPanelSource).toContain("Create plugin");
+    expect(pinPanelSource).toContain("createLibraryPlugin");
+    expect(pinPanelSource).not.toContain('origin === "upstream"');
+    expect(pinPanelSource).not.toContain('origin === "catalog"');
+    expect(workspaceSource).toContain("PinToPluginPanel");
+  });
+
+  test("DESIGN.md Sources section locks shell, re-click, cluster, and labeled record actions", () => {
+    const designSource = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+      "utf8",
+    );
+    expect(designSource).toContain("**Sources**");
+    expect(designSource).toContain("list XOR plugin-tree XOR preview");
+    expect(designSource).toContain("Sources re-click");
+    expect(designSource).toContain("Add marketplace");
+    expect(designSource).toContain("Connect catalog");
+    expect(designSource).toContain("Open in Library");
+    expect(designSource).toContain("Pin to plugin");
+    expect(designSource).toContain("Cloud browse overlay");
   });
 });
