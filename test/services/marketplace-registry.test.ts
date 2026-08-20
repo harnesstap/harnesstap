@@ -149,4 +149,21 @@ describe("updateMarketplace", () => {
     });
     expect(() => updateMarketplace(dir, "a", { name: "b" })).toThrow(/name conflict/i);
   });
+
+  it("throws when changing url onto an existing marketplace url", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-marketplace-"));
+    addMarketplace(dir, {
+      name: "a",
+      url: "https://github.com/example/a.git",
+      platforms: ["claude-code"],
+    });
+    addMarketplace(dir, {
+      name: "b",
+      url: "https://github.com/example/b.git",
+      platforms: ["claude-code"],
+    });
+    expect(() =>
+      updateMarketplace(dir, "a", { url: "https://github.com/example/b.git" }),
+    ).toThrow(/url conflict/i);
+  });
 });

@@ -130,6 +130,17 @@ export function updateMarketplace(
     }
   }
 
+  if (nextUrl !== current.url) {
+    const collision = existing.find(
+      (e) => e.name !== current.name && normalizeMarketplaceUrl(e.url) === nextUrl,
+    );
+    if (collision) {
+      throw new Error(
+        `Marketplace URL conflict: "${collision.name}" already points at ${collision.url}. Pass a different --url or remove it first.`,
+      );
+    }
+  }
+
   const entry: PluginMarketplaceEntry = {
     name: nextName,
     url: nextUrl,

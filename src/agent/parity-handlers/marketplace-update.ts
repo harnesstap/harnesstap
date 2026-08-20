@@ -1,6 +1,9 @@
 import type { PluginMarketplacePlatform } from "../../config/settings.js";
 import { getHarnesstapDir } from "../../db/connection.js";
-import { refreshMarketplaceCatalog } from "../../services/marketplace-catalog.js";
+import {
+  refreshMarketplaceCatalog,
+  relocateMarketplaceCache,
+} from "../../services/marketplace-catalog.js";
 import { updateMarketplace } from "../../services/marketplace-registry.js";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
@@ -143,7 +146,14 @@ export async function tryHandle(
           { status: 404 },
         );
       case "updated": {
-        if (result.urlChanged) {
+        if (result.renamedFrom) {
+          relocateMarketplaceCache(
+            harnesstapDir,
+            result.renamedFrom,
+            result.entry.name,
+          );
+        }
+        if (result.urlChanged || result.renamedFrom) {
           const refresh = refreshMarketplaceCatalog(harnesstapDir, {
             name: result.entry.name,
             force: true,
@@ -164,6 +174,9 @@ export async function tryHandle(
     const message = error instanceof Error ? error.message : String(error);
     if (/name conflict/i.test(message)) {
       return jsonResponse({ error: "name_conflict", message }, { status: 409 });
+    }
+    if (/url conflict/i.test(message)) {
+      return jsonResponse({ error: "url_conflict", message }, { status: 409 });
     }
     return jsonResponse({ error: "marketplace_update_failed", message }, { status: 400 });
   }
