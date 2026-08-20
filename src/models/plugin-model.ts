@@ -363,12 +363,15 @@ export function stampPluginOrigin(
   const db = getDb();
   db.prepare(
     `UPDATE plugins
-     SET origin_locator = ?, origin_fingerprint = ?, origin_fingerprint_kind = ?, updated_at = ?
+     SET origin_locator = ?,
+         origin_fingerprint = COALESCE(?, origin_fingerprint),
+         origin_fingerprint_kind = COALESCE(?, origin_fingerprint_kind),
+         updated_at = ?
      WHERE id = ?`,
   ).run(
     input.locator,
-    input.fingerprint ?? "",
-    input.fingerprintKind ?? "",
+    input.fingerprint === undefined ? null : input.fingerprint,
+    input.fingerprintKind === undefined ? null : input.fingerprintKind,
     new Date().toISOString(),
     pluginId,
   );

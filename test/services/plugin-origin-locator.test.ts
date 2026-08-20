@@ -110,6 +110,20 @@ it("duplicate locator keeps the highest version as the target", () => {
   expect(group?.skipped.map((p) => p.version)).toContain("1.0.0");
 });
 
+it("locator-only stampPluginOrigin leaves an existing fingerprint unchanged", () => {
+  const plugin = createPlugin({ name: "web-search", version: "1.0.0", origin: "upstream" });
+  stampPluginOrigin(plugin.id, {
+    locator: "web-search@anthropics",
+    fingerprint: "abc123",
+    fingerprintKind: "git_sha",
+  });
+  stampPluginOrigin(plugin.id, { locator: "web-search@other" });
+  const stamped = getPluginById(plugin.id);
+  expect(stamped?.origin_locator).toBe("web-search@other");
+  expect(stamped?.origin_fingerprint).toBe("abc123");
+  expect(stamped?.origin_fingerprint_kind).toBe("git_sha");
+});
+
 it("bumpPluginWorkingVersion refuses a version that already exists as a frozen cut", () => {
   const head = createPlugin({ name: "pack", version: "1.0.0", origin: "upstream" });
   setPluginOrigin(head.id, "upstream");
