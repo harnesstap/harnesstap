@@ -1,8 +1,12 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   AgentApiError,
   fetchProfileFileDiff,
 } from "../lib/agent-client";
+import {
+  shouldCloseDialogOnBackdrop,
+  useDialogDismiss,
+} from "../lib/dialog-dismiss";
 import type { ProfileFileDiffResult, ViewScope } from "../lib/types";
 import { buildUnifiedDiffLines, countUnifiedDiffChanges } from "../lib/unified-diff";
 
@@ -28,32 +32,10 @@ export function FileDiffModal({
   onClose,
 }: FileDiffModalProps) {
   const titleId = useId();
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useDialogDismiss(open, onClose);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diff, setDiff] = useState<ProfileFileDiffResult | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [open, path]);
 
   useEffect(() => {
     if (!open || !path || !profileName || !baseUrl) {
@@ -117,14 +99,17 @@ export function FileDiffModal({
     <div
       className="dialog-backdrop file-diff-backdrop"
       role="presentation"
-      onClick={onClose}
+      onClick={(event) => {
+        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget)) {
+          onClose();
+        }
+      }}
     >
       <div
         className="dialog file-diff-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="file-diff-header">
           <div>

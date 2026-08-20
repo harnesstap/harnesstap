@@ -1,11 +1,11 @@
 import { getPlugin, getPluginResources } from "../models/plugin-model.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { parseVersionConstraint } from "./plugin-constraints.js";
-import { listDependencies } from "./plugin-dependency.js";
+import { dependenciesFromResources } from "./plugin-dependency.js";
 import {
   emptyDefinitionMessage,
   isResourceDefinitionEmpty,
-} from "./plugin-doctor/resource-definition.js";
+} from "./resource-definition.js";
 
 export interface PluginValidationIssue {
   severity: "error" | "warning";
@@ -68,7 +68,7 @@ export function validatePlugin(nameOrId: string): PluginValidationReport {
     }
   }
 
-  const plugins = listDependencies(plugin.id);
+  const plugins = dependenciesFromResources(resources);
   for (const pin of plugins) {
     if (!pin.ref.includes("@")) {
       issues.push({

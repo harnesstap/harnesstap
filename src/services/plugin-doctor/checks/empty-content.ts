@@ -2,7 +2,7 @@ import type { PluginDoctorCheckResult, PluginDoctorContext } from "../plugin-doc
 import {
   emptyDefinitionMessage,
   isResourceDefinitionEmpty,
-} from "../resource-definition.js";
+} from "../../resource-definition.js";
 
 export const emptyContentCheck = {
   id: "empty-content",

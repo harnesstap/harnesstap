@@ -1,5 +1,5 @@
 import { getPlugin, getPluginResources } from "../models/plugin-model.js";
-import { listDependencies } from "./plugin-dependency.js";
+import { dependenciesFromResources } from "./plugin-dependency.js";
 import { duplicateResourcesCheck } from "./plugin-doctor/checks/duplicate-resources.js";
 import { emptyContentCheck } from "./plugin-doctor/checks/empty-content.js";
 import { emptyPluginCheck } from "./plugin-doctor/checks/empty-plugin.js";
@@ -27,10 +27,11 @@ function createPluginDoctorContext(nameOrId: string): PluginDoctorContext {
     throw new Error(`Plugin not found: ${nameOrId}`);
   }
 
+  const resources = getPluginResources(plugin.id);
   return {
     plugin,
-    resources: getPluginResources(plugin.id),
-    plugins: listDependencies(plugin.id),
+    resources,
+    plugins: dependenciesFromResources(resources),
   };
 }
 

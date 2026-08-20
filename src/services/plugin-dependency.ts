@@ -124,8 +124,8 @@ export function addDependency(
   return resource;
 }
 
-export function listDependencies(pluginId: string): DependencyView[] {
-  return getPluginResources(pluginId)
+export function dependenciesFromResources(resources: Resource[]): DependencyView[] {
+  return resources
     .filter((resource) => resource.type === "plugin")
     .map((resource) => {
       const metadata = resource.metadata as PluginDependencyMetadata;
@@ -138,6 +138,10 @@ export function listDependencies(pluginId: string): DependencyView[] {
         resource,
       };
     });
+}
+
+export function listDependencies(pluginId: string): DependencyView[] {
+  return dependenciesFromResources(getPluginResources(pluginId));
 }
 
 export function removeDependency(pluginId: string, nameOrRef: string): boolean {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { isResourceDefinitionEmpty } from "../../../src/services/plugin-doctor/resource-definition.ts";
-import { makeResource } from "../../helpers/resources.ts";
+import { isResourceDefinitionEmpty } from "../../src/services/resource-definition.ts";
+import { makeResource } from "../helpers/resources.ts";
 
 describe("isResourceDefinitionEmpty", () => {
   it("treats whitespace-only content as empty for content-bearing types", () => {
@@ -54,6 +54,30 @@ describe("isResourceDefinitionEmpty", () => {
     ).toBe(true);
   });
 
+  it("treats http mcp_server without url as empty even when command is set", () => {
+    expect(
+      isResourceDefinitionEmpty(
+        makeResource({
+          type: "mcp_server",
+          content: "",
+          metadata: { transport: "http", command: "npx" },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("treats mcp_server with a url as complete even when transport is stdio", () => {
+    expect(
+      isResourceDefinitionEmpty(
+        makeResource({
+          type: "mcp_server",
+          content: "",
+          metadata: { transport: "stdio", url: "https://example.com/mcp" },
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("does not treat permission with action and pattern as empty", () => {
     expect(
       isResourceDefinitionEmpty(
@@ -85,19 +109,19 @@ describe("isResourceDefinitionEmpty", () => {
         makeResource({
           type: "env_var",
           content: "",
-          metadata: { key: "TOKEN", value: "" },
+          metadata: { key: "", value: "x" },
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isResourceDefinitionEmpty(
         makeResource({
           type: "env_var",
           content: "",
-          metadata: { key: "", value: "x" },
+          metadata: { key: "TOKEN", value: "" },
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("requires model_config model", () => {

@@ -1,0 +1,3 @@
+kind: Fixed
+body: Treat HTTP MCP servers without a URL as an empty definition even when a command is set.
+time: 2026-08-19T00:00:00Z

@@ -1,9 +1,8 @@
+import { type ReactNode, useId } from "react";
 import {
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-} from "react";
+  shouldCloseDialogOnBackdrop,
+  useDialogDismiss,
+} from "../lib/dialog-dismiss";
 import { ButtonSpinner } from "./ButtonSpinner";
 
 export interface ConfirmDialogProps {
@@ -37,30 +36,8 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const cancelRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useDialogDismiss(open, onCancel, confirmBusy);
   const controlsDisabled = confirmDisabled || confirmBusy;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !confirmBusy) {
-        event.preventDefault();
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel, confirmBusy]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const timer = window.setTimeout(() => cancelRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [open]);
 
   if (!open) {
     return null;
@@ -71,7 +48,7 @@ export function ConfirmDialog({
       className="dialog-backdrop"
       role="presentation"
       onClick={(event) => {
-        if (event.target === event.currentTarget && !confirmBusy) {
+        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, confirmBusy)) {
           onCancel();
         }
       }}
