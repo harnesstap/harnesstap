@@ -1108,6 +1108,27 @@ button:focus-visible,
   padding: 0.15rem 0.45rem;
 }
 
+.sources-hit {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sources-hit:disabled {
+  cursor: not-allowed;
+}
+
+.sources-tree-file {
+  min-width: 0;
+  text-align: left;
+}
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .resource-filter-option:has(input:disabled) {
   opacity: 0.55;
   cursor: not-allowed;

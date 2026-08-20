@@ -2463,6 +2463,7 @@ export function App() {
             token={token}
             disabled={switching}
             homeResetNonce={homeResetNonce}
+            onSignIn={() => setCloudAccountOpen(true)}
             onSuccess={(message) => {
               setSuccessMessage(message);
               window.setTimeout(() => setSuccessMessage(null), 3000);

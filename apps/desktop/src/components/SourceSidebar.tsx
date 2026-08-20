@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FilterX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ export interface SourceSidebarProps {
   onRemoveMarketplace: (name: string) => void;
   onDisconnectOrg: (org: string) => void;
   onUnregisterCatalog: (selector: string) => void;
+  onConfirmOpenChange?: (open: boolean) => void;
 }
 
 function confirmCopy(pending: PendingConfirm): {
@@ -72,9 +73,13 @@ export function SourceSidebar({
   onRemoveMarketplace,
   onDisconnectOrg,
   onUnregisterCatalog,
+  onConfirmOpenChange,
 }: SourceSidebarProps) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
   const confirmOpen = pending !== null;
+  useEffect(() => {
+    onConfirmOpenChange?.(confirmOpen);
+  }, [confirmOpen, onConfirmOpenChange]);
   const sidebarChange = sourcesSidebarChangeAction({ busy, confirmOpen });
   const controlsDisabled = disabled || sidebarChange === "block";
 

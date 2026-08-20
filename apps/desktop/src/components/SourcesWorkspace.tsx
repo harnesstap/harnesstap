@@ -1,26 +1,130 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchMarketplaces } from "../lib/agent-client";
+import {
+  fetchLibraryResourceDetail,
+  fetchLibraryResources,
+  fetchMarketplaces,
+  fetchMarketplacePlugins,
+} from "../lib/agent-client";
 import { unregisterCatalog } from "../lib/api/publish";
 import { removeMarketplace } from "../lib/api/marketplace-remove";
 import {
+  fetchLibraryPluginDetail,
+  fetchLibraryPluginHeads,
+} from "../lib/api/library-plugins";
+import {
   disconnectCatalogOrgApi,
+  fetchCatalogPluginPreview,
   fetchCatalogScope,
+  fetchMarketplacePluginPreview,
+  isCloudAuthError,
+  isCloudAuthMessage,
+  searchCatalogPlugins,
+  type CatalogPluginSearchHit,
   type CatalogScope,
+  type SourcePreviewResult,
 } from "../lib/api/sources";
-import { type SourcesPane } from "../lib/sources-pane";
+import {
+  popSourcesPane,
+  sourcesEscapeAction,
+  sourcesPaneHasPrevious,
+  sourcesSidebarChangeAction,
+  type SourcesPane,
+} from "../lib/sources-pane";
+import {
+  mergeSourcesHits,
+  type CloudPluginInput,
+  type MarketplaceSourceInput,
+  type SourcesHit,
+  type SourcesHitGroup,
+} from "../lib/sources-search";
 import {
   buildSourceRows,
   defaultCheckedSourceIds,
+  type SourceRow,
 } from "../lib/sources-sidebar";
-import type { PluginMarketplaceEntry } from "../lib/types";
+import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
 import { SourceSidebar } from "./SourceSidebar";
+import { SourcesListPane, type SourcesGroupError } from "./SourcesListPane";
+import { SourcesPluginTree, type SourcesTreeFile } from "./SourcesPluginTree";
+import { SourcesPreviewPane } from "./SourcesPreviewPane";
 
 const FALLBACK_DEFAULT_ORG = "harnesstap-cloud";
+const SEARCH_DEBOUNCE_MS = 250;
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function isPreviewFileList(
+  result: SourcePreviewResult,
+): result is { files: Array<{ path: string; kind: "file" }> } {
+  return "files" in result;
+}
+
+function previewContent(result: SourcePreviewResult): string | null {
+  return "content" in result ? result.content : null;
+}
+
+function toCloudPluginInput(plugin: CatalogPluginSearchHit): CloudPluginInput {
+  return {
+    selector: plugin.selector,
+    name: plugin.name,
+    orgSlug: plugin.orgSlug,
+    catalogSlug: plugin.catalogSlug,
+    ...(plugin.version ? { version: plugin.version } : {}),
+    ...(plugin.description ? { description: plugin.description } : {}),
+  };
+}
+
+function cloudSelectorForHit(hit: SourcesHit): string | null {
+  const identity = hit.identity.cloud;
+  if (!identity) {
+    return null;
+  }
+  const base = `${identity.org}/${identity.catalog}/${identity.name}`;
+  return hit.version ? `${base}@${hit.version}` : base;
+}
+
+function pluginsForCloudRow(
+  row: SourceRow,
+  plugins: CatalogPluginSearchHit[],
+): CloudPluginInput[] {
+  switch (row.kind) {
+    case "cloud-org":
+      return plugins
+        .filter((plugin) => plugin.orgSlug === row.label)
+        .map(toCloudPluginInput);
+    case "cloud-catalog": {
+      const slash = row.label.indexOf("/");
+      const org = slash === -1 ? row.label : row.label.slice(0, slash);
+      const catalog = slash === -1 ? "" : row.label.slice(slash + 1);
+      return plugins
+        .filter(
+          (plugin) => plugin.orgSlug === org && plugin.catalogSlug === catalog,
+        )
+        .map(toCloudPluginInput);
+    }
+    case "local":
+    case "marketplace":
+      return [];
+    default: {
+      const neverKind: never = row.kind;
+      return neverKind;
+    }
+  }
+}
+
+function sourceIdForCloudLabel(
+  sourceLabel: string,
+  rows: SourceRow[],
+): string | undefined {
+  return rows.find(
+    (row) =>
+      (row.kind === "cloud-org" || row.kind === "cloud-catalog")
+      && row.label === sourceLabel,
+  )?.id;
 }
 
 export interface SourcesWorkspaceProps {
@@ -29,6 +133,7 @@ export interface SourcesWorkspaceProps {
   disabled?: boolean;
   homeResetNonce?: number;
   onSuccess?: (message: string) => void;
+  onSignIn?: () => void;
 }
 
 export function SourcesWorkspace({
@@ -37,6 +142,7 @@ export function SourcesWorkspace({
   disabled = false,
   homeResetNonce = 0,
   onSuccess,
+  onSignIn,
 }: SourcesWorkspaceProps) {
   const [query, setQuery] = useState("");
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
@@ -52,7 +158,46 @@ export function SourcesWorkspace({
   const [editingMarketplace, setEditingMarketplace] =
     useState<PluginMarketplaceEntry | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [sidebarConfirmOpen, setSidebarConfirmOpen] = useState(false);
+  const [localHeads, setLocalHeads] = useState<
+    Array<{
+      name: string;
+      version?: string;
+      description?: string | null;
+      origin?: string;
+      id?: string;
+    }>
+  >([]);
+  const [localResources, setLocalResources] = useState<LibraryResource[]>([]);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [marketplaceHits, setMarketplaceHits] = useState<
+    Record<
+      string,
+      { plugins: MarketplaceSourceInput["plugins"]; error: string | null }
+    >
+  >({});
+  const [cloudPlugins, setCloudPlugins] = useState<CatalogPluginSearchHit[]>([]);
+  const [cloudErrors, setCloudErrors] = useState<
+    Array<{ sourceLabel: string; message: string }>
+  >([]);
+  const [cloudRequestError, setCloudRequestError] = useState<string | null>(null);
+  const [cloudAuthRequired, setCloudAuthRequired] = useState(false);
+  const [librarySearching, setLibrarySearching] = useState(false);
+  const [cloudSearching, setCloudSearching] = useState(false);
+  const [activeHit, setActiveHit] = useState<SourcesHit | null>(null);
+  const [treeFiles, setTreeFiles] = useState<SourcesTreeFile[]>([]);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [treeError, setTreeError] = useState<string | null>(null);
+  const [treeAuthRequired, setTreeAuthRequired] = useState(false);
+  const [previewContentState, setPreviewContentState] = useState<string | null>(
+    null,
+  );
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewAuthRequired, setPreviewAuthRequired] = useState(false);
   const homeResetNonceSeen = useRef(homeResetNonce);
+  const paneRef = useRef(pane);
+  paneRef.current = pane;
 
   const rows = useMemo(
     () =>
@@ -116,13 +261,419 @@ export function SourcesWorkspace({
     };
   }, [baseUrl, token, reloadKey]);
 
-  const onToggle = (id: string) => {
-    setChecksTouched(true);
-    setCheckedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  const checkedRows = useMemo(
+    () => rows.filter((row) => checkedIds.includes(row.id)),
+    [rows, checkedIds],
+  );
+
+  useEffect(() => {
+    if (!baseUrl) {
+      setLocalHeads([]);
+      setLocalResources([]);
+      setLocalError(null);
+      setMarketplaceHits({});
+      setCloudPlugins([]);
+      setCloudErrors([]);
+      setCloudRequestError(null);
+      setCloudAuthRequired(false);
+      setLibrarySearching(false);
+      setCloudSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const localChecked = checkedRows.some((row) => row.kind === "local");
+    const marketplaceRows = checkedRows.filter(
+      (row) => row.kind === "marketplace",
     );
+    setLibrarySearching(true);
+    const pending: Promise<void>[] = [
+      Promise.all([
+        fetchLibraryPluginHeads(baseUrl, token),
+        fetchLibraryResources(baseUrl, token),
+      ])
+        .then(([heads, resources]) => {
+          if (cancelled) {
+            return;
+          }
+          setLocalHeads(heads);
+          setLocalResources(resources);
+          setLocalError(null);
+        })
+        .catch((loadError: unknown) => {
+          if (cancelled) {
+            return;
+          }
+          if (localChecked) {
+            setLocalHeads([]);
+            setLocalResources([]);
+            setLocalError(errorMessage(loadError, "Could not load library."));
+          } else {
+            setLocalError(null);
+          }
+        }),
+    ];
+
+    setMarketplaceHits((current) => {
+      const next: typeof current = {};
+      for (const row of marketplaceRows) {
+        next[row.id] = current[row.id] ?? { plugins: [], error: null };
+      }
+      return next;
+    });
+
+    for (const row of marketplaceRows) {
+      pending.push(
+        fetchMarketplacePlugins(baseUrl, token, row.label)
+          .then((result) => {
+            if (cancelled) {
+              return;
+            }
+            setMarketplaceHits((current) => ({
+              ...current,
+              [row.id]: {
+                plugins: result.plugins.map((plugin) => ({
+                  name: plugin.name,
+                  ...(plugin.version ? { version: plugin.version } : {}),
+                  ...(plugin.description
+                    ? { description: plugin.description }
+                    : {}),
+                })),
+                error: null,
+              },
+            }));
+          })
+          .catch((loadError: unknown) => {
+            if (cancelled) {
+              return;
+            }
+            setMarketplaceHits((current) => ({
+              ...current,
+              [row.id]: {
+                plugins: [],
+                error: errorMessage(loadError, `Could not load ${row.label}.`),
+              },
+            }));
+          }),
+      );
+    }
+
+    void Promise.allSettled(pending).then(() => {
+      if (!cancelled) {
+        setLibrarySearching(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, checkedRows]);
+
+  useEffect(() => {
+    if (!baseUrl) {
+      return;
+    }
+    const cloudRows = checkedRows.filter(
+      (row) => row.kind === "cloud-org" || row.kind === "cloud-catalog",
+    );
+    if (cloudRows.length === 0) {
+      setCloudPlugins([]);
+      setCloudErrors([]);
+      setCloudRequestError(null);
+      setCloudAuthRequired(false);
+      setCloudSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setCloudSearching(true);
+      const orgs = cloudRows
+        .filter((row) => row.kind === "cloud-org")
+        .map((row) => row.label);
+      const registered = cloudRows
+        .filter((row) => row.kind === "cloud-catalog")
+        .map((row) => row.label);
+      void searchCatalogPlugins(baseUrl, token, {
+        q: query,
+        orgs,
+        registered,
+      })
+        .then((result) => {
+          if (cancelled) {
+            return;
+          }
+          setCloudPlugins(result.plugins);
+          setCloudErrors(result.errors);
+          setCloudRequestError(null);
+          setCloudAuthRequired(false);
+        })
+        .catch((loadError: unknown) => {
+          if (cancelled) {
+            return;
+          }
+          setCloudPlugins([]);
+          setCloudErrors([]);
+          setCloudRequestError(
+            errorMessage(loadError, "Could not search catalog plugins."),
+          );
+          setCloudAuthRequired(isCloudAuthError(loadError));
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setCloudSearching(false);
+          }
+        });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [baseUrl, token, query, checkedRows]);
+
+  const sourceOrder = useMemo(
+    () => checkedRows.map((row) => row.id),
+    [checkedRows],
+  );
+
+  const groups: SourcesHitGroup[] = useMemo(() => {
+    const localChecked = checkedRows.some((row) => row.id === "local");
+    const marketplaceInputs: MarketplaceSourceInput[] = checkedRows
+      .filter((row) => row.kind === "marketplace")
+      .map((row) => ({
+        sourceId: row.id,
+        sourceLabel: row.label,
+        marketplaceName: row.label,
+        plugins: marketplaceHits[row.id]?.plugins ?? [],
+      }));
+    const cloudInputs = checkedRows
+      .filter((row) => row.kind === "cloud-org" || row.kind === "cloud-catalog")
+      .map((row) => ({
+        sourceId: row.id,
+        sourceLabel: row.label,
+        plugins: pluginsForCloudRow(row, cloudPlugins),
+      }));
+
+    return mergeSourcesHits({
+      query,
+      sourceOrder,
+      ...(localChecked
+        ? {
+            local: {
+              sourceId: "local",
+              sourceLabel: "Local",
+              heads: localHeads,
+              resources: localResources,
+            },
+          }
+        : {}),
+      marketplaces: marketplaceInputs,
+      cloud: cloudInputs,
+      libraryHeads: localHeads,
+      libraryResources: localResources,
+    });
+  }, [
+    checkedRows,
+    cloudPlugins,
+    localHeads,
+    localResources,
+    marketplaceHits,
+    query,
+    sourceOrder,
+  ]);
+
+  const groupErrors = useMemo(() => {
+    const next: Record<string, SourcesGroupError> = {};
+    if (localError && checkedRows.some((row) => row.id === "local")) {
+      next.local = { message: localError, authRequired: false };
+    }
+    for (const row of checkedRows) {
+      if (row.kind !== "marketplace") {
+        continue;
+      }
+      const marketplaceError = marketplaceHits[row.id]?.error;
+      if (marketplaceError) {
+        next[row.id] = { message: marketplaceError, authRequired: false };
+      }
+    }
+    const cloudRows = checkedRows.filter(
+      (row) => row.kind === "cloud-org" || row.kind === "cloud-catalog",
+    );
+    if (cloudAuthRequired) {
+      for (const row of cloudRows) {
+        next[row.id] = {
+          message: cloudRequestError ?? "Cloud sign-in required",
+          authRequired: true,
+        };
+      }
+    } else if (cloudRequestError) {
+      for (const row of cloudRows) {
+        next[row.id] = { message: cloudRequestError, authRequired: false };
+      }
+    } else {
+      for (const cloudError of cloudErrors) {
+        const sourceId = sourceIdForCloudLabel(cloudError.sourceLabel, rows);
+        if (!sourceId) {
+          continue;
+        }
+        next[sourceId] = {
+          message: cloudError.message,
+          authRequired: isCloudAuthMessage(cloudError.message),
+        };
+      }
+    }
+    return next;
+  }, [
+    checkedRows,
+    cloudAuthRequired,
+    cloudErrors,
+    cloudRequestError,
+    localError,
+    marketplaceHits,
+    rows,
+  ]);
+
+  const hitById = useMemo(() => {
+    const map = new Map<string, SourcesHit>();
+    for (const group of groups) {
+      for (const hit of group.hits) {
+        map.set(hit.id, hit);
+      }
+    }
+    return map;
+  }, [groups]);
+
+  const resolvedHit =
+    (pane.mode === "plugin-tree" || pane.mode === "preview")
+      ? (hitById.get(pane.hitId) ?? activeHit)
+      : null;
+
+  useEffect(() => {
+    if (pane.mode !== "plugin-tree" || !resolvedHit || !baseUrl) {
+      return;
+    }
+    let cancelled = false;
+    setTreeLoading(true);
+    setTreeError(null);
+    setTreeAuthRequired(false);
+    setTreeFiles([]);
+    void loadPluginTree(baseUrl, token, resolvedHit)
+      .then((files) => {
+        if (!cancelled) {
+          setTreeFiles(files);
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setTreeAuthRequired(isCloudAuthError(loadError));
+        setTreeError(errorMessage(loadError, "Could not load plugin files."));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTreeLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, pane, resolvedHit, token]);
+
+  useEffect(() => {
+    if (pane.mode !== "preview" || !resolvedHit || !baseUrl) {
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewAuthRequired(false);
+    setPreviewContentState(null);
+    void loadPreview(baseUrl, token, resolvedHit, pane.filePath)
+      .then((content) => {
+        if (!cancelled) {
+          setPreviewContentState(content);
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setPreviewAuthRequired(isCloudAuthError(loadError));
+        setPreviewError(errorMessage(loadError, "Could not load preview."));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPreviewLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, pane, resolvedHit, token]);
+
+  useEffect(() => {
+    if (!sourcesPaneHasPrevious(pane)) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      const action = sourcesEscapeAction({
+        confirmOpen: sidebarConfirmOpen || marketplaceOpen || catalogOpen,
+      });
+      switch (action) {
+        case "dismiss-confirm":
+          return;
+        case "leave-pane":
+          event.preventDefault();
+          setPane(popSourcesPane(paneRef.current));
+          return;
+        default: {
+          const neverAction: never = action;
+          return neverAction;
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [catalogOpen, marketplaceOpen, pane, sidebarConfirmOpen]);
+
+  const applyListQueryOrChecks = (apply: () => void): void => {
+    const current = paneRef.current;
+    if (current.mode === "list") {
+      apply();
+      return;
+    }
+    const action = sourcesSidebarChangeAction({
+      busy,
+      confirmOpen: sidebarConfirmOpen,
+    });
+    switch (action) {
+      case "block":
+        return;
+      case "leave-and-apply":
+        setPane({ mode: "list" });
+        apply();
+        return;
+      default: {
+        const neverAction: never = action;
+        return neverAction;
+      }
+    }
+  };
+
+  const onToggle = (id: string) => {
+    applyListQueryOrChecks(() => {
+      setChecksTouched(true);
+      setCheckedIds((current) =>
+        current.includes(id)
+          ? current.filter((item) => item !== id)
+          : [...current, id],
+      );
+    });
   };
 
   const onRemoveMarketplace = async (name: string) => {
@@ -176,10 +727,88 @@ export function SourcesWorkspace({
     }
   };
 
+  const openHit = (hit: SourcesHit) => {
+    setActiveHit(hit);
+    switch (hit.kind) {
+      case "plugin":
+        setPane({ mode: "plugin-tree", hitId: hit.id });
+        return;
+      case "standalone":
+        setPane({ mode: "preview", hitId: hit.id });
+        return;
+      default: {
+        const neverKind: never = hit.kind;
+        return neverKind;
+      }
+    }
+  };
+
   const controlsDisabled = disabled || !baseUrl;
-  const emptyCopy = query.trim()
-    ? "No hits yet."
-    : "Search sources";
+
+  function renderMainPane() {
+    switch (pane.mode) {
+      case "list":
+        return (
+          <SourcesListPane
+            groups={groups}
+            groupErrors={groupErrors}
+            loading={librarySearching || cloudSearching}
+            query={query}
+            disabled={controlsDisabled}
+            onOpenHit={openHit}
+            onSignIn={onSignIn}
+          />
+        );
+      case "plugin-tree":
+        if (!resolvedHit) {
+          return (
+            <div className="empty-state">
+              <p className="muted">Plugin is no longer in the search results.</p>
+            </div>
+          );
+        }
+        return (
+          <SourcesPluginTree
+            hit={resolvedHit}
+            files={treeFiles}
+            loading={treeLoading}
+            error={treeError}
+            authRequired={treeAuthRequired}
+            disabled={controlsDisabled}
+            onBack={() => setPane(popSourcesPane(pane))}
+            onOpenFile={(filePath) => {
+              setPane({ mode: "preview", hitId: resolvedHit.id, filePath });
+            }}
+            onSignIn={onSignIn}
+          />
+        );
+      case "preview":
+        if (!resolvedHit) {
+          return (
+            <div className="empty-state">
+              <p className="muted">Item is no longer in the search results.</p>
+            </div>
+          );
+        }
+        return (
+          <SourcesPreviewPane
+            hit={resolvedHit}
+            filePath={pane.filePath}
+            content={previewContentState}
+            loading={previewLoading}
+            error={previewError}
+            authRequired={previewAuthRequired}
+            disabled={controlsDisabled}
+            onBack={() => setPane(popSourcesPane(pane))}
+            onSignIn={onSignIn}
+          />
+        );
+      default: {
+        const neverPane: never = pane;
+        return neverPane;
+      }
+    }
+  }
 
   return (
     <main
@@ -228,13 +857,16 @@ export function SourcesWorkspace({
       <div className="resources-panel-layout">
         <SourceSidebar
           query={query}
-          onQueryChange={setQuery}
+          onQueryChange={(next) => {
+            applyListQueryOrChecks(() => setQuery(next));
+          }}
           rows={rows}
           checkedIds={checkedIds}
           onToggle={onToggle}
           disabled={controlsDisabled}
           busy={busy}
           error={error}
+          onConfirmOpenChange={setSidebarConfirmOpen}
           onEditMarketplace={(name) => {
             const entry = marketplaces.find((item) => item.name === name) ?? null;
             if (!entry) {
@@ -248,11 +880,7 @@ export function SourcesWorkspace({
           onDisconnectOrg={(org) => void onDisconnectOrg(org)}
           onUnregisterCatalog={(selector) => void onUnregisterCatalog(selector)}
         />
-        <div className="resources-panel-body">
-          <div className="empty-state">
-            <p className="muted">{emptyCopy}</p>
-          </div>
-        </div>
+        <div className="resources-panel-body">{renderMainPane()}</div>
       </div>
 
       <MarketplaceEditPanel
@@ -285,4 +913,93 @@ export function SourcesWorkspace({
       />
     </main>
   );
+}
+
+async function loadPluginTree(
+  baseUrl: string,
+  token: string | null,
+  hit: SourcesHit,
+): Promise<SourcesTreeFile[]> {
+  if (hit.identity.marketplace) {
+    const result = await fetchMarketplacePluginPreview(
+      baseUrl,
+      token,
+      hit.identity.marketplace.marketplace,
+      hit.identity.marketplace.plugin,
+    );
+    if (!isPreviewFileList(result)) {
+      return [];
+    }
+    return result.files.map((file) => ({ path: file.path, label: file.path }));
+  }
+  if (hit.identity.cloud) {
+    const selector = cloudSelectorForHit(hit);
+    if (!selector) {
+      return [];
+    }
+    const result = await fetchCatalogPluginPreview(baseUrl, token, selector);
+    if (!isPreviewFileList(result)) {
+      return [];
+    }
+    return result.files.map((file) => ({ path: file.path, label: file.path }));
+  }
+  if (hit.identity.localPluginName) {
+    const detail = await fetchLibraryPluginDetail(
+      baseUrl,
+      token,
+      hit.identity.localPluginName,
+    );
+    return detail.resources.map((resource) => ({
+      path: resource.id,
+      label: resource.source || `${resource.type}:${resource.name}`,
+    }));
+  }
+  return [];
+}
+
+async function loadPreview(
+  baseUrl: string,
+  token: string | null,
+  hit: SourcesHit,
+  filePath?: string,
+): Promise<string | null> {
+  if (hit.identity.marketplace) {
+    if (!filePath) {
+      return hit.description ?? "";
+    }
+    const result = await fetchMarketplacePluginPreview(
+      baseUrl,
+      token,
+      hit.identity.marketplace.marketplace,
+      hit.identity.marketplace.plugin,
+      filePath,
+    );
+    return previewContent(result);
+  }
+  if (hit.identity.cloud) {
+    const selector = cloudSelectorForHit(hit);
+    if (!selector) {
+      return null;
+    }
+    const result = await fetchCatalogPluginPreview(
+      baseUrl,
+      token,
+      selector,
+      filePath,
+    );
+    return previewContent(result);
+  }
+  if (hit.identity.localSelector) {
+    const detail = await fetchLibraryResourceDetail(
+      baseUrl,
+      token,
+      hit.identity.localSelector,
+    );
+    return detail.content;
+  }
+  if (hit.identity.localPluginName && filePath) {
+    const detail = await fetchLibraryResourceDetail(baseUrl, token, filePath);
+    return detail.content;
+  }
+  return hit.description ?? "";
 }

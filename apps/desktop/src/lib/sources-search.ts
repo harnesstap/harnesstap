@@ -107,6 +107,19 @@ export interface SourcesHitGroup {
   hits: SourcesHit[];
 }
 
+export function presenceLabel(presence: Presence): string {
+  switch (presence) {
+    case "in_library":
+      return "In library";
+    case "remote_only":
+      return "Remote only";
+    default: {
+      const neverPresence: never = presence;
+      return neverPresence;
+    }
+  }
+}
+
 export function isStandaloneResourceType(type: string): boolean {
   return type !== "plugin" && type !== "plugin_pin";
 }
