@@ -199,4 +199,95 @@ describe("agent catalog plugin routes", () => {
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe("auth_required");
   });
+
+  it("requires agent bearer auth for catalog preview", async () => {
+    const server = withServer();
+    const denied = await fetch(
+      `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus`,
+    );
+    expect(denied.status).toBe(401);
+  });
+
+  it("returns auth_required when no cloud token is configured on preview", async () => {
+    const server = withServer();
+    mockCatalog();
+
+    const response = await fetch(
+      `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus`,
+      { headers: authHeaders(server.token) },
+    );
+    expect(response.status).toBe(401);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("auth_required");
+  });
+
+  it("rejects catalog preview path traversal", async () => {
+    const server = withServer();
+    await signInCloud();
+    mockCatalog();
+
+    const response = await fetch(
+      `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus&path=../escape.md`,
+      { headers: authHeaders(server.token) },
+    );
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "invalid_path" });
+  });
+
+  it("lists catalog package files without importing the plugin", async () => {
+    const server = withServer();
+    await signInCloud();
+    mockCatalog(
+      [ACME_PLUGIN],
+      makeApEnvelope({ name: "focus", skillName: "hello", skillBody: "preview me" }),
+    );
+
+    const before = getPluginByName("focus");
+    const response = await fetch(
+      `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus@2.0.0`,
+      { headers: authHeaders(server.token) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      files: [
+        { path: "plugin.json", kind: "file" },
+        { path: "skills/hello/SKILL.md", kind: "file" },
+      ],
+    });
+    expect(getPluginByName("focus")).toEqual(before);
+  });
+
+  it("returns catalog package file content", async () => {
+    const server = withServer();
+    await signInCloud();
+    mockCatalog(
+      [ACME_PLUGIN],
+      makeApEnvelope({ name: "focus", skillName: "hello", skillBody: "preview me" }),
+    );
+
+    const response = await fetch(
+      `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus@2.0.0&path=skills/hello/SKILL.md`,
+      { headers: authHeaders(server.token) },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { path: string; content: string };
+    expect(body.path).toBe("skills/hello/SKILL.md");
+    expect(body.content).toContain("preview me");
+  });
+
+  it("returns 404 for a missing catalog package file", async () => {
+    const server = withServer();
+    await signInCloud();
+    mockCatalog(
+      [ACME_PLUGIN],
+      makeApEnvelope({ name: "focus" }),
+    );
+
+    const response = await fetch(
+      `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus@2.0.0&path=missing.md`,
+      { headers: authHeaders(server.token) },
+    );
+    expect(response.status).toBe(404);
+  });
 });

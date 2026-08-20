@@ -8,7 +8,9 @@ import {
   parsePublishCatalogSelector,
 } from "../../config/catalog.js";
 import { getPluginByName } from "../../models/plugin-model.js";
-import { resolveCatalogAccess } from "../../services/catalog-client.js";
+import type { ApPackageFile } from "../../services/agent-plugins/files.js";
+import { downloadCatalogPackage, resolveCatalogAccess } from "../../services/catalog-client.js";
+import { isInvalidPreviewPath } from "../../services/marketplace-plugin-tree.js";
 import {
   streamCatalogPlugins,
   type CatalogListSource,
@@ -24,6 +26,7 @@ import { jsonResponse } from "../http.js";
 
 const SCOPE_PATH = "/v1/catalogs/scope";
 const PLUGINS_PATH = "/v1/catalogs/plugins";
+const PREVIEW_PATH = "/v1/catalogs/plugins/preview";
 const PULL_PATH = "/v1/catalogs/plugins/pull";
 const CONNECTED_ORG = /^\/v1\/catalogs\/connected-orgs\/([^/]+)$/;
 
@@ -230,6 +233,71 @@ function authRequiredResponse(): Response {
   return jsonResponse({ error: "auth_required" }, { status: 401 });
 }
 
+function utf8PackageContent(entry: ApPackageFile): string {
+  switch (entry.encoding) {
+    case "utf8":
+      return entry.content;
+    case "base64":
+      return Buffer.from(entry.content, "base64").toString("utf8");
+    default: {
+      const _exhaustive: never = entry.encoding;
+      return _exhaustive;
+    }
+  }
+}
+
+async function handlePluginPreview(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const selector = url.searchParams.get("selector")?.trim() ?? "";
+  if (!selector) {
+    return jsonResponse(
+      { error: "invalid_selector", message: "selector must be a non-empty string" },
+      { status: 400 },
+    );
+  }
+
+  const path = url.searchParams.get("path")?.trim() || undefined;
+  if (path && isInvalidPreviewPath(path)) {
+    return jsonResponse({ error: "invalid_path" }, { status: 400 });
+  }
+
+  try {
+    const access = await resolveCatalogAccess();
+    if (!access.isAuthenticated) {
+      return authRequiredResponse();
+    }
+
+    const parsed = await resolveInstallSelector(selector, {
+      noInteractive: true,
+      format: "json",
+    });
+    const downloaded = await downloadCatalogPackage({
+      orgSlug: parsed.org_slug,
+      catalogSlug: parsed.catalog_slug,
+      pluginSlug: parsed.plugin_slug,
+      version: parsed.version ?? "latest",
+    });
+
+    if (!path) {
+      const files = Object.keys(downloaded.files)
+        .sort()
+        .map((filePath) => ({ path: filePath, kind: "file" as const }));
+      return jsonResponse({ files });
+    }
+
+    const entry = downloaded.files[path];
+    if (!entry) {
+      return jsonResponse({ error: "not_found" }, { status: 404 });
+    }
+    return jsonResponse({ path, content: utf8PackageContent(entry) });
+  } catch (error) {
+    return jsonResponse(
+      { error: "preview_failed", message: errorMessage(error) },
+      { status: 400 },
+    );
+  }
+}
+
 async function handlePluginPull(request: Request): Promise<Response> {
   const input = await parsePullInput(request);
   if (input instanceof Response) {
@@ -296,6 +364,14 @@ export async function tryHandle(
       return authError;
     }
     return handlePluginSearch(request);
+  }
+
+  if (method === "GET" && url.pathname === PREVIEW_PATH) {
+    const authError = requireAgentBearerAuth(request, token);
+    if (authError) {
+      return authError;
+    }
+    return handlePluginPreview(request);
   }
 
   if (method === "POST" && url.pathname === PULL_PATH) {
