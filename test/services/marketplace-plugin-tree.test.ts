@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { addMarketplace } from "../../src/services/marketplace-registry.js";
@@ -267,5 +267,29 @@ describe("previewMarketplacePlugin", () => {
     expect(result.status).toBe("ok");
     if (result.status !== "ok" || !("files" in result)) return;
     expect(result.files).toEqual([{ path: "skills/hello.md", kind: "file" }]);
+  });
+
+  it("refreshes a stale populated catalog so missing plugin files appear from git", () => {
+    const home = mkdtempSync(join(tmpdir(), "ht-mkt-tree-home-"));
+    const repo = initMarketplaceRepoWithPluginFile();
+    addMarketplace(home, {
+      name: "tree-market",
+      url: repo,
+      platforms: ["claude-code"],
+    });
+    const cacheDir = join(home, "cache", "marketplaces", "tree-market");
+    writeStoredCatalog(cacheDir, "demo-plugin", "tree-market");
+    const catalogPath = join(cacheDir, "catalog.json");
+    const stale = (Date.now() - 25 * 60 * 60 * 1000) / 1000;
+    utimesSync(catalogPath, stale, stale);
+
+    const result = previewMarketplacePlugin(home, {
+      marketplace: "tree-market",
+      plugin: "demo-plugin",
+    });
+    expect(result).toEqual({
+      status: "ok",
+      files: [{ path: "skills/hello.md", kind: "file" }],
+    });
   });
 });

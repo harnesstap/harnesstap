@@ -57,12 +57,8 @@ function collectFiles(root: string, dir: string, files: string[]): void {
 }
 
 function ensureCatalogPlugins(harnesstapDir: string, marketplace: string) {
-  let plugins = listCatalogPlugins(harnesstapDir, { name: marketplace });
-  if (plugins.length === 0) {
-    refreshMarketplaceCatalog(harnesstapDir, { name: marketplace, force: false });
-    plugins = listCatalogPlugins(harnesstapDir, { name: marketplace });
-  }
-  return plugins;
+  refreshMarketplaceCatalog(harnesstapDir, { name: marketplace, force: false });
+  return listCatalogPlugins(harnesstapDir, { name: marketplace });
 }
 
 export function previewMarketplacePlugin(
