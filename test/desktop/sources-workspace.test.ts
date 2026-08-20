@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 
@@ -171,13 +171,19 @@ describe("sources search list and preview", () => {
     expect(workspaceSource).toContain("onSignIn");
     expect(sourcesApiSource).toContain("AgentApiError");
     expect(workspaceSource).toContain("isCloudAuthError");
+    expect(workspaceSource).toContain("isCloudAuthError(installError)");
+    expect(workspaceSource).toContain("applyInstallError(pullError");
+    expect(workspaceSource).toContain("applyInstallError(pinError");
+    expect(recordActionsSource).toContain("SourcesSignInPrompt");
     expect(appSource).toContain("onSignIn=");
     expect(appSource).toContain("setCloudAccountOpen(true)");
     const signInCopy =
       listPaneSource.includes("Sign in from the Cloud account control")
       || pluginTreeSource.includes("Sign in from the Cloud account control")
       || previewPaneSource.includes("Sign in from the Cloud account control")
-      || workspaceSource.includes("Sign in from the Cloud account control");
+      || workspaceSource.includes("Sign in from the Cloud account control")
+      || recordActionsSource.includes("Sign in from the Cloud account control")
+      || recordActionsSource.includes("SourcesSignInPrompt");
     expect(signInCopy).toBe(true);
   });
 
@@ -214,10 +220,50 @@ describe("sources search list and preview", () => {
 });
 
 describe("sources install panels and Cloud browse retirement", () => {
-  test("App.tsx does not render CloudBrowseDrawer or Browse Cloud", () => {
+  test("CloudBrowseDrawer is deleted and App does not render Browse Cloud", () => {
+    expect(
+      existsSync(
+        join(
+          import.meta.dir,
+          "../../apps/desktop/src/components/CloudBrowseDrawer.tsx",
+        ),
+      ),
+    ).toBe(false);
     expect(appSource).not.toContain("CloudBrowseDrawer");
     expect(appSource).not.toContain("Browse Cloud");
     expect(appSource).toContain("CloudAccountDrawer");
+  });
+
+  test("Esc closes PinToPluginPanel without treating pinOpen as confirmOpen", () => {
+    const pinPanelSource = readFileSync(
+      join(
+        import.meta.dir,
+        "../../apps/desktop/src/components/PinToPluginPanel.tsx",
+      ),
+      "utf8",
+    );
+    expect(workspaceSource).not.toContain(
+      "sidebarConfirmOpen || marketplaceOpen || catalogOpen || pinOpen",
+    );
+    expect(workspaceSource).toContain("if (pinOpen)");
+    expect(workspaceSource).toContain("setPinOpen(false)");
+    expect(workspaceSource).toContain("sidebarConfirmOpen || marketplaceOpen || catalogOpen");
+    expect(pinPanelSource).toContain('"Escape"');
+  });
+
+  test("pin/attach failure closes the panel and surfaces actionError on the tree", () => {
+    const pinConfirm = workspaceSource.slice(
+      workspaceSource.indexOf("const onPinConfirm"),
+      workspaceSource.indexOf("const recordActionsProps"),
+    );
+    expect(pinConfirm).toContain("setPinOpen(false)");
+    expect(pinConfirm).toContain("setActionError");
+    const catchBlock = pinConfirm.slice(pinConfirm.indexOf("catch (pinError"));
+    expect(catchBlock).toContain("setPinOpen(false)");
+    expect(catchBlock).toContain("Could not update plugin.");
+    expect(catchBlock.indexOf("setPinOpen(false)")).toBeLessThan(
+      catchBlock.indexOf("applyInstallError"),
+    );
   });
 
   test("PinToPluginPanel lists authored heads only and can create a plugin", () => {

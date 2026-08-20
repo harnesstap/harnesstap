@@ -2,15 +2,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SourcesHitActions } from "../lib/sources-record-actions";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { SourcesSignInPrompt } from "./SourcesListPane";
 
 export interface SourcesRecordActionsProps {
   actions: SourcesHitActions;
   busy?: boolean;
   disabled?: boolean;
   error?: string | null;
+  authRequired?: boolean;
   collision?: boolean;
   asName?: string;
   onAsNameChange?: (value: string) => void;
+  onSignIn?: () => void;
   onPull?: () => void;
   onPinToPlugin?: () => void;
   onAttachToPlugin?: () => void;
@@ -22,9 +25,11 @@ export function SourcesRecordActions({
   busy = false,
   disabled = false,
   error = null,
+  authRequired = false,
   collision = false,
   asName = "",
   onAsNameChange,
+  onSignIn,
   onPull,
   onPinToPlugin,
   onAttachToPlugin,
@@ -33,7 +38,9 @@ export function SourcesRecordActions({
   const controlsDisabled = disabled || busy;
   return (
     <div className="sources-record-actions">
-      {error ? (
+      {authRequired ? (
+        <SourcesSignInPrompt onSignIn={onSignIn} disabled={controlsDisabled} />
+      ) : error ? (
         <div className="banner error" role="alert">
           {error}
         </div>

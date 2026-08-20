@@ -75,6 +75,24 @@ export function PinToPluginPanel({
     return authored.filter((head) => head.name.toLowerCase().includes(needle));
   }, [authored, query]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (confirming || createBusy) {
+        return;
+      }
+      event.preventDefault();
+      onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirming, createBusy, onClose, open]);
+
   if (!open) {
     return null;
   }

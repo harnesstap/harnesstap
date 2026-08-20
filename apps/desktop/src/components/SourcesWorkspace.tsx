@@ -176,6 +176,7 @@ export function SourcesWorkspace({
   const [pinOpen, setPinOpen] = useState(false);
   const [pinMode, setPinMode] = useState<"pin" | "attach">("pin");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionAuthRequired, setActionAuthRequired] = useState(false);
   const [pullCollision, setPullCollision] = useState(false);
   const [pullAsName, setPullAsName] = useState("");
   const [installByHit, setInstallByHit] = useState<
@@ -651,9 +652,13 @@ export function SourcesWorkspace({
       if (event.key !== "Escape") {
         return;
       }
+      if (pinOpen) {
+        event.preventDefault();
+        setPinOpen(false);
+        return;
+      }
       const action = sourcesEscapeAction({
-        confirmOpen:
-          sidebarConfirmOpen || marketplaceOpen || catalogOpen || pinOpen,
+        confirmOpen: sidebarConfirmOpen || marketplaceOpen || catalogOpen,
       });
       switch (action) {
         case "dismiss-confirm":
@@ -777,8 +782,28 @@ export function SourcesWorkspace({
 
   const resetActionState = () => {
     setActionError(null);
+    setActionAuthRequired(false);
     setPullCollision(false);
     setPullAsName("");
+  };
+
+  const applyInstallError = (installError: unknown, fallback: string): void => {
+    if (isCloudAuthError(installError)) {
+      setActionAuthRequired(true);
+      setActionError(null);
+      return;
+    }
+    if (isNameCollisionError(installError)) {
+      setPullCollision(true);
+      setActionError(
+        errorMessage(
+          installError,
+          "A local plugin with that name already exists.",
+        ),
+      );
+      return;
+    }
+    setActionError(errorMessage(installError, fallback));
   };
 
   const runPull = async (hit: SourcesHit): Promise<string | null> => {
@@ -810,6 +835,7 @@ export function SourcesWorkspace({
     }
     setBusy(true);
     setActionError(null);
+    setActionAuthRequired(false);
     try {
       const name = await runPull(hit);
       if (name) {
@@ -817,17 +843,7 @@ export function SourcesWorkspace({
         refresh();
       }
     } catch (pullError: unknown) {
-      if (isNameCollisionError(pullError)) {
-        setPullCollision(true);
-        setActionError(
-          errorMessage(
-            pullError,
-            "A local plugin with that name already exists.",
-          ),
-        );
-      } else {
-        setActionError(errorMessage(pullError, "Could not pull plugin."));
-      }
+      applyInstallError(pullError, "Could not pull plugin.");
     } finally {
       setBusy(false);
     }
@@ -840,6 +856,7 @@ export function SourcesWorkspace({
     }
     setBusy(true);
     setActionError(null);
+    setActionAuthRequired(false);
     try {
       if (
         hit.identity.cloud
@@ -848,6 +865,7 @@ export function SourcesWorkspace({
       ) {
         const pulled = await runPull(hit);
         if (!pulled) {
+          setPinOpen(false);
           return;
         }
       }
@@ -866,18 +884,8 @@ export function SourcesWorkspace({
       );
       refresh();
     } catch (pinError: unknown) {
-      if (isNameCollisionError(pinError)) {
-        setPullCollision(true);
-        setActionError(
-          errorMessage(
-            pinError,
-            "A local plugin with that name already exists.",
-          ),
-        );
-        setPinOpen(false);
-      } else {
-        setActionError(errorMessage(pinError, "Could not update plugin."));
-      }
+      setPinOpen(false);
+      applyInstallError(pinError, "Could not update plugin.");
     } finally {
       setBusy(false);
     }
@@ -890,9 +898,11 @@ export function SourcesWorkspace({
       busy,
       disabled: controlsDisabled,
       error: actionError,
+      authRequired: actionAuthRequired,
       collision: pullCollision,
       asName: pullAsName,
       onAsNameChange: setPullAsName,
+      onSignIn,
       onPull: () => void onPull(hit),
       onPinToPlugin: () => {
         resetActionState();
