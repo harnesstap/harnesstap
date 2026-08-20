@@ -10,7 +10,7 @@ import {
 import { getPluginByName } from "../../models/plugin-model.js";
 import type { ApPackageFile } from "../../services/agent-plugins/files.js";
 import { downloadCatalogPackage, resolveCatalogAccess } from "../../services/catalog-client.js";
-import { isInvalidPreviewPath } from "../../services/marketplace-plugin-tree.js";
+import { isInvalidPreviewPath } from "../../utils/preview-path.js";
 import {
   streamCatalogPlugins,
   type CatalogListSource,

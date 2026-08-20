@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { join, relative, sep } from "node:path";
+import { isInvalidPreviewPath } from "../utils/preview-path.js";
 import {
   listCatalogPlugins,
   marketplaceCacheDir,
@@ -13,12 +14,6 @@ export type MarketplacePluginTreeResult =
   | { status: "ok"; path: string; content: string }
   | { status: "not_found" }
   | { status: "invalid_path" };
-
-export function isInvalidPreviewPath(path: string): boolean {
-  if (path.includes("\0")) return true;
-  if (isAbsolute(path)) return true;
-  return path.split(/[/\\]/).includes("..");
-}
 
 function isDirectory(path: string): boolean {
   return existsSync(path) && statSync(path).isDirectory();
