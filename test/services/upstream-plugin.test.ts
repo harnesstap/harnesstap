@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { createResource } from "../../src/models/resource.ts";
-import { createPlugin, getPluginByName, getPluginResources } from "../../src/models/plugin-model.ts";
+import { createPlugin, getPluginById, getPluginByName, getPluginResources } from "../../src/models/plugin-model.ts";
 import { getPluginOrigin } from "../../src/services/plugin-origin.ts";
 import { materializeUpstreamPlugin } from "../../src/services/upstream-plugin.ts";
 
@@ -48,6 +48,7 @@ describe("materializeUpstreamPlugin", () => {
       "search",
       "summarize",
     ]);
+    expect(getPluginById(plugin.id)?.origin_locator).toBe("web-search@anthropics");
   });
 
   it("is idempotent for the same ref and version", () => {

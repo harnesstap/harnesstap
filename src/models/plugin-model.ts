@@ -13,6 +13,7 @@ import type {
   ClaudeMarketplaceEntry,
   ClaudePluginEntry,
   ClaudePluginConfig,
+  OriginFingerprintKind,
   Plugin,
   PluginDependencyRef,
   PluginOrigin,
@@ -35,6 +36,9 @@ interface PluginRow {
   overrides: string;
   default_environment_id: string | null;
   ap_name: string;
+  origin_locator?: string;
+  origin_fingerprint?: string;
+  origin_fingerprint_kind?: string;
   dirty?: number;
   frozen_at: string | null;
   created_at: string;
@@ -126,6 +130,11 @@ function rowToPlugin(row: PluginRow): Plugin {
       ? { default_environment_id: row.default_environment_id }
       : {}),
     ...(row.ap_name ? { ap_name: row.ap_name } : {}),
+    ...(row.origin_locator ? { origin_locator: row.origin_locator } : {}),
+    ...(row.origin_fingerprint ? { origin_fingerprint: row.origin_fingerprint } : {}),
+    ...(row.origin_fingerprint_kind
+      ? { origin_fingerprint_kind: row.origin_fingerprint_kind as OriginFingerprintKind }
+      : {}),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -341,6 +350,57 @@ export function createPlugin(input: {
     created_at: now,
     updated_at: now,
   };
+}
+
+export function stampPluginOrigin(
+  pluginId: string,
+  input: {
+    locator: string;
+    fingerprint?: string;
+    fingerprintKind?: OriginFingerprintKind | "";
+  },
+): void {
+  const db = getDb();
+  db.prepare(
+    `UPDATE plugins
+     SET origin_locator = ?, origin_fingerprint = ?, origin_fingerprint_kind = ?, updated_at = ?
+     WHERE id = ?`,
+  ).run(
+    input.locator,
+    input.fingerprint ?? "",
+    input.fingerprintKind ?? "",
+    new Date().toISOString(),
+    pluginId,
+  );
+}
+
+export function bumpPluginWorkingVersion(pluginId: string, version: string): void {
+  const plugin = getPluginById(pluginId);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${pluginId}`);
+  }
+
+  const db = getDb();
+  const sibling = db
+    .prepare(
+      `SELECT id, frozen_at FROM plugins
+       WHERE org_slug = ? AND catalog_slug = ? AND name = ? AND version = ? AND id != ?`,
+    )
+    .get(plugin.org_slug, plugin.catalog_slug, plugin.name, version, pluginId) as
+      | { id: string; frozen_at: string | null }
+      | undefined;
+
+  if (sibling?.frozen_at) {
+    throw new Error(
+      `Cannot bump ${plugin.name} to ${version}: that version already exists as a frozen cut`,
+    );
+  }
+
+  db.prepare("UPDATE plugins SET version = ?, updated_at = ? WHERE id = ?").run(
+    version,
+    new Date().toISOString(),
+    pluginId,
+  );
 }
 
 export function updatePluginPublishedIdentity(

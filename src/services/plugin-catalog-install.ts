@@ -3,6 +3,7 @@ import { importApPackageFiles } from "./agent-plugins/import.js";
 import {
   getPluginByCatalogVersion,
   getPluginByPublishedIdentity,
+  stampPluginOrigin,
   updatePluginPublishedIdentity,
 } from "../models/plugin-model.js";
 import {
@@ -46,6 +47,8 @@ export async function installPluginFromCatalog(
     version: downloaded.version,
   });
 
+  const locator = `${parsed.org_slug}/${parsed.catalog_slug}/${parsed.plugin_slug}`;
+
   // Reuse an existing install of this catalog version (name may differ from slug).
   const existing =
     getPluginByCatalogVersion(parsed.org_slug, parsed.catalog_slug, downloaded.version)
@@ -56,6 +59,7 @@ export async function installPluginFromCatalog(
       catalog: parsed.catalog_slug,
     });
   if (existing && !opts.as) {
+    stampPluginOrigin(existing.id, { locator });
     return {
       pluginId: existing.id,
       pluginName: existing.name,
@@ -73,6 +77,7 @@ export async function installPluginFromCatalog(
     catalog_slug: parsed.catalog_slug,
     version: downloaded.version,
   });
+  stampPluginOrigin(imported.id, { locator });
 
   return {
     pluginId: imported.id,

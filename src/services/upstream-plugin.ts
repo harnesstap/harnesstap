@@ -3,6 +3,7 @@ import {
   createPlugin,
   getPluginByName,
   getPluginResources,
+  stampPluginOrigin,
 } from "../models/plugin-model.js";
 import { listResourcesByOriginRef } from "../models/resource.js";
 import { MATERIAL_RESOURCE_TYPES } from "../types.js";
@@ -42,6 +43,7 @@ export function materializeUpstreamPlugin(
       );
     }
     syncAttachments(existing.id, input.ref);
+    stampPluginOrigin(existing.id, { locator: input.ref });
     return existing;
   }
 
@@ -53,6 +55,7 @@ export function materializeUpstreamPlugin(
   });
   setPluginOrigin(plugin.id, "upstream");
   syncAttachments(plugin.id, input.ref);
+  stampPluginOrigin(plugin.id, { locator: input.ref });
   return plugin;
 }
 

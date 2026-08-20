@@ -149,6 +149,9 @@ export type ResourceMetadata =
 export const PLUGIN_ORIGINS = ["authored", "upstream", "catalog"] as const;
 export type PluginOrigin = (typeof PLUGIN_ORIGINS)[number];
 
+export const ORIGIN_FINGERPRINT_KINDS = ["git_sha", "catalog_digest", "catalog_version"] as const;
+export type OriginFingerprintKind = (typeof ORIGIN_FINGERPRINT_KINDS)[number];
+
 /**
  * Absolute resolution decisions declared by a root plugin. Honored only when
  * the declaring plugin is the root of the resolution, matching npm `overrides`.
@@ -285,6 +288,9 @@ export interface Plugin {
   default_environment_id?: string;
   /** Stable Agent Plugins package name override; omitted when unset. */
   ap_name?: string;
+  origin_locator?: string;
+  origin_fingerprint?: string;
+  origin_fingerprint_kind?: OriginFingerprintKind;
   created_at: string;
   updated_at: string;
 }
