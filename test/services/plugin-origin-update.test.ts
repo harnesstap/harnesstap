@@ -11,8 +11,12 @@ import {
 } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
 import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
-import { checkPluginOrigins } from "../../src/services/plugin-origin-update.ts";
+import {
+  checkPluginOrigins,
+  updatePluginOrigins,
+} from "../../src/services/plugin-origin-update.ts";
 import { scanPluginSource } from "../../src/services/plugin-source-import.ts";
+import { cutPluginVersion } from "../../src/services/plugin-versioning.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
 
 const stubDeps = {
@@ -235,4 +239,168 @@ it("turns a rejected marketplace refresh into error rows instead of throwing", a
   expect(report.results.length).toBeGreaterThan(0);
   expect(report.results.every((r) => r.status === "error")).toBe(true);
   expect(report.results[0]?.message).toBe("network down");
+});
+
+function writeMarketplacePlugin(
+  name: string,
+  version: string,
+  skill: string,
+): void {
+  const originRoot = join(
+    getHarnesstapDir(),
+    "cache",
+    "marketplaces",
+    "mkt",
+    "plugins",
+    name,
+  );
+  mkdirSync(join(originRoot, ".claude-plugin"), { recursive: true });
+  mkdirSync(join(originRoot, "skills", skill), { recursive: true });
+  writeFileSync(
+    join(originRoot, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name, version }),
+  );
+  writeFileSync(
+    join(originRoot, "skills", skill, "SKILL.md"),
+    `---\nname: ${skill}\ndescription: ${skill}\n---\n# ${skill} body\n`,
+  );
+}
+
+it("overwrites the same plugin id and bumps version when SHA drifted", async () => {
+  const plugin = createUpstream("demo", "demo@mkt", "old");
+  writeMarketplacePlugin("demo", "1.2.0", "hello");
+  const report = await updatePluginOrigins({
+    name: "demo",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("updated");
+  const after = getPluginById(plugin.id)!;
+  expect(after.id).toBe(plugin.id);
+  expect(after.name).toBe("demo");
+  expect(after.version).toBe("1.2.0");
+  expect(after.origin_fingerprint).toBe("newsha");
+  expect(after.dirty).toBe(false);
+});
+
+it("skips when fingerprints match unless force", async () => {
+  const plugin = createUpstream("demo", "demo@mkt", "aaa");
+  writeMarketplacePlugin("demo", "1.2.0", "hello");
+  const report = await updatePluginOrigins({
+    name: "demo",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "aaa", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "aaa", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("skipped");
+  expect(getPluginById(plugin.id)?.version).toBe("1.0.0");
+  expect(report.summary.skipped).toBe(1);
+});
+
+it("force rewrites when fingerprints match", async () => {
+  const plugin = createUpstream("demo", "demo@mkt", "aaa");
+  writeMarketplacePlugin("demo", "1.2.0", "hello");
+  const report = await updatePluginOrigins({
+    name: "demo",
+    force: true,
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "aaa", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "aaa", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("updated");
+  const after = getPluginById(plugin.id)!;
+  expect(after.version).toBe("1.2.0");
+  expect(after.origin_fingerprint).toBe("aaa");
+  expect(getPluginResources(plugin.id).some((r) => r.name === "hello")).toBe(true);
+});
+
+it("fails that plugin when bump would collide with a frozen cut", async () => {
+  const plugin = createPlugin({ name: "demo", version: "1.2.0", origin: "upstream" });
+  setPluginOrigin(plugin.id, "upstream");
+  cutPluginVersion({ pluginId: plugin.id, newVersion: "1.0.0" });
+  stampPluginOrigin(plugin.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  writeMarketplacePlugin("demo", "1.2.0", "hello");
+  const report = await updatePluginOrigins({
+    name: plugin.id,
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("failed");
+  expect(report.results[0]?.message).toMatch(/frozen/);
+  expect(getPluginById(plugin.id)?.version).toBe("1.0.0");
+  expect(report.summary.failed).toBe(1);
+});
+
+it("requires a name or --all", async () => {
+  expect(updatePluginOrigins({})).rejects.toThrow(/pass a name or --all/);
+});
+
+it("skips authored plugins with the provenance message", async () => {
+  createPlugin({ name: "mine", version: "1.0.0" });
+  const report = await updatePluginOrigins({ name: "mine", deps: stubDeps });
+  expect(report.results[0]?.status).toBe("skipped");
+  expect(report.results[0]?.message).toBe(
+    "authored plugin; there is no upstream to sync from",
+  );
+});
+
+it("skips duplicate locator non-targets instead of applying", async () => {
+  const low = createPlugin({ name: "demo", version: "1.0.0", origin: "upstream" });
+  const high = createPlugin({ name: "demo", version: "1.2.0", origin: "upstream" });
+  setPluginOrigin(low.id, "upstream");
+  setPluginOrigin(high.id, "upstream");
+  stampPluginOrigin(low.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  stampPluginOrigin(high.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  writeMarketplacePlugin("demo", "1.3.0", "hello");
+  const report = await updatePluginOrigins({
+    all: true,
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  const skipped = report.results.find((r) => r.plugin_id === low.id);
+  const target = report.results.find((r) => r.plugin_id === high.id);
+  expect(target?.status).toBe("updated");
+  expect(skipped?.status).toBe("skipped");
+  expect(skipped?.message).toBe("another working head owns this origin");
+  expect(getPluginById(low.id)?.version).toBe("1.0.0");
+});
+
+it("marks fetch errors failed and continues the batch", async () => {
+  createUpstream("demo", "demo@mkt", "aaa");
+  const report = await updatePluginOrigins({
+    name: "demo",
+    deps: {
+      refreshMarketplace: async () => ({ ok: false, message: "clone failed" }),
+      refreshGit: async () => ({ ok: true, sha: "x", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("failed");
+  expect(report.results[0]?.message).toBe("clone failed");
+  expect(report.summary.failed).toBe(1);
 });

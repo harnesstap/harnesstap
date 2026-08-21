@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getHarnesstapDir } from "../db/connection.js";
 import {
@@ -16,12 +15,24 @@ import type {
   ResourceType,
 } from "../types.js";
 import { formatCatalogRequestError } from "../utils/fetch-with-timeout.js";
+import type { ApPackageFiles } from "./agent-plugins/files.js";
 import { fetchCatalogPlugin } from "./catalog-client.js";
 import {
   marketplaceCacheDir,
   refreshMarketplaceCatalog,
 } from "./marketplace-catalog.js";
 import { parseDependencyRef } from "./plugin-dependency.js";
+import {
+  applyCheckedPluginOrigin,
+  gitOriginCacheDir,
+  originApplyFailureRow,
+  originFailRow,
+  originSkipRow,
+  resolveMarketplacePluginDirectory,
+  summarizeOriginUpdate,
+  type PluginOriginUpdateReport,
+  type PluginOriginUpdateRow,
+} from "./plugin-origin-apply.js";
 import {
   formatOriginLocator,
   listOriginUpdateCandidates,
@@ -30,6 +41,13 @@ import {
 } from "./plugin-origin-locator.js";
 import { scanPluginSource } from "./plugin-source-import.js";
 import { hashResourceBody } from "./resource-hash.js";
+
+export type {
+  PluginOriginUpdateReport,
+  PluginOriginUpdateRow,
+  PluginOriginUpdateStatus,
+} from "./plugin-origin-apply.js";
+export { resolveMarketplacePluginDirectory };
 
 export type PluginOriginCheckStatus = "current" | "outdated" | "unknown" | "error";
 
@@ -70,38 +88,19 @@ export type PluginOriginUpdateDeps = {
     catalog: string;
     slug: string;
   }) => CatalogLatestResult | Promise<CatalogLatestResult>;
+  downloadCatalogPackage?: (input: {
+    orgSlug: string;
+    catalogSlug?: string;
+    pluginSlug: string;
+    version?: string;
+  }) => Promise<{ version: string; files: ApPackageFiles }>;
 };
 
-const AUTHORED_CHECK_MESSAGE = "authored plugin; there is no upstream to sync from";
-const DUPLICATE_LOCATOR_MESSAGE = "another working head owns this origin";
-
-function isDirectory(path: string): boolean {
-  return existsSync(path) && statSync(path).isDirectory();
-}
-
-function gitOriginCacheDir(harnesstapDir: string, url: string): string {
-  const digest = createHash("sha256").update(url, "utf8").digest("hex");
-  return join(harnesstapDir, "cache", "git-origins", digest);
-}
-
-function findCachedPluginRoot(cacheDir: string, pluginName: string): string | undefined {
-  const underPlugins = join(cacheDir, "plugins", pluginName);
-  if (isDirectory(underPlugins)) return underPlugins;
-
-  const atRoot = join(cacheDir, pluginName);
-  if (isDirectory(atRoot)) return atRoot;
-
-  if (!isDirectory(cacheDir)) return undefined;
-
-  for (const entry of readdirSync(cacheDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === ".git") {
-      continue;
-    }
-    const nested = join(cacheDir, entry.name, pluginName);
-    if (isDirectory(nested)) return nested;
-  }
-  return undefined;
-}
+export const AUTHORED_CHECK_MESSAGE =
+  "authored plugin; there is no upstream to sync from";
+export const DUPLICATE_LOCATOR_MESSAGE = "another working head owns this origin";
+const FROZEN_UPDATE_MESSAGE = "frozen plugin; origin update skips frozen cuts";
+const MISSING_LOCATOR_MESSAGE = "no recoverable origin locator";
 
 function stripVolatileMetadata(metadata: ResourceMetadata): ResourceMetadata {
   const cloned = structuredClone(metadata) as Record<string, unknown>;
@@ -152,7 +151,7 @@ async function scanOriginTree(
     }
   }
 
-  const pluginRoot = findCachedPluginRoot(sourcePath, pluginName) ?? sourcePath;
+  const pluginRoot = resolveMarketplacePluginDirectory(sourcePath, pluginName) ?? sourcePath;
   try {
     const scans = await scanPluginSource(pluginRoot);
     return scans.find((scan) => scan.plugin_name === pluginName) ?? scans[0];
@@ -469,4 +468,92 @@ export async function checkPluginOrigins(opts?: {
   }
 
   return { results };
+}
+
+async function rowForCheck(
+  check: PluginOriginCheckRow,
+  force: boolean,
+  deps?: PluginOriginUpdateDeps,
+): Promise<PluginOriginUpdateRow> {
+  const plugin = getPluginById(check.plugin_id);
+  if (!plugin) {
+    return {
+      plugin_id: check.plugin_id,
+      name: check.name,
+      status: "failed",
+      message: `Plugin not found: ${check.plugin_id}`,
+    };
+  }
+
+  if (plugin.origin === "authored" || check.message === AUTHORED_CHECK_MESSAGE) {
+    return originSkipRow(plugin, AUTHORED_CHECK_MESSAGE);
+  }
+  if (plugin.frozen_at) {
+    return originSkipRow(plugin, FROZEN_UPDATE_MESSAGE);
+  }
+  if (check.message === DUPLICATE_LOCATOR_MESSAGE) {
+    return originSkipRow(plugin, DUPLICATE_LOCATOR_MESSAGE);
+  }
+  if (!recoverOriginLocator(plugin) && !check.origin_locator) {
+    return originSkipRow(plugin, check.message ?? MISSING_LOCATOR_MESSAGE);
+  }
+
+  switch (check.status) {
+    case "current": {
+      if (!force) {
+        return originSkipRow(plugin);
+      }
+      try {
+        return await applyCheckedPluginOrigin(plugin, check, deps);
+      } catch (error) {
+        return originApplyFailureRow(plugin, error);
+      }
+    }
+    case "outdated": {
+      try {
+        return await applyCheckedPluginOrigin(plugin, check, deps);
+      } catch (error) {
+        return originApplyFailureRow(plugin, error);
+      }
+    }
+    case "error":
+      return originFailRow(plugin, check.message);
+    case "unknown":
+      return originSkipRow(plugin, check.message ?? MISSING_LOCATOR_MESSAGE);
+    default: {
+      const _exhaustive: never = check.status;
+      throw new Error(`Unhandled check status: ${_exhaustive}`);
+    }
+  }
+}
+
+export async function updatePluginOrigins(opts: {
+  name?: string;
+  all?: boolean;
+  force?: boolean;
+  deps?: PluginOriginUpdateDeps;
+}): Promise<PluginOriginUpdateReport> {
+  if (!opts.name && !opts.all) {
+    throw new Error("pass a name or --all");
+  }
+
+  const check = await checkPluginOrigins({
+    name: opts.name,
+    refresh: true,
+    deps: opts.deps,
+  });
+
+  if (opts.name && check.results.length === 0) {
+    const named = resolvePluginSelector(opts.name);
+    if (named?.frozen_at) {
+      const skipped = originSkipRow(named, FROZEN_UPDATE_MESSAGE);
+      return { results: [skipped], summary: summarizeOriginUpdate([skipped]) };
+    }
+  }
+
+  const results: PluginOriginUpdateRow[] = [];
+  for (const row of check.results) {
+    results.push(await rowForCheck(row, Boolean(opts.force), opts.deps));
+  }
+  return { results, summary: summarizeOriginUpdate(results) };
 }
