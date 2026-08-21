@@ -38,4 +38,16 @@ describe("plugin origin update chrome", () => {
     expect(panelSource).toContain("Update ${count} plugin");
     expect(panelSource).toContain("from origin?");
   });
+
+  test("ResourcesPanel clears originOutdatedIds when origin check fails", () => {
+    const originCheck = panelSource.slice(
+      panelSource.indexOf("void fetchPluginOriginCheck"),
+    );
+    const catchStart = originCheck.indexOf(".catch(");
+    const catchBody = originCheck.slice(
+      catchStart,
+      originCheck.indexOf("});", catchStart) + 3,
+    );
+    expect(catchBody).toContain("setOriginOutdatedIds(new Set())");
+  });
 });

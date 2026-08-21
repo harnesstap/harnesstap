@@ -478,6 +478,7 @@ export function SourcesWorkspace({
       })
       .catch((checkError: unknown) => {
         if (!cancelled) {
+          setOriginCheckRows([]);
           setActionError(
             errorMessage(checkError, "Could not check plugins against origin"),
           );

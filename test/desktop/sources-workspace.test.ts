@@ -349,4 +349,16 @@ describe("sources origin update badges", () => {
     expect(recordActionsSource).not.toContain("showUpdate");
     expect(recordActionsSource).toContain("Pin to plugin");
   });
+
+  test("clears origin check rows when origin check fails", () => {
+    const originCheck = workspaceSource.slice(
+      workspaceSource.indexOf("void fetchPluginOriginCheck"),
+    );
+    const catchStart = originCheck.indexOf(".catch(");
+    const catchBody = originCheck.slice(
+      catchStart,
+      originCheck.indexOf("});", catchStart) + 3,
+    );
+    expect(catchBody).toContain("setOriginCheckRows([])");
+  });
 });

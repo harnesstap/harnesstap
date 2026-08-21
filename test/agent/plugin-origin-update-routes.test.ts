@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { tryHandle } from "../../src/agent/parity-handlers/plugin-origin-update.ts";
 import { createPlugin } from "../../src/models/plugin-model.ts";
 import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
+import * as originUpdate from "../../src/services/plugin-origin-update.ts";
 import { AUTHORED_CHECK_MESSAGE } from "../../src/services/plugin-origin-update.ts";
 import type { TestContext } from "../helpers/db.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
@@ -83,6 +84,21 @@ describe("GET /v1/plugins/check", () => {
   it("returns null for unrelated paths", async () => {
     const result = await tryHandle(request("GET", "/v1/health"), TOKEN, DEPS);
     expect(result).toBeNull();
+  });
+
+  it("wraps check failures as a structured 500", async () => {
+    const spy = spyOn(originUpdate, "checkPluginOrigins").mockRejectedValue(
+      new Error("origin fetch exploded"),
+    );
+    try {
+      const response = await handle("GET", "/v1/plugins/check");
+      expect(response.status).toBe(500);
+      const body = (await response.json()) as { error: string; message: string };
+      expect(body.error).toBe("check_failed");
+      expect(body.message).toBe("origin fetch exploded");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

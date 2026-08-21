@@ -220,6 +220,7 @@ export function ResourcesPanel({
       })
       .catch((checkError: unknown) => {
         if (!cancelled) {
+          setOriginOutdatedIds(new Set());
           setActionError(
             errorMessage(checkError, "Could not check plugins against origin"),
           );

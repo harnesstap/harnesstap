@@ -374,7 +374,7 @@ export async function checkPluginOrigins(opts?: {
   if (opts?.name) {
     const named = resolveNamedOriginPlugin(opts.name);
     if (!named) {
-      return { results: [] };
+      throw new Error(`Plugin not found: ${opts.name}`);
     }
     const plugin = getPluginById(named.id) ?? named;
     if (!plugin.frozen_at && plugin.origin === "authored") {
@@ -382,9 +382,29 @@ export async function checkPluginOrigins(opts?: {
     }
   }
 
-  let candidates = listOriginUpdateCandidates();
+  const eligible = listOriginUpdateCandidates();
+  const skippedOwnerIds = new Set(
+    selectOriginUpdateTarget(
+      eligible.filter((plugin) => recoverOriginLocator(plugin)),
+    ).flatMap((group) => group.skipped.map((plugin) => plugin.id)),
+  );
+
+  let candidates = eligible;
+  const duplicateSkipRows: PluginOriginCheckRow[] = [];
   if (opts?.name) {
-    candidates = namedOriginCandidates(opts.name);
+    const requested = namedOriginCandidates(opts.name);
+    for (const plugin of requested) {
+      if (!skippedOwnerIds.has(plugin.id)) {
+        continue;
+      }
+      const locator = recoverOriginLocator(plugin);
+      duplicateSkipRows.push(
+        checkRow(plugin, locator ? formatOriginLocator(locator) : "", "current", {
+          message: DUPLICATE_LOCATOR_MESSAGE,
+        }),
+      );
+    }
+    candidates = requested.filter((plugin) => !skippedOwnerIds.has(plugin.id));
   }
 
   const results: PluginOriginCheckRow[] = [];
@@ -494,7 +514,7 @@ export async function checkPluginOrigins(opts?: {
     }
   }
 
-  return { results };
+  return { results: [...duplicateSkipRows, ...results] };
 }
 
 async function rowForCheck(

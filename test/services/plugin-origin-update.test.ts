@@ -14,6 +14,7 @@ import { createResource } from "../../src/models/resource.ts";
 import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
 import {
   checkPluginOrigins,
+  DUPLICATE_LOCATOR_MESSAGE,
   updatePluginOrigins,
 } from "../../src/services/plugin-origin-update.ts";
 import { scanPluginSource } from "../../src/services/plugin-source-import.ts";
@@ -398,6 +399,65 @@ it("skips authored plugins with the provenance message", async () => {
   expect(report.results[0]?.status).toBe("skipped");
   expect(report.results[0]?.message).toBe(
     "authored plugin; there is no upstream to sync from",
+  );
+});
+
+it("named check and update of a lower-semver head skip when another working head owns the locator", async () => {
+  const low = createPlugin({ name: "demo", version: "1.0.0", origin: "upstream" });
+  const high = createPlugin({ name: "demo", version: "1.2.0", origin: "upstream" });
+  setPluginOrigin(low.id, "upstream");
+  setPluginOrigin(high.id, "upstream");
+  stampPluginOrigin(low.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  stampPluginOrigin(high.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  const checkDeps = {
+    refreshMarketplace: async () => ({ ok: true, sha: "new", message: "ok" }),
+    refreshGit: async () => ({ ok: true, sha: "new", message: "ok" }),
+    listCatalogLatest: async () => ({ version: "1.0.0" }),
+  };
+
+  const byVersion = await checkPluginOrigins({
+    name: "demo@1.0.0",
+    deps: checkDeps,
+  });
+  expect(byVersion.results).toHaveLength(1);
+  expect(byVersion.results[0]?.plugin_id).toBe(low.id);
+  expect(byVersion.results[0]?.status).toBe("current");
+  expect(byVersion.results[0]?.message).toBe(DUPLICATE_LOCATOR_MESSAGE);
+
+  const byId = await checkPluginOrigins({ name: low.id, deps: checkDeps });
+  expect(byId.results[0]?.plugin_id).toBe(low.id);
+  expect(byId.results[0]?.status).toBe("current");
+  expect(byId.results[0]?.message).toBe(DUPLICATE_LOCATOR_MESSAGE);
+
+  writeMarketplacePlugin("demo", "1.3.0", "hello");
+  const updated = await updatePluginOrigins({
+    name: "demo@1.0.0",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(updated.results[0]?.status).toBe("skipped");
+  expect(updated.results[0]?.message).toBe(DUPLICATE_LOCATOR_MESSAGE);
+  expect(getPluginById(low.id)?.version).toBe("1.0.0");
+  expect(getPluginById(high.id)?.version).toBe("1.2.0");
+});
+
+it("throws when a named origin selector does not match any plugin", async () => {
+  await expect(checkPluginOrigins({ name: "missing-name", deps: stubDeps })).rejects.toThrow(
+    "Plugin not found: missing-name",
+  );
+  await expect(updatePluginOrigins({ name: "missing-name", deps: stubDeps })).rejects.toThrow(
+    "Plugin not found: missing-name",
   );
 });
 

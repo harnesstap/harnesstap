@@ -90,6 +90,14 @@ describe("plugin check and update CLI", () => {
     }
   });
 
+  it("exits 1 for plugin check missing-name", async () => {
+    const result = await runCli(["plugin", "check", "missing-name"]);
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}\n${result.stderr}`).toMatch(
+      /plugin not found: missing-name/i,
+    );
+  });
+
   it("exits 1 when any check row is error", async () => {
     seedUpstream();
     const spy = spyOn(originUpdate, "checkPluginOrigins").mockResolvedValue({

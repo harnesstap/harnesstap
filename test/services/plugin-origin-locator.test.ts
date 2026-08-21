@@ -126,6 +126,12 @@ it("valid semver ranks above a malformed version for the same locator", () => {
   expect(group?.skipped.map((p) => p.version)).toContain("not-a-version");
 });
 
+it("throws when stampPluginOrigin targets an unknown plugin id", () => {
+  expect(() =>
+    stampPluginOrigin("01ARZ3NDEKTSV4RRFFQ69G5FAV", { locator: "demo@mkt" }),
+  ).toThrow("Plugin not found: 01ARZ3NDEKTSV4RRFFQ69G5FAV");
+});
+
 it("locator-only stampPluginOrigin leaves an existing fingerprint unchanged", () => {
   const plugin = createPlugin({ name: "web-search", version: "1.0.0", origin: "upstream" });
   stampPluginOrigin(plugin.id, {

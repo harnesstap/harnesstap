@@ -32,7 +32,12 @@ export async function tryHandle(
     if (authError) return authError;
     const name = readOptionalName(url.searchParams.get("name"));
     const refresh = url.searchParams.get("refresh") === "1";
-    return jsonResponse(await checkPluginOrigins({ name, refresh }));
+    try {
+      return jsonResponse(await checkPluginOrigins({ name, refresh }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return jsonResponse({ error: "check_failed", message }, { status: 500 });
+    }
   }
 
   if (url.pathname === UPDATE_PATH && request.method === "POST") {

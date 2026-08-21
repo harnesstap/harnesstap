@@ -361,20 +361,25 @@ export function stampPluginOrigin(
   },
 ): void {
   const db = getDb();
-  db.prepare(
-    `UPDATE plugins
-     SET origin_locator = ?,
-         origin_fingerprint = COALESCE(?, origin_fingerprint),
-         origin_fingerprint_kind = COALESCE(?, origin_fingerprint_kind),
-         updated_at = ?
-     WHERE id = ?`,
-  ).run(
-    input.locator,
-    input.fingerprint === undefined ? null : input.fingerprint,
-    input.fingerprintKind === undefined ? null : input.fingerprintKind,
-    new Date().toISOString(),
-    pluginId,
-  );
+  const result = db
+    .prepare(
+      `UPDATE plugins
+       SET origin_locator = ?,
+           origin_fingerprint = COALESCE(?, origin_fingerprint),
+           origin_fingerprint_kind = COALESCE(?, origin_fingerprint_kind),
+           updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(
+      input.locator,
+      input.fingerprint === undefined ? null : input.fingerprint,
+      input.fingerprintKind === undefined ? null : input.fingerprintKind,
+      new Date().toISOString(),
+      pluginId,
+    );
+  if (result.changes === 0) {
+    throw new Error(`Plugin not found: ${pluginId}`);
+  }
 }
 
 export function assertNoFrozenWorkingVersion(plugin: Plugin, version: string): void {
