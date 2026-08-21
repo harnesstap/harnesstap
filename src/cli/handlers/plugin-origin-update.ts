@@ -24,13 +24,6 @@ function originUpdateConfirmMode(yes?: boolean): "skip" | "prompt" | "require-ye
   ) {
     return "require-yes";
   }
-  const ciValue = process.env.CI?.trim().toLowerCase();
-  const ciEnabled = Boolean(
-    ciValue && ciValue !== "0" && ciValue !== "false" && ciValue !== "no",
-  );
-  if (ciEnabled) {
-    return "require-yes";
-  }
   if (process.stdin.isTTY && process.stdout.isTTY) {
     return "prompt";
   }
@@ -97,6 +90,11 @@ export async function handlePluginUpdateCommand(
   if (!name && !opts.all) {
     process.exitCode = 1;
     ui.danger("pass a name or --all");
+    return;
+  }
+  if (name && opts.all) {
+    process.exitCode = 1;
+    ui.danger("pass a name or --all, not both");
     return;
   }
 

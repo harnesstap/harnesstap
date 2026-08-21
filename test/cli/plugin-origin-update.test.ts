@@ -129,6 +129,40 @@ describe("plugin check and update CLI", () => {
     expect(getPluginById(plugin.id)?.origin_fingerprint).toBe("old");
   });
 
+  it("prompts on TTY --all even when CI is set", async () => {
+    const plugin = seedUpstream();
+    const updateSpy = spyOn(originUpdate, "updatePluginOrigins");
+    try {
+      const result = await runCli(["plugin", "update", "--all"], {
+        isTTY: true,
+        env: { CI: "true" },
+        promptResponses: [{ value: false }],
+      });
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(`${result.stdout}\n${result.stderr}`).toContain("Operation cancelled.");
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(getPluginById(plugin.id)?.version).toBe("1.0.0");
+    } finally {
+      updateSpy.mockRestore();
+    }
+  });
+
+  it("rejects a name together with --all before confirmation or mutation", async () => {
+    const plugin = seedUpstream();
+    const updateSpy = spyOn(originUpdate, "updatePluginOrigins");
+    try {
+      const result = await runCli(["plugin", "update", "demo", "--all", "--yes"], {
+        isTTY: false,
+      });
+      expect(result.exitCode).toBe(1);
+      expect(`${result.stdout}\n${result.stderr}`).toMatch(/pass a name or --all, not both/i);
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(getPluginById(plugin.id)?.version).toBe("1.0.0");
+    } finally {
+      updateSpy.mockRestore();
+    }
+  });
+
   it("exits 1 when any update row is failed", async () => {
     seedUpstream();
     const spy = spyOn(originUpdate, "updatePluginOrigins").mockResolvedValue({
