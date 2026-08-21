@@ -99,7 +99,8 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Source sidebar + one main pane (list XOR plugin-tree XOR preview). No profile rail. Marketplaces and catalogs are managed in Sources, not Settings.
 - Sources re-click clears the search query, checks all sources, and returns to the list. Back/Esc: preview → plugin-tree → list (standalone preview skips the tree). Esc while a confirm is open dismisses the confirm only.
 - Header cluster (right of the Sources title): **Add marketplace** (accent), **Connect catalog**. Labeled, compact, not icon-only. Add marketplace is the only accent control in this cluster.
-- Record actions on the plugin tree (preview inherits parent plugin actions) are labeled: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Not icon-only.
+- Record actions on the plugin tree (preview inherits parent plugin actions) are labeled: **Pull**, **Pin to plugin**, **Attach to plugin**, **Open in Library**. Not icon-only. No Update button on Sources.
+- In-library marketplace and catalog hits show a yellow **Update available** badge (color + text) next to In library when origin check is outdated. Open in Library is the apply path. Pin stays.
 - Cloud catalog discovery lives in Sources. The Cloud browse overlay is gone; the Cloud header control is account-only.
 
 **Environments**

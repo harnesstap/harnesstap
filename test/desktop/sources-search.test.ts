@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  applyOriginOutdated,
   cloudHitIsInLibrary,
   isStandaloneResourceType,
   matchQuery,
@@ -7,7 +8,9 @@ import {
   presenceForCloud,
   presenceForMarketplace,
   sourcesHitFetchKey,
+  sourcesHitUpdateBadge,
 } from "../../apps/desktop/src/lib/sources-search.ts";
+import type { PluginOriginCheckRow } from "../../apps/desktop/src/lib/api/plugin-origin-update.ts";
 
 describe("isStandaloneResourceType", () => {
   test("excludes plugin refs and plugin_pins from standalone", () => {
@@ -593,5 +596,91 @@ describe("sourcesHitFetchKey", () => {
     expect(first === second).toBe(false);
     expect(sourcesHitFetchKey(first!)).toBe(sourcesHitFetchKey(second!));
     expect(sourcesHitFetchKey(first!)).toBe("cloud:acme/default/focus");
+  });
+});
+
+function checkRow(
+  origin_locator: string,
+  status: PluginOriginCheckRow["status"],
+): PluginOriginCheckRow {
+  return {
+    plugin_id: `id:${origin_locator}`,
+    name: origin_locator,
+    origin_locator,
+    status,
+    local_version: "1.0.0",
+  };
+}
+
+describe("applyOriginOutdated", () => {
+  test("marks in-library marketplace and catalog hits whose locator is outdated", () => {
+    const groups = mergeSourcesHits({
+      sourceOrder: ["mkt:official", "org:acme"],
+      marketplaces: [
+        {
+          sourceId: "mkt:official",
+          sourceLabel: "official",
+          marketplaceName: "official",
+          plugins: [{ name: "demo" }, { name: "other" }],
+        },
+      ],
+      cloud: [
+        {
+          sourceId: "org:acme",
+          sourceLabel: "acme",
+          plugins: [
+            {
+              selector: "acme/default/focus",
+              name: "Focus",
+              orgSlug: "acme",
+              catalogSlug: "default",
+            },
+          ],
+        },
+      ],
+      libraryHeads: [{ name: "focus", origin: "catalog" }],
+      libraryResources: [
+        { name: "demo", type: "plugin", origin_kind: "marketplace_link" },
+      ],
+    });
+    const hits = applyOriginOutdated(
+      groups.flatMap((group) => group.hits),
+      [
+        checkRow("demo@official", "outdated"),
+        checkRow("other@official", "current"),
+        checkRow("acme/default/focus", "outdated"),
+      ],
+    );
+
+    expect(hits.find((hit) => hit.name === "demo")?.originOutdated).toBe(true);
+    expect(hits.find((hit) => hit.name === "other")?.originOutdated).toBeUndefined();
+    expect(
+      hits.find((hit) => hit.identity.cloud?.name === "focus")?.originOutdated,
+    ).toBe(true);
+    expect(sourcesHitUpdateBadge(hits.find((hit) => hit.name === "demo")!)).toBe(
+      "Update available",
+    );
+    expect(sourcesHitUpdateBadge(hits.find((hit) => hit.name === "other")!)).toBe(
+      null,
+    );
+  });
+
+  test("does not mark remote-only hits even when the locator is outdated", () => {
+    const groups = mergeSourcesHits({
+      sourceOrder: ["mkt:official"],
+      marketplaces: [
+        {
+          sourceId: "mkt:official",
+          sourceLabel: "official",
+          marketplaceName: "official",
+          plugins: [{ name: "demo" }],
+        },
+      ],
+    });
+    const hits = applyOriginOutdated(groups.flatMap((group) => group.hits), [
+      checkRow("demo@official", "outdated"),
+    ]);
+    expect(hits[0]?.presence).toBe("remote_only");
+    expect(hits[0]?.originOutdated).toBeUndefined();
   });
 });

@@ -27,6 +27,7 @@ import {
   type CatalogScope,
   type SourcePreviewResult,
 } from "../lib/api/sources";
+import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/plugin-origin-update";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -35,6 +36,7 @@ import {
   type SourcesPane,
 } from "../lib/sources-pane";
 import {
+  applyOriginOutdated,
   cloudHitIsInLibrary,
   cloudSelectorKey,
   mergeSourcesHits,
@@ -205,6 +207,9 @@ export function SourcesWorkspace({
   const [pulledCloudKeys, setPulledCloudKeys] = useState<Set<string>>(
     () => new Set(),
   );
+  const [originCheckRows, setOriginCheckRows] = useState<
+    PluginOriginCheckRow[]
+  >([]);
   const [librarySearching, setLibrarySearching] = useState(false);
   const [cloudSearching, setCloudSearching] = useState(false);
   const [activeHit, setActiveHit] = useState<SourcesHit | null>(null);
@@ -459,6 +464,30 @@ export function SourcesWorkspace({
     };
   }, [baseUrl, token, query, checkedRows, cloudAuthenticated]);
 
+  useEffect(() => {
+    if (!baseUrl) {
+      setOriginCheckRows([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchPluginOriginCheck(baseUrl, token, { refresh: true })
+      .then((report) => {
+        if (!cancelled) {
+          setOriginCheckRows(report.results);
+        }
+      })
+      .catch((checkError: unknown) => {
+        if (!cancelled) {
+          setActionError(
+            errorMessage(checkError, "Could not check plugins against origin"),
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, reloadKey]);
+
   const sourceOrder = useMemo(
     () => checkedRows.map((row) => row.id),
     [checkedRows],
@@ -501,18 +530,21 @@ export function SourcesWorkspace({
       libraryResources: localResources,
     }).map((group) => ({
       ...group,
-      hits: group.hits.map((hit) => {
-        const identity = hit.identity.cloud;
-        if (!identity) {
-          return hit;
-        }
-        return {
-          ...hit,
-          presence: cloudHitIsInLibrary(identity, localHeads, [
-            ...pulledCloudKeys,
-          ]),
-        };
-      }),
+      hits: applyOriginOutdated(
+        group.hits.map((hit) => {
+          const identity = hit.identity.cloud;
+          if (!identity) {
+            return hit;
+          }
+          return {
+            ...hit,
+            presence: cloudHitIsInLibrary(identity, localHeads, [
+              ...pulledCloudKeys,
+            ]),
+          };
+        }),
+        originCheckRows,
+      ),
     }));
   }, [
     checkedRows,
@@ -520,6 +552,7 @@ export function SourcesWorkspace({
     localHeads,
     localResources,
     marketplaceHits,
+    originCheckRows,
     pulledCloudKeys,
     query,
     sourceOrder,
@@ -588,12 +621,21 @@ export function SourcesWorkspace({
 
   const paneHitId = pane.mode === "list" ? null : pane.hitId;
   const paneFilePath = pane.mode === "preview" ? pane.filePath : undefined;
+  const listedHit = paneHitId ? hitById.get(paneHitId) : undefined;
   const resolvedHit =
     pane.mode === "list"
       ? null
       : activeHit?.id === pane.hitId
-        ? activeHit
-        : (hitById.get(pane.hitId) ?? null);
+        ? {
+            ...activeHit,
+            ...(listedHit
+              ? {
+                  presence: listedHit.presence,
+                  originOutdated: listedHit.originOutdated,
+                }
+              : {}),
+          }
+        : (listedHit ?? null);
   const openFetchKey = resolvedHit ? sourcesHitFetchKey(resolvedHit) : "";
   const resolvedHitRef = useRef(resolvedHit);
   resolvedHitRef.current = resolvedHit;
@@ -1048,6 +1090,7 @@ export function SourcesWorkspace({
       aria-label="Sources"
       data-testid="sources-workspace"
       data-sources-pane={pane.mode}
+      data-origin-update-label="Update available"
     >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">

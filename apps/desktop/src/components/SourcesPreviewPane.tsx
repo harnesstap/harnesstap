@@ -3,7 +3,10 @@ import type { SourcesHit } from "../lib/sources-search";
 import { presenceLabel } from "../lib/sources-search";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryFieldRow } from "./LibraryFieldRow";
-import { SourcesSignInPrompt } from "./SourcesListPane";
+import {
+  SourcesOriginUpdateBadge,
+  SourcesSignInPrompt,
+} from "./SourcesListPane";
 import {
   SourcesRecordActions,
   type SourcesRecordActionsProps,
@@ -65,9 +68,12 @@ export function SourcesPreviewPane({
           fieldName="Presence"
           readOnly
           display={
-            <span className="badge" data-testid="sources-presence">
-              {presenceLabel(hit.presence)}
-            </span>
+            <>
+              <span className="badge" data-testid="sources-presence">
+                {presenceLabel(hit.presence)}
+              </span>
+              <SourcesOriginUpdateBadge hit={hit} />
+            </>
           }
           editing={false}
           onStartEdit={() => undefined}

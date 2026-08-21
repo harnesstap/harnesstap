@@ -1,3 +1,5 @@
+import type { PluginOriginCheckRow } from "./api/plugin-origin-update";
+
 export type SourceKind = "local" | "marketplace" | "cloud-org" | "cloud-catalog";
 export type Presence = "in_library" | "remote_only";
 export type SourcesHitKind = "plugin" | "standalone";
@@ -21,6 +23,7 @@ export interface SourcesHit {
   sourceLabel: string;
   presence: Presence;
   identity: SourcesHitIdentity;
+  originOutdated?: boolean;
 }
 
 export interface CloudIdentity {
@@ -127,6 +130,42 @@ export function sourcesHitFetchKey(hit: SourcesHit): string {
     return `local:${identity.localSelector}`;
   }
   return hit.id;
+}
+
+export function sourcesHitOriginLocator(hit: SourcesHit): string | null {
+  if (hit.identity.marketplace) {
+    return `${hit.identity.marketplace.plugin}@${hit.identity.marketplace.marketplace}`;
+  }
+  if (hit.identity.cloud) {
+    const { org, catalog, name } = hit.identity.cloud;
+    return `${org}/${catalog}/${name}`;
+  }
+  return null;
+}
+
+export function applyOriginOutdated(
+  hits: SourcesHit[],
+  checkRows: readonly Pick<PluginOriginCheckRow, "origin_locator" | "status">[],
+): SourcesHit[] {
+  const outdatedLocators = new Set(
+    checkRows
+      .filter((row) => row.status === "outdated")
+      .map((row) => row.origin_locator),
+  );
+  return hits.map((hit) => {
+    if (hit.presence !== "in_library") {
+      return hit;
+    }
+    const locator = sourcesHitOriginLocator(hit);
+    if (!locator || !outdatedLocators.has(locator)) {
+      return hit;
+    }
+    return { ...hit, originOutdated: true };
+  });
+}
+
+export function sourcesHitUpdateBadge(hit: SourcesHit): string | null {
+  return hit.originOutdated ? "Update available" : null;
 }
 
 export function presenceLabel(presence: Presence): string {

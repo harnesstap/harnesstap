@@ -1,5 +1,5 @@
 import type { SourcesHit, SourcesHitGroup } from "../lib/sources-search";
-import { presenceLabel } from "../lib/sources-search";
+import { presenceLabel, sourcesHitUpdateBadge } from "../lib/sources-search";
 import { TypeIcon } from "./TypeIcon";
 
 export const CLOUD_SIGN_IN_HINT = "Sign in from the Cloud account control";
@@ -17,6 +17,18 @@ export interface SourcesListPaneProps {
   disabled?: boolean;
   onOpenHit: (hit: SourcesHit) => void;
   onSignIn?: () => void;
+}
+
+export function SourcesOriginUpdateBadge({ hit }: { hit: SourcesHit }) {
+  const label = sourcesHitUpdateBadge(hit);
+  if (!label) {
+    return null;
+  }
+  return (
+    <span className="pill warn" data-testid="sources-origin-update">
+      Update available
+    </span>
+  );
 }
 
 export function SourcesSignInPrompt({
@@ -120,6 +132,7 @@ export function SourcesListPane({
                         <span className="badge" data-testid="sources-presence">
                           {presenceLabel(hit.presence)}
                         </span>
+                        <SourcesOriginUpdateBadge hit={hit} />
                         {hit.version || hit.typeLabel
                           ? ` · ${hit.version ?? hit.typeLabel}`
                           : null}

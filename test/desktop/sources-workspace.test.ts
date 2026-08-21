@@ -330,5 +330,23 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Open in Library");
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Cloud browse overlay");
+    expect(designSource).toContain("Update available");
+    expect(designSource).toContain("No Update button on Sources");
+  });
+});
+
+describe("sources origin update badges", () => {
+  test("checks origin on mount and badges outdated in-library hits without an Update handler", () => {
+    expect(workspaceSource).toContain("fetchPluginOriginCheck");
+    expect(workspaceSource).toContain("applyOriginOutdated");
+    expect(workspaceSource).toContain("Update available");
+    expect(workspaceSource).not.toContain("postPluginOriginUpdate");
+    expect(listPaneSource).toContain("Update available");
+    expect(listPaneSource).toContain("pill warn");
+    expect(pluginTreeSource).toContain("SourcesOriginUpdateBadge");
+    expect(previewPaneSource).toContain("SourcesOriginUpdateBadge");
+    expect(listPaneSource).toContain("pill warn");
+    expect(recordActionsSource).not.toContain("showUpdate");
+    expect(recordActionsSource).toContain("Pin to plugin");
   });
 });
