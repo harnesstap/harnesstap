@@ -184,6 +184,10 @@ function catalogErrorMessage(result: { error: string; authRequired?: boolean }):
   return `${result.error}; sign in required to check this catalog plugin`;
 }
 
+function thrownErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function defaultListCatalogLatest(locator: {
   org: string;
   catalog: string;
@@ -373,9 +377,12 @@ export async function checkPluginOrigins(opts?: {
   const fetchMarketplace = (name: string) => {
     const existing = marketplaceFetches.get(name);
     if (existing) return existing;
-    const pending = Promise.resolve(
-      refreshMarketplace(harnesstapDir, { name, force }),
-    );
+    const pending = Promise.resolve()
+      .then(() => refreshMarketplace(harnesstapDir, { name, force }))
+      .catch((error: unknown) => ({
+        ok: false as const,
+        message: thrownErrorMessage(error),
+      }));
     marketplaceFetches.set(name, pending);
     return pending;
   };
@@ -384,7 +391,12 @@ export async function checkPluginOrigins(opts?: {
     const existing = gitFetches.get(url);
     if (existing) return existing;
     const targetDir = gitOriginCacheDir(harnesstapDir, url);
-    const pending = Promise.resolve(refreshGit({ url, targetDir }));
+    const pending = Promise.resolve()
+      .then(() => refreshGit({ url, targetDir }))
+      .catch((error: unknown) => ({
+        ok: false as const,
+        message: thrownErrorMessage(error),
+      }));
     gitFetches.set(url, pending);
     return pending;
   };
@@ -417,13 +429,18 @@ export async function checkPluginOrigins(opts?: {
         break;
       }
       case "catalog": {
-        const latest = await Promise.resolve(
-          listCatalogLatest({
-            org: locator.org,
-            catalog: locator.catalog,
-            slug: locator.slug,
-          }),
-        );
+        let latest: CatalogLatestResult;
+        try {
+          latest = await Promise.resolve(
+            listCatalogLatest({
+              org: locator.org,
+              catalog: locator.catalog,
+              slug: locator.slug,
+            }),
+          );
+        } catch (error) {
+          latest = { error: thrownErrorMessage(error) };
+        }
         targetRow = await compareCatalog(target, locatorStr, latest);
         break;
       }
@@ -435,6 +452,14 @@ export async function checkPluginOrigins(opts?: {
 
     results.push(targetRow);
     for (const duplicate of skipped) {
+      if (targetRow.status === "error") {
+        results.push(
+          checkRow(duplicate, locatorStr, "error", {
+            message: targetRow.message,
+          }),
+        );
+        continue;
+      }
       results.push(
         checkRow(duplicate, locatorStr, "current", {
           message: DUPLICATE_LOCATOR_MESSAGE,

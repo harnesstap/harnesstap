@@ -193,3 +193,46 @@ it("duplicate locator non-targets are current because another working head owns 
   expect(skipped?.status).toBe("current");
   expect(skipped?.message).toBe("another working head owns this origin");
 });
+
+it("marks skipped duplicates error with the same fetch message when the origin fetch fails", async () => {
+  const low = createPlugin({ name: "demo", version: "1.0.0", origin: "upstream" });
+  const high = createPlugin({ name: "demo", version: "1.2.0", origin: "upstream" });
+  setPluginOrigin(low.id, "upstream");
+  setPluginOrigin(high.id, "upstream");
+  stampPluginOrigin(low.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  stampPluginOrigin(high.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  const report = await checkPluginOrigins({
+    deps: {
+      refreshMarketplace: async () => ({ ok: false, message: "clone failed" }),
+      refreshGit: async () => ({ ok: true, sha: "x", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results).toHaveLength(2);
+  expect(report.results.every((r) => r.status === "error")).toBe(true);
+  expect(report.results.every((r) => r.message === "clone failed")).toBe(true);
+});
+
+it("turns a rejected marketplace refresh into error rows instead of throwing", async () => {
+  createUpstream("demo", "demo@mkt", "aaa");
+  const report = await checkPluginOrigins({
+    deps: {
+      refreshMarketplace: async () => {
+        throw new Error("network down");
+      },
+      refreshGit: async () => ({ ok: true, sha: "x", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results.length).toBeGreaterThan(0);
+  expect(report.results.every((r) => r.status === "error")).toBe(true);
+  expect(report.results[0]?.message).toBe("network down");
+});
