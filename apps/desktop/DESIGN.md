@@ -77,6 +77,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 
 - Rail Apply = profile switch / re-apply.
 - Library plugin Apply = `ht apply` (plugin graph). Does not use profile switch. Global apply of a profile-tagged package still records the active profile (`ht apply --global`).
+- Library **Update** = origin fetch (`plugin update` / `ht plugin update`). Replaces a syncable working head from marketplace, git, or catalog. Never labeled Sync.
 - Library Sync = `resource sync` (refresh the library copy from its install source). Never means Apply.
 - Sync on a library row is `resource sync`.
 
@@ -88,7 +89,9 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 - Restore copies a frozen snapshot onto the working head and marks it dirty. It does not Apply.
 - Filters: type as badges; updated as a segment; namespace as a searchable select; origin as a radio list. Origin groups `manual` and `local_snapshot` as **Local**; `marketplace_link` as **Marketplace**. Same labels on hover and detail. Storage `origin_kind` is unchanged.
 - Detail: title is the name (double-click to rename). Other fields are icon + value; icon tooltip names the field. Double-click to edit. Default environment is only the field-row combobox. Updated is locale absolute date with relative time in parentheses. Plugin-type rows (`resources.type = plugin`) omit Description, Namespace, and Content; Origin is Local / Marketplace only (no `origin_ref`); Marketplace URL shows for Marketplace origin when the registry has a URL; Path is the install directory. Contained files are grouped relative paths with an icon-only open-in-editor control (the only Library icon-only record action).
-- Header cluster (right of the Library title): **Create plugin** (accent), **Import**, **Tracked directories**. Labeled, compact, not icon-only. Create plugin (accent primary).
+- Header cluster (right of the Library title): **Create plugin** (accent), **Import**, **Tracked directories**, **Update all**. Labeled, compact, not icon-only. Create plugin (accent primary). **Update all** is secondary (`btn`, not accent); disabled when origin check found no outdated plugin-package heads or an update is in flight. Confirm: “Update N plugins from origin?”
+- Plugin-package list rows show a yellow **Update available** badge (color + text, never color alone) when origin check is outdated. Not on authored, frozen, or resource rows.
+- Plugin detail actions for upstream/catalog working heads: Apply, labeled **Update**, Fork, Doctor, Delete. Update has no extra confirm; busy disables the cluster.
 - Delete confirm: list profiles and plugins that still attach this selector. Offer **Remove from active profile** as a tertiary action when it is enabled there. Primary action is **Delete from library + disk**; secondary is **Delete from library**. Load a delete plan before opening the dialog; group locations by global / project / source; show **Protected** blockers and disable only the disk-inclusive action when blockers exist.
 
 **Sources**

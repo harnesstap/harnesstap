@@ -98,6 +98,17 @@ describe("library items header actions", () => {
     expect(headerRow).not.toContain("resources-panel-tracked-dirs-btn");
   });
 
+  test("renders Update all as a labeled secondary action after Tracked directories", () => {
+    expect(headerRow).toContain("Update all");
+    const trackedIdx = headerRow.indexOf("Tracked directories");
+    const updateAllIdx = headerRow.indexOf("Update all");
+    expect(trackedIdx).toBeGreaterThan(-1);
+    expect(updateAllIdx).toBeGreaterThan(trackedIdx);
+    expect(headerRow).toMatch(
+      /className="btn"\s*\n\s*aria-label="Update all"/,
+    );
+  });
+
   test("keeps the empty-state Import into library CTA", () => {
     expect(panelSource).toMatch(
       /empty-state[\s\S]*className="btn"[\s\S]*Import into library/,

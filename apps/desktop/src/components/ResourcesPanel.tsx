@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { FolderDown, FolderInput, Plus } from "lucide-react";
+import { FolderDown, FolderInput, Plus, RefreshCw } from "lucide-react";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -23,11 +23,16 @@ import {
   fetchLibraryPluginHeads,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
+import {
+  fetchPluginOriginCheck,
+  postPluginOriginUpdate,
+} from "../lib/api/plugin-origin-update";
 import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import {
   groupLibraryListByFilterType,
   libraryFilterType,
   libraryRowBadge,
+  libraryRowUpdateBadge,
   mergeLibraryList,
   type LibraryListEntry,
 } from "../lib/library-list";
@@ -114,6 +119,12 @@ export function ResourcesPanel({
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [originOutdatedIds, setOriginOutdatedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [originUpdateBusy, setOriginUpdateBusy] = useState(false);
+  const [originUpdateConfirmOpen, setOriginUpdateConfirmOpen] = useState(false);
   const [filterState, setFilterState] = useState<ResourceFilterState>(
     defaultResourceFilterState,
   );
@@ -190,6 +201,36 @@ export function ResourcesPanel({
   }, [baseUrl, token, resourcesReloadKey, reloadKey]);
 
   useEffect(() => {
+    if (!baseUrl) {
+      setOriginOutdatedIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    void fetchPluginOriginCheck(baseUrl, token, { refresh: true })
+      .then((report) => {
+        if (cancelled) {
+          return;
+        }
+        const ids = new Set(
+          report.results
+            .filter((row) => row.status === "outdated")
+            .map((row) => row.plugin_id),
+        );
+        setOriginOutdatedIds(ids);
+      })
+      .catch((checkError: unknown) => {
+        if (!cancelled) {
+          setActionError(
+            errorMessage(checkError, "Could not check plugins against origin"),
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, resourcesReloadKey, reloadKey]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => filterRef.current?.focus(), 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -223,8 +264,12 @@ export function ResourcesPanel({
   }, [focusResourceSelector, onFocusResourceConsumed]);
 
   const entries = useMemo(
-    () => mergeLibraryList(resources, plugins),
-    [resources, plugins],
+    () => mergeLibraryList(resources, plugins, originOutdatedIds),
+    [resources, plugins, originOutdatedIds],
+  );
+  const outdatedCount = useMemo(
+    () => entries.filter((entry) => entry.originOutdated).length,
+    [entries],
   );
 
   const filteredEntries = useMemo(
@@ -238,7 +283,8 @@ export function ResourcesPanel({
   );
 
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
-  const paneConfirmOpen = confirmOpen || draftDiscardOpen;
+  const paneConfirmOpen =
+    confirmOpen || draftDiscardOpen || originUpdateConfirmOpen;
   const emptyDraft = { mode: "create-draft" as const, name: "", description: "" };
 
   function beginDraftLeave(): void {
@@ -653,6 +699,38 @@ export function ResourcesPanel({
     setResourcesReloadKey((value) => value + 1);
   }
 
+  async function runOriginUpdateAll(): Promise<void> {
+    if (!baseUrl || originUpdateBusy) {
+      return;
+    }
+    setOriginUpdateBusy(true);
+    setActionError(null);
+    try {
+      const report = await postPluginOriginUpdate(baseUrl, token, { all: true });
+      const failed = report.results.find((row) => row.status === "failed");
+      if (failed) {
+        setActionError(
+          failed.message ?? "Could not update plugins from origin",
+        );
+      } else if (report.summary.updated > 0) {
+        onSuccess?.(
+          `Updated ${report.summary.updated} plugin${
+            report.summary.updated === 1 ? "" : "s"
+          } from origin`,
+        );
+      }
+      setOriginUpdateConfirmOpen(false);
+    } catch (updateError: unknown) {
+      setActionError(
+        errorMessage(updateError, "Could not update plugins from origin"),
+      );
+      setOriginUpdateConfirmOpen(false);
+    } finally {
+      setOriginUpdateBusy(false);
+      reloadLibrary();
+    }
+  }
+
   function renderDetail(): ReactNode {
     if (pane.mode !== "detail") {
       return null;
@@ -813,6 +891,7 @@ export function ResourcesPanel({
           {group.resources.map((entry) => {
             const label = resourceDisplayName(entry);
             const badge = libraryRowBadge(entry);
+            const updateBadge = libraryRowUpdateBadge(entry);
             const filterType = libraryFilterType(entry);
             return (
               <li className="resources-list-item" key={entry.id}>
@@ -826,6 +905,9 @@ export function ResourcesPanel({
                     label={label}
                     onOpen={() => openLibraryRow(entry)}
                   >
+                    {updateBadge ? (
+                      <span className="pill warn">{updateBadge}</span>
+                    ) : null}
                     {badge || entry.description ? (
                       <ResourceRowDescription>
                         {badge}
@@ -871,6 +953,7 @@ export function ResourcesPanel({
       hasWorkspacePrevious: canWorkspaceBack,
     })
     || (hasLocalPrevious && (detailBusy || confirmOpen || draftDiscardOpen));
+  const count = outdatedCount;
 
   return (
     <main
@@ -963,6 +1046,25 @@ export function ResourcesPanel({
               <FolderInput size={16} aria-hidden />
               Tracked directories
             </button>
+            <button
+              type="button"
+              className="btn"
+              aria-label="Update all"
+              title="Update all outdated plugins from origin"
+              disabled={
+                disabled
+                || !baseUrl
+                || originUpdateBusy
+                || detailBusy
+                || outdatedCount === 0
+              }
+              onPointerDown={onHeaderDraftLeavePointerDown}
+              onMouseDown={onHeaderDraftLeaveMouseDown}
+              onClick={() => setOriginUpdateConfirmOpen(true)}
+            >
+              <RefreshCw size={16} aria-hidden />
+              Update all
+            </button>
           </div>
         </div>
       </div>
@@ -985,9 +1087,30 @@ export function ResourcesPanel({
           />
         </div>
         <div className="resources-panel-body">
+          {actionError ? (
+            <div className="banner error" role="alert">
+              {actionError}
+            </div>
+          ) : null}
           {renderMainPane()}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={originUpdateConfirmOpen}
+        title="Update from origin"
+        description={`Update ${count} plugin${count === 1 ? "" : "s"} from origin?`}
+        confirmLabel="Update"
+        confirmBusy={originUpdateBusy}
+        onConfirm={() => {
+          void runOriginUpdateAll();
+        }}
+        onCancel={() => {
+          if (!originUpdateBusy) {
+            setOriginUpdateConfirmOpen(false);
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={draftDiscardOpen}
