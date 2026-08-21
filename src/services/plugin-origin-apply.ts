@@ -30,7 +30,7 @@ import {
   recoverOriginLocator,
   type OriginLocator,
 } from "./plugin-origin-locator.js";
-import { scanPluginSource } from "./plugin-source-import.js";
+import { isPluginInstallRoot, scanPluginSource } from "./plugin-source-import.js";
 
 export type PluginOriginApplyDeps = {
   downloadCatalogPackage?: (input: {
@@ -122,6 +122,9 @@ function resolveCachedPluginDir(
     seen.add(name);
     const found = resolveMarketplacePluginDirectory(cacheDir, name);
     if (found) return found;
+  }
+  if (locator.kind === "git" && isPluginInstallRoot(cacheDir)) {
+    return cacheDir;
   }
   return undefined;
 }

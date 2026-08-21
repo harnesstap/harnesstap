@@ -11,7 +11,7 @@ import {
 } from "../../src/models/plugin-model.ts";
 import { createResource, findResourceByKey } from "../../src/models/resource.ts";
 import { setPluginOrigin } from "../../src/services/plugin-origin.ts";
-import { resolveMarketplacePluginDirectory } from "../../src/services/plugin-origin-apply.ts";
+import { resolveMarketplacePluginDirectory, gitOriginCacheDir } from "../../src/services/plugin-origin-apply.ts";
 import { updatePluginOrigins } from "../../src/services/plugin-origin-update.ts";
 import { AP_SCHEMA_URL } from "../../src/services/agent-plugins/validate.ts";
 import { createInitializedTestContext, type TestContext } from "../helpers/db.ts";
@@ -172,4 +172,31 @@ it("fails catalog apply with sign-in copy on 401 without throwing", async () => 
   expect(report.results[0]?.status).toBe("failed");
   expect(report.results[0]?.message?.toLowerCase()).toMatch(/sign in/);
   expect(report.summary.failed).toBe(1);
+});
+
+it("applies a git-origin plugin from plugin.json at the clone cache root", async () => {
+  const url = "https://example.com/acme/demo.git";
+  const plugin = createPlugin({ name: "demo", version: "1.0.0", origin: "upstream" });
+  setPluginOrigin(plugin.id, "upstream");
+  stampPluginOrigin(plugin.id, {
+    locator: url,
+    fingerprint: "oldsha",
+    fingerprintKind: "git_sha",
+  });
+  writePluginTree(gitOriginCacheDir(getHarnesstapDir(), url), "demo", "2.0.0", "root-skill");
+
+  const report = await updatePluginOrigins({
+    name: "demo",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "x", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results[0]?.status).toBe("updated");
+  const after = getPluginById(plugin.id)!;
+  expect(after.id).toBe(plugin.id);
+  expect(after.version).toBe("2.0.0");
+  expect(after.origin_fingerprint).toBe("newsha");
+  expect(getPluginResources(plugin.id).some((r) => r.name === "root-skill")).toBe(true);
 });
