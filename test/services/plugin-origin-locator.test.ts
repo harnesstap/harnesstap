@@ -110,6 +110,22 @@ it("duplicate locator keeps the highest version as the target", () => {
   expect(group?.skipped.map((p) => p.version)).toContain("1.0.0");
 });
 
+it("valid semver ranks above a malformed version for the same locator", () => {
+  const invalid = createPlugin({ name: "demo", version: "not-a-version", origin: "upstream" });
+  const valid = createPlugin({ name: "demo", version: "2.0.0", origin: "upstream" });
+  setPluginOrigin(invalid.id, "upstream");
+  setPluginOrigin(valid.id, "upstream");
+  stampPluginOrigin(invalid.id, { locator: "demo@mkt" });
+  stampPluginOrigin(valid.id, { locator: "demo@mkt" });
+  const groups = selectOriginUpdateTarget([
+    getPluginById(invalid.id)!,
+    getPluginById(valid.id)!,
+  ]);
+  const group = groups.find((g) => formatOriginLocator(recoverOriginLocator(g.target)!) === "demo@mkt");
+  expect(group?.target.version).toBe("2.0.0");
+  expect(group?.skipped.map((p) => p.version)).toContain("not-a-version");
+});
+
 it("locator-only stampPluginOrigin leaves an existing fingerprint unchanged", () => {
   const plugin = createPlugin({ name: "web-search", version: "1.0.0", origin: "upstream" });
   stampPluginOrigin(plugin.id, {

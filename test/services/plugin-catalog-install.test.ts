@@ -53,4 +53,47 @@ describe("installPluginFromCatalog origin locator", () => {
     expect(downloadSpy).toHaveBeenCalled();
     downloadSpy.mockRestore();
   });
+
+  it("stamps org/catalog/plugin_slug when reusing an existing catalog version", async () => {
+    const source = createPlugin({ name: "foundation-src", version: "1.0.0" });
+    addResourceToPlugin(
+      source.id,
+      createResource({
+        type: "skill",
+        name: "hello",
+        description: "",
+        content: "# hi",
+        metadata: {},
+        source: "test",
+      }).id,
+    );
+    const files = buildApPackageFiles(source.id);
+
+    const existing = createPlugin({
+      name: "local-foundation",
+      version: "1.0.0",
+      origin: "catalog",
+      org_slug: "acme",
+      catalog_slug: "default",
+    });
+    expect(getPluginById(existing.id)?.origin_locator).toBeUndefined();
+
+    const downloadSpy = spyOn(catalogClient, "downloadCatalogPackage").mockResolvedValue({
+      version: "1.0.0",
+      files,
+    });
+
+    const installed = await installPluginFromCatalog({
+      org_slug: "acme",
+      catalog_slug: "default",
+      plugin_slug: "foundation",
+      version: "1.0.0",
+    });
+
+    expect(installed.pluginId).toBe(existing.id);
+    expect(installed.pluginName).toBe("local-foundation");
+    expect(getPluginById(installed.pluginId)?.origin_locator).toBe("acme/default/foundation");
+    expect(downloadSpy).toHaveBeenCalled();
+    downloadSpy.mockRestore();
+  });
 });

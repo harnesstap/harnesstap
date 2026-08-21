@@ -88,6 +88,19 @@ export function listOriginUpdateCandidates(): Plugin[] {
   );
 }
 
+function compareOriginUpdateVersions(left: Plugin, right: Plugin): number {
+  const leftValid = semver.valid(left.version);
+  const rightValid = semver.valid(right.version);
+  if (leftValid && rightValid) {
+    return semver.rcompare(leftValid, rightValid);
+  }
+  if (leftValid) return -1;
+  if (rightValid) return 1;
+  const byName = left.name.localeCompare(right.name);
+  if (byName !== 0) return byName;
+  return left.id.localeCompare(right.id);
+}
+
 export function selectOriginUpdateTarget(
   candidates: Plugin[],
 ): Array<{ target: Plugin; skipped: Plugin[] }> {
@@ -103,13 +116,7 @@ export function selectOriginUpdateTarget(
 
   const result: Array<{ target: Plugin; skipped: Plugin[] }> = [];
   for (const plugins of groups.values()) {
-    const sorted = [...plugins].sort((left, right) => {
-      try {
-        return semver.rcompare(left.version, right.version);
-      } catch {
-        return 0;
-      }
-    });
+    const sorted = [...plugins].sort(compareOriginUpdateVersions);
     const target = sorted[0];
     if (!target) continue;
     result.push({ target, skipped: sorted.slice(1) });
