@@ -331,6 +331,34 @@ async function compareCatalog(
   });
 }
 
+const PLUGIN_ID_SELECTOR = /^[0-9A-Z]{26}$/;
+
+function namedOriginCandidates(name: string): Plugin[] {
+  const eligible = listOriginUpdateCandidates();
+  if (PLUGIN_ID_SELECTOR.test(name)) {
+    return eligible.filter((plugin) => plugin.id === name);
+  }
+
+  const atIdx = name.lastIndexOf("@");
+  if (atIdx > 0) {
+    const named = resolvePluginSelector(name);
+    return named ? eligible.filter((plugin) => plugin.id === named.id) : [];
+  }
+
+  return eligible.filter((plugin) => plugin.name === name);
+}
+
+function resolveNamedOriginPlugin(name: string): Plugin | undefined {
+  const working = namedOriginCandidates(name);
+  if (working.length === 1) {
+    return working[0];
+  }
+  if (working.length > 1) {
+    return selectOriginUpdateTarget(working)[0]?.target ?? working[0];
+  }
+  return resolvePluginSelector(name);
+}
+
 export async function checkPluginOrigins(opts?: {
   name?: string;
   refresh?: boolean;
@@ -344,20 +372,19 @@ export async function checkPluginOrigins(opts?: {
   const listCatalogLatest = opts?.deps?.listCatalogLatest ?? defaultListCatalogLatest;
 
   if (opts?.name) {
-    const named = resolvePluginSelector(opts.name);
+    const named = resolveNamedOriginPlugin(opts.name);
     if (!named) {
       return { results: [] };
     }
     const plugin = getPluginById(named.id) ?? named;
-    if (plugin.origin === "authored") {
+    if (!plugin.frozen_at && plugin.origin === "authored") {
       return { results: [authoredRow(plugin)] };
     }
   }
 
   let candidates = listOriginUpdateCandidates();
   if (opts?.name) {
-    const named = resolvePluginSelector(opts.name);
-    candidates = named ? candidates.filter((plugin) => plugin.id === named.id) : [];
+    candidates = namedOriginCandidates(opts.name);
   }
 
   const results: PluginOriginCheckRow[] = [];
@@ -485,11 +512,11 @@ async function rowForCheck(
     };
   }
 
-  if (plugin.origin === "authored" || check.message === AUTHORED_CHECK_MESSAGE) {
-    return originSkipRow(plugin, AUTHORED_CHECK_MESSAGE);
-  }
   if (plugin.frozen_at) {
     return originSkipRow(plugin, FROZEN_UPDATE_MESSAGE);
+  }
+  if (plugin.origin === "authored" || check.message === AUTHORED_CHECK_MESSAGE) {
+    return originSkipRow(plugin, AUTHORED_CHECK_MESSAGE);
   }
   if (check.message === DUPLICATE_LOCATOR_MESSAGE) {
     return originSkipRow(plugin, DUPLICATE_LOCATOR_MESSAGE);
@@ -544,7 +571,7 @@ export async function updatePluginOrigins(opts: {
   });
 
   if (opts.name && check.results.length === 0) {
-    const named = resolvePluginSelector(opts.name);
+    const named = resolveNamedOriginPlugin(opts.name);
     if (named?.frozen_at) {
       const skipped = originSkipRow(named, FROZEN_UPDATE_MESSAGE);
       return { results: [skipped], summary: summarizeOriginUpdate([skipped]) };

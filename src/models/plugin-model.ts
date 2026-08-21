@@ -377,19 +377,13 @@ export function stampPluginOrigin(
   );
 }
 
-export function bumpPluginWorkingVersion(pluginId: string, version: string): void {
-  const plugin = getPluginById(pluginId);
-  if (!plugin) {
-    throw new Error(`Plugin not found: ${pluginId}`);
-  }
-
-  const db = getDb();
-  const sibling = db
+export function assertNoFrozenWorkingVersion(plugin: Plugin, version: string): void {
+  const sibling = getDb()
     .prepare(
       `SELECT id, frozen_at FROM plugins
        WHERE org_slug = ? AND catalog_slug = ? AND name = ? AND version = ? AND id != ?`,
     )
-    .get(plugin.org_slug, plugin.catalog_slug, plugin.name, version, pluginId) as
+    .get(plugin.org_slug, plugin.catalog_slug, plugin.name, version, plugin.id) as
       | { id: string; frozen_at: string | null }
       | undefined;
 
@@ -398,12 +392,18 @@ export function bumpPluginWorkingVersion(pluginId: string, version: string): voi
       `Cannot bump ${plugin.name} to ${version}: that version already exists as a frozen cut`,
     );
   }
+}
 
-  db.prepare("UPDATE plugins SET version = ?, updated_at = ? WHERE id = ?").run(
-    version,
-    new Date().toISOString(),
-    pluginId,
-  );
+export function bumpPluginWorkingVersion(pluginId: string, version: string): void {
+  const plugin = getPluginById(pluginId);
+  if (!plugin) {
+    throw new Error(`Plugin not found: ${pluginId}`);
+  }
+
+  assertNoFrozenWorkingVersion(plugin, version);
+  getDb()
+    .prepare("UPDATE plugins SET version = ?, updated_at = ? WHERE id = ?")
+    .run(version, new Date().toISOString(), pluginId);
 }
 
 export function updatePluginPublishedIdentity(

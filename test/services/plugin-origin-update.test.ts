@@ -6,6 +6,7 @@ import {
   addResourceToPlugin,
   createPlugin,
   getPluginById,
+  getPluginByName,
   getPluginResources,
   stampPluginOrigin,
 } from "../../src/models/plugin-model.ts";
@@ -342,7 +343,49 @@ it("fails that plugin when bump would collide with a frozen cut", async () => {
   expect(report.results[0]?.status).toBe("failed");
   expect(report.results[0]?.message).toMatch(/frozen/);
   expect(getPluginById(plugin.id)?.version).toBe("1.0.0");
+  expect(getPluginResources(plugin.id).some((r) => r.name === "hello")).toBe(false);
   expect(report.summary.failed).toBe(1);
+});
+
+it("does not update a frozen cut and updates the unfrozen working head of the same name", async () => {
+  const plugin = createPlugin({ name: "demo", version: "1.2.0", origin: "upstream" });
+  setPluginOrigin(plugin.id, "upstream");
+  cutPluginVersion({ pluginId: plugin.id, newVersion: "1.0.0" });
+  stampPluginOrigin(plugin.id, {
+    locator: "demo@mkt",
+    fingerprint: "old",
+    fingerprintKind: "git_sha",
+  });
+  const frozen = getPluginByName("demo", "1.2.0");
+  expect(frozen?.frozen_at).toBeDefined();
+  writeMarketplacePlugin("demo", "1.3.0", "hello");
+
+  const checked = await checkPluginOrigins({
+    name: "demo",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(checked.results.map((r) => r.plugin_id)).toEqual([plugin.id]);
+
+  const report = await updatePluginOrigins({
+    name: "demo",
+    deps: {
+      refreshMarketplace: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      refreshGit: async () => ({ ok: true, sha: "newsha", message: "ok" }),
+      listCatalogLatest: async () => ({ version: "1.0.0" }),
+    },
+  });
+  expect(report.results).toHaveLength(1);
+  expect(report.results[0]?.plugin_id).toBe(plugin.id);
+  expect(report.results[0]?.status).toBe("updated");
+  expect(getPluginById(plugin.id)?.version).toBe("1.3.0");
+  expect(getPluginById(plugin.id)?.origin_fingerprint).toBe("newsha");
+  expect(getPluginByName("demo", "1.2.0")?.frozen_at).toBeDefined();
+  expect(getPluginByName("demo", "1.2.0")?.version).toBe("1.2.0");
+  expect(getPluginByName("demo", "1.2.0")?.origin_fingerprint).not.toBe("newsha");
 });
 
 it("requires a name or --all", async () => {

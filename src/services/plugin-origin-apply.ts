@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { getDb, getHarnesstapDir } from "../db/connection.js";
 import {
   addResourceToPlugin,
+  assertNoFrozenWorkingVersion,
   bumpPluginWorkingVersion,
   getPluginById,
   getPluginResources,
@@ -291,8 +292,9 @@ export async function applyCheckedPluginOrigin(
     throw new Error(`Origin did not provide a version for ${plugin.name}`);
   }
 
-  bumpPluginWorkingVersion(plugin.id, nextVersion);
+  assertNoFrozenWorkingVersion(plugin, nextVersion);
   replacePluginAttachments(plugin.id, resources, locatorStr);
+  bumpPluginWorkingVersion(plugin.id, nextVersion);
   stampPluginOrigin(plugin.id, {
     locator: locatorStr,
     fingerprint: fingerprint || undefined,
