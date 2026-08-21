@@ -187,6 +187,8 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin publish plan <plugin>` — dry-run: list effective targets and planned versions
 - `plugin diff <left> <right>`
 - `plugin doctor [name]` — validate a plugin without writing to disk
+- `plugin check [name]` — compare library working heads to marketplace, git, and catalog origins
+- `plugin update [name]` — update a working head from origin (`--all` for every outdated syncable head)
 - `plugin why <target>` — explain why a version was selected or which plugin won a resource (`skill:name`, plugin name)
 - `plugin from-project [name] --project <path>`
 
@@ -248,6 +250,12 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `plugin doctor --check <name>` — run one check (repeatable)
 - `plugin doctor --list-checks` — list available checks
 - `plugin doctor --format json` — exits `1` when the plugin is invalid
+- `plugin check --refresh` — force-fetch origins (otherwise check may use the marketplace refresh cache)
+- `plugin check --format json` — same rows as the human table; exits `1` when any row is `error`
+- `plugin update --all` — update every outdated syncable working head
+- `plugin update --force` — reapply even when fingerprints match
+- `plugin update --yes` — skip `--all` confirmation (required off-TTY)
+- `plugin update --format json` — exits `1` when any row is `failed`
 - `plugin from-project -d, --description <text>`
 - `plugin from-project --harness <slug>`
 - `plugin pull --as <name>`

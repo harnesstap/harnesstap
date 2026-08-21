@@ -241,6 +241,30 @@ export const COMMAND_HELP_REGISTRY: CommandHelpRegistry = {
       "plugin doctor my-plugin --format json",
     ],
   },
+  "plugin.check": {
+    description:
+      "Compare library working heads to marketplace, git, and catalog origins",
+    details:
+      "Omit a name to check every syncable working head. --refresh force-fetches origins. "
+      + "Outdated is not a failure; exit 1 only when a check row is error.",
+    examples: [
+      "plugin check",
+      "plugin check my-plugin --refresh",
+      "plugin check --format json",
+    ],
+  },
+  "plugin.update": {
+    description:
+      "Update library working heads from marketplace, git, and catalog origins",
+    details:
+      "Pass a plugin name or --all. --all confirms on TTY unless --yes; non-interactive "
+      + "--all requires --yes. --force reapplies when fingerprints already match.",
+    examples: [
+      "plugin update my-plugin",
+      "plugin update --all --yes",
+      "plugin update --all --yes --format json",
+    ],
+  },
   "plugin.cut": {
     description: "Cut a new local version from the working head",
     examples: [

@@ -19,6 +19,8 @@ const PLUGIN_HELP_LOCAL_COMMANDS = new Set([
   "rollback",
   "diff",
   "doctor",
+  "check",
+  "update",
   "why",
   "fork",
   "from-project",
