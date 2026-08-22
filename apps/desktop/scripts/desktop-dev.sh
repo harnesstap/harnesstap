@@ -33,4 +33,12 @@ WATCH_PID=$!
 bun run tauri dev &
 TAURI_PID=$!
 
+STARTED_AT=$(date +%s)
 wait "$TAURI_PID"
+ELAPSED_S=$(( $(date +%s) - STARTED_AT ))
+if (( ELAPSED_S < 15 )); then
+  echo "" >&2
+  echo "desktop-dev: tauri dev exited after ${ELAPSED_S}s. If no window appeared," >&2
+  echo "another HarnessTap instance (stale dev app or installed build) likely holds" >&2
+  echo "the single-instance lock; close it and rerun bun run desktop:dev." >&2
+fi

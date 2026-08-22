@@ -3,6 +3,9 @@ set -euo pipefail
 
 # Stop orphaned HarnessTap desktop dev processes from a previous `desktop:dev`
 # session (e.g. terminal closed without SIGTERM). Safe to run before every start.
+# Stale app instances matter because Tauri's single-instance plugin makes any
+# new launch exit silently while the orphaned window stays open without a
+# working sidecar.
 
 AGENT_PORT_START="${HARNESSTAP_AGENT_PORT:-7474}"
 AGENT_PORT_END=$((AGENT_PORT_START + 5))
@@ -100,6 +103,27 @@ stop_ht_agent_processes() {
   stop_pids "ht-agent sidecar" "${pids[@]}"
 }
 
+stop_stale_dev_app_processes() {
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return
+  fi
+
+  # Cargo-built dev/e2e binaries only (target/debug|release). Installed release
+  # builds run as HarnessTap.app/Contents/MacOS/HarnessTap and are left alone.
+  local pids_raw
+  pids_raw="$(pgrep -f '(^|/)harnesstap-desktop$' 2>/dev/null || true)"
+  if [[ -z "$pids_raw" ]]; then
+    return
+  fi
+
+  local pids=()
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] && pids+=("$pid")
+  done <<<"$pids_raw"
+
+  stop_pids "stale harnesstap-desktop app" "${pids[@]}"
+}
+
 remove_stale_agent_files() {
   local home
   home="$(resolve_harnesstap_home)"
@@ -142,6 +166,7 @@ done
 stop_port "$VITE_PORT"
 stop_port "$HMR_PORT"
 stop_ht_agent_processes
+stop_stale_dev_app_processes
 remove_stale_agent_files
 
 echo "Desktop dev cleanup complete."

@@ -1,0 +1,3 @@
+kind: Fixed
+body: Stop orphaned dev app instances during desktop cleanup so `desktop:dev` no longer exits silently via the single-instance lock, and print a diagnostic when `tauri dev` exits immediately.
+time: 2026-08-22T00:00:00Z
