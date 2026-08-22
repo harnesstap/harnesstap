@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 28;
+const SCHEMA_VERSION = 29;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -218,6 +218,12 @@ const MIGRATIONS: Record<number, Migration> = {
   27: migrateLayerTablesToPluginTables,
   28: `
     ALTER TABLE plugins ADD COLUMN ap_name TEXT NOT NULL DEFAULT '';
+  `,
+  29: `
+    ALTER TABLE plugins ADD COLUMN origin_locator TEXT NOT NULL DEFAULT '';
+    ALTER TABLE plugins ADD COLUMN origin_fingerprint TEXT NOT NULL DEFAULT '';
+    ALTER TABLE plugins ADD COLUMN origin_fingerprint_kind TEXT NOT NULL DEFAULT ''
+      CHECK(origin_fingerprint_kind IN ('', 'git_sha', 'catalog_digest', 'catalog_version'));
   `,
 };
 

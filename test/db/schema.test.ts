@@ -43,7 +43,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(28);
+      expect(versionRow.version).toBe(29);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -66,6 +66,9 @@ describe("initializeSchema", () => {
           "overrides",
           "origin",
           "ap_name",
+          "origin_locator",
+          "origin_fingerprint",
+          "origin_fingerprint_kind",
         ]),
       );
 
@@ -149,7 +152,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 28 }]);
+      expect(versionRows).toEqual([{ version: 29 }]);
     } finally {
       await context.cleanup();
     }
@@ -556,7 +559,7 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(28);
+        expect(version).toBe(29);
         fixture.assert(db);
       } finally {
         await context.cleanup();
@@ -600,6 +603,45 @@ describe("initializeSchema", () => {
       } finally {
         await context.cleanup();
       }
+    }
+  });
+
+  it("upgrades schema v28 with plugin origin columns", async () => {
+    const context = await createTestContext("schema-upgrade-v29");
+
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (28);
+        CREATE TABLE plugins (id TEXT PRIMARY KEY);
+      `);
+      db.prepare("INSERT INTO plugins (id) VALUES (?)").run("plugin");
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(29);
+
+      const pluginColumns = db
+        .prepare("PRAGMA table_info(plugins)")
+        .all() as Array<{ name: string }>;
+      expect(pluginColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining([
+          "origin_locator",
+          "origin_fingerprint",
+          "origin_fingerprint_kind",
+        ]),
+      );
+      expect(
+        db.prepare("SELECT id FROM plugins WHERE id = 'plugin'").get(),
+      ).toEqual({ id: "plugin" });
+    } finally {
+      await context.cleanup();
     }
   });
 
