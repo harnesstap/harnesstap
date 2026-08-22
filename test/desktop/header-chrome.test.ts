@@ -125,7 +125,7 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations: **Library | Environments | Global | Project**");
+    expect(designSource).toContain("Header destinations: **Library | Sources | Environments | Global | Project**");
     expect(designSource).toContain("Header destinations show icon plus name");
   });
 
@@ -246,13 +246,11 @@ describe("desktop full-screen panels", () => {
     expect(settingsSource).toContain("SETTINGS_TABS");
     expect(settingsSource).toContain("data-testid={`settings-tab-${entry.id}`}");
     expect(settingsTabsSource).toContain('label: "Harnesses"');
-    expect(settingsTabsSource).toContain('label: "Marketplaces"');
-    expect(settingsTabsSource).toContain('label: "Publish catalogs"');
     expect(settingsTabsSource).toContain('label: "Project"');
     expect(settingsTabsSource).toContain('label: "Advanced"');
-    expect(designSource).toContain(
-      "Harnesses | Marketplaces | Publish catalogs | Project | Advanced",
-    );
+    expect(settingsTabsSource).not.toContain('label: "Marketplaces"');
+    expect(settingsTabsSource).not.toContain('label: "Publish catalogs"');
+    expect(designSource).toContain("Harnesses | Project | Advanced");
   });
 });
 
