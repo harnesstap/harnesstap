@@ -7,17 +7,25 @@ import {
   updateResource,
   type ImportConflictPolicy,
 } from "../../models/resource.js";
+import { deleteResourceMaterializations } from "../../models/resource-materialization.js";
 import { PluginProvenanceError } from "../../services/plugin-origin.js";
 import { parseUntrackedResourceSelector } from "../../services/untracked-resource.js";
 import { syncLinkedResources } from "../../services/resource-sync.js";
+import {
+  executeResourceDiskDeletion,
+  planResourceDiskDeletion,
+} from "../../services/resource-disk-cleanup.js";
 import type { Resource } from "../../types.js";
 
 const SYNC_PATH =
   /^\/v1\/library\/resources\/([^/]+)\/sync$/;
+const DELETE_PLAN_PATH =
+  /^\/v1\/library\/resources\/([^/]+)\/delete-plan$/;
 const DELETE_PATH = /^\/v1\/library\/resources\/([^/]+)$/;
 const ON_CONFLICT = ["overwrite", "ignore", "fail"] as const;
 
 type OnConflict = (typeof ON_CONFLICT)[number];
+type ResourceDeleteMode = "library" | "library_and_disk";
 
 export async function tryHandle(
   request: Request,
@@ -26,10 +34,18 @@ export async function tryHandle(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   const syncMatch = url.pathname.match(SYNC_PATH);
+  const deletePlanMatch = url.pathname.match(DELETE_PLAN_PATH);
   const deleteMatch = url.pathname.match(DELETE_PATH);
 
   if (request.method === "POST" && syncMatch) {
     return handleSync(request, token, decodeSelector(syncMatch[1] ?? ""), url);
+  }
+  if (request.method === "GET" && deletePlanMatch) {
+    return handleDeletePlan(
+      request,
+      token,
+      decodeSelector(deletePlanMatch[1] ?? ""),
+    );
   }
   if (request.method === "DELETE" && deleteMatch) {
     return handleDelete(request, token, decodeSelector(deleteMatch[1] ?? ""));
@@ -287,6 +303,24 @@ async function handleDelete(
     );
   }
 
+  const parsedBody = await readJsonObject(request);
+  if (!parsedBody.ok) {
+    return parsedBody.response;
+  }
+
+  let mode: ResourceDeleteMode;
+  try {
+    mode = parseDeleteMode(parsedBody.body.mode);
+  } catch {
+    return jsonResponse(
+      {
+        error: "invalid_mode",
+        message: 'mode must be "library" or "library_and_disk"',
+      },
+      { status: 400 },
+    );
+  }
+
   const resolved = resolveResource(trimmed);
   if (resolved.status === "not_found") {
     return jsonResponse(
@@ -298,6 +332,29 @@ async function handleDelete(
     return ambiguousResponse(trimmed, resolved.matches);
   }
 
+  let deletedFiles: string[] = [];
+  let editedFiles: string[] = [];
+  let skippedLocations: string[] = [];
+
+  if (mode === "library_and_disk") {
+    const plan = await planResourceDiskDeletion(resolved.resource.id);
+    if (!plan.can_delete_from_disk || plan.blockers.length > 0) {
+      return jsonResponse(
+        {
+          error: "delete_blocked",
+          message: "Disk deletion is blocked by protected or ambiguous locations",
+          blockers: plan.blockers,
+          plan,
+        },
+        { status: 409 },
+      );
+    }
+    const executed = await executeResourceDiskDeletion(plan);
+    deletedFiles = executed.deleted_files;
+    editedFiles = executed.edited_files;
+    skippedLocations = executed.skipped_locations;
+  }
+
   const deleted = deleteResource(resolved.resource.id);
   if (!deleted) {
     return jsonResponse(
@@ -305,11 +362,69 @@ async function handleDelete(
       { status: 404 },
     );
   }
+  deleteResourceMaterializations(resolved.resource.id);
 
   return jsonResponse({
     deleted: true,
+    mode,
     resource: resourceSummary(resolved.resource),
+    deleted_files: deletedFiles,
+    edited_files: editedFiles,
+    skipped_locations: skippedLocations,
   });
+}
+
+function parseDeleteMode(value: unknown): ResourceDeleteMode {
+  switch (value ?? "library") {
+    case "library":
+      return "library";
+    case "library_and_disk":
+      return "library_and_disk";
+    default: {
+      const _exhaustive: never = value as never;
+      throw new Error(`Unsupported resource delete mode: ${String(_exhaustive)}`);
+    }
+  }
+}
+
+async function handleDeletePlan(
+  request: Request,
+  token: string,
+  selector: string,
+): Promise<Response> {
+  const authError = requireAgentBearerAuth(request, token);
+  if (authError) {
+    return authError;
+  }
+
+  const trimmed = selector.trim();
+  if (!trimmed) {
+    return jsonResponse(
+      { error: "invalid_selector", message: "Resource selector is required" },
+      { status: 400 },
+    );
+  }
+
+  if (parseUntrackedResourceSelector(trimmed)) {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+
+  const resolved = resolveResource(trimmed);
+  if (resolved.status === "not_found") {
+    return jsonResponse(
+      { error: "not_found", message: `Resource not found: ${trimmed}` },
+      { status: 404 },
+    );
+  }
+  if (resolved.status === "ambiguous") {
+    return ambiguousResponse(trimmed, resolved.matches);
+  }
+
+  const plan = await planResourceDiskDeletion(resolved.resource.id);
+  return jsonResponse(plan);
 }
 
 function optionalPatchString(

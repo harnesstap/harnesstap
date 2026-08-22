@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { tryHandle } from "../../src/agent/parity-handlers/resource-mutate.ts";
@@ -8,7 +8,9 @@ import {
   getResource,
   listResources,
 } from "../../src/models/resource.ts";
+import { recordResourceMaterialization } from "../../src/models/resource-materialization.ts";
 import { ensurePluginResource } from "../../src/services/plugin-composition.ts";
+import { hashGeneratedContent } from "../../src/services/materialization-ownership.ts";
 import { createInitializedTestContext } from "../helpers/db.ts";
 import type { TestContext } from "../helpers/db.ts";
 
@@ -175,6 +177,175 @@ describe("tryHandle resource-mutate", () => {
     };
     expect(body.error).toBe("ambiguous");
     expect(body.matches.length).toBe(2);
+  });
+
+  it("GET delete-plan returns a plan for a known resource", async () => {
+    await withHome("parity-mutate-delete-plan");
+    const resource = createResource({
+      type: "skill",
+      name: "ship",
+      description: "Ship",
+      content: "# ship",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle(
+      "GET",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}/delete-plan`,
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      resource: { id: string };
+      locations: unknown[];
+      blockers: string[];
+      can_delete_from_disk: boolean;
+    };
+    expect(body.resource.id).toBe(resource.id);
+    expect(Array.isArray(body.locations)).toBe(true);
+    expect(Array.isArray(body.blockers)).toBe(true);
+  });
+
+  it("GET delete-plan requires bearer auth", async () => {
+    await withHome("parity-mutate-delete-plan-401");
+    const response = await handle(
+      "GET",
+      "/v1/library/resources/skill%3Aship/delete-plan",
+      { headers: {} },
+    );
+    expect(response?.status).toBe(401);
+  });
+
+  it("DELETE defaults to library mode and leaves files on disk", async () => {
+    const home = await withHome("parity-mutate-delete-library-only");
+    const filePath = join(home.homeDir, ".cursor", "rules", "ship.mdc");
+    mkdirSync(join(filePath, ".."), { recursive: true });
+    writeFileSync(filePath, "keep me\n", "utf-8");
+    const resource = createResource({
+      type: "rule",
+      name: "ship",
+      description: "Ship",
+      content: "keep me",
+      metadata: { globs: [], always_apply: true },
+      source: "manual",
+    });
+    recordResourceMaterialization({
+      resource_id: resource.id,
+      scope: "global",
+      root_path: home.homeDir,
+      platform_id: "cursor",
+      path: ".cursor/rules/ship.mdc",
+      action: "delete-file",
+      ownership_key: "rule:ship",
+      generated_hash: hashGeneratedContent("keep me\n"),
+    });
+
+    const response = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library" } },
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      mode: string;
+      deleted_files: string[];
+    };
+    expect(body.mode).toBe("library");
+    expect(body.deleted_files).toEqual([]);
+    expect(existsSync(filePath)).toBe(true);
+    expect(getResource(resource.id)).toBeUndefined();
+  });
+
+  it("DELETE library_and_disk removes files then the library row", async () => {
+    const home = await withHome("parity-mutate-delete-disk");
+    const filePath = join(home.homeDir, ".cursor", "rules", "ship.mdc");
+    mkdirSync(join(filePath, ".."), { recursive: true });
+    writeFileSync(filePath, "remove me\n", "utf-8");
+    const resource = createResource({
+      type: "rule",
+      name: "ship",
+      description: "Ship",
+      content: "remove me",
+      metadata: { globs: [], always_apply: true },
+      source: "manual",
+    });
+    recordResourceMaterialization({
+      resource_id: resource.id,
+      scope: "global",
+      root_path: home.homeDir,
+      platform_id: "cursor",
+      path: ".cursor/rules/ship.mdc",
+      action: "delete-file",
+      ownership_key: "rule:ship",
+      generated_hash: hashGeneratedContent("remove me\n"),
+    });
+
+    const response = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library_and_disk" } },
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      mode: string;
+      deleted_files: string[];
+    };
+    expect(body.mode).toBe("library_and_disk");
+    expect(body.deleted_files).toEqual([filePath]);
+    expect(existsSync(filePath)).toBe(false);
+    expect(getResource(resource.id)).toBeUndefined();
+  });
+
+  it("DELETE library_and_disk returns 409 and keeps the row when blocked", async () => {
+    const home = await withHome("parity-mutate-delete-blocked");
+    const filePath = join(home.homeDir, ".cursor", "rules", "ship.mdc");
+    mkdirSync(join(filePath, ".."), { recursive: true });
+    writeFileSync(filePath, "changed\n", "utf-8");
+    const resource = createResource({
+      type: "rule",
+      name: "ship",
+      description: "Ship",
+      content: "original",
+      metadata: { globs: [], always_apply: true },
+      source: "manual",
+    });
+    recordResourceMaterialization({
+      resource_id: resource.id,
+      scope: "global",
+      root_path: home.homeDir,
+      platform_id: "cursor",
+      path: ".cursor/rules/ship.mdc",
+      action: "delete-file",
+      ownership_key: "rule:ship",
+      generated_hash: hashGeneratedContent("original\n"),
+    });
+
+    const response = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "library_and_disk" } },
+    );
+    expect(response?.status).toBe(409);
+    expect(existsSync(filePath)).toBe(true);
+    expect(getResource(resource.id)?.id).toBe(resource.id);
+  });
+
+  it("DELETE rejects an invalid mode", async () => {
+    await withHome("parity-mutate-delete-bad-mode");
+    const resource = createResource({
+      type: "skill",
+      name: "ship",
+      description: "Ship",
+      content: "# ship",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle(
+      "DELETE",
+      `/v1/library/resources/${encodeURIComponent(resource.id)}`,
+      { body: { mode: "wipe-everything" } },
+    );
+    expect(response?.status).toBe(400);
+    expect(getResource(resource.id)?.id).toBe(resource.id);
   });
 
   it("POST sync dry_run does not change content", async () => {

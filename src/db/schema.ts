@@ -1,6 +1,6 @@
 import type { SqliteDatabase } from "./types.js";
 
-const SCHEMA_VERSION = 29;
+const SCHEMA_VERSION = 30;
 
 type Migration = string | ((db: SqliteDatabase) => void);
 
@@ -224,6 +224,29 @@ const MIGRATIONS: Record<number, Migration> = {
     ALTER TABLE plugins ADD COLUMN origin_fingerprint TEXT NOT NULL DEFAULT '';
     ALTER TABLE plugins ADD COLUMN origin_fingerprint_kind TEXT NOT NULL DEFAULT ''
       CHECK(origin_fingerprint_kind IN ('', 'git_sha', 'catalog_digest', 'catalog_version'));
+  `,
+  30: `
+    CREATE TABLE resource_materializations (
+      id TEXT PRIMARY KEY,
+      resource_id TEXT NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL CHECK(scope IN ('global', 'project')),
+      project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+      root_path TEXT NOT NULL,
+      platform_id TEXT NOT NULL,
+      path TEXT NOT NULL,
+      action TEXT NOT NULL CHECK(action IN ('delete-file', 'delete-directory', 'edit-file')),
+      ownership_key TEXT NOT NULL,
+      generated_hash TEXT NOT NULL,
+      managed_container INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(resource_id, scope, project_id, root_path, platform_id, path, ownership_key)
+    );
+
+    CREATE INDEX idx_resource_materializations_path
+      ON resource_materializations(root_path, path);
+    CREATE INDEX idx_resource_materializations_resource
+      ON resource_materializations(resource_id);
   `,
 };
 

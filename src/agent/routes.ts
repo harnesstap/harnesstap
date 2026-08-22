@@ -632,16 +632,26 @@ export function createAgentFetchHandler(
     } else if (method === "DELETE" && url.pathname === "/v1/library/resource-directories") {
       response = await handleResourceTrackedDirectoryRemove(request, token);
     } else if (method === "GET" && url.pathname.startsWith("/v1/library/resources/")) {
-      const authError = requireAgentBearerAuth(request, token);
-      if (authError) {
-        response = authError;
-      } else {
-        const selector = decodeURIComponent(
-          url.pathname.slice("/v1/library/resources/".length),
-        );
-        response = handleLibraryResourceDetail(selector, {
-          pathHint: url.searchParams.get("path"),
+      const deletePlanMatch = url.pathname.match(
+        /^\/v1\/library\/resources\/([^/]+)\/delete-plan$/,
+      );
+      if (deletePlanMatch) {
+        const parity = await tryParityRoutes(request, token, {
+          isAgentSwitchInProgress: routeDeps.isAgentSwitchInProgress,
         });
+        response = parity ?? jsonResponse({ error: "not_found" }, { status: 404 });
+      } else {
+        const authError = requireAgentBearerAuth(request, token);
+        if (authError) {
+          response = authError;
+        } else {
+          const selector = decodeURIComponent(
+            url.pathname.slice("/v1/library/resources/".length),
+          );
+          response = handleLibraryResourceDetail(selector, {
+            pathHint: url.searchParams.get("path"),
+          });
+        }
       }
     } else {
       const profileAttachmentMatch = url.pathname.match(

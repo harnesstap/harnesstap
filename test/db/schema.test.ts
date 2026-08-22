@@ -31,6 +31,7 @@ describe("initializeSchema", () => {
           "plugins",
           "project_plugins",
           "projects",
+          "resource_materializations",
           "resources",
           "plugin_working_snapshots",
           "schema_version",
@@ -43,7 +44,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version LIMIT 1")
         .get() as { version: number };
 
-      expect(versionRow.version).toBe(29);
+      expect(versionRow.version).toBe(30);
 
       const projectHarnessColumns = context.connection
         .getDb()
@@ -152,7 +153,7 @@ describe("initializeSchema", () => {
         .prepare("SELECT version FROM schema_version")
         .all() as Array<{ version: number }>;
 
-      expect(versionRows).toEqual([{ version: 29 }]);
+      expect(versionRows).toEqual([{ version: 30 }]);
     } finally {
       await context.cleanup();
     }
@@ -559,11 +560,137 @@ describe("initializeSchema", () => {
             version: number;
           }
         ).version;
-        expect(version).toBe(29);
+        expect(version).toBe(30);
         fixture.assert(db);
       } finally {
         await context.cleanup();
       }
+    }
+  });
+
+  it("upgrades schema v28 with plugin origin columns", async () => {
+    const context = await createTestContext("schema-upgrade-v29");
+
+    try {
+      const db = context.connection.getDb();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (28);
+        CREATE TABLE plugins (id TEXT PRIMARY KEY);
+      `);
+      db.prepare("INSERT INTO plugins (id) VALUES (?)").run("plugin");
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(30);
+
+      const pluginColumns = db
+        .prepare("PRAGMA table_info(plugins)")
+        .all() as Array<{ name: string }>;
+      expect(pluginColumns.map((column) => column.name)).toEqual(
+        expect.arrayContaining([
+          "origin_locator",
+          "origin_fingerprint",
+          "origin_fingerprint_kind",
+        ]),
+      );
+      expect(
+        db.prepare("SELECT id FROM plugins WHERE id = 'plugin'").get(),
+      ).toEqual({ id: "plugin" });
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("upgrades schema v29 with resource_materializations table", async () => {
+    const context = await createTestContext("schema-upgrade-v30");
+
+    try {
+      const db = context.connection.getDb();
+      const now = new Date().toISOString();
+      db.exec(`
+        CREATE TABLE schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (29);
+        CREATE TABLE resources (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          content TEXT NOT NULL DEFAULT '',
+          metadata TEXT NOT NULL DEFAULT '{}',
+          source TEXT NOT NULL DEFAULT 'manual',
+          namespace TEXT NOT NULL DEFAULT '',
+          origin_kind TEXT NOT NULL DEFAULT 'manual',
+          origin_ref TEXT NOT NULL DEFAULT '',
+          content_hash TEXT NOT NULL DEFAULT '',
+          content_blob_ref TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE projects (
+          id TEXT PRIMARY KEY,
+          git_origin TEXT NOT NULL DEFAULT '',
+          local_id TEXT NOT NULL DEFAULT '',
+          name TEXT NOT NULL DEFAULT '',
+          local_path TEXT NOT NULL DEFAULT '',
+          tracked_at TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        );
+      `);
+      db.prepare(
+        `INSERT INTO resources (
+          id, type, name, description, content, metadata, source, namespace,
+          origin_kind, origin_ref, content_hash, content_blob_ref, created_at, updated_at
+        ) VALUES (?, 'skill', 'ship', '', '# Ship', '{}', 'manual', '', 'manual', '', '', '', ?, ?)`,
+      ).run("resource-1", now, now);
+
+      context.schema.initializeSchema(db);
+
+      const version = (
+        db.prepare("SELECT version FROM schema_version LIMIT 1").get() as {
+          version: number;
+        }
+      ).version;
+      expect(version).toBe(30);
+
+      const columns = db
+        .prepare("PRAGMA table_info(resource_materializations)")
+        .all() as Array<{ name: string }>;
+      expect(columns.map((column) => column.name)).toEqual(
+        expect.arrayContaining([
+          "resource_id",
+          "scope",
+          "project_id",
+          "root_path",
+          "platform_id",
+          "path",
+          "action",
+          "ownership_key",
+          "generated_hash",
+          "managed_container",
+        ]),
+      );
+
+      db.prepare(
+        `INSERT INTO resource_materializations (
+          id, resource_id, scope, project_id, root_path, platform_id, path,
+          action, ownership_key, generated_hash, managed_container, created_at, updated_at
+        ) VALUES (?, ?, 'global', NULL, '/home/user', 'cursor', '.cursor/skills/ship/SKILL.md',
+          'delete-directory', 'skill:ship', 'hash', 0, ?, ?)`,
+      ).run("mat-1", "resource-1", now, now);
+
+      expect(
+        db
+          .prepare("SELECT id FROM resource_materializations WHERE resource_id = 'resource-1'")
+          .get(),
+      ).toEqual({ id: "mat-1" });
+    } finally {
+      await context.cleanup();
     }
   });
 
@@ -625,7 +752,7 @@ describe("initializeSchema", () => {
           version: number;
         }
       ).version;
-      expect(version).toBe(29);
+      expect(version).toBe(30);
 
       const pluginColumns = db
         .prepare("PRAGMA table_info(plugins)")

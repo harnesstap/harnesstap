@@ -22,6 +22,7 @@ import {
   materializeFiles,
   planMaterializationConflicts,
 } from "../../services/applier.js";
+import { persistWrittenMaterializations } from "../../services/materialization-ownership.js";
 import { collectPluginPinsForPrepare, preparePluginPinsForApply } from "../../services/plugin-pin-apply.js";
 import { resolveComposition } from "../../services/resolve/index.js";
 import { resolveEnvironmentCascadeForApply } from "../../services/environment-cascade.js";
@@ -387,12 +388,14 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   const gitOrigin = getGitOrigin(projectRoot);
   // Ephemeral multi-plugin roots are deleted when resolveComposition returns,
   // so skip project-config binding (CLI uses a still-live bundle id).
+  let trackedProjectId: string | undefined;
   if (gitOrigin && !resolution.root.ephemeral) {
     const project = upsertProject({
       git_origin: normalizeGitUrl(gitOrigin),
       name: projectNameFromUrl(gitOrigin),
       local_path: projectRoot,
     });
+    trackedProjectId = project.id;
     const snapshotState: SnapshotState = {
       plugins,
       resources: substituted.resources,
@@ -423,6 +426,18 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     const materialized = await materializeFiles(result.files, projectRoot, {
       conflictPolicy: parsed.onConflict,
     });
+    if (!materialized.cancelled) {
+      persistWrittenMaterializations({
+        scope: "project",
+        project_id: trackedProjectId ?? null,
+        root_path: projectRoot,
+        platformResults: [{
+          platformId: result.platformId,
+          files: result.files,
+          writtenPaths: materialized.writtenFiles,
+        }],
+      });
+    }
     platformResults.push({
       platform: result.platformId,
       written_files: materialized.writtenFiles,
