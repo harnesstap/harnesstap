@@ -1,6 +1,7 @@
 export type PluginDetailMode = "head" | "history" | "frozen";
 export type PluginPackageAction =
   | "apply"
+  | "update"
   | "history"
   | "cut"
   | "fork"
@@ -80,7 +81,7 @@ export function pluginPackageActions(input: {
   if (input.origin === "authored") {
     return ["apply", "history", "cut", "doctor", "delete"];
   }
-  return ["apply", "fork", "doctor", "delete"];
+  return ["apply", "update", "fork", "doctor", "delete"];
 }
 
 export function formatPluginRollbackConfirmMessage(input: {

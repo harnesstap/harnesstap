@@ -150,7 +150,7 @@ Use this table to disambiguate overlapping words.
 
 **Package.json analogy:** a **plugin** is the package; **context-side resources** are source files; **`plugin_pin`** / **`plugin` ref** are dependencies; **`environment`** is runtime config (.env).
 
-Plugin freshness and composition use `resource sync`, `plugin doctor`, and `apply` plugin-version flags.
+Plugin freshness uses `plugin check` / `plugin update` against marketplace, git, and catalog origins. `resource sync` still refreshes install trees; `plugin doctor` and `apply` plugin-version flags cover composition diagnostics.
 
 ### Resource classification
 
@@ -284,7 +284,7 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | --- | --- |
 | `harnesstap init` | Creates `~/.harnesstap/harnesstap.db`, initializes the schema, seeds a `default` profile plugin (unless `--no-default-profile`), scans supported home-directory defaults, and optionally records global main/alias harness preferences. |
 | `harnesstap add <source>` | Discovers and installs skills from a GitHub repo, Git URL, or local skill package; optionally creates or attaches a plugin. |
-| `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, and doctor. |
+| `harnesstap plugin ...` | Plugin CRUD, **cut**, **editor**, composition attach/detach, cloud catalog workflows, diff, doctor, and origin **check** / **update**. |
 | `harnesstap apply` | Resolves a plugin dependency graph and materializes it into a project, or into machine home with `--global`. |
 | `harnesstap migrate ...` | Exports or imports workspace archives and Agent Plugins packages (offline sharing). |
 | `harnesstap resource ...` | Lists, shows, deletes, and syncs canonical resources. |
@@ -329,6 +329,8 @@ Commands are grouped by noun. For flag-level detail see [docs/cli/command-refere
 | `plugin catalog disconnect plugin <org>/<name>` | Remove a connected plugin from scope. |
 | `plugin diff` | Compares two plugins, or a plugin and a bundle file. |
 | `plugin doctor` | Multi-check diagnostic (`--check`, `--list-checks`; exits `1` when invalid). |
+| `plugin check` | Compare syncable working heads (`upstream` / `catalog`) to origin fingerprints. Optional `[name]`; omit to check every eligible head. `--refresh` force-fetches. Table: Name, Origin, Status, Local, Origin ref. JSON is the same rows. Exit `1` only when a row is `error`; `outdated` is not a failure. |
+| `plugin update` | Reapply origin content onto the working head. Requires `[name]` or `--all`. `--force` reapplies when fingerprints match. `--all` confirms on TTY unless `--yes`; off-TTY `--all` requires `--yes` (exit `1`, no writes). Exit `1` when any row is `failed`. |
 | `plugin from-project` | Scans a project and creates a plugin from imported resources. |
 
 ### `environment` subcommands

@@ -8,6 +8,7 @@ import {
   listMarketplaces,
   normalizeMarketplaceUrl,
   removeMarketplace,
+  updateMarketplace,
 } from "../../src/services/marketplace-registry.js";
 
 describe("normalizeMarketplaceUrl", () => {
@@ -101,5 +102,68 @@ describe("removeMarketplace", () => {
     });
     expect(listMarketplaces(dir)).toEqual([]);
     expect(loadSettings(dir).plugins.marketplaces).toEqual([]);
+  });
+});
+
+describe("updateMarketplace", () => {
+  it("renames, changes url and platforms", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-marketplace-"));
+    addMarketplace(dir, {
+      name: "demo",
+      url: "https://github.com/example/demo.git",
+      platforms: ["claude-code"],
+    });
+    const result = updateMarketplace(dir, "demo", {
+      name: "renamed",
+      url: "https://github.com/example/other.git",
+      platforms: ["cursor"],
+    });
+    expect(result.status).toBe("updated");
+    if (result.status !== "updated") return;
+    expect(result.entry).toEqual({
+      name: "renamed",
+      url: "https://github.com/example/other",
+      platforms: ["cursor"],
+    });
+    expect(result.renamedFrom).toBe("demo");
+    expect(result.urlChanged).toBe(true);
+    expect(listMarketplaces(dir)).toEqual([result.entry]);
+  });
+
+  it("returns not_found for unknown name", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-marketplace-"));
+    expect(updateMarketplace(dir, "missing", { name: "x" }).status).toBe("not_found");
+  });
+
+  it("throws on rename onto an existing name", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-marketplace-"));
+    addMarketplace(dir, {
+      name: "a",
+      url: "https://github.com/example/a.git",
+      platforms: ["claude-code"],
+    });
+    addMarketplace(dir, {
+      name: "b",
+      url: "https://github.com/example/b.git",
+      platforms: ["claude-code"],
+    });
+    expect(() => updateMarketplace(dir, "a", { name: "b" })).toThrow(/name conflict/i);
+  });
+
+  it("throws when changing url onto an existing marketplace url", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ht-marketplace-"));
+    addMarketplace(dir, {
+      name: "a",
+      url: "https://github.com/example/a.git",
+      platforms: ["claude-code"],
+    });
+    addMarketplace(dir, {
+      name: "b",
+      url: "https://github.com/example/b.git",
+      platforms: ["claude-code"],
+    });
+    expect(() =>
+      updateMarketplace(dir, "a", { url: "https://github.com/example/b.git" }),
+    ).toThrow(/url conflict/i);
   });
 });

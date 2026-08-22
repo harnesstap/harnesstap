@@ -2,6 +2,8 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -53,6 +55,22 @@ export function marketplaceCacheDir(harnesstapDir: string, name: string): string
 
 export function marketplaceCatalogPath(harnesstapDir: string, name: string): string {
   return join(marketplaceCacheDir(harnesstapDir, name), "catalog.json");
+}
+
+export function relocateMarketplaceCache(
+  harnesstapDir: string,
+  fromName: string,
+  toName: string,
+): void {
+  if (fromName === toName) return;
+  const fromDir = marketplaceCacheDir(harnesstapDir, fromName);
+  if (!existsSync(fromDir)) return;
+  const toDir = marketplaceCacheDir(harnesstapDir, toName);
+  if (existsSync(toDir)) {
+    rmSync(toDir, { recursive: true, force: true });
+  }
+  mkdirSync(dirname(toDir), { recursive: true });
+  renameSync(fromDir, toDir);
 }
 
 function isGooseOnly(platforms: PluginMarketplacePlatform[]): boolean {

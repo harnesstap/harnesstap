@@ -61,7 +61,13 @@ describe("plugin history navigation", () => {
     ).toEqual(["apply", "history", "cut", "doctor", "delete"]);
     expect(
       pluginPackageActions({ origin: "catalog", mode: "head", frozen: false }),
-    ).toEqual(["apply", "fork", "doctor", "delete"]);
+    ).toEqual(["apply", "update", "fork", "doctor", "delete"]);
+    expect(
+      pluginPackageActions({ origin: "upstream", mode: "head", frozen: false }),
+    ).toEqual(["apply", "update", "fork", "doctor", "delete"]);
+    expect(
+      pluginPackageActions({ origin: "authored", mode: "head", frozen: false }),
+    ).not.toContain("update");
     expect(
       pluginPackageActions({ origin: "authored", mode: "frozen", frozen: true }),
     ).toEqual(["restore"]);

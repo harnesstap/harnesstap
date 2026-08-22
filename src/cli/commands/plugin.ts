@@ -9,6 +9,10 @@ import {
 import { formatCount, formatPluginLabel } from "../formatting.js";
 import { parseCommaSeparatedList } from "../handlers/parse-flags.js";
 import { handlePluginForkCommand } from "../handlers/plugin-fork.js";
+import {
+  handlePluginCheckCommand,
+  handlePluginUpdateCommand,
+} from "../handlers/plugin-origin-update.js";
 import { handlePluginRollbackCommand } from "../handlers/plugin-rollback.js";
 import { handlePluginVersionsCommand } from "../handlers/plugin-versions.js";
 import { handlePluginInstallCommand } from "../handlers/plugin-install.js";
@@ -2803,6 +2807,47 @@ pluginCmd
   .option("--format <mode>", "Output format: human or json", "human")
   .description("Run doctor checks against a plugin")
   .action(handlePluginDoctorCommand);
+
+pluginCmd
+  .command("check")
+  .argument("[name]", "Plugin name; omit to check every syncable working head")
+  .option("--refresh", "Force-fetch origins")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Compare library working heads to marketplace, git, and catalog origins")
+  .action(async (name: string | undefined, opts: { refresh?: boolean; format?: string }) => {
+    try {
+      await handlePluginCheckCommand(name, opts);
+    } catch (error) {
+      process.exitCode = 1;
+      renderCliError(error);
+    }
+  });
+
+pluginCmd
+  .command("update")
+  .argument("[name]", "Plugin name")
+  .option("--all", "Update every outdated syncable working head")
+  .option("--force", "Reapply even when fingerprints match")
+  .option("-y, --yes", "Skip confirmation for --all")
+  .option("--format <mode>", "Output format: human or json", "human")
+  .description("Update library working heads from marketplace, git, and catalog origins")
+  .action(async (name: string | undefined, opts: {
+    all?: boolean;
+    force?: boolean;
+    yes?: boolean;
+    format?: string;
+  }) => {
+    try {
+      await handlePluginUpdateCommand(name, opts);
+    } catch (error) {
+      if (isPromptCancellationError(error)) {
+        ui.info("Operation cancelled.");
+        return;
+      }
+      process.exitCode = 1;
+      renderCliError(error);
+    }
+  });
 
 pluginCmd
   .command("why")

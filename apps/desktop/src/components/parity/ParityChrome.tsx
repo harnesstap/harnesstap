@@ -2,7 +2,7 @@ import { Puzzle } from "lucide-react";
 
 const HEADER_ICON_SIZE = 18;
 
-export type ParityWorkspaceFocus = "library" | "scope" | "environments";
+export type ParityWorkspaceFocus = "library" | "sources" | "scope" | "environments";
 
 export interface ParityChromeProps {
   workspaceFocus: ParityWorkspaceFocus;

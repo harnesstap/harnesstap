@@ -5,7 +5,11 @@ import { tryHandle as tryProfileDelete } from "./parity-handlers/profile-delete.
 import { tryHandle as tryPublish } from "./parity-handlers/publish.js";
 import { tryHandle as tryResourceMutate } from "./parity-handlers/resource-mutate.js";
 import { tryHandle as tryMarketplaceRemove } from "./parity-handlers/marketplace-remove.js";
+import { tryHandle as tryMarketplaceUpdate } from "./parity-handlers/marketplace-update.js";
+import { tryHandle as tryMarketplaceTree } from "./parity-handlers/marketplace-tree.js";
+import { tryHandle as tryCatalogScope } from "./parity-handlers/catalog-scope.js";
 import { tryHandle as tryCloudOrgs } from "./parity-handlers/cloud-orgs.js";
+import { tryHandle as tryPluginOriginUpdate } from "./parity-handlers/plugin-origin-update.js";
 import { tryHandle as tryLibraryPlugins } from "./parity-handlers/library-plugins.js";
 import { tryHandle as tryProjectHistory } from "./parity-handlers/project-history.js";
 import { tryHandle as tryProjectConfig } from "./parity-handlers/project-config.js";
@@ -25,7 +29,11 @@ const HANDLERS = [
   tryPublish,
   tryResourceMutate,
   tryMarketplaceRemove,
+  tryMarketplaceUpdate,
+  tryMarketplaceTree,
+  tryCatalogScope,
   tryCloudOrgs,
+  tryPluginOriginUpdate,
   tryLibraryPlugins,
   tryProjectHistory,
   tryProjectConfig,

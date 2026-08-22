@@ -83,3 +83,79 @@ export function removeMarketplace(
   });
   return { status: "removed", entry };
 }
+
+export type UpdateMarketplaceResult =
+  | {
+      status: "updated";
+      entry: PluginMarketplaceEntry;
+      renamedFrom?: string;
+      urlChanged: boolean;
+    }
+  | { status: "not_found"; name: string };
+
+export function updateMarketplace(
+  harnesstapDir: string,
+  currentName: string,
+  input: {
+    name?: string;
+    url?: string;
+    platforms?: PluginMarketplacePlatform[];
+  },
+): UpdateMarketplaceResult {
+  const settings = loadSettings(harnesstapDir);
+  const existing = settings.plugins.marketplaces;
+  const index = existing.findIndex((e) => e.name === currentName);
+  if (index < 0) return { status: "not_found", name: currentName };
+
+  const current = existing[index];
+  if (!current) return { status: "not_found", name: currentName };
+
+  const nextName = input.name !== undefined ? input.name.trim() : current.name;
+  if (!nextName) throw new Error("Marketplace name is required");
+  const nextUrl =
+    input.url !== undefined ? normalizeMarketplaceUrl(input.url) : current.url;
+  if (!nextUrl) throw new Error("Marketplace URL is required");
+  const nextPlatforms =
+    input.platforms !== undefined ? [...input.platforms] : [...current.platforms];
+  if (nextPlatforms.length === 0) {
+    throw new Error("At least one --platform is required");
+  }
+
+  if (nextName !== current.name) {
+    const collision = existing.find((e) => e.name === nextName);
+    if (collision) {
+      throw new Error(
+        `Marketplace name conflict: "${nextName}" already points at ${collision.url}. Pass a different --name or remove it first.`,
+      );
+    }
+  }
+
+  if (nextUrl !== current.url) {
+    const collision = existing.find(
+      (e) => e.name !== current.name && normalizeMarketplaceUrl(e.url) === nextUrl,
+    );
+    if (collision) {
+      throw new Error(
+        `Marketplace URL conflict: "${collision.name}" already points at ${collision.url}. Pass a different --url or remove it first.`,
+      );
+    }
+  }
+
+  const entry: PluginMarketplaceEntry = {
+    name: nextName,
+    url: nextUrl,
+    platforms: nextPlatforms,
+  };
+  const marketplaces = [...existing];
+  marketplaces[index] = entry;
+  saveSettings(harnesstapDir, {
+    ...settings,
+    plugins: { ...settings.plugins, marketplaces },
+  });
+  return {
+    status: "updated",
+    entry,
+    ...(nextName !== current.name ? { renamedFrom: current.name } : {}),
+    urlChanged: nextUrl !== current.url,
+  };
+}

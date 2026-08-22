@@ -420,6 +420,9 @@ describe("initializeSchema", () => {
               "frozen_at",
               "overrides",
               "origin",
+              "origin_locator",
+              "origin_fingerprint",
+              "origin_fingerprint_kind",
             ]),
           );
           expect(

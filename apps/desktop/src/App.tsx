@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Archive, ArchiveRestore, Check, Cloud, Download, FolderGit2, Globe, Library, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, FolderGit2, Globe, Library, PackageSearch, Pencil, Plus, RefreshCw, Settings, Tag, Upload, User } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
   activeHeaderDestination,
   headerClickIntent,
   type HeaderDestination,
+  type HeaderWorkspaceFocus,
 } from "./lib/header-destination";
 import {
   canPopScreenHistory,
@@ -19,7 +20,6 @@ import {
 } from "./lib/screen-history";
 import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
-import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { CutVersionsModal } from "./components/CutVersionsModal";
 import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
@@ -35,6 +35,7 @@ import { MigrateImportDrawer } from "./components/MigrateImportDrawer";
 import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SettingsDrawer } from "./components/SettingsDrawer";
+import { SourcesWorkspace } from "./components/SourcesWorkspace";
 import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
 import { WorkspaceBackButton } from "./components/WorkspaceBackButton";
 import {
@@ -84,7 +85,7 @@ import type {
 } from "./lib/types";
 import { orderedSwitchSteps, SWITCH_STEP_LABELS } from "./lib/types";
 
-type WorkspaceFocus = "library" | "scope" | "environments";
+type WorkspaceFocus = HeaderWorkspaceFocus;
 
 const HEADER_ICON_SIZE = 18;
 const RAIL_ICON_SIZE = 15;
@@ -189,6 +190,9 @@ export function App() {
   const [screenHistory, setScreenHistory] = useState<HeaderDestination[]>([]);
   const [homeResetNonce, setHomeResetNonce] = useState(0);
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
+  const [libraryFocusResource, setLibraryFocusResource] = useState<string | null>(
+    null,
+  );
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [view, setView] = useState<ViewScope>("home");
   const [switching, setSwitching] = useState(false);
@@ -207,11 +211,8 @@ export function App() {
   const [createProfileOpen, setCreateProfileOpen] = useState(false);
   const [createProfileInitialSource, setCreateProfileInitialSource] =
     useState<ProfileCreateSource>("compose");
-  const [
-    createProfileInitialSwitchAfterCreate,
-    setCreateProfileInitialSwitchAfterCreate,
-  ] = useState(false);
-  const [cloudBrowseOpen, setCloudBrowseOpen] = useState(false);
+  const [createProfileInitialSwitchAfterCreate, setCreateProfileInitialSwitchAfterCreate] =
+    useState(false);
   const [stashBrowseOpen, setStashBrowseOpen] = useState(false);
   const [cloudAccountOpen, setCloudAccountOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1467,17 +1468,6 @@ export function App() {
     [refreshProfiles, runSwitch, selectProfile],
   );
 
-  const onCloudPull = useCallback(
-    async (profileName: string, shouldSwitch: boolean) => {
-      await refreshProfiles();
-      selectProfile(profileName);
-      if (shouldSwitch) {
-        await runSwitch(false, profileName);
-      }
-    },
-    [refreshProfiles, runSwitch, selectProfile],
-  );
-
   const onStashProfile = useCallback(async () => {
     if (!baseUrl || !token || stashBusy || switching) {
       return;
@@ -1647,9 +1637,14 @@ export function App() {
 
   const applyHeaderDestination = (clicked: HeaderDestination): void => {
     switch (clicked) {
+    switch (clicked) {
       case "library":
         setEditingProfile(null);
         setWorkspaceFocus("library");
+        return;
+      case "sources":
+        setEditingProfile(null);
+        setWorkspaceFocus("sources");
         return;
       case "environments":
         setEditingProfile(null);
@@ -1688,6 +1683,7 @@ export function App() {
     if (headerClickIntent(activeDestination, clicked) === "reset") {
       switch (clicked) {
         case "library":
+        case "sources":
         case "environments":
           setHomeResetNonce((value) => value + 1);
           return;
@@ -1883,6 +1879,16 @@ export function App() {
               <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
               Library
             </button>
+            <button
+              type="button"
+              className={`header-focus-btn${workspaceFocus === "sources" ? " on" : ""}`}
+              onClick={() => onHeaderDestinationClick("sources")}
+              disabled={switching}
+              aria-label="Sources"
+              title="Sources"
+            >
+              <PackageSearch size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+            </button>
             <ParityChrome
               workspaceFocus={workspaceFocus}
               onWorkspaceFocus={() => {
@@ -2014,7 +2020,6 @@ export function App() {
             data-testid="open-migrate-export"
             onClick={() => {
               setCreateProfileOpen(false);
-              setCloudBrowseOpen(false);
               setStashBrowseOpen(false);
               setCloudAccountOpen(false);
               setSettingsOpen(false);
@@ -2033,7 +2038,6 @@ export function App() {
             data-testid="open-migrate-import"
             onClick={() => {
               setCreateProfileOpen(false);
-              setCloudBrowseOpen(false);
               setStashBrowseOpen(false);
               setCloudAccountOpen(false);
               setSettingsOpen(false);
@@ -2217,16 +2221,6 @@ export function App() {
                   title="Create profile"
                 >
                   <Plus size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
-                </button>
-                <button
-                  className="icon-action rail-icon-action"
-                  type="button"
-                  onClick={() => setCloudBrowseOpen(true)}
-                  disabled={!connected || switching || stashBusy}
-                  aria-label="Browse Cloud"
-                  title="Browse Cloud"
-                >
-                  <Cloud size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -2439,6 +2433,27 @@ export function App() {
               window.setTimeout(() => setSuccessMessage(null), 3000);
             }}
           />
+        ) : workspaceFocus === "sources" ? (
+          <SourcesWorkspace
+            baseUrl={baseUrl}
+            token={token}
+            disabled={switching}
+            homeResetNonce={homeResetNonce}
+            cloudAuthenticated={Boolean(cloudAuth?.authenticated)}
+            onSignIn={() => setCloudAccountOpen(true)}
+            onOpenInLibrary={(selector) => {
+              if (selector.includes(":")) {
+                setLibraryFocusResource(selector);
+              } else {
+                setLibraryFocusPlugin(selector);
+              }
+              setWorkspaceFocus("library");
+            }}
+            onSuccess={(message) => {
+              setSuccessMessage(message);
+              window.setTimeout(() => setSuccessMessage(null), 3000);
+            }}
+          />
         ) : workspaceFocus === "library" ? (
           <ResourcesPanel
             baseUrl={baseUrl}
@@ -2450,6 +2465,8 @@ export function App() {
             selectedProfile={selectedProfile}
             focusPluginName={libraryFocusPlugin}
             onFocusPluginConsumed={() => setLibraryFocusPlugin(null)}
+            focusResourceSelector={libraryFocusResource}
+            onFocusResourceConsumed={() => setLibraryFocusResource(null)}
             onBusyChange={setPluginApplyBusy}
             canWorkspaceBack={canWorkspaceBack}
             onWorkspaceBack={onWorkspaceBack}
@@ -2856,20 +2873,6 @@ export function App() {
           setCreateProfileInitialSwitchAfterCreate(false);
         }}
         onCreated={onProfileCreated}
-      />
-
-      <CloudBrowseDrawer
-        open={cloudBrowseOpen}
-        baseUrl={baseUrl}
-        token={token}
-        disabled={switching}
-        onClose={() => setCloudBrowseOpen(false)}
-        onPull={onCloudPull}
-        onRequestSignIn={() => {
-          setCloudBrowseOpen(false);
-          setSettingsOpen(false);
-          setCloudAccountOpen(true);
-        }}
       />
 
       <StashBrowseDrawer

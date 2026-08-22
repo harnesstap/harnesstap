@@ -1081,6 +1081,74 @@ button:focus-visible,
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 
+.source-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.source-row-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.source-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-left: 1.3rem;
+}
+
+.sources-workspace .source-row-actions .btn {
+  width: auto;
+  min-height: 24px;
+  padding: 0.15rem 0.45rem;
+}
+
+.sources-record-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.sources-record-action-cluster {
+  margin-left: 0;
+}
+
+.sources-pin-plugin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sources-hit {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sources-hit:disabled {
+  cursor: not-allowed;
+}
+
+.sources-tree-file {
+  min-width: 0;
+  text-align: left;
+}
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .resource-filter-option:has(input:disabled) {
   opacity: 0.55;
   cursor: not-allowed;

@@ -12,6 +12,7 @@ export type LibraryListEntry = LibraryResource & {
   version?: string;
   dirty?: boolean;
   pluginOrigin?: LibraryPluginHead["origin"];
+  originOutdated?: boolean;
   tags?: string[];
 };
 
@@ -61,6 +62,7 @@ export function groupLibraryListByFilterType(
 export function mergeLibraryList(
   resources: LibraryResource[],
   plugins: LibraryPluginHead[],
+  originOutdatedIds?: ReadonlySet<string>,
 ): LibraryListEntry[] {
   const resourceRows: LibraryListEntry[] = resources.map((resource) => ({
     ...resource,
@@ -79,6 +81,7 @@ export function mergeLibraryList(
     version: plugin.version,
     dirty: plugin.dirty,
     pluginOrigin: plugin.origin,
+    originOutdated: originOutdatedIds?.has(plugin.id) ?? false,
     tags: plugin.tags,
   }));
   return [...resourceRows, ...packageRows];
@@ -94,6 +97,13 @@ export function libraryRowBadge(entry: LibraryListEntry): string | null {
   }
   if (isPluginRefRow(entry)) {
     return "plugin ref";
+  }
+  return null;
+}
+
+export function libraryRowUpdateBadge(entry: LibraryListEntry): string | null {
+  if (entry.listKind === "plugin-package" && entry.originOutdated) {
+    return "Update available";
   }
   return null;
 }

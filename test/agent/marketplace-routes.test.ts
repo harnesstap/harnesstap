@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
@@ -30,12 +30,17 @@ describe("agent marketplace routes", () => {
     const root = mkdtempSync(join(tmpdir(), "ht-mkt-repo-"));
     tempDirs.push(root);
     mkdirSync(join(root, ".claude-plugin"), { recursive: true });
+    mkdirSync(join(root, "plugins", "demo-plugin", "skills"), { recursive: true });
     writeFileSync(
       join(root, ".claude-plugin/marketplace.json"),
       JSON.stringify({
         name: "e2e-market",
         plugins: [{ name: "demo-plugin", version: "1.0.0", description: "E2E demo" }],
       }),
+    );
+    writeFileSync(
+      join(root, "plugins", "demo-plugin", "skills", "hello.md"),
+      "hello from marketplace\n",
     );
     spawnSync("git", ["init"], { cwd: root, stdio: "ignore" });
     spawnSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
@@ -159,5 +164,332 @@ describe("agent marketplace routes", () => {
       error: "invalid_platform",
       message: "Each platform must be claude-code, cursor, goose, or copilot-cli",
     });
+  });
+
+  it("patches marketplace name and platforms", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const patch = await fetch(`${server.url}/v1/marketplaces/e2e-market`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "renamed",
+        platforms: ["cursor"],
+      }),
+    });
+    expect(patch.status).toBe(200);
+    const patchBody = (await patch.json()) as {
+      status: string;
+      entry: { name: string; platforms: string[] };
+    };
+    expect(patchBody.status).toBe("updated");
+    expect(patchBody.entry.name).toBe("renamed");
+    expect(patchBody.entry.platforms).toEqual(["cursor"]);
+  });
+
+  it("keeps catalog plugins after a rename-only PATCH", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+    const home = process.env.HARNESSTAP_HOME ?? "";
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const before = await fetch(`${server.url}/v1/marketplaces/e2e-market/plugins`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(before.status).toBe(200);
+    const beforeBody = (await before.json()) as {
+      plugins: Array<{ name: string }>;
+    };
+    expect(beforeBody.plugins.some((p) => p.name === "demo-plugin")).toBe(true);
+
+    const patch = await fetch(`${server.url}/v1/marketplaces/e2e-market`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "renamed" }),
+    });
+    expect(patch.status).toBe(200);
+
+    const after = await fetch(`${server.url}/v1/marketplaces/renamed/plugins`, {
+      headers: { Authorization: `Bearer ${server.token}` },
+    });
+    expect(after.status).toBe(200);
+    const afterBody = (await after.json()) as {
+      marketplace: string;
+      plugins: Array<{ name: string }>;
+    };
+    expect(afterBody.marketplace).toBe("renamed");
+    expect(afterBody.plugins.some((p) => p.name === "demo-plugin")).toBe(true);
+    expect(existsSync(join(home, "cache", "marketplaces", "e2e-market"))).toBe(false);
+    expect(existsSync(join(home, "cache", "marketplaces", "renamed"))).toBe(true);
+  });
+
+  it("returns 404 when patching an unknown marketplace", async () => {
+    const server = withServer();
+
+    const patch = await fetch(`${server.url}/v1/marketplaces/missing`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "x" }),
+    });
+    expect(patch.status).toBe(404);
+    const body = (await patch.json()) as { error: string };
+    expect(body.error).toBe("not_found");
+  });
+
+  it("returns 409 when renaming onto an existing marketplace name", async () => {
+    const server = withServer();
+    const firstRepo = makeLocalMarketplaceGitRepo();
+    const secondRepo = makeLocalMarketplaceGitRepo();
+
+    const addFirst = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: firstRepo,
+        name: "first",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(addFirst.status).toBe(200);
+
+    const addSecond = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: secondRepo,
+        name: "second",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(addSecond.status).toBe(200);
+
+    const patch = await fetch(`${server.url}/v1/marketplaces/first`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "second" }),
+    });
+    expect(patch.status).toBe(409);
+    const body = (await patch.json()) as { error: string };
+    expect(body.error).toBe("name_conflict");
+  });
+
+  it("returns 409 when changing url onto an existing marketplace url", async () => {
+    const server = withServer();
+    const firstRepo = makeLocalMarketplaceGitRepo();
+    const secondRepo = makeLocalMarketplaceGitRepo();
+
+    const addFirst = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: firstRepo,
+        name: "first",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(addFirst.status).toBe(200);
+
+    const addSecond = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: secondRepo,
+        name: "second",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(addSecond.status).toBe(200);
+
+    const patch = await fetch(`${server.url}/v1/marketplaces/first`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: secondRepo }),
+    });
+    expect(patch.status).toBe(409);
+    const body = (await patch.json()) as { error: string };
+    expect(body.error).toBe("url_conflict");
+  });
+
+  it("rejects unauthenticated PATCH", async () => {
+    const server = withServer();
+
+    const denied = await fetch(`${server.url}/v1/marketplaces/e2e-market`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "renamed" }),
+    });
+    expect(denied.status).toBe(401);
+  });
+
+  it("lists marketplace plugin tree files", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const tree = await fetch(
+      `${server.url}/v1/marketplaces/e2e-market/plugins/demo-plugin/tree`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(tree.status).toBe(200);
+    await expect(tree.json()).resolves.toEqual({
+      files: [{ path: "skills/hello.md", kind: "file" }],
+    });
+  });
+
+  it("returns marketplace plugin file content", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const file = await fetch(
+      `${server.url}/v1/marketplaces/e2e-market/plugins/demo-plugin/tree?path=skills/hello.md`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(file.status).toBe(200);
+    await expect(file.json()).resolves.toEqual({
+      path: "skills/hello.md",
+      content: "hello from marketplace\n",
+    });
+  });
+
+  it("rejects marketplace tree path traversal", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const traversal = await fetch(
+      `${server.url}/v1/marketplaces/e2e-market/plugins/demo-plugin/tree?path=../catalog.json`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(traversal.status).toBe(400);
+    await expect(traversal.json()).resolves.toEqual({ error: "invalid_path" });
+  });
+
+  it("returns 404 for an unknown marketplace plugin tree", async () => {
+    const server = withServer();
+    const repo = makeLocalMarketplaceGitRepo();
+
+    const add = await fetch(`${server.url}/v1/marketplaces`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${server.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: repo,
+        name: "e2e-market",
+        platforms: ["claude-code"],
+      }),
+    });
+    expect(add.status).toBe(200);
+
+    const missing = await fetch(
+      `${server.url}/v1/marketplaces/e2e-market/plugins/no-such-plugin/tree`,
+      { headers: { Authorization: `Bearer ${server.token}` } },
+    );
+    expect(missing.status).toBe(404);
+  });
+
+  it("rejects unauthenticated marketplace plugin tree", async () => {
+    const server = withServer();
+
+    const denied = await fetch(
+      `${server.url}/v1/marketplaces/e2e-market/plugins/demo-plugin/tree`,
+    );
+    expect(denied.status).toBe(401);
   });
 });

@@ -81,6 +81,8 @@ export function toPluginHead(plugin: {
   tags: string[];
   description: string;
   dirty: boolean;
+  org_slug: string;
+  catalog_slug: string;
 }): {
   id: string;
   name: string;
@@ -89,6 +91,8 @@ export function toPluginHead(plugin: {
   description: string | null;
   origin: "authored" | "upstream" | "catalog";
   dirty: boolean;
+  org_slug: string;
+  catalog_slug: string;
 } {
   return {
     id: plugin.id,
@@ -98,6 +102,8 @@ export function toPluginHead(plugin: {
     description: plugin.description || null,
     origin: getPluginOrigin(plugin.id),
     dirty: plugin.dirty,
+    org_slug: plugin.org_slug,
+    catalog_slug: plugin.catalog_slug,
   };
 }
 

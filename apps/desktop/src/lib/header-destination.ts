@@ -1,8 +1,17 @@
 import type { ViewScope } from "./types";
 
-export type HeaderDestination = "library" | "environments" | "home" | "project";
+export type HeaderDestination =
+  | "library"
+  | "sources"
+  | "environments"
+  | "home"
+  | "project";
 
-export type HeaderWorkspaceFocus = "library" | "scope" | "environments";
+export type HeaderWorkspaceFocus =
+  | "library"
+  | "sources"
+  | "scope"
+  | "environments";
 
 export function activeHeaderDestination(
   workspaceFocus: HeaderWorkspaceFocus,
@@ -11,6 +20,8 @@ export function activeHeaderDestination(
   switch (workspaceFocus) {
     case "library":
       return "library";
+    case "sources":
+      return "sources";
     case "environments":
       return "environments";
     case "scope":

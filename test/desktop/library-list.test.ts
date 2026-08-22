@@ -5,6 +5,7 @@ import {
   libraryFilterType,
   libraryFilterTypeLabel,
   libraryRowBadge,
+  libraryRowUpdateBadge,
   mergeLibraryList,
   type LibraryListEntry,
   type LibraryListKind,
@@ -30,6 +31,8 @@ const pluginHead: LibraryPluginHead = {
   description: "Upstream plugin",
   origin: "upstream",
   dirty: false,
+  org_slug: "",
+  catalog_slug: "",
 };
 
 function entryOfKind(
@@ -108,3 +111,20 @@ describe("libraryRowBadge", () => {
     expect(libraryRowBadge(entryOfKind(entries, "resource"))).toBe("plugin ref");
   });
 });
+
+describe("libraryRowUpdateBadge", () => {
+  it("returns Update available only for outdated plugin-package rows", () => {
+    const entries = mergeLibraryList(
+      [resource({ id: "r1", type: "plugin", name: "nested" })],
+      [pluginHead],
+      new Set(["p1"]),
+    );
+    expect(libraryRowUpdateBadge(entryOfKind(entries, "plugin-package"))).toBe(
+      "Update available",
+    );
+    expect(libraryRowUpdateBadge(entryOfKind(entries, "resource"))).toBe(null);
+    const current = mergeLibraryList([], [pluginHead]);
+    expect(libraryRowUpdateBadge(current[0]!)).toBe(null);
+  });
+});
+

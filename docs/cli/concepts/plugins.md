@@ -30,11 +30,13 @@ ht plugin show my-setup
 
 Every local plugin row has an **origin**. Capabilities vary by origin; `ht plugin list` shows an Origin column (JSON includes `origin`), and refusal errors name the fix instead of only failing.
 
-| Origin | How it gets there | edit / cut / publish / add needs | sync |
+| Origin | How it gets there | edit / cut / publish / add needs | Origin update |
 | --- | --- | --- | --- |
 | `authored` | `plugin create`, `plugin from-project`, `plugin fork`, conflict scaffolding | Yes | No |
-| `upstream` | Materialized from a marketplace, local path, or git plugin install tree | No — error names `fork` | Yes |
-| `catalog` | `plugin pull` from an org catalog | No — error names `fork` | Yes |
+| `upstream` | Materialized from a marketplace, local path, or git plugin install tree | No — error names `fork` | Yes — `plugin check` / `plugin update` |
+| `catalog` | `plugin pull` from an org catalog | No — error names `fork` | Yes — `plugin check` / `plugin update` |
+
+`plugin check` and `plugin update` refresh library working heads from those origins using git hashes (or catalog version/digest). `resource sync` is a different path: it still reads harness install trees, not this origin fingerprint.
 
 Upstream and catalog plugins are read-only graph nodes until you fork them:
 
@@ -282,6 +284,8 @@ Requests carry `X-HarnessTap-CLI-Version` and `X-HarnessTap-API-Version`. A CLI 
 | Create from scratch | `plugin create` |
 | Add resources or deps | `plugin edit --add` / `--remove` |
 | Fork upstream / catalog | `plugin fork` |
+| Check origin freshness | `plugin check` |
+| Update from origin | `plugin update` / `plugin update --all --yes` |
 | Diagnose before apply | `plugin doctor` |
 | Explain a resolve decision | `plugin why` / `apply --explain` |
 | Compare versions | `plugin diff` |

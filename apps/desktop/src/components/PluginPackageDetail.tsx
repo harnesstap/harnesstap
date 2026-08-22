@@ -14,6 +14,7 @@ import {
   History,
   MapPin,
   Play,
+  RefreshCw,
   Scissors,
   Stethoscope,
   Tag,
@@ -46,6 +47,7 @@ import {
   type LibraryPluginVersionRow,
   type PluginOrigin,
 } from "../lib/api/library-plugins";
+import { postPluginOriginUpdate } from "../lib/api/plugin-origin-update";
 import {
   formatPluginRollbackConfirmMessage,
   pluginHistoryBackLabel,
@@ -100,6 +102,8 @@ type PluginEditingField =
 
 const APPLY_TOOLTIP =
   "Write this plugin’s graph into the selected project (or global when that screen says so).";
+const UPDATE_TOOLTIP =
+  "Fetch this plugin from its origin and replace the working head. Not resource sync.";
 const DELETE_TOOLTIP =
   "Remove this from the library. Plugins that referenced it are not edited. On-disk harness files are not deleted.";
 const CUT_TOOLTIP =
@@ -238,6 +242,7 @@ export function PluginPackageDetail({
   const [draftTags, setDraftTags] = useState<string[]>([]);
   const [draftEnvId, setDraftEnvId] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [descriptionMultiline, setDescriptionMultiline] = useState(false);
 
   const anyBusy = busy || doctorBusy || confirmBusy || applyBusy || rollbackBusy;
@@ -295,6 +300,7 @@ export function PluginPackageDetail({
     let cancelled = false;
     setDetailLoading(true);
     setDetailError(null);
+    setActionError(null);
     setEditingField(null);
     setFieldError(null);
     void fetchLibraryPluginDetail(baseUrl, token, selector)
@@ -1061,6 +1067,35 @@ export function PluginPackageDetail({
     );
   }
 
+  async function runOriginUpdate(): Promise<void> {
+    if (!baseUrl || !detail || actionsLocked) {
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    try {
+      const report = await postPluginOriginUpdate(baseUrl, token, {
+        name: detail.plugin.name,
+      });
+      const failed = report.results.find((row) => row.status === "failed");
+      if (failed) {
+        setActionError(
+          failed.message ?? "Could not update plugin from origin",
+        );
+      } else if (report.results.some((row) => row.status === "updated")) {
+        onSuccess(`Updated ${detail.plugin.name} from origin`);
+      }
+      setDetailEpoch((value) => value + 1);
+      onLibraryChanged?.();
+    } catch (error: unknown) {
+      setActionError(
+        errorMessage(error, "Could not update plugin from origin"),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function renderPackageAction(action: PluginPackageAction): ReactNode {
     if (!detail) {
       return null;
@@ -1081,6 +1116,22 @@ export function PluginPackageDetail({
             <Play size={14} aria-hidden />
             Apply
           </button>
+        );
+      case "update":
+        return (
+          <button
+            key="update"
+            type="button"
+            className="btn"
+            disabled={actionsLocked}
+            title={UPDATE_TOOLTIP}
+            aria-label={UPDATE_TOOLTIP}
+            onClick={() => {
+              void runOriginUpdate();
+            }}
+          >
+            <RefreshCw size={14} aria-hidden />
+            Update</button>
         );
       case "history":
         return (
@@ -1264,6 +1315,11 @@ export function PluginPackageDetail({
       {historyMode === "frozen" && frozenError ? (
         <div className="banner error" role="alert">
           {frozenError}
+        </div>
+      ) : null}
+      {historyMode === "head" && actionError ? (
+        <div className="banner error" role="alert">
+          {actionError}
         </div>
       ) : null}
       {historyMode === "head" && detailError ? (
