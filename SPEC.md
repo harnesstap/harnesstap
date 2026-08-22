@@ -374,7 +374,7 @@ Repositories may declare named profiles in `.harnesstap/config.toml` (`urn:harne
 | `resource list` | Lists canonical resources; shows `name@namespace` when namespace is non-empty. Hides `type=plugin` composition refs by default; use `--all` to disable per-type caps. |
 | `resource show` | Prints the full stored resource (supports selector grammar). |
 | `resource sync` | Refreshes `plugin_pin` resources and `marketplace_link` children from install roots. Supports `--on-conflict`, `--prune`, `--force`, `--dry-run`. |
-| `resource delete` | Deletes a resource by selector or ID. |
+| `resource delete` | Deletes a resource by selector or ID. Desktop/API modes: `library` (default; library row only, no disk changes) and `library_and_disk` (remove known global, tracked-project, and source locations first, then the library row). Preview via `GET /v1/library/resources/:selector/delete-plan`. Disk cleanup is surgical for shared aggregate files (for example MCP JSON entries) and blocks with `protected` / 409 when content was modified or a shared section cannot be identified. |
 
 ### Project-local commands (top-level)
 

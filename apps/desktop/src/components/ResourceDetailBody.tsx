@@ -31,7 +31,9 @@ import {
   deleteLibraryResource,
   isResourceConflictError,
   patchLibraryResource,
+  previewLibraryResourceDelete,
   syncLibraryResource,
+  type ResourceDeletePlan,
   type ResourceSyncResult,
 } from "../lib/api/resource-mutate";
 import { formatLibraryTimestamp } from "../lib/library-timestamp";
@@ -42,7 +44,12 @@ import {
 import {
   attachersFromResourceDetail,
   formatResourceDeleteAttachers,
+  formatResourceDeletePlanSummary,
+  formatResourceDeleteSuccess,
+  RESOURCE_DELETE_DISK_LABEL,
+  RESOURCE_DELETE_LIBRARY_LABEL,
   resourceCanRemoveFromActiveProfile,
+  resourceDeleteDiskDisabled,
 } from "../lib/resource-delete";
 import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
@@ -68,7 +75,7 @@ const SYNC_TOOLTIP =
 const APPLY_SYNC_TOOLTIP =
   "Write the pending sync into the library. This still does not apply the plugin.";
 const DELETE_TOOLTIP =
-  "Remove this from the library. Plugins that referenced it are not edited. On-disk harness files are not deleted.";
+  "Remove this from the library, or from the library and known on-disk locations.";
 
 export interface ResourceDetailBodyProps {
   target: ResourceDetailTarget;
@@ -178,6 +185,7 @@ export function ResourceDetailBody({
   const [preview, setPreview] = useState<ResourceSyncResult | null>(null);
   const [mutating, setMutating] = useState(false);
   const [confirm, setConfirm] = useState<"delete" | "overwrite" | null>(null);
+  const [deletePlan, setDeletePlan] = useState<ResourceDeletePlan | null>(null);
   const [editingField, setEditingField] = useState<ResourceDetailEditingField | null>(
     null,
   );
@@ -379,17 +387,37 @@ export function ResourceDetailBody({
     }
   }
 
-  async function runDelete() {
+  async function openDeleteConfirm() {
     if (!baseUrl || !target || !detail) {
       return;
     }
     setMutating(true);
     setActionError(null);
     try {
-      await deleteLibraryResource(baseUrl, token, target.selector);
-      onSuccess?.(`Deleted ${quoteResource(detail)}`);
+      const plan = await previewLibraryResourceDelete(baseUrl, token, target.selector);
+      setDeletePlan(plan);
+      setConfirm("delete");
+    } catch (planError: unknown) {
+      setActionError(errorMessage(planError, "Could not preview resource delete"));
+    } finally {
+      setMutating(false);
+    }
+  }
+
+  async function runDelete(mode: "library" | "library_and_disk") {
+    if (!baseUrl || !target || !detail) {
+      return;
+    }
+    setMutating(true);
+    setActionError(null);
+    try {
+      const result = await deleteLibraryResource(baseUrl, token, target.selector, mode);
+      onSuccess?.(
+        formatResourceDeleteSuccess(mode, quoteResource(detail), result),
+      );
       onLibraryChanged?.();
       setConfirm(null);
+      setDeletePlan(null);
       onDeleted?.();
     } catch (deleteError: unknown) {
       setActionError(errorMessage(deleteError, "Could not delete resource"));
@@ -455,6 +483,10 @@ export function ResourceDetailBody({
   const canRemoveFromActive = deleteAttachers
     ? resourceCanRemoveFromActiveProfile(deleteAttachers)
     : false;
+  const deletePlanSummary = deletePlan
+    ? formatResourceDeletePlanSummary(deletePlan)
+    : null;
+  const diskDeleteDisabled = resourceDeleteDiskDisabled(deletePlan);
 
   const actionButtons = (
     <>
@@ -491,7 +523,7 @@ export function ResourceDetailBody({
           disabled={actionsLocked}
           title={DELETE_TOOLTIP}
           aria-label={DELETE_TOOLTIP}
-          onClick={() => setConfirm("delete")}
+          onClick={() => void openDeleteConfirm()}
         >
           <Trash2 size={14} aria-hidden />
           Delete
@@ -738,19 +770,24 @@ export function ResourceDetailBody({
         title="Delete this resource?"
         description={
           detail
-            ? `This removes ${detail.type} "${detail.name}" from the library. On-disk harness files are not deleted.`
+            ? `Choose how to remove ${detail.type} "${detail.name}". Library-only keeps on-disk files. Library + disk removes known global, project, and source locations.`
             : ""
         }
-        confirmLabel="Delete"
+        confirmLabel={RESOURCE_DELETE_DISK_LABEL}
         cancelLabel="Cancel"
         confirmBusy={busy}
-        secondaryLabel={canRemoveFromActive ? "Remove from active profile" : undefined}
+        confirmDisabled={diskDeleteDisabled}
+        secondaryLabel={RESOURCE_DELETE_LIBRARY_LABEL}
         secondaryBusy={busy}
-        onSecondary={canRemoveFromActive ? () => void runRemoveFromActive() : undefined}
-        onConfirm={() => void runDelete()}
+        onSecondary={() => void runDelete("library")}
+        tertiaryLabel={canRemoveFromActive ? "Remove from active profile" : undefined}
+        tertiaryBusy={busy}
+        onTertiary={canRemoveFromActive ? () => void runRemoveFromActive() : undefined}
+        onConfirm={() => void runDelete("library_and_disk")}
         onCancel={() => {
           if (!busy) {
             setConfirm(null);
+            setDeletePlan(null);
           }
         }}
       >
@@ -764,6 +801,36 @@ export function ResourceDetailBody({
             ) : null}
             {deleteAttacherCopy.emptyLine ? (
               <p>{deleteAttacherCopy.emptyLine}</p>
+            ) : null}
+          </div>
+        ) : null}
+        {deletePlanSummary ? (
+          <div className="muted">
+            {deletePlanSummary.emptyMessage ? (
+              <p>{deletePlanSummary.emptyMessage}</p>
+            ) : null}
+            {deletePlanSummary.groups.map((group) => (
+              <div key={group.scope}>
+                <p>
+                  <strong>{group.label}</strong>
+                </p>
+                {group.locations.map((location) => (
+                  <p key={`${location.scope}:${location.path}`}>
+                    {location.action}: {location.path}
+                    {location.project_name ? ` (${location.project_name})` : ""}
+                  </p>
+                ))}
+              </div>
+            ))}
+            {deletePlanSummary.blockers.length > 0 ? (
+              <div>
+                <p>
+                  <strong>Protected</strong>
+                </p>
+                {deletePlanSummary.blockers.map((blocker) => (
+                  <p key={blocker}>{blocker}</p>
+                ))}
+              </div>
             ) : null}
           </div>
         ) : null}

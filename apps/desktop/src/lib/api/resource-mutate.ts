@@ -25,7 +25,29 @@ export interface ResourceSyncResult {
 
 export interface ResourceDeleteResult {
   deleted: true;
+  mode: "library" | "library_and_disk";
   resource: ResourceSyncSummary;
+  deleted_files: string[];
+  edited_files: string[];
+  skipped_locations: string[];
+}
+
+export interface ResourceDeletePlanLocation {
+  scope: "global" | "project" | "source";
+  project_id: string | null;
+  project_name: string | null;
+  root_path: string;
+  path: string;
+  action: "delete-file" | "delete-directory" | "edit-file" | "protected";
+  ownership_key: string;
+  reason: string;
+}
+
+export interface ResourceDeletePlan {
+  resource: ResourceSyncSummary;
+  locations: ResourceDeletePlanLocation[];
+  blockers: string[];
+  can_delete_from_disk: boolean;
 }
 
 export interface SyncLibraryResourceInput {
@@ -62,16 +84,37 @@ export async function syncLibraryResource(
   return (await response.json()) as ResourceSyncResult;
 }
 
+export async function previewLibraryResourceDelete(
+  baseUrl: string,
+  token: string | null,
+  selector: string,
+): Promise<ResourceDeletePlan> {
+  const response = await agentFetch(
+    baseUrl,
+    token,
+    `/v1/library/resources/${encodeURIComponent(selector)}/delete-plan`,
+  );
+  if (!response.ok) {
+    return throwAgentError(response, "Could not preview resource delete");
+  }
+  return (await response.json()) as ResourceDeletePlan;
+}
+
 export async function deleteLibraryResource(
   baseUrl: string,
   token: string | null,
   selector: string,
+  mode: "library" | "library_and_disk" = "library",
 ): Promise<ResourceDeleteResult> {
   const response = await agentFetch(
     baseUrl,
     token,
     `/v1/library/resources/${encodeURIComponent(selector)}`,
-    { method: "DELETE" },
+    {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode }),
+    },
   );
   if (!response.ok) {
     return throwAgentError(response, "Could not delete resource");

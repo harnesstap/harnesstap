@@ -26,6 +26,10 @@ import type {
 } from "../types.js";
 import { getPlatformSerializer } from "./platform-serializers.js";
 import {
+  attachResourceOwnership,
+  persistWrittenMaterializations,
+} from "./materialization-ownership.js";
+import {
   type EnvironmentFragment,
   mergeResolvedEnvironmentIntoResources,
 } from "./environment-cascade.js";
@@ -242,6 +246,15 @@ export async function generateFiles(
     if (pid === "claude-code" && claudeConfig) {
       files = applyClaudePluginExtensions(files, claudeConfig, projectRoot);
     }
+    files = await attachResourceOwnership(files, serializedResources, {
+      platformId: pid,
+      rootPath: projectRoot,
+      target,
+      serializeOptions: {
+        skillCursorMode: options.skillCursorMode,
+        skillSourceRoot,
+      },
+    });
     results.push({ platformId: pid, files });
   }
 
@@ -422,7 +435,9 @@ export async function applyToProject(
   platforms: string[],
   projectRoot: string,
   claudeConfig?: ClaudePluginConfig,
-  options: Pick<GenerateFilesOptions, "skillCursorMode"> = {},
+  options: Pick<GenerateFilesOptions, "skillCursorMode"> & {
+    project_id?: string | null;
+  } = {},
 ): Promise<ApplyResult[]> {
   const results = await generateFiles(resources, platforms, projectRoot, claudeConfig, {
     target: "project",
@@ -432,6 +447,17 @@ export async function applyToProject(
   for (const result of results) {
     writeFiles(result.files, projectRoot);
   }
+
+  persistWrittenMaterializations({
+    scope: "project",
+    project_id: options.project_id ?? null,
+    root_path: projectRoot,
+    platformResults: results.map((result) => ({
+      platformId: result.platformId,
+      files: result.files,
+      writtenPaths: result.files.map((file) => file.path),
+    })),
+  });
 
   return results;
 }
@@ -453,6 +479,21 @@ export async function applyToGlobal(
     currentSnapshotId: options.snapshotId,
     replaceOwnedSnapshotIds: options.replaceOwnedSnapshotIds,
   });
+
+  if (!materialized.cancelled) {
+    persistWrittenMaterializations({
+      scope: "global",
+      project_id: null,
+      root_path: homeRoot,
+      platformResults: results.map((result) => ({
+        platformId: result.platformId,
+        files: result.files,
+        writtenPaths: materialized.writtenFiles.filter((filePath) =>
+          result.files.some((file) => file.path === filePath),
+        ),
+      })),
+    });
+  }
 
   if (!materialized.cancelled && options.snapshotId) {
     removeImportedSnapshotOwnershipForFiles(materialized.writtenFiles, options.snapshotId);

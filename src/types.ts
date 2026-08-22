@@ -188,6 +188,58 @@ export type ResourceCreateInput = Pick<
     >
   >;
 
+export type MaterializationScope = "global" | "project";
+
+export type MaterializationAction =
+  | "delete-file"
+  | "delete-directory"
+  | "edit-file";
+
+export interface ResourceMaterialization {
+  id: string;
+  resource_id: string;
+  scope: MaterializationScope;
+  project_id: string | null;
+  root_path: string;
+  platform_id: string;
+  path: string;
+  action: MaterializationAction;
+  ownership_key: string;
+  generated_hash: string;
+  managed_container: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ResourceDeleteLocationAction =
+  | MaterializationAction
+  | "protected";
+
+export interface ResourceDeleteLocation {
+  scope: "global" | "project" | "source";
+  project_id: string | null;
+  project_name: string | null;
+  root_path: string;
+  path: string;
+  action: ResourceDeleteLocationAction;
+  ownership_key: string;
+  reason: string;
+}
+
+export interface ResourceDeletePlan {
+  resource: Pick<Resource, "id" | "type" | "name" | "namespace">;
+  locations: ResourceDeleteLocation[];
+  blockers: string[];
+  can_delete_from_disk: boolean;
+}
+
+export interface ResourceDeleteResult extends ResourceDeletePlan {
+  deleted_from_library: boolean;
+  deleted_files: string[];
+  edited_files: string[];
+  skipped_locations: string[];
+}
+
 /** Claude Code marketplace source (extraKnownMarketplaces entry). */
 export interface ClaudeMarketplaceSource {
   source: string;
@@ -513,6 +565,14 @@ export type DeckJsonLayer = DeckJsonPlugin;
 export interface SerializedFile {
   path: string;
   content: string;
+  ownership?: SerializedResourceOwnership[];
+}
+
+export interface SerializedResourceOwnership {
+  resource_id: string;
+  action: MaterializationAction;
+  ownership_key: string;
+  managed_container: boolean;
 }
 
 export type SerializerTarget = "project" | "global";
