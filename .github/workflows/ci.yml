@@ -48,6 +48,7 @@ jobs:
       services: ${{ steps.resolve.outputs.services }}
       cli: ${{ steps.resolve.outputs.cli }}
       docs: ${{ steps.resolve.outputs.docs }}
+      desktop: ${{ steps.resolve.outputs.desktop }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -89,12 +90,19 @@ jobs:
             docs:
               - 'docs/**'
               - 'test/docs/**'
+            desktop:
+              - 'apps/desktop/src/**'
+              - 'apps/desktop/package.json'
+              - 'apps/desktop/bun.lock'
+              - 'apps/desktop/tsconfig*.json'
+              - 'apps/desktop/index.html'
+              - 'apps/desktop/vite.config.ts'
 
       - name: Resolve change flags
         id: resolve
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            for area in global core platforms plugins services cli docs; do
+            for area in global core platforms plugins services cli docs desktop; do
               echo "${area}=true" >> "$GITHUB_OUTPUT"
             done
           else
@@ -105,6 +113,7 @@ jobs:
             echo "services=${{ steps.filter.outputs.services }}" >> "$GITHUB_OUTPUT"
             echo "cli=${{ steps.filter.outputs.cli }}" >> "$GITHUB_OUTPUT"
             echo "docs=${{ steps.filter.outputs.docs }}" >> "$GITHUB_OUTPUT"
+            echo "desktop=${{ steps.filter.outputs.desktop }}" >> "$GITHUB_OUTPUT"
           fi
 
   test-core:
@@ -204,6 +213,22 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test:docs
 
+  desktop-typecheck:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.desktop == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Install desktop dependencies
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+      - name: Typecheck desktop app
+        working-directory: apps/desktop
+        run: bunx tsc -p tsconfig.app.json --noEmit
+
   validate:
     runs-on: ubuntu-latest
     needs:
@@ -214,6 +239,7 @@ jobs:
       - test-services
       - test-cli
       - test-docs
+      - desktop-typecheck
     if: >-
       always() &&
       (needs.test-core.result == 'success' || needs.test-core.result == 'skipped') &&
@@ -222,6 +248,7 @@ jobs:
       (needs.test-services.result == 'success' || needs.test-services.result == 'skipped') &&
       (needs.test-cli.result == 'success' || needs.test-cli.result == 'skipped') &&
       (needs.test-docs.result == 'success' || needs.test-docs.result == 'skipped') &&
+      (needs.desktop-typecheck.result == 'success' || needs.desktop-typecheck.result == 'skipped') &&
       (needs.test-core.result == 'success' || needs.test-platforms.result == 'success' || needs.test-plugins.result == 'success' || needs.test-services.result == 'success' || needs.test-cli.result == 'success' || needs.test-docs.result == 'success')
     steps:
       - name: Check out repository
