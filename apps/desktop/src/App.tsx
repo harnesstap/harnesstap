@@ -1637,7 +1637,6 @@ export function App() {
 
   const applyHeaderDestination = (clicked: HeaderDestination): void => {
     switch (clicked) {
-    switch (clicked) {
       case "library":
         setEditingProfile(null);
         setWorkspaceFocus("library");
