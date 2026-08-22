@@ -1,6 +1,7 @@
 import { listPlugins } from "../models/plugin-model.js";
 import { listResources, resolveResource } from "../models/resource.js";
 import { pluginResourceShowExtras } from "../services/plugin-resource-show.js";
+import { resourceAttacherPayload } from "../services/resource-attachers.js";
 import { readResourceContentFromPathHint } from "../services/resource-editor-path.js";
 import { truncateResourceContent } from "../services/resource-show.js";
 import { parseUntrackedResourceSelector } from "../services/untracked-resource.js";
@@ -70,6 +71,10 @@ export function handleLibraryResourceDetail(
           updated_at: onDisk.updatedAt,
           content,
           content_truncated: onDisk.content.split("\n").length > 80,
+          attached_profiles: [],
+          attached_plugins: [],
+          active_profile: null,
+          in_active_profile: false,
         },
       });
     } catch (error) {
@@ -111,6 +116,7 @@ export function handleLibraryResourceDetail(
 
   const resource = result.resource;
   const extras = pluginResourceShowExtras(resource);
+  const attachers = resourceAttacherPayload(resource.id);
   return jsonResponse({
     resource: {
       id: resource.id,
@@ -124,6 +130,7 @@ export function handleLibraryResourceDetail(
       updated_at: resource.updated_at,
       content: truncateResourceContent(resource.content, 80),
       content_truncated: resource.content.split("\n").length > 80,
+      ...attachers,
       ...(extras ?? {}),
     },
   });

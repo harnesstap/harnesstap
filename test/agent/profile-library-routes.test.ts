@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
 import { startAgentServer } from "../../src/agent/serve.ts";
-import { createPlugin } from "../../src/models/plugin-model.ts";
+import { createPlugin, addResourceToPlugin } from "../../src/models/plugin-model.ts";
 import { createResource } from "../../src/models/resource.ts";
+import { setActiveProfileName } from "../../src/services/active-profile.ts";
 
 describe("agent library routes", () => {
   const previousHome = process.env.HARNESSTAP_HOME;
@@ -79,6 +80,37 @@ describe("agent library routes", () => {
     expect(detailBody.resource.name).toBe("ship");
     expect(detailBody.resource.source).toBe("manual");
     expect(detailBody.resource.content).toContain("# ship");
+    expect(detailBody.resource.attached_profiles).toEqual([]);
+    expect(detailBody.resource.attached_plugins).toEqual([]);
+    expect(detailBody.resource.in_active_profile).toBe(false);
+  });
+
+  it("lists profile and plugin attachers on resource detail", async () => {
+    const server = withServer();
+    const skill = createResource({
+      type: "skill",
+      name: "shared-ship",
+      description: "Ship skill",
+      content: "# ship",
+      metadata: {},
+      source: "manual",
+    });
+    const profile = createPlugin({ name: "work", tags: ["profile"] });
+    const plugin = createPlugin({ name: "formatter", tags: [] });
+    addResourceToPlugin(profile.id, skill.id);
+    addResourceToPlugin(plugin.id, skill.id);
+    setActiveProfileName("work");
+
+    const detail = await fetch(
+      `${server.url}/v1/library/resources/${encodeURIComponent("skill:shared-ship")}`,
+      { headers: { authorization: `Bearer ${server.token}` } },
+    );
+    expect(detail.status).toBe(200);
+    const detailBody = await detail.json();
+    expect(detailBody.resource.attached_profiles).toEqual(["work"]);
+    expect(detailBody.resource.attached_plugins).toEqual(["formatter"]);
+    expect(detailBody.resource.active_profile).toBe("work");
+    expect(detailBody.resource.in_active_profile).toBe(true);
   });
 
   it("returns on-disk content for untracked resource selectors", async () => {

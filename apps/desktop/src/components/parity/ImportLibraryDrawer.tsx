@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { open as openDirectoryDialog } from "@tauri-apps/plugin-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import {
 } from "../../lib/api/import-library";
 import { projectDisplayName } from "../../lib/recent-projects";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { FullScreenPanel } from "../FullScreenPanel";
 
 export interface ImportLibraryDrawerProps {
   open: boolean;
@@ -81,7 +82,6 @@ export function ImportLibraryDrawer({
   onClose,
   onImported,
 }: ImportLibraryDrawerProps) {
-  const closeRef = useRef<HTMLButtonElement>(null);
   const [kind, setKind] = useState<LibraryImportKind>("scan");
   const [addSource, setAddSource] = useState("");
   const [pluginName, setPluginName] = useState("");
@@ -105,21 +105,7 @@ export function ImportLibraryDrawer({
     setConflictPolicy("skip");
     setAttach(false);
     setError(null);
-    window.setTimeout(() => closeRef.current?.focus(), 0);
   }, [open, projectPath]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, disabled, onClose, open]);
 
   const hasProject = projectPath.trim().length > 0;
   const canAttach = Boolean(selectedProfile);
@@ -227,38 +213,46 @@ export function ImportLibraryDrawer({
   const controlsDisabled = disabled || busy;
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="import-library-title"
-      >
-        <div className="dialog-header">
-          <div>
-            <p className="eyebrow">Library</p>
-            <h2 id="import-library-title">Import into library</h2>
-          </div>
-          <button
-            ref={closeRef}
-            className="icon-action"
-            type="button"
-            aria-label="Close"
-            disabled={controlsDisabled}
-            onClick={onClose}
-          >
-            ×
+    <FullScreenPanel
+      titleId="import-library-title"
+      title="Import into library"
+      eyebrow="Library"
+      closeLabel="Close"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      actions={
+        <>
+          <button className="btn" type="button" onClick={onClose} disabled={controlsDisabled}>
+            Cancel
           </button>
-        </div>
-        <div className="dialog-body">
+          {preview ? (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              data-testid="import-library-submit"
+              onClick={() => void runImport()}
+              disabled={controlsDisabled || preview.totalImports === 0}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Importing…" : "Import"}
+            </button>
+          ) : (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              data-testid="import-library-submit"
+              onClick={() => void runPreview()}
+              disabled={!canContinue || controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Previewing…" : "Continue"}
+            </button>
+          )}
+        </>
+      }
+    >
           <SourcePicker
             legend="Source"
             value={kind}
@@ -450,38 +444,6 @@ export function ImportLibraryDrawer({
           ) : null}
 
           {error ? <div className="banner error">{error}</div> : null}
-        </div>
-        <div className="dialog-actions create-profile-actions">
-          <button className="btn" type="button" onClick={onClose} disabled={controlsDisabled}>
-            Cancel
-          </button>
-          {preview ? (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              data-testid="import-library-submit"
-              onClick={() => void runImport()}
-              disabled={controlsDisabled || preview.totalImports === 0}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Importing…" : "Import"}
-            </button>
-          ) : (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              data-testid="import-library-submit"
-              onClick={() => void runPreview()}
-              disabled={!canContinue || controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Previewing…" : "Continue"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }

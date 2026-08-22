@@ -67,18 +67,12 @@ export function ResourceDetailPane({
     <div
       className="dialog-backdrop resource-detail-backdrop"
       role="presentation"
-      onClick={() => {
-        if (!busy && !confirmOpen && !fieldEditing) {
-          onClose();
-        }
-      }}
     >
       <div
         className="dialog resource-detail-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        onClick={(event) => event.stopPropagation()}
       >
         <ResourceDetailBody
           chrome="dialog"

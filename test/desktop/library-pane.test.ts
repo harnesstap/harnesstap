@@ -3,11 +3,25 @@ import {
   draftHasTypedContent,
   escapeAction,
   isOutsideLibraryDetail,
+  libraryPaneHasPrevious,
   shouldCommitDraftName,
   sidebarChangeAction,
 } from "../../apps/desktop/src/lib/library-pane.ts";
 
 describe("library pane navigation", () => {
+  test("list has no local previous screen; detail and create-draft do", () => {
+    expect(libraryPaneHasPrevious({ mode: "list" })).toBe(false);
+    expect(
+      libraryPaneHasPrevious({
+        mode: "detail",
+        target: { kind: "plugin-package", selector: "eng" },
+      }),
+    ).toBe(true);
+    expect(
+      libraryPaneHasPrevious({ mode: "create-draft", name: "", description: "" }),
+    ).toBe(true);
+  });
+
   test("escape cancels field edit, dismisses confirm, otherwise leaves detail", () => {
     expect(escapeAction({ fieldEditing: true, confirmOpen: false })).toBe("cancel-field");
     expect(escapeAction({ fieldEditing: false, confirmOpen: true })).toBe("dismiss-confirm");
@@ -62,6 +76,20 @@ describe("library pane navigation", () => {
       }),
     ).toBe(true);
     expect(shouldCommitDraftName({ leaving: false, name: "eng" })).toBe(true);
+  });
+
+  test("draft name blur to workspace Back does not commit", () => {
+    const back = {
+      getAttribute: (name: string) => (name === "aria-label" ? "Back" : null),
+      closest: () => null,
+    };
+    expect(
+      shouldCommitDraftName({
+        leaving: false,
+        name: "eng",
+        relatedTarget: back as EventTarget,
+      }),
+    ).toBe(false);
   });
 
   test("draft name blur to Import or Tracked directories does not commit", () => {

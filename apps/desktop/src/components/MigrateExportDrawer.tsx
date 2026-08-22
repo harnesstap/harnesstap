@@ -21,6 +21,7 @@ import type {
   MigrateScope,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 export interface MigrateExportDrawerProps {
   open: boolean;
@@ -193,19 +194,6 @@ export function MigrateExportDrawer({
       cancelled = true;
     };
   }, [baseUrl, open, token]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, disabled, onClose, open]);
 
   const exportableResources = useMemo(
     () => resources.filter(isExportableResource),
@@ -440,39 +428,75 @@ export function MigrateExportDrawer({
   };
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog migrate-export-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="migrate-export-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Migrate</div>
-            <h2 id="migrate-export-title">Export</h2>
-            <p className="muted">{stepTitle(step)}</p>
-          </div>
+    <FullScreenPanel
+      titleId="migrate-export-title"
+      title="Export"
+      eyebrow="Migrate"
+      subtitle={stepTitle(step)}
+      closeLabel="Close export"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      bodyClassName="migrate-export-body"
+      actions={
+        <>
+          {showBack ? (
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                const prev = previousStep(step, scope);
+                if (prev) {
+                  setStep(prev);
+                  setError(null);
+                }
+              }}
+              disabled={controlsDisabled}
+            >
+              Back
+            </button>
+          ) : (
+            <span />
+          )}
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close export drawer"
             onClick={onClose}
             disabled={controlsDisabled}
           >
-            ×
+            Cancel
           </button>
-        </div>
-
-        <div className="create-profile-body migrate-export-body">
+          {step === "confirm" ? (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              onClick={() => void runExport()}
+              disabled={controlsDisabled || !exportPath}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Exporting…" : "Export"}
+            </button>
+          ) : (
+            <button
+              className="btn primary"
+              type="button"
+              onClick={() => {
+                const next = nextStep(step, scope);
+                if (next) {
+                  setStep(next);
+                  setError(null);
+                }
+              }}
+              disabled={controlsDisabled || !canGoNext}
+            >
+              Next
+            </button>
+          )}
+        </>
+      }
+    >
           {step === "scope" ? (
             <RadioGroup
               value={scope}
@@ -578,66 +602,6 @@ export function MigrateExportDrawer({
           ) : null}
 
           {error ? <div className="banner error">{error}</div> : null}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          {showBack ? (
-            <button
-              className="btn"
-              type="button"
-              onClick={() => {
-                const prev = previousStep(step, scope);
-                if (prev) {
-                  setStep(prev);
-                  setError(null);
-                }
-              }}
-              disabled={controlsDisabled}
-            >
-              Back
-            </button>
-          ) : (
-            <span />
-          )}
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={controlsDisabled}
-          >
-            Cancel
-          </button>
-          {step === "confirm" ? (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              onClick={() => void runExport()}
-              disabled={controlsDisabled || !exportPath}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Exporting…" : "Export"}
-            </button>
-          ) : (
-            <button
-              className="btn primary"
-              type="button"
-              onClick={() => {
-                const next = nextStep(step, scope);
-                if (next) {
-                  setStep(next);
-                  setError(null);
-                }
-              }}
-              disabled={controlsDisabled || !canGoNext}
-            >
-              Next
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }

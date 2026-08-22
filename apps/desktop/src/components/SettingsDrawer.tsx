@@ -14,7 +14,11 @@ import {
   fetchHarnessSettings,
   saveHarnessSettings,
 } from "../lib/agent-client";
-import { SettingsParitySections } from "./parity/SettingsParitySections";
+import {
+  SETTINGS_TABS,
+  SettingsParitySections,
+  type SettingsTab,
+} from "./parity/SettingsParitySections";
 import {
   aliasesExcludingMain,
   canSaveHarnessSettings,
@@ -30,6 +34,7 @@ import type {
   PutHarnessSettingsInput,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 import { HarnessIcon } from "./HarnessIcons";
 
 export interface SettingsDrawerProps {
@@ -37,9 +42,12 @@ export interface SettingsDrawerProps {
   baseUrl: string | null;
   token: string | null;
   projectPath: string | null;
+  inspectProjectPath: string | null;
   disabled?: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  onSelectProject: (path: string) => void;
+  onBrowseProject: () => void;
 }
 
 const EMPTY_DRAFT: HarnessSettingsDraft = {
@@ -103,9 +111,12 @@ export function SettingsDrawer({
   baseUrl,
   token,
   projectPath,
+  inspectProjectPath,
   disabled = false,
   onClose,
   onSaved,
+  onSelectProject,
+  onBrowseProject,
 }: SettingsDrawerProps) {
   const [harnesses, setHarnesses] = useState<HarnessCatalogEntry[]>([]);
   const [projectAvailable, setProjectAvailable] = useState(false);
@@ -115,6 +126,7 @@ export function SettingsDrawer({
   const [baseline, setBaseline] = useState<HarnessSettingsDraft>(EMPTY_DRAFT);
   const [draft, setDraft] = useState<HarnessSettingsDraft>(EMPTY_DRAFT);
   const [showAllHarnesses, setShowAllHarnesses] = useState(false);
+  const [tab, setTab] = useState<SettingsTab>("harnesses");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +166,7 @@ export function SettingsDrawer({
     setBaseline(EMPTY_DRAFT);
     setDraft(EMPTY_DRAFT);
     setShowAllHarnesses(false);
+    setTab("harnesses");
     setError(null);
     setWarning(null);
     setSuccess(null);
@@ -216,6 +229,12 @@ export function SettingsDrawer({
       cancelled = true;
     };
   }, [open, baseUrl, token, projectPath, resetLocal, clearSuccessTimer]);
+
+  useEffect(() => {
+    if (open) {
+      setTab("harnesses");
+    }
+  }, [open]);
 
   useEffect(
     () => () => {
@@ -397,39 +416,40 @@ export function SettingsDrawer({
   }
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          requestClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog cloud-account-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-drawer-title"
-        data-testid="settings-drawer"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Preferences</div>
-            <h2 id="settings-drawer-title">Settings</h2>
-          </div>
+    <FullScreenPanel
+      titleId="settings-drawer-title"
+      title="Settings"
+      eyebrow="Preferences"
+      closeLabel="Close settings"
+      closeDisabled={busy}
+      onClose={requestClose}
+      testId="settings-drawer"
+      bodyClassName="cloud-account-body"
+      actions={
+        <>
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close settings"
             onClick={requestClose}
             disabled={busy}
           >
-            ×
+            Cancel
           </button>
-        </div>
-
-        <div className="create-profile-body cloud-account-body">
+          <button
+            className={["btn", "primary", busy ? "is-busy" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            onClick={() => void onSave()}
+            disabled={!canSave}
+            aria-busy={busy}
+          >
+            {busy ? <ButtonSpinner size={16} /> : null}
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </>
+      }
+    >
           {error ? (
             <div className="banner error" role="alert">
               {error}
@@ -446,9 +466,37 @@ export function SettingsDrawer({
             </div>
           ) : null}
 
-          {loading && harnesses.length === 0 && !error ? (
+          <div className="settings-tabs" role="tablist" aria-label="Settings sections">
+            {SETTINGS_TABS.map((entry) => {
+              const selected = tab === entry.id;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  id={`settings-tab-${entry.id}`}
+                  data-testid={`settings-tab-${entry.id}`}
+                  aria-selected={selected}
+                  aria-controls={`settings-panel-${entry.id}`}
+                  tabIndex={selected ? 0 : -1}
+                  disabled={busy}
+                  onClick={() => setTab(entry.id)}
+                >
+                  {entry.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            role="tabpanel"
+            id={`settings-panel-${tab}`}
+            aria-labelledby={`settings-tab-${tab}`}
+            className="settings-tab-panel"
+          >
+          {tab === "harnesses" && loading && harnesses.length === 0 && !error ? (
             <p className="muted">Loading settings…</p>
-          ) : (
+          ) : tab === "harnesses" ? (
             <>
               <section className="settings-section">
                 <h3>Global harness</h3>
@@ -489,15 +537,6 @@ export function SettingsDrawer({
                     }))}
                 />
               </section>
-
-              <SettingsParitySections
-                open={open}
-                baseUrl={baseUrl}
-                token={token}
-                projectPath={projectPath}
-                disabled={controlsDisabled}
-                onSaved={onSaved}
-              />
 
               <div className="switch-after-create settings-show-all flex items-center gap-2">
                 <Switch
@@ -638,32 +677,20 @@ export function SettingsDrawer({
                 </section>
               ) : null}
             </>
+          ) : (
+            <SettingsParitySections
+              tab={tab}
+              open={open}
+              baseUrl={baseUrl}
+              token={token}
+              inspectProjectPath={inspectProjectPath}
+              disabled={controlsDisabled}
+              onSaved={onSaved}
+              onSelectProject={onSelectProject}
+              onBrowseProject={onBrowseProject}
+            />
           )}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={requestClose}
-            disabled={busy}
-          >
-            Cancel
-          </button>
-          <button
-            className={["btn", "primary", busy ? "is-busy" : ""]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            onClick={() => void onSave()}
-            disabled={!canSave}
-            aria-busy={busy}
-          >
-            {busy ? <ButtonSpinner size={16} /> : null}
-            {busy ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </div>
+    </FullScreenPanel>
   );
 }

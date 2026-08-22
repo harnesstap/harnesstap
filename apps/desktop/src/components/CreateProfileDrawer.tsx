@@ -21,21 +21,22 @@ import type {
   ProfileCreateSource,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 import {
   ResourceSelectionList,
   SelectionList,
 } from "./CompositionPickers";
 
-/** Create-profile drawer: compose / home / project sources. */
+/** Create-profile screen: compose / home / project sources. */
 interface CreateProfileDrawerProps {
   open: boolean;
   baseUrl: string | null;
   token: string | null;
   projectPath: string;
   disabled?: boolean;
-  /** Prefill source when the drawer opens (e.g. untracked-project CTA). */
+  /** Prefill source when the screen opens (e.g. untracked-project CTA). */
   initialSource?: ProfileCreateSource;
-  /** Prefill “Switch after create” when the drawer opens. */
+  /** Prefill “Switch after create” when the screen opens. */
   initialSwitchAfterCreate?: boolean;
   onClose: () => void;
   onCreated: (
@@ -156,19 +157,6 @@ export function CreateProfileDrawer({
     };
   }, [baseUrl, open, token]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, disabled, onClose, open]);
-
   const canContinue = useMemo(() => {
     if (!baseUrl || !token || !name.trim()) {
       return false;
@@ -280,38 +268,55 @@ export function CreateProfileDrawer({
   const controlsDisabled = disabled || busy;
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-profile-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Profile library</div>
-            <h2 id="create-profile-title">Create profile</h2>
-          </div>
+    <FullScreenPanel
+      titleId="create-profile-title"
+      title="Create profile"
+      eyebrow="Profile library"
+      closeLabel="Close create profile"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      actions={
+        <>
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close create profile"
             onClick={onClose}
             disabled={controlsDisabled}
           >
-            ×
+            Cancel
           </button>
-        </div>
-
-        <div className="create-profile-body">
+          {preview ? (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              data-testid="create-profile-submit"
+              onClick={() => void runCreate()}
+              disabled={controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Creating…" : "Create profile"}
+            </button>
+          ) : (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              data-testid="create-profile-submit"
+              onClick={() => void runPreview()}
+              disabled={!canContinue || controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Previewing…" : "Continue"}
+            </button>
+          )}
+        </>
+      }
+    >
           <div className="form-field gap-1.5">
             <Label htmlFor="create-profile-name">Name</Label>
             <Input
@@ -480,49 +485,7 @@ export function CreateProfileDrawer({
           ) : null}
 
           {error ? <div className="banner error">{error}</div> : null}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={controlsDisabled}
-          >
-            Cancel
-          </button>
-          {preview ? (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              data-testid="create-profile-submit"
-              onClick={() => void runCreate()}
-              disabled={controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Creating…" : "Create profile"}
-            </button>
-          ) : (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              data-testid="create-profile-submit"
-              onClick={() => void runPreview()}
-              disabled={!canContinue || controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Previewing…" : "Continue"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }
 

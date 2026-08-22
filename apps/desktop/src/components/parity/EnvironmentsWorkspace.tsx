@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { WorkspaceBackButton } from "../WorkspaceBackButton";
 import {
   deleteEnvironment,
   environmentApplyAvailable,
@@ -30,6 +31,8 @@ export interface EnvironmentsWorkspaceProps {
   homeResetNonce?: number;
   onSuccess: (message: string) => void;
   onOpenPlugin?: (pluginName: string) => void;
+  canWorkspaceBack?: boolean;
+  onWorkspaceBack?: () => void;
 }
 
 export function EnvironmentsWorkspace({
@@ -42,6 +45,8 @@ export function EnvironmentsWorkspace({
   homeResetNonce = 0,
   onSuccess,
   onOpenPlugin,
+  canWorkspaceBack = false,
+  onWorkspaceBack,
 }: EnvironmentsWorkspaceProps) {
   const connected = connectedProp ?? Boolean(baseUrl && token);
   const switching = switchingProp ?? disabled;
@@ -179,11 +184,17 @@ export function EnvironmentsWorkspace({
     <main className="resources-panel" aria-label="Environments">
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
-          <div className="resources-panel-title">
-            <span>Environments</span>
-            <span className="muted resources-panel-scope">
-              Reusable env vars, secrets, models, and permissions
-            </span>
+          <div className="resources-panel-title-cluster">
+            <WorkspaceBackButton
+              disabled={controlsDisabled || !canWorkspaceBack}
+              onClick={onWorkspaceBack}
+            />
+            <div className="resources-panel-title">
+              <span>Environments</span>
+              <span className="muted resources-panel-scope">
+                Reusable env vars, secrets, models, and permissions
+              </span>
+            </div>
           </div>
           <button
             type="button"

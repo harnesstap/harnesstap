@@ -8,6 +8,7 @@ import {
   type PublishPlanRow,
 } from "../../lib/api/publish";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { FullScreenPanel } from "../FullScreenPanel";
 
 export interface PublishProfileDrawerProps {
   profileName?: string | null;
@@ -124,20 +125,6 @@ export function PublishProfileDrawer({
     return () => window.clearInterval(timer);
   }, [authRequired, loadPlan, open, plan?.dirty]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) {
-        event.preventDefault();
-        close();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, close, open]);
-
   if (!profileName) {
     return null;
   }
@@ -195,39 +182,44 @@ export function PublishProfileDrawer({
         <Upload size={18} strokeWidth={2} aria-hidden />
       </button>
       {open ? (
-        <div
-          className="dialog-backdrop create-profile-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !busy) {
-              close();
-            }
-          }}
-        >
-          <div
-            className="dialog create-profile-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="publish-profile-title"
-            data-testid="publish-profile-drawer"
-          >
-            <div className="create-profile-header">
-              <div>
-                <div className="eyebrow">Cloud catalog</div>
-                <h2 id="publish-profile-title">Publish {profileName}</h2>
-              </div>
-              <button
-                className="icon-btn"
-                type="button"
-                aria-label="Close publish"
-                onClick={close}
-                disabled={busy}
-              >
-                ×
+        <FullScreenPanel
+          titleId="publish-profile-title"
+          title={`Publish ${profileName}`}
+          eyebrow="Cloud catalog"
+          closeLabel="Close publish"
+          closeDisabled={busy}
+          onClose={close}
+          testId="publish-profile-drawer"
+          actions={
+            <>
+              <button className="btn" type="button" onClick={close} disabled={busy}>
+                Close
               </button>
-            </div>
-
-            <div className="create-profile-body">
+              {dirty && !authRequired ? (
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => onRequestCut?.(profileName, profileVersion)}
+                  disabled={disabled || busy}
+                >
+                  Cut version
+                </button>
+              ) : null}
+              {!authRequired ? (
+                <button
+                  className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+                  type="button"
+                  onClick={() => void runPublish()}
+                  disabled={!publishEnabled}
+                  aria-busy={busy}
+                >
+                  {busy ? <ButtonSpinner size={16} /> : null}
+                  {busy ? "Publishing…" : "Publish"}
+                </button>
+              ) : null}
+            </>
+          }
+        >
               {authRequired ? (
                 <div className="cloud-auth-state">
                   <h3>Cloud sign-in required</h3>
@@ -289,37 +281,7 @@ export function PublishProfileDrawer({
                   ) : null}
                 </>
               )}
-            </div>
-
-            <div className="dialog-actions create-profile-actions">
-              <button className="btn" type="button" onClick={close} disabled={busy}>
-                Close
-              </button>
-              {dirty && !authRequired ? (
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={() => onRequestCut?.(profileName, profileVersion)}
-                  disabled={disabled || busy}
-                >
-                  Cut version
-                </button>
-              ) : null}
-              {!authRequired ? (
-                <button
-                  className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-                  type="button"
-                  onClick={() => void runPublish()}
-                  disabled={!publishEnabled}
-                  aria-busy={busy}
-                >
-                  {busy ? <ButtonSpinner size={16} /> : null}
-                  {busy ? "Publishing…" : "Publish"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        </FullScreenPanel>
       ) : null}
     </>
   );

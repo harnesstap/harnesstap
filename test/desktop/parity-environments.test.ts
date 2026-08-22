@@ -107,6 +107,21 @@ describe("environments workspace chrome", () => {
     expect(stylesSource).toContain(".resources-list-env");
   });
 
+  it("renders an explicit back control before the Environments title", () => {
+    const headerStart = workspaceSource.indexOf(
+      'className="resources-panel-header-row"',
+    );
+    const header = workspaceSource.slice(
+      headerStart,
+      workspaceSource.indexOf("resources-panel-layout", headerStart),
+    );
+    const backIdx = header.indexOf("WorkspaceBackButton");
+    const titleIdx = header.indexOf(">Environments<");
+    expect(backIdx).toBeGreaterThan(-1);
+    expect(titleIdx).toBeGreaterThan(backIdx);
+    expect(workspaceSource).toContain("onWorkspaceBack");
+  });
+
   it("puts the name filter in the list sidebar, not the panel header", () => {
     const layoutPos = workspaceSource.indexOf("resources-panel-layout");
     const filterPos = workspaceSource.indexOf('aria-label="Filter environments"');

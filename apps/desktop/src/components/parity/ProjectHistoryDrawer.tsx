@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   fetchProjectHistory,
@@ -7,6 +7,7 @@ import {
   type ProjectHistorySnapshot,
 } from "../../lib/api/project-history";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { FullScreenPanel } from "../FullScreenPanel";
 
 export interface ProjectHistoryDrawerProps {
   open: boolean;
@@ -60,7 +61,6 @@ export function ProjectHistoryDrawer({
   onSuccess,
   onProfilesChanged,
 }: ProjectHistoryDrawerProps) {
-  const closeRef = useRef<HTMLButtonElement>(null);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [snapshots, setSnapshots] = useState<ProjectHistorySnapshot[]>([]);
@@ -72,27 +72,6 @@ export function ProjectHistoryDrawer({
 
   const chromeBlocked = disabled ?? Boolean(!connected || switching);
   const revertBlocked = chromeBlocked || confirmBusy;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !pending && !confirmBusy) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmBusy, onClose, open, pending]);
 
   useEffect(() => {
     if (!open || !baseUrl || !projectPath) {
@@ -201,40 +180,15 @@ export function ProjectHistoryDrawer({
 
   return (
     <>
-      <div
-        className="dialog-backdrop create-profile-backdrop"
-        role="presentation"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !confirmBusy) {
-            onClose();
-          }
-        }}
+      <FullScreenPanel
+        titleId="project-history-title"
+        title="History"
+        eyebrow="Project"
+        subtitle="Configuration snapshots for this project."
+        closeLabel="Close history"
+        closeDisabled={confirmBusy || pending !== null}
+        onClose={onClose}
       >
-        <div
-          className="dialog create-profile-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="project-history-title"
-        >
-          <div className="create-profile-header">
-            <div>
-              <div className="eyebrow">Project</div>
-              <h2 id="project-history-title">History</h2>
-              <p className="muted">Configuration snapshots for this project.</p>
-            </div>
-            <button
-              ref={closeRef}
-              className="icon-btn"
-              type="button"
-              aria-label="Close history"
-              onClick={onClose}
-              disabled={confirmBusy}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="create-profile-body">
             {originHints ? (
               <div className="banner error" role="alert">
                 <div>No git remote origin configured.</div>
@@ -286,9 +240,7 @@ export function ProjectHistoryDrawer({
                 </ul>
               </>
             ) : null}
-          </div>
-        </div>
-      </div>
+      </FullScreenPanel>
       <ConfirmDialog
         open={pending !== null}
         title="Revert to this snapshot?"

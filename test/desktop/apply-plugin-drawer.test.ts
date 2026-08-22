@@ -24,6 +24,7 @@ describe("package apply confirm", () => {
     expect(drawerSource).not.toContain("selectedIds");
     expect(drawerSource).toContain("pluginName: string");
     expect(drawerSource).toContain("isProfile: boolean");
+    expect(drawerSource).toContain("FullScreenPanel");
   });
 
   test("package detail Apply opens the confirm for that package", () => {

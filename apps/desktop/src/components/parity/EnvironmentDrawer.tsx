@@ -14,6 +14,7 @@ import {
 import { AgentApiError, fetchLibraryPlugins } from "../../lib/agent-client";
 import type { LibraryPlugin } from "../../lib/types";
 import { ButtonSpinner } from "../ButtonSpinner";
+import { FullScreenPanel } from "../FullScreenPanel";
 import { SelectionList } from "../CompositionPickers";
 import {
   canSubmitEnvironmentCreate,
@@ -191,19 +192,6 @@ export function EnvironmentDrawer({
     };
   }, [baseUrl, mode, open, token]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, disabled, onClose, open]);
-
   const selectedPluginNames = useMemo(
     () =>
       plugins
@@ -304,38 +292,49 @@ export function EnvironmentDrawer({
   }
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="environment-drawer-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Environments</div>
-            <h2 id="environment-drawer-title">{title}</h2>
-          </div>
+    <FullScreenPanel
+      titleId="environment-drawer-title"
+      title={title}
+      eyebrow="Environments"
+      closeLabel="Close environment drawer"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      actions={
+        <>
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close environment drawer"
             onClick={onClose}
             disabled={controlsDisabled}
           >
-            ×
+            Cancel
           </button>
-        </div>
-
-        <div className="create-profile-body">
+          {mode === "create" ? (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              onClick={() => void runCreate()}
+              disabled={!canSubmit || controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Creating…" : "Create environment"}
+            </button>
+          ) : (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              onClick={() => void runSave()}
+              disabled={controlsDisabled}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Saving…" : "Save environment"}
+            </button>
+          )}
+        </>
+      }
+    >
           <div className="form-field gap-1.5">
             <Label htmlFor="environment-name">Name</Label>
             <Input
@@ -629,43 +628,7 @@ export function EnvironmentDrawer({
 
           {warning ? <div className="banner">{warning}</div> : null}
           {error ? <div className="banner error">{error}</div> : null}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={controlsDisabled}
-          >
-            Cancel
-          </button>
-          {mode === "create" ? (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              onClick={() => void runCreate()}
-              disabled={!canSubmit || controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Creating…" : "Create environment"}
-            </button>
-          ) : (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              onClick={() => void runSave()}
-              disabled={controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Saving…" : "Save environment"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }
 

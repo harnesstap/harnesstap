@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArchiveRestore, FileText, X } from "lucide-react";
+import { ArchiveRestore, FileText } from "lucide-react";
 import {
   connectAgent,
   fetchProfileStash,
@@ -15,6 +15,7 @@ import { relatedHarnessesForResourceType } from "../lib/harness-meta";
 import { hoverModelFromProfileResource } from "../lib/resource-hover";
 import type { ProfileContentsResource, ProfileStashEntry } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 import {
   ResourceDetailPane,
   type ResourceDetailTarget,
@@ -166,19 +167,6 @@ export function StashBrowseDrawer({
     if (!open) {
       return;
     }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !stashBusy) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, stashBusy, onClose]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
     setSelectedId(resolvedEntries[0]?.id ?? null);
     setDetailTarget(null);
   }, [resolvedEntries, open]);
@@ -262,43 +250,59 @@ export function StashBrowseDrawer({
   }
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !stashBusy) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog stash-browse-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="stash-browse-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="create-profile-header">
-          <div>
-            <h2 id="stash-browse-title">Stashed profiles</h2>
-            <p className="muted stash-browse-subtitle">
-              Untracked resource bundles. Apply (keep) restores files and leaves
-              the stash. Restore (drop) restores files and removes it. Both use
-              the most recent stash (stash@{"{"}0{"}"}).
-            </p>
-          </div>
+    <>
+    <FullScreenPanel
+      titleId="stash-browse-title"
+      title="Stashed profiles"
+      subtitle={
+        <>
+          Untracked resource bundles. Apply (keep) restores files and leaves
+          the stash. Restore (drop) restores files and removes it. Both use
+          the most recent stash (stash@{"{"}0{"}"}).
+        </>
+      }
+      closeLabel="Close stash browser"
+      closeDisabled={stashBusy || detailTarget !== null}
+      onClose={onClose}
+      bodyClassName="stash-browse-body"
+      actions={
+        <>
           <button
+            className="btn"
             type="button"
-            className="icon-action"
-            aria-label="Close stash browser"
             onClick={onClose}
             disabled={stashBusy}
           >
-            <X size={16} aria-hidden="true" />
+            Close
           </button>
-        </div>
+          <button
+            className="btn"
+            type="button"
+            onClick={() => void onApplyKeep()}
+            disabled={mutateDisabled}
+            title="Restore files from the most recent stash and keep the stash entry"
+            aria-label="Restore files from the most recent stash and keep the stash entry"
+            aria-busy={stashAction === "apply"}
+          >
+            {stashAction === "apply" ? <ButtonSpinner size={16} /> : null}
+            Apply (keep)
+          </button>
+          <button
+            className="btn primary"
+            type="button"
+            onClick={() => void onRestoreDrop()}
+            disabled={mutateDisabled}
+            title="Restore files from the most recent stash and remove the stash entry"
+            aria-label="Restore files from the most recent stash and remove the stash entry"
+            aria-busy={stashAction === "restore"}
+          >
+            {stashAction === "restore" ? <ButtonSpinner size={16} /> : null}
+            Restore (drop)
+          </button>
+        </>
+      }
+    >
 
-        <div className="create-profile-body stash-browse-body">
           {bannerError ? <div className="banner error">{bannerError}</div> : null}
           {bannerSuccess ? <div className="success-flash">{bannerSuccess}</div> : null}
           <div className="stash-browser">
@@ -436,43 +440,7 @@ export function StashBrowseDrawer({
               )}
             </div>
           </div>
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={stashBusy}
-          >
-            Close
-          </button>
-          <button
-            className="btn"
-            type="button"
-            onClick={() => void onApplyKeep()}
-            disabled={mutateDisabled}
-            title="Restore files from the most recent stash and keep the stash entry"
-            aria-label="Restore files from the most recent stash and keep the stash entry"
-            aria-busy={stashAction === "apply"}
-          >
-            {stashAction === "apply" ? <ButtonSpinner size={16} /> : null}
-            Apply (keep)
-          </button>
-          <button
-            className="btn primary"
-            type="button"
-            onClick={() => void onRestoreDrop()}
-            disabled={mutateDisabled}
-            title="Restore files from the most recent stash and remove the stash entry"
-            aria-label="Restore files from the most recent stash and remove the stash entry"
-            aria-busy={stashAction === "restore"}
-          >
-            {stashAction === "restore" ? <ButtonSpinner size={16} /> : null}
-            Restore (drop)
-          </button>
-        </div>
-      </div>
+    </FullScreenPanel>
 
       <ResourceDetailPane
         open={detailTarget !== null}
@@ -481,6 +449,6 @@ export function StashBrowseDrawer({
         token={resolvedToken}
         onClose={() => setDetailTarget(null)}
       />
-    </div>
+    </>
   );
 }

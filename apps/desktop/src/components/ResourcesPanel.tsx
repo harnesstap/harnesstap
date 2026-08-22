@@ -10,6 +10,7 @@ import { ResourceDetailBody } from "./ResourceDetailBody";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
 import { TypeIcon } from "./TypeIcon";
+import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import {
   ResourceRowDescription,
   ResourceRowIdentity,
@@ -34,11 +35,13 @@ import {
   draftHasTypedContent,
   escapeAction,
   isOutsideLibraryDetail,
+  libraryPaneHasPrevious,
   shouldCommitDraftName,
   sidebarChangeAction,
   type LibraryPane,
 } from "../lib/library-pane";
 import {
+  pluginPackageBackTarget,
   pluginPackageEscapeAction,
   type PluginDetailMode,
 } from "../lib/plugin-history";
@@ -51,6 +54,7 @@ import {
 } from "../lib/resource-filters";
 import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import { resourceDisplayName } from "../lib/resource-search";
+import { workspaceBackEnabled } from "../lib/screen-history";
 import type { LibraryResource } from "../lib/types";
 
 type DraftDiscardIntent = "list" | "fresh-draft";
@@ -81,6 +85,8 @@ export interface ResourcesPanelProps {
   onFocusPluginConsumed?: () => void;
   onBusyChange?: (busy: boolean) => void;
   onProfilesChanged?: () => void;
+  canWorkspaceBack?: boolean;
+  onWorkspaceBack?: () => void;
 }
 
 export function ResourcesPanel({
@@ -97,6 +103,8 @@ export function ResourcesPanel({
   onFocusPluginConsumed,
   onBusyChange,
   onProfilesChanged,
+  canWorkspaceBack = false,
+  onWorkspaceBack,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
@@ -347,6 +355,46 @@ export function ResourcesPanel({
     }
     setDraftDiscardIntent(intent);
     setDraftDiscardOpen(true);
+  }
+
+  function handlePanelBack(): void {
+    const current = paneRef.current;
+    switch (current.mode) {
+      case "create-draft":
+        requestLeaveDraft("list");
+        return;
+      case "detail": {
+        if (current.target.kind === "plugin-package") {
+          const target = pluginPackageBackTarget(pluginHistoryMode);
+          switch (target) {
+            case "history":
+              setPluginHistoryMode("history");
+              setPluginFrozenVersion(null);
+              return;
+            case "head":
+              setPluginHistoryMode("head");
+              setPluginFrozenVersion(null);
+              return;
+            case "list":
+              leaveToList();
+              return;
+            default: {
+              const neverTarget: never = target;
+              return neverTarget;
+            }
+          }
+        }
+        leaveToList();
+        return;
+      }
+      case "list":
+        onWorkspaceBack?.();
+        return;
+      default: {
+        const neverPane: never = current;
+        return neverPane;
+      }
+    }
   }
 
   async function commitDraftName(
@@ -796,6 +844,15 @@ export function ResourcesPanel({
     }
   }
 
+  const hasLocalPrevious = libraryPaneHasPrevious(pane);
+  const backDisabled =
+    disabled
+    || !workspaceBackEnabled({
+      hasLocalPrevious,
+      hasWorkspacePrevious: canWorkspaceBack,
+    })
+    || (hasLocalPrevious && (detailBusy || confirmOpen || draftDiscardOpen));
+
   return (
     <main
       className="resources-panel"
@@ -804,11 +861,17 @@ export function ResourcesPanel({
     >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
-          <div className="resources-panel-title">
-            <span>Library</span>
-            <span className="muted resources-panel-scope">
-              All registered resources and plugins
-            </span>
+          <div className="resources-panel-title-cluster">
+            <WorkspaceBackButton
+              disabled={backDisabled}
+              onClick={handlePanelBack}
+            />
+            <div className="resources-panel-title">
+              <span>Library</span>
+              <span className="muted resources-panel-scope">
+                All registered resources and plugins
+              </span>
+            </div>
           </div>
           <div className="resources-panel-header-actions">
             <button

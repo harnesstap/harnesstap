@@ -11,6 +11,7 @@ import type {
   MigrateScope,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 export interface MigrateImportDrawerProps {
   open: boolean;
@@ -101,19 +102,6 @@ export function MigrateImportDrawer({
     setError(null);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !detecting && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, detecting, disabled, onClose, open]);
-
   const canGoNext = useMemo(() => {
     switch (step) {
       case "path":
@@ -201,39 +189,73 @@ export function MigrateImportDrawer({
   const showBack = previousStep(step) !== null;
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog migrate-import-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="migrate-import-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Migrate</div>
-            <h2 id="migrate-import-title">Import</h2>
-            <p className="muted">{stepTitle(step)}</p>
-          </div>
+    <FullScreenPanel
+      titleId="migrate-import-title"
+      title="Import"
+      eyebrow="Migrate"
+      subtitle={stepTitle(step)}
+      closeLabel="Close import"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      bodyClassName="migrate-import-body"
+      actions={
+        <>
+          {showBack ? (
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                const prev = previousStep(step);
+                if (prev) {
+                  setStep(prev);
+                  setError(null);
+                }
+              }}
+              disabled={controlsDisabled}
+            >
+              Back
+            </button>
+          ) : (
+            <span />
+          )}
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close import drawer"
             onClick={onClose}
             disabled={controlsDisabled}
           >
-            ×
+            Cancel
           </button>
-        </div>
-
-        <div className="create-profile-body migrate-import-body">
+          {step === "confirm" ? (
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              onClick={() => void runImport()}
+              disabled={controlsDisabled || !importPath}
+              aria-busy={busy}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Importing…" : "Import"}
+            </button>
+          ) : (
+            <button
+              className={["btn", "primary", detecting ? "is-busy" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              onClick={() => void handleNext()}
+              disabled={controlsDisabled || !canGoNext}
+              aria-busy={detecting}
+            >
+              {detecting ? <ButtonSpinner size={16} /> : null}
+              {detecting ? "Detecting…" : "Next"}
+            </button>
+          )}
+        </>
+      }
+    >
           {step === "path" ? (
             <div className="form-field gap-2">
               <Label>Import file</Label>
@@ -322,64 +344,6 @@ export function MigrateImportDrawer({
           ) : null}
 
           {error ? <div className="banner error">{error}</div> : null}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          {showBack ? (
-            <button
-              className="btn"
-              type="button"
-              onClick={() => {
-                const prev = previousStep(step);
-                if (prev) {
-                  setStep(prev);
-                  setError(null);
-                }
-              }}
-              disabled={controlsDisabled}
-            >
-              Back
-            </button>
-          ) : (
-            <span />
-          )}
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={controlsDisabled}
-          >
-            Cancel
-          </button>
-          {step === "confirm" ? (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              onClick={() => void runImport()}
-              disabled={controlsDisabled || !importPath}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Importing…" : "Import"}
-            </button>
-          ) : (
-            <button
-              className={["btn", "primary", detecting ? "is-busy" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              onClick={() => void handleNext()}
-              disabled={controlsDisabled || !canGoNext}
-              aria-busy={detecting}
-            >
-              {detecting ? <ButtonSpinner size={16} /> : null}
-              {detecting ? "Detecting…" : "Next"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }

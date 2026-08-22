@@ -1,3 +1,5 @@
+import { WORKSPACE_BACK_LABEL } from "./screen-history";
+
 export type EscapeAction = "cancel-field" | "dismiss-confirm" | "leave-pane";
 export type SidebarChangeAction = "block" | "leave-and-apply" | "confirm-discard";
 
@@ -42,6 +44,7 @@ const LIBRARY_BACK_LABEL = "Back to library list";
 
 const INCIDENTAL_DRAFT_LEAVE_LABELS = [
   LIBRARY_BACK_LABEL,
+  WORKSPACE_BACK_LABEL,
   "Import into library",
   "Tracked directories",
   "Create plugin",
@@ -117,3 +120,17 @@ export type LibraryPane =
   | { mode: "list" }
   | { mode: "detail"; target: LibraryDetailTarget }
   | { mode: "create-draft"; name: string; description: string };
+
+export function libraryPaneHasPrevious(pane: LibraryPane): boolean {
+  switch (pane.mode) {
+    case "list":
+      return false;
+    case "detail":
+    case "create-draft":
+      return true;
+    default: {
+      const neverPane: never = pane;
+      return neverPane;
+    }
+  }
+}

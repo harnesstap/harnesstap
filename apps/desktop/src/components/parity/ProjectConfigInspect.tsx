@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { Label } from "@/components/ui/label";
 import {
   fetchProjectConfig,
   type ProjectConfigInspectPayload,
   type ProjectConfigProfile,
 } from "../../lib/api/project-config";
+import { ProjectPicker } from "../ProjectPicker";
 
 export interface ProjectConfigInspectProps {
   open?: boolean;
@@ -11,6 +13,8 @@ export interface ProjectConfigInspectProps {
   token: string | null;
   projectPath: string | null;
   disabled?: boolean;
+  onSelectProject: (path: string) => void;
+  onBrowseProject: () => void;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -37,6 +41,8 @@ export function ProjectConfigInspect({
   token,
   projectPath,
   disabled = false,
+  onSelectProject,
+  onBrowseProject,
 }: ProjectConfigInspectProps) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -82,6 +88,16 @@ export function ProjectConfigInspect({
   return (
     <section className="settings-section" data-testid="project-config-inspect">
       <h3>Project config</h3>
+      <div className="form-field">
+        <Label htmlFor="project-config-path">Project</Label>
+        <ProjectPicker
+          projectPath={projectPath ?? ""}
+          disabled={disabled}
+          testId="project-config-path"
+          onSelect={onSelectProject}
+          onBrowse={onBrowseProject}
+        />
+      </div>
       {!projectPath ? (
         <p className="muted">Select a project to inspect its config.</p>
       ) : loading ? (

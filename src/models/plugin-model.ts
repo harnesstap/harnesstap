@@ -553,6 +553,19 @@ export function listPlugins(): Plugin[] {
   return rows.map(rowToPlugin);
 }
 
+export function listPluginsAttachingResource(resourceId: string): Plugin[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT p.* FROM plugins p
+       JOIN plugin_resources pr ON pr.plugin_id = p.id
+       WHERE pr.resource_id = ?
+       ORDER BY p.name, p.version`,
+    )
+    .all(resourceId) as PluginRow[];
+  return rows.map(rowToPlugin);
+}
+
 export function deletePlugin(pluginId: string): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM plugins WHERE id = ?").run(pluginId);

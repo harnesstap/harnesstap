@@ -25,6 +25,7 @@ import type {
 } from "../lib/types";
 import { EditProfileParitySlots } from "./parity/EditProfileParitySlots";
 import { PluginCompositionFields } from "./parity/PluginCompositionFields";
+import { ProfileDeleteControls } from "./parity/ProfileDeleteControls";
 
 export interface EditProfilePaneProps {
   profileName: string;
@@ -448,6 +449,13 @@ export function EditProfilePane({
               <Tag size={18} strokeWidth={2} aria-hidden />
             </button>
           ) : null}
+          <ProfileDeleteControls
+            profileName={profileName}
+            baseUrl={baseUrl}
+            token={token}
+            disabled={disabled || busy}
+            onDeleted={(result, message) => onDeleted?.(result, message)}
+          />
           <button
           type="button"
           className="icon-action"
@@ -466,49 +474,46 @@ export function EditProfilePane({
 
       {detail ? (
         <div className="edit-profile-body">
-          <details className="edit-metadata-details">
-            <summary>Metadata</summary>
-            <div className="edit-metadata-body">
-              <div className="form-field gap-1.5">
-                <Label htmlFor="edit-profile-name">Name</Label>
-                <Input
-                  id="edit-profile-name"
-                  value={nameDraft}
-                  onChange={(event) => setNameDraft(event.target.value)}
-                  onBlur={commitName}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      commitName();
-                    }
-                  }}
-                  disabled={controlsDisabled}
-                />
-              </div>
-              <div className="form-field gap-1.5">
-                <Label htmlFor="edit-profile-description">Description</Label>
-                <Textarea
-                  id="edit-profile-description"
-                  value={descriptionDraft}
-                  onChange={(event) => setDescriptionDraft(event.target.value)}
-                  onBlur={commitDescription}
-                  disabled={controlsDisabled}
-                  rows={3}
-                />
-              </div>
-              <div className="form-field gap-1.5">
-                <Label htmlFor="edit-profile-tags">Tags</Label>
-                <Input
-                  id="edit-profile-tags"
-                  value={tagsDraft}
-                  onChange={(event) => setTagsDraft(event.target.value)}
-                  onBlur={commitTags}
-                  disabled={controlsDisabled}
-                  placeholder="comma-separated (profile tag kept automatically)"
-                />
-              </div>
+          <section className="edit-profile-section" aria-label="Profile identity">
+            <div className="form-field gap-1.5">
+              <Label htmlFor="edit-profile-name">Name</Label>
+              <Input
+                id="edit-profile-name"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                onBlur={commitName}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitName();
+                  }
+                }}
+                disabled={controlsDisabled}
+              />
             </div>
-          </details>
+            <div className="form-field gap-1.5">
+              <Label htmlFor="edit-profile-description">Description</Label>
+              <Textarea
+                id="edit-profile-description"
+                value={descriptionDraft}
+                onChange={(event) => setDescriptionDraft(event.target.value)}
+                onBlur={commitDescription}
+                disabled={controlsDisabled}
+                rows={3}
+              />
+            </div>
+            <div className="form-field gap-1.5">
+              <Label htmlFor="edit-profile-tags">Tags</Label>
+              <Input
+                id="edit-profile-tags"
+                value={tagsDraft}
+                onChange={(event) => setTagsDraft(event.target.value)}
+                onBlur={commitTags}
+                disabled={controlsDisabled}
+                placeholder="comma-separated (profile tag kept automatically)"
+              />
+            </div>
+          </section>
 
           <PluginCompositionFields
             showMarketplace={true}
@@ -545,7 +550,6 @@ export function EditProfilePane({
             baseUrl={baseUrl}
             token={token}
             disabled={disabled || busy}
-            onDeleted={(result, message) => onDeleted?.(result, message)}
             onMutated={() => {
               void onMutated({ profileName, affectsApply: true });
             }}

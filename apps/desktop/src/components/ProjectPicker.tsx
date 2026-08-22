@@ -9,6 +9,7 @@ import {
 interface ProjectPickerProps {
   projectPath: string;
   disabled?: boolean;
+  testId?: string;
   onSelect: (path: string) => void;
   onBrowse: () => void;
 }
@@ -16,6 +17,7 @@ interface ProjectPickerProps {
 export function ProjectPicker({
   projectPath,
   disabled = false,
+  testId = "project-path",
   onSelect,
   onBrowse,
 }: ProjectPickerProps) {
@@ -51,14 +53,16 @@ export function ProjectPicker({
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
         setOpen(false);
       }
     };
     window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, true);
     };
   }, [open]);
 
@@ -71,7 +75,8 @@ export function ProjectPicker({
       <button
         type="button"
         className="project-picker-trigger"
-        data-testid="project-path"
+        id={testId}
+        data-testid={testId}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}

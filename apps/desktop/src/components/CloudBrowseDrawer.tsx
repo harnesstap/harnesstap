@@ -10,6 +10,7 @@ import type {
   CloudProfilePullResult,
 } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 interface CloudBrowseDrawerProps {
   open: boolean;
@@ -127,19 +128,6 @@ export function CloudBrowseDrawer({
     };
   }, [baseUrl, open, query, token]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, disabled, onClose, open]);
-
   const selectProfile = (profile: CloudProfile) => {
     setSelected(profile);
     setCollision(false);
@@ -231,38 +219,62 @@ export function CloudBrowseDrawer({
     || (collision && !rename.trim());
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !controlsDisabled) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="dialog create-profile-dialog cloud-browse-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cloud-browse-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">Cloud catalog</div>
-            <h2 id="cloud-browse-title">Browse Cloud</h2>
-          </div>
+    <FullScreenPanel
+      titleId="cloud-browse-title"
+      title="Browse Cloud"
+      eyebrow="Cloud catalog"
+      closeLabel="Close cloud browser"
+      closeDisabled={controlsDisabled}
+      onClose={onClose}
+      bodyClassName="cloud-browse-body"
+      actions={
+        <>
           <button
-            className="icon-btn"
+            className="btn"
             type="button"
-            aria-label="Close cloud browser"
             onClick={onClose}
             disabled={controlsDisabled}
           >
-            ×
+            Close
           </button>
-        </div>
-
-        <div className="create-profile-body cloud-browse-body">
+          {!authRequired && !pulled ? (
+            <>
+              <button
+                className={[
+                  "btn",
+                  busy && !pendingUse ? "is-busy" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                onClick={() => void runPull(false)}
+                disabled={pullDisabled}
+                aria-busy={busy && !pendingUse}
+              >
+                {busy && !pendingUse ? <ButtonSpinner size={16} /> : null}
+                {busy && !pendingUse ? "Pulling…" : "Pull"}
+              </button>
+              <button
+                className={[
+                  "btn",
+                  "primary",
+                  busy && pendingUse ? "is-busy" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                onClick={() => void runPull(true)}
+                disabled={pullDisabled}
+                aria-busy={busy && pendingUse}
+              >
+                {busy && pendingUse ? <ButtonSpinner size={16} /> : null}
+                {busy && pendingUse ? "Pulling…" : "Pull & use"}
+              </button>
+            </>
+          ) : null}
+        </>
+      }
+    >
           <label className="form-field">
             <span>Search catalog</span>
             <input
@@ -295,7 +307,7 @@ export function CloudBrowseDrawer({
               ) : (
                 <p className="muted">
                   Sign in with <span className="mono">ht auth login</span>, then
-                  reopen this drawer.
+                  reopen this screen.
                 </p>
               )}
             </div>
@@ -408,54 +420,6 @@ export function CloudBrowseDrawer({
             <div className="success-flash">{taggedMessage}</div>
           ) : null}
           {error ? <div className="banner error">{error}</div> : null}
-        </div>
-
-        <div className="dialog-actions create-profile-actions">
-          <button
-            className="btn"
-            type="button"
-            onClick={onClose}
-            disabled={controlsDisabled}
-          >
-            Close
-          </button>
-          {!authRequired && !pulled ? (
-            <>
-              <button
-                className={[
-                  "btn",
-                  busy && !pendingUse ? "is-busy" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                type="button"
-                onClick={() => void runPull(false)}
-                disabled={pullDisabled}
-                aria-busy={busy && !pendingUse}
-              >
-                {busy && !pendingUse ? <ButtonSpinner size={16} /> : null}
-                {busy && !pendingUse ? "Pulling…" : "Pull"}
-              </button>
-              <button
-                className={[
-                  "btn",
-                  "primary",
-                  busy && pendingUse ? "is-busy" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                type="button"
-                onClick={() => void runPull(true)}
-                disabled={pullDisabled}
-                aria-busy={busy && pendingUse}
-              >
-                {busy && pendingUse ? <ButtonSpinner size={16} /> : null}
-                {busy && pendingUse ? "Pulling…" : "Pull & use"}
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }

@@ -245,7 +245,7 @@ describe("profile delete desktop helpers", () => {
     ).toBe("Removed profile work and deleted the plugin");
   });
 
-  it("hides the footer while switching or disconnected", () => {
+  it("hides the control while switching or disconnected", () => {
     expect(
       shouldShowProfileDeleteControls({
         disabled: true,

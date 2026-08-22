@@ -97,6 +97,10 @@ export interface LibraryResourceDetail {
   install_path?: string | null;
   marketplace_url?: string | null;
   contained_resources?: PluginContainedResource[];
+  attached_profiles?: string[];
+  attached_plugins?: string[];
+  active_profile?: string | null;
+  in_active_profile?: boolean;
 }
 
 export type ProfileCreateSource = "compose" | "home" | "project";

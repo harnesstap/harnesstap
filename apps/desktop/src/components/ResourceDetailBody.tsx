@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   AlignLeft,
+  ArrowLeft,
   Clock,
   FileCode2,
   Folder,
@@ -23,6 +24,7 @@ import {
   AgentApiError,
   fetchLibraryResourceDetail,
   openResourcePath,
+  removeProfileResource,
 } from "../lib/agent-client";
 import { fieldKeyAction } from "../lib/library-field-edit";
 import {
@@ -37,6 +39,11 @@ import {
   isPluginTypeResource,
   pluginRefShowsMarketplaceUrl,
 } from "../lib/plugin-ref-detail";
+import {
+  attachersFromResourceDetail,
+  formatResourceDeleteAttachers,
+  resourceCanRemoveFromActiveProfile,
+} from "../lib/resource-delete";
 import { formatOriginKindLabel } from "../lib/resource-filters";
 import type { LibraryResourceDetail } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
@@ -391,6 +398,38 @@ export function ResourceDetailBody({
     }
   }
 
+  async function runRemoveFromActive() {
+    if (!baseUrl || !target || !detail) {
+      return;
+    }
+    const attachers = attachersFromResourceDetail(detail);
+    if (!attachers.active_profile) {
+      return;
+    }
+    setMutating(true);
+    setActionError(null);
+    try {
+      await removeProfileResource(baseUrl, token, attachers.active_profile, {
+        resourceType: detail.type,
+        resourceName: detail.name,
+      });
+      onSuccess?.(
+        `Removed ${quoteResource(detail)} from ${attachers.active_profile}`,
+      );
+      const next = await fetchLibraryResourceDetail(baseUrl, token, target.selector, {
+        pathHint: target.pathHint,
+      });
+      setDetail(next);
+      onLibraryChanged?.();
+    } catch (removeError: unknown) {
+      setActionError(
+        errorMessage(removeError, "Could not remove resource from active profile"),
+      );
+    } finally {
+      setMutating(false);
+    }
+  }
+
   async function openContainedPath(path: string): Promise<void> {
     if (!baseUrl || openingPath) {
       return;
@@ -409,6 +448,13 @@ export function ResourceDetailBody({
   const showSync = Boolean(detail && !isUntrackedDetail(detail) && isSyncableDetail(detail));
   const showDelete = Boolean(detail && !isUntrackedDetail(detail));
   const showApply = Boolean(preview && preview.updated.length > 0);
+  const deleteAttachers = detail ? attachersFromResourceDetail(detail) : null;
+  const deleteAttacherCopy = deleteAttachers
+    ? formatResourceDeleteAttachers(deleteAttachers)
+    : null;
+  const canRemoveFromActive = deleteAttachers
+    ? resourceCanRemoveFromActiveProfile(deleteAttachers)
+    : false;
 
   const actionButtons = (
     <>
@@ -692,19 +738,41 @@ export function ResourceDetailBody({
         title="Delete this resource?"
         description={
           detail
-            ? `This removes ${detail.type} "${detail.name}" from the library. Plugins and profiles that referenced it are not edited. On-disk harness files are not deleted.`
+            ? `This removes ${detail.type} "${detail.name}" from the library. On-disk harness files are not deleted.`
             : ""
         }
         confirmLabel="Delete"
         cancelLabel="Cancel"
         confirmBusy={busy}
+        secondaryLabel={canRemoveFromActive ? "Remove from active profile" : undefined}
+        secondaryBusy={busy}
+        onSecondary={canRemoveFromActive ? () => void runRemoveFromActive() : undefined}
         onConfirm={() => void runDelete()}
         onCancel={() => {
           if (!busy) {
             setConfirm(null);
           }
         }}
-      />
+      >
+        {deleteAttacherCopy ? (
+          <div className="muted">
+            {deleteAttacherCopy.profilesLine ? (
+              <p>{deleteAttacherCopy.profilesLine}</p>
+            ) : null}
+            {deleteAttacherCopy.pluginsLine ? (
+              <p>{deleteAttacherCopy.pluginsLine}</p>
+            ) : null}
+            {deleteAttacherCopy.emptyLine ? (
+              <p>{deleteAttacherCopy.emptyLine}</p>
+            ) : null}
+          </div>
+        ) : null}
+        {confirm === "delete" && actionError ? (
+          <div className="banner error" role="alert">
+            {actionError}
+          </div>
+        ) : null}
+      </ConfirmDialog>
       <ConfirmDialog
         open={confirm === "overwrite" && detail !== null}
         title="Overwrite library definition?"
@@ -750,20 +818,21 @@ export function ResourceDetailBody({
   return (
     <>
       <div className="resource-detail-header">
+        <button
+          ref={closeRef}
+          type="button"
+          className="icon-action"
+          aria-label="Close resource details"
+          title="Close resource details"
+          onClick={onClose}
+          disabled={busy}
+        >
+          <ArrowLeft size={16} aria-hidden />
+        </button>
         <div>
           <div className="eyebrow">Resource</div>
           <h2 id={titleId}>{nameEditor}</h2>
         </div>
-        <button
-          ref={closeRef}
-          className="icon-btn"
-          type="button"
-          aria-label="Close resource details"
-          onClick={onClose}
-          disabled={busy}
-        >
-          ×
-        </button>
       </div>
       <div className="resource-detail-body">{fields}</div>
       {confirms}

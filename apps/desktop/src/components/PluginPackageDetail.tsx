@@ -99,7 +99,7 @@ type PluginEditingField =
   | "default_environment";
 
 const APPLY_TOOLTIP =
-  "Write this plugin’s graph into the selected project (or global when that drawer says so).";
+  "Write this plugin’s graph into the selected project (or global when that screen says so).";
 const DELETE_TOOLTIP =
   "Remove this from the library. Plugins that referenced it are not edited. On-disk harness files are not deleted.";
 const CUT_TOOLTIP =

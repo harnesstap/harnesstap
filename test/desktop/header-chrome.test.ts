@@ -24,8 +24,33 @@ const environmentsSource = readFileSync(
   ),
   "utf8",
 );
+const backButtonSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/WorkspaceBackButton.tsx",
+  ),
+  "utf8",
+);
 const designSource = readFileSync(
   join(import.meta.dir, "../../apps/desktop/DESIGN.md"),
+  "utf8",
+);
+const settingsSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/SettingsDrawer.tsx",
+  ),
+  "utf8",
+);
+const cssSource = readFileSync(
+  join(import.meta.dir, "../../apps/desktop/src/styles.css"),
+  "utf8",
+);
+const settingsTabsSource = readFileSync(
+  join(
+    import.meta.dir,
+    "../../apps/desktop/src/components/parity/SettingsParitySections.tsx",
+  ),
   "utf8",
 );
 
@@ -65,6 +90,18 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
+  test("labels header destinations Library, Environments, Global, and Project", () => {
+    expect(appSource).toMatch(/<Library[\s\S]*\/>\s*Library\s*</);
+    expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*Environments\s*</);
+    expect(appSource).toMatch(/<Globe[\s\S]*\/>\s*Global\s*</);
+    expect(appSource).toMatch(/<FolderGit2[\s\S]*\/>\s*Project\s*</);
+    expect(appSource).toContain("header-focus-btn labeled");
+    expect(paritySource).toContain("header-focus-btn labeled");
+    expect(cssSource).toContain(".header-focus-btn.labeled");
+    expect(designSource).toContain("Header destinations: **Library | Environments | Global | Project**");
+    expect(designSource).toContain("Header destinations show icon plus name");
+  });
+
   test("refreshes live status after package Apply and shows success in the header", () => {
     const refreshOnProfiles =
       appSource.match(/void refreshProfiles\(\);\s*void refreshStatus\("full"\);/g) ?? [];
@@ -94,7 +131,7 @@ describe("header re-click home", () => {
     const resetBlock = sliceBetween(
       appSource,
       'headerClickIntent(activeDestination, clicked) === "reset"',
-      "setWorkspaceFocus(\"library\")",
+      "navigateToDestination(clicked)",
     );
     expect(resetBlock).toContain('setProfileFilter("")');
     expect(resetBlock).toContain("setEditingProfile(null)");
@@ -125,7 +162,7 @@ describe("header re-click home", () => {
     expect(environmentsSource).toContain("setSelectedName(null)");
   });
 
-  test("Environments reset does not close the create/edit drawer", () => {
+  test("Environments reset does not close the create/edit panel", () => {
     const effectBlock = sliceBetween(
       environmentsSource,
       "homeResetNonceSeen.current === homeResetNonce",
@@ -135,11 +172,51 @@ describe("header re-click home", () => {
     expect(effectBlock).not.toContain("setDeleteTarget");
   });
 
+  test("workspace destination switches record screen history", () => {
+    expect(appSource).toContain("pushScreenHistory");
+    expect(appSource).toContain("popScreenHistory");
+    expect(appSource).toContain("canPopScreenHistory");
+    expect(appSource).toContain("onWorkspaceBack");
+    expect(appSource).toContain("canWorkspaceBack");
+    expect(appSource).toContain("WorkspaceBackButton");
+    expect(backButtonSource).toContain('data-testid="workspace-back"');
+    expect(backButtonSource).toContain("WORKSPACE_BACK_LABEL");
+    expect(backButtonSource).toContain("ArrowLeft");
+  });
+
   test("DESIGN.md locks header re-click home", () => {
     expect(designSource).toContain("Re-clicking an already-active header destination");
     expect(designSource).toContain("only switches");
     expect(designSource).toContain("applyFilterChange");
     expect(designSource).toContain("does not reopen the directory picker");
+  });
+});
+
+describe("desktop full-screen panels", () => {
+  test("DESIGN.md uses full-screen panels instead of side drawers", () => {
+    expect(designSource).toContain("full-screen panels (not side drawers)");
+    expect(designSource).toContain("Create/edit full-screen panel stays if open");
+  });
+
+  test("settings and overlay CSS fill the viewport", () => {
+    expect(settingsSource).toContain("FullScreenPanel");
+    expect(cssSource).toContain(".full-screen-panel {");
+    expect(cssSource).not.toContain("place-items: stretch end");
+    expect(cssSource).not.toContain("box-shadow: -16px 0 40px");
+  });
+
+  test("settings splits sections into labeled tabs", () => {
+    expect(settingsSource).toContain('role="tablist"');
+    expect(settingsSource).toContain("SETTINGS_TABS");
+    expect(settingsSource).toContain("data-testid={`settings-tab-${entry.id}`}");
+    expect(settingsTabsSource).toContain('label: "Harnesses"');
+    expect(settingsTabsSource).toContain('label: "Marketplaces"');
+    expect(settingsTabsSource).toContain('label: "Publish catalogs"');
+    expect(settingsTabsSource).toContain('label: "Project"');
+    expect(settingsTabsSource).toContain('label: "Advanced"');
+    expect(designSource).toContain(
+      "Harnesses | Marketplaces | Publish catalogs | Project | Advanced",
+    );
   });
 });
 

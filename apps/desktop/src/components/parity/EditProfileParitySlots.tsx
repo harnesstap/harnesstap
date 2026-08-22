@@ -1,6 +1,5 @@
 import { DefaultEnvironmentField } from "./DefaultEnvironmentField";
 import { ProfileCatalogBindings } from "./ProfileCatalogBindings";
-import { ProfileDeleteControls } from "./ProfileDeleteControls";
 import { PublishProfileDrawer } from "./PublishProfileDrawer";
 
 export function EditProfileParitySlots(props: {
@@ -9,7 +8,6 @@ export function EditProfileParitySlots(props: {
   baseUrl: string | null;
   token: string | null;
   disabled?: boolean;
-  onDeleted: (result?: { plugin_name: string; plugin_deleted: boolean }, message?: string) => void;
   onMutated?: () => void;
   onOpenEnvironments?: () => void;
   onSuccess?: (message: string) => void;
@@ -41,13 +39,6 @@ export function EditProfileParitySlots(props: {
         onSuccess={props.onSuccess}
         onRequestSignIn={props.onRequestSignIn}
         onRequestCut={props.onRequestCut}
-      />
-      <ProfileDeleteControls
-        profileName={props.profileName}
-        baseUrl={props.baseUrl}
-        token={props.token}
-        disabled={props.disabled}
-        onDeleted={props.onDeleted}
       />
     </div>
   );

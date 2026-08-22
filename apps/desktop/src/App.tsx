@@ -12,6 +12,11 @@ import {
   headerClickIntent,
   type HeaderDestination,
 } from "./lib/header-destination";
+import {
+  canPopScreenHistory,
+  popScreenHistory,
+  pushScreenHistory,
+} from "./lib/screen-history";
 import { ButtonSpinner } from "./components/ButtonSpinner";
 import { CloudAccountDrawer } from "./components/CloudAccountDrawer";
 import { CloudBrowseDrawer } from "./components/CloudBrowseDrawer";
@@ -21,6 +26,7 @@ import { CreateProfileDrawer } from "./components/CreateProfileDrawer";
 import { EditProfilePane } from "./components/EditProfilePane";
 import { EnvironmentsWorkspace } from "./components/parity/EnvironmentsWorkspace";
 import { ParityChrome } from "./components/parity/ParityChrome";
+import { ProfileDeleteControls } from "./components/parity/ProfileDeleteControls";
 import { ProjectHistoryControl } from "./components/parity/ProjectHistoryControl";
 import { FileDiffModal } from "./components/FileDiffModal";
 import { LiveStatePanel } from "./components/LiveStatePanel";
@@ -30,6 +36,7 @@ import { ProjectPicker } from "./components/ProjectPicker";
 import { ResourcesPanel } from "./components/ResourcesPanel";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 import { StashBrowseDrawer } from "./components/StashBrowseDrawer";
+import { WorkspaceBackButton } from "./components/WorkspaceBackButton";
 import {
   AgentApiError,
   bootstrapProject,
@@ -179,6 +186,7 @@ export function App() {
   const [preferEmptySelection, setPreferEmptySelection] = useState(false);
   const [profileFilter, setProfileFilter] = useState("");
   const [workspaceFocus, setWorkspaceFocus] = useState<WorkspaceFocus>("scope");
+  const [screenHistory, setScreenHistory] = useState<HeaderDestination[]>([]);
   const [homeResetNonce, setHomeResetNonce] = useState(0);
   const [libraryFocusPlugin, setLibraryFocusPlugin] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
@@ -472,6 +480,29 @@ export function App() {
   const closeEditProfile = useCallback(() => {
     setEditingProfile(null);
   }, []);
+
+  const handleProfileDeleted = useCallback(
+    (
+      result?: { plugin_name: string; plugin_deleted: boolean },
+      message?: string,
+    ) => {
+      clearProfileSelection();
+      void refreshProfiles();
+      void refreshStatus("full");
+      if (message) {
+        setSuccessMessage(message);
+        window.setTimeout(() => setSuccessMessage(null), 3000);
+      } else if (result?.plugin_name) {
+        setSuccessMessage(
+          result.plugin_deleted
+            ? `Removed profile ${result.plugin_name} and deleted the plugin`
+            : `Removed profile ${result.plugin_name}`,
+        );
+        window.setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    },
+    [clearProfileSelection, refreshProfiles, refreshStatus],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1611,25 +1642,10 @@ export function App() {
   };
 
   const activeDestination = activeHeaderDestination(workspaceFocus, view);
+  const canWorkspaceBack = canPopScreenHistory(screenHistory);
+  const scopeCanGoBack = Boolean(editingProfile) || canWorkspaceBack;
 
-  const onHeaderDestinationClick = (clicked: HeaderDestination): void => {
-    if (headerClickIntent(activeDestination, clicked) === "reset") {
-      switch (clicked) {
-        case "library":
-        case "environments":
-          setHomeResetNonce((value) => value + 1);
-          return;
-        case "home":
-        case "project":
-          setProfileFilter("");
-          setEditingProfile(null);
-          return;
-        default: {
-          const neverClicked: never = clicked;
-          return neverClicked;
-        }
-      }
-    }
+  const applyHeaderDestination = (clicked: HeaderDestination): void => {
     switch (clicked) {
       case "library":
         setEditingProfile(null);
@@ -1650,6 +1666,43 @@ export function App() {
         return neverClicked;
       }
     }
+  };
+
+  const navigateToDestination = (next: HeaderDestination): void => {
+    setScreenHistory((stack) =>
+      pushScreenHistory(stack, activeDestination, next),
+    );
+    applyHeaderDestination(next);
+  };
+
+  const onWorkspaceBack = (): void => {
+    const { stack, previous } = popScreenHistory(screenHistory);
+    if (!previous) {
+      return;
+    }
+    setScreenHistory(stack);
+    applyHeaderDestination(previous);
+  };
+
+  const onHeaderDestinationClick = (clicked: HeaderDestination): void => {
+    if (headerClickIntent(activeDestination, clicked) === "reset") {
+      switch (clicked) {
+        case "library":
+        case "environments":
+          setHomeResetNonce((value) => value + 1);
+          return;
+        case "home":
+        case "project":
+          setProfileFilter("");
+          setEditingProfile(null);
+          return;
+        default: {
+          const neverClicked: never = clicked;
+          return neverClicked;
+        }
+      }
+    }
+    navigateToDestination(clicked);
   };
 
   const onApplyClick = () => {
@@ -1821,13 +1874,14 @@ export function App() {
           <div className="header-focus-controls">
             <button
               type="button"
-              className={`header-focus-btn${workspaceFocus === "library" ? " on" : ""}`}
+              className={`header-focus-btn labeled${workspaceFocus === "library" ? " on" : ""}`}
               onClick={() => onHeaderDestinationClick("library")}
               disabled={switching}
               aria-label="Library"
               title="Library"
             >
               <Library size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+              Library
             </button>
             <ParityChrome
               workspaceFocus={workspaceFocus}
@@ -1853,6 +1907,7 @@ export function App() {
                 title="Global"
               >
                 <Globe size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                Global
               </button>
               <button
                 type="button"
@@ -1872,6 +1927,7 @@ export function App() {
                 }
               >
                 <FolderGit2 size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+                Project
               </button>
             </div>
           </div>
@@ -2059,7 +2115,19 @@ export function App() {
         {workspaceFocus === "scope" ? (
         <nav className="profiles-rail" aria-label="Profiles">
           <div className="profiles-brand">
-            <span>Profiles</span>
+            <div className="resources-panel-title-cluster">
+              <WorkspaceBackButton
+                disabled={switching || !scopeCanGoBack}
+                onClick={() => {
+                  if (editingProfile) {
+                    closeEditProfile();
+                    return;
+                  }
+                  onWorkspaceBack();
+                }}
+              />
+              <span>Profiles</span>
+            </div>
             <div className="profiles-brand-actions">
               <div className="profiles-rail-toolbar">
                 <button
@@ -2362,8 +2430,10 @@ export function App() {
             homeResetNonce={homeResetNonce}
             onOpenPlugin={(pluginName) => {
               setLibraryFocusPlugin(pluginName);
-              setWorkspaceFocus("library");
+              navigateToDestination("library");
             }}
+            canWorkspaceBack={canWorkspaceBack}
+            onWorkspaceBack={onWorkspaceBack}
             onSuccess={(message) => {
               setSuccessMessage(message);
               window.setTimeout(() => setSuccessMessage(null), 3000);
@@ -2381,6 +2451,8 @@ export function App() {
             focusPluginName={libraryFocusPlugin}
             onFocusPluginConsumed={() => setLibraryFocusPlugin(null)}
             onBusyChange={setPluginApplyBusy}
+            canWorkspaceBack={canWorkspaceBack}
+            onWorkspaceBack={onWorkspaceBack}
             onProfilesChanged={() => {
               void refreshProfiles();
               void refreshStatus("full");
@@ -2408,25 +2480,9 @@ export function App() {
               setEditingProfile(nextName);
             }}
             onMutated={maybeAutoReapplyAfterMutation}
-            onDeleted={(result, message) => {
-              clearProfileSelection();
-              void refreshProfiles();
-              void refreshStatus("full");
-              if (message) {
-                setSuccessMessage(message);
-                window.setTimeout(() => setSuccessMessage(null), 3000);
-              } else if (result?.plugin_name) {
-                setSuccessMessage(
-                  result.plugin_deleted
-                    ? `Removed profile ${result.plugin_name} and deleted the plugin`
-                    : `Removed profile ${result.plugin_name}`,
-                );
-                window.setTimeout(() => setSuccessMessage(null), 3000);
-              }
-            }}
+            onDeleted={handleProfileDeleted}
             onOpenEnvironments={() => {
-              setEditingProfile(null);
-              setWorkspaceFocus("environments");
+              navigateToDestination("environments");
             }}
             onSuccess={(message) => {
               setSuccessMessage(message);
@@ -2545,6 +2601,13 @@ export function App() {
                           aria-hidden="true"
                         />
                       </button>
+                      <ProfileDeleteControls
+                        profileName={selectedProfile}
+                        baseUrl={baseUrl}
+                        token={token}
+                        disabled={!connected || switching}
+                        onDeleted={handleProfileDeleted}
+                      />
                     </>
                   ) : (
                     "No profile selected"
@@ -2822,8 +2885,11 @@ export function App() {
         baseUrl={baseUrl}
         token={token}
         projectPath={view === "project" ? projectPath : null}
+        inspectProjectPath={projectPath || null}
         disabled={switching}
         onClose={() => setSettingsOpen(false)}
+        onSelectProject={selectProject}
+        onBrowseProject={() => void browseProject()}
         onSaved={() => {
           void refreshStatus("full");
         }}

@@ -58,7 +58,15 @@ describe("library items header actions", () => {
     expect(createIdx).toBeGreaterThan(clusterIdx);
     expect(importIdx).toBeGreaterThan(createIdx);
     expect(trackedIdx).toBeGreaterThan(importIdx);
-    expect(headerRow).not.toContain("icon-action");
+    expect(headerRow.slice(clusterIdx)).not.toContain("icon-action");
+  });
+
+  test("renders an explicit back control before the Library title", () => {
+    const backIdx = headerRow.indexOf("WorkspaceBackButton");
+    const titleIdx = headerRow.indexOf(">Library<");
+    expect(backIdx).toBeGreaterThan(-1);
+    expect(titleIdx).toBeGreaterThan(backIdx);
+    expect(panelSource).toContain("onWorkspaceBack");
   });
 
   test("renders Create plugin as a labeled accent primary action", () => {
@@ -127,6 +135,12 @@ describe("library items header design lock", () => {
   test("documents the Library header action cluster", () => {
     expect(designSource).toContain("**Create plugin** (accent");
     expect(designSource).toContain("Header cluster");
+  });
+
+  test("documents workspace back before the panel title", () => {
+    expect(designSource).toContain("Back icon to the left of the panel title");
+    expect(designSource).toContain("previous screen");
+    expect(designSource).toContain("deactivates when there is no previous screen");
   });
 
   test("documents unified library list and detail", () => {

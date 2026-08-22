@@ -18,13 +18,14 @@ export function ParityChrome({
   return (
     <button
       type="button"
-      className={`header-focus-btn${workspaceFocus === "environments" ? " on" : ""}`}
+      className={`header-focus-btn labeled${workspaceFocus === "environments" ? " on" : ""}`}
       onClick={() => onWorkspaceFocus("environments")}
       disabled={switching}
       aria-label="Environments"
       title="Environments"
     >
       <Puzzle size={HEADER_ICON_SIZE} strokeWidth={2} aria-hidden="true" />
+      Environments
     </button>
   );
 }

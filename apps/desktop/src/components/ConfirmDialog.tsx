@@ -13,6 +13,10 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   confirmDisabled?: boolean;
   confirmBusy?: boolean;
+  secondaryLabel?: string;
+  secondaryBusy?: boolean;
+  secondaryDisabled?: boolean;
+  onSecondary?: () => void;
   onConfirm: () => void;
   onCancel: () => void;
   children?: ReactNode;
@@ -30,14 +34,18 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   confirmDisabled = false,
   confirmBusy = false,
+  secondaryLabel,
+  secondaryBusy = false,
+  secondaryDisabled = false,
+  onSecondary,
   onConfirm,
   onCancel,
   children,
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const cancelRef = useDialogDismiss(open, onCancel, confirmBusy);
-  const controlsDisabled = confirmDisabled || confirmBusy;
+  const cancelRef = useDialogDismiss(open, onCancel, confirmBusy || secondaryBusy);
+  const controlsDisabled = confirmDisabled || confirmBusy || secondaryBusy;
 
   if (!open) {
     return null;
@@ -48,7 +56,7 @@ export function ConfirmDialog({
       className="dialog-backdrop"
       role="presentation"
       onClick={(event) => {
-        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, confirmBusy)) {
+        if (shouldCloseDialogOnBackdrop(event.target, event.currentTarget, confirmBusy || secondaryBusy)) {
           onCancel();
         }
       }}
@@ -75,10 +83,22 @@ export function ConfirmDialog({
             className="btn"
             type="button"
             onClick={onCancel}
-            disabled={confirmBusy}
+            disabled={confirmBusy || secondaryBusy}
           >
             {cancelLabel}
           </button>
+          {secondaryLabel && onSecondary ? (
+            <button
+              className={["btn", secondaryBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              disabled={secondaryDisabled || confirmBusy || secondaryBusy}
+              aria-busy={secondaryBusy}
+              onClick={onSecondary}
+            >
+              {secondaryBusy ? <ButtonSpinner size={16} /> : null}
+              {secondaryLabel}
+            </button>
+          ) : null}
           <button
             className={["btn", "primary", confirmBusy ? "is-busy" : ""]
               .filter(Boolean)

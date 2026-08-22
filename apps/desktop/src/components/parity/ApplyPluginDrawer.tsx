@@ -19,6 +19,7 @@ import {
 } from "../../lib/api/apply-plugin";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { FullScreenPanel } from "../FullScreenPanel";
 
 export interface ApplyPluginDrawerProps {
   open: boolean;
@@ -51,7 +52,6 @@ export function ApplyPluginDrawer({
   onBusyChange,
   disabled,
 }: ApplyPluginDrawerProps) {
-  const closeRef = useRef<HTMLButtonElement>(null);
   const [scope, setScope] = useState<ApplyPluginScope>("home");
   const [onConflict, setOnConflict] = useState<ApplyOnConflict>("replace");
   const [busy, setBusy] = useState(false);
@@ -87,22 +87,7 @@ export function ApplyPluginDrawer({
     setProfilePreview(null);
     setDryRunPreview(null);
     setOverwriteOpen(false);
-    const timer = window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
   }, [open, pluginName]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !overwriteOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, onClose, open, overwriteOpen]);
 
   const runApply = async (confirmOwnedOverwrite: boolean) => {
     if (!baseUrl || !token || !pluginName.trim()) {
@@ -190,39 +175,40 @@ export function ApplyPluginDrawer({
 
   return (
     <>
-      <div
-        className="dialog-backdrop create-profile-backdrop"
-        role="presentation"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !busy) {
-            onClose();
-          }
-        }}
-      >
-        <div
-          className="dialog create-profile-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="apply-plugin-title"
-        >
-          <div className="create-profile-header">
-            <div>
-              <h2 id="apply-plugin-title">{applyPluginDialogTitle(pluginName)}</h2>
-              <p className="muted">{applyPluginHelperCopy()}</p>
-            </div>
-            <button
-              ref={closeRef}
-              className="icon-btn"
-              type="button"
-              aria-label="Close"
-              onClick={onClose}
-              disabled={busy}
-            >
-              ×
+      <FullScreenPanel
+        titleId="apply-plugin-title"
+        title={applyPluginDialogTitle(pluginName)}
+        subtitle={applyPluginHelperCopy()}
+        closeLabel="Close"
+        closeDisabled={busy || overwriteOpen}
+        onClose={onClose}
+        actions={
+          <>
+            <button className="btn" type="button" onClick={onClose} disabled={busy}>
+              Close
             </button>
-          </div>
-
-          <div className="create-profile-body">
+            <button
+              className="btn"
+              type="button"
+              onClick={() => void onPreview()}
+              disabled={!canApply || previewBusy}
+            >
+              {previewBusy ? <ButtonSpinner size={16} /> : null}
+              Preview
+            </button>
+            <button
+              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+              type="button"
+              disabled={!canApply}
+              aria-busy={busy}
+              onClick={() => void runApply(false)}
+            >
+              {busy ? <ButtonSpinner size={16} /> : null}
+              {busy ? "Applying…" : "Apply"}
+            </button>
+          </>
+        }
+      >
             {error ? (
               <div className="banner error" role="alert">
                 {error}
@@ -295,34 +281,7 @@ export function ApplyPluginDrawer({
                   : ""}
               </p>
             ) : null}
-          </div>
-
-          <div className="dialog-actions">
-            <button className="btn" type="button" onClick={onClose} disabled={busy}>
-              Close
-            </button>
-            <button
-              className="btn"
-              type="button"
-              onClick={() => void onPreview()}
-              disabled={!canApply || previewBusy}
-            >
-              {previewBusy ? <ButtonSpinner size={16} /> : null}
-              Preview
-            </button>
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              disabled={!canApply}
-              aria-busy={busy}
-              onClick={() => void runApply(false)}
-            >
-              {busy ? <ButtonSpinner size={16} /> : null}
-              {busy ? "Applying…" : "Apply"}
-            </button>
-          </div>
-        </div>
-      </div>
+      </FullScreenPanel>
 
       <ConfirmDialog
         open={overwriteOpen}

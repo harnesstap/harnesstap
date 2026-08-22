@@ -16,6 +16,7 @@ import {
 } from "../lib/api/cloud-orgs";
 import type { CloudAuthStatus, CloudPendingLogin } from "../lib/types";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { FullScreenPanel } from "./FullScreenPanel";
 
 interface CloudAccountDrawerProps {
   open: boolean;
@@ -253,19 +254,6 @@ export function CloudAccountDrawer({
     };
   }, [open, baseUrl, token, status?.authenticated, status?.pendingLogin, status?.orgSlug]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy && !switchingSlug && !disabled) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, busy, switchingSlug, disabled, onClose]);
-
   const onSwitchOrg = async (org: CloudOrg) => {
     if (!baseUrl || busy || disabled || orgsLoading || switchingSlug) {
       return;
@@ -371,37 +359,15 @@ export function CloudAccountDrawer({
   const authenticated = status?.authenticated === true;
 
   return (
-    <div
-      className="dialog-backdrop create-profile-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
+    <FullScreenPanel
+      titleId="cloud-account-title"
+      title="Account"
+      eyebrow="HarnessTap Cloud"
+      closeLabel="Close account panel"
+      closeDisabled={busy || switchingSlug !== null || disabled}
+      onClose={onClose}
+      bodyClassName="cloud-account-body"
     >
-      <div
-        className="dialog create-profile-dialog cloud-account-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cloud-account-title"
-      >
-        <div className="create-profile-header">
-          <div>
-            <div className="eyebrow">HarnessTap Cloud</div>
-            <h2 id="cloud-account-title">Account</h2>
-          </div>
-          <button
-            className="icon-btn"
-            type="button"
-            aria-label="Close account panel"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="create-profile-body cloud-account-body">
           {error && (
             <div className="banner error" role="alert">
               {error}
@@ -527,8 +493,6 @@ export function CloudAccountDrawer({
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </FullScreenPanel>
   );
 }

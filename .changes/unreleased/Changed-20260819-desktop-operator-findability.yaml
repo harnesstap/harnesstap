@@ -1,0 +1,3 @@
+kind: Changed
+body: Keep edit-profile name and description as the first fields, list remaining attachers on resource delete with Remove from active profile, and label header destinations Library / Environments / Global / Project.
+time: 2026-08-19T16:20:00Z

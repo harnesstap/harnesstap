@@ -68,47 +68,29 @@ export function ProfileDeleteControls({
       onDeleted(result, profileDeleteSuccessMessage(result));
     } catch (caught) {
       setError(errorMessage(caught));
-      setConfirmOpen(false);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div
-      className="profile-delete-footer"
-      style={{
-        marginTop: "1rem",
-        paddingTop: "0.75rem",
-        borderTop: "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.5rem",
-      }}
-    >
-      {error ? (
-        <div className="banner error" role="alert">
-          {error}
-        </div>
-      ) : null}
-      <button
-        className={["btn", "danger", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-        type="button"
-        aria-label={`Remove profile ${profileName}`}
-        disabled={busy || builtinEmpty}
-        onClick={() => {
-          setDeletePlugin(false);
-          setConfirmOpen(true);
-        }}
-        style={{
-          background: "var(--destructive)",
-          color: "var(--destructive-foreground)",
-          borderColor: "transparent",
-        }}
-      >
-        {busy ? <ButtonSpinner size={16} /> : null}
-        Remove profile
-      </button>
+    <>
+      <span className="profile-delete-control">
+        <button
+          className={["btn", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+          type="button"
+          aria-label={`Remove profile ${profileName}`}
+          disabled={busy || builtinEmpty}
+          onClick={() => {
+            setDeletePlugin(false);
+            setError(null);
+            setConfirmOpen(true);
+          }}
+        >
+          {busy ? <ButtonSpinner size={16} /> : null}
+          Remove profile
+        </button>
+      </span>
       <ConfirmDialog
         open={confirmOpen}
         title="Remove this profile?"
@@ -123,9 +105,15 @@ export function ProfileDeleteControls({
           if (!busy) {
             setConfirmOpen(false);
             setDeletePlugin(false);
+            setError(null);
           }
         }}
       >
+        {error ? (
+          <div className="banner error" role="alert">
+            {error}
+          </div>
+        ) : null}
         <div className="flex items-center gap-2">
           <Checkbox
             id={checkboxId}
@@ -138,6 +126,6 @@ export function ProfileDeleteControls({
           </Label>
         </div>
       </ConfirmDialog>
-    </div>
+    </>
   );
 }
