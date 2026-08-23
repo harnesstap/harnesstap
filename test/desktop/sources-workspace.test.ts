@@ -99,6 +99,14 @@ describe("sources workspace chrome", () => {
     expect(workspaceSource).toContain('className="btn primary"');
   });
 
+  test("places workspace back before the Sources title like Library and Environments", () => {
+    expect(workspaceSource).toContain("resources-panel-title-cluster");
+    expect(workspaceSource).toContain("WorkspaceBackButton");
+    expect(workspaceSource).toContain("<span>Sources</span>");
+    expect(appSource).toContain("canWorkspaceBack={canWorkspaceBack}");
+    expect(appSource).toContain("onWorkspaceBack={onWorkspaceBack}");
+  });
+
   test("marks the sources shell for tests", () => {
     expect(workspaceSource).toContain('data-testid="sources-workspace"');
   });

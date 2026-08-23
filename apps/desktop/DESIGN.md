@@ -58,7 +58,7 @@ Durable contracts only. Screen recipes belong in the feature spec that introduce
 **Header destinations**
 
 - Re-clicking an already-active header destination (Library, Sources, Environments, Global, Project) returns that view to its entrypoint and clears its filters. Clicking a different destination only switches.
-- Back icon to the left of the panel title (Library, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history / draft, or edit-profile), then the previous header destination. The control deactivates when there is no previous screen.
+- Back icon to the left of the panel title (Library, Sources, Environments, Profiles). Back returns to the previous screen: nested pane first (Library detail / history / draft, Sources preview / plugin-tree, or edit-profile), then the previous header destination. The control deactivates when there is no previous screen.
 - Library re-click applies default filters and returns to the list via the same path as a sidebar filter change (`applyFilterChange`).
 - Sources re-click clears the search query, checks all sources, and returns to the list. Add/edit panels stay if open.
 - Environments re-click clears the name filter and deselects. Create/edit full-screen panel stays if open.

@@ -122,14 +122,18 @@ fn spawn_sidecar_reload_watcher(app: AppHandle) {
 }
 
 fn sidecar_binary_path() -> Result<PathBuf, String> {
-    // During `tauri dev`, prefer the prepared binary under src-tauri/binaries so
-    // `desktop:prepare-sidecar` takes effect without requiring a full app relaunch
-    // (the copy next to the debug executable is often stale).
-    let prepared = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("binaries")
-        .join(format!("ht-agent-{}", host_target_triple()));
-    if prepared.exists() {
-        return Ok(prepared);
+    // Dev-only ergonomics: during `tauri dev`, prefer the prepared binary under
+    // src-tauri/binaries so `desktop:prepare-sidecar` takes effect without a
+    // full app relaunch. Release builds always use the bundled sidecar so the
+    // installed app never depends on a checkout existing at the build path.
+    #[cfg(debug_assertions)]
+    {
+        let prepared = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!("ht-agent-{}", host_target_triple()));
+        if prepared.exists() {
+            return Ok(prepared);
+        }
     }
 
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
@@ -140,6 +144,12 @@ fn sidecar_binary_path() -> Result<PathBuf, String> {
     if candidate.exists() {
         return Ok(candidate);
     }
+    #[cfg(debug_assertions)]
+    let prepared = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("binaries")
+        .join(format!("ht-agent-{}", host_target_triple()));
+    #[cfg(not(debug_assertions))]
+    let prepared = candidate.clone();
     Err(format!(
         "sidecar binary not found at {} or {}",
         prepared.display(),
@@ -299,11 +309,18 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
             .map_err(|_| "lock poisoned".to_string())?;
         if *starting {
             drop(starting);
-            let port = wait_for_port_file(5_000).unwrap_or(7474);
-            return Ok(port);
+            return wait_for_port_file(5_000).ok_or_else(|| {
+                "ht-agent sidecar is starting but did not report its port".to_string()
+            });
         }
         *starting = true;
     }
+
+    // Remove files written by previous (possibly dead or orphaned) agents so
+    // wait_for_port_file only observes the child we are about to spawn. The
+    // sidecar writes the token first, then the port, after it binds.
+    let _ = fs::remove_file(agent_port_path());
+    let _ = fs::remove_file(agent_token_path());
 
     let spawn_result = (|| {
         match spawn_sidecar_via_process() {
@@ -342,7 +359,9 @@ async fn start_sidecar(app: AppHandle, state: State<'_, AppState>) -> Result<u16
 
     spawn_result?;
 
-    let port = wait_for_port_file(5_000).unwrap_or(7474);
+    let port = wait_for_port_file(5_000).ok_or_else(|| {
+        "ht-agent sidecar did not report its port; check ~/.harnesstap for a stale agent".to_string()
+    })?;
     *state
         .sidecar
         .port
@@ -409,6 +428,15 @@ pub fn run() {
             get_sidecar_port,
             e2e_project_path
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running HarnessTap desktop");
+        .build(tauri::generate_context!())
+        .expect("error while building HarnessTap desktop")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Kill the managed sidecar so quitting never leaves an
+                // orphaned ht-agent holding the port and state files.
+                if let Some(state) = app.try_state::<AppState>() {
+                    stop_managed_process(&state);
+                }
+            }
+        });
 }

@@ -28,6 +28,7 @@ import {
   type SourcePreviewResult,
 } from "../lib/api/sources";
 import { fetchPluginOriginCheck, type PluginOriginCheckRow } from "../lib/api/plugin-origin-update";
+import { workspaceBackEnabled } from "../lib/screen-history";
 import {
   popSourcesPane,
   sourcesEscapeAction,
@@ -58,6 +59,7 @@ import {
 } from "../lib/sources-sidebar";
 import type { LibraryResource, PluginMarketplaceEntry } from "../lib/types";
 import { ConnectCatalogPanel } from "./ConnectCatalogPanel";
+import { WorkspaceBackButton } from "./WorkspaceBackButton";
 import { MarketplaceEditPanel } from "./MarketplaceEditPanel";
 import { PinToPluginPanel } from "./PinToPluginPanel";
 import { SourceSidebar } from "./SourceSidebar";
@@ -153,6 +155,8 @@ export interface SourcesWorkspaceProps {
   onSignIn?: () => void;
   onOpenInLibrary?: (selector: string) => void;
   cloudAuthenticated?: boolean;
+  canWorkspaceBack?: boolean;
+  onWorkspaceBack?: () => void;
 }
 
 export function SourcesWorkspace({
@@ -164,6 +168,8 @@ export function SourcesWorkspace({
   onSignIn,
   onOpenInLibrary,
   cloudAuthenticated = false,
+  canWorkspaceBack = false,
+  onWorkspaceBack,
 }: SourcesWorkspaceProps) {
   const [query, setQuery] = useState("");
   const [pane, setPane] = useState<SourcesPane>({ mode: "list" });
@@ -1017,6 +1023,26 @@ export function SourcesWorkspace({
   };
 
   const controlsDisabled = disabled || !baseUrl;
+  const hasLocalPrevious = sourcesPaneHasPrevious(pane);
+  const backDisabled =
+    controlsDisabled
+    || !workspaceBackEnabled({
+      hasLocalPrevious,
+      hasWorkspacePrevious: canWorkspaceBack,
+    })
+    || (hasLocalPrevious && (busy || sidebarConfirmOpen));
+
+  function handlePanelBack(): void {
+    const current = paneRef.current;
+    if (sourcesPaneHasPrevious(current)) {
+      if (busy || sidebarConfirmOpen) {
+        return;
+      }
+      setPane(popSourcesPane(current));
+      return;
+    }
+    onWorkspaceBack?.();
+  }
 
   function renderMainPane() {
     switch (pane.mode) {
@@ -1095,11 +1121,17 @@ export function SourcesWorkspace({
     >
       <div className="resources-panel-header">
         <div className="resources-panel-header-row">
-          <div className="resources-panel-title">
-            <span>Sources</span>
-            <span className="muted resources-panel-scope">
-              Search local, marketplaces, and HarnessTap Cloud.
-            </span>
+          <div className="resources-panel-title-cluster">
+            <WorkspaceBackButton
+              disabled={backDisabled}
+              onClick={handlePanelBack}
+            />
+            <div className="resources-panel-title">
+              <span>Sources</span>
+              <span className="muted resources-panel-scope">
+                Search local, marketplaces, and HarnessTap Cloud.
+              </span>
+            </div>
           </div>
           <div className="resources-panel-header-actions">
             <button

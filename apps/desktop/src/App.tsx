@@ -2440,6 +2440,8 @@ export function App() {
             homeResetNonce={homeResetNonce}
             cloudAuthenticated={Boolean(cloudAuth?.authenticated)}
             onSignIn={() => setCloudAccountOpen(true)}
+            canWorkspaceBack={canWorkspaceBack}
+            onWorkspaceBack={onWorkspaceBack}
             onOpenInLibrary={(selector) => {
               if (selector.includes(":")) {
                 setLibraryFocusResource(selector);
