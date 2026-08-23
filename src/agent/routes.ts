@@ -60,6 +60,7 @@ import {
 } from "./profile-stash-handlers.js";
 import {
   handleLibraryPlugins,
+  handleLibraryResourceCreate,
   handleLibraryResourceDetail,
   handleLibraryResources,
 } from "./profile-library-handlers.js";
@@ -628,6 +629,8 @@ export function createAgentFetchHandler(
     } else if (method === "GET" && url.pathname === "/v1/library/resources") {
       const authError = requireAgentBearerAuth(request, token);
       response = authError ?? handleLibraryResources();
+    } else if (method === "POST" && url.pathname === "/v1/library/resources") {
+      response = await handleLibraryResourceCreate(request, token);
     } else if (method === "GET" && url.pathname === "/v1/library/resource-directories") {
       response = handleResourceTrackedDirectoriesList(request, token);
     } else if (
