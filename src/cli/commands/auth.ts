@@ -84,11 +84,11 @@ async function handleCloudOrgsCommand(
   const format = parseOutputFormat(opts.format);
   const created = await createPersistingCloudClient(opts.account);
   if (!created) {
+    ui.warn("Not authenticated to cloud.");
     if (format === "json") {
       printJson([]);
       return;
     }
-    ui.warn("Not authenticated to cloud.");
     return;
   }
   try {
