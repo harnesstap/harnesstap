@@ -604,7 +604,7 @@ export function ResourcesPanel({
         <div className="empty-state">
           <p className="muted">
             {libraryEmpty
-              ? "No registered resources yet. Import items or create a plugin."
+              ? "No registered resources yet. Import items or create a resource."
               : isResourceFilterStateActive(filterState)
                 ? "No matches."
                 : "No resources to show."}
