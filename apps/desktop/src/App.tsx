@@ -1329,8 +1329,9 @@ export function App() {
   );
 
   const handleAddResource = useCallback(
-    async (resource: ProfileContentsResource) => {
-      if (!baseUrl || !selectedProfile) {
+    async (resource: ProfileContentsResource, profileOverride?: string) => {
+      const profileName = profileOverride ?? selectedProfile;
+      if (!baseUrl || !profileName) {
         return;
       }
       const key = `${resource.type}:${resource.name}`;
@@ -1347,21 +1348,21 @@ export function App() {
       setAddingResourceKey(key);
       setAddResourceError(null);
       try {
-        await addProfileResource(baseUrl, token, selectedProfile, {
+        await addProfileResource(baseUrl, token, profileName, {
           resourceType: resource.type,
           resourceName: resource.name,
           scope: view,
           ...(view === "project" && projectPath ? { projectPath } : {}),
         });
         const preview = await fetchApplyPreview(baseUrl, token, {
-          profile: selectedProfile,
+          profile: profileName,
           scope: view,
           ...(view === "project" && projectPath ? { projectPath } : {}),
         });
         setApplyPreview(preview);
         if (
           shouldAutoReapply({
-            mutatedProfile: selectedProfile,
+            mutatedProfile: profileName,
             activeProfile: preexisting.activeProfile,
             applied: preexisting.applied,
             view,
@@ -1370,8 +1371,8 @@ export function App() {
             affectsApply: true,
           })
         ) {
-          await runSwitch(true, selectedProfile);
-        } else if (selectedProfile === activeProfile) {
+          await runSwitch(true, profileName);
+        } else if (profileName === activeProfile) {
           await refreshStatus("full");
         }
       } catch (error) {
@@ -2466,6 +2467,10 @@ export function App() {
             homeResetNonce={homeResetNonce}
             projectPath={view === "project" ? projectPath : null}
             selectedProfile={selectedProfile}
+            attachProfileName={selectedProfile ?? activeProfile}
+            onAddToProfile={(resource) =>
+              handleAddResource(resource, selectedProfile ?? activeProfile ?? undefined)
+            }
             focusPluginName={libraryFocusPlugin}
             onFocusPluginConsumed={() => setLibraryFocusPlugin(null)}
             focusResourceSelector={libraryFocusResource}
