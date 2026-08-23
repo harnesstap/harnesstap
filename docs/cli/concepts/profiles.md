@@ -33,9 +33,16 @@ ht profile list
 ht profile status
 ht profile create work --description "Work machine stack"
 ht profile use work --harness claude-code,cursor
+ht profile switch work
+ht profile preview work --scope both
+ht profile stash
 ht profile use work --dry-run
 ht profile delete old-profile
 ```
+
+`profile switch` applies a new profile globally and restores the previous one if apply fails. `profile preview` shows what would be written (home, project, or both) without changing disk. `profile stash` saves untracked on-disk resources for the active profile; use `profile stash pop` or `profile stash apply` to restore.
+
+For project repos with `.harnesstap/config.toml`, use `ht use --profile <key>` (not a positional profile name).
 
 `profile use` merges the profile plugin and transitive `plugin` refs, resolves the environment cascade, then writes global harness files.
 

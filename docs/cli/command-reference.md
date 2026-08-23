@@ -111,6 +111,7 @@ Git-style commands for working in a project directory. Each defaults to the curr
 ### Commands
 
 - `scan [path]` — import resources from a project tree (hash-aware upsert; prompts on content drift when interactive)
+- `use` — switch to a project-configured profile from `.harnesstap/config.toml` (`ht use --profile <key>`, not a positional profile name)
 - `mirror [path]` — mirror alias harness outputs from the main harness state
 - `status [path]` — show project status with drift summary
 - `history [path]` — list snapshots for a tracked project
@@ -127,6 +128,12 @@ Apply plugins with top-level `apply` (not under this group).
 - `scan --namespace <name>` — namespace for imported project resources
 - `scan --global` — install imported plugin sources into global harness locations
 - `scan --harness <slugs>` — harness targets for `--global` plugin installs
+- `use --profile <key>` — profile key from `.harnesstap/config.toml` (required unless `--list`)
+- `use --list` — list profiles from project config without applying
+- `use --dry-run` — preview global apply without writing
+- `use --force` — apply even when the profile is already active and in sync
+- `use --no-pull` — fail when composition refs are missing locally
+- `use --harness <slugs>` / `--on-conflict <replace|skip|prompt>` / `--account <name>` / `--base-url <url>` / `--format json`
 - `mirror --dry-run` — preview alias mirror writes
 - `mirror --force-shift-reference <slug>` — set the project main harness before mirroring
 - `mirror --reference <strategy>` — reference source: main, plugin, agents, or auto
@@ -165,13 +172,16 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin create <name>`
 - `plugin list` — local plugins plus streamed remote catalog plugins (default); use `--local-only` for local plugins only
 - `plugin show <name>`
+- `plugin editor [name]` — open a plugin definition file in your system editor
+- `plugin search [query]` — search marketplace catalogs for plugins
+- `plugin add <ref> --to <plugin>` — add a dependency to a plugin (`ref`: local name, `org/catalog/name`, `name@marketplace`, or git URL)
 - `plugin edit [name]` — interactively add/remove attachments, set default environment, or script changes with `--add` / `--remove` / `--apply` / `--environment` / `--clear-environment`
 - `plugin delete [name]`
 - Prefer top-level `apply [plugin...]` (see above). The old `plugin apply` / `l apply` spelling was removed when apply moved to the root.
 - `plugin cut <plugin> --version <semver>` — cut a new local version from the working head
 - `plugin versions <plugin>` — list local versions (head + frozen)
 - `plugin rollback <plugin> --to <semver>` — copy a frozen version onto the working head
-- `plugin fork <plugin>` — copy an upstream or catalog plugin into an editable authored plugin (default name `<plugin>-fork`)
+- `plugin fork <plugin>` — copy an upstream or catalog plugin into an editable authored plugin (default name `<plugin>-fork`; local authored plugins cannot be forked)
 - `plugin pull <selector>` — download a remote plugin bundle and import it
 - `plugin catalog list` — show default catalog, connected orgs/libraries, registered publish catalogs, and cloud base URL
 - `plugin catalog` — interactive publish-binding wizard (plugin picker → catalog checkboxes)
@@ -179,7 +189,7 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 - `plugin catalog register org/catalog` — register a publish destination
 - `plugin catalog unregister org/catalog` — remove a publish destination from the registry
 - `plugin catalog registered` — list registered publish catalogs
-- `plugin catalog connect org <slug>` — opt into another org's public libraries
+- `plugin catalog connect org <slug>` — opt into another org's public libraries (saves the org even when it currently has no public plugins; warns, exit 0)
 - `plugin catalog disconnect org <slug>`
 - `plugin catalog connect plugin <org>/<slug>` or `<org>/<catalog>/<slug>` — opt into a single public library
 - `plugin catalog disconnect plugin <org>/<slug>` or `<org>/<catalog>/<slug>`
@@ -216,6 +226,12 @@ Remote library discovery, install, and publish live on **`plugin`**, not `auth`.
 See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/search shortcuts.
 
 - `plugin show --format json`
+- `plugin editor --format json`
+- `plugin search --refresh` — refresh marketplace catalogs before searching
+- `plugin search --plugin <name>` — attach the selected plugin pin to this plugin (interactive browse picker on TTY)
+- `plugin search --format json` / `--no-interactive`
+- `plugin add --to <plugin>` — required target plugin (deprecated `--layer` alias)
+- `plugin add --format json`
 - `plugin edit --type <type>` — restrict tables to one attachment type
 - `plugin edit --search <query>` — pre-fill the interactive search filter
 - `plugin edit --show-id`
@@ -293,9 +309,7 @@ Manage HarnessTap Cloud authentication and cloud account state.
 - `auth orgs --format json` — when not logged in, prints `[]` on stdout and warns on stderr (human mode warns on stdout)
 - `auth logout --account <name>`
 
-Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands.
-
-Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag — use `--account`.
+Token refresh runs before remote calls. The CLI does not silently switch accounts or organizations during other commands. There is no `--profile` flag on `auth` — use `--account`.
 
 ## profile (`p`)
 
@@ -313,6 +327,11 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile delete <name>` — demote a profile plugin and optionally delete the underlying plugin
 - `profile pull <selector>` — install from catalog (`plugin pull` alias; warns if not profile-tagged)
 - `profile publish <name>` — publish with profile validation warnings (`plugin publish` alias)
+- `profile preview [name]` — apply preview (home/project/both) without writing
+- `profile switch <name>` — switch active profile (restores the previous profile on failure; see `--help` for conflict flags)
+- `profile stash` — stash untracked on-disk resources for the active profile
+- `profile stash list` / `profile stash pop` / `profile stash apply` — list, restore-and-remove, or restore stashed profiles
+- Live files: `profile add-resource`, `add-all-resources`, `commit-resource`, `remove-resource`, `restore-file`, `file-diff` — adopt, snapshot, detach, or diff on-disk resources against the profile library (`--scope home|project`, `--project` when scope is project)
 
 ### Important options
 
@@ -332,6 +351,9 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile create -y, --yes` — skip the interactive enable prompt
 - `profile delete --plugin` — also delete the underlying plugin without prompting
 - `profile delete -y, --yes` — skip the interactive plugin delete prompt
+- `profile use --profile <key>` — profile key from `.harnesstap/config.toml` (delegates to project config when set)
+- `profile use --project <path>` — project directory for config.toml discovery (default `.`)
+- `profile use --force` — apply even when the profile is already active and in sync
 - `profile use --dry-run` — preview global file writes
 - `profile use --harness <slugs>` — comma-separated harness slugs (default: global harness preference)
 - `profile use --on-conflict <replace|skip|prompt>`
@@ -341,6 +363,17 @@ Root shorthand: when the first non-option argument is not a known command and ma
 - `profile use --format json`
 - `profile pull` — same flags as `plugin pull` (`--as`, `--org`, `--catalog`, `--version`, `--account`, `--base-url`)
 - `profile publish --org <slug>` / `--catalog <slug>` / `--account <name>` / `--format json`
+- `profile preview --scope <home|project|both>` — preview scope (default `home`)
+- `profile preview --project <path>` / `--harness <slugs>` / `--format json`
+- `profile switch` — same apply flags as `profile use` (`--dry-run`, `--harness`, `--on-conflict`, `--no-pull`, `--account`, `--base-url`, `--format json`)
+- `profile stash` — `--dry-run`, `--harness`, `--on-conflict`, `--format json`
+- `profile stash pop` / `profile stash apply` — same pull/apply flags as `profile use`
+- `profile add-resource <name> --selector <type:name> --scope <home|project>` — adopt one untracked on-disk resource
+- `profile add-all-resources <name> --scope <home|project>` — adopt every untracked material resource in the scope
+- `profile commit-resource <name> --path <path>` or `--selector <type:name>` — snapshot live disk into the profile library
+- `profile remove-resource <name> --selector <type:name>` — detach a material resource from the profile stack
+- `profile restore-file <name> --path <path>` — overwrite the live managed file with the profile snapshot
+- `profile file-diff <name> --path <path>` — unified diff of live content vs after-apply snapshot
 
 `profile use` auto-pulls missing published `plugin` composition refs by default. If the profile plugin defines `default_environment_id`, the home active environment pointer is updated on switch.
 
@@ -354,6 +387,7 @@ Manage individual imported resources such as instructions, skills, rules, or age
 - `resource show <selector>` — `name`, `type:name`, `type:name@namespace`, or ULID
 - `resource sync [selector]` — refresh `marketplace_link` definitions and sync plugin resources from install roots
 - `resource delete [resource]`
+- `resource directories list|add|remove|rescan` — manage directories scanned into the resource library
 
 ### Important options
 
@@ -370,6 +404,10 @@ See [Interactive list keyboard reference](interactive-ux.md) for TTY browse/sear
 - `resource sync --force`
 - `resource sync --dry-run`
 - `resource sync --prune` — remove orphaned child resources after sync
+- `resource directories list --format json`
+- `resource directories add <path>` — track a directory and import resources (skip existing)
+- `resource directories remove <path>` — stop tracking a directory (library resources stay)
+- `resource directories rescan` — re-scan home defaults and every tracked directory
 - `resource list` shows material resources plus `plugin` resources; `plugin` composition refs are hidden by default
 - `resource list --all` — show every resource per type (default caps at 10 per type)
 - `plugin edit` selectors accept `type:name@namespace` for compose-safe resolution
