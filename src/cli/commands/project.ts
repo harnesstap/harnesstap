@@ -283,7 +283,7 @@ async function handleScanCommand(
   if (!hasHarnessSignals && !isPluginSourcePath(projectRoot)) {
     ui.warn(`No harness resources found in this directory (${projectRoot}).`);
     ui.hint(
-      `If you need to scan your global harness configuration, use \`${formatCommand("harness init")}\`.`,
+      `If you need to scan your global harness configuration, use \`${formatCommand("init")}\`.`,
     );
     return;
   }

@@ -491,4 +491,17 @@ describe("CLI scan", () => {
       await context.cleanup();
     }
   });
+
+  it("hints init (not harness init) when no harness files exist", async () => {
+    const context = await createTestContext("cli-scan-empty-hint");
+    try {
+      await runCli(["init"]);
+      const result = await runCli(["scan", context.projectDir]);
+      expect(result.stdout).toContain("No harness resources found");
+      expect(result.stdout).not.toContain("harness init");
+      expect(result.stdout).toMatch(/`(?:ht|harnesstap) init`/);
+    } finally {
+      await context.cleanup();
+    }
+  });
 });
