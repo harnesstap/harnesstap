@@ -38,6 +38,7 @@ fn agent_port_path() -> PathBuf {
     harnesstap_home().join("agent-port")
 }
 
+#[cfg(debug_assertions)]
 fn host_target_triple() -> &'static str {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
