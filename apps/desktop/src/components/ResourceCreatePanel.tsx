@@ -4,6 +4,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FullScreenPanel } from "./FullScreenPanel";
 import { createLibraryResource } from "../lib/api/resource-create";
 import { createLibraryPlugin } from "../lib/api/library-plugins";
+import { AgentApiError } from "../lib/api/http";
 import {
   buildCreateRequestBody,
   getResourceCreateSchema,
@@ -169,6 +170,7 @@ export function ResourceCreatePanel({
   const [attachChecked, setAttachChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
+  const [nameServerError, setNameServerError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
 
   const errors = useMemo(() => validateValues(schema, values), [schema, values]);
@@ -190,6 +192,9 @@ export function ResourceCreatePanel({
 
   function setValue(key: string, next: string | boolean): void {
     setValues((previous) => ({ ...previous, [key]: next }));
+    if (key === "name") {
+      setNameServerError(null);
+    }
   }
 
   function touch(key: string): void {
@@ -214,6 +219,7 @@ export function ResourceCreatePanel({
     }
     setBusy(true);
     setTopError(null);
+    setNameServerError(null);
     const name = String(values.name).trim();
     try {
       let target: ResourceCreateTarget;
@@ -258,7 +264,11 @@ export function ResourceCreatePanel({
       }
       onCreated(target);
     } catch (error: unknown) {
-      setTopError(errorMessage(error, "Could not create resource"));
+      if (error instanceof AgentApiError && error.code === "resource_conflict") {
+        setNameServerError(errorMessage(error, "Could not create resource"));
+      } else {
+        setTopError(errorMessage(error, "Could not create resource"));
+      }
     } finally {
       setBusy(false);
     }
@@ -319,7 +329,11 @@ export function ResourceCreatePanel({
         ) : null}
         <div className="resource-create-fields">
           {visibleFields(schema, values).map((spec) => {
-            const error = touched[spec.key] ? errors[spec.key] : undefined;
+            const error = spec.key === "name" && nameServerError
+              ? nameServerError
+              : touched[spec.key]
+              ? errors[spec.key]
+              : undefined;
             const controlId =
               spec.kind === "checkbox" ? undefined : `${titleId}-${spec.key}`;
             return (

@@ -1379,6 +1379,9 @@ export function App() {
         setAddResourceError(
           error instanceof Error ? error.message : "Could not add resource to profile",
         );
+        if (profileOverride !== undefined) {
+          throw error;
+        }
       } finally {
         setAddingResourceKey(null);
       }

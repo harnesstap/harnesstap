@@ -892,6 +892,7 @@ export function ResourcesPanel({
               ? (resource) => onAddToProfile(resource)
               : async () => {}
           }
+          onSuccess={onSuccess}
         />
       ) : null}
     </main>

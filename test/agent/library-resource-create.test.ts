@@ -190,4 +190,23 @@ describe("POST /v1/library/resources", () => {
     });
     expect(response.status).toBe(200);
   });
+
+  it("rejects unknown metadata fields", async () => {
+    const response = await handle({
+      type: "rule", name: "r-bogus", content: "Use bun",
+      metadata: { bogus: true },
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string; message: string };
+    expect(body.error).toBe("invalid_body");
+    expect(body.message).toContain("unknown metadata field");
+  });
+
+  it("allows known optional metadata extras", async () => {
+    const response = await handle({
+      type: "skill", name: "s-extras", content: "# Skill",
+      metadata: { scripts: [] },
+    });
+    expect(response.status).toBe(200);
+  });
 });

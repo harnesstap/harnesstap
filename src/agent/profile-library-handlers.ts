@@ -147,6 +147,44 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const METADATA_KEYS_BY_TYPE: Record<MaterialResourceType, ReadonlySet<string>> = {
+  instruction: new Set(),
+  skill: new Set(["scripts", "references"]),
+  rule: new Set(["globs", "always_apply"]),
+  mcp_server: new Set([
+    "transport",
+    "command",
+    "url",
+    "args",
+    "env",
+    "headers",
+    "connection_type",
+    "env_file",
+    "auth",
+  ]),
+  permission: new Set(["action", "pattern"]),
+  hook: new Set([
+    "event",
+    "script",
+    "commandWindows",
+    "timeout",
+    "matcher",
+    "hook_entry",
+  ]),
+  agent: new Set([
+    "model",
+    "reasoning_effort",
+    "sandbox_mode",
+    "readonly",
+    "is_background",
+    "extra",
+    "wire_format",
+  ]),
+  command: new Set(),
+  env_var: new Set(["key", "value"]),
+  model_config: new Set(["model", "provider"]),
+};
+
 function requireMetadataString(
   metadata: Record<string, unknown>,
   key: string,
@@ -281,6 +319,15 @@ export async function handleLibraryResourceCreate(
   if (metadataError) {
     return jsonResponse(
       { error: "invalid_body", message: metadataError },
+      { status: 400 },
+    );
+  }
+
+  const allowedKeys = METADATA_KEYS_BY_TYPE[type];
+  const unknownKey = Object.keys(metadata).find((key) => !allowedKeys.has(key));
+  if (unknownKey !== undefined) {
+    return jsonResponse(
+      { error: "invalid_body", message: `unknown metadata field: ${unknownKey}` },
       { status: 400 },
     );
   }
