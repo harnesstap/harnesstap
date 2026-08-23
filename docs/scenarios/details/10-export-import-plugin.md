@@ -10,12 +10,18 @@ new repo quickly, or share a team baseline.
 Typical commands:
 
 ```bash
+harnesstap plugin cut my-setup --version 1.0.1
 harnesstap migrate export ./my-setup --plugin my-setup
 harnesstap migrate export ./my-setup.ap.json --plugin my-setup --single-file
 harnesstap migrate export ./team --plugin my-setup --embed-plugins
 harnesstap migrate import ./my-setup
 harnesstap migrate import ./my-setup.ap.json
 ```
+
+Working heads with unpublished edits cannot be shared — `migrate export` and
+`plugin publish` refuse dirty plugins. Cut a frozen version first (`plugin cut
+<name> --version <semver>`), then export. `--plugin` accepts a plugin name
+(resolves the working head) or `name@version` (a frozen snapshot).
 
 This is the main offline plugin sharing story. Packages carry the plugin as an
 Agent Plugins directory (or `.ap.json` envelope), and `--embed-plugins` inlines

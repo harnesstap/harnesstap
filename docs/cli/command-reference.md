@@ -462,7 +462,7 @@ For multiplayer distribution, use `plugin publish` / `plugin pull` via HarnessTa
 ### Important options
 
 - `migrate export --workspace` — full workspace archive (`.tar.gz`)
-- `migrate export --plugin <name>` — Agent Plugins package directory (comma-separated for multi-plugin)
+- `migrate export --plugin <name>` — Agent Plugins package directory (comma-separated for multi-plugin); accepts `name` (working head) or `name@version` (frozen snapshot). Refuses dirty working heads — cut first (`plugin cut`)
 - `migrate export --resource <selector>` — single-resource package (wraps the resource in a one-resource plugin)
 - `migrate export --single-file` — write a `.ap.json` envelope instead of a package directory
 - `migrate export -o, --file <path>` — output path (overrides positional)

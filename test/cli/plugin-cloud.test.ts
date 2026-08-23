@@ -1471,7 +1471,44 @@ describe("CLI cloud plugin workflows", () => {
       ]);
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("Cannot share plugins with unpublished edits");
+      expect(result.stderr).toContain("unpublished edits");
+      expect(result.stderr).toContain("plugin cut");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("tells the user to cut before migrate export of a dirty plugin", async () => {
+    const context = await createTestContext("cli-migrate-dirty-hint");
+    try {
+      await runCli(["init"]);
+      await runCli(["plugin", "create", "dirty-share", "--yes"]);
+      const skill = await import("../../src/models/resource.ts").then((m) =>
+        m.upsertResource(makeResourceInput({ type: "skill", name: "hint" }), {
+          policy: "overwrite",
+        }).resource,
+      );
+      await runCli([
+        "plugin",
+        "edit",
+        "dirty-share",
+        "--add",
+        "hint",
+        "--type",
+        "skill",
+        "--no-interactive",
+      ]);
+      const result = await runCli([
+        "migrate",
+        "export",
+        join(context.rootDir, "out.ap.json"),
+        "--plugin",
+        "dirty-share",
+        "--single-file",
+      ]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("unpublished edits");
+      expect(result.stderr).toContain("plugin cut");
     } finally {
       await context.cleanup();
     }
