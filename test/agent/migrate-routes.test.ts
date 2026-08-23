@@ -32,17 +32,19 @@ describe("agent migrate routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-migrate-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("POST /v1/migrate/detect-import-scope requires auth and detects workspace archive", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "migrate-plugin" });
 
     const archivePath = join(tempDirs.at(-1)!, "workspace.tar.gz");
@@ -70,7 +72,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/detect-import-scope returns 400 for missing path", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const response = await fetch(`${server.url}/v1/migrate/detect-import-scope`, {
       method: "POST",
@@ -86,7 +88,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/export exports a plugin bundle", async () => {
-    const server = withServer();
+    const server = await withServer();
     const plugin = createPlugin({ name: "export-plugin" });
     const resource = createResource(
       makeResourceInput({ type: "skill", name: "helper" }),
@@ -117,7 +119,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/export exports workspace archive", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "workspace-plugin" });
 
     const archivePath = join(tempDirs.at(-1)!, "workspace.tar.gz");
@@ -142,7 +144,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/export returns 400 for unknown plugin", async () => {
-    const server = withServer();
+    const server = await withServer();
     const outputPath = join(tempDirs.at(-1)!, "missing.ap.json");
 
     const response = await fetch(`${server.url}/v1/migrate/export`, {
@@ -165,7 +167,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/export exports a resource document", async () => {
-    const server = withServer();
+    const server = await withServer();
     createResource(
       makeResourceInput({
         type: "instruction",
@@ -198,7 +200,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/export rejects standalone environment export", async () => {
-    const server = withServer();
+    const server = await withServer();
     const environment = createEnvironment({ name: "staging" });
     upsertEnvironmentEnvVar(environment.id, "API_KEY", "secret");
 
@@ -226,7 +228,7 @@ describe("agent migrate routes", () => {
     tempDirs.push(exportDir);
     const bundlePath = join(exportDir, "import-plugin.ap.json");
 
-    const exportServer = withServer();
+    const exportServer = await withServer();
     const plugin = createPlugin({ name: "import-plugin" });
     const resource = createResource(
       makeResourceInput({ type: "skill", name: "imported-skill" }),
@@ -247,7 +249,7 @@ describe("agent migrate routes", () => {
     });
     expect(exportResponse.status).toBe(200);
 
-    const importServer = withServer();
+    const importServer = await withServer();
     const response = await fetch(`${importServer.url}/v1/migrate/import`, {
       method: "POST",
       headers: {
@@ -265,7 +267,7 @@ describe("agent migrate routes", () => {
   });
 
   it("POST /v1/migrate/import returns 400 for forced scope mismatch", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "mismatch-plugin" });
 
     const bundlePath = join(tempDirs.at(-1)!, "mismatch-plugin.ap.json");

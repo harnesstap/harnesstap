@@ -27,12 +27,12 @@ describe("agent profile cut routes", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-profile-cut-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -45,7 +45,7 @@ describe("agent profile cut routes", () => {
   }
 
   it("cuts a profile version and returns updated profile summary", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({
       name: "focus",
       version: "1.0.0",
@@ -73,7 +73,7 @@ describe("agent profile cut routes", () => {
   });
 
   it("rejects cut without bearer token", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "focus", version: "1.0.0", tags: ["profile"] });
 
     const response = await fetch(
@@ -88,7 +88,7 @@ describe("agent profile cut routes", () => {
   });
 
   it("returns plugin version errors as 400", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "focus", version: "1.0.0", tags: ["profile"] });
 
     const response = await fetch(
@@ -106,7 +106,7 @@ describe("agent profile cut routes", () => {
   });
 
   it("includes dirty on profile list and detail payloads", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({
       name: "focus",
       version: "1.0.0",

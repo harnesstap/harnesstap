@@ -289,7 +289,7 @@ export function ResourceTrackedDirectoriesModal({
                       </span>
                     </div>
                     <span className="mono resource-tracked-dirs-path muted">
-                      {entry.path}
+                      {entry.display_path ?? entry.path}
                     </span>
                     <div className="resource-tracked-dirs-meta muted">
                       {entry.resource_count}{" "}

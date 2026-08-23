@@ -25,12 +25,12 @@ describe("parity profile default environment", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-profile-default-env-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -55,7 +55,7 @@ describe("parity profile default environment", () => {
   });
 
   it("GET returns defaultEnvironment null when unset", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({
       name: "focus",
       description: "before",
@@ -70,7 +70,7 @@ describe("parity profile default environment", () => {
   });
 
   it("PATCH sets by name, dirties the profile, and GET hydrates the name", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     createEnvironment({ name: "staging" });
 
@@ -104,7 +104,7 @@ describe("parity profile default environment", () => {
   });
 
   it("PATCH null clears the binding", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     createEnvironment({ name: "staging" });
     await fetch(`${server.url}${envPath(profile.name)}`, {
@@ -126,7 +126,7 @@ describe("parity profile default environment", () => {
   });
 
   it("PATCH missing name returns 404 environment_not_found", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     const response = await fetch(`${server.url}${envPath(profile.name)}`, {
       method: "PATCH",
@@ -139,7 +139,7 @@ describe("parity profile default environment", () => {
   });
 
   it("PATCH empty string returns 400 invalid_body", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     const response = await fetch(`${server.url}${envPath(profile.name)}`, {
       method: "PATCH",
@@ -155,7 +155,7 @@ describe("parity profile default environment", () => {
   });
 
   it("PATCH empty object returns 400 invalid_body", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     const response = await fetch(`${server.url}${envPath(profile.name)}`, {
       method: "PATCH",
@@ -168,7 +168,7 @@ describe("parity profile default environment", () => {
   });
 
   it("PATCH only defaultEnvironment succeeds without description or tags", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({
       name: "focus",
       description: "keep-me",
@@ -192,7 +192,7 @@ describe("parity profile default environment", () => {
   });
 
   it("unauthenticated PATCH returns 401", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     const response = await fetch(`${server.url}${envPath(profile.name)}`, {
       method: "PATCH",
@@ -203,7 +203,7 @@ describe("parity profile default environment", () => {
   });
 
   it("GET returns null when the stored environment id is orphaned", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "focus", tags: ["profile"] });
     const environment = createEnvironment({ name: "staging" });
     setPluginDefaultEnvironment(profile.id, environment.id);
@@ -220,7 +220,7 @@ describe("parity profile default environment", () => {
   });
 
   it("GET unknown profile returns 404 not_found", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}${envPath("missing")}`, {
       headers: authHeaders(server.token),
     });

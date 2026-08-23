@@ -16,11 +16,13 @@ describe("agent catalog scope routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-catalog-scope-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -30,7 +32,7 @@ describe("agent catalog scope routes", () => {
   }
 
   it("returns empty catalog scope with bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const ok = await fetch(`${server.url}/v1/catalogs/scope`, {
       headers: authHeaders(server.token),
@@ -45,7 +47,7 @@ describe("agent catalog scope routes", () => {
   });
 
   it("connects an org then includes it in catalog scope", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const connected = await fetch(`${server.url}/v1/catalogs/connected-orgs/acme`, {
       method: "POST",
@@ -67,7 +69,7 @@ describe("agent catalog scope routes", () => {
   });
 
   it("disconnects a connected org", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const connected = await fetch(`${server.url}/v1/catalogs/connected-orgs/acme`, {
       method: "POST",
@@ -90,7 +92,7 @@ describe("agent catalog scope routes", () => {
   });
 
   it("rejects connecting or disconnecting the default org and aliases", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     for (const org of ["harnesstap-cloud", "harnessdeck-cloud"]) {
       const connect = await fetch(`${server.url}/v1/catalogs/connected-orgs/${org}`, {
@@ -112,7 +114,7 @@ describe("agent catalog scope routes", () => {
   });
 
   it("rejects unauthenticated GET, POST, and DELETE", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const getDenied = await fetch(`${server.url}/v1/catalogs/scope`);
     expect(getDenied.status).toBe(401);
@@ -129,7 +131,7 @@ describe("agent catalog scope routes", () => {
   });
 
   it("includes registered catalogs in GET scope", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const connected = await fetch(`${server.url}/v1/catalogs/connected-orgs/acme`, {
       method: "POST",

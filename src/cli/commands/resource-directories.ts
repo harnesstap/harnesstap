@@ -53,6 +53,32 @@ async function withCommandErrors(run: () => Promise<void>): Promise<void> {
   }
 }
 
+function printResourceTrackedDirectoriesTable(
+  directories: ResourceTrackedDirectoryEntry[],
+): void {
+  ui.table.print({
+    columns: [
+      { key: "path", header: "PATH", width: 40 },
+      { key: "resources", header: "RESOURCES", width: 11 },
+      { key: "folders", header: "FOLDERS", width: 9 },
+      { key: "kind", header: "KIND", width: 8 },
+      { key: "platforms", header: "PLATFORMS", width: 24 },
+    ],
+    rows: directories.map((entry) => ({
+      path: entry.display_path ?? entry.path,
+      resources: String(entry.resource_count),
+      folders: String(entry.folders.length),
+      kind: kindLabel(entry.kind),
+      platforms: platformsCell(entry.platform_ids),
+    })),
+    summary: formatDirectoryCount(directories.length),
+  });
+}
+
+export function printResourceTrackedDirectoriesList(): void {
+  printResourceTrackedDirectoriesTable(listResourceTrackedDirectories());
+}
+
 async function handleList(opts: { format?: string }): Promise<void> {
   await withCommandErrors(async () => {
     const format = parseOutputFormat(opts.format);
@@ -61,23 +87,7 @@ async function handleList(opts: { format?: string }): Promise<void> {
       printJson(directories);
       return;
     }
-    ui.table.print({
-      columns: [
-        { key: "path", header: "PATH", width: 40 },
-        { key: "resources", header: "RESOURCES", width: 11 },
-        { key: "folders", header: "FOLDERS", width: 9 },
-        { key: "kind", header: "KIND", width: 8 },
-        { key: "platforms", header: "PLATFORMS", width: 24 },
-      ],
-      rows: directories.map((entry) => ({
-        path: entry.path,
-        resources: String(entry.resource_count),
-        folders: String(entry.folders.length),
-        kind: kindLabel(entry.kind),
-        platforms: platformsCell(entry.platform_ids),
-      })),
-      summary: formatDirectoryCount(directories.length),
-    });
+    printResourceTrackedDirectoriesTable(directories);
   });
 }
 

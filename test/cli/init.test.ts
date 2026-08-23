@@ -66,16 +66,12 @@ describe("CLI init", () => {
           .filter((resource) => resource.source.startsWith("~/.claude"));
 
       expect(result.stdout).toContain("HarnessTap initialized");
-      expect(result.stdout).toContain("HOME DEFAULTS");
-      expect(result.stdout).toContain("Claude Code");
-      expect(result.stdout).toContain("~/.claude");
-      expect(result.stdout).toContain("Contains");
-      expect(result.stdout).toContain("CLAUDE.md, skills/");
-      expect(result.stdout).toContain("Found");
-      expect(result.stdout).toContain("2 resources");
-      expect(result.stdout).toContain("1 instruction, 1 skill");
-      expect(result.stdout).toContain("Status");
-      expect(result.stdout).toContain("2 new resources imported");
+      expect(result.stdout).toContain("TRACKED DIRECTORIES");
+      expect(result.stdout).toMatch(/\|\s+PATH\s+\|/);
+      expect(result.stdout).toContain("~");
+      expect(result.stdout).toContain("home");
+      expect(result.stdout).toMatch(/tracked director/);
+      expect(result.stdout).not.toContain("HOME DEFAULTS");
       expect(result.stdout).not.toContain("Built-in Plugins");
       expect(result.stdout).not.toContain("claude-instructions");
       expect(result.stdout).not.toContain("skill          research");
@@ -108,8 +104,8 @@ describe("CLI init", () => {
 
       const rerun = await runCli(["init"]);
 
-      expect(rerun.stdout).toContain("1 instruction, 1 skill");
-      expect(rerun.stdout).toContain("already tracked");
+      expect(rerun.stdout).toContain("TRACKED DIRECTORIES");
+      expect(rerun.stdout).toContain("~");
       expect(homeResources()).toHaveLength(2);
 
       const backfilledShow = await runCli(["plugin", "show", "default"]);

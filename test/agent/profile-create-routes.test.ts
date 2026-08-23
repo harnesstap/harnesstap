@@ -29,18 +29,18 @@ describe("agent profile create routes", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-profile-create-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return { ...server, home: dir };
   }
 
   it("previews home imports with bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
     writeTextFile(
       join(server.home, ".claude", "skills", "research", "SKILL.md"),
       "---\nname: research\ndescription: Research\n---\n# Research",
@@ -68,7 +68,7 @@ describe("agent profile create routes", () => {
   });
 
   it("creates a composed profile", async () => {
-    const server = withServer();
+    const server = await withServer();
     const resource = createResource({
       type: "skill",
       name: "review",
@@ -98,7 +98,7 @@ describe("agent profile create routes", () => {
   });
 
   it("returns plugin_exists when a profile name is already used", async () => {
-    const server = withServer();
+    const server = await withServer();
     const resource = createResource({
       type: "skill",
       name: "review",
@@ -120,7 +120,7 @@ describe("agent profile create routes", () => {
   });
 
   it("returns plugin_exists for project overwrite requests", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "duplicate-project" });
 
     const response = await postJson(`${server.url}/v1/profiles`, server.token, {
@@ -136,7 +136,7 @@ describe("agent profile create routes", () => {
   });
 
   it("rejects unauthenticated profile creation requests", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/profiles/preview`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -151,7 +151,7 @@ describe("agent profile create routes", () => {
   });
 
   it("tags an existing plugin as a profile", async () => {
-    const server = withServer();
+    const server = await withServer();
     const plugin = createPlugin({ name: "promote-me" });
 
     const response = await postJson(
@@ -168,7 +168,7 @@ describe("agent profile create routes", () => {
   });
 
   it("renames a profile", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "work", tags: ["profile"] });
 
     const response = await postJson(
@@ -187,7 +187,7 @@ describe("agent profile create routes", () => {
   });
 
   it("returns plugin_exists when rename target is taken", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "alpha", tags: ["profile"] });
     createPlugin({ name: "beta", tags: ["profile"] });
 

@@ -19,17 +19,19 @@ describe("agent harness settings routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-harness-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("GET /v1/harness requires auth and returns payload", async () => {
-    const server = withServer();
+    const server = await withServer();
     setHarnessPreference({
       main_harness: "claude-code",
       alias_harnesses: ["cursor"],
@@ -48,7 +50,7 @@ describe("agent harness settings routes", () => {
   });
 
   it("PUT /v1/harness updates global preference", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/harness`, {
       method: "PUT",
       headers: {

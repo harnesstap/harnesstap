@@ -544,9 +544,10 @@ JSON output is unchanged by the visual plugin.
 
 1. Initializes the local database.
 2. Discovers supported harness configuration in the user's home directory and imports findings.
-3. Seeds a local **`default` profile plugin** (tagged `profile`) when none exists and writes `active-profile.json` → `{ "name": "default" }`. Does **not** run global apply — switch explicitly with `ht profile use default`. Pass `--no-default-profile` to skip.
-4. Seeds a local **`default` environment** when none exists and writes `active-environment.json` → `{ "name": "default" }` if the home active pointer is unset. Desktop `ht-agent` boot does the same so the environment picker is never empty on a fresh install.
-5. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
+3. Seeds a local **`default` profile plugin** (tagged `profile`) from non-plugin library resources when that profile is missing or empty, and writes `active-profile.json` → `{ "name": "default" }`. Does **not** run global apply — switch explicitly with `ht profile use default`. Pass `--no-default-profile` to skip.
+4. Seeds a local **`default` environment** when none exists and writes `active-environment.json` → `{ "name": "default" }` if the home active pointer is unset. Desktop `ht-agent` boot runs the same home scan and profile seed so a fresh install has a default home entry in tracked directories and a populated default profile.
+5. Prints the tracked directory list (home defaults as `~`, plus any custom roots).
+6. Chooses the **main harness** and optional **alias harnesses** (interactive or via `--main` / `--aliases`).
 
 Catalog baselines are not auto-applied at init. Apply them to projects with `apply <name>` (bare names resolve against the public catalog) or cache them with `plugin pull`.
 

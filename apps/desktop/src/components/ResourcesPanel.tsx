@@ -94,6 +94,7 @@ export interface ResourcesPanelProps {
   onProfilesChanged?: () => void;
   canWorkspaceBack?: boolean;
   onWorkspaceBack?: () => void;
+  autoOpenTrackedDirectories?: boolean;
 }
 
 export function ResourcesPanel({
@@ -114,6 +115,7 @@ export function ResourcesPanel({
   onProfilesChanged,
   canWorkspaceBack = false,
   onWorkspaceBack,
+  autoOpenTrackedDirectories = false,
 }: ResourcesPanelProps) {
   const [resources, setResources] = useState<LibraryResource[]>([]);
   const [plugins, setPlugins] = useState<LibraryPluginHead[]>([]);
@@ -128,7 +130,13 @@ export function ResourcesPanel({
   const [filterState, setFilterState] = useState<ResourceFilterState>(
     defaultResourceFilterState,
   );
-  const [trackedDirsOpen, setTrackedDirsOpen] = useState(false);
+  const [trackedDirsOpen, setTrackedDirsOpen] = useState(autoOpenTrackedDirectories);
+
+  useEffect(() => {
+    if (autoOpenTrackedDirectories) {
+      setTrackedDirsOpen(true);
+    }
+  }, [autoOpenTrackedDirectories]);
   const [fieldEditing, setFieldEditing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);

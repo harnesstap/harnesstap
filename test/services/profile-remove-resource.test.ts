@@ -89,17 +89,17 @@ describe("agent profile remove-resource route", () => {
     }
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-remove-resource-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("removes a resource via POST /v1/profiles/:name/remove-resource", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "work" });
     setPluginTags(profile.id, ["profile"]);
     const skill = createResource({

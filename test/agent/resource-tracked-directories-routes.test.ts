@@ -23,18 +23,20 @@ describe("agent resource tracked directory routes", () => {
     }
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-tracked-dirs-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
     mkdirSync(dir, { recursive: true });
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("lists, adds, and removes tracked directories", async () => {
-    const server = withServer();
+    const server = await withServer();
     const scanDir = mkdtempSync(join(tmpdir(), "ht-tracked-scan-"));
     tempDirs.push(scanDir);
     mkdirSync(join(scanDir, ".cursor", "rules"), { recursive: true });
@@ -83,7 +85,7 @@ describe("agent resource tracked directory routes", () => {
   it("rescans tracked directories", async () => {
     const previousOsHome = process.env.HOME;
     const previousUserProfile = process.env.USERPROFILE;
-    const server = withServer();
+    const server = await withServer();
     const workspace = process.env.HARNESSTAP_HOME;
     expect(workspace).toBeTruthy();
     if (!workspace) {

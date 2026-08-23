@@ -50,6 +50,7 @@ export interface ResourceTrackedDirectoryEntry {
   resource_count: number;
   removable: boolean;
   folders: ResourceTrackedFolderEntry[];
+  display_path?: string;
 }
 
 export interface ResourceTrackedDirectoriesResult {
@@ -485,6 +486,7 @@ export interface AgentHealth {
   status: string;
   version: string;
   port: number;
+  first_run?: boolean;
 }
 
 export type MaterializationStrategy = "symlink-preferred" | "copy";

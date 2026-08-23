@@ -26,18 +26,18 @@ describe("agent constraint recovery routes", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-recovery-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return { ...server, home: dir };
   }
 
   it("requires bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/recovery/run`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -55,7 +55,7 @@ describe("agent constraint recovery routes", () => {
   });
 
   it("runs detach-dependency and removes the dependency", async () => {
-    const server = withServer();
+    const server = await withServer();
     const root = createPlugin({ name: "my-setup" });
     addDependency(root.id, "design-doc@anthropics", { versionConstraint: "*" });
     expect(listDependencies(root.id)).toHaveLength(1);

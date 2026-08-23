@@ -13,7 +13,7 @@ describe("CLI resource directories", () => {
 
       const human = await runCli(["resource", "directories", "list"]);
       expect(human.exitCode).toBeUndefined();
-      expect(human.stdout).toContain(home);
+      expect(human.stdout).toContain("~");
       expect(human.stdout).toMatch(/\|\s+PATH\s+\|/);
       expect(human.stdout).toContain("RESOURCES");
       expect(human.stdout).toContain("FOLDERS");

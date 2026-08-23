@@ -18,11 +18,13 @@ describe("DELETE /v1/marketplaces/:name", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-mkt-rm-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -73,7 +75,7 @@ describe("DELETE /v1/marketplaces/:name", () => {
   });
 
   it("returns 401 without bearer", async () => {
-    const server = withServer();
+    const server = await withServer();
     const denied = await fetch(`${server.url}/v1/marketplaces/demo`, {
       method: "DELETE",
     });
@@ -81,7 +83,7 @@ describe("DELETE /v1/marketplaces/:name", () => {
   });
 
   it("removes a registered marketplace without a JSON body", async () => {
-    const server = withServer();
+    const server = await withServer();
     const keepRepo = makeLocalMarketplaceGitRepo();
     const removeRepo = makeLocalMarketplaceGitRepo();
     await addMarketplace(server, "keep-me", keepRepo);
@@ -113,7 +115,7 @@ describe("DELETE /v1/marketplaces/:name", () => {
   });
 
   it("returns 404 for an unknown name", async () => {
-    const server = withServer();
+    const server = await withServer();
     const missing = await fetch(`${server.url}/v1/marketplaces/no-such-market`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${server.token}` },
@@ -126,7 +128,7 @@ describe("DELETE /v1/marketplaces/:name", () => {
   });
 
   it("returns 400 when the decoded name is empty", async () => {
-    const server = withServer();
+    const server = await withServer();
     const empty = await fetch(`${server.url}/v1/marketplaces/${encodeURIComponent("  ")}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${server.token}` },

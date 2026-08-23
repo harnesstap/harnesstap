@@ -18,11 +18,13 @@ describe("agent profile plugin routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-profile-plugin-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -67,7 +69,7 @@ describe("agent profile plugin routes", () => {
   }
 
   it("pins a marketplace plugin onto a profile plugin", async () => {
-    const server = withServer();
+    const server = await withServer();
     createProfileCommand({ name: "base" });
     await addMarketplace(server);
 
@@ -87,7 +89,7 @@ describe("agent profile plugin routes", () => {
   });
 
   it("returns 401 without bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
     createProfileCommand({ name: "base" });
 
     const pin = await fetch(`${server.url}/v1/profiles/base/plugins`, {
@@ -99,7 +101,7 @@ describe("agent profile plugin routes", () => {
   });
 
   it("returns 400 when ref is missing", async () => {
-    const server = withServer();
+    const server = await withServer();
     createProfileCommand({ name: "base" });
 
     const pin = await fetch(`${server.url}/v1/profiles/base/plugins`, {

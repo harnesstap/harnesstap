@@ -27,17 +27,19 @@ describe("agent routes", () => {
     }
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-routes-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("lists profiles and serves status without auth", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const profiles = await fetch(`${server.url}/v1/profiles`);
     expect(profiles.status).toBe(200);
@@ -55,7 +57,7 @@ describe("agent routes", () => {
   });
 
   it("marks local profiles as home and project-config profiles as project", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     createProfileCommand({ name: "work" });
     createProfileCommand({ name: "side" });
@@ -86,7 +88,7 @@ describe("agent routes", () => {
   });
 
   it("lists profile head semver version instead of lexicographic sort", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const profile = createPlugin({ name: "versioned", version: "1.9.0", tags: ["profile"] });
     setPluginTags(profile.id, ["profile"]);
@@ -102,7 +104,7 @@ describe("agent routes", () => {
   });
 
   it("does not list the removed empty builtin profile", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/profiles`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
@@ -112,7 +114,7 @@ describe("agent routes", () => {
   });
 
   it("rejects switch without bearer token", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/switch`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -122,7 +124,7 @@ describe("agent routes", () => {
   });
 
   it("rejects legacy persona field on switch", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/switch`, {
       method: "POST",
       headers: {
@@ -136,7 +138,7 @@ describe("agent routes", () => {
   });
 
   it("bootstraps a project with no prior profiles by seeding default", async () => {
-    const server = withServer();
+    const server = await withServer();
     const projectDir = mkdtempSync(join(tmpdir(), "ht-agent-bootstrap-"));
     tempDirs.push(projectDir);
 
@@ -160,7 +162,7 @@ describe("agent routes", () => {
   });
 
   it("returns existing project config without re-init on bootstrap", async () => {
-    const server = withServer();
+    const server = await withServer();
     const projectDir = mkdtempSync(join(tmpdir(), "ht-agent-bootstrap-exists-"));
     tempDirs.push(projectDir);
 

@@ -9,6 +9,7 @@ import { listProfilePluginsCommand } from "../services/profile-commands.js";
 import type { ProfileSwitchStepEvent } from "../services/profile-switch.js";
 import { findProjectConfig } from "../services/project-config.js";
 import { PACKAGE_VERSION } from "../version.js";
+import { getAgentFirstRun } from "./boot-state.js";
 import { requireAgentBearerAuth } from "./auth.js";
 import {
   type CloudAuthHandlers,
@@ -261,6 +262,7 @@ export function createAgentRouteHandlers(
         status: "healthy",
         version: PACKAGE_VERSION,
         port,
+        first_run: getAgentFirstRun(),
       });
     },
 
@@ -488,13 +490,18 @@ export function createAgentRouteHandlers(
 function isLoopbackOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
-    return (
-      (url.hostname === "localhost"
-        || url.hostname === "127.0.0.1"
-        || url.hostname === "[::1]"
-        || url.hostname === "::1")
-      && (url.protocol === "http:" || url.protocol === "https:")
-    );
+    const loopbackHost =
+      url.hostname === "localhost"
+      || url.hostname === "127.0.0.1"
+      || url.hostname === "[::1]"
+      || url.hostname === "::1"
+      || url.hostname === "tauri.localhost"
+      || url.hostname === "ipc.localhost";
+    const allowedProtocol =
+      url.protocol === "http:"
+      || url.protocol === "https:"
+      || url.protocol === "tauri:";
+    return loopbackHost && allowedProtocol;
   } catch {
     return false;
   }

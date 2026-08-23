@@ -307,18 +307,18 @@ describe("agent profile add-resource routes", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-add-resource-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return { ...server, home: dir };
   }
 
   it("returns untracked resources in apply preview", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "work" });
     setPluginTags(profile.id, ["profile"]);
 
@@ -350,7 +350,7 @@ describe("agent profile add-resource routes", () => {
   });
 
   it("adds a resource via POST /v1/profiles/:name/add-resource", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "work" });
     setPluginTags(profile.id, ["profile"]);
 
@@ -383,7 +383,7 @@ describe("agent profile add-resource routes", () => {
   });
 
   it("adds all untracked resources via POST /v1/profiles/:name/add-all-resources", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({ name: "work" });
     setPluginTags(profile.id, ["profile"]);
     addResourceToPlugin(

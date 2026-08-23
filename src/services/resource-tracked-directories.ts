@@ -45,6 +45,7 @@ export interface ResourceTrackedDirectoryEntry {
   resource_count: number;
   removable: boolean;
   folders: ResourceTrackedFolderEntry[];
+  display_path?: string;
 }
 
 function trackedDirectoriesPath(): string {
@@ -206,6 +207,7 @@ function entryForCustomDirectory(
     resource_count: resourceCounts.get(resolved) ?? 0,
     removable: true,
     folders: projectResourceFolders(resolved),
+    display_path: resolved,
   };
 }
 
@@ -223,6 +225,7 @@ export function listResourceTrackedDirectories(): ResourceTrackedDirectoryEntry[
       resource_count: resourceCounts.get(homeRoot) ?? 0,
       removable: false,
       folders: homeResourceFolders(homeRoot),
+      display_path: "~",
     },
   ];
 

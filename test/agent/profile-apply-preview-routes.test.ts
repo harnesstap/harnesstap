@@ -24,18 +24,18 @@ describe("agent profile apply-preview routes", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-apply-preview-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return { ...server, home: dir };
   }
 
   it("requires bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/profiles/apply-preview`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -45,7 +45,7 @@ describe("agent profile apply-preview routes", () => {
   });
 
   it("returns home apply preview for a selected profile", async () => {
-    const server = withServer();
+    const server = await withServer();
     const plugin = createPlugin({ name: "work" });
     setPluginTags(plugin.id, ["profile"]);
     const resource = createResource({
@@ -86,7 +86,7 @@ describe("agent profile apply-preview routes", () => {
   });
 
   it("rejects project scope without projectPath", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/profiles/apply-preview`, {
       method: "POST",
       headers: {

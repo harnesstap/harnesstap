@@ -26,12 +26,12 @@ describe("agent profile edit routes", () => {
     restoreEnv("HOME", previousHome);
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-profile-edit-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = join(dir, ".harnesstap");
     process.env.HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -44,7 +44,7 @@ describe("agent profile edit routes", () => {
   }
 
   it("gets, patches, attaches, and detaches profile composition", async () => {
-    const server = withServer();
+    const server = await withServer();
     const profile = createPlugin({
       name: "focus",
       description: "before",
@@ -154,7 +154,7 @@ describe("agent profile edit routes", () => {
   });
 
   it("returns not_a_profile for plain plugins", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "plain", tags: [] });
     const response = await fetch(`${server.url}/v1/profiles/plain`, {
       headers: authHeaders(server.token),

@@ -17,11 +17,13 @@ describe("agent marketplace routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-mkt-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -53,7 +55,7 @@ describe("agent marketplace routes", () => {
   }
 
   it("lists empty marketplaces with bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
     const denied = await fetch(`${server.url}/v1/marketplaces`);
     expect(denied.status).toBe(401);
 
@@ -65,7 +67,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("adds a marketplace from a local git path and refreshes catalog", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -109,7 +111,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns 404 for plugins on unknown marketplace", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const plugins = await fetch(`${server.url}/v1/marketplaces/no-such-market/plugins`, {
       headers: { Authorization: `Bearer ${server.token}` },
@@ -122,7 +124,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("defaults platforms to claude-code when omitted", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -144,7 +146,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns 400 for invalid platform", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -167,7 +169,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("patches marketplace name and platforms", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -206,7 +208,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("keeps catalog plugins after a rename-only PATCH", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
     const home = process.env.HARNESSTAP_HOME ?? "";
 
@@ -258,7 +260,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns 404 when patching an unknown marketplace", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const patch = await fetch(`${server.url}/v1/marketplaces/missing`, {
       method: "PATCH",
@@ -274,7 +276,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns 409 when renaming onto an existing marketplace name", async () => {
-    const server = withServer();
+    const server = await withServer();
     const firstRepo = makeLocalMarketplaceGitRepo();
     const secondRepo = makeLocalMarketplaceGitRepo();
 
@@ -320,7 +322,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns 409 when changing url onto an existing marketplace url", async () => {
-    const server = withServer();
+    const server = await withServer();
     const firstRepo = makeLocalMarketplaceGitRepo();
     const secondRepo = makeLocalMarketplaceGitRepo();
 
@@ -366,7 +368,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("rejects unauthenticated PATCH", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const denied = await fetch(`${server.url}/v1/marketplaces/e2e-market`, {
       method: "PATCH",
@@ -377,7 +379,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("lists marketplace plugin tree files", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -405,7 +407,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns marketplace plugin file content", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -434,7 +436,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("rejects marketplace tree path traversal", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -460,7 +462,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("returns 404 for an unknown marketplace plugin tree", async () => {
-    const server = withServer();
+    const server = await withServer();
     const repo = makeLocalMarketplaceGitRepo();
 
     const add = await fetch(`${server.url}/v1/marketplaces`, {
@@ -485,7 +487,7 @@ describe("agent marketplace routes", () => {
   });
 
   it("rejects unauthenticated marketplace plugin tree", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const denied = await fetch(
       `${server.url}/v1/marketplaces/e2e-market/plugins/demo-plugin/tree`,

@@ -39,11 +39,13 @@ describe("agent catalog plugin routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-catalog-plugins-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
@@ -71,7 +73,7 @@ describe("agent catalog plugin routes", () => {
   }
 
   it("returns empty plugins when no org or registered query params are present", async () => {
-    const server = withServer();
+    const server = await withServer();
     mockCatalog();
 
     const response = await fetch(`${server.url}/v1/catalogs/plugins?q=focus`, {
@@ -83,7 +85,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("searches catalog plugins for a requested org", async () => {
-    const server = withServer();
+    const server = await withServer();
     mockCatalog();
 
     const response = await fetch(`${server.url}/v1/catalogs/plugins?org=acme`, {
@@ -108,7 +110,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("pulls a catalog plugin without adding the profile tag", async () => {
-    const server = withServer();
+    const server = await withServer();
     await signInCloud();
     mockCatalog(
       [{
@@ -147,7 +149,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("requires as when the remote name collides with a local plugin", async () => {
-    const server = withServer();
+    const server = await withServer();
     await signInCloud();
     mockCatalog();
     createPlugin({ name: "focus" });
@@ -169,7 +171,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("requires agent bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const getDenied = await fetch(`${server.url}/v1/catalogs/plugins?org=acme`);
     expect(getDenied.status).toBe(401);
@@ -183,7 +185,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("returns auth_required when no cloud token is configured on pull", async () => {
-    const server = withServer();
+    const server = await withServer();
     mockCatalog();
 
     const response = await fetch(`${server.url}/v1/catalogs/plugins/pull`, {
@@ -201,7 +203,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("requires agent bearer auth for catalog preview", async () => {
-    const server = withServer();
+    const server = await withServer();
     const denied = await fetch(
       `${server.url}/v1/catalogs/plugins/preview?selector=acme/default/focus`,
     );
@@ -209,7 +211,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("returns auth_required when no cloud token is configured on preview", async () => {
-    const server = withServer();
+    const server = await withServer();
     mockCatalog();
 
     const response = await fetch(
@@ -222,7 +224,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("rejects catalog preview path traversal", async () => {
-    const server = withServer();
+    const server = await withServer();
     await signInCloud();
     mockCatalog();
 
@@ -235,7 +237,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("lists catalog package files without importing the plugin", async () => {
-    const server = withServer();
+    const server = await withServer();
     await signInCloud();
     mockCatalog(
       [ACME_PLUGIN],
@@ -259,7 +261,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("returns catalog package file content", async () => {
-    const server = withServer();
+    const server = await withServer();
     await signInCloud();
     mockCatalog(
       [ACME_PLUGIN],
@@ -277,7 +279,7 @@ describe("agent catalog plugin routes", () => {
   });
 
   it("returns 404 for a missing catalog package file", async () => {
-    const server = withServer();
+    const server = await withServer();
     await signInCloud();
     mockCatalog(
       [ACME_PLUGIN],

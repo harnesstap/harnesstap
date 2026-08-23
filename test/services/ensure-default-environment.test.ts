@@ -27,6 +27,8 @@ describe("ensureDefaultEnvironment", () => {
     const dir = mkdtempSync(join(tmpdir(), "ht-ensure-default-env-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
     initializeSchema(getDb());
     return dir;
   }

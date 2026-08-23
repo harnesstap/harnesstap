@@ -25,17 +25,19 @@ describe("agent plugin routes", () => {
     }
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-plugin-routes-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("serves GET /v1/library/plugins", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "eng", description: "Engineering" });
 
     const response = await fetch(`${server.url}/v1/library/plugins`, {
@@ -50,7 +52,7 @@ describe("agent plugin routes", () => {
   });
 
   it("accepts pluginIds on POST /v1/profiles", async () => {
-    const server = withServer();
+    const server = await withServer();
     const response = await fetch(`${server.url}/v1/profiles`, {
       method: "POST",
       headers: {
@@ -67,7 +69,7 @@ describe("agent plugin routes", () => {
   });
 
   it("reports invalid_plugin_id rather than invalid_layer_id", async () => {
-    const server = withServer();
+    const server = await withServer();
     createProfileCommand({ name: "work" });
 
     const response = await fetch(
@@ -91,7 +93,7 @@ describe("agent plugin routes", () => {
   });
 
   it("uses scope=plugin for migrate export", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "base", description: "Base plugin" });
     const outputPath = join(tempDirs.at(-1)!, "base.ap.json");
 

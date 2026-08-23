@@ -155,6 +155,7 @@ function isApplyStepActive(events: ProfileSwitchStepEvent[]): boolean {
 export function App() {
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [firstRun, setFirstRun] = useState(false);
   const [connected, setConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [retryBusy, setRetryBusy] = useState(false);
@@ -223,8 +224,6 @@ export function App() {
   const [skipOverwritePrompt, setSkipOverwritePrompt] = useState(false);
   const [bootstrapBusy, setBootstrapBusy] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
-  /** Hide the “choose a project” banner without selecting a project. */
-  const [projectPromptDismissed, setProjectPromptDismissed] = useState(false);
   /** Project path whose `.harnesstap/config.toml` is known ready (init or already existed). */
   const [projectConfigReadyPath, setProjectConfigReadyPath] = useState<string | null>(
     null,
@@ -515,6 +514,7 @@ export function App() {
         }
         setBaseUrl(connection.baseUrl);
         setToken(connection.token);
+        setFirstRun(Boolean(connection.health.first_run));
         setConnected(true);
         setConnectionError(null);
       } catch (error) {
@@ -541,6 +541,7 @@ export function App() {
       const connection = await connectAgent({ restart: true });
       setBaseUrl(connection.baseUrl);
       setToken(connection.token);
+      setFirstRun(Boolean(connection.health.first_run));
       setConnected(true);
       setConnectionError(null);
     } catch (error) {
@@ -568,6 +569,7 @@ export function App() {
           }
           setBaseUrl(connection.baseUrl);
           setToken(connection.token);
+          setFirstRun(Boolean(connection.health.first_run));
           setConnected(true);
           setConnectionError(null);
         } catch (error) {
@@ -2471,6 +2473,7 @@ export function App() {
             onBusyChange={setPluginApplyBusy}
             canWorkspaceBack={canWorkspaceBack}
             onWorkspaceBack={onWorkspaceBack}
+            autoOpenTrackedDirectories={firstRun}
             onProfilesChanged={() => {
               void refreshProfiles();
               void refreshStatus("full");
@@ -2669,32 +2672,6 @@ export function App() {
                 ) : null}
               </div>
             </div>
-
-            {!projectPath && connected && !projectPromptDismissed && (
-              <div className="banner">
-                <div>
-                  Choose a project to inspect project-scoped status, or keep working
-                  on global-only profile switches.
-                </div>
-                <div className="banner-actions">
-                  <button
-                    className="btn"
-                    type="button"
-                    onClick={() => setProjectPromptDismissed(true)}
-                  >
-                    Dismiss
-                  </button>
-                  <button
-                    className="btn primary"
-                    type="button"
-                    onClick={() => onSelectView("project")}
-                    disabled={switching || bootstrapBusy}
-                  >
-                    Browse…
-                  </button>
-                </div>
-              </div>
-            )}
 
             {statusError && (
               <div className="banner error">

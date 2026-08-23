@@ -1,7 +1,7 @@
-import { getDb } from "../db/connection.js";
-import { initializeSchema } from "../db/schema.js";
-import { ensureDefaultEnvironment } from "../services/ensure-default-environment.js";
-import { ensureDefaultProfilePlugin } from "../services/ensure-default-profile.js";
+import { existsSync } from "node:fs";
+import { getDbPath } from "../db/connection.js";
+import { bootstrapLocalLibrary } from "../services/bootstrap-local-library.js";
+import { setAgentFirstRun } from "./boot-state.js";
 import { type BunServerHandle, bunServe } from "./bun-runtime.js";
 import { createAgentFetchHandler } from "./routes.js";
 import {
@@ -52,13 +52,10 @@ function isAddressInUseError(error: unknown): boolean {
   );
 }
 
-function bootAgentDatabase(): void {
-  const db = getDb();
-  initializeSchema(db);
-  // Fresh desktop installs never run `ht init`; seed a default profile and
-  // environment so the rail and environment picker are never empty.
-  ensureDefaultProfilePlugin();
-  ensureDefaultEnvironment();
+async function bootAgentDatabase(): Promise<void> {
+  const firstRun = !existsSync(getDbPath());
+  const result = await bootstrapLocalLibrary();
+  setAgentFirstRun(firstRun || result.firstRun);
 }
 
 function listenForAgent(
@@ -83,12 +80,12 @@ function listenForAgent(
   );
 }
 
-export function startAgentServer(options: AgentServeOptions = {}): AgentServer {
+export async function startAgentServer(options: AgentServeOptions = {}): Promise<AgentServer> {
   const host = options.host ?? DEFAULT_AGENT_HOST;
   const preferredPort = resolvePreferredPort(options);
   const token = generateAgentToken();
 
-  bootAgentDatabase();
+  await bootAgentDatabase();
 
   let boundPort = preferredPort;
   const fetch = (request: Request) =>

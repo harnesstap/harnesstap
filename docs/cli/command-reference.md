@@ -53,7 +53,7 @@ Key options:
 - `--interactive` — prompt for harness selection instead of relying on explicit flags
 - `--format <mode>` — `human` or `json`
 
-`init` seeds a local `default` profile plugin (tagged `profile`) and writes `active-profile.json` unless `--no-default-profile` is passed. Global apply does **not** run automatically — run `ht profile use default` to materialize home harness files.
+`init` seeds a local `default` profile plugin (tagged `profile`) from library resources imported from home, writes `active-profile.json` unless `--no-default-profile` is passed, and prints the tracked directory list (home as `~`). Global apply does **not** run automatically — run `ht profile use default` to materialize home harness files.
 
 ### init completion
 

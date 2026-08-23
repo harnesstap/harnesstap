@@ -165,7 +165,7 @@ version = 1
       defaultProfile: "work",
       profileNames: ["work"],
     });
-    const server = startAgentServer({ port: 0 });
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     const boot = await fetch(`${server.url}/v1/bootstrap`, {
       method: "POST",

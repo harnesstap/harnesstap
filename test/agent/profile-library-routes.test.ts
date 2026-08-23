@@ -26,17 +26,19 @@ describe("agent library routes", () => {
     }
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-library-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("lists plugins and resources with bearer auth", async () => {
-    const server = withServer();
+    const server = await withServer();
     createPlugin({ name: "eng", description: "Engineering" });
     createResource({
       type: "skill",
@@ -86,7 +88,7 @@ describe("agent library routes", () => {
   });
 
   it("lists profile and plugin attachers on resource detail", async () => {
-    const server = withServer();
+    const server = await withServer();
     const skill = createResource({
       type: "skill",
       name: "shared-ship",
@@ -114,7 +116,7 @@ describe("agent library routes", () => {
   });
 
   it("returns on-disk content for untracked resource selectors", async () => {
-    const server = withServer();
+    const server = await withServer();
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-untracked-"));
     tempDirs.push(dir);
     const filePath = join(dir, "CLAUDE.md");
@@ -133,7 +135,7 @@ describe("agent library routes", () => {
   });
 
   it("omits plugin extras on skill detail and includes them on plugin detail", async () => {
-    const server = withServer();
+    const server = await withServer();
     createResource({
       type: "skill",
       name: "ship",

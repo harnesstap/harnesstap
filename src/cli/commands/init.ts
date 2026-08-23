@@ -5,7 +5,6 @@ import {
   CANONICAL_CATALOG_BASELINE,
   CANONICAL_CATALOG_SEARCH_HINT,
 } from "../../constants/onboarding.js";
-import { PROFILE_PLUGIN_TAG, isProfilePlugin } from "../../constants/profile.js";
 import { getDb, getDbPath, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import {
@@ -13,20 +12,16 @@ import {
   setHarnessPreference,
 } from "../../models/harness.js";
 import {
-  addResourceToPlugin,
-  createPlugin,
-  getPluginResources,
   listPlugins,
 } from "../../models/plugin-model.js";
-import { getAllPlatforms } from "../../platforms/registry.js";
 import { addSkillPackage } from "../../services/add-package.js";
-import { setActiveProfileName } from "../../services/active-profile.js";
-import { ensureDefaultEnvironment } from "../../services/ensure-default-environment.js";
+import { bootstrapLocalLibrary } from "../../services/bootstrap-local-library.js";
 import { resolveHarnessSelection } from "../../services/harness-config.js";
 import { assertSupportedHarnessTargets } from "../../services/harness-targets.js";
 import { maybePromptInitCatalogInstall } from "../../services/init-catalog-prompt.js";
 import { maybePromptInitCompletionInstall } from "../../services/init-completion-install.js";
-import { scanAndPersistHomeDefaults } from "../../services/scanner.js";
+import { printResourceTrackedDirectoriesList } from "./resource-directories.js";
+import { listResourceTrackedDirectories } from "../../services/resource-tracked-directories.js";
 import { renderShellCompletion } from "../../services/shell-completion.js";
 import {
   resolveSkillPackageCheckout,
@@ -36,8 +31,6 @@ import {
   isPromptCancellationError,
   shouldUseWizard,
 } from "../../services/wizards/shared.js";
-import type { Resource, ResourceType } from "../../types.js";
-import { RESOURCE_TYPES } from "../../types.js";
 import { ui } from "../../ui/index.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
@@ -48,41 +41,6 @@ import {
   resolveAddScope,
 } from "../handlers/parse-flags.js";
 import { formatCommand } from "../shared.js";
-
-function summarizeResourceTypes(resources: Pick<Resource, "type">[]): string {
-  const counts = new Map<ResourceType, number>();
-
-  for (const resource of resources) {
-    counts.set(resource.type, (counts.get(resource.type) ?? 0) + 1);
-  }
-
-  const summary = RESOURCE_TYPES.filter(
-    (type) => (counts.get(type) ?? 0) > 0,
-  ).map((type) => formatCount(counts.get(type) ?? 0, type));
-
-  return summary.join(", ");
-}
-
-function homeFolderLabel(discoveredPaths: string[]): string {
-  const firstPath = discoveredPaths[0];
-  if (!firstPath) return "~";
-
-  const segments = firstPath.replace(/\/$/, "").split("/");
-  return segments.length >= 2 ? `${segments[0]}/${segments[1]}` : firstPath;
-}
-
-function relativeDiscoveredPaths(
-  discoveredPaths: string[],
-  folder: string,
-): string {
-  return discoveredPaths
-    .map((path) => {
-      if (!path.startsWith(`${folder}/`)) return path;
-      return path.slice(folder.length + 1);
-    })
-    .sort()
-    .join(", ");
-}
 
 function printQuickStartGuide(): void {
   console.log("");
@@ -261,9 +219,9 @@ async function handleInitCommand(opts: {
 } = {}): Promise<void> {
   const dbPath = getDbPath();
   const hadExistingStore = existsSync(dbPath);
-  const db = getDb();
-  initializeSchema(db);
-  ensureDefaultEnvironment();
+  const { homeDefaults } = await bootstrapLocalLibrary({
+    seedDefaultProfile: opts.defaultProfile !== false,
+  });
   const format = parseOutputFormat(opts.format);
   if (format === "human" && hadExistingStore) {
     const preference = getHarnessPreference();
@@ -276,37 +234,6 @@ async function handleInitCommand(opts: {
       );
     }
     console.log("");
-  }
-  const homeDefaults = await scanAndPersistHomeDefaults();
-  if (opts.defaultProfile !== false) {
-    const homeProfileResources = homeDefaults.resolved.filter(
-      (resource) => resource.type !== "plugin",
-    );
-    let defaultProfilePlugin = listPlugins().find(
-      (plugin) => plugin.name === "default" && isProfilePlugin(plugin),
-    );
-    const shouldSeedDefaultProfile =
-      !defaultProfilePlugin
-      || getPluginResources(defaultProfilePlugin.id).filter(
-        (resource) => resource.type !== "plugin",
-      ).length === 0;
-
-    if (!defaultProfilePlugin) {
-      defaultProfilePlugin = createPlugin({
-        name: "default",
-        version: "1.0.0",
-        description: "Bootstrap profile from init",
-        tags: [PROFILE_PLUGIN_TAG],
-      });
-    }
-
-    if (shouldSeedDefaultProfile) {
-      for (const resource of homeProfileResources) {
-        addResourceToPlugin(defaultProfilePlugin.id, resource.id);
-      }
-    }
-
-    setActiveProfileName("default");
   }
   const useWizard = shouldUseWizard({
     interactive: opts.interactive,
@@ -339,6 +266,7 @@ async function handleInitCommand(opts: {
   if (format === "json") {
     printJson({
       home_defaults: homeDefaults.results,
+      tracked_directories: listResourceTrackedDirectories(),
       database_path: getDbPath(),
       ...(savedHarnessPreference
         ? { harness_preference: savedHarnessPreference }
@@ -346,10 +274,6 @@ async function handleInitCommand(opts: {
     });
     return;
   }
-
-  const platformNames = new Map(
-    getAllPlatforms().map((platform) => [platform.id, platform.name]),
-  );
 
   if (shouldSelectHarness && currentHarnessPreference) {
     const aliasSummary =
@@ -366,42 +290,10 @@ async function handleInitCommand(opts: {
     { key: "Database", value: getDbPath() },
   ]);
 
-  if (homeDefaults.detected.length === 0) {
-    console.log("");
-    ui.dim("no default folders discovered");
-  } else {
-    console.log("");
-    ui.subheader("HOME DEFAULTS");
-    console.log("");
-    for (const result of homeDefaults.results) {
-      const folder = homeFolderLabel(result.discoveredPaths);
-      const foundSummary = summarizeResourceTypes(result.resources);
-      const importedCount = result.importedCount;
-      const importedSummary =
-        importedCount > 0
-          ? `${formatCount(importedCount, "new resource")} imported`
-          : "already tracked";
-
-      const platformName = platformNames.get(result.platformId) ?? result.platformId;
-      console.log(
-        `  ${ui.theme.badge(platformName)} ${ui.theme.accent(folder)}`,
-      );
-      ui.kvBlock([
-        {
-          key: "Contains",
-          value: relativeDiscoveredPaths(result.discoveredPaths, folder),
-        },
-        {
-          key: "Found",
-          value: `${formatCount(result.resources.length, "resource")}${foundSummary ? ` (${foundSummary})` : ""}`,
-        },
-        {
-          key: "Status",
-          value: importedCount > 0 ? ui.theme.warn(importedSummary) : ui.theme.success(importedSummary),
-        },
-      ], { indent: 4, keyWidth: 10 });
-    }
-  }
+  console.log("");
+  ui.subheader("TRACKED DIRECTORIES");
+  console.log("");
+  printResourceTrackedDirectoriesList();
 
   if (savedHarnessPreference) {
     console.log("");

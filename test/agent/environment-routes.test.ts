@@ -19,17 +19,19 @@ describe("agent environment routes", () => {
     else process.env.HARNESSTAP_HOME = previousHome;
   });
 
-  function withServer() {
+  async function withServer() {
     const dir = mkdtempSync(join(tmpdir(), "ht-agent-env-"));
     tempDirs.push(dir);
     process.env.HARNESSTAP_HOME = dir;
-    const server = startAgentServer({ port: 0 });
+    process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
+    const server = await startAgentServer({ port: 0 });
     servers.push(server);
     return server;
   }
 
   it("GET /v1/environments requires auth and lists the seeded default", async () => {
-    const server = withServer();
+    const server = await withServer();
 
     const unauth = await fetch(`${server.url}/v1/environments`);
     expect(unauth.status).toBe(401);
@@ -49,7 +51,7 @@ describe("agent environment routes", () => {
   });
 
   it("GET /v1/environments includes environments created after boot", async () => {
-    const server = withServer();
+    const server = await withServer();
     createEnvironment({ name: "staging", description: "stg" });
 
     const response = await fetch(`${server.url}/v1/environments`, {

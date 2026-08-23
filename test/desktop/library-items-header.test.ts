@@ -114,6 +114,10 @@ describe("library items header actions", () => {
       /empty-state[\s\S]*className="btn"[\s\S]*Import into library/,
     );
   });
+
+  test("auto-opens tracked directories after first-run bootstrap", () => {
+    expect(panelSource).toContain("autoOpenTrackedDirectories");
+  });
 });
 
 describe("library items header action styles", () => {

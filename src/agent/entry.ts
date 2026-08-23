@@ -1,7 +1,7 @@
 import { startAgentServer } from "./serve.js";
 
 if (import.meta.main) {
-  const server = startAgentServer();
+  const server = await startAgentServer();
   console.error(
     `HarnessTap agent listening on ${server.url} (token: ${server.tokenPath})`,
   );
