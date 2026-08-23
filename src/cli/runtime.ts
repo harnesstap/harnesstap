@@ -84,7 +84,7 @@ function firstPositionalIndex(argv: string[]): number {
     if (token === "--") {
       return i + 1 < argv.length ? i + 1 : -1;
     }
-    if (!token.startsWith("-")) {
+    if (!token || !token.startsWith("-")) {
       return i;
     }
   }
