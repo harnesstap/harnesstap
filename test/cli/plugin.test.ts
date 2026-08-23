@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { CommanderError } from "commander";
+import { createPlugin } from "../../src/models/plugin-model.ts";
 import { createTestContext } from "../helpers/db.ts";
 import { runCli } from "../helpers/cli.ts";
 import { createCatalogFetchMock } from "../helpers/catalog-fetch.ts";
@@ -497,6 +498,19 @@ describe("CLI plugin", () => {
       const result = await runCli(["plugin", "diff", "demo-stack", "demo-api"]);
       expect(result.stdout).toContain("DIFF");
       expect(result.stdout).toContain("~");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("exits 1 when a diff operand plugin is missing", async () => {
+    const context = await createTestContext("cli-plugin-diff-missing");
+    try {
+      await runCli(["init"]);
+      createPlugin({ name: "left" });
+      const result = await runCli(["plugin", "diff", "left", "missing-zzz"]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Plugin not found: missing-zzz");
     } finally {
       await context.cleanup();
     }
