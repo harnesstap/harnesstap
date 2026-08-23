@@ -69,12 +69,12 @@ describe("library items header actions", () => {
     expect(panelSource).toContain("onWorkspaceBack");
   });
 
-  test("renders Create plugin as a labeled accent primary action", () => {
-    expect(headerRow).toContain('data-testid="library-create-plugin"');
-    expect(headerRow).toContain('aria-label="Create plugin"');
+  test("renders Create resource as a labeled accent primary action", () => {
+    expect(headerRow).toContain('data-testid="library-create-resource"');
+    expect(headerRow).toContain('aria-label="Create resource"');
     expect(headerRow).toContain('className="btn primary"');
-    expect(headerRow).toMatch(/<Plus[\s\S]*\/>\s*Create plugin\s*</);
-    expect(headerRow).toContain('setPane({ mode: "create-draft"');
+    expect(headerRow).toMatch(/<Plus[\s\S]*\/>\s*Create resource\s*</);
+    expect(headerRow).toContain("setCreateModalOpen(true)");
   });
 
   test("renders Import as a labeled secondary action", () => {

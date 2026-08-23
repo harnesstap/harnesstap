@@ -1,5 +1,3 @@
-import { WORKSPACE_BACK_LABEL } from "./screen-history";
-
 export type EscapeAction = "cancel-field" | "dismiss-confirm" | "leave-pane";
 export type SidebarChangeAction = "block" | "leave-and-apply";
 
