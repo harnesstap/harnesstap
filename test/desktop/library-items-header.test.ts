@@ -46,7 +46,7 @@ const headerRow = sliceBetween(
 );
 
 describe("library items header actions", () => {
-  test("clusters Create plugin, Import, and Tracked directories instead of spreading them as siblings", () => {
+  test("clusters Create resource, Import, and Tracked directories instead of spreading them as siblings", () => {
     expect(headerRow).toContain('className="resources-panel-header-actions"');
     const clusterIdx = headerRow.indexOf("resources-panel-header-actions");
     const createIdx = headerRow.indexOf('className="btn primary"');
@@ -69,12 +69,12 @@ describe("library items header actions", () => {
     expect(panelSource).toContain("onWorkspaceBack");
   });
 
-  test("renders Create plugin as a labeled accent primary action", () => {
-    expect(headerRow).toContain('data-testid="library-create-plugin"');
-    expect(headerRow).toContain('aria-label="Create plugin"');
+  test("renders Create resource as a labeled accent primary action", () => {
+    expect(headerRow).toContain('data-testid="library-create-resource"');
+    expect(headerRow).toContain('aria-label="Create resource"');
     expect(headerRow).toContain('className="btn primary"');
-    expect(headerRow).toMatch(/<Plus[\s\S]*\/>\s*Create plugin\s*</);
-    expect(headerRow).toContain('setPane({ mode: "create-draft"');
+    expect(headerRow).toMatch(/<Plus[\s\S]*\/>\s*Create resource\s*</);
+    expect(headerRow).toContain("setCreateModalOpen(true)");
   });
 
   test("renders Import as a labeled secondary action", () => {
@@ -148,7 +148,7 @@ describe("library items header action styles", () => {
 
 describe("library items header design lock", () => {
   test("documents the Library header action cluster", () => {
-    expect(designSource).toContain("**Create plugin** (accent");
+    expect(designSource).toContain("**Create resource** (accent");
     expect(designSource).toContain("Header cluster");
   });
 
@@ -160,7 +160,7 @@ describe("library items header design lock", () => {
 
   test("documents unified library list and detail", () => {
     expect(designSource).toContain("No Items/Packages tabs");
-    expect(designSource).toContain("Create plugin (accent primary");
+    expect(designSource).toContain("Create resource (accent primary");
     expect(designSource).toContain("Sync on a library row is `resource sync`");
     expect(designSource).toContain("plugin ref");
     expect(designSource).toContain(

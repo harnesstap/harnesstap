@@ -631,4 +631,55 @@ describe("POST /v1/library/plugins", () => {
     });
     expect(response.status).toBe(400);
   });
+
+  it("attaches initial resources atomically", async () => {
+    createResource({
+      type: "skill",
+      name: "ship",
+      description: "",
+      content: "ship it",
+      metadata: {},
+      source: "manual",
+    });
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: {
+        name: "eng",
+        resources: [{ type: "skill", selector: "ship" }],
+      },
+    });
+    expect(response.status).toBe(200);
+    const detailResponse = await handle("GET", "/v1/library/plugins/eng");
+    const detail = (await detailResponse.json()) as {
+      resources: { type: string; name: string }[];
+    };
+    expect(detail.resources).toHaveLength(1);
+    expect(detail.resources[0]).toMatchObject({ type: "skill", name: "ship" });
+  });
+
+  it("rolls back the plugin when an initial resource cannot be resolved", async () => {
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: {
+        name: "ghost",
+        resources: [{ type: "skill", selector: "does-not-exist" }],
+      },
+    });
+    expect(response.status).toBe(400);
+    expect(getPluginByName("ghost")).toBeUndefined();
+  });
+
+  it("rejects malformed resource entries", async () => {
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: { name: "bad", resources: [{ selector: "no-type" }] },
+    });
+    expect(response.status).toBe(400);
+    expect(getPluginByName("bad")).toBeUndefined();
+  });
+
+  it("still creates a plugin without resources", async () => {
+    const response = await handle("POST", "/v1/library/plugins", {
+      body: { name: "plain" },
+    });
+    expect(response.status).toBe(200);
+    expect(getPluginByName("plain")).toBeDefined();
+  });
 });

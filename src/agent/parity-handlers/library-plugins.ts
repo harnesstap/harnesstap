@@ -1,3 +1,4 @@
+import { getDb } from "../../db/connection.js";
 import {
   addResourceToPlugin,
   createPlugin,
@@ -14,6 +15,7 @@ import {
   updatePluginDescription,
   updatePluginName,
 } from "../../models/plugin-model.js";
+import { resolveResource } from "../../models/resource.js";
 import {
   PluginAttachmentHintError,
   validatePluginAttachmentType,
@@ -36,7 +38,7 @@ import {
   rollbackPluginVersion,
 } from "../../services/plugin-versioning.js";
 import { toContentsResource } from "../../services/profile-contents.js";
-import type { Plugin, Resource } from "../../types.js";
+import type { Plugin, Resource, ResourceType } from "../../types.js";
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
 import { pluginVersionErrorResponse } from "../profile-cut-handlers.js";
@@ -72,6 +74,58 @@ function notFound(selector: string): Response {
     { error: "not_found", message: `Plugin not found: ${selector}` },
     { status: 404 },
   );
+}
+
+function resolveInitialResource(selector: string, type: ResourceType): Resource {
+  const result = resolveResource(selector, { mode: "compose" });
+  if (result.status === "not_found") {
+    throw new Error(`Resource not found: ${selector}`);
+  }
+  if (result.status === "ambiguous") {
+    throw new Error(`Ambiguous resource selector: ${selector}`);
+  }
+  if (result.resource.type !== type) {
+    throw new Error(
+      `Type mismatch: selector "${selector}" resolved to ${result.resource.type}, expected ${type}`,
+    );
+  }
+  return result.resource;
+}
+
+interface InitialResourceRequest {
+  type: ResourceType;
+  selector: string;
+}
+
+function parseInitialResources(value: unknown): InitialResourceRequest[] | Response {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return jsonResponse(
+      { error: "invalid_body", message: "resources must be an array" },
+      { status: 400 },
+    );
+  }
+  const parsed: InitialResourceRequest[] = [];
+  for (const entry of value) {
+    if (
+      typeof entry !== "object"
+      || entry === null
+      || Array.isArray(entry)
+      || typeof (entry as Record<string, unknown>).type !== "string"
+      || typeof (entry as Record<string, unknown>).selector !== "string"
+      || !((entry as Record<string, unknown>).selector as string).trim()
+    ) {
+      return jsonResponse(
+        { error: "invalid_body", message: "each resource needs a type and selector" },
+        { status: 400 },
+      );
+    }
+    const record = entry as { type: string; selector: string };
+    parsed.push({ type: record.type as ResourceType, selector: record.selector.trim() });
+  }
+  return parsed;
 }
 
 export function toPluginHead(plugin: {
@@ -369,8 +423,30 @@ export async function tryHandle(
     }
     const description =
       typeof parsed.value.description === "string" ? parsed.value.description : undefined;
-    const plugin = createPlugin({ name, description, origin: "authored" });
-    return jsonResponse({ plugin: toPluginHead(plugin) });
+    const initialResources = parseInitialResources(parsed.value.resources);
+    if (initialResources instanceof Response) {
+      return initialResources;
+    }
+    try {
+      const db = getDb();
+      const persist = db.transaction(() => {
+        const plugin = createPlugin({ name, description, origin: "authored" });
+        for (const item of initialResources) {
+          const resource = resolveInitialResource(item.selector, item.type);
+          addResourceToPlugin(plugin.id, resource.id);
+        }
+        return getPluginById(plugin.id) ?? plugin;
+      });
+      return jsonResponse({ plugin: toPluginHead(persist()) });
+    } catch (error) {
+      return jsonResponse(
+        {
+          error: "invalid_body",
+          message: error instanceof Error ? error.message : "could not create plugin",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const matched = matchSelectorPath(pathname);

@@ -4,9 +4,10 @@ import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
-import { PluginCreateDraft } from "./PluginCreateDraft";
 import { PluginPackageDetail } from "./PluginPackageDetail";
+import { ResourceCreatePanel, type PickerResource } from "./ResourceCreatePanel";
 import { ResourceDetailBody } from "./ResourceDetailBody";
+import { ResourceTypeModal } from "./ResourceTypeModal";
 import { ResourceFilterSidebar } from "./ResourceFilterSidebar";
 import { ResourceTrackedDirectoriesModal } from "./ResourceTrackedDirectoriesModal";
 import { TypeIcon } from "./TypeIcon";
@@ -19,7 +20,6 @@ import {
 } from "./ui/resource-row";
 import { AgentApiError, fetchLibraryResources } from "../lib/agent-client";
 import {
-  createLibraryPlugin,
   fetchLibraryPluginHeads,
   type LibraryPluginHead,
 } from "../lib/api/library-plugins";
@@ -37,11 +37,8 @@ import {
   type LibraryListEntry,
 } from "../lib/library-list";
 import {
-  draftHasTypedContent,
   escapeAction,
-  isOutsideLibraryDetail,
   libraryPaneHasPrevious,
-  shouldCommitDraftName,
   sidebarChangeAction,
   type LibraryPane,
 } from "../lib/library-pane";
@@ -50,6 +47,7 @@ import {
   pluginPackageEscapeAction,
   type PluginDetailMode,
 } from "../lib/plugin-history";
+import type { CreateResourceType } from "../lib/resource-create-schema";
 import {
   applyLibraryResourceFilters,
   defaultResourceFilterState,
@@ -61,8 +59,6 @@ import { hoverModelFromLibraryResource } from "../lib/resource-hover";
 import { resourceDisplayName } from "../lib/resource-search";
 import { workspaceBackEnabled } from "../lib/screen-history";
 import type { LibraryResource } from "../lib/types";
-
-type DraftDiscardIntent = "list" | "fresh-draft";
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof AgentApiError) {
@@ -84,6 +80,9 @@ export interface ResourcesPanelProps {
   disabled?: boolean;
   projectPath?: string | null;
   selectedProfile?: string | null;
+  /** Profile targeted by the create-form "add and apply" checkbox; hides it when null. */
+  attachProfileName?: string | null;
+  onAddToProfile?: (resource: { type: string; name: string }) => Promise<void>;
   onImported?: (message: string) => void;
   onSuccess?: (message: string) => void;
   focusPluginName?: string | null;
@@ -105,6 +104,8 @@ export function ResourcesPanel({
   disabled = false,
   projectPath,
   selectedProfile,
+  attachProfileName,
+  onAddToProfile,
   onImported,
   onSuccess,
   focusPluginName,
@@ -149,21 +150,10 @@ export function ResourcesPanel({
   const [pluginFrozenVersion, setPluginFrozenVersion] = useState<string | null>(
     null,
   );
-  const [pendingFilter, setPendingFilter] = useState<ResourceFilterState | null>(
-    null,
-  );
-  const [filterStateBeforeDraftLeave, setFilterStateBeforeDraftLeave] =
-    useState<ResourceFilterState | null>(null);
-  const [draftDiscardOpen, setDraftDiscardOpen] = useState(false);
-  const [draftDiscardIntent, setDraftDiscardIntent] =
-    useState<DraftDiscardIntent>("list");
-  const [draftNameError, setDraftNameError] = useState<string | null>(null);
-  const [draftGeneration, setDraftGeneration] = useState(0);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createType, setCreateType] = useState<CreateResourceType | null>(null);
   const paneRef = useRef(pane);
   paneRef.current = pane;
-  const discardingDraftRef = useRef(false);
-  const createInFlightRef = useRef(false);
-  const suppressDraftCommitRef = useRef(false);
   const resolvedProjectPath =
     (projectPath && projectPath.trim())
     || loadRecentProjects()[0]?.path
@@ -281,6 +271,19 @@ export function ResourcesPanel({
     [entries],
   );
 
+  const pickerResources = useMemo<PickerResource[]>(
+    () =>
+      entries
+        .filter((entry) => entry.type !== "plugin" && entry.type !== "plugin_ref")
+        .map((entry) => ({
+          id: entry.id,
+          type: entry.type,
+          name: entry.name,
+          namespace: entry.namespace ?? null,
+        })),
+    [entries],
+  );
+
   const filteredEntries = useMemo(
     () => applyLibraryResourceFilters(entries, filterState),
     [filterState, entries],
@@ -292,53 +295,9 @@ export function ResourcesPanel({
   );
 
   const libraryEmpty = resources.length === 0 && plugins.length === 0;
-  const paneConfirmOpen =
-    confirmOpen || draftDiscardOpen || originUpdateConfirmOpen;
-  const emptyDraft = { mode: "create-draft" as const, name: "", description: "" };
-
-  function beginDraftLeave(): void {
-    suppressDraftCommitRef.current = true;
-  }
-
-  useEffect(() => {
-    return () => {
-      suppressDraftCommitRef.current = true;
-      discardingDraftRef.current = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (pane.mode !== "create-draft") {
-      return;
-    }
-    function onWindowPointerDownCapture(event: PointerEvent): void {
-      if (isOutsideLibraryDetail(event.target)) {
-        beginDraftLeave();
-      }
-    }
-    window.addEventListener("pointerdown", onWindowPointerDownCapture, true);
-    return () => {
-      window.removeEventListener("pointerdown", onWindowPointerDownCapture, true);
-    };
-  }, [pane.mode]);
-
-  function onHeaderDraftLeavePointerDown(): void {
-    if (paneRef.current.mode === "create-draft") {
-      beginDraftLeave();
-    }
-  }
-
-  function onHeaderDraftLeaveMouseDown(event: { preventDefault(): void }): void {
-    if (paneRef.current.mode === "create-draft") {
-      event.preventDefault();
-      beginDraftLeave();
-    }
-  }
+  const paneConfirmOpen = confirmOpen || originUpdateConfirmOpen;
 
   function leaveToList(): void {
-    if (paneRef.current.mode === "create-draft") {
-      beginDraftLeave();
-    }
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -348,95 +307,11 @@ export function ResourcesPanel({
     setFieldEditing(false);
     setConfirmOpen(false);
     setDetailBusy(false);
-    setDraftDiscardOpen(false);
-    setDraftNameError(null);
-  }
-
-  function openEmptyDraft(): void {
-    discardingDraftRef.current = false;
-    suppressDraftCommitRef.current = false;
-    setDraftGeneration((value) => value + 1);
-    setPane(emptyDraft);
-    setFieldEditing(false);
-    setConfirmOpen(false);
-    setDraftDiscardOpen(false);
-    setDraftNameError(null);
-    setPendingFilter(null);
-    setFilterStateBeforeDraftLeave(null);
-  }
-
-  function closeDraftDiscard(): void {
-    setDraftDiscardOpen(false);
-    setPendingFilter(null);
-    setFilterStateBeforeDraftLeave(null);
-  }
-
-  function confirmDraftDiscard(): void {
-    const intent = draftDiscardIntent;
-    const nextFilter = pendingFilter;
-    discardingDraftRef.current = true;
-    closeDraftDiscard();
-    switch (intent) {
-      case "fresh-draft":
-        openEmptyDraft();
-        return;
-      case "list":
-        leaveToList();
-        if (nextFilter) {
-          setFilterState(nextFilter);
-        }
-        return;
-      default: {
-        const _exhaustive: never = intent;
-        return _exhaustive;
-      }
-    }
-  }
-
-  function cancelDraftDiscard(): void {
-    const previousFilter = filterStateBeforeDraftLeave;
-    suppressDraftCommitRef.current = false;
-    closeDraftDiscard();
-    if (previousFilter) {
-      setFilterState(previousFilter);
-    }
-  }
-
-  function requestLeaveDraft(intent: DraftDiscardIntent): void {
-    const current = paneRef.current;
-    if (current.mode !== "create-draft") {
-      return;
-    }
-    beginDraftLeave();
-    if (!draftHasTypedContent(current)) {
-      discardingDraftRef.current = true;
-      switch (intent) {
-        case "fresh-draft":
-          openEmptyDraft();
-          return;
-        case "list":
-          leaveToList();
-          if (pendingFilter) {
-            setFilterState(pendingFilter);
-            setPendingFilter(null);
-          }
-          return;
-        default: {
-          const _exhaustive: never = intent;
-          return _exhaustive;
-        }
-      }
-    }
-    setDraftDiscardIntent(intent);
-    setDraftDiscardOpen(true);
   }
 
   function handlePanelBack(): void {
     const current = paneRef.current;
     switch (current.mode) {
-      case "create-draft":
-        requestLeaveDraft("list");
-        return;
       case "detail": {
         if (current.target.kind === "plugin-package") {
           const target = pluginPackageBackTarget(pluginHistoryMode);
@@ -471,116 +346,22 @@ export function ResourcesPanel({
     }
   }
 
-  async function commitDraftName(
-    reason: "enter" | "blur",
-    relatedTarget?: EventTarget | null,
-    connected?: boolean,
-  ): Promise<void> {
-    const current = paneRef.current;
-    if (current.mode !== "create-draft" || discardingDraftRef.current) {
-      return;
-    }
-    let leaving = false;
-    switch (reason) {
-      case "enter":
-        leaving = false;
-        break;
-      case "blur":
-        leaving = suppressDraftCommitRef.current;
-        break;
-      default: {
-        const _exhaustive: never = reason;
-        return _exhaustive;
-      }
-    }
-    if (
-      !shouldCommitDraftName({
-        leaving,
-        name: current.name,
-        relatedTarget: reason === "blur" ? relatedTarget : null,
-        connected: reason === "blur" ? connected : true,
-      })
-      || !baseUrl
-      || createInFlightRef.current
-    ) {
-      return;
-    }
-    createInFlightRef.current = true;
-    setDetailBusy(true);
-    onBusyChange?.(true);
-    setDraftNameError(null);
-    try {
-      const name = current.name.trim();
-      const description = current.description.trim();
-      const created = await createLibraryPlugin(baseUrl, token, {
-        name,
-        ...(description ? { description } : {}),
-      });
-      setPane({
-        mode: "detail",
-        target: { kind: "plugin-package", selector: created.name },
-      });
-      setPluginHistoryMode("head");
-      setPluginFrozenVersion(null);
-      setDraftNameError(null);
-      reloadLibrary();
-    } catch (createError: unknown) {
-      setDraftNameError(errorMessage(createError, "Could not create plugin"));
-    } finally {
-      createInFlightRef.current = false;
-      setDetailBusy(false);
-      onBusyChange?.(false);
-    }
-  }
-
-  function requestCreatePlugin(): void {
-    const current = paneRef.current;
-    if (current.mode === "create-draft" && draftHasTypedContent(current)) {
-      beginDraftLeave();
-      setDraftDiscardIntent("fresh-draft");
-      setDraftDiscardOpen(true);
-      return;
-    }
-    if (current.mode === "detail") {
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-    }
-    if (current.mode === "create-draft") {
-      discardingDraftRef.current = true;
-    }
-    openEmptyDraft();
-  }
-
   function applyFilterChange(next: ResourceFilterState): void {
     const current = paneRef.current;
-    if (current.mode === "create-draft") {
-      beginDraftLeave();
-    }
     if (current.mode === "list") {
       setFilterState(next);
       return;
     }
-    const draftTyped =
-      current.mode === "create-draft" && draftHasTypedContent(current);
     const action = sidebarChangeAction({
       busy: detailBusy,
       confirmOpen: paneConfirmOpen,
-      draftTyped,
     });
     switch (action) {
       case "block":
         return;
       case "leave-and-apply":
-        discardingDraftRef.current = current.mode === "create-draft";
         leaveToList();
         setFilterState(next);
-        return;
-      case "confirm-discard":
-        setPendingFilter(next);
-        setFilterStateBeforeDraftLeave(filterState);
-        setDraftDiscardIntent("list");
-        setDraftDiscardOpen(true);
         return;
       default: {
         const _exhaustive: never = action;
@@ -602,8 +383,7 @@ export function ResourcesPanel({
   }, [homeResetNonce]);
 
   useEffect(() => {
-    if (pane.mode === "list") {
-      discardingDraftRef.current = false;
+    if (pane.mode !== "detail") {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -611,7 +391,10 @@ export function ResourcesPanel({
         return;
       }
       const current = paneRef.current;
-      if (current.mode === "detail" && current.target.kind === "plugin-package") {
+      if (current.mode !== "detail") {
+        return;
+      }
+      if (current.target.kind === "plugin-package") {
         const nested = pluginPackageEscapeAction({
           mode: pluginHistoryMode,
           fieldEditing,
@@ -654,11 +437,7 @@ export function ResourcesPanel({
           return;
         case "leave-pane":
           event.preventDefault();
-          if (paneRef.current.mode === "create-draft") {
-            requestLeaveDraft("list");
-          } else {
-            leaveToList();
-          }
+          leaveToList();
           return;
         default: {
           const _exhaustive: never = action;
@@ -809,38 +588,6 @@ export function ResourcesPanel({
     }
   }
 
-  function renderCreateDraft(): ReactNode {
-    if (pane.mode !== "create-draft") {
-      return null;
-    }
-    return (
-      <PluginCreateDraft
-        key={draftGeneration}
-        titleId={detailTitleId}
-        name={pane.name}
-        description={pane.description}
-        nameError={draftNameError}
-        disabled={disabled || !baseUrl}
-        busy={detailBusy}
-        onDraftChange={(next) => {
-          suppressDraftCommitRef.current = false;
-          setPane({
-            mode: "create-draft",
-            name: next.name,
-            description: next.description,
-          });
-          setDraftNameError(null);
-        }}
-        onNameCommit={(reason, relatedTarget, connected) => {
-          void commitDraftName(reason, relatedTarget, connected);
-        }}
-        onBack={() => requestLeaveDraft("list")}
-        onLeavePointerDown={beginDraftLeave}
-        onFieldEditingChange={setFieldEditing}
-      />
-    );
-  }
-
   function renderList(): ReactNode {
     if (error) {
       return (
@@ -857,7 +604,7 @@ export function ResourcesPanel({
         <div className="empty-state">
           <p className="muted">
             {libraryEmpty
-              ? "No registered resources yet. Import items or create a plugin."
+              ? "No registered resources yet. Import items or create a resource."
               : isResourceFilterStateActive(filterState)
                 ? "No matches."
                 : "No resources to show."}
@@ -876,9 +623,9 @@ export function ResourcesPanel({
                 type="button"
                 className="btn"
                 disabled={disabled || !baseUrl}
-                onClick={() => requestCreatePlugin()}
+                onClick={() => setCreateModalOpen(true)}
               >
-                Create plugin
+                Create resource
               </button>
             </>
           ) : null}
@@ -941,8 +688,6 @@ export function ResourcesPanel({
 
   function renderMainPane(): ReactNode {
     switch (pane.mode) {
-      case "create-draft":
-        return renderCreateDraft();
       case "detail":
         return renderDetail();
       case "list":
@@ -961,7 +706,7 @@ export function ResourcesPanel({
       hasLocalPrevious,
       hasWorkspacePrevious: canWorkspaceBack,
     })
-    || (hasLocalPrevious && (detailBusy || confirmOpen || draftDiscardOpen));
+    || (hasLocalPrevious && (detailBusy || confirmOpen));
   const count = outdatedCount;
 
   return (
@@ -988,46 +733,14 @@ export function ResourcesPanel({
             <button
               type="button"
               className="btn primary"
-              data-testid="library-create-plugin"
-              aria-label="Create plugin"
-              title="Create plugin"
+              data-testid="library-create-resource"
+              aria-label="Create resource"
+              title="Create resource"
               disabled={disabled || !baseUrl}
-              onPointerDown={onHeaderDraftLeavePointerDown}
-              onMouseDown={onHeaderDraftLeaveMouseDown}
-              onClick={() => {
-                const current = paneRef.current;
-                if (
-                  current.mode === "create-draft"
-                  && draftHasTypedContent(current)
-                ) {
-                  beginDraftLeave();
-                  setDraftDiscardIntent("fresh-draft");
-                  setDraftDiscardOpen(true);
-                  return;
-                }
-                if (current.mode === "detail") {
-                  if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
-                  }
-                }
-                if (current.mode === "create-draft") {
-                  discardingDraftRef.current = true;
-                  beginDraftLeave();
-                }
-                setPane({ mode: "create-draft", name: "", description: "" });
-                setDraftGeneration((value) => value + 1);
-                setFieldEditing(false);
-                setConfirmOpen(false);
-                setDraftDiscardOpen(false);
-                setDraftNameError(null);
-                setPendingFilter(null);
-                setFilterStateBeforeDraftLeave(null);
-                discardingDraftRef.current = false;
-                suppressDraftCommitRef.current = false;
-              }}
+              onClick={() => setCreateModalOpen(true)}
             >
               <Plus size={16} aria-hidden />
-              Create plugin
+              Create resource
             </button>
             <button
               type="button"
@@ -1035,8 +748,6 @@ export function ResourcesPanel({
               aria-label="Import into library"
               title="Import into library"
               disabled={disabled || !baseUrl}
-              onPointerDown={onHeaderDraftLeavePointerDown}
-              onMouseDown={onHeaderDraftLeaveMouseDown}
               onClick={() => setImportOpen(true)}
             >
               <FolderDown size={16} aria-hidden />
@@ -1048,8 +759,6 @@ export function ResourcesPanel({
               aria-label="Tracked directories"
               title="Show tracked directories for resources"
               disabled={disabled || !baseUrl}
-              onPointerDown={onHeaderDraftLeavePointerDown}
-              onMouseDown={onHeaderDraftLeaveMouseDown}
               onClick={() => setTrackedDirsOpen(true)}
             >
               <FolderInput size={16} aria-hidden />
@@ -1067,8 +776,6 @@ export function ResourcesPanel({
                 || detailBusy
                 || outdatedCount === 0
               }
-              onPointerDown={onHeaderDraftLeavePointerDown}
-              onMouseDown={onHeaderDraftLeaveMouseDown}
               onClick={() => setOriginUpdateConfirmOpen(true)}
             >
               <RefreshCw size={16} aria-hidden />
@@ -1079,13 +786,7 @@ export function ResourcesPanel({
       </div>
 
       <div className="resources-panel-layout">
-        <div
-          onPointerDownCapture={() => {
-            if (paneRef.current.mode === "create-draft") {
-              beginDraftLeave();
-            }
-          }}
-        >
+        <div>
           <ResourceFilterSidebar
             resources={entries}
             state={filterState}
@@ -1121,15 +822,6 @@ export function ResourcesPanel({
         }}
       />
 
-      <ConfirmDialog
-        open={draftDiscardOpen}
-        title="Discard this plugin?"
-        description="This plugin has not been created yet. Typed name and description will be lost."
-        confirmLabel="Discard"
-        onConfirm={() => confirmDraftDiscard()}
-        onCancel={() => cancelDraftDiscard()}
-      />
-
       <ResourceTrackedDirectoriesModal
         open={trackedDirsOpen}
         baseUrl={baseUrl}
@@ -1152,6 +844,57 @@ export function ResourcesPanel({
           onImported?.(message);
         }}
       />
+
+      <ResourceTypeModal
+        open={createModalOpen}
+        disabled={disabled || !baseUrl}
+        onClose={() => setCreateModalOpen(false)}
+        onSelect={(selected) => {
+          setCreateModalOpen(false);
+          setCreateType(selected);
+        }}
+      />
+
+      {createType ? (
+        <ResourceCreatePanel
+          key={createType}
+          titleId="resource-create-panel-title"
+          type={createType}
+          baseUrl={baseUrl}
+          token={token}
+          disabled={disabled}
+          attachProfileName={attachProfileName ?? null}
+          pickerResources={pickerResources}
+          onClose={() => setCreateType(null)}
+          onCreated={(target) => {
+            setCreateType(null);
+            if (target.kind === "plugin-package") {
+              setPane({
+                mode: "detail",
+                target: { kind: "plugin-package", selector: target.selector },
+              });
+              setPluginHistoryMode("head");
+              setPluginFrozenVersion(null);
+            } else {
+              setPane({
+                mode: "detail",
+                target: {
+                  kind: "resource",
+                  selector: target.selector,
+                  label: target.label,
+                },
+              });
+            }
+            reloadLibrary();
+          }}
+          onAddToProfile={
+            onAddToProfile
+              ? (resource) => onAddToProfile(resource)
+              : async () => {}
+          }
+          onSuccess={onSuccess}
+        />
+      ) : null}
     </main>
   );
 }

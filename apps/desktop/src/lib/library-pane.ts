@@ -1,7 +1,5 @@
-import { WORKSPACE_BACK_LABEL } from "./screen-history";
-
 export type EscapeAction = "cancel-field" | "dismiss-confirm" | "leave-pane";
-export type SidebarChangeAction = "block" | "leave-and-apply" | "confirm-discard";
+export type SidebarChangeAction = "block" | "leave-and-apply";
 
 export function escapeAction(input: {
   fieldEditing: boolean;
@@ -19,7 +17,6 @@ export function escapeAction(input: {
 export function sidebarChangeAction(input: {
   busy: boolean;
   confirmOpen: boolean;
-  draftTyped: boolean;
 }): SidebarChangeAction {
   if (input.busy) {
     return "block";
@@ -27,28 +24,10 @@ export function sidebarChangeAction(input: {
   if (input.confirmOpen) {
     return "block";
   }
-  if (input.draftTyped) {
-    return "confirm-discard";
-  }
   return "leave-and-apply";
 }
 
-export function draftHasTypedContent(input: {
-  name: string;
-  description: string;
-}): boolean {
-  return input.name.trim().length > 0 || input.description.trim().length > 0;
-}
-
 const LIBRARY_BACK_LABEL = "Back to library list";
-
-const INCIDENTAL_DRAFT_LEAVE_LABELS = [
-  LIBRARY_BACK_LABEL,
-  WORKSPACE_BACK_LABEL,
-  "Import into library",
-  "Tracked directories",
-  "Create plugin",
-] as const;
 
 function controlHasAriaLabel(
   target: EventTarget | null,
@@ -71,14 +50,6 @@ export function isLibraryBackControl(target: EventTarget | null): boolean {
   return controlHasAriaLabel(target, LIBRARY_BACK_LABEL);
 }
 
-export function isIncidentalDraftLeaveTarget(
-  target: EventTarget | null,
-): boolean {
-  return INCIDENTAL_DRAFT_LEAVE_LABELS.some((label) =>
-    controlHasAriaLabel(target, label),
-  );
-}
-
 export function isOutsideLibraryDetail(target: EventTarget | null): boolean {
   if (target == null || typeof target !== "object") {
     return true;
@@ -87,24 +58,6 @@ export function isOutsideLibraryDetail(target: EventTarget | null): boolean {
     closest?: (selector: string) => unknown;
   };
   return candidate.closest?.(".library-detail") == null;
-}
-
-export function shouldCommitDraftName(input: {
-  leaving: boolean;
-  name: string;
-  relatedTarget?: EventTarget | null;
-  connected?: boolean;
-}): boolean {
-  if (input.connected === false) {
-    return false;
-  }
-  if (input.leaving) {
-    return false;
-  }
-  if (isIncidentalDraftLeaveTarget(input.relatedTarget ?? null)) {
-    return false;
-  }
-  return input.name.trim().length > 0;
 }
 
 export type LibraryDetailTarget =
@@ -118,15 +71,13 @@ export type LibraryDetailTarget =
 
 export type LibraryPane =
   | { mode: "list" }
-  | { mode: "detail"; target: LibraryDetailTarget }
-  | { mode: "create-draft"; name: string; description: string };
+  | { mode: "detail"; target: LibraryDetailTarget };
 
 export function libraryPaneHasPrevious(pane: LibraryPane): boolean {
   switch (pane.mode) {
     case "list":
       return false;
     case "detail":
-    case "create-draft":
       return true;
     default: {
       const neverPane: never = pane;

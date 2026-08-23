@@ -103,15 +103,30 @@ export async function fetchLibraryPluginHeads(
   return body.plugins;
 }
 
+export interface LibraryPluginCreateResource {
+  type: string;
+  selector: string;
+}
+
 export async function createLibraryPlugin(
   baseUrl: string,
   token: string | null,
-  input: { name: string; description?: string },
+  input: {
+    name: string;
+    description?: string;
+    resources?: LibraryPluginCreateResource[];
+  },
 ): Promise<LibraryPluginHead> {
   const response = await agentFetch(baseUrl, token, "/v1/library/plugins", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      name: input.name,
+      ...(input.description ? { description: input.description } : {}),
+      ...(input.resources && input.resources.length > 0
+        ? { resources: input.resources }
+        : {}),
+    }),
   });
   if (!response.ok) {
     return throwAgentError(response, "Could not create plugin");

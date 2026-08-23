@@ -200,4 +200,84 @@ describe("Golden path", () => {
     await submitCreateProfile();
     await waitForTestId(`profile-rail-${PROFILE_CHILD}`);
   });
+
+  it("creates a rule resource through the create-resource flow", async () => {
+    const ruleName = `e2e-rule-${Date.now()}`;
+
+    const libraryNav = await $('button[aria-label="Library"]');
+    await libraryNav.waitForDisplayed();
+    await libraryNav.click();
+
+    await clickTestId("library-create-resource");
+    await waitForTestId("resource-type-modal");
+
+    await clickTestId("resource-type-option-rule");
+    await waitForTestId("resource-create-panel");
+
+    const submit = await waitForTestId("resource-create-submit");
+    await expect(submit).toBeDisabled();
+
+    const nameInput = await waitForTestId("resource-create-field-name");
+    await nameInput.setValue(ruleName);
+    const contentInput = await waitForTestId("resource-create-field-content");
+    await contentInput.setValue("# E2E rule\nAlways use bun.");
+
+    await expect(submit).toBeEnabled();
+    await submit.click();
+
+    await browser.waitUntil(
+      async () => !(await $(byTestId("resource-create-panel")).isExisting()),
+      { timeout: 15000, timeoutMsg: "Resource create panel did not close" },
+    );
+
+    const detailTitle = await $(".library-detail .library-detail-title");
+    await detailTitle.waitForDisplayed();
+    await expect(detailTitle).toHaveText(expect.stringContaining(ruleName));
+  });
+
+  it("blocks create until mandatory fields are filled", async () => {
+    const discardDialogSelector =
+      "//h2[normalize-space()='Discard this resource?']/ancestor::div[@role='dialog']";
+
+    await clickTestId("library-create-resource");
+    await waitForTestId("resource-type-modal");
+    await clickTestId("resource-type-option-env_var");
+    await waitForTestId("resource-create-panel");
+
+    const submit = await waitForTestId("resource-create-submit");
+    await expect(submit).toBeDisabled();
+
+    await (await waitForTestId("resource-create-field-name")).setValue(
+      "e2e-env-var",
+    );
+    await expect(submit).toBeDisabled();
+
+    await (await waitForTestId("resource-create-field-key")).setValue(
+      "E2E_DISCARD_KEY",
+    );
+    await (await waitForTestId("resource-create-field-value")).setValue(
+      "e2e-value",
+    );
+    await expect(submit).toBeEnabled();
+
+    await clickTestId("resource-create-cancel");
+
+    const dialog = await $(discardDialogSelector);
+    await dialog.waitForDisplayed({ timeout: 10000 });
+    const discardButton = await dialog.$("button.btn.primary");
+    await discardButton.waitForDisplayed();
+    await discardButton.click();
+
+    await browser.waitUntil(
+      async () => !(await dialog.isExisting()),
+      { timeout: 5000, timeoutMsg: "Discard confirm dialog did not close" },
+    );
+    await browser.waitUntil(
+      async () => !(await $(byTestId("resource-create-panel")).isExisting()),
+      {
+        timeout: 5000,
+        timeoutMsg: "Resource create panel did not close after discard",
+      },
+    );
+  });
 });
