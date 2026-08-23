@@ -852,7 +852,7 @@ The primary walkthrough is a single adoption story (`init` → `scan` → `resou
 
 ## Build, test, and release workflow
 
-The project uses Bun for local dependency management, CI, and builds. Distribution of the CLI is through the npm registry. An optional Tauri desktop app lives under `apps/desktop/` (`bun run desktop:dev` / `desktop:build`); it is not part of the published npm package.
+The project uses Bun for local dependency management, CI, and builds. Distribution of the CLI is through the npm registry. An optional Tauri desktop app lives under `apps/desktop/` (`bun run desktop:dev` / `desktop:build` / `desktop:install`); it is not part of the published npm package.
 
 ```bash
 bun install

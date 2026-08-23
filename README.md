@@ -156,6 +156,7 @@ It is **not** in the npm package. Build it from this repo (macOS `.app` / `.dmg`
 ```bash
 bun run desktop:dev      # development
 bun run desktop:build    # packaged app under apps/desktop/src-tauri/target/release/bundle/
+bun run desktop:install  # build + install HarnessTap.app into /Applications
 ```
 
 Details, sidecar notes, and e2e: [apps/desktop/README.md](apps/desktop/README.md).

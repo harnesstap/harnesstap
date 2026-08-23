@@ -51,6 +51,12 @@ bun run desktop:build
 
 Output: `apps/desktop/src-tauri/target/release/bundle/`
 
+To build and install straight into `/Applications` (quits a running instance first):
+
+```bash
+bun run desktop:install
+```
+
 ## Sidecar embedding
 
 - Root `bun run build:sidecar` compiles `src/agent/entry.ts` → `dist/sidecar/ht-agent`
