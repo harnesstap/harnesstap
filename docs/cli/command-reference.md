@@ -300,7 +300,7 @@ Token refresh runs before remote calls. The CLI does not silently switch account
 
 Manage profile plugins (plugins tagged `profile`) and global profile switching. Profiles apply to **machine home** harness paths; use `apply` for projects.
 
-Root shorthand: when the first argument is not a known command and matches a local profile plugin name, `ht <name>` runs `profile use <name>` (e.g. `ht work`).
+Root shorthand: when the first non-option argument is not a known command and matches a local profile plugin name, `ht <name>` runs `profile use <name>`, leaving any leading global flags in place (e.g. `ht work`, `ht --no-color work`).
 
 ### Commands
 

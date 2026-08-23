@@ -44,7 +44,7 @@ ht profile delete old-profile
 | `profile use` | Machine home harness paths |
 | `apply --project .` | Repository working tree |
 
-Root shorthand `ht <name>` works when `<name>` is a profile plugin and not a reserved command (e.g. `ht work` ≡ `ht profile use work`).
+Root shorthand `ht <name>` works when `<name>` is the first non-option argument, is a profile plugin, and not a reserved command (e.g. `ht work` ≡ `ht profile use work`; `ht --no-color work` also works).
 
 ## Building a profile stack
 

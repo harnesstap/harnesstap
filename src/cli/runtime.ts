@@ -78,13 +78,27 @@ function knownTopLevelCommandTokens(): Set<string> {
   return reserved;
 }
 
+function firstPositionalIndex(argv: string[]): number {
+  for (let i = 2; i < argv.length; i++) {
+    const token = argv[i];
+    if (token === "--") {
+      return i + 1 < argv.length ? i + 1 : -1;
+    }
+    if (!token.startsWith("-")) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 function rewriteProfileShorthandArgv(argv: string[]): string[] {
-  const candidate = argv[2];
-  if (!candidate || candidate.startsWith("-")) {
+  const index = firstPositionalIndex(argv);
+  if (index < 0) {
     return argv;
   }
 
-  if (knownTopLevelCommandTokens().has(candidate)) {
+  const candidate = argv[index];
+  if (!candidate || knownTopLevelCommandTokens().has(candidate)) {
     return argv;
   }
 
@@ -103,7 +117,13 @@ function rewriteProfileShorthandArgv(argv: string[]): string[] {
     return argv;
   }
 
-  return [argv[0] ?? "node", argv[1] ?? "harnesstap", "profile", "use", candidate, ...argv.slice(3)];
+  return [
+    ...argv.slice(0, index),
+    "profile",
+    "use",
+    candidate,
+    ...argv.slice(index + 1),
+  ];
 }
 
 export async function runHarnesstapCli(
