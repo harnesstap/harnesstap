@@ -435,7 +435,7 @@ export function assertPluginsCleanForShare(plugins: Plugin[]): void {
     "dirty_plugins",
     `Cannot share plugins with unpublished edits: ${dirtyPlugins
       .map((plugin) => `${plugin.name}@${plugin.version}`)
-      .join(", ")}`,
+      .join(", ")}. Cut a frozen version first (plugin cut <name> --version <semver>).`,
     { dirtyPlugins },
   );
 }

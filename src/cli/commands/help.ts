@@ -7,7 +7,7 @@ import {
 } from "../../services/scenario-guide.js";
 import { ui } from "../../ui/index.js";
 import { parseOutputFormat, printJson } from "../../utils/output-format.js";
-import { formatCommand, GUIDE_SCENARIOS_URL } from "../shared.js";
+import { formatScenarioCommand, GUIDE_SCENARIOS_URL } from "../shared.js";
 
 function handleHelpCommand(opts: { format?: string }): void {
   const format = parseOutputFormat(opts.format);
@@ -46,7 +46,7 @@ function handleScenarioGuideCommand(scenarioInput: string, opts: { format?: stri
       ui.subheader("TYPICAL COMMANDS");
       console.log("");
       for (const command of scenario.commands) {
-        console.log(`  ${formatCommand(command)}`);
+        console.log(`  ${formatScenarioCommand(command)}`);
       }
     }
     console.log("");

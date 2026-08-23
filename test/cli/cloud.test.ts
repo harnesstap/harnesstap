@@ -122,6 +122,14 @@ describe("auth CLI flow", () => {
 
     expect(JSON.parse(whoami.stdout)).toEqual({});
     expect(JSON.parse(orgs.stdout)).toEqual([]);
+    expect(orgs.stderr).toContain("Not authenticated");
+  });
+
+  it("auth orgs json is an empty array when logged out and warns", async () => {
+    const result = await runCli(["auth", "orgs", "--format", "json"]);
+    expect(result.exitCode ?? 0).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual([]);
+    expect(result.stderr).toContain("Not authenticated");
   });
 
   it("reports missing orgs when switching to an unknown organization", async () => {

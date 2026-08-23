@@ -17,6 +17,12 @@ export function formatCommand(path: string): string {
   return `${resolveInvocationName()} ${path}`.trim();
 }
 
+export function formatScenarioCommand(path: string): string {
+  const trimmed = path.trim();
+  const stripped = trimmed.replace(/^(?:harnesstap|ht)\s+/, "");
+  return formatCommand(stripped);
+}
+
 export function collectRepeatedOption(value: string, previous: string[]): string[] {
   return [...previous, value];
 }

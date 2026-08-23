@@ -1514,6 +1514,7 @@ function handlePluginDiffCommand(
       `${report.changes.length} changes ${ui.icons.bullet} ${added} added ${ui.icons.bullet} ${removed} removed ${ui.icons.bullet} ${modified} modified`,
     );
   } catch (err) {
+    process.exitCode = 1;
     ui.danger(err instanceof Error ? err.message : String(err));
   }
 }

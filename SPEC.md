@@ -440,7 +440,7 @@ A **profile** is a plugin whose `tags` include the reserved string `profile`. Pr
 
 **Scope:** `profile use` applies to machine **home** harness paths only. Project apply is `apply` only.
 
-**Root shorthand:** when `argv[2]` is not a registered top-level command or alias and matches a local profile plugin name, the CLI rewrites to `profile use <name>`. Reserved names always win — e.g. `ht init` stays `init`, `ht work` becomes `profile use work` when `work` is a profile-tagged plugin.
+**Root shorthand:** when the first non-option argument is not a registered top-level command or alias and matches a local profile plugin name, the CLI rewrites to `profile use <name>`, leaving any leading global flags in place. Reserved names always win — e.g. `ht init` stays `init`, `ht work` becomes `profile use work` when `work` is a profile-tagged plugin.
 
 Remote catalog workflows live on **`plugin`**, not `cloud`:
 

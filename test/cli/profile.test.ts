@@ -462,6 +462,38 @@ describe("CLI profile", () => {
     }
   });
 
+  it("rewrites profile shorthand after global flags", async () => {
+    const context = await createTestContext("cli-profile-shorthand-flags");
+    try {
+      await runCli(["init", "--main", "claude-code"]);
+      const plugin = createPlugin({ name: "work" });
+      setPluginTags(plugin.id, ["profile"]);
+      const resource = createResource({
+        type: "instruction",
+        name: "work-guide",
+        description: "",
+        content: "# work",
+        metadata: {},
+        source: "manual",
+      });
+      addResourceToPlugin(plugin.id, resource.id);
+
+      const shorthand = await runCli([
+        "--no-color",
+        "--no-interactive",
+        "work",
+        "--harness",
+        "claude-code",
+        "--dry-run",
+      ]);
+      expect(shorthand.exitCode ?? 0).toBe(0);
+      expect(shorthand.stderr).not.toContain("unknown command");
+      expect(shorthand.stdout).toContain("Applied profile");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("auto-pulls missing published dependencies on profile use", async () => {
     const context = await createTestContext("cli-profile-use-auto-pull");
     try {
